@@ -25,7 +25,7 @@ from collections import deque
 from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 from .bots import BRAKE_GAP_M, FULL_FRAME_BOTS, light_frame
 from .classic import ClassicRace, GainJob
@@ -36,6 +36,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
+from . import mode_routes as mode_routes_mod
 from . import config_edit, last_choices, latency_log, local_weather, seance_file
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
@@ -101,6 +102,7 @@ RETIRED_IMPORT_COMMANDS = ("list_imports", "import_workout")
 BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
 VEHICLES_FRAME_EVERY = 3   # liste `vehicles` 10 fois par seconde (lot AS6), extrapolée par l'engine
+RIDERS_FRAME_AT = 1        # lot AS10 : liste `riders` (10 Hz aussi) dans la trame qui suit celle de `vehicles`
 ESCORT_GAP_M = traffic_mod.DRAFT_REF_GAP_M   # voiture d'équipe (lot GP4) : 3 m du pare-chocs à la roue avant (abri de référence d'AS6)
 ESCORT_COLOR = 0           # teinte de la voiture d'équipe (indice des couleurs de la circulation)
 TRAFFIC_SEED = 0         # graine de la circulation : celle de traffic_model.gd (lot AS6)
@@ -116,6 +118,10 @@ PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
+# Bout d'un parcours en ligne (banc rgp10d du 16 novembre, Grand Prix à 11 adversaires) : les bots qui y arrivent
+# s'arrêtent en file, le k-ième (depuis 0) à k × END_GAP_M avant la fin, au lieu de s'empiler au même mètre.
+END_GAP_M = draft_mod.BIKE_LENGTH_M + 0.3
+GP_RUNOUT_M = 30.0   # Grand Prix sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
@@ -278,6 +284,43 @@ class AutostartError(Exception):
     """Parcours ou entraînement demandé au lancement (`--route`, `--workout`) refusé."""
 
 
+def escort_block(s: float, lane: draft_mod.Lane, kind: str | None,
+                 blocks: list[tuple[draft_mod.Lane, float, float]]) -> float:
+    """Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture comptent d'un seul bloc (gabarit de la
+    voiture, du pare-chocs avant à la roue arrière), pour le placement (lot AS2) comme pour le freinage roue
+    contre roue (lot PL1). Agrandit `lane` au gabarit du bloc (rendu par `escort_unblock`) et rend la position du
+    milieu du bloc ; sans voiture (`kind` None), `s` tel quel."""
+    if kind is None:
+        return s
+    car = traffic_mod.KINDS[kind]
+    ahead = ESCORT_GAP_M + car["length"]
+    blocks.append((lane, lane.length, lane.half_width))
+    lane.length, lane.half_width = lane.length + ahead, max(car["half_width"], lane.half_width)
+    return s + ahead * 0.5
+
+
+def _closest_gap(d0: float, dd: float) -> float:
+    """Plus petit écart |d0 + x·dd| pour x de 0 à 1 : écart le plus serré entre deux coureurs pendant l'horizon."""
+    if d0 * (d0 + dd) <= 0.0:
+        return 0.0
+    return min(abs(d0), abs(d0 + dd))
+
+
+def _footprints_meet(a: tuple[float, float, float, float], a_v: float, b: tuple[float, float, float, float],
+                     b_v: float, look_s: float) -> bool:
+    """Deux emprises (`CoreSession._footprint`) côte à côte en travers qui se touchent, à BLOCK_MIN_GAP_M près,
+    maintenant ou d'ici `look_s` secondes à leurs vitesses."""
+    if abs(a[2] - b[2]) >= a[3] + b[3]:
+        return False
+    return _closest_gap(b[0] - a[0], (b_v - a_v) * look_s) < a[1] + b[1] + draft_mod.BLOCK_MIN_GAP_M
+
+
+def escort_unblock(blocks: list[tuple[draft_mod.Lane, float, float]]) -> None:
+    """Rend aux coureurs remorqués le gabarit de leur vélo (après `escort_block`)."""
+    for lane, bike_length, bike_half in blocks:
+        lane.length, lane.half_width = bike_length, bike_half
+
+
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path | None = None, routes_root: Path | None = None,
@@ -344,11 +387,13 @@ class CoreSession:
         self.wtf: WtfMode | None = None
         self.survivor: SurvivorRace | None = None   # mode « Dernier survivant » (lot DS2)
         self._survivor_out: dict[str, float] = {}   # bot éliminé → instant de l'élimination (il se range)
+        self._end_queue: list[str] = []   # bots arrêtés au bout d'un parcours en ligne, dans l'ordre d'arrivée
         self._survivor_end_pending = False
         self.grandprix_path: Path = grandprix_path or gp_items.GRANDPRIX_FILE   # objets et valeurs (lot GP2)
         self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
+        self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
         self._track_plan: Any = None                            # consignes des bots de l'épreuve (lot VD7)
         self._race_field: bot_tactics.RaceField | None = None   # comportements de course (lot VD7)
         self._records_writable = True
@@ -364,7 +409,8 @@ class CoreSession:
                           "difficulty_pct": round(self.difficulty_pct), "gravel": cfg.gravel.mode,
                           "biome": cfg.render.biome,
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances"),
-                          "track": track_mod.menu_options()})
+                          "track": track_mod.menu_options(),
+                          "mode_routes": mode_routes_mod.hello_block()})   # lot GP13, révision 1.19
         self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
@@ -495,7 +541,7 @@ class CoreSession:
             route_id = str(args.get("route_id") or "demo")
             self._select_route(route_id, previous=st)
             if self.state.session_state == "READY" and self.state.route_id == route_id:
-                self._remember("route_id", route_id, cmd_id)
+                self._remember_route(route_id, cmd_id)
         elif name == "select_workout":
             # Accepté aussi après une séance (FINISHED, ERROR) : le menu choisit l'entraînement avant
             # le parcours, et le core reste en FINISHED jusqu'au select_route suivant.
@@ -634,7 +680,7 @@ class CoreSession:
         if game_mode == "wtf":
             self._start_wtf()
         self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"),
-                       tactics=self._track_tactics() if game_mode == "track" else None)
+                       tactics=self._track_tactics() if game_mode == "track" else None, game_mode=game_mode)
         if game_mode == "survivor":
             self._start_survivor()
         if game_mode == "grandprix":
@@ -1004,6 +1050,23 @@ class CoreSession:
             return
         self.server.hello_config["last_choices"] = choices
 
+    def _remember_route(self, route_id: str, cmd_id: int) -> None:
+        """Parcours choisi au menu (lot GP13) : celui d'un mode à parcours propres (Vélodrome, Grand Prix,
+        `mode_routes.py`) est gardé pour ce mode, sans remplacer le dernier parcours libre rechargé au démarrage."""
+        src = getattr(self, "_world_src", None)
+        mode = mode_routes_mod.mode_of(src[2]) if src is not None else None
+        if mode is None:
+            self._remember("route_id", route_id, cmd_id)
+            return
+        if cmd_id <= 0 or self.profile_ctx.id is None or (self.sim is not None and self.config_path is None):
+            return
+        try:
+            choices = last_choices.remember_mode_route(last_choices.path_for(self.profile_ctx.root), mode, route_id)
+        except OSError as exc:
+            log.warning("Dernier parcours du mode %s non enregistré : %s", mode, exc)
+            return
+        self.server.hello_config["last_choices"] = choices
+
     def _preselect_last_route(self) -> None:
         """Hors séance, recharge le dernier parcours du profil s'il existe encore ; sinon rien."""
         route_id = self.server.hello_config.get("last_choices", {}).get("route_id")
@@ -1206,7 +1269,8 @@ class CoreSession:
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
         input_lost = bool(clicks) and self.state.input_status != "CONNECTED"
         ts = time.time()
-        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts)
+        p3 = self._power_3s(m.power_w)   # lot R23 : la puissance affichée juge les consignes du mode
+        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts, power_avg_w=p3)
         for msg in out.messages:
             self.server.send_raw(msg)
         if self._rec:
@@ -1217,12 +1281,11 @@ class CoreSession:
         self._feed_road_mass()
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
-        p3 = self._power_3s(m.power_w)
         st = self.state
         st.t, st.s, st.v = self._t_session, self._rogue_dist, self.physics.v
         st.grade, st.grade_sent = round(out.grade_enemy, 2), round(self._grade_sent, 2)
         st.power, st.power_3s, st.cadence, st.hr = m.power_w, round(p3, 1), m.cadence_rpm, m.hr_bpm
-        st.gear, st.rogue = rg.gear, out.rogue
+        st.gear, st.rogue = rg.gear, out.rogue   # événements de la trame : _fill_rogue_frame à l'envoi (lot R23)
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
             self._rec.record(Record(
@@ -1317,7 +1380,8 @@ class CoreSession:
             attach_segments(profiled, self._segments)
             calibrate_bots(profiled, self.route, RefRider(self.cfg.rider.ftp_w, self._base_params),
                            self.cfg.bots.level_pct, self._segments, self.cfg.bike.mass_kg,
-                           bot_params=PhysicsParams.from_config(self.cfg))
+                           bot_params=PhysicsParams.from_config(self.cfg),
+                           effort=self._bot_effort_now or self._bot_effort(None))
             mode = self.bot_tactics_mode if self.race is not None else "none"
             seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
             bot_tactics.start_race(profiled, seed, mode)
@@ -1326,6 +1390,16 @@ class CoreSession:
         if self.wtf is not None:
             for b in fresh:
                 self.wtf.bot_skin(b.id)
+
+    def _log_bot_effort(self) -> None:
+        """Ligne du journal du core : objectif, durée estimée et puissance visée des bots (lot BT1)."""
+        eff = self._bot_effort_now
+        targets = sorted({b.effort_target for b in self.bots if getattr(b, "effort_target", None)})
+        if eff is None or not targets:
+            return
+        ftp = self.cfg.rider.ftp_w
+        log.info("Effort des bots (%s) : %s.", eff.objective, ", ".join(
+            f"{pct:.0f} % de la FTP ({ftp * pct / 100.0:.0f} W) sur ≈ {dur / 60.0:.0f} min" for pct, dur in targets))
 
     def _journal_bots(self, reason: str) -> None:
         """Ligne `bots` du journal (lot N18) : bots de la séance au départ (s'il y en a) et à chaque `set_bots`."""
@@ -2102,6 +2176,9 @@ class CoreSession:
         self.state.route_id = route_id
         self.state.route_length_m = world.route.length_m
         self.physics.place(0.0)
+        # la trame aussi : sinon, jusqu'au départ, elle gardait la position de la séance d'avant et l'engine
+        # préparait le décor là-bas (cycliste et décor figés à la 2e partie, 15 novembre)
+        self.state.t, self.state.s, self.state.v = 0.0, 0.0, 0.0
         self.state.dir = None
         self._set_session_clock(0.0)
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
@@ -2260,6 +2337,22 @@ class CoreSession:
         self.physics.u_turn(keep_speed=True)
         if self.race is not None:
             self.race.pause("user")   # passage de segment ou de sprint en cours annulé, comme à la pause
+        self._note_u_turn()
+        return True
+
+    def _u_turn_at_end(self, route: Route) -> bool:
+        """Bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP (lot N26) : demi-tour
+        automatique sans s'arrêter, comme Y maintenu, au lieu de couper l'entraînement à l'arrivée. Vrai si le
+        demi-tour est fait ; faux hors entraînement (entraînement fini, SIM, ERG libre) ou quand le demi-tour
+        est refusé (course à élimination, Grand Prix) : l'arrivée termine alors la séance."""
+        if not isinstance(self.erg, ErgController) or self._u_turn_refusal("RUNNING") is not None:
+            return False
+        self.physics.s = min(max(self.physics.s, 0.0), route.length_m)   # pas au-delà du bout de la route
+        self.physics.u_turn(keep_speed=True)
+        if self.race is not None:
+            self.race.pause("user")   # passage de segment ou de sprint en cours annulé, comme Y maintenu
+        log.info("Bout du parcours pendant l'entraînement « %s » : demi-tour automatique.",
+                 self.erg.workout.name)
         self._note_u_turn()
         return True
 
@@ -2545,6 +2638,15 @@ class CoreSession:
         log.info("Mode WTF : règle %s %s.", rule, "allumée" if on else "coupée")
         return True
 
+    def _fill_rogue_frame(self) -> None:
+        """Objet `rogue` de la trame : état du dernier pas et événements de tous les pas depuis la trame
+        précédente (lot R23 : la boucle tourne à 50 Hz, la trame part à 30 Hz)."""
+        if self.rogue is None:
+            return
+        frame = self.rogue.take_frame()
+        if frame is not None:
+            self.state.rogue = frame
+
     def _fill_wtf_frame(self) -> None:
         st = self.state
         if self.wtf is None or st.session_state not in ("RUNNING", "PAUSED"):
@@ -2627,7 +2729,8 @@ class CoreSession:
             out.update(b.id for b in self.bots if gp.unseen(b.id))
         return frozenset(out)
 
-    def _gp_escorts(self) -> list[traffic_mod.Vehicle]:
+    def _gp_escorts(self, road: Sequence[tuple[tuple[float, float, float, float], float]] = ()) \
+            -> list[traffic_mod.Vehicle]:
         """Voitures d'équipe en cours (lot GP4) : véhicule d'AS6 juste devant le coureur remorqué, à sa vitesse et
         sur sa ligne ; identifiant `tc<rang du coureur>`, court et stable (budget de la trame `state`). La voiture
         se glisse devant son coureur dès que la place est libre (aucun autre coureur sous sa carrosserie), puis y
@@ -2637,6 +2740,7 @@ class CoreSession:
             return []
         where = {GP_ME: (self.physics.s, self.physics.v, self._lane.m)}
         where.update({b.id: (b.s, b.v, b.lane.m) for b in self.bots if getattr(b, "lane", None) is not None})
+        look = draft_mod.BLOCK_LOOK_S
         ids = list(gp.racers)
         towed = dict(gp.escorts())
         self._escort_shown &= set(towed)
@@ -2648,14 +2752,36 @@ class CoreSession:
             ahead = draft_mod.BIKE_LENGTH_M * 0.5 + ESCORT_GAP_M + traffic_mod.KINDS[kind]["length"] * 0.5
             car = traffic_mod.Vehicle(f"tc{ids.index(rid)}", kind, ESCORT_COLOR, s + ahead, 1, v, v, lane_m)
             if rid not in self._escort_shown:
-                reach_s = car.length * 0.5 + draft_mod.BIKE_LENGTH_M * 0.5
-                reach_m = car.half_width + draft_mod.RIDER_WIDTH_M * 0.5
-                if any(abs(o_s - car.s) < reach_s and abs(o_m - car.lateral) < reach_m
-                       for o, (o_s, _, o_m) in where.items() if o != rid):
+                # Place libre sous tout le bloc coureur et voiture (`escort_block`), de la roue arrière du coureur au
+                # pare-chocs avant, face aux vélos des autres et aux blocs déjà en route, maintenant et pendant
+                # BLOCK_LOOK_S, à BLOCK_MIN_GAP_M près (lot PL1) : le coureur remorqué roule plus vite que celui
+                # qu'il rattrape, la voiture n'apparaît ni sur lui ni pour passer sous lui une fraction de seconde après
+                mine = self._footprint(s, lane_m, kind)
+                if any(_footprints_meet(mine, v, self._footprint(o_s, o_m, towed.get(o) if o in self._escort_shown
+                                                                  else None), o_v, look)
+                       for o, (o_s, o_v, o_m) in where.items() if o != rid) \
+                        or any(_footprints_meet(mine, v, foot, o_v, look) for foot, o_v in road):
                     continue          # place prise : la voiture attend derrière le coureur devant
                 self._escort_shown.add(rid)
             out.append(car)
         return out
+
+    @staticmethod
+    def _footprint(s: float, lane_m: float, kind: str | None) -> tuple[float, float, float, float]:
+        """Emprise d'un coureur (lot GP4) : (milieu, demi-longueur, écart à l'axe, demi-largeur), celle du bloc
+        coureur et voiture quand sa voiture d'équipe roule devant lui (`kind`)."""
+        lane = draft_mod.Lane(lane_m, lane_m)
+        mid = escort_block(s, lane, kind, [])
+        return mid, 0.5 * lane.length, lane_m, lane.half_width
+
+    def _escort_kinds(self) -> dict[str, str]:
+        """Coureurs dont la voiture d'équipe roule devant eux (lot GP4) et type de la voiture : eux seuls se placent
+        et freinent au gabarit du bloc coureur et voiture (`escort_block`) ; celui dont la voiture attend que la
+        place se libère reste un vélo."""
+        gp = self.grandprix
+        if gp is None:
+            return {}
+        return {rid: kind for rid, kind in gp.escorts() if rid in self._escort_shown}
 
     def _racing_bots(self) -> list[Any]:
         """Bots qui comptent pour l'abri : tous, sauf les éliminés du Dernier survivant."""
@@ -2903,17 +3029,21 @@ class CoreSession:
 
     def _grandprix_course(self) -> tuple[float, float | None]:
         """Longueur de la course et d'un tour (circuit) d'après `[grandprix]` ; `GrandPrixError` si le parcours
-        ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne plus court que la course)."""
+        ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne de moins de 1 km). En ligne, la
+        course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) : `distance_km` ou ce qu'il en reste,
+        ligne posée au moins `GP_RUNOUT_M` avant le bout (lot GP10) : la file des bots arrivés y tient après la ligne."""
         gc = self.cfg.grandprix
         route = self.route
         if self.openworld is not None or route is None:
             raise GrandPrixError("le monde ouvert n'a pas de distance de course")
         if route.is_loop:
             return gc.laps * route.length_m, route.length_m
-        length = gc.distance_km * 1000.0
-        if self.physics.s + length > route.length_m + 1e-6:
-            raise GrandPrixError(f"parcours trop court pour une course de {gc.distance_km} km "
-                                 f"({route.length_m / 1000.0:.1f} km)")
+        from .grandprix.boxes import MIN_COURSE_M
+
+        length = min(gc.distance_km * 1000.0, route.length_m - self.physics.s - GP_RUNOUT_M)
+        if length < MIN_COURSE_M - 1e-6:
+            raise GrandPrixError(f"parcours trop court pour une course ({route.length_m / 1000.0:.1f} km, "
+                                 f"{MIN_COURSE_M / 1000.0:.0f} km au moins)")
         return length, None
 
     def _grandprix_field(self, args: dict) -> list[Any] | None:
@@ -2934,7 +3064,7 @@ class CoreSession:
             if not 1 <= gc.opponents <= MAX_CONSTANT_BOTS:
                 raise GrandPrixError(f"adversaires : {gc.opponents} refusé (1 à {MAX_CONSTANT_BOTS})")
             if gc.box_every_m / 1000.0 not in BOX_EVERY_KM:
-                raise GrandPrixError(f"écart des boîtes : {gc.box_every_m} m refusé (pas de 500 m)")
+                raise GrandPrixError(f"écart des boîtes : {gc.box_every_m} m refusé (500 à 3 000 m, pas de 500 m)")
             if gc.chaos not in CHAOS:
                 raise GrandPrixError(f"chaos : {gc.chaos!r} refusé ({', '.join(CHAOS)})")
             self._grandprix_course()
@@ -2974,7 +3104,11 @@ class CoreSession:
                               self._lane.m, g)}
         for b in self.bots:
             g = grade_at(b.s)
-            out[b.id] = GpRider(b.s, b.v, equilibrium_speed(float(getattr(b, "power_w", 0.0)), g, b.params),
+            # Vitesse d'équilibre à la puissance voulue, avant l'enfermement du lot PL1 : un coureur remorqué
+            # (voiture d'équipe, GP4) enfermé freine à la vitesse de celui devant (`_brake_grandprix_wheels`),
+            # il ne s'arrête pas net
+            drive_w = getattr(b, "unblocked_w", getattr(b, "power_w", 0.0))
+            out[b.id] = GpRider(b.s, b.v, equilibrium_speed(float(drive_w), g, b.params),
                                 b.lane.m, g)
         return out
 
@@ -3001,13 +3135,19 @@ class CoreSession:
         contre roue comme un bot (`BRAKE_GAP_M`) : le freinage se transmet le long d'une file dans le même pas."""
         route = self.route
         length, loop = (route.length_m, route.is_loop) if route else (None, False)
-        field = [(self.physics, self._lane)] + [(b.physics, b.lane) for b in racing]
-        field.sort(key=lambda r: -r[0].s)
-        for phys, lane in field:
-            others = [(p.s, p.v, ln) for p, ln in field if ln is not lane]
-            lane.blocked = draft_mod.blocked_by(phys.s, phys.v, lane, lane.target, others, length, loop)
+        towed = self._escort_kinds()
+        blocks: list[tuple[draft_mod.Lane, float, float]] = []
+        # Voiture d'équipe (lot GP4) : le coureur remorqué freine au gabarit de son bloc, comme il se place
+        # (`_update_draft`) : sa voiture ne passe plus sous le coureur plus lent devant lui
+        field = [(self.physics, self._lane, GP_ME)] + [(b.physics, b.lane, b.id) for b in racing]
+        place = {id(ln): escort_block(p.s, ln, towed.get(rid), blocks) for p, ln, rid in field}
+        field.sort(key=lambda r: -place[id(r[1])])
+        for phys, lane, _ in field:
+            others = [(place[id(ln)], p.v, ln) for p, ln, _ in field if ln is not lane]
+            lane.blocked = draft_mod.blocked_by(place[id(lane)], phys.v, lane, lane.target, others, length, loop)
             if lane.blocked is not None and lane.blocked[0] <= BRAKE_GAP_M:
                 phys.v = min(phys.v, lane.blocked[1])
+        escort_unblock(blocks)
 
     def _sync_grandprix_lanes(self) -> None:
         """Voie forcée (cycliste : A court, flèches ; bot : esquive du lot GP3) : le placement vise le centre de
@@ -3144,13 +3284,33 @@ class CoreSession:
 
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
-    def _new_race(self, classic: bool = True, tactics: str | None = None) -> None:
+    def _bot_effort(self, game_mode: str | None) -> Any:
+        """Course des bots (lot BT1, `bot_effort.Effort`) : objectif commun `bots.objective` et longueur de la
+        course du mode (Grand Prix : tours ou distance ; ailleurs un passage du parcours) ; au vélodrome,
+        objectif et longueur de l'épreuve (`bot_effort.track_effort`)."""
+        from . import bot_effort
+
+        if game_mode == "track" and self._track_choice is not None:
+            event, settings = self._track_choice
+            lap = self._track.length_m if self._track is not None else track_mod.LAP_M
+            return bot_effort.track_effort(event, settings, lap)
+        course_m = None
+        if game_mode == "grandprix":
+            try:
+                course_m = self._grandprix_course()[0]
+            except GrandPrixError:
+                course_m = None
+        return bot_effort.Effort(self.cfg.bots.objective, course_m)
+
+    def _new_race(self, classic: bool = True, tactics: str | None = None, game_mode: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
 
         `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés.
         `tactics` : ligne de `bot_tactics.MODE_TACTICS` imposée par le mode (épreuve de piste) ; None : celle
-        du mode classique, ou « none » hors du mode classique."""
+        du mode classique, ou « none » hors du mode classique. `game_mode` : mode de la séance, pour l'effort
+        des bots (`_bot_effort`, lot BT1)."""
         route = self.route
+        self._bot_effort_now = self._bot_effort(game_mode)
         self.race = None
         # Graine de la séance, tirée une fois : les bots, l'épreuve de piste et ses consignes la partagent.
         self._race_seed = (self.bot_tactics_seed if self.bot_tactics_seed is not None
@@ -3194,7 +3354,7 @@ class CoreSession:
         # Niveau des bots (lot T13) : cycliste équipé (lot V5), bots sans équipement (leur physique de séance).
         rider = RefRider(self.cfg.rider.ftp_w, self._base_params)
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
-                                self.cfg.bike.mass_kg, bot_params=plain)
+                                self.cfg.bike.mass_kg, bot_params=plain, effort=self._bot_effort_now)
         # Lot Y10 : tactique après le calibrage (forme du jour sur la CP calibrée), le mode classique seul
         seed = self._race_seed
         mode = tactics if tactics is not None else (self.bot_tactics_mode if classic else "none")
@@ -3205,6 +3365,7 @@ class CoreSession:
         if scales:
             log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
                      ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
+            self._log_bot_effort()
         if self.race is None:
             return
         self.race.start(self._t_session, self.physics.s, self.bots)
@@ -3666,6 +3827,7 @@ class CoreSession:
             bot.step(dt, route)
             if bot_wind:
                 params.wind_mps -= bot_wind
+            self._queue_at_end(bot, route)
             if track is not None and getattr(bot, "physics", None) is not None:   # même règle de distance (VD3)
                 bot.physics.s = bot_s + (bot.physics.s - bot_s) * track.progress_factor(
                     bot_s, velodrome.height_on_track(draft_mod.lane_of(bot)))
@@ -3731,9 +3893,10 @@ class CoreSession:
 
         if route and not route.is_loop and self.openworld is None and \
                 (st.s >= route.length_m if d > 0 else st.s <= 0.0):   # ni une boucle, ni le monde ouvert
-            # à rebours (lot N17), le départ du parcours est l'arrivée
-            log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
-            self._finish(True)
+            if not self._u_turn_at_end(route):
+                # à rebours (lot N17), le départ du parcours est l'arrivée
+                log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
+                self._finish(True)
         elif self.openworld is not None and self.openworld.finish_s is not None and st.s >= self.openworld.finish_s:
             # lot W19 : destination atteinte, ou boucle revenue au départ
             log.info("Monde ouvert : arrivée atteinte (%s, %.0f m).", self.openworld.nav, st.s)
@@ -3745,6 +3908,24 @@ class CoreSession:
             log.info("Grand Prix des objets : arrivée, %de sur %d.", self.grandprix.racers[GP_ME].finished,
                      len(self.grandprix.racers))
             self._finish(True)
+
+    def _queue_at_end(self, bot, route) -> None:
+        """Bout d'un parcours en ligne : le bot s'arrête à sa place dans la file d'arrivée (`END_GAP_M` entre deux
+        bots, le premier arrivé au bout), jamais sur un bot déjà arrêté. Le fantôme rejoue une séance : pas de file.
+        La file oublie un bot reparti (séance relancée, bots changés)."""
+        physics = getattr(bot, "physics", None)
+        if route is None or route.is_loop or physics is None or getattr(bot, "kind", "") == "ghost":
+            return
+        end = route.length_m
+        ids = {b.id for b in self.bots}
+        self._end_queue = [i for k, i in enumerate(self._end_queue)
+                           if i in ids and next(b for b in self.bots if b.id == i).s >= end - k * END_GAP_M - 0.5]
+        k = self._end_queue.index(bot.id) if bot.id in self._end_queue else len(self._end_queue)
+        stop = end - k * END_GAP_M
+        if physics.s >= stop:
+            physics.s, physics.v = stop, 0.0
+            if bot.id not in self._end_queue:
+                self._end_queue.append(bot.id)
 
     def _track_of(self, world) -> velodrome.TrackGeometry | None:
         """Piste du parcours (couche `venue` d'un vélodrome, lot VD3) ; None pour une route ou une couche illisible."""
@@ -3855,6 +4036,7 @@ class CoreSession:
         riders: list[road_cyclists_mod.Rider] = []
         near_m: list[traffic_mod.Vehicle] = []        # mêmes listes dans le repère de la circulation (lot N23)
         riders_m: list[road_cyclists_mod.Rider] = []
+        road_users: list[Any] = []                    # tous les usagers de la route (voitures d'équipe, lot GP4)
         rider_u = self.physics.s
         if traffic is not None:
             # Lot N23 : à rebours, circulation et cyclistes du décor roulent sur le parcours retourné (u = L - s),
@@ -3871,7 +4053,8 @@ class CoreSession:
             if cyclists is not None:
                 cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
-                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places)
+                # Lot AS10 : à la vraie place du cycliste en travers (repère du décor, lot N23 : à droite de son sens)
+                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places, rider_lane=self._lane.m)
                 riders_m = cyclists.near(rider_u)
                 riders = [cyclists.on_route(r) for r in riders_m]
             others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
@@ -3880,6 +4063,8 @@ class CoreSession:
             traffic.update(rider_u, self.physics.v, dt, others=others)
             near_m = traffic.near(rider_u)
             near = [traffic.on_route(v) for v in near_m]
+            road_users = [traffic.on_route(v) for v in traffic.vehicles]
+            road_users += [cyclists.on_route(r) for r in (cyclists.riders() if cyclists else [])]
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
@@ -3897,24 +4082,23 @@ class CoreSession:
         unseen = self._unseen_ids()
         for b in self.bots:   # Furtif (lot GP4) : le bot n'abrite plus ceux qui le suivent
             b.shelters = b.id not in unseen
-        self._escorts = self._gp_escorts()
+        # Usagers de la route (lots AS6 et AS7) : circulation et cyclistes du décor, dans les deux sens, vitesse
+        # comptée dans le sens du parcours ; la voiture d'équipe n'apparaît pas sur eux ni juste avant de les croiser
+        road = [((u.s, u.length * 0.5, u.lateral, u.half_width), u.dir * u.speed_mps)
+                if isinstance(u, traffic_mod.Vehicle) else
+                ((u.s, 0.5 * draft_mod.BIKE_LENGTH_M, u.lane_m, 0.5 * draft_mod.RIDER_WIDTH_M), u.dir * u.v)
+                for u in road_users]
+        self._escorts = self._gp_escorts(road)
         cars = self._escorts + [v for v in near if v.dir == 1]   # voiture d'équipe (lot GP4) : un véhicule d'AS6
-        reverse = self.physics.direction < 0   # à rebours (lot N17) : personne dans le même sens, ni abri ni placement
+        reverse = self.physics.direction < 0   # à rebours (lot N17) : ni abri ni bots ; placement parmi ceux du même sens (AS10)
         # Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture se placent d'un seul bloc (gabarit de la
         # voiture, du pare-chocs avant à la roue arrière) : le bloc double les coureurs plus lents et les autres
         # l'évitent, la voiture ne passe plus à travers un coureur devant
-        towed = dict(self.grandprix.escorts()) if self.grandprix is not None else {}
+        towed = self._escort_kinds()
         blocks: list[tuple[draft_mod.Lane, float, float]] = []
 
         def runner(rid: str, s: float, v: float, lane: draft_mod.Lane) -> tuple[float, float, draft_mod.Lane]:
-            kind = towed.get(rid)
-            if kind is None:
-                return s, v, lane
-            car = traffic_mod.KINDS[kind]
-            ahead = ESCORT_GAP_M + car["length"]
-            blocks.append((lane, lane.length, lane.half_width))
-            lane.length, lane.half_width = lane.length + ahead, max(car["half_width"], lane.half_width)
-            return s + ahead * 0.5, v, lane
+            return escort_block(s, lane, towed.get(rid), blocks), v, lane
 
         runners = [] if reverse else [runner(GP_ME, self.physics.s, self.physics.v, self._lane)]
         runners += [runner(b.id, b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
@@ -3936,8 +4120,7 @@ class CoreSession:
             back += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders_m if r.dir == 1]
             draft_mod.update_lanes(back, dt, length, is_loop, wind_on(traffic.route) if ws else None,
                                    (lambda u: half(traffic.model_s(u))) if half else None)
-        for lane, bike_length, bike_half in blocks:
-            lane.length, lane.half_width = bike_length, bike_half
+        escort_unblock(blocks)
 
         cross = cross_at(heading_deg)
         rider = None if reverse else \
@@ -3982,10 +4165,11 @@ class CoreSession:
             self.state.vehicles = traffic_mod.state_list(cars[:traffic_mod.NEAR_MAX])
 
     def _fill_riders_frame(self) -> None:
-        """Liste `riders` avec `vehicles` (10 Hz, lot AS7) : au plus 6 cyclistes du décor à moins de 60 m."""
+        """Liste `riders` (10 Hz, lot AS7) : cyclistes du décor à moins de 60 m. Lot AS10 (révision 1.18) : au plus 10,
+        dans la trame qui suit celle de `vehicles`, jamais avec elle (la trame la plus chargée reste sous 4 096 octets)."""
         cyclists = self.road_cyclists
         self.state.riders = None
-        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == 0:
+        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == RIDERS_FRAME_AT:
             self.state.riders = road_cyclists_mod.state_items(
                 cyclists.on_route(r) for r in cyclists.near(cyclists.model_s(self.physics.s)))
 
@@ -4266,6 +4450,7 @@ class CoreSession:
                 self._fill_survivor_frame()
                 self._fill_grandprix_frame()
                 self._fill_track_frame()
+                self._fill_rogue_frame()
                 self._lighten_bots_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:

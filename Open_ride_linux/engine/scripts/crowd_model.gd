@@ -84,12 +84,15 @@ func configure(route, climbs: Array, water: Dictionary = {}, crowd_all_climbs: b
 		if float(c["length_m"]) < MIN_CLIMB_M and not crowd_all_climbs:
 			continue
 		var summit := float(c["summit_s"])
-		var z0 := maxf(float(c["start_s"]), summit - ZONE_M)
-		var n_slots := int((summit - z0) / SLOT_M)
+		# Montée du retour (dir -1, lot N24) : pied après le sommet, dernier ZONE_M en aval du sommet
+		var back := int(c.get("dir", 1)) < 0
+		var z0 := summit if back else maxf(float(c["start_s"]), summit - ZONE_M)
+		var z1 := minf(float(c["start_s"]), summit + ZONE_M) if back else summit
+		var n_slots := int((z1 - z0) / SLOT_M)
 		for side in [-1, 1]:
 			for i in range(n_slots):
 				var s := z0 + (i + 0.5) * SLOT_M
-				var t := (s - z0) / maxf(summit - z0, 1.0)
+				var t := ((z1 - s) if back else (s - z0)) / maxf(z1 - z0, 1.0)   # 0 au début de la zone, 1 au sommet
 				var gidx := int(floor(s / GROUP_M))
 				var hg := VegetationPlacer.hash3(seed, gidx, side + 7)
 				var group_factor := 0.35 if hg % 3 == 0 else 1.0

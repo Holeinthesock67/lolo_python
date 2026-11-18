@@ -21,24 +21,25 @@ class Card:
 
 CARDS = {c.id: c for c in (
     Card("roller", "Rouleau compresseur", "terraformer",
-         "Les pentes au-dessus de 6 % sont écrêtées à 6 % et durent 3 s de plus."),
+         "Les montées raides sont rabotées : jamais plus de 6 % (le passage dure 3 s de plus)."),
     Card("springboard", "Tremplin cinétique", "terraformer",
-         "Au fond d'une descente en vitesse 9 ou plus : +15 d'adrénaline et 5 s de dégâts ×1,5."),
-    Card("overdrive", "Overdrive", "gear",
-         "Vitesse 12 : +4 points de pente et dégâts ×2 pendant 8 s, puis retour en 6. Recharge 45 s.", 12),
-    Card("heal", "Soin", "gear",
-         "Vitesse 1 au-dessus de 95 rpm : +1 bouclier par seconde.", 1),
-    Card("cursed", "Maudit", "gear", "Vitesse 10 : dégâts ×1,35, mais Z sans effet.", 10),
+         "En bas de chaque descente : +15 d'adrénaline et dégâts ×1,5 pendant 5 s."),
+    Card("overdrive", "Overdrive", "module",
+         "Pousse au-dessus de {overdrive_w} W : dégâts ×2 pendant 8 s. Recharge 45 s."),
+    Card("heal", "Soin", "module",
+         "Mouline vite et léger (plus de 95 rpm, sous {heal_w} W) : +1 de bouclier par seconde."),
+    Card("cursed", "Maudit", "module",
+         "Au-dessus de {cursed_w} W : dégâts ×1,35, mais Z ne marche plus."),
     Card("shifter", "Shifter électronique pro", "module",
-         "Fenêtre de Perfect Shift doublée (3 s au plus) ; +3 bouclier à chaque réussite."),
-    Card("siphon", "Siphon d'aspiration", "module", "Aspiration réussie : +50 d'adrénaline."),
+         "Perfect Shift plus facile : 2 fois plus de temps pour changer de vitesse. +3 de bouclier à chaque réussite."),
+    Card("siphon", "Siphon d'aspiration", "module", "Contre le Puncheur : chaque parade réussie (Z) donne +50 d'adrénaline."),
     Card("polarity", "Inversion polaire", "active",
-         "Z long, une fois par salle : pendant 8 s la pente de l'ennemi est inversée (descente bornée à −3 %)."),
+         "Maintiens Z, une fois par salle : pendant 8 s, la montée devient une descente douce (−3 % au plus)."),
 )}
 RELICS = {c.id: c for c in (
-    Card("relic_shield", "Blindage de départ", "relic", "Bouclier maximal +20 pendant toute la run."),
-    Card("relic_gold", "Marché noir", "relic", "Or gagné +25 % pendant toute la run."),
-    Card("relic_window", "Réflexes affûtés", "relic", "Fenêtre de Perfect Shift +0,3 s pendant toute la run."),
+    Card("relic_shield", "Blindage de départ", "relic", "Bouclier plus grand : +20 pour toute la run."),
+    Card("relic_gold", "Marché noir", "relic", "+25 % d'or gagné pour toute la run."),
+    Card("relic_window", "Réflexes affûtés", "relic", "Perfect Shift plus facile : +0,3 s pour changer de vitesse, toute la run."),
 )}
 ALL = {**CARDS, **RELICS}
 
@@ -52,14 +53,25 @@ def draw(seed_key: str, n: int, owned: tuple, pool: dict | None = None) -> tuple
     return tuple(random.Random(seed_key).sample(ids, min(n, len(ids))))
 
 
+def threshold_w(frac: float, ftp_w: float) -> int:
+    """Seuil d'une carte en watts, arrondi à 5 W (lot R23 : le joueur lit une puissance, pas un % à calculer)."""
+    return int(round(frac * ftp_w / 5.0) * 5)
+
+
+def card_text(card_id: str, ftp_w: float, b) -> str:
+    """Texte d'une carte pour ce cycliste : seuils en watts calculés depuis sa FTP et la table d'équilibrage."""
+    return ALL[card_id].text.format(overdrive_w=threshold_w(b.overdrive_power_frac, ftp_w),
+                                    heal_w=threshold_w(b.heal_power_frac, ftp_w),
+                                    cursed_w=threshold_w(b.cursed_power_frac, ftp_w))
+
+
 def deck_add(deck: tuple, card_id: str) -> tuple:
-    """Ajoute une carte : elle remplace l'ancienne carte de la même vitesse ou l'ancienne carte active."""
+    """Ajoute une carte : une carte active remplace l'ancienne carte active ; une carte déjà prise ne se double pas.
+    Lot R23 : plus aucune carte n'est liée à une vitesse (`replaces_gear` reste `null` dans le message `loot`)."""
     card = ALL[card_id]
     kept = []
     for other in deck:
         o = ALL[other]
-        if o.kind == "gear" and card.kind == "gear" and o.replaces_gear == card.replaces_gear:
-            continue
         if o.kind == "active" and card.kind == "active":
             continue
         if other == card_id:

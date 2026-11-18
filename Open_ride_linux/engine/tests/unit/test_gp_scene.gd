@@ -47,6 +47,9 @@ func _run() -> void:
 	_check(bx.size() == 6 and bx[0]["s"] == 1950.0 and bx[5]["s"] == 3450.0, "boîtes : deux rangées de trois")
 	_check(bx[0]["lateral"] == 0.68 and bx[1]["lateral"] == 1.45 and bx[2]["lateral"] == 2.22, "boîtes : une par voie")
 	_check(Model.boxes(null).is_empty() and Model.boxes({"boxes": "x"}).is_empty(), "boîtes : trame absente ou mal formée")
+	var taken: Array = Model.boxes({"boxes": [1950, 3450], "boxes_gone": [[0, 1], [1, 0], [1, 2]]})
+	_check(taken.size() == 3 and taken.filter(func(b): return b["row"] == 0).size() == 2
+		and taken.filter(func(b): return b["row"] == 1).size() == 1, "boîtes prises : pas posées jusqu'à leur retour (lot GP14)")
 
 	# Objets : voie, toute la route, sortes inconnues ignorées, douze au plus
 	var gp := {"obj": [[17, "bottle", 1520.4, 2], [18, "musette", 1610.0, 0], [19, "storm", 1700.0, -1], [20, "gel", 1.0, 1],

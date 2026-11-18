@@ -109,6 +109,7 @@ class ClassicRace:
         every = self.powerups.table.arch_every_m if self.powerups_on else 0.0
         self.arches = ArchSchedule(every, self.length_m, self.loop)
         self._prev_s: float | None = None
+        self._arches_taken: set[tuple[int, int]] = set()   # (arche, tour) déjà payées : une fois chacune (N25)
         self._s = 0.0
         self._has_bots = False
         self._pending: list[_Pending] = []
@@ -237,12 +238,16 @@ class ClassicRace:
         self._s = s
         self._has_bots = any(getattr(b, "kind", "") != "ghost" for b in bots)
         if self.powerups_on:
-            ds = max(s - self._prev_s, 0.0) if self._prev_s is not None else 0.0
+            ds = abs(s - self._prev_s) if self._prev_s is not None else 0.0   # à rebours aussi (demi-tour N17)
             busy = self.powerups.active is not None or self.powerups.roll_w > 0.0
             self.powerups.step(dt, self.context(s, ds) if busy else None)
             if self._prev_s is not None and not self.erg:
-                for _ in range(self.arches.crossed(self._prev_s, s)):
-                    self.powerups.award("arch", self.context(s))
+                # Arches comptées dans les deux sens (lot N25), chacune une seule fois par tour : un aller-retour
+                # par demi-tours sous la même arche ne rapporte pas deux bonus
+                for key in self.arches.passes(self._prev_s, s):
+                    if key not in self._arches_taken:
+                        self._arches_taken.add(key)
+                        self.powerups.award("arch", self.context(s))
         self._prev_s = s
         active = self.powerups.active if self.powerups_on else None
         finishes: list[Finish] = []
