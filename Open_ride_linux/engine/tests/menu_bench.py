@@ -33,14 +33,21 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
   des appareils et la carte de détail ; `focus`, `elements`, `statut`, `edition`), `menu_cache`, `config` ({clé: valeur} de
   config.toml, `null` : absente), `journal` (`core` ou `engine`) + `motif`, `fichier` (chemin ou motif
   glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente » ;
-- autres : `commande` (+ `args`), `attendre` (secondes), `capture` (nom), `relancer` (core et engine
-  arrêtés proprement puis relancés sur le même HOME : persistance des réglages).
+- autres : `commande` (+ `args`), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
+  route, `delai` 900 s par défaut), `capture` (nom), `relancer` (core et engine arrêtés proprement puis relancés sur le
+  même HOME : persistance des réglages) ;
+- gabarit : `depart_monde_ouvert` ({`recherche` : texte tapé au clavier, `contient` : lieu attendu dans les résultats
+  (défaut : `recherche`), `cap` : étapes jouées sur l'écran du cap avant « Démarrer »}) : le départ du monde ouvert,
+  le seul possible (`open_world_start`, lot W18 : après le préchargement, l'engine envoie `start` lui-même, sans accueil
+  ni écran Prêt), jusqu'à la séance en route ; captures `carte`, `cap` et `depart`. Un scénario qui attend « Monde
+  ouvert prêt » sans ce gabarit est refusé au chargement : un changement du départ se corrige à un seul endroit.
 
 En-tête d'un scénario : `description`, `voies` (défaut : les trois), `appareils` (`prets` ou `unilateral`),
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `velodrome` (vrai : piste du
-vélodrome des contenus de départ, lot VD10), `fichiers` ({chemin dans le
+vélodrome des contenus de départ, lot VD10), `grand_prix_parcours` (vrai : deux parcours d'essai du Grand Prix,
+étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
@@ -87,6 +94,7 @@ TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
 SCENARIOS_DIR = TESTS_DIR / "menu_scenarios"
+DISTANCE_POLL_S = 2.0   # étape `distance_km` : position du cycliste relue toutes les 2 s
 REAL_HOME = Path.home()      # avant tout changement de HOME : caches réels des scénarios `caches_reels`
 
 
@@ -161,9 +169,10 @@ BASE_CONFIG = {"render.quality": "low", "render.display": "windowed"}
 STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris", "element", "point", "click",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
-             "attendre", "capture", "relancer", "delai", "voies", "note"}
+             "attendre", "distance_km", "capture", "relancer", "delai", "voies", "note",
+             "depart_monde_ouvert"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "reseau", "caches_reels", "etapes"}
+             "compilateur", "velodrome", "grand_prix_parcours", "reseau", "caches_reels", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -200,6 +209,22 @@ def threads_of(pid: int) -> list[str]:
     return [f"{k} ×{n}" if n > 1 else k for k, n in counts.items()]
 
 
+def write_grand_prix_routes(routes: Path) -> None:
+    """Parcours d'essai du Grand Prix (lot GP13) : `gp-ligne` (démo de 5 km en ligne) et `gp-boucle` (piste de 250 m
+    en boucle), copiés et étiquetés « grandprix » : parcours du mode, absents de la liste générale."""
+    from openride_core.velodrome import write_velodrome
+
+    shutil.copytree(ENGINE_DIR / "demo" / "demo.world", routes / "gp-ligne.world")
+    with tempfile.TemporaryDirectory() as tmp:
+        shutil.copytree(write_velodrome(Path(tmp)), routes / "gp-boucle.world")
+    for rid, name in (("gp-ligne", "Course en ligne (essai)"), ("gp-boucle", "Boucle (essai)")):
+        mpath = routes / f"{rid}.world" / "manifest.json"
+        manifest = json.loads(mpath.read_text(encoding="utf-8"))
+        manifest["name"] = name
+        manifest["library"] = {**(manifest.get("library") or {}), "name": name, "tags": ["grandprix"]}
+        mpath.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def write_archive(path: Path, members: dict[str, Any]) -> None:
     """Archive `.zip` d'un scénario (`archives`) : `"@dossier": "chemin/du/dépôt"` y range ce dossier (sous son
     nom), les autres clés sont des fichiers texte (ou JSON) qui remplacent ceux du dossier."""
@@ -223,6 +248,80 @@ class ScenarioError(Exception):
     """Scénario illisible ; le message dit où."""
 
 
+OPEN_WORLD_READY = "Monde ouvert prêt"
+START_KEYS = {"recherche", "contient", "cap"}
+
+
+def open_world_start(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    """Étapes du départ du monde ouvert (gabarit `depart_monde_ouvert`), de l'accueil à la séance en route.
+
+    Lot W18 : après « Démarrer » sur l'écran du cap et le préchargement, le menu se ferme et l'engine envoie `start`
+    lui-même (départ au pédalage, lot O36) : ni accueil, ni « Session libre », ni écran Prêt."""
+    search = str(spec["recherche"])
+    keys = [{"voies": ["clavier"], "touche": "Space" if c == " " else c} for c in search]
+    return [
+        {"ecran": "home", "delai": 15},
+        {"choisir": "open_world"},
+        {"monde": "globe", "delai": 10},
+        *keys,
+        {"note": "Recherche par nom : bases OSM du cache réel, sinon Nominatim (réseau) ; aucune coordonnée dans le dépôt",
+         "monde": "search", "contient": [str(spec.get("contient", search))], "delai": 60},
+        {"touche": "Enter"},
+        {"monde": "map", "absent": ["Chargement de la carte"], "delai": 90},
+        {"capture": "carte"},
+        {"touche": "Enter"},
+        {"monde": "setup", "contient": ["Cap :"], "delai": 30},
+        *spec.get("cap", []),
+        {"capture": "cap"},
+        {"touche": "Enter"},
+        {"monde": False, "delai": 300},
+        {"note": "Monde ouvert préchargé : route engagée, séance prête", "journal": "core", "motif": OPEN_WORLD_READY,
+         "delai": 600},
+        {"note": "Lot W18 : le monde prêt, l'engine envoie start de lui-même (départ au pédalage)",
+         "journal": "core", "motif": "Commande start ", "delai": 60},
+        {"attendre": 2},
+        {"capture": "depart"},
+        {"note": "Départ au pédalage : le cycliste simulé roule à 180 W", "journal": "core", "motif": "-> RUNNING",
+         "delai": 120},
+    ]
+
+
+def _check_step(name: str, where: str, step: dict[str, Any]) -> None:
+    unknown = set(step) - STEP_KEYS
+    if unknown:
+        raise ScenarioError(f"{name}, {where} : clés inconnues {sorted(unknown)}")
+    evs = step.get("appui", [])
+    for ev in [evs] if isinstance(evs, str) else evs:
+        if ev not in GESTES:
+            raise ScenarioError(f"{name}, {where} : événement {ev!r} inconnu")
+    if step.get("journal") and OPEN_WORLD_READY in str(step.get("motif", "")):
+        raise ScenarioError(f"{name}, {where} : départ du monde ouvert recopié : utiliser l'étape depart_monde_ouvert")
+
+
+def expand_steps(name: str, steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Étapes du scénario contrôlées, gabarit `depart_monde_ouvert` développé (`voies` de l'étape gabarit gardées)."""
+    out: list[dict[str, Any]] = []
+    for i, step in enumerate(steps):
+        where = f"étape {i + 1}"
+        _check_step(name, where, step)
+        if "depart_monde_ouvert" not in step:
+            out.append(step)
+            continue
+        spec = step["depart_monde_ouvert"]
+        if set(step) - {"depart_monde_ouvert", "voies", "note"} or not isinstance(spec, dict) \
+                or set(spec) - START_KEYS or not str(spec.get("recherche", "")).strip():
+            raise ScenarioError(f"{name}, {where} : depart_monde_ouvert attend {{recherche, contient, cap}} seuls")
+        for k, sub in enumerate(spec.get("cap", [])):
+            _check_step(name, f"{where}, cap {k + 1}", sub)
+            if "depart_monde_ouvert" in sub:
+                raise ScenarioError(f"{name}, {where} : depart_monde_ouvert dans son propre cap")
+        for sub in open_world_start(spec):
+            if "voies" in step:
+                sub = {**sub, "voies": [v for v in sub.get("voies", step["voies"]) if v in step["voies"]]}
+            out.append(sub)
+    return out
+
+
 def load_scenario(path: Path) -> dict[str, Any]:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -236,14 +335,7 @@ def load_scenario(path: Path) -> dict[str, Any]:
     for v in doc.get("voies", VOIES):
         if v not in VOIES:
             raise ScenarioError(f"{path.name} : voie {v!r} inconnue")
-    for i, step in enumerate(doc.get("etapes", [])):
-        unknown = set(step) - STEP_KEYS
-        if unknown:
-            raise ScenarioError(f"{path.name}, étape {i + 1} : clés inconnues {sorted(unknown)}")
-        evs = step.get("appui", [])
-        for ev in [evs] if isinstance(evs, str) else evs:
-            if ev not in GESTES:
-                raise ScenarioError(f"{path.name}, étape {i + 1} : événement {ev!r} inconnu")
+    doc["etapes"] = expand_steps(path.name, doc.get("etapes", []))
     return doc
 
 
@@ -335,6 +427,18 @@ class Run:
         got = self.wait_engine(r"\[test\] menu_state (\{.*\"req\":\"" + re.escape(req) + r"\".*\})$", timeout, t)
         self.last = json.loads(got[1].group(1)) if got else {}
         return self.last
+
+    def wait_distance(self, km: float, delay: float) -> None:
+        """Attend que le cycliste ait atteint `km` sur la route de la séance (`s_m` de `menu_state`, position
+        sur la route engagée en monde ouvert) ; captures en distance des recettes de balade."""
+        deadline = now() + delay
+        s = 0.0
+        while now() < deadline and self.engine is not None and self.engine.p.poll() is None:
+            s = float(self.state().get("s_m") or 0.0)
+            if s >= km * 1000.0:
+                break
+            time.sleep(DISTANCE_POLL_S)
+        self.check(s >= km * 1000.0, f"cycliste à {km:g} km", f"{s / 1000.0:.2f} km")
 
     def silence(self, since: float) -> str:
         """Mention du rapport pour les silences de l'engine comptés depuis `since` (valeur de self.silent_s)."""
@@ -603,6 +707,8 @@ class Run:
         if doc.get("velodrome"):   # piste du vélodrome des contenus de départ (lot VD10)
             from openride_core.contents import install_velodromes
             install_velodromes(self.routes)
+        if doc.get("grand_prix_parcours"):   # parcours d'essai du Grand Prix (lot GP13), sans le compilateur
+            write_grand_prix_routes(self.routes)
         if doc.get("plans"):
             from openride_core.plans import install_builtin
             install_builtin(self.home / "OpenRide" / "Plans", self.home / "OpenRide" / "Workouts")
@@ -786,6 +892,8 @@ class Run:
             time.sleep(1.0)
         elif "attendre" in step:
             time.sleep(float(step["attendre"]))
+        elif "distance_km" in step:
+            self.wait_distance(float(step["distance_km"]), delay if "delai" in step else 900.0)
         elif "capture" in step:
             self.capture(step["capture"])
         elif "relancer" in step:

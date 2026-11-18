@@ -516,3 +516,14 @@ def test_object_ids_cycle_below_100():
     assert (a.id, b.id, c.id) == (98, 99, 1)
     ro._next_id = 98
     assert ro.add("bottle", 0.0, 1, 0.0, 90.0).id == 2               # 98, 99 et 1 encore sur la route
+
+
+def test_gp14_taken_boxes_are_shown_gone_until_they_reform():
+    from openride_core.grandprix.boxes import REFORM_S, BoxRows
+
+    rows = BoxRows([500.0, 1000.0, 1500.0])
+    assert rows.near(510.0, 30.0, 600.0, 2) == [0, 1]   # la rangée que l'on vient de passer reste 30 m
+    assert rows.near(540.0, 30.0, 600.0, 2) == [1]
+    assert rows.take(0, 1, 10.0) and not rows.take(0, 1, 10.5)
+    assert rows.gone([0, 1], 10.5) == [[0, 1]]
+    assert rows.gone([0, 1], 10.0 + REFORM_S) == []    # reformée
