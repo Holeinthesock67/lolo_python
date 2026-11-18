@@ -193,31 +193,36 @@ def test_survivor_bench_scenario_writes_a_valid_config_and_mode(name: str, oppon
     assert args.mode == "survivor"
 
 
-def test_grandprix_bench_scenario_writes_a_valid_config_and_mode() -> None:
+@pytest.mark.parametrize("name,opponents", [("grand_prix", 4), ("grand_prix_onze", 11)])
+def test_grandprix_bench_scenario_writes_a_valid_config_and_mode(name: str, opponents: int) -> None:
     """Série GP (lots GP7 et GP8) : le scénario `grand_prix` lance le mode (`--mode grandprix` du core et du banc)
-    avec un plateau et un format de course dans les bornes du réglage, et une course qui tient sur la démonstration."""
+    avec un plateau et un format de course dans les bornes du réglage, et une course qui tient sur la démonstration ;
+    `grand_prix_onze` (lot GP10) de même à 11 adversaires, annoncés au journal du core."""
     from openride_core.__main__ import build_parser
     from openride_core.config import BOUNDS as CONFIG_BOUNDS, CHOICES as CONFIG_CHOICES
     from openride_core.demo_world import DEMO_LENGTH_M
 
-    _, _, settings, _ = sim_bench.resolve_scenario("grand_prix")
+    _, _, settings, _ = sim_bench.resolve_scenario(name)
     assert settings["mode"] == "grandprix"
     gp = tomllib.loads(sim_bench.toml_text(settings["config"]))["grandprix"]
     for key in ("opponents", "distance_km", "box_every_m"):
         lo, hi = CONFIG_BOUNDS[("grandprix", key)]
         assert lo <= gp[key] <= hi, key
+    assert gp["opponents"] == opponents
+    assert any(f"Grand Prix des objets : {opponents} adversaires" in e["motif"] for e in settings["expect"])
     assert gp["chaos"] in CONFIG_CHOICES[("grandprix", "chaos")]
     assert gp["distance_km"] * 1000 <= DEMO_LENGTH_M
     assert build_parser().parse_args(["run", "--autostart", "--mode", "grandprix"]).mode == "grandprix"
 
 
-def test_grandprix_bench_captures_fall_just_before_each_box_row_and_after_each_z() -> None:
+@pytest.mark.parametrize("name", ["grand_prix", "grand_prix_onze"])
+def test_grandprix_bench_captures_fall_just_before_each_box_row_and_after_each_z(name: str) -> None:
     """Lot GP7 : les captures en distance tombent juste avant chaque rangée de boîtes (dans la fenêtre envoyée par
     le core), et des appuis sur Z lancent les objets pendant la course."""
     from openride_core.grandprix.boxes import FIRST_ROW_M
     from openride_core.grandprix.mode import FRAME_AHEAD_M
 
-    _, _, settings, _ = sim_bench.resolve_scenario("grand_prix")
+    _, _, settings, _ = sim_bench.resolve_scenario(name)
     every = settings["config"]["grandprix"]["box_every_m"]
     assert settings["every_m"] == every
     assert 0 < FIRST_ROW_M - settings["first_m"] <= min(60.0, FRAME_AHEAD_M)

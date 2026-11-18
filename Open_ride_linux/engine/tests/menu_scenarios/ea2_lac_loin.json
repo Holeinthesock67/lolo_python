@@ -1,0 +1,58 @@
+{
+  "description": "Lot EA2, recette sur le PC : monde ouvert lancé depuis le village de Montmin (au-dessus du lac d'Annecy, rive est, réseau), 5 minutes de balade avec une capture par minute : grand lac vu au loin au-delà des carrés proches (tuiles de 5 km), rive lointaine, raccord avec l'eau proche. À lancer en low, medium et high, sur la branche puis sur main (les tuiles lointaines du cache se refont d'elles-mêmes : leurs versions changent).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "montmin",
+        "contient": "Montmin"
+      }
+    },
+    {
+      "attendre": 20
+    },
+    {
+      "capture": "lac_loin_depart"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "lac_loin_1"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "lac_loin_2"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "lac_loin_3"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "lac_loin_4"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "lac_loin_5"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 120
+    }
+  ]
+}

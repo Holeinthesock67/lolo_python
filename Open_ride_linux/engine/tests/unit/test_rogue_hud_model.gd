@@ -44,7 +44,7 @@ func _run() -> void:
 	m.update(_state(2), 1.0)
 	var v: Dictionary = m.values()
 	_check(m.is_active() and v["gear_text"] == "05", "vitesse engagée « 05 »")
-	_check(v["power_pct_text"] == "100 %", "watts en % de FTP")
+	_check(v["power_text"] == "250 W", "puissance en watts (lot R23)")
 	_check(v["cadence_text"] == "88" and v["posture"] == "FLUIDE" and v["posture_token"] == "neutral", "cadence et posture")
 	_check(is_equal_approx(v["shield_frac"], 0.4) and is_equal_approx(v["adrenaline_frac"], 0.65), "arcs bouclier et adrénaline")
 	_check(is_equal_approx(v["adrenaline_z_mark"], 0.5) and v["z_ready"], "seuil de l'attaque Z")
@@ -110,7 +110,7 @@ func _run() -> void:
 	var m2 = HudModel.new()
 	m2.update(_state(1, {"shield_max": 0.0, "enemy_hp_max": 0.0, "w_prime_j": 0.0}), 0.0)
 	v = m2.values()
-	_check(v["power_pct_text"] == "0 %" and v["shield_frac"] == 0.0 and not v["has_enemy"] and v["wbal_pct"] == 0.0, "FTP inconnue, divisions par zéro évitées")
+	_check(v["power_text"] == "0 % FTP" and v["shield_frac"] == 0.0 and not v["has_enemy"] and v["wbal_pct"] == 0.0, "FTP inconnue, divisions par zéro évitées")
 
 	# Lot R22 : le guide est calculé avec la trame, le couloir porte ses deux temps et son temps restant.
 	var m3 = HudModel.new()

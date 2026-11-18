@@ -469,7 +469,7 @@ static func set_marks(mat: ShaderMaterial, marks: Array) -> void:
 	for m in marks:
 		if arr.size() >= 8:
 			break
-		arr.append(Vector2(float(m["s"]), float(m["digit"])))
+		arr.append(Vector2(float(m["s"]), float(m["digit"]) * float(m.get("dir", 1))))   # < 0 : montée du retour (N24)
 	while arr.size() < 8:
 		arr.append(Vector2(-1.0e6, 0.0))
 	mat.set_shader_parameter("marks", arr)
