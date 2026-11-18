@@ -160,7 +160,7 @@ def _env(work: Path) -> dict[str, str]:
     src = str(Path(__file__).resolve().parents[2])
     path = os.environ.get("PYTHONPATH", "")
     return {**os.environ, "PYTHONPATH": src + (os.pathsep + path if path else ""),
-            "OPENRIDE_DEM_CACHE": str(work / "dem")}
+            "OPENRIDE_DEM_CACHE": str(work / "dem"), "OPENRIDE_LANDCOVER_CACHE": str(work / "landcover")}
 
 
 def ride(cmd: list[str], work: Path, server: FakeTileServer, trip: dict[str, Any], duration_s: float,
@@ -173,7 +173,9 @@ def ride(cmd: list[str], work: Path, server: FakeTileServer, trip: dict[str, Any
     lat, lon = start_point()
     proc = subprocess.Popen(
         cmd + ["--config", str(work / "config.toml"), "--fake-clock", "--tiles-url", f"{server.url}/planet",
-               "--dem-url", f"{server.url}/dem"],
+               "--dem-url", f"{server.url}/dem",
+               # WorldCover (W17) : dossier local vide, chaque carré lu comme « pleine mer », sans réseau réel
+               "--landcover-url", str(work / "worldcover")],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=_env(work))
     msgs: queue.Queue[dict[str, Any] | None] = queue.Queue()
     err_lines: list[str] = []

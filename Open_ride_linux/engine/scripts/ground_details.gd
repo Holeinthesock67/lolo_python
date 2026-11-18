@@ -6,7 +6,7 @@ extends Node3D
 ## - Sans modèle de biome actif (`biome_model` nul) : rien n'est créé (rendu d'avant la série U).
 ## - Placement déterministe (graine, sorte, tronçon, place) sur une bande de `ROAD_CLEAR_M` à `BAND_M` (selon la sorte)
 ##   du bord de la route, des deux côtés ; tronçons de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et
-##   `CHUNKS_AHEAD` devant la caméra. Le biome d'une place est tiré selon les poids du modèle ; la sorte n'y
+##   `CHUNKS_AHEAD` devant la caméra, dans le sens de la marche (`direction`, -1 à rebours, lot N22). Le biome d'une place est tiré selon les poids du modèle ; la sorte n'y
 ##   est gardée qu'avec la probabilité de DENSITY[sorte][biome].
 ## - Jamais à moins de `ROAD_CLEAR_M` du bord de la route (rayon de l'objet compris, toute la route est
 ##   vérifiée, pas seulement le tronçon : grille de la route), ni dans un bâtiment ou un plan d'eau
@@ -71,6 +71,7 @@ const APPARENT_MAX_MPS := 60.0 / 3.6
 const NO_CHUNK := -(1 << 40)
 static var HIDDEN := Transform3D(Basis().scaled(Vector3.ZERO), Vector3(0.0, -10000.0, 0.0))
 
+var direction := 1                    # sens de la marche : -1 à rebours après un demi-tour (lots N17, N22)
 var route = null
 var biome_model = null
 var road_half_width_m := 3.0
@@ -182,9 +183,12 @@ func set_apparent_wind(apparent: Vector3) -> void:
 func update(cam_s: float) -> void:
 	if _layers.is_empty():
 		return
-	var first := int(floor(cam_s / CHUNK_M)) - CHUNKS_BEHIND
+	# Fenêtre dans le sens de la marche (lot N22) : CHUNKS_BEHIND derrière et CHUNKS_AHEAD devant la caméra,
+	# devant = s décroissant à rebours après un demi-tour (N17) ; tronçons pris du plus proche au plus loin
+	var cam_k := int(floor(cam_s / CHUNK_M))
 	var groups := _slot_chunk.size()
-	for k in range(first, first + groups):
+	for n in range(groups):
+		var k := cam_k + direction * (n - CHUNKS_BEHIND)
 		var g := posmod(k, groups)
 		if _slot_chunk[g] != k:
 			_slot_chunk[g] = k

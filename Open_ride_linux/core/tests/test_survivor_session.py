@@ -41,11 +41,12 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     def make(port: int, power_w: float = 220.0, opponents: int = 2, spacing_km: int = 2,
              after_out: str = "ride", level_pct: int = 100, spread: str = "normal",
-             route_id: str = "demo") -> tuple[CoreSession, list, list]:
+             route_id: str = "demo", objective: str = "max") -> tuple[CoreSession, list, list]:
         cfg = Config()
         cfg.ipc.port_state, cfg.ipc.port_commands = port, port + 1
         cfg.survivor.opponents, cfg.survivor.spacing_km, cfg.survivor.after_out = opponents, spacing_km, after_out
         cfg.bots.level_pct = level_pct
+        cfg.bots.objective = objective   # lot BT1 : scénarios écrits pour des bots à fond (puissances du cycliste)
         cfg.survivor.spread = spread
         s = CoreSession(cfg, driver=MockDriver(base_power_w=power_w, ramp_amplitude_w=0.0),
                         inputs=[NullProvider()], journal_dir=tmp_path / "journal",

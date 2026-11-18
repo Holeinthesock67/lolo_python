@@ -33,6 +33,7 @@ const WARM_DIST_M := 2.0
 const WARM_SCALE := 0.0005
 const WARM_FRAMES := 3
 
+var direction := 1             # sens de la marche : -1 à rebours après un demi-tour (lots N17, N22)
 var _view: Dictionary = {}
 var _pools: Dictionary = {}   # kind -> Array[MeshInstance3D]
 var _used: Dictionary = {}    # kind -> nombre utilisé à cette image
@@ -47,6 +48,9 @@ var _sun_base := Vector3.INF  # rotation du soleil avant la règle de l'horloge
 var _warm_nodes: Array = []   # exemplaires du préchauffage, sous la caméra
 var _warm_left := 0           # images restantes avant de les retirer
 var _warmed := false          # préchauffage déjà fait pour cette instance
+## Objets qui roulent (`roll_r`) : sorte -> [position le long de la marche (m), angle (rad)] de l'image d'avant.
+var _rolls: Dictionary = {}
+var _on_rider: Array = []     # [nœud, objet] portés par le vélo à cette image, posés par follow_rider()
 
 
 func _init() -> void:
@@ -81,6 +85,7 @@ func rider_scale() -> float:
 func step(view: Dictionary, route, s_route: float, bot_anchor: Callable, sun: DirectionalLight3D) -> void:
 	_view = view
 	_used.clear()
+	_on_rider.clear()
 	var active := is_active()
 	if active and not _warmed and is_inside_tree():
 		warm_up(get_viewport().get_camera_3d())
@@ -99,6 +104,18 @@ func step(view: Dictionary, route, s_route: float, bot_anchor: Callable, sun: Di
 			pool[i].visible = false
 	_skins(view.get("skins", {}) if active else {}, str(view.get("attack", "")), bot_anchor)
 	_sun(float(view.get("sun_hour", -1.0)) if active else -1.0, sun)
+
+
+## Repose les objets portés par le vélo (`rider`, œufs sur le porte-bagages) dans le repère du vélo affiché
+## (`xform` : position, cap, pente et roulis de l'avatar), après step() : ils suivent la voie et le penché du vélo.
+## Sans cet appel, ils restent posés sur la route au droit du cycliste.
+func follow_rider(xform: Transform3D) -> void:
+	for e in _on_rider:
+		var node: MeshInstance3D = e[0]
+		var p: Dictionary = e[1]
+		var s := maxf(float(p["scale"]), 0.01)
+		node.global_transform = xform * Transform3D(Basis.from_scale(Vector3.ONE * s),
+			Vector3(float(p["lateral"]), float(p["up"]), -float(p["ds"])))
 
 
 ## Dessine un exemplaire des objets de WARM_KINDS sous `camera` (hors de vue) pour que le premier tirage d'un
@@ -162,12 +179,17 @@ func _place(p: Dictionary, route, s_route: float) -> void:
 	var node := _take(kind)
 	if node == null:
 		return
-	var s: float = route.wrap_s(s_route + float(p["ds"]))
-	var heading := deg_to_rad(float(route.sample_heading_deg(s)))
+	# `ds` devant et `lateral` à droite du cycliste, dans le sens de la marche (lot N22) : à rebours après un
+	# demi-tour (N17), cap retourné, donc droite et face des objets retournées aussi
+	var s: float = route.wrap_s(s_route + direction * float(p["ds"]))
+	var heading := deg_to_rad(float(route.sample_heading_deg(s))) + (PI if direction < 0 else 0.0)
 	var right := Vector3(cos(heading), 0.0, sin(heading))
 	node.global_position = route.sample_point(s) + right * float(p["lateral"]) + Vector3.UP * float(p["up"])
 	node.rotation = Vector3(0.0, -heading, 0.0)
 	var spin := float(p["spin"])
+	var roll_r := float(p.get("roll_r", 0.0))
+	if roll_r > 0.0:
+		spin = _roll_angle(kind, direction * s_route + float(p["ds"]), roll_r)
 	match kind:
 		"cheese", "ball", "chunk":
 			node.rotate_object_local(Vector3.RIGHT, spin)
@@ -175,6 +197,23 @@ func _place(p: Dictionary, route, s_route: float) -> void:
 			node.rotate_object_local(Vector3.UP, spin)
 	node.scale = Vector3.ONE * maxf(float(p["scale"]), 0.01)
 	node.visible = true
+	if bool(p.get("rider", false)):
+		_on_rider.append([node, p])
+
+
+## Roulement sans glisser : un objet qui avance de d mètres (−Z local, sens de la marche) tourne de −d / r autour
+## de son axe à droite (le haut part vers l'avant). `x` : sa position le long de la marche ; un saut de plus de
+## ROLL_JUMP_M (boucle, reprise, demi-tour, gag qui revient) ne le fait pas tourner.
+const ROLL_JUMP_M := 5.0
+
+func _roll_angle(kind: String, x: float, r: float) -> float:
+	var st: Array = _rolls.get(kind, [x, 0.0])
+	var d := x - float(st[0])
+	var a := float(st[1])
+	if absf(d) <= ROLL_JUMP_M:
+		a = fposmod(a - d / r, TAU)
+	_rolls[kind] = [x, a]
+	return a
 
 
 func _take(kind: String) -> MeshInstance3D:
@@ -311,6 +350,8 @@ static func _make(kind: String) -> MeshInstance3D:
 				mesh = _kata_mesh(kind.trim_prefix("kata_"))
 				if mesh == null:
 					return null
+			elif kind.begins_with("eggs_"):
+				mesh = _eggs_mesh(int(kind.trim_prefix("eggs_")))
 			else:
 				return null
 	var node := MeshInstance3D.new()
@@ -328,6 +369,33 @@ static func _make(kind: String) -> MeshInstance3D:
 		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	node.material_override = mat
 	return node
+
+
+## Carton d'œufs du porte-bagages (livraison d'œufs, 15 novembre) : plateau gris en 2 × 3 alvéoles sur une grille
+## noire, deux sangles orange ; `intact` œufs blancs debout (cartoon, ~2 × la taille réelle, lisibles depuis la
+## caméra de suivi), les autres cassés : flaque blanche et jaune. Origine : dessous du carton, −Z vers l'avant.
+static func _eggs_mesh(intact: int) -> ArrayMesh:
+	var key := "eggs_%d" % intact
+	if _cache.has(key):
+		return _cache[key]
+	var parts := [[_box(Vector3(0.36, 0.03, 0.5)), Vector3(0.0, 0.015, 0.0), INK_3D],
+		[_box(Vector3(0.34, 0.07, 0.48)), Vector3(0.0, 0.065, 0.0), Color(0.72, 0.7, 0.66)]]
+	for z in [-0.12, 0.12]:
+		parts.append([_box(Vector3(0.37, 0.025, 0.035)), Vector3(0.0, 0.11, z), WtfHudModel.ORANGE])
+	for i in WtfSceneModel.EGGS_TOTAL:
+		var at := Vector3(-0.085 + 0.17 * (i % 2), 0.1, -0.16 + 0.16 * floori(i / 2.0))
+		if i < intact:
+			parts.append([_ball(0.065, 0.18), at + Vector3(0.0, 0.06, 0.0), Color(0.98, 0.95, 0.86)])
+		else:
+			var white := CylinderMesh.new()
+			white.top_radius = 0.075
+			white.bottom_radius = 0.075
+			white.height = 0.012
+			white.radial_segments = 10
+			parts.append([white, at + Vector3(0.0, 0.008, 0.0), Color.WHITE])
+			parts.append([_ball(0.035, 0.03), at + Vector3(0.01, 0.02, 0.0), WtfHudModel.YELLOW])
+	_cache[key] = _merge(parts)
+	return _cache[key]
 
 
 ## Boule du Katamari (lot WTF9) : noyau sable couvert d'objets collés (pommes, panneaux, voiturette, vache,
