@@ -164,7 +164,7 @@ func extend_route(route_data, climbs: Array, pois: Array) -> void:
 	for c in climbs:
 		if typeof(c) == TYPE_DICTIONARY:
 			_base_climbs.append(Vector2(float(c.get("start_s", 0.0)), float(c.get("summit_s", c.get("end_s", 0.0)))))
-	_climbs = _base_climbs.duplicate() if direction > 0 else []
+	_climbs = _base_climbs.duplicate() if direction > 0 else _back_climbs.duplicate()   # retour : set_back_climbs
 
 
 ## Lot N24 : montées du retour (climb_detector.gd `detect_back`, repère du parcours, pied au-dessus du sommet), gardées

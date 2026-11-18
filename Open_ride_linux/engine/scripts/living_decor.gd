@@ -475,6 +475,8 @@ func _poll_job(wait: bool = false) -> void:
 func _apply_extension(res: Dictionary) -> void:
 	traffic.extend_route(_route, pois)
 	cyclists.extend_route(_route, climbs, pois)
+	cyclists.set_back_climbs(res["climbs_back"])   # montées du retour recalculées sur la route prolongée (N24)
+	sky.set_back_climbs([] if underwater else res["climbs_back"])
 	# Même règle qu'au chargement : sous l'eau (lot SM1, recalculé sur la route prolongée), ni circulation ni cyclistes
 	traffic.set_budget(0 if underwater else int(living.get("vehicles", 0)))
 	cyclists.set_budget(0 if underwater else int(living.get("cyclists", 0)))
