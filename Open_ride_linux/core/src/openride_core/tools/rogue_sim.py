@@ -247,8 +247,6 @@ class Bot:
         inp = RunInputs(power_w=power, cadence_rpm=cadence, gear=self.gear,
                         ftp_w=self.p.ftp_w, s_m=s, v_mps=self.body.v, buttons=buttons)
         out = e.step(DT, inp)
-        if out.force_gear:
-            self.gear = out.force_gear
         self.body.step(power, out.grade_sent, 0.0, DT)
         return out, power
 

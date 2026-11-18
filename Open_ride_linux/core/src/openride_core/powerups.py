@@ -290,17 +290,30 @@ class ArchSchedule:
                 k += 1
 
     def crossed(self, s_prev: float, s: float) -> int:
-        """Nombre d'arches franchies entre deux positions cumulées (`s_prev` exclu, `s` inclus)."""
-        if s <= s_prev or not self.positions:
-            return 0
+        """Nombre d'arches franchies entre deux positions cumulées, dans un sens ou dans l'autre (voir `passes`)."""
+        return len(self.passes(s_prev, s))
+
+    def passes(self, s_prev: float, s: float) -> list[tuple[int, int]]:
+        """Arches franchies entre deux positions cumulées : `(indice dans positions, tour)`.
+
+        Dans le sens du parcours, `s_prev` exclu et `s` inclus ; à rebours après un demi-tour (lot N25,
+        `s` < `s_prev`), `s` inclus et `s_prev` exclu, soit le même point de franchissement vu de l'autre côté."""
+        if s == s_prev or not self.positions:
+            return []
+        out: list[tuple[int, int]] = []
         if not self.loop:
-            return sum(1 for p in self.positions if s_prev < p <= s)
+            for i, p in enumerate(self.positions):
+                if (s_prev < p <= s) if s > s_prev else (s <= p < s_prev):
+                    out.append((i, 0))
+            return out
         L = self.length_m
-        count = 0
-        for p in self.positions:
-            # Nombre de k tels que s_prev < k·L + p <= s.
-            count += math.floor((s - p) / L) - math.floor((s_prev - p) / L)
-        return count
+        for i, p in enumerate(self.positions):
+            if s > s_prev:   # k tels que s_prev < k·L + p <= s
+                ks = range(math.floor((s_prev - p) / L) + 1, math.floor((s - p) / L) + 1)
+            else:            # k tels que s <= k·L + p < s_prev
+                ks = range(math.ceil((s - p) / L), math.ceil((s_prev - p) / L))
+            out += [(i, k) for k in ks]
+        return out
 
 
 @dataclass(frozen=True)

@@ -161,6 +161,9 @@ func set_direction(dir: int) -> bool:
 		var ahead := not is_nan(rider) and float(v["s"]) > rider
 		v["passed"] = int(v["dir"]) == 1 and ahead   # déjà devant dans le même sens : il a fini de doubler
 		v["committed"] = v["passed"]
+		# Lot AS10 (banc rAS10b) : celui qui doublait le cycliste vient en face ; il rejoint sa voie d'un coup (traffic.py)
+		if int(v["dir"]) == -1 and float(v["lateral"]) > oncoming_lateral(str(v["kind"])):
+			v["lateral"] = oncoming_lateral(str(v["kind"]))
 	_last_rider_s = NAN   # cases suivantes tirées depuis la place du cycliste dans le nouveau repère
 	return true
 

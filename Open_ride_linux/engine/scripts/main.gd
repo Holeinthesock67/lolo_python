@@ -119,6 +119,9 @@ var _first_state_logged := false
 var _route_id_requested = null
 ## Profil d'altitude du dernier parcours chargé, pour la carte de détail des menus : {id, profile}.
 var _route_profile := {}
+var _menu_dirty := false   # contenu du menu à redessiner à la prochaine image (_flush_menu)
+## Mises à jour du menu depuis la dernière ligne [perf-menu] (toutes les 30 s, avec [perf-rendu]).
+var _menu_perf := {"n": 0, "total_ms": 0.0, "max_ms": 0.0, "screen": ""}
 ## Monde ouvert (lot W10) : suit les révisions du monde que le générateur prolonge ; inactif hors monde ouvert.
 var live_world = LiveWorld.new()
 ## Panneau du carrefour et attributions (lot W12) ; null avant _ready.
@@ -192,6 +195,7 @@ var _start_wait = StartWaitModel.new()
 const ROGUE_SCENE_ID := "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 var start_screen: Control = null   # écran d'attente « Start your engines » (start_screen.gd)
 var _was_start_waiting := false
+var _dir := 1                  # sens de la dernière trame (lot N26 : demi-tour automatique au bout du parcours)
 var _bias_locked := false     # test de FTP : + et − bloqués pendant la rampe (rappel à l'entrée)
 var _route_loaded_id := ""   # parcours affiché (chargé par _poll_route_job), "" avant le premier
 
@@ -1046,17 +1050,35 @@ func _full_screen_menu() -> bool:
 	return menu_view.visible or (world_menu_view != null and world_menu_view.visible)
 
 
+## Visibilité du menu et du HUD tout de suite ; contenu du menu redessiné une fois par image (_flush_menu) :
+## chaque trame `state` (30 Hz) et chaque événement demandent un rafraîchissement, et une image lente en
+## recevait plusieurs, chacune refaisant toute la liste (liste des parcours à 8 i/s, essai du 15 novembre).
 func _refresh_menu() -> void:
 	if menu_view == null:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
 	_sync_hud(_full_screen_menu())
-	if shown:
-		var st: Dictionary = menu_flow.state()
-		if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
-			st["card"]["profile"] = _route_profile["profile"]
-		menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
+	_menu_dirty = _menu_dirty or shown
+
+
+## Contenu du menu demandé depuis la dernière image : une seule mise à jour, avec l'état le plus récent.
+func _flush_menu() -> void:
+	if not _menu_dirty or menu_view == null:
+		return
+	_menu_dirty = false
+	if not menu_view.visible:
+		return
+	var st: Dictionary = menu_flow.state()
+	if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
+		st["card"]["profile"] = _route_profile["profile"]
+	var t0 := Time.get_ticks_usec()
+	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
+	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	_menu_perf["n"] += 1
+	_menu_perf["total_ms"] += ms
+	_menu_perf["max_ms"] = maxf(_menu_perf["max_ms"], ms)
+	_menu_perf["screen"] = str(st["screen"])
 
 
 ## Jingle d'événement (lot T17), joué par SoundPlayer sur le bus « Events » ; nom vide : rien.
@@ -1127,6 +1149,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	_flush_menu()
 	var menu_shown: bool = menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible)
 	var mouse := DisplayMode.mouse_mode(menu_shown)
 	if Input.mouse_mode != mouse:
@@ -1213,6 +1236,9 @@ func _process(delta: float) -> void:
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, float(pose["yaw"]), float(pose["roll"]), now, pitch_deg)
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
+		# Objets portés par le vélo (œufs sur le porte-bagages), dans le repère du vélo affiché, même caché.
+		wtf_scene.follow_rider(Transform3D(Basis.from_euler(Vector3(deg_to_rad(pitch_deg), -float(pose["yaw"]),
+			float(pose["roll"]))).scaled(Vector3.ONE * wtf_scene.rider_scale()), pos))
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
@@ -1325,6 +1351,10 @@ func _record_frame_perf(delta: float) -> void:
 			var ground_mb: float = streamer.biome_textures.estimated_bytes / 1048576.0 if streamer.biome_textures != null else 0.0
 			print("[perf-rendu] images/s moy %.1f ; temps d'image p50 %.1f / p99 %.1f / max %.1f ms ; arbres %d ; appels de dessin %d ; préréglage %s ; textures du sol %.0f Mo" % [
 				avg_fps, p50, p99, max_ms, trees, draw_calls, _quality_name, ground_mb])
+			if _menu_perf["n"] > 0:   # coût du menu affiché (lag de la liste des parcours, essai du 15 novembre)
+				print("[perf-menu] %d mises à jour du menu ; moy %.2f / max %.2f ms ; dernier écran %s" % [_menu_perf["n"],
+					_menu_perf["total_ms"] / _menu_perf["n"], _menu_perf["max_ms"], _menu_perf["screen"]])
+				_menu_perf = {"n": 0, "total_ms": 0.0, "max_ms": 0.0, "screen": ""}
 		_frame_times.clear()
 		_last_perf_log_us = now
 
@@ -1613,6 +1643,7 @@ func _test_mouse(kind: String, item: String, at) -> void:
 ## rangées affichées avec leur rectangle en pixels, aide des boutons, pastilles des appareils, carte de détail, séance,
 ## monde ouvert, Cyber-Rogue.
 func _test_menu_state(req: String) -> Dictionary:
+	_flush_menu()   # rangées affichées à jour de la dernière demande
 	var st: Dictionary = menu_flow.state()
 	var items: Array = []
 	for it in st["items"]:
@@ -1670,6 +1701,10 @@ func _avatar_info() -> Dictionary:
 
 
 func _test_screenshot(path: String, tag: String) -> void:
+	# Menu à jour de la dernière commande avant l'image (mise à jour une fois par image depuis le lot ML1) :
+	# sous Xvfb à 1 ou 2 images/s, la capture pouvait montrer l'écran d'avant (« Garage : avatar » au lieu de
+	# « Taille », garage_modif de visual_check.py).
+	_flush_menu()
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
@@ -1805,7 +1840,9 @@ func _step_rogue_avatar(now_us: int) -> void:
 	if avatar_view == null or banner.has_message("core_lost"):
 		return
 	_bank_roll = 0.0
-	avatar_view.set_visible_for_view("follow_near" if camera_views.has_avatar else "subjective")   # sans avatar : rien (2.0-CAM-3)
+	# sans avatar : rien (2.0-CAM-3) ; vue « sur le vélo » du mode (lot R23) : caché, comme en vue subjective
+	var shown: bool = camera_views.has_avatar and not rogue_host.scene.is_rider_view()
+	avatar_view.set_visible_for_view("follow_near" if shown else "subjective")
 	avatar_view.scale = Vector3.ONE
 	_step_avatar(rogue_host.scene.rider_point(), 0.0, 0.0, now_us, rogue_host.scene.rider_pitch_deg())
 
@@ -1915,6 +1952,9 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 	menu_flow.menu.set_track_events(ipc.core_config.get("track"))   # écran Prêt du vélodrome (lot VD10)
+	menu_flow.menu.set_mode_routes(ipc.core_config.get("mode_routes"))   # parcours propres aux modes (lot GP13)
+	if not menu_flow.routes_raw.is_empty():
+		menu_flow.set_routes(menu_flow.routes_raw)   # table reçue après la liste : parcours des modes recalculés
 	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.
@@ -2089,6 +2129,10 @@ func _on_state_received(state: Dictionary) -> void:
 		banner.show_message("workout_done", done_text)
 	else:
 		banner.clear_message("workout_done")
+	var end_turn := HudViewModel.end_u_turn_text(_dir, state)
+	if end_turn != "":
+		banner.show_message("press", end_turn, PRESS_HINT_S)
+	_dir = HudViewModel.direction_of(state)
 	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
@@ -2105,6 +2149,8 @@ func _on_state_received(state: Dictionary) -> void:
 		start_screen.show_go()
 	else:
 		start_screen.show_wait(null, 0.0)
+		if str(state.get("session_state", "")) != "RUNNING":   # séance finie ou en pause : pas de feux sur le bilan
+			start_screen.cancel_go()
 	_was_start_waiting = waiting
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
@@ -2217,9 +2263,12 @@ func _on_state_received(state: Dictionary) -> void:
 
 	rogue_host.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	rogue_host.legends_path = "" if ipc.test_mode else "user://rogue_legendes_vues.json"   # lot R22
+	var rogue_before: bool = rogue_host.is_active()
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()
+	if rogue_host.is_active() and not rogue_before:
+		_release_route_world()
 	if menu_view != null:
 		_sync_hud(_full_screen_menu())   # entrée et sortie de la run dans la même trame
 
@@ -2230,6 +2279,19 @@ func _on_state_received(state: Dictionary) -> void:
 		_play_event(jingle)
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
 		_play_event(jingle)
+
+
+## Le Cyber-Rogue a sa propre scène : le décor du parcours d'avant (tuiles, arbres, forêts, OSM, horizon) est
+## vidé, pas seulement caché (règle du propriétaire : quitter une partie ferme tout ; arbres de l'Alpe d'Huez
+## encore chargés au départ d'une run, essai du 15 novembre). À la sortie, le parcours du menu est rechargé
+## en entier (_request_route), comme tout changement de parcours.
+func _release_route_world() -> void:
+	var trees: int = streamer.tree_renderer.get_active_tree_count() if streamer.tree_renderer != null else 0
+	streamer.clear()
+	_route_id_requested = null
+	_route_loaded_id = ""
+	print("Cyber-Rogue : décor du parcours vidé (%d arbres libérés)" % trees)
+	ipc.test_log("route_world_released trees=%d" % trees)
 
 
 ## Taille des courbes (lot O14) : ERG à la place de l'histogramme, SIM dans son panneau.

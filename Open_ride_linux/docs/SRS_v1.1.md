@@ -457,6 +457,7 @@ standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300
 mode = "classiques"          # "off", "classiques" (défaut) ou "tactiques" (série TT, 4.0) ; l'ancien "on" vaut "classiques"
 [bots]
 level_pct = 100              # niveau des bots à profil, 50 à 150 % de la FTP par pas de 5 ; réglable dans le menu (lot T13)
+objective = "tempo"          # objectif (lot BT1) : "recovery" 55 %, "endurance" 65 %, "tempo" 80 %, "threshold" 92 % ou "max" 100 % de l'effort tenable sur la durée de la course ; au vélodrome, l'objectif suit l'épreuve ; réglable dans le menu
 [ride]
 auto_draft = "on"            # placement dans la roue (lot AS2) : "on" (rangé derrière le coureur devant, sorti pour doubler) ou "off" (1,2 m de l'axe) ; réglable dans le menu
 vehicle_draft = "on"         # abri derrière un véhicule lent (lot AS6) : "on" ou "off" ; l'aspiration d'un véhicule qui double reste ; réglable dans le menu
@@ -479,7 +480,7 @@ opponents = 4                # adversaires, 2 à 4 (bots à profil)
 laps = 3                     # tours sur un circuit, 1 à 5
 distance_km = 10             # longueur sur un parcours en ligne, 5 à 30 km
 chaos = "normal"             # forces et fréquence des objets : "soft" (× 0,7), "normal" (× 1), "wild" (× 1,3)
-box_every_m = 1500           # écart des rangées de boîtes, 1 000 à 3 000 m par pas de 500 m
+box_every_m = 500            # écart des rangées de boîtes, 500 à 3 000 m par pas de 500 m (500 depuis le lot GP14)
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
 master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre
