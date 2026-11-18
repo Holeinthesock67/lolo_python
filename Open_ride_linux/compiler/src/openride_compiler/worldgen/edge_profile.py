@@ -136,6 +136,66 @@ def edge_profile(edge: Edge, provider: ElevationProvider, frame: LocalFrame,
     return EdgeProfile(edge.id, s, x, z, alt, grade, heading, np.asarray(lat), np.asarray(lon), clamped, versions)
 
 
+# Boucle de retournement au bout d'une impasse (14 novembre) : arc d'entrée à droite de rayon TURN_ENTRY_M,
+# boucle à gauche de rayon TURN_LOOP_M centrée sur l'axe de la route, arc de sortie à droite ; le tracé revient
+# au bout de l'impasse dans l'autre sens, sans cassure de cap (cos α = r / (r + R) ferme la boucle sur l'axe).
+TURN_ENTRY_M = 15.0
+TURN_LOOP_M = 18.0
+TURN_STEP_M = 1.0
+
+
+def turnaround_points(end_xz: tuple[float, float], prev_xz: tuple[float, float],
+                      r: float = TURN_ENTRY_M, big_r: float = TURN_LOOP_M) -> np.ndarray:
+    """Tracé de la boucle (repère de zone, x = E, z = −N), du bout `end_xz` de l'impasse, atteint en venant de
+    `prev_xz`, jusqu'à ce même point dans l'autre sens ; points tous les `TURN_STEP_M` environ."""
+    ex, en = end_xz[0], -end_xz[1]                       # repère (E, N) : angles dans le sens trigonométrique
+    dx, dn = ex - prev_xz[0], en + prev_xz[1]
+    th0 = math.atan2(dn, dx)
+    alpha = math.acos(r / (r + big_r))
+    pieces = ((r * alpha, -1.0 / r), (big_r * (math.pi + 2 * alpha), 1.0 / big_r), (r * alpha, -1.0 / r))
+    pts = [(ex, en)]
+    x, n, th = ex, en, th0
+    for length, k in pieces:                             # arcs exacts : chaque pas tourne de k·ds
+        steps = max(1, int(math.ceil(length / TURN_STEP_M)))
+        ds = length / steps
+        for _ in range(steps):
+            th1 = th + k * ds
+            x, n = x + (math.sin(th1) - math.sin(th)) / k, n - (math.cos(th1) - math.cos(th)) / k
+            th = th1
+            pts.append((x, n))
+    pts[-1] = (ex, en)                                   # fermeture exacte (l'erreur numérique est sous le mm)
+    p = np.asarray(pts, dtype=float)
+    p[:, 1] = -p[:, 1]
+    return p
+
+
+def with_turnaround(back: EdgeProfile, prev_xz: tuple[float, float], provider: ElevationProvider,
+                    frame: LocalFrame) -> EdgeProfile:
+    """Profil `back` (l'arête de l'impasse parcourue en sens inverse) précédé de la boucle de retournement : la
+    route engagée tourne au bout de l'impasse au lieu d'y faire demi-tour sur place. Altitude du relief sous la
+    boucle, décalée pour valoir celle du bout de l'impasse à l'entrée et à la sortie."""
+    pts = turnaround_points((float(back.x[0]), float(back.z[0])), prev_xz)
+    cum = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))])
+    s = sample_positions(float(cum[-1]))
+    x, z = np.interp(s, cum, pts[:, 0]), np.interp(s, cum, pts[:, 1])
+    lat, lon = frame.to_latlon(x, z)
+    alt = np.asarray(provider.elevations(lat, lon), dtype=float)
+    alt = _smooth_altitude(alt, s) if len(s) >= C.SAVGOL_WINDOW else _moving_average_3(alt)
+    end = float(back.alt_m[0])                           # rampe : entrée et sortie à l'altitude du bout de l'impasse
+    alt = alt + (end - alt[0]) * (1.0 - s / s[-1]) + (end - alt[-1]) * (s / s[-1])
+    grade = np.clip(_grade(alt, s, False), -C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT)
+    heading = _heading(x, z, False)
+    n = float(s[-1])
+    return replace(back,
+                   s=np.concatenate([s, back.s[1:] + n]), x=np.concatenate([x, back.x[1:]]),
+                   z=np.concatenate([z, back.z[1:]]), alt_m=np.concatenate([alt, back.alt_m[1:]]),
+                   grade_pct=np.concatenate([grade, back.grade_pct[1:]]),
+                   heading_deg=np.concatenate([heading, back.heading_deg[1:]]),
+                   lat=np.concatenate([np.asarray(lat), back.lat[1:]]),
+                   lon=np.concatenate([np.asarray(lon), back.lon[1:]]),
+                   versions={**back.versions, "turnaround": 1})
+
+
 def concat(profiles: Iterable[EdgeProfile], s0: float = 0.0) -> dict[str, Any]:
     """Profils mis bout à bout, rééchantillonnés au pas de 10 m, en colonnes du format `route.json`.
 

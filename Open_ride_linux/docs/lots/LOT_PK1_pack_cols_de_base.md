@@ -53,6 +53,6 @@ PR #867, fusionnée le 14 novembre 2026. Statut remis à jour le 14 novembre d'a
 - **Premier lancement sans réseau** (essai `rPK1off2`) : 10 entraînements, 2 plans, 5 parcours et 21 cols installés, aucune compilation ni requête Overpass.
 - **Captures** : `pk1_hors_reseau.png`, `pk1_cols_medium.png`, `pk1_contenus.png`.
 
-Reste : la validation des planches et du poids total par le propriétaire, puis l'essai J4 du lot O16 (un col roulé).
+Reste : la validation des planches et du poids total par le propriétaire, puis l'essai J4 du lot O16 (roulé le 15 novembre, 5/5).
 
 **Profil réel du propriétaire (14 novembre) :** `~/OpenRide/GPX/cols-celebres/` existe déjà, avec un `pack.toml` « Cols célèbres » et seulement Khardung La et Abra Málaga (essai HP2). `pack_bundle.install` voit alors le pack comme installé et ne copie ni les 19 autres traces ni leurs parcours (règle PK1-3, jamais d'écrasement). Avant l'essai J4, mettre ce dossier de côté (par exemple dans `~/OpenRide/Sauvegardes/`), puis installer depuis **Réglages › Contenus**.

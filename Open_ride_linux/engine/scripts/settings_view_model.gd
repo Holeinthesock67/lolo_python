@@ -87,6 +87,8 @@ const CHOICE_TEXTS := {
 	"survivor.after_out": {"ride": "continuer à rouler", "end": "terminer la séance"},
 	"grandprix.chaos": {"soft": "doux (objets × 0,7)", "normal": "normal", "wild": "fou (objets × 1,3)"},
 	"coach.objectif": {"endurance": "endurance", "courses": "courses", "grimpeur": "grimpeur"},
+	"bots.objective": {"recovery": "récupération (55 %)", "endurance": "endurance (65 %)", "tempo": "tempo (80 %)",
+		"threshold": "seuil (92 %)", "max": "à fond (100 %)"},   # lot BT1 : part de l'effort tenable
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 

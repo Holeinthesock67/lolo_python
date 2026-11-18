@@ -84,11 +84,11 @@ Pendant les 2 min de récupération entre les salles (pente 0 %, zone 1 à 2), c
 
 1. **Terraformeurs (modifient la piste) :**
    - Rouleau compresseur : écrête les murs rouges (10 % limité à 6 %, mais 3 s plus long).
-   - Tremplin cinétique : boost gratuit au fond de chaque descente bleue si un gros braquet (+) est engagé dans le creux.
+   - Tremplin cinétique : boost gratuit au fond de chaque descente bleue (lot R23 : quelle que soit la vitesse).
 2. **Pignons spéciaux (cassette virtuelle de 12 vitesses) :**
-   - Overdrive (remplace la 12) : +40 % de frein, dégâts doublés pendant 8 s, puis retour automatique en 6.
-   - Soin (remplace la 1) : au-delà de 95 rpm en 1, bouclier régénéré 2 fois plus vite.
-   - Maudit (remplace la 10) : +35 % de dégâts tant que la 10 est engagée, mais Z désactivé (rétrograder en 9 pour parer).
+   - Overdrive : au-dessus de 150 % de la FTP, dégâts doublés pendant 8 s, recharge 45 s (lot R23 : plus de vitesse imposée).
+   - Soin : au-delà de 95 rpm et sous 60 % de la FTP, +1 de bouclier par seconde (lot R23).
+   - Maudit : +35 % de dégâts au-dessus de 100 % de la FTP, mais Z désactivé (redescendre sous la FTP pour frapper ou parer, lot R23).
    - Shifter électronique pro : fenêtre de Perfect Shift doublée (1,5 à 3 s), bouclier soigné à chaque réussite.
 3. **Modules d'action (Y, Z, A) :**
    - Siphon d'aspiration : un draft réussi avec Z remplit 50 % de la jauge Y.
