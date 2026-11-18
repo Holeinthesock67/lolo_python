@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Tests sans écran du menu du vélodrome (série VD, lot VD10) : filtre « Vélodrome » et pistes de la liste des
 ## parcours (catalog_model.gd), écran Prêt du vélodrome (menu_model.gd) : épreuve, réglages du core
-## (`hello_ack.config.track`), séance libre en ERG, arguments de `start`, retour à l'écran Prêt habituel hors piste.
+## (`hello_ack.config.track`), séance libre en ERG, arguments de `start`, retour à l'écran Prêt habituel hors piste ;
+## Vélodrome à l'accueil (lot GP13).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_track_menu.gd
 
 const MenuModel := preload("res://scripts/menu_model.gd")
@@ -17,6 +18,7 @@ const TRACK := {"events": {
 	"points": {"opponents": [7, [3, 4, 5, 6, 7, 8, 9, 10, 11]], "laps": [40.0, [20.0, 30.0, 40.0, 60.0]],
 		"bot_tactics": ["full", ["none", "simple", "full"]]},
 	"team_sprint": {"opponents": [1, [0, 1]], "place": [1, [1, 2, 3]], "bot_tactics": ["full", ["none", "simple", "full"]]}}}
+const MODE_ROUTES := {"track": "velodrome", "grandprix": "grandprix"}
 const ROUTES := [
 	{"id": "demo", "name": "Démo", "status": "ready", "length_m": 4000.0, "library": {"tags": ["demo"]}},
 	{"id": "velodrome-250", "name": "Vélodrome 250 m", "status": "ready", "length_m": 250.0, "route_type": "loop",
@@ -65,10 +67,20 @@ func _run() -> void:
 	# Écran Prêt du vélodrome
 	var m = MenuModel.new()
 	m.set_track_events(TRACK)
-	m.set_track_ids(CatalogModel.track_route_ids(ROUTES))
-	m.set_world("velodrome-250", "Vélodrome 250 m")
-	_check(m.is_track(), "piste choisie en session libre : écran Prêt du vélodrome")
-	var st: Dictionary = m.open_screen(MenuModel.READY)
+	m.set_mode_routes(MODE_ROUTES)
+	m.set_modes(["ride", "erg", "track", "grandprix"])
+	m.set_mode_route_ids(CatalogModel.mode_route_ids(ROUTES, MODE_ROUTES), {"demo": "Démo", "velodrome-250": "Vélodrome 250 m"})
+	m.set_world("demo", "Démo")
+	_check(_labels(m.open_screen(MenuModel.HOME)).has("Vélodrome"), "« Vélodrome » à l'accueil (lot GP13)")
+	_check(not m.is_track(), "parcours routier en session libre : pas d'écran du vélodrome")
+	var st: Dictionary = _press(m, "track")
+	_check(st["action"] == {"action": "item", "screen": MenuModel.HOME, "id": "track"}, "accueil › Vélodrome : renvoyé à menu_flow")
+	m.prepare_track()
+	_check(m.world_id == "velodrome-250" and m.take_pending_route() == "velodrome-250" and m.take_pending_route() == "",
+		"piste choisie par le mode, envoyée une fois au core")
+	_check(m.is_track() and m.current_screen() == MenuModel.READY, "écran Prêt du vélodrome")
+	_check(_labels(m.open_screen(MenuModel.HOME))[0] == "Parcours : Démo", "l'accueil garde le dernier parcours libre")
+	st = m.open_screen(MenuModel.READY)
 	_check(st["title"] == "Prêt : Vélodrome 250 m", "titre (%s)" % st["title"])
 	_check(_labels(st) == ["Lancer : Séance libre", "Épreuve : Séance libre", "Adversaires : 5", "Tactique des bots : complète",
 		"Passer en session ERG", "Changer de parcours"], "séance libre par défaut (%s)" % str(_labels(st)))
@@ -110,8 +122,10 @@ func _run() -> void:
 	var e = MenuModel.new()
 	e.set_track_events(TRACK)
 	e.set_track_ids(["velodrome-250"])
-	e.mode = "erg"
 	e.set_world("velodrome-250", "Vélodrome 250 m")
+	e.prepare_track()
+	e.mode = "erg"
+	e.set_track_events(TRACK)
 	st = e.open_screen(MenuModel.READY)
 	_check(_labels(st)[0] == "Lancer : Séance libre en ERG" and _labels(st).has("Changer d'entraînement"), "séance libre en ERG")
 	st = _press(e, MenuModel.TRACK_EVENT_ID)
@@ -123,9 +137,12 @@ func _run() -> void:
 	n.set_track_ids(["velodrome-250"])
 	n.set_world("demo", "Démo")
 	_check(not n.is_track() and _labels(n.open_screen(MenuModel.READY))[0] == "Démarrer", "parcours routier : écran habituel")
+	n.set_world("velodrome-250", "Vélodrome 250 m")
+	_check(not n.is_track(), "piste chargée hors du mode Vélodrome : pas d'écran du vélodrome")
 	var o = MenuModel.new()
 	o.set_track_ids(["velodrome-250"])
 	o.set_world("velodrome-250", "Vélodrome 250 m")
+	o.prepare_track()
 	_check(not o.is_track(), "core sans épreuves de piste : écran habituel")
 	o.set_track_events(null)
 	_check(o.track_events.is_empty(), "épreuves absentes")

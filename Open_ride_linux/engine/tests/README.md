@@ -298,6 +298,7 @@ GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_e2e
 | --- | --- |
 | hello puis hello_ack | moins de 3 s entre `Reçu 'hello'` (core) et `hello_ack reçu` (engine) |
 | trames state | au moins 25 par seconde sur 5 s (lignes `[test] state`), `seq` croissant |
+| départ de la séance | `Séance : … -> RUNNING` dans le journal du core (au plus 20 s : décor prêt puis 3 s de pédalage du départ au pédalage) ; le + n'est envoyé qu'après, sinon le core le relaie (bip) sans changer le braquet |
 | input_event relayé | commande `input_event` `PLUS_SHORT` (`cmd_id` 10 000) envoyée par le script : traitée par le core, `Bip : PLUS_SHORT` dans la sortie de l'engine |
 | perte de l'engine | engine arrêté : le script écoute le port d'état, `PAUSED` (`engine_lost`) en moins de 3 s |
 | braquet | `gear` passé de 12 à 13 dans les trames du core |

@@ -85,9 +85,9 @@ func _test_full_session() -> void:
 	_check(f.handle("A_LONG") == {"action": "end_session", "save": true}, "Terminer et enregistrer")
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 300.0, "distance_m": 2500.0}})
 	_check(f.state()["screen"] == "summary" and f.summary.get("distance_m") == 2500.0, "bilan affiché en FINISHED")
-	f.handle("PLUS_SHORT")
+	f.menu.focus_item("details")
 	_check(f.handle("A_LONG").is_empty() and f.show_details, "Voir le bilan détaillé")
-	f.handle("MINUS_SHORT")
+	f.menu.focus_item("new_session")
 	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
 			"Nouvelle séance : accueil, listes redemandées et monde rechargé")
 	_check(f.state()["items"][0]["label"] == "Parcours : Vosges", "le parcours reste choisi après la séance")
@@ -194,6 +194,34 @@ func _test_abandon_and_summary_quit() -> void:
 	_check(g.on_state({"session_state": "IDLE"}) == [{"action": "list"}], "core relancé : listes redemandées")
 
 
+## Fin de séance (15 novembre) : « Rejouer » garde parcours, mode et choix et ouvre l'écran Prêt, l'accueil derrière ;
+## « Menu principal » ramène à l'accueil.
+func _test_summary_replay_and_main_menu() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	f.menu.world_id = "vosges"
+	f.menu.prepare_wtf()
+	f.on_state({"session_state": "RUNNING"})
+	f.on_state({"session_state": "FINISHED", "summary": {}})
+	var labels: Array = f.state()["items"].map(func(it): return it["label"])
+	_check(labels.slice(0, 2) == ["Rejouer", "Menu principal"] and _focus_id(f) == "replay",
+		"bilan : Rejouer (focus) puis Menu principal (%s)" % str(labels))
+	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"}, "Rejouer : le parcours est rechargé")
+	_check(f.state()["screen"] == "ready" and f.menu.mode == "wtf", "Rejouer : écran Prêt du même mode")
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "home", "Retour depuis le Prêt rejoué : l'accueil")
+	f.on_state({"session_state": "RUNNING"})
+	f.on_state({"session_state": "FINISHED", "summary": {}})
+	f.menu.focus_item("new_session")
+	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home"
+		and f.menu.mode == "free", "Menu principal : l'accueil, mode remis à la session libre")
+	f.on_state({"session_state": "RUNNING"})
+	f.on_state({"session_state": "FINISHED", "summary": {}})
+	_check(f.handle("Y_SHORT") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
+		"Retour (Y) depuis la fin de séance : Menu principal")
+
+
 func _test_view() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true   # écran de connexion : _test_connect_screen
@@ -220,7 +248,7 @@ func _test_view() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1800.0, "distance_m": 15000.0,
 			"avg_power_w": 210.0, "fit_path": "/x/y/seance.fit", "blocks": [[1, 200.0, 200.0], [2, 260.0, 230.0]]}})
-	f.handle("PLUS_SHORT")
+	f.menu.focus_item("details")
 	f.handle("A_LONG")   # détails
 	v.update_display(f.state(), state, f.summary, f.show_details)
 	_check(v.summary.visible and not v.devices.visible and v.summary.text().contains("Distance 15,00 km"),
@@ -593,6 +621,7 @@ func _test_plans() -> void:
 	_check(f.handle("A_LONG") == {"action": "start", "args": {"plan_day": true}}, "start avec plan_day")
 	f.on_state({"session_state": "RUNNING", "route_id": "vosges"})
 	f.on_state({"session_state": "FINISHED", "route_id": "vosges", "summary": {"duration_s": 2700.0}})
+	f.menu.focus_item("new_session")
 	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"}, "nouvelle séance : listes (plans compris) redemandées")
 	var done: Dictionary = active.duplicate(true)
 	done["today"][0]["done"] = true
@@ -642,7 +671,7 @@ func _test_ftp_flow() -> void:
 	_check(f.state()["status"] == "" and f.summary_model.ftp_result(f.summary) == {"value": "262 W", "before": "avant 250 W",
 		"delta": "+12 W", "ok": false, "note": "coupure du trainer pendant l'effort"},
 		"bilan : nouvelle FTP et avertissement au bandeau du bilan, rien sous le titre (lot N20)")
-	_check(_ids(f) == ["accept_ftp", "keep_ftp", "new_session", "details", "quit"] and _focus_id(f) == "accept_ftp",
+	_check(_ids(f) == ["accept_ftp", "keep_ftp", "replay", "new_session", "details", "quit"] and _focus_id(f) == "accept_ftp",
 		"Accepter / Garder en tête du bilan")
 	_check(f.handle("A_LONG") == {"action": "accept_ftp", "force": false}, "accept_ftp")
 	f.on_error("ftp_result_doubtful", "résultat douteux")
@@ -652,20 +681,20 @@ func _test_ftp_flow() -> void:
 	_check(f.handle("A_LONG") == {"action": "accept_ftp", "force": true} and f.state()["screen"] == "summary",
 		"Oui : accept_ftp avec force")
 	f.on_settings({"items": [{"key": "rider.ftp_w", "value": 262}]})
-	_check(f.state()["status"] == "FTP enregistrée : 262 W" and _ids(f) == ["new_session", "details", "quit"],
+	_check(f.state()["status"] == "FTP enregistrée : 262 W" and _ids(f) == ["replay", "new_session", "details", "quit"],
 		"FTP enregistrée, choix retirés (%s)" % f.state()["status"])
 	_check(f.settings.item("rider.ftp_w")["value"] == 262, "nouvelle FTP dans les réglages (O4)")
 	# Garder l'ancienne FTP ; test sans FTP calculable.
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": ftp}})
 	f.handle("PLUS_SHORT")
-	_check(f.handle("A_LONG").is_empty() and f.state()["status"] == "FTP gardée : 250 W" and _ids(f)[0] == "new_session",
+	_check(f.handle("A_LONG").is_empty() and f.state()["status"] == "FTP gardée : 250 W" and _ids(f)[0] == "replay",
 		"Garder : FTP inchangée")
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": {"test": "ramp", "ftp_w": null,
 		"previous_ftp_w": 250, "warnings": ["too_short"], "reliable": false}}})
 	_check(f.state()["status"] == "" and f.summary_model.ftp_result(f.summary)["note"] == "aucune FTP calculable ; test trop court"
-		and _ids(f)[0] == "new_session", "sans FTP calculable : rien à accepter, raison au bandeau du bilan")
+		and _ids(f)[0] == "replay", "sans FTP calculable : rien à accepter, raison au bandeau du bilan")
 
 
 ## Bibliothèque de parcours (lot O12, critère 3) : filtrer « col », trier par dénivelé, lancer le premier.
@@ -983,6 +1012,7 @@ func _test_qwk_entry() -> void:
 
 
 func _init() -> void:
+	_test_summary_replay_and_main_menu()
 	_test_qwk_entry()
 	_test_bots_menu()
 	_test_plans()
