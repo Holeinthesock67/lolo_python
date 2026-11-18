@@ -297,6 +297,8 @@ def test_state_frame_with_four_vehicles_and_five_bots_fits():
     from openride_core import ipc_budget
 
     worst = ipc_budget.worst_state("1.5")
+    worst.pop("riders", None)          # lot AS10 : `riders` n'est jamais dans la trame de `vehicles`
+    worst["vehicles"] = ipc_budget.worst_vehicles()
     assert len(worst["vehicles"]) == tr.NEAR_MAX and len(worst["bots"]) == 5
     assert ipc_budget.size(worst) <= ipc_budget.STATE_LIMIT_1_3
     with_devices = ipc_budget.worst_state("1.4")
@@ -401,3 +403,30 @@ def test_underwater_route_has_no_traffic() -> None:
     assert not underwater_route(m({"temperate_grassland": 100.0}))
     assert not underwater_route({"layers": {}}) and not underwater_route(None)
     assert not underwater_route(m({"reef": True}))
+
+
+def test_reverse_rider_passes_slow_tractor_on_the_left(tmp_path, monkeypatch):
+    """Lot AS10 (banc #892 du 15/11, « tractor / cycliste à 1 m » après le demi-tour, sur main aussi) : à rebours, le
+    cycliste se place parmi ceux de son sens et double un tracteur lent par sa gauche, sans le toucher (avant : aucun
+    placement à rebours, il lui passait au travers)."""
+    from test_draft import make_session
+    from test_road_cyclists import _flat_route
+
+    s, _ = make_session(tmp_path, monkeypatch, 6206, 200.0, [])
+    s.route = _flat_route()
+    s._on_command("start", {}, 2)
+    s.physics.place(20000.0, direction=-1)
+    t = s._traffic_for(s.route)
+    t._next_slot, t._last_rider_s = 10 ** 6, s.physics.s
+    c = s._road_cyclists_for(s.route)
+    c._started, c._next_slot = True, 10 ** 6
+    v = t.place_for_test(s.physics.s, "tractor", -1, -40.0, 20.0)
+    v.speed_mps = 20.0 / 3.6
+    worst = 99.0
+    for i in range(int(40.0 / 0.02)):
+        s.physics.v = 9.0
+        s._step(0.02, 100.0 + i * 0.02)
+        if abs(v.s - s.physics.s) < v.length / 2 + draft.BIKE_LENGTH_M / 2:
+            worst = min(worst, abs(-s._lane.m - v.lateral) - v.half_width - tr.RIDER_HALF_WIDTH_M)
+    assert v.s - s.physics.s > 20.0          # doublé
+    assert worst > 0.2

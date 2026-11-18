@@ -24,6 +24,8 @@ import copy
 import json
 from typing import Any, Callable
 
+from . import road_cyclists
+
 MAX_DATAGRAM_SIZE = 1400          # cible de toutes les révisions, et limite jusqu'à la 1.2
 TRACK_FRAME_MAX = 800             # objet `track` de `state` (révision 1.7, lot VD6) : majorant de `worst_track`
 STATE_LIMIT_1_3 = 4096            # limite de `state` depuis la révision 1.3 (ipc_server.MAX_DATAGRAM_SIZE, tout message depuis la 1.5)
@@ -39,6 +41,7 @@ MAX_TEXT = {
 
 # Textes de remplissage : lettres accentuées (2 octets en UTF-8) pour le pire cas.
 _FILL = "Fantôme éé à ô û"
+
 
 
 def encode(msg: dict[str, Any]) -> bytes:
@@ -82,6 +85,17 @@ def _drop_power_profile(d: dict[str, Any]) -> None:
         d["summary"].pop("power_profile", None)
 
 
+def _bot_items_if_devices(d: dict[str, Any]) -> None:
+    # Lot GP10 : objet en réserve et effets des bots du Grand Prix (`item`, `fx`), gardés par l'engine depuis la
+    # dernière trame qui les portait (comme `bots.LIGHT_ROTATED`), quittent la trame qui porte `devices`
+    # avant les bots eux-mêmes : à 11 adversaires, elle dépassait 4 096 octets.
+    if "devices" in d:
+        for bot in d.get("bots") or []:
+            if isinstance(bot, dict):
+                bot.pop("item", None)
+                bot.pop("fx", None)
+
+
 def _bots_if_devices(d: dict[str, Any]) -> None:
     if "devices" in d:
         d.pop("bots", None)
@@ -93,6 +107,7 @@ def _bots_if_devices(d: dict[str, Any]) -> None:
 STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("textes raccourcis", _shorten_texts),
     ("noms des bots raccourcis", _short_bot_names),
+    ("objets des bots (trame avec devices)", _bot_items_if_devices),   # lot GP10 : l'engine garde les derniers reçus
     ("bots (trame avec devices)", _bots_if_devices),
     ("devices", _drop("devices")),
     # Lot N20 (révision 1.10) : la courbe du bilan part avant le bilan lui-même ; l'engine garde la dernière reçue.
@@ -194,12 +209,26 @@ def _extras_1_5(d: dict[str, Any]) -> None:
                        "next": {"id": "j" + "9" * 23, "d_m": 2999.9, "default": 3, "chosen": 3, "locked": True,
                                 "b": [[-179, "p", -99.9], [-90, "s", 99.9], [90, "m", -12.3], [179, "k", 12.3]]},
                        "data": "downloading"}
-    # Lot AS6 : au plus 4 véhicules proches, chacun au plus long (identifiant de case, sorte la plus longue)
-    d["vehicles"] = [{"id": "v1000099", "kind": "tractor", "color": 7, "s": 123_456.79 + i, "dir": -1,
-                      "v": 22.22, "lane_m": -2.33} for i in range(4)]
-    # Lot AS7 : au plus 6 cyclistes du décor proches, identifiants de case et d'apparence au plus long
-    d["riders"] = [{"id": "c1000099-5", "s": 123_456.79 + i, "dir": -1, "v": 19.44, "lane_m": -2.33,
-                    "look": 1_048_575} for i in range(6)]
+    # Lot AS7 : cyclistes du décor proches ; lot AS10 (révision 1.18) : au plus 10, dans la trame qui suit celle de
+    # `vehicles`, jamais avec elle : la trame la plus lourde porte l'une ou l'autre liste, la plus longue des deux
+    vehicles, riders = worst_vehicles(), worst_riders()
+    if size({"riders": riders}) >= size({"vehicles": vehicles}):
+        d["riders"] = riders
+    else:
+        d["vehicles"] = vehicles
+
+
+def worst_vehicles() -> list[dict[str, Any]]:
+    """Lot AS6 : au plus 4 véhicules proches, chacun au plus long (identifiant de case, sorte la plus longue)."""
+    return [{"id": "v1000099", "kind": "tractor", "color": 7, "s": 123_456.79 + i, "dir": -1,
+             "v": 22.22, "lane_m": -2.33} for i in range(4)]
+
+
+def worst_riders() -> list[dict[str, Any]]:
+    """Lot AS7 : cyclistes du décor proches (lot AS10 : au plus `STATE_MAX`, 10), identifiants de case et
+    d'apparence au plus long."""
+    return [{"id": "c1000099-5", "s": 123_456.79 + i, "dir": -1, "v": 19.44, "lane_m": -2.33,
+             "look": 1_048_575} for i in range(road_cyclists.STATE_MAX)]
 
 
 PELOTON_BOTS = 12   # lot PL1 : 11 bots et un fantôme (bots.MAX_BOTS)
@@ -344,7 +373,8 @@ def worst_grandprix_state(opponents: int = 4) -> dict[str, Any]:
                "lane": 2, "auto": False, "fx": [[k, 99.9] for k in longest],
                "warn": [GP_LONGEST_SHOT, 399.9],
                "obj": [[ID_MAX, GP_LONGEST_SHOT, 123_456.7, -1] for _ in range(12)],
-               "boxes": [199_999, 199_999], "pick": True, "lap": [5, 5]}
+               "boxes": [199_999, 199_999], "pick": True, "lap": [5, 5],
+               "boxes_gone": [[k, lane] for k in range(2) for lane in range(3)]}   # lot GP14 : six boîtes prises
     return d
 
 
@@ -391,7 +421,8 @@ def worst_state(revision: str) -> dict[str, Any]:
 
 
 def worst_rogue_state() -> dict[str, Any]:
-    """Trame `state` la plus lourde du mode `ROGUE` (révision 1.4, série R) : 4 fenêtres, 4 événements."""
+    """Trame `state` la plus lourde du mode `ROGUE` (révision 1.4, série R ; 1.16 et 1.17, lots R22 et R23) :
+    4 fenêtres, 6 événements, tous les champs de lisibilité."""
     d = worst_state("1.3")
     for key in ("erg", "bots", "draft", "draft_bot"):
         d.pop(key, None)
@@ -406,7 +437,14 @@ def worst_rogue_state() -> dict[str, Any]:
         "windows": [{"kind": "strike_target", "s_start": 99_999.99, "s_end": 99_999.99}] * 4,
         "hack": {"locked": True, "forced_gear": 12, "until_s": 99_999.99},
         "overheat": True, "loot_focus": 4,
-        "events": ["firewall_contact", "room_skipped", "perfect_shift", "parry_miss"],
+        "events": ["firewall_contact", "room_skipped", "perfect_shift", "parry_miss", "shift_missed", "z_refused"],
+        # révision 1.16 (lot R22) et 1.17 (lot R23) : lisibilité et retours des appuis
+        "phase_left_s": 99_999.9,
+        "next": [{"kind": "corridor", "in_s": 99_999.9, "archetype": "sprinteur"}] * 2,
+        "loot_stage": "door", "target_pct": {"lo": 999, "hi": 999}, "firewall_gap_s": 99.9,
+        "z_reason": "no_roc_charge", "shift_miss": {"reason": "wrong_way", "dt_s": -9.99},
+        "z_action": "rock_chip", "card_on": "x" * 24,
+        "adrenaline_trend": {"rate_per_s": -99.99, "cause": "overheat", "overheat_in_s": 99.9},
     }
     return d
 

@@ -112,6 +112,15 @@ func show_wait(wait, cadence_rpm: float) -> void:
 		queue_redraw()
 
 
+## Fin de séance, pause ou menu rouvert pendant les feux verts : « GO ! » retiré tout de suite (bilan dessous).
+func cancel_go() -> void:
+	if _go_left_s <= 0.0:
+		return
+	_go_left_s = 0.0
+	visible = _wait != null
+	queue_redraw()
+
+
 ## Départ ouvert : feux verts pendant GO_S.
 func show_go() -> void:
 	_go_left_s = StartWaitModel.GO_S

@@ -11,7 +11,8 @@ extends Node3D
 ##   la fenêtre (`thin_start_m`, `fade_end_m` du shader) pour ne pas surgir.
 ## - Placement déterministe (graine, numéro de tronçon, numéro de place) sur une bande de
 ##   `BAND_MIN_M` à `BAND_MAX_M` du bord de la route, des deux côtés, autour de la caméra : tronçons
-##   de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et `CHUNKS_AHEAD` devant.
+##   de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et `CHUNKS_AHEAD` devant, dans le sens de la marche
+##   (`direction`, -1 à rebours après un demi-tour : lot N22).
 ## - Pas de touffe sur la route, dans un bâtiment ou dans l'eau (polygones `exclusions`, x et z) ;
 ##   densité réduite avec la pente du terrain (`height_at`, facultatif).
 ## - Garde-fou de la chaussée : une touffe est toujours à `ROAD_CLEAR_M` au moins du bord de la route,
@@ -91,15 +92,16 @@ const TINTS := [Color(1.0, 1.0, 1.0), Color(0.78, 0.88, 0.78), Color(1.12, 1.08,
 ## Sortes de touffes selon le biome, tirées selon les poids du modèle de biome (`biome_model`, nul : herbe d'avant) :
 ## 0 herbe d'avant ; 1 désert (sable ou pierre, retour du propriétaire 03/11) : herbe sèche, paille et ocre, plus
 ## clairsemée ; 2 fond marin (lot SM1, 14/11 : « pas de neige sous l'eau », l'herbe des prés n'y a pas sa place) :
-## herbier sombre vert-bleu, clairsemé.
-const STYLE_OF_BIOME := {"sand_desert": 1, "rock_desert": 1, "reef": 2}
+## herbier sombre vert-bleu, clairsemé ; 3 neige et glace (polaire, lot DB3, banc rDB3 du 14/11 : touffes vertes
+## sur la banquise) : aucune touffe. Toundra (lot DB3) : herbe rase et rousse du désert, clairsemée.
+const STYLE_OF_BIOME := {"sand_desert": 1, "rock_desert": 1, "tundra": 1, "reef": 2, "polar": 3}
 const DRY_TINTS := [Color(1.55, 0.95, 1.2), Color(1.75, 1.05, 1.15), Color(1.35, 0.8, 0.95), Color(1.9, 1.2, 1.45)]
 const SEA_TINTS := [Color(0.55, 0.75, 1.25), Color(0.5, 0.7, 1.3), Color(0.65, 0.8, 1.1), Color(0.45, 0.62, 1.4)]
 ## Part des places gardées (touffes plus espacées qu'en prairie).
 const DRY_KEEP := 0.45
 const SEA_KEEP := 0.35
-const STYLE_TINTS := [TINTS, DRY_TINTS, SEA_TINTS]
-const STYLE_KEEP := [1.0, DRY_KEEP, SEA_KEEP]
+const STYLE_TINTS := [TINTS, DRY_TINTS, SEA_TINTS, DRY_TINTS]
+const STYLE_KEEP := [1.0, DRY_KEEP, SEA_KEEP, 0.0]
 ## Fondu avec la distance (mètres) : éclaircissement à partir de THIN_START_M, effacement complet à FADE_END_M,
 ## avant la fin de la fenêtre de tronçons devant la caméra (CHUNKS_AHEAD × CHUNK_M).
 ## Lot Y22, 6 novembre (« l'herbe ne va pas assez loin devant », « une fondue vers l'avant ») : éclaircissement
@@ -140,6 +142,7 @@ var _near_mmi: Array[MultiMeshInstance3D] = []
 var _far_mmi: Array[MultiMeshInstance3D] = []
 var _near_material: ShaderMaterial = null
 var _far_material: ShaderMaterial = null
+var direction := 1                    # sens de la marche : -1 à rebours après un demi-tour (lots N17, N22)
 var _slot_chunk: PackedInt64Array = PackedInt64Array()   # tronçon occupant chaque groupe de places
 var _filled := PackedInt32Array()                         # places déjà calculées du tronçon de chaque groupe
 var _far_count := PackedInt32Array()                      # touffes lointaines de chaque groupe
@@ -299,9 +302,12 @@ func set_apparent_wind(apparent: Vector3) -> void:
 func update(cam_s: float) -> void:
 	if _near_mm.is_empty() or route == null:
 		return
-	var first := int(floor(cam_s / CHUNK_M)) - CHUNKS_BEHIND
+	# Fenêtre dans le sens de la marche (lot N22) : CHUNKS_BEHIND derrière et CHUNKS_AHEAD devant la caméra,
+	# devant = s décroissant à rebours après un demi-tour (N17) ; tronçons pris du plus proche au plus loin
+	var cam_k := int(floor(cam_s / CHUNK_M))
 	var groups := _slot_chunk.size()
-	for k in range(first, first + groups):
+	for n in range(groups):
+		var k := cam_k + direction * (n - CHUNKS_BEHIND)
 		var g := posmod(k, groups)
 		if _slot_chunk[g] != k:
 			_slot_chunk[g] = k
@@ -313,13 +319,13 @@ func update(cam_s: float) -> void:
 	var budget := maxi(MAX_PER_FRAME, ceili(float(_per_chunk) / FILL_FRAMES))
 	var t_start := Time.get_ticks_usec()
 	var far_min_keep := keep_at(LOD_SWITCH_M - LOD_BLEND_M)
-	var cam_k := first + CHUNKS_BEHIND
 	while budget > 0 and not _queue.is_empty():
 		var qi := _next_job(cam_k)
 		var job: Array = _queue[qi]
 		var g: int = job[0]
 		var k: int = job[1]
-		var urgent := k >= cam_k - CHUNKS_BEHIND and k - cam_k <= URGENT_AHEAD
+		var ahead := direction * (k - cam_k)
+		var urgent := ahead >= -CHUNKS_BEHIND and ahead <= URGENT_AHEAD
 		if Time.get_ticks_usec() - t_start >= (URGENT_FRAME_US if urgent else MAX_FRAME_US):
 			break
 		var j: int = job[2]
@@ -383,7 +389,7 @@ func _next_job(cam_k: int) -> int:
 	var best := 0
 	var best_rank := INF
 	for i in range(_queue.size()):
-		var d: int = int(_queue[i][1]) - cam_k
+		var d: int = direction * (int(_queue[i][1]) - cam_k)   # tronçons d'avance dans le sens de la marche
 		var rank := float(d) if d >= 0 else (0.5 if d >= -CHUNKS_BEHIND else 1.0e6 - d)
 		if rank < best_rank:
 			best_rank = rank
@@ -430,10 +436,13 @@ func _set_box(g: int, box: AABB) -> void:
 	_far_mmi[g].visibility_range_end = fade_end() + radius
 
 
-## Sorte de la touffe (STYLE_OF_BIOME, 0 : herbe d'avant) ou −1 : place laissée vide (sorte clairsemée).
+## Sorte de la touffe (STYLE_OF_BIOME, 0 : herbe d'avant) ou −1 : place laissée vide (sorte clairsemée, ou paysage
+## en feu : rien ne pousse sur la lave et les scories, biome_model.gd `fire_at`, lot DB2).
 func style_draw(k: int, slot: int, origin: Vector3) -> int:
 	if biome_model == null or not biome_model.active():
 		return 0
+	if not biome_model.fire_at(origin.x, origin.z).is_empty():
+		return -1
 	var w: Dictionary = biome_model.weights_at(origin.x, origin.z)
 	var h := VegetationPlacer.hash3(tuft_seed ^ 0x5D17, k, slot)
 	var u := float(h & 0xFFFF) / 65536.0

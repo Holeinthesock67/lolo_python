@@ -15,6 +15,8 @@ extends RefCounted
 ## `max_km_grade_pct` : pente moyenne la plus forte sur un kilomètre glissant (pas de STEP_M) dans la
 ## montée, ou la pente moyenne si elle est plus courte qu'un kilomètre.
 
+const RouteMirror := preload("res://scripts/route_mirror.gd")
+
 const STEP_M := 20.0
 const SMOOTH_M := 100.0
 const HYSTERESIS_M := 8.0
@@ -161,3 +163,22 @@ static func _snap_low(raw: PackedFloat64Array, i: int, n: int) -> int:
 		if raw[j] <= raw[best] + SNAP_M:
 			return j
 	return best
+
+
+## Montées du retour (lot N24) : celles que rencontre le cycliste qui roule à rebours après un demi-tour (lot N17),
+## détectées sur le parcours retourné (route_mirror.gd), toujours par le profil (la couche `segments` ne chronomètre
+## que l'aller). Abscisses dans le repère du parcours : `start_s` (pied) au-dessus de `summit_s`, `dir` = -1.
+static func detect_back(route) -> Array:
+	if route == null:
+		return []
+	var length := float(route.length_m)
+	var out := []
+	for c in detect(RouteMirror.new(route)):
+		var b: Dictionary = (c as Dictionary).duplicate()
+		b["start_s"] = RouteMirror.flip_s(length, float(c["start_s"]))
+		b["summit_s"] = RouteMirror.flip_s(length, float(c["summit_s"]))
+		b["dir"] = -1
+		out.append(b)
+	out.sort_custom(func(a, b): return float(a["summit_s"]) < float(b["summit_s"]))
+	return out
+

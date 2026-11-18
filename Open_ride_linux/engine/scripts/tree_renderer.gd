@@ -47,7 +47,8 @@ const CELL_RADIUS_M := CELL_SIZE_M * 0.7072 + 10.0
 const TREE_SHADOW_M := 100.0
 const SHADOW_UPDATE_STEP_M := 10.0
 const SHADOW_BUCKET_M := 25.0
-const SHADOW_STRIDE := 16   # flottants par instance du tampon : transformation 3×4 et couleur
+const BUF_STRIDE := 16   # flottants par arbre du tampon MultiMesh.buffer : transformation 3×4 et couleur
+const SHADOW_STRIDE := BUF_STRIDE
 ## Lot S1 : distance ajoutée au rang d'une case hors du champ, pour qu'elle passe avant toute case visible.
 const OUT_OF_VIEW_RANK_M := 1.0e6
 ## Distance minimale entre un tronc et le mur d'un bâtiment OSM (houppier compris).
@@ -373,14 +374,97 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		"cases_ms": (t_end - t_cells) / 1000.0,
 		"arbres": trees.size(),
 	}
+	# Tampons des MultiMesh calculés ici, hors du fil principal (à-coups de 100 à 157 ms à l'entrée d'une tuile
+	# proche, sonde rW17g du 15/11) : add_tile ne fait plus que créer les nœuds et copier les tampons.
+	var t_buffers := Time.get_ticks_usec()
+	var built := build_cells(tile_x, tile_z, cells, cell_species,
+		shadow_end_m > 0.0 and not RenderDiag.has("sans_ombres_arbres"))
+	last_profile["tampons_ms"] = (Time.get_ticks_usec() - t_buffers) / 1000.0
+	last_profile["total_ms"] = (Time.get_ticks_usec() - t_start) / 1000.0
 	return {
 		"tile_x": tile_x,
 		"tile_z": tile_z,
 		"tile_key": Vector2i(tile_x, tile_z),
 		"cells": cells,
 		"species": cell_species,
+		"built": built,
 		"tile_origin": Vector3(tile_origin_x, 0.0, tile_origin_z),
 	}
+
+
+## Cases d'une tuile prêtes à instancier (exécutable en thread secondaire) : une entrée par case non vide,
+## {cell_idx, center, count, parts}, chaque partie (une par espèce, dans l'ordre des numéros d'espèce) portant
+## `buf`, le tampon de MultiMesh.buffer (BUF_STRIDE flottants par arbre : transformation 3×4 puis couleur),
+## et, avec `with_shadow_buckets`, les carrés d'ombre de add_to_bucket.
+static func build_cells(tile_x: int, tile_z: int, cells: Array, species_data: Array, with_shadow_buckets: bool) -> Array:
+	var out := []
+	for cell_idx in range(cells.size()):
+		var tree_list: PackedVector4Array = cells[cell_idx]
+		if tree_list.is_empty():
+			continue
+		var cx := cell_idx % CELLS_PER_TILE
+		var cz := cell_idx / CELLS_PER_TILE
+		var sum_y := 0.0
+		for t in tree_list:
+			sum_y += t.y
+		var center := Vector3((tile_x * 1000.0) + (cx + 0.5) * CELL_SIZE_M, sum_y / float(tree_list.size()),
+			(tile_z * 1000.0) + (cz + 0.5) * CELL_SIZE_M)
+		# Arbres de la case groupés par espèce (une seule espèce, GENERIC, sans biome).
+		var groups := {}
+		var sp: PackedByteArray = species_data[cell_idx] if cell_idx < species_data.size() else PackedByteArray()
+		for i in range(tree_list.size()):
+			var key := int(sp[i]) if i < sp.size() else TreeSpecies.GENERIC
+			if not groups.has(key):
+				groups[key] = []   # Array (référence) : un tableau compact serait copié par groups[key]
+			(groups[key] as Array).append(tree_list[i])
+		var keys := groups.keys()
+		keys.sort()
+		var parts := []
+		for key in keys:
+			parts.append(build_part(int(key), PackedVector4Array(groups[key]), with_shadow_buckets))
+		out.append({"cell_idx": cell_idx, "center": center, "count": tree_list.size(), "parts": parts})
+	return out
+
+
+## Tampon d'une espèce dans une case (exécutable en thread secondaire) : rotation, échelle et teinte de chaque
+## arbre tirées de sa position, rangs de vigne alignés par case de 250 m.
+static func build_part(species: int, tree_list: PackedVector4Array, with_shadow_buckets: bool) -> Dictionary:
+	var count := tree_list.size()
+	var vine := species == TreeSpecies.index_of("vine_row")
+	var palette := TreeSpecies.palette(TreeSpecies.kind_of(species))
+	var buf := PackedFloat32Array()
+	buf.resize(count * BUF_STRIDE)
+	var buckets := {}
+	for i in range(count):
+		var t := tree_list[i]
+		var px := t.x
+		var py := t.y
+		var pz := t.z
+		var scale_f := t.w
+		var h_rot := VegetationPlacer.hash3(0x5EED, int(px), int(pz))
+		var angle := float(h_rot & 0xFFFF) / 65536.0 * TAU
+		if vine:
+			# Rangs de vigne parallèles dans toute la case (orientation tirée par case de 250 m).
+			angle = float(VegetationPlacer.hash3(0x7111, int(floor(px / CELL_SIZE_M)), int(floor(pz / CELL_SIZE_M))) & 0x3) * 0.25 * PI
+			scale_f = 1.0
+		var b := Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f)
+		var h_col := VegetationPlacer.hash3(0xCAFE, int(px), int(pz))
+		var tint := (float(h_col & 0xFF) / 255.0 - 0.5) * 0.16
+		var col := Color(1.0 + tint, 1.0 + tint, 1.0 + tint, 1.0)
+		if not palette.is_empty():   # coraux et gorgones (lot SM1) : une couleur de la palette par arbre
+			col = (palette[(h_col >> 8) % palette.size()] as Color) * (1.0 + tint)
+			col.a = 1.0
+		var o := i * BUF_STRIDE
+		buf[o] = b.x.x; buf[o + 1] = b.y.x; buf[o + 2] = b.z.x; buf[o + 3] = px
+		buf[o + 4] = b.x.y; buf[o + 5] = b.y.y; buf[o + 6] = b.z.y; buf[o + 7] = py
+		buf[o + 8] = b.x.z; buf[o + 9] = b.y.z; buf[o + 10] = b.z.z; buf[o + 11] = pz
+		buf[o + 12] = col.r; buf[o + 13] = col.g; buf[o + 14] = col.b; buf[o + 15] = col.a
+		if with_shadow_buckets:
+			add_to_bucket(buckets, Transform3D(b, Vector3(px, py, pz)), col)
+	var part := {"species": species, "count": count, "buf": buf}
+	if with_shadow_buckets:
+		part["buckets"] = buckets
+	return part
 
 
 ## Retire les arbres situés dans l'emprise d'un bâtiment (anneau `outer`) ou à moins de
@@ -422,107 +506,41 @@ static func _ring_distance(p: Vector2, ring: PackedVector2Array) -> float:
 	return best
 
 
-## Instancie les MultiMesh pour une tuile préparée (doit être appelé sur le fil principal).
+## Instancie les MultiMesh d'une tuile préparée (fil principal) : nœuds créés et tampons de build_cells copiés
+## d'un bloc, sans calcul par arbre.
 func add_tile(data: Dictionary) -> void:
 	var tile_key: Vector2i = data["tile_key"]
 	if _tiles.has(tile_key):
 		remove_tile(tile_key)
-
 	var tile_cells := {}
-	var cells_data: Array = data["cells"]
-	var species_data: Array = data.get("species", [])
-	var tile_x: int = data["tile_x"]
-	var tile_z: int = data["tile_z"]
-
-	for cell_idx in range(cells_data.size()):
-		var tree_list: PackedVector4Array = cells_data[cell_idx]
-		if tree_list.is_empty():
-			continue
-
-		var cx := cell_idx % CELLS_PER_TILE
-		var cz := cell_idx / CELLS_PER_TILE
-		var center_x := (tile_x * 1000.0) + (cx + 0.5) * CELL_SIZE_M
-		var center_z := (tile_z * 1000.0) + (cz + 0.5) * CELL_SIZE_M
-		var sum_y := 0.0
-		for t in tree_list:
-			sum_y += t.y
-		var center_y := sum_y / float(tree_list.size())
-		var cell_center := Vector3(center_x, center_y, center_z)
-
-		# Arbres de la case groupés par espèce (une seule espèce, GENERIC, sans biome).
-		var groups := {}
-		var sp: PackedByteArray = species_data[cell_idx] if cell_idx < species_data.size() else PackedByteArray()
-		for i in range(tree_list.size()):
-			var key := int(sp[i]) if i < sp.size() else TreeSpecies.GENERIC
-			if not groups.has(key):
-				groups[key] = []   # Array (référence) : un tableau compact serait copié par groups[key]
-			(groups[key] as Array).append(tree_list[i])
-
+	for cell in data["built"]:
 		var parts := []
-		var keys := groups.keys()
-		keys.sort()
-		for key in keys:
-			parts.append(_make_part(int(key), PackedVector4Array(groups[key])))
-
-		tile_cells[cell_idx] = {
-			"parts": parts,
-			"count": tree_list.size(),
-			"center": cell_center,
-		}
+		for p in cell["parts"]:
+			parts.append(_make_part(p))
+		tile_cells[int(cell["cell_idx"])] = {"parts": parts, "count": int(cell["count"]), "center": cell["center"]}
 		_shadow_cam = Vector3(INF, INF, INF)   # nouvelle case : ombres à recalculer au prochain update_shadows
-		_active_tree_count += tree_list.size()
-
+		_active_tree_count += int(cell["count"])
 	_tiles[tile_key] = tile_cells
 
 
-## Paire de MultiMeshInstance3D (LOD 0 et LOD 1) des arbres d'une espèce dans une case.
-func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
+## Paire de MultiMeshInstance3D (LOD 0 et LOD 1) d'une partie de build_part (une espèce dans une case).
+func _make_part(p: Dictionary) -> Dictionary:
+	var species := int(p["species"])
+	var count := int(p["count"])
+	var buf: PackedFloat32Array = p["buf"]
 	var look := _look(species)
-	var count := tree_list.size()
 	var mm0 := MultiMesh.new()
 	mm0.transform_format = MultiMesh.TRANSFORM_3D
 	mm0.use_colors = true
 	mm0.mesh = _lod0_of(look)
 	mm0.instance_count = count
+	mm0.buffer = buf
 	var mm1 := MultiMesh.new()
 	mm1.transform_format = MultiMesh.TRANSFORM_3D
 	mm1.use_colors = true
 	mm1.mesh = look["lod1"]
 	mm1.instance_count = count
-	var vine := species == TreeSpecies.index_of("vine_row")
-	var palette := TreeSpecies.palette(TreeSpecies.kind_of(species))
-	var with_shadow_buckets := shadow_end_m > 0.0 and not RenderDiag.has("sans_ombres_arbres")
-	var buckets := {}
-
-	for i in range(count):
-		var t := tree_list[i]
-		var px := t.x
-		var py := t.y
-		var pz := t.z
-		var scale_f := t.w
-
-		var h_rot := VegetationPlacer.hash3(0x5EED, int(px), int(pz))
-		var angle := float(h_rot & 0xFFFF) / 65536.0 * TAU
-		if vine:
-			# Rangs de vigne parallèles dans toute la case (orientation tirée par case de 250 m).
-			angle = float(VegetationPlacer.hash3(0x7111, int(floor(px / CELL_SIZE_M)), int(floor(pz / CELL_SIZE_M))) & 0x3) * 0.25 * PI
-			scale_f = 1.0
-		var basis := Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f)
-		var xform := Transform3D(basis, Vector3(px, py, pz))
-
-		var h_col := VegetationPlacer.hash3(0xCAFE, int(px), int(pz))
-		var tint := (float(h_col & 0xFF) / 255.0 - 0.5) * 0.16
-		var col := Color(1.0 + tint, 1.0 + tint, 1.0 + tint, 1.0)
-		if not palette.is_empty():   # coraux et gorgones (lot SM1) : une couleur de la palette par arbre
-			col = (palette[(h_col >> 8) % palette.size()] as Color) * (1.0 + tint)
-			col.a = 1.0
-
-		mm0.set_instance_transform(i, xform)
-		mm0.set_instance_color(i, col)
-		mm1.set_instance_transform(i, xform)
-		mm1.set_instance_color(i, col)
-		if with_shadow_buckets:
-			add_to_bucket(buckets, xform, col)
+	mm1.buffer = buf
 
 	var mmi0 := MultiMeshInstance3D.new()
 	mmi0.multimesh = mm0
@@ -543,8 +561,8 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	mmi1.visibility_range_end = LOD1_MAX_DIST_M
 	add_child(mmi1)
 	var part := {"lod0": mmi0, "lod1": mmi1, "species": species, "count": count}
-	if with_shadow_buckets:
-		part["buckets"] = buckets
+	if p.has("buckets"):
+		part["buckets"] = p["buckets"]
 	return part
 
 

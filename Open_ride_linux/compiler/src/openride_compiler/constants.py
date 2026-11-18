@@ -82,7 +82,7 @@ ROAD_DEFAULT_SPEED_KMH = {"motorway": 130, "trunk": 110, "primary": 80, "seconda
 # Couches OpenStreetMap : points d'intérêt et eau (format §8, lot I4).
 POI_VERSION = "1.0"
 WATER_VERSION = "1.0"
-POI_KINDS = ("church_bell", "river", "livestock", "village", "viewpoint", "wind_turbine", "flag")   # 1.2 : P12
+POI_KINDS = ("church_bell", "river", "livestock", "village", "viewpoint", "wind_turbine", "flag", "wreck")   # 1.2 : P12 ; wreck : SM2
 POI_RADIUS_CHURCH_BELL_M = 300
 POI_RADIUS_VILLAGE_M = 300
 POI_RADIUS_VIEWPOINT_M = 200
@@ -90,6 +90,8 @@ POI_RADIUS_LIVESTOCK_M = 150
 POI_RADIUS_RIVER_M = 150
 POI_RADIUS_WIND_TURBINE_M = 5000   # portée de vue d'une éolienne (Lot P12)
 POI_RADIUS_FLAG_M = 150
+POI_RADIUS_WRECK_M = 400   # portée de vue d'une épave (lot SM2)
+WRECK_DEFAULT_LENGTH_M = 42.0   # longueur d'une épave sans balise `length` (lot SM2)
 WIND_TURBINE_DEFAULT_HEIGHT_M = 100.0
 POI_RIVER_PASSAGE_DIST_M = 50.0
 WATER_LINE_KINDS = ("river", "stream", "canal")
