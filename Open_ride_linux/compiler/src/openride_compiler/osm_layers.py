@@ -460,12 +460,15 @@ def _poi_kind_and_radius(tags: dict[str, Any]) -> tuple[str, int] | None:
         return "wind_turbine", C.POI_RADIUS_WIND_TURBINE_M
     if tags.get("man_made") == "flagpole":
         return "flag", C.POI_RADIUS_FLAG_M
+    # Lot SM2 : épave de navire (OSM `historic=wreck`)
+    if tags.get("historic") == "wreck":
+        return "wreck", C.POI_RADIUS_WRECK_M
     return None
 
 
-def wind_turbine_height(tags: dict[str, Any]) -> float:
-    """Hauteur du mât d'une éolienne (`height_m`) : étiquette `height`, sinon 100 m (Lot P12)."""
-    raw = tags.get("height")
+def _metres_tag(tags: dict[str, Any], key: str, default: float) -> float:
+    """Longueur en mètres d'une balise (`95`, `95 m`, `42,5`), arrondie à 0,1 m, sinon `default`."""
+    raw = tags.get(key)
     if isinstance(raw, (int, float)) and raw > 0:
         return round(float(raw), 1)
     if isinstance(raw, str):
@@ -474,7 +477,17 @@ def wind_turbine_height(tags: dict[str, Any]) -> float:
             val = float(m.group(1).replace(",", "."))
             if val > 0:
                 return round(val, 1)
-    return C.WIND_TURBINE_DEFAULT_HEIGHT_M
+    return default
+
+
+def wind_turbine_height(tags: dict[str, Any]) -> float:
+    """Hauteur du mât d'une éolienne (`height_m`) : étiquette `height`, sinon 100 m (Lot P12)."""
+    return _metres_tag(tags, "height", C.WIND_TURBINE_DEFAULT_HEIGHT_M)
+
+
+def wreck_length(tags: dict[str, Any]) -> float:
+    """Longueur d'une épave (`length_m`) : étiquette `length`, sinon 42 m (lot SM2)."""
+    return _metres_tag(tags, "length", C.WRECK_DEFAULT_LENGTH_M)
 
 
 def _water_area_kind(tags: dict[str, Any]) -> str | None:
@@ -698,7 +711,7 @@ def build_osm_layers(
             name_val = tags.get("name")
             poi_name = str(name_val) if isinstance(name_val, str) and name_val else None
 
-            # 1. Points d'intérêt hors cours d'eau (church_bell, village, viewpoint, livestock, wind_turbine, flag)
+            # 1. Points d'intérêt hors cours d'eau (church_bell, village, viewpoint, livestock, wind_turbine, flag, wreck)
             poi_info = _poi_kind_and_radius(tags)
             if poi_info is not None:
                 pt_xz = _element_point_xz(el, frame)
@@ -726,6 +739,8 @@ def build_osm_layers(
                         }
                         if p_kind == "wind_turbine":
                             poi_item["height_m"] = wind_turbine_height(tags)
+                        elif p_kind == "wreck":
+                            poi_item["length_m"] = wreck_length(tags)
                         poi_chunks.setdefault(k_poi, []).append(poi_item)
                         poi_count += 1
 

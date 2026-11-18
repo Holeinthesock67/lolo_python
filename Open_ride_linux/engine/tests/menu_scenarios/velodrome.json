@@ -1,43 +1,19 @@
 {
-  "description": "Vélodrome (lot VD10) : filtre « Vélodrome » de la liste des parcours, piste choisie, écran Prêt du vélodrome (séance libre par défaut, épreuve et réglages au Click), course aux points en 20 tours lancée, départ de l'épreuve dans le journal du core, fin sans enregistrement et bilan.",
+  "description": "Vélodrome (lots VD10 et GP13) : « Vélodrome » à l'accueil, piste choisie par le mode, écran Prêt du vélodrome (séance libre par défaut, épreuve et réglages au Click), course aux points en 20 tours lancée, départ de l'épreuve dans le journal du core, fin sans enregistrement et bilan.",
   "velodrome": true,
   "etapes": [
     {
       "ecran": "home",
-      "delai": 15
-    },
-    {
-      "choisir": "world"
-    },
-    {
-      "ecran": "routes",
-      "elements": [
-        "demo",
-        "velodrome-250",
-        "_filter"
-      ]
-    },
-    {
-      "choisir": "_filter"
-    },
-    {
-      "ecran": "routes",
+      "delai": 15,
       "contient": [
-        "Étiquette : Vélodrome",
-        "Vélodrome 250 m"
-      ]
-    },
-    {
-      "choisir": "velodrome-250"
-    },
-    {
-      "ecran": "home",
-      "contient": [
+        "Vélodrome"
+      ],
+      "absent": [
         "Parcours : Vélodrome 250 m"
       ]
     },
     {
-      "choisir": "ride"
+      "choisir": "track"
     },
     {
       "ecran": "ready",

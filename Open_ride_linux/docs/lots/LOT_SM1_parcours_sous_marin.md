@@ -26,5 +26,5 @@ Le brouillard proche cache le lointain. Les ajouts sont l'émission des caustiqu
 
 ## 4. Limites
 
-- Pas d'épave dans ce lot : il faudrait un nouvel objet de décor posé sur un point (à prévoir si le propriétaire le veut après la planche).
+- Pas d'épave dans ce lot : faite au lot SM2 (`LOT_SM2_epave_recif.md`).
 - La route reste une route revêtue (la physique ne change pas) ; les laminaires, coraux et gorgones sont mélangés dans toutes les zones (le biome n'a qu'une liste d'espèces).

@@ -1,17 +1,19 @@
 """Course des bots en temps accéléré (lot X27) : calibrage et stratégies des bots à profil, sans vélo.
 
     python -m openride_core.tools.bots_race --route demo|plat|col|FICHIER.world --rider-pct 85 \\
-        --bots climber,rouleur,sprinter,diesel [--ftp 250] [--niveau 85] [--json]
+        --bots climber,rouleur,sprinter,diesel [--ftp 250] [--niveau 85] [--objectif max] [--json]
 
 La vraie séance (`CoreSession`, avec son calibrage des bots du lot T13, ses segments et ses maillots)
-tourne au pas fixe de 20 ms sans trainer ni engine : le cycliste roule à `--rider-pct` % de sa FTP
-(`MockDriver`, puissance constante), les bots à profil sont calibrés au niveau `--niveau` (% de la FTP,
-par défaut celui du cycliste : ils doivent alors finir avec lui). Les bots qui finissent après le cycliste
+tourne au pas fixe de 20 ms sans trainer ni engine : le cycliste roule à l'effort d'un bot de niveau
+`--rider-pct` (lot BT1 : FTP × courbe de puissance sur la durée de la course × objectif `--objectif` × niveau ;
+`MockDriver`, puissance constante), les bots à profil sont calibrés au niveau `--niveau` (% de la FTP,
+par défaut celui du cycliste ; une seule échelle par niveau, celle du rouleur, qui doit alors finir avec lui ;
+les autres profils gardent leurs écarts : grimpeur devant en montée, sprinteur derrière). Les bots qui finissent après le cycliste
 continuent avec la même physique jusqu'à l'arrivée.
 
 Tableau par bot : temps d'arrivée, écart avec le cycliste, W′ le plus bas, maillots ; trame `state` la plus
 grande ; contacts entre coureurs (lot PL1 : deux vélos qui se chevauchent en long et en travers, comptés à chaque
-début de contact, jusqu'à l'arrivée du cycliste). Jusqu'à 11 bots (peloton du lot PL1), trame allégée comme en séance. Échec (code 1) si un bot
+début de contact, jusqu'à l'arrivée du cycliste). Jusqu'à 11 bots (peloton du lot PL1), trame allégée comme en séance. Échec (code 1) si un rouleur
 calibré au niveau du cycliste finit à plus de 2 % de lui, si une trame `state` dépasse la limite du contrat
 (4 096 octets) ou s'il y a un contact ; code 2 pour un profil, un parcours ou un appel
 invalide. Parcours `plat` (20 km à 0 %) et `col` (2 km de plat puis 8 km à 7 %) : écrits à la volée.
@@ -29,7 +31,8 @@ from pathlib import Path
 from typing import Any
 
 from .. import fit_export
-from ..bots import MAX_CONSTANT_BOTS, PROFILES, ProfileBot, profile_bot_names
+from ..bots import (CALIBRATION_PROFILE, MAX_CONSTANT_BOTS, PROFILES, ProfileBot, RefRider, RouteProfile,
+                    effort_target, profile_bot_names)
 from ..config import Config
 from ..draft import BIKE_LENGTH_M, RIDER_WIDTH_M
 from ..demo_world import write_world
@@ -86,7 +89,8 @@ def prepare_route(route: str, routes_root: Path) -> str:
 
 
 def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0,
-         level_pct: float | None = None, dt: float = DT, seed: int = SEED) -> dict[str, Any]:
+         level_pct: float | None = None, dt: float = DT, seed: int = SEED,
+         objective: str = "max") -> dict[str, Any]:
     unknown = [p for p in profiles if p not in PROFILES]
     if unknown:
         raise RaceError(f"profil(s) de bot inconnu(s) : {', '.join(unknown)} ({', '.join(PROFILES)})")
@@ -106,6 +110,7 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
         cfg.depart.mode = "immediat"   # banc sans engine ni cycliste : départ à la commande start (lot O36)
         cfg.rider.ftp_w = ftp_w
         cfg.bots.level_pct = round(level)
+        cfg.bots.objective = objective       # lot BT1 : effort visé sur la durée de la course
         cfg.powerups.mode = "off"            # course sans bonus : seuls la physique et les stratégies jouent
         names = profile_bot_names(profiles)
         bots = [ProfileBot(p, bot_id=f"b{i + 1}", name=n, bike_mass_kg=cfg.bike.mass_kg)
@@ -124,6 +129,11 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
         if s.route is None:
             raise RaceError(f"parcours {route} refusé par la séance")
         s._on_command("start", {}, 2)
+        # Lot BT1 : le cycliste roule à l'effort d'un bot de niveau `rider_pct` pour cette course (courbe de
+        # puissance × objectif), la règle des bots : à niveau égal, le rouleur finit avec lui.
+        rider_eff, race_s = effort_target(RouteProfile(s.route), RefRider(ftp_w, s._base_params), rider_pct,
+                                          s._bot_effort_now)
+        s.driver.base_power_w = ftp_w * rider_eff / 100.0
         length = s.route.length_m
         finish: dict[str, float] = {}
         wmin = {b.id: 100.0 for b in bots}
@@ -153,8 +163,8 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
             t += dt
             step += 1
             # contacts tant que la séance tourne : après l'arrivée du cycliste, les bots n'ont plus ni abri ni placement
-            # (les bots arrivés s'arrêtent sur la ligne : hors compte)
-            runners = [(b.id, b.s, b.lane.m) for b in bots if b.id not in finish and b.s < length - 1e-6]
+            # (les bots arrivés s'arrêtent en file au bout du parcours, `session.END_GAP_M` : hors compte)
+            runners = [(b.id, b.s, b.lane.m) for b in bots if b.id not in finish and b.id not in s._end_queue]
             runners.append(("rider", s.physics.s, s._lane.m))
             now_touching = contacts(runners) if "rider" not in finish else set()
             new = now_touching - touching
@@ -168,7 +178,7 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
             touching = now_touching
             for b in bots:
                 wmin[b.id] = min(wmin[b.id], b.wbal_pct)
-                if b.id not in finish and b.s >= length - 1e-6:
+                if b.id not in finish and (b.s >= length - 1e-6 or b.id in s._end_queue):
                     finish[b.id] = t
         s._finish(save=False)
     rider_t = finish.get("rider")
@@ -183,12 +193,15 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
     checks = []
     if abs(level - rider_pct) < 1e-9:
         for r in rows:
+            if r["profile"] != CALIBRATION_PROFILE:   # échelle commune (15 novembre) : seul le rouleur est jugé
+                continue
             ok = r["gap_pct"] is not None and abs(r["gap_pct"]) <= GAP_LIMIT_PCT
             checks.append((ok, f"{r['name']} au niveau du cycliste : écart {r['gap_pct']} % (au plus {GAP_LIMIT_PCT:g} %)"))
     checks.append((biggest <= STATE_LIMIT_1_3, f"trame state la plus grande : {biggest} octets (limite {STATE_LIMIT_1_3})"))
     checks.append((n_contacts == 0, f"contacts entre coureurs : {n_contacts}"
                    + (f" (premier : {first_contact})" if first_contact else "")))
     return {"route": route, "length_m": round(length, 1), "rider_pct": rider_pct, "level_pct": level, "ftp_w": ftp_w,
+            "objective": objective, "rider_power_w": round(ftp_w * rider_eff / 100.0, 1), "race_s_est": round(race_s, 1),
             "rider_finish_s": None if rider_t is None else round(rider_t, 1), "bots": rows,
             "rider_jerseys": sorted(k for k, v in (jerseys or {}).items() if v == "me"),
             "segment_results": len(results), "state_max_bytes": biggest, "contacts": n_contacts,
@@ -197,8 +210,9 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
 
 
 def format_text(out: dict[str, Any]) -> str:
-    lines = [f"Course des bots sur {out['route']} ({out['length_m'] / 1000:.1f} km) : cycliste à {out['rider_pct']:g} % "
-             f"de {out['ftp_w']:g} W, bots au niveau {out['level_pct']:g} %",
+    lines = [f"Course des bots sur {out['route']} ({out['length_m'] / 1000:.1f} km) : cycliste au niveau {out['rider_pct']:g} % "
+             f"de {out['ftp_w']:g} W, bots au niveau {out['level_pct']:g} %, objectif {out['objective']}",
+             f"Effort : {out['rider_power_w']:g} W sur ≈ {out['race_s_est'] / 60:.0f} min (courbe de puissance × objectif, lot BT1)",
              f"Cycliste : arrivée en {out['rider_finish_s']} s ; {out['segment_results']} résultat(s) de segment ; "
              f"maillots {', '.join(out['rider_jerseys']) or '—'}",
              "", f"  {'bot':<12} {'profil':<9} {'échelle':>7} {'arrivée':>9} {'écart':>8} {'W′ min':>7}  maillots"]
@@ -220,6 +234,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--bots", default="climber,rouleur,sprinter,diesel", help="profils séparés par des virgules")
     ap.add_argument("--ftp", type=float, default=250.0)
     ap.add_argument("--niveau", type=float, help="niveau des bots en %% de la FTP (défaut : celui du cycliste)")
+    ap.add_argument("--objectif", default="max", help="objectif de la course (recovery, endurance, tempo, threshold, max)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
     profiles = [p.strip() for p in args.bots.split(",") if p.strip()]
@@ -227,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         print("aucun bot demandé", file=sys.stderr)
         return 2
     try:
-        out = race(args.route, args.rider_pct, profiles, args.ftp, args.niveau)
+        out = race(args.route, args.rider_pct, profiles, args.ftp, args.niveau, objective=args.objectif)
     except RaceError as exc:
         print(f"ÉCHEC : {exc}", file=sys.stderr)
         return 2
