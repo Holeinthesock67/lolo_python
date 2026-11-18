@@ -13,8 +13,11 @@ extends RefCounted
 ## - `km` tous les kilomètres de parcours (« km 12 »), sans doublon au point de départ d'une boucle.
 ## `side` vaut 1 (à droite, face au cycliste qui suit le parcours) ou -1 (à gauche, face au cycliste qui roule
 ## à rebours après un demi-tour, lot N17) : le panneau du sommet est posé des deux côtés, comme sur une vraie
-## route (son nom et son altitude valent dans les deux sens) ; les panneaux d'approche, propres à la montée de
-## l'aller, et les bornes (numérotées sur leurs deux faces par roadside_props.gd) restent à droite.
+## route (son nom et son altitude valent dans les deux sens) ; les bornes (numérotées sur leurs deux faces par
+## roadside_props.gd) restent à droite. Lot N24 : une montée du retour (`dir` -1, climb_detector.gd `detect_back`)
+## a ses panneaux d'approche à gauche, en aval de son sommet dans le sens du parcours, et son panneau de sommet
+## s'il n'est pas celui d'une montée de l'aller (à moins de SHARED_SUMMIT_M) ; torii et lanternes (JP5) restent
+## ceux des montées de l'aller.
 ## Un objet qui tomberait dans l'eau (surface d'eau ou cours d'eau, donc
 ## aussi sur un pont) est avancé par pas de NUDGE_M, au plus MAX_NUDGE_M, sinon abandonné.
 ## Japon (lot JP5, version 6.0) : avec `biome_at` (biome dominant en (x, z)), une montée qui commence dans le biome
@@ -26,7 +29,7 @@ extends RefCounted
 ## au sens du virage), prolongée de GUARDRAIL_PAD_M de part et d'autre ; `s` et `s_end` bornent chaque morceau,
 ## coupé aux tronçons de 1 km pour que `for_chunk` le range d'un seul tenant.
 ## `paint_marks(climbs)` : chiffres des kilomètres restants peints sur la chaussée, de 5 à 1 km du
-## sommet, `[{s, digit}]`, pour road_markings.gdshader.
+## sommet, `[{s, digit, dir}]`, pour road_markings.gdshader (`dir` -1 : montée du retour, sur l'autre voie).
 ## Textes en français, nombres au format français (espace des milliers, virgule décimale).
 
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -48,6 +51,7 @@ const GUARDRAIL_STEP_M := 5.0
 const GUARDRAIL_PAD_M := 15.0
 const GUARDRAIL_MIN_M := 24.0
 const GUARDRAIL_BIOME_STEP_M := 50.0
+const SHARED_SUMMIT_M := 150.0       # sommet d'une montée du retour confondu avec celui d'une montée de l'aller (N24)
 
 
 ## Entier au format français : « 1 234 ».
@@ -111,12 +115,12 @@ static func _in_water(p: Vector3, water: Dictionary) -> bool:
 	return false
 
 
-## `s` hors de l'eau le plus proche en avançant (NAN si aucun à moins de MAX_NUDGE_M), côté `side`.
-static func _dry_s(route, s: float, water: Dictionary, road_width_m: float, side: int = 1) -> float:
+## `s` hors de l'eau le plus proche en avançant dans le sens `dir` (NAN si aucun à moins de MAX_NUDGE_M), côté `side`.
+static func _dry_s(route, s: float, water: Dictionary, road_width_m: float, side: int = 1, dir: int = 1) -> float:
 	var t := 0.0
 	while t <= MAX_NUDGE_M:
-		var cand := s + t
-		if cand > route.length_m:
+		var cand := s + t * dir
+		if cand > route.length_m or cand < 0.0:
 			return NAN
 		if not _in_water(prop_position(route, cand, road_width_m, side), water):
 			return cand
@@ -143,9 +147,14 @@ static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {}
 	var out := []
 	if route == null:
 		return out
+	var fwd_summits := []
+	for c in climbs:
+		if int(c.get("dir", 1)) > 0:
+			fwd_summits.append(float(c["summit_s"]))
 	for c in climbs:
 		var summit_s := float(c["summit_s"])
-		if biome_at.is_valid():
+		var dir := int(c.get("dir", 1))   # -1 : montée du retour (lot N24)
+		if biome_at.is_valid() and dir > 0:
 			var foot: Vector3 = route.sample_point(float(c["start_s"]))
 			if str(biome_at.call(foot.x, foot.z)) == "japan":
 				var st := _dry_s(route, minf(float(c["start_s"]) + TORII_AFTER_START_M, summit_s), water, road_width_m, 0)
@@ -157,20 +166,24 @@ static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {}
 						out.append({"kind": "lantern", "s": sl, "side": side, "text": "", "lines": []})
 		var name := _summit_name(route, summit_s, pois)
 		var alt_txt := "%s m" % format_int(int(round(float(c["summit_alt_m"]))))
-		for side in [1, -1]:   # un panneau pour chaque sens de marche (demi-tour, lot N17)
-			var ss := _dry_s(route, summit_s, water, road_width_m, side)
+		var shared := false
+		if dir < 0:
+			for f in fwd_summits:
+				shared = shared or absf(float(f) - summit_s) <= SHARED_SUMMIT_M
+		for side in ([] if shared else [1, -1]):   # un panneau pour chaque sens de marche (demi-tour, lot N17)
+			var ss := _dry_s(route, summit_s, water, road_width_m, side, dir)
 			if not is_nan(ss):
 				out.append({"kind": "summit", "s": ss, "side": side, "text": "%s\n%s" % [name, alt_txt], "lines": [name, alt_txt]})
 		for km in APPROACH_KM:
-			var s: float = summit_s - km * 1000.0
-			if s < float(c["start_s"]) - 1.0:
+			var s: float = summit_s - dir * km * 1000.0
+			if (s - float(c["start_s"])) * dir < -1.0:
 				continue
 			var alt_here := float(route.sample(s)["alt_m"])
 			var avg: float = (float(c["summit_alt_m"]) - alt_here) / (km * 1000.0) * 100.0
 			var lines := approach_texts(km, avg)
-			var sa := _dry_s(route, s, water, road_width_m)
+			var sa := _dry_s(route, s, water, road_width_m, dir, dir)
 			if not is_nan(sa):
-				out.append({"kind": "approach", "s": sa, "side": 1, "text": "\n".join(lines), "lines": lines,
+				out.append({"kind": "approach", "s": sa, "side": dir, "text": "\n".join(lines), "lines": lines,
 					"name": name, "km": km, "pct": int(round(avg)),
 					"alt_m": int(round(float(route.sample(sa)["alt_m"])))})
 	out.append_array(guardrails(route, biome_at))
@@ -238,10 +251,11 @@ static func guardrails(route, biome_at: Callable) -> Array:
 static func paint_marks(climbs: Array) -> Array:
 	var out := []
 	for c in climbs:
+		var dir := int(c.get("dir", 1))   # -1 : montée du retour (lot N24)
 		for km in PAINT_KM:
-			var s: float = float(c["summit_s"]) - km * 1000.0
-			if s >= float(c["start_s"]) - 1.0:
-				out.append({"s": s, "digit": km})
+			var s: float = float(c["summit_s"]) - dir * km * 1000.0
+			if (s - float(c["start_s"])) * dir >= -1.0:
+				out.append({"s": s, "digit": km, "dir": dir})
 	out.sort_custom(func(a, b): return a["s"] < b["s"])
 	return out
 

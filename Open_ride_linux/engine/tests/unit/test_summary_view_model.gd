@@ -110,7 +110,7 @@ func _init() -> void:
 	# 5. Écran de menu et intégration avec menu_model.gd (« Quitter » demande confirmation)
 	var scr: Dictionary = vm.menu_screen()
 	_check(scr.get("id") == "summary", "écran menu : identifiant 'summary'")
-	_check(scr.has("items") and scr["items"].size() == 3, "écran menu : 3 entrées (nouvelle séance, bilan détaillé, quitter)")
+	_check(scr.has("items") and scr["items"].size() == 4, "écran menu : 4 entrées (rejouer, menu principal, bilan détaillé, quitter)")
 
 	var menu = MenuModel.new()
 	vm.attach_to_menu(menu)

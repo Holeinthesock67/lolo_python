@@ -169,9 +169,11 @@ def test_full_race_with_eleven_opponents(course, caplog):
 @pytest.mark.parametrize("quality_port", [6890])
 def test_capture_scenario_is_decided_and_without_contacts(course, quality_port):
     """Scénario des captures (captures_ds) : ~195 W contre 2 bots à 74 % ± 8 % d'une FTP de 250 W (205 et
-    165 W), une arche par km : le Rouleur sort à l'arche 1, le cycliste à l'arche 2, sans aucun contact depuis
+    165 W ; lot BT1 : niveau 82 en Tempo pour la même allure), une arche par km : le Rouleur sort à l'arche 1, le cycliste à l'arche 2, sans aucun contact depuis
     le départ ; le Grimpeur reste assez près pour être à l'écran avant la première arche."""
-    c = course(quality_port, power_w=195.0, opponents=2, spacing_km=1, level_pct=74, spread="normal")
+    # Lot BT1 : 2 km de course (≈ 5 min, 120 % de la courbe) en Tempo (80 %) : niveau 82, bots à ≈ 79 % ± 8 % de la FTP
+    c = course(quality_port, power_w=195.0, opponents=2, spacing_km=1, level_pct=82, spread="normal",
+               objective="tempo")
     grimpeur = next(b for b in c.s.bots if b.id == "bot1")
     c.until(lambda s: s._t_session >= 8.0)   # capture « peloton » : Grimpeur juste devant, à droite du cycliste
     print("Grimpeur à 8 s :", round(grimpeur.s - c.s.physics.s, 1), "m")
