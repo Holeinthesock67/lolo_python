@@ -1,0 +1,11 @@
+altitude GPX / MNT : médiane 2.32 m, max 104.26 m, 7.9% des points à plus de 50 m
+avertissement : altitude GPX jugée aberrante : 7.9% des points à plus de 50 m du MNT ; altitude prise dans copernicus_glo30
+altitude de la route : copernicus_glo30
+terrain near : 11 tuile(s) de 1000 m, maille 10 m
+terrain near : 1553 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 12 tuile(s) de 5000 m, maille 50 m
+terrain horizon : 4 tuile(s) de 50000 m, maille 500 m
+biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 23 tuile(s)) : japan 95,7 %, temperate_grassland 4,3 %
+variantes (table régionale, tuiles proches) : basalte/kawara/— 11
+surface : tout revêtu (colonne omise)
+~/mesures-2026-11-01-auto/rEA1d/mondes/irohazaka.world : 9.37 km, 938 points, type open, 86 point(s) limité(s) à ± 25 %, couches route,terrain,biome,water (5.8 s)
