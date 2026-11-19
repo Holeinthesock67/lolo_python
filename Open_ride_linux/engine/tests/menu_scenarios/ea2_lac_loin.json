@@ -1,5 +1,5 @@
 {
-  "description": "Lot EA2, recette sur le PC : monde ouvert lancé depuis le village de Talloires (rive est du lac d'Annecy, réseau), 5 minutes de balade le long du lac avec une capture par minute : rive ouest, à 2 ou 3 km, au-delà de la couche eau proche (lue à 300 m de la route) : dessinée par l'eau lointaine des tuiles de 5 km seulement ; raccord avec l'eau proche. À lancer en low, medium et high, sur la branche puis sur la branche de EA1 (#881) pour comparer (les tuiles lointaines du cache se refont d'elles-mêmes : leurs versions changent). Le départ de Montmin (vallon derrière le col de la Forclaz) ne voyait pas le lac.",
+  "description": "Lot EA2, recette sur le PC : monde ouvert lancé depuis le village de Sevrier (rive ouest du lac d'Annecy, route de rive à double sens, réseau), 5 minutes de balade le long du lac avec une capture par minute : rive est, à 2 ou 3 km, au-delà de la couche eau proche (lue à 300 m de la route) : dessinée par l'eau lointaine des tuiles de 5 km seulement ; raccord avec l'eau proche. Même départ que ea1_lac (lot EA1). À lancer en low, medium et high, sur la branche puis sur la branche de EA1 (#881) pour comparer (les tuiles lointaines du cache se refont d'elles-mêmes : leurs versions changent). Montmin (vallon derrière le col de la Forclaz) ne voyait pas le lac ; Talloires engage une route sans issue au bout de 600 m (pas de révision de route).",
   "voies": [
     "clavier"
   ],
@@ -8,8 +8,8 @@
   "etapes": [
     {
       "depart_monde_ouvert": {
-        "recherche": "talloires",
-        "contient": "Talloires"
+        "recherche": "sevrier",
+        "contient": "Sevrier"
       }
     },
     {
