@@ -19,7 +19,7 @@ attente_s = 60
 
 [[pr]]
 id = "rHERBE-907"
-pr = 0                                   # PR du lot HERBE1 (numéro donné à l'ouverture)
+pr = 929
 branche = "claude/project-thread-5ofk6g"
 assemblage = ["claude/project-thread-oft1se"]   # #907 (mer du monde ouvert) fusionnée par-dessus, en local
 cache = "separe"
