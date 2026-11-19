@@ -1,0 +1,165 @@
+== parcours_demo (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 11.5 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus') : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé']) : « Contenus »
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (titre='Parcours', contient=['Col du lacet', 'Tour des nouveaux paysages', 'Route des Érables', 'Récif des tortues', 'Volcan en flammes', 'Route du Sud', 'Route du Grand Nord', 'Montée de 5 km de la forêt aux alpages, avec un lacet de deux épingles serrées.'], elements=['demo', 'demo-biomes-paysages', 'demo-japon', 'demo-recif', 'demo-volcan', 'demo-biomes-sud', 'demo-biomes-nord']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Col du lacet') : « Prêt : session libre — Col du lacet »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-paysages » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Tour des nouveaux paysages']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Tour des nouveaux paysages') : « Prêt : session libre — Tour des nouveaux paysages »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-biomes-paysages »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-japon » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Route des Érables']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Route des Érables') : « Prêt : session libre — Route des Érables »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-japon »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-recif » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Récif des tortues']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Récif des tortues') : « Prêt : session libre — Récif des tortues »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-recif »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-volcan » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Volcan en flammes']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Volcan en flammes') : « Prêt : session libre — Volcan en flammes »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-volcan »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-sud » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Route du Sud']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Route du Sud') : « Prêt : session libre — Route du Sud »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-biomes-sud »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-nord » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Route du Grand Nord']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Route du Grand Nord') : « Prêt : session libre — Route du Grand Nord »
+[OK] écran home : « OpenRide »
+[OK] choisir « grandprix » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Circuit des Prés') : « Prêt : Grand Prix des objets — Circuit des Prés »
+[OK] écran home : « OpenRide »
+[OK] choisir « track » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Vélodrome 250 m') : « Prêt : Vélodrome 250 m »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 11.5 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 8 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-paysages.world/manifest.json présent : .local/share/openride/routes/demo-biomes-paysages.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-japon.world/manifest.json présent : .local/share/openride/routes/demo-japon.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-circuit.world/manifest.json présent : .local/share/openride/routes/demo-circuit.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-volcan.world/manifest.json présent : .local/share/openride/routes/demo-volcan.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-sud.world/manifest.json présent : .local/share/openride/routes/demo-biomes-sud.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-nord.world/manifest.json présent : .local/share/openride/routes/demo-biomes-nord.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/velodrome-250.world/manifest.json présent : .local/share/openride/routes/velodrome-250.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (contient=['Tour des nouveaux paysages', 'Route des Érables', 'Volcan en flammes']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 11.5 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 8 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-paysages.world/manifest.json présent : .local/share/openride/routes/demo-biomes-paysages.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-japon.world/manifest.json présent : .local/share/openride/routes/demo-japon.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-circuit.world/manifest.json présent : .local/share/openride/routes/demo-circuit.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-volcan.world/manifest.json présent : .local/share/openride/routes/demo-volcan.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-sud.world/manifest.json présent : .local/share/openride/routes/demo-biomes-sud.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-nord.world/manifest.json présent : .local/share/openride/routes/demo-biomes-nord.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/velodrome-250.world/manifest.json présent : .local/share/openride/routes/velodrome-250.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (contient=['Tour des nouveaux paysages', 'Route des Érables', 'Volcan en flammes']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 11.5 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 8 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-paysages.world/manifest.json présent : .local/share/openride/routes/demo-biomes-paysages.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-japon.world/manifest.json présent : .local/share/openride/routes/demo-japon.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-circuit.world/manifest.json présent : .local/share/openride/routes/demo-circuit.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-volcan.world/manifest.json présent : .local/share/openride/routes/demo-volcan.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-sud.world/manifest.json présent : .local/share/openride/routes/demo-biomes-sud.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-nord.world/manifest.json présent : .local/share/openride/routes/demo-biomes-nord.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/velodrome-250.world/manifest.json présent : .local/share/openride/routes/velodrome-250.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (contient=['Tour des nouveaux paysages', 'Route des Érables', 'Volcan en flammes']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+parcours_demo            clavier  OK             127 s
+contenus                 click    OK              62 s
+contenus                 clavier  OK              63 s
+contenus                 souris   OK              59 s
+Rapport : ~/mesures-2026-11-01-auto/rNT1/menus/rapport.html
+OK

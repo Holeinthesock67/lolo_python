@@ -1,0 +1,7 @@
+08:57:53 empreinte avant 9e9289564a638fa362e3ef68c809ad8a
+08:57:53 tête 6d29f2dc5
+08:58:23 menus
+09:03:35 fin rc=0
+09:03:36 empreinte après 9e9289564a638fa362e3ef68c809ad8a
+09:03:36 clone 214ad0b2b
+09:03:36 FIN
