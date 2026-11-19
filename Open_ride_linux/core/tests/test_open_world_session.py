@@ -463,3 +463,48 @@ def test_real_fake_generator_starts_a_ride(tmp_path, monkeypatch):
         assert s.state.open_world["next"] is not None and s.state.lat != 0.0
     finally:
         s._close_open_world(wait=True)
+
+
+# --- lot W19 : arrivée en destination et en boucle ---------------------------------------------------
+
+def test_loop_finishes_at_its_length_and_saves_the_ride(session, tmp_path):
+    s = session(7070, power=450.0)
+    s.gpx_dir = tmp_path / "GPX"
+    open_world(s, {**START, "nav": "loop", "loop_km": 2})
+    s._on_command("start", {}, 2)
+    assert wait_until(s, lambda: s.state.session_state == "FINISHED", timeout=90.0), "boucle jamais terminée"
+    assert 2000.0 <= s.physics.s < 2100.0
+    assert s.openworld is None and s.state.summary is not None
+    assert len(list((tmp_path / "GPX").glob("*.gpx"))) == 1        # balade enregistrée (lot W14)
+
+
+def test_destination_finishes_at_the_announced_point(session, tmp_path):
+    s = session(7072, power=450.0, stub_args=["--dest-m", "1500"])
+    s.gpx_dir = tmp_path / "GPX"
+    open_world(s, {**START, "nav": "destination", "target": {"lat": 45.0, "lon": 6.02}})
+    assert s.openworld.finish_s == pytest.approx(1500.0)
+    s._on_command("start", {}, 2)
+    assert wait_until(s, lambda: s.state.session_state == "FINISHED", timeout=90.0)
+    assert 1500.0 <= s.physics.s < 1600.0
+
+
+def test_ride_never_announces_a_finish(session):
+    s = session(7074, power=450.0)
+    open_world(s)
+    s._on_command("start", {}, 2)
+    step(s, 30.0)
+    assert s.openworld.finish_s is None and s.state.session_state == "RUNNING"
+
+
+def test_restart_keeps_the_destination_and_drops_the_loop_finish(session):
+    s = session(7076, power=450.0, stub_args=["--crash-after-m", "300", "--crash-times", "1", "--dest-m", "5000"])
+    open_world(s, {**START, "nav": "destination", "target": {"lat": 45.0, "lon": 6.05}})
+    s._on_command("start", {}, 2)
+    first = s.openworld.client
+    assert wait_until(s, lambda: s.openworld.client is not first, timeout=60.0)
+    assert wait_until(s, lambda: s.openworld._next is None and not s.openworld.opening, timeout=30.0)
+    # le générateur relancé repart en destination : sa nouvelle arrivée est rapportée à la distance de séance
+    assert s.openworld._open_msg["nav"] == "destination"
+    base = s.openworld.route.base_m
+    assert wait_until(s, lambda: s.openworld.finish_s is not None, timeout=60.0)
+    assert s.openworld.finish_s == pytest.approx(base + 5000.0)

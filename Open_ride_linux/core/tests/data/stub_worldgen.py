@@ -12,6 +12,8 @@ vivant minimal (route droite vers l'est, pente sinusoïdale, deux carrefours). P
                          `data` reste `cached` : générateur en retard sur le cycliste (machine lente)
     --no-ready           ne répond jamais à `open` (préparation interminable)
     --unavailable        répond `world_unavailable` à `open`
+    --dest-m M           en `destination`, arrivée annoncée à M (défaut 3 000 m) ; en `loop`, arrivée à
+                         `loop_km` (lot W19 : `finish_m` de `revision` dès que la route engagée l'atteint)
 
 Après chaque message traité, `handled.<pid>.json` (à côté du dossier de séance) donne le nombre de messages
 lus et de messages écrits : un essai attend que la doublure ait répondu avant d'avancer son horloge simulée.
@@ -37,6 +39,7 @@ ap.add_argument("--stall-m", type=float)
 ap.add_argument("--late-m", type=float)
 ap.add_argument("--no-ready", action="store_true")
 ap.add_argument("--unavailable", action="store_true")
+ap.add_argument("--dest-m", type=float, default=3000.0)
 args = ap.parse_args()
 
 SESSION: Path = args.session
@@ -120,8 +123,10 @@ def publish(changed_from: int) -> None:
                                   "route": {"parts": n_parts, "length_m": state["length"], "changed_from_part": changed_from},
                                   "tiles": {"near": [], "far": []}, "layer_tiles": [],
                                   "status": "ok" if state["data"] != "missing" else "missing"})
+    finish = state.get("finish")
     send({"type": "revision", "rev": state["rev"], "length_m": state["length"], "changed_from_part": changed_from,
-          "junctions": len(junctions_payload()["junctions"])})
+          "junctions": len(junctions_payload()["junctions"]),
+          "finish_m": finish if finish is not None and finish <= state["length"] else None})
 
 
 def status(phase: str, message: str = "") -> None:
@@ -156,6 +161,10 @@ def handle(msg: dict) -> bool:
         status("osm", "recherche de la région")
         status("generate", "carrés")
         state["opened"] = True
+        if msg.get("nav") == "loop" and msg.get("loop_km"):
+            state["finish"] = float(msg["loop_km"]) * 1000.0
+        elif msg.get("nav") == "destination":
+            state["finish"] = args.dest_m
         status("ready")
         state["length"] = 0.0
         extend(0.0)
