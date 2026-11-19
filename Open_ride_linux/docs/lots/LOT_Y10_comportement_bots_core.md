@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | En PR (6 novembre) ; reste la course de 45 min sur le PC ; issue #366 |
+| Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | **Livré le 6 novembre** (PR #728) ; reste la course de 45 min sur le PC ; issue #366 |
 
 ## 1. Objectif
 
@@ -78,3 +78,7 @@ Module commun `core/src/openride_core/bot_tactics.py`, conçu pour être prolong
 - **Calibrage** : la simulation du T13 roule seule avec les attaques et la fatigue ; la forme du jour (0,97 à 1,03) s'applique après, sur la CP calibrée, et les relais ne jouent qu'en groupe. Le critère 6 est donc tenu en moyenne (test sur trois graines, forme comprise) et bot par bot au banc `bots_race`, qui tourne en mode `essai`.
 
 Tests : `core/tests/test_bot_tactics.py` (critères 1 à 6 du §7, physique et réserve inchangées par la tactique, mode `none` neutre). Aucun changement d'engine ni de contrat : pas de nouveau coût GPU ; la course de 45 min contre 4 bots (T11) reste à faire sur le PC.
+
+## Livraison
+
+Fusionné dans `main` : PR #728 (6 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

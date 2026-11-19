@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série P : éclairage du vélo, fenêtres éclairées, luminaires publics et lanternes la nuit ; sons d'ambiance et phares des véhicules à l'heure du jour et de la nuit ; nuit au quart du jour en journée accélérée | GDScript | P19, Y8, P25, JP5 | Moyenne | En revue (PR à venir) : captures et bancs PC à faire |
+| Série P : éclairage du vélo, fenêtres éclairées, luminaires publics et lanternes la nuit ; sons d'ambiance et phares des véhicules à l'heure du jour et de la nuit ; nuit au quart du jour en journée accélérée | GDScript | P19, Y8, P25, JP5 | Moyenne | **Livré le 13 novembre** (PR #862) |
 
 Demandes du propriétaire du 13 novembre : « Ajoute phare vélo, lumière fenêtre et autres objets lumineux », « Ajoute éclairage vélo, luminaires publics », « Corrige le décalage sons ambiance », « Pour la journée accélérée fais durer la nuit un quart du temps du jour ». Le cahier P19 (§8) laissait l'éclairage public, le phare du vélo et les fenêtres éclairées hors périmètre.
 
@@ -64,3 +64,7 @@ Demande du 13 novembre (« Pas de nuit dans vélodrome ») : la salle du vélodr
 ## 7. Fichiers touchés
 
 `engine/scripts/night_lights.gd`, `bike_lights.gd`, `street_lights.gd` (nouveaux), `engine/shaders/night_lamp.gdshader` (nouveau), `building.gdshader`, `project.godot`, `main.gd`, `living_world.gd`, `living_decor.gd`, `avatar_view.gd`, `roadside_props.gd`, `daylight_model.gd`, `sky_cycle.gd`, tests et vitrine.
+
+## Livraison
+
+Fusionné dans `main` : PR #862 (13 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

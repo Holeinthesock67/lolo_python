@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série WTF : gags lisibles et objets reconnaissables | GDScript | WTF8 étape A | Moyenne | En PR (#848), captures à valider |
+| Série WTF : gags lisibles et objets reconnaissables | GDScript | WTF8 étape A | Moyenne | **Livré le 12 novembre** (PR #848) |
 
 Série WTF (2.0). Demande du propriétaire : constat WTF8 étape A du 8 novembre (gags peu compréhensibles faute d'annonce, objets mal définis, boule Katamari non identifiée) et règle du 11 novembre « gameplay lisible, expérience fluide, objets reconnaissables, pas de pavés ou de boule roses ».
 
@@ -42,3 +42,7 @@ Constats du propriétaire : « où sont les œufs à l'écran ? » (le gag des �
 | `tests/vitrine_wtf.gd` | Gag `oeufs` (4 œufs sur 6). |
 
 Vérifications : `test_wtf_scene` (boule qui roule vers l'avant de d / r dans les deux sens, pas de rotation sur un saut, carton sur le porte-bagages et penché avec le vélo, nombre d'œufs borné, carton à 6 et 0 œufs en un maillage à plusieurs couleurs). Planche cloud `vitrine_wtf.gd --gags oeufs` low/medium/high ; rotation de la boule à juger sur le PC (image fixe en vitrine).
+
+## Livraison
+
+Fusionné dans `main` : PR #848 (12 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

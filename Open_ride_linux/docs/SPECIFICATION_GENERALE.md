@@ -1,6 +1,6 @@
 # OpenRide Linux – Spécification générale, versions 1.0 à 5.0
 
-26 octobre 2026, complétée le 8 novembre 2026 (versions 4.0 et 5.0, modes de jeu, réglages, vent, jour et nuit, saisons, contrat IPC jusqu'à la révision 1.8 et révisions réservées). Ce document rassemble en une seule spécification la SRS de la 1.0 et les plans des versions 2.0 à 5.0. Il ne remplace aucun document détaillé : il dit **ce que chaque version doit faire**, **où en est chaque exigence** et **quel document fait foi** pour le détail.
+26 octobre 2026, complétée le 8 novembre 2026 (versions 4.0 et 5.0, modes de jeu, réglages, vent, jour et nuit, saisons, contrat IPC jusqu'à la révision 1.8 et révisions réservées), puis le 19 novembre 2026 (révisions IPC 1.9 à 1.19 livrées, 1.20 prévue ; statuts de la 1.x à la 6.0 relevés sur `main`). Ce document rassemble en une seule spécification la SRS de la 1.0 et les plans des versions 2.0 à 5.0. Il ne remplace aucun document détaillé : il dit **ce que chaque version doit faire**, **où en est chaque exigence** et **quel document fait foi** pour le détail.
 
 ## 1. Comment lire ce document
 
@@ -93,7 +93,7 @@ Le core annonce les modes qu'il sait jouer dans `hello_ack.config.modes` ; l'acc
 | « What the fuck » | `wtf` | SIM seulement, pente bornée −6 / +10 % | 2.0 | [PLAN_SERIE_WTF.md](2.0/PLAN_SERIE_WTF.md) | Livré ; recette WTF8 à faire |
 | Dernier survivant | `survivor` | SIM | 2.0 (11 adversaires en 3.0) | [PLAN_SERIE_DS.md](2.0/PLAN_SERIE_DS.md) | Livré ; recette DS9 à faire |
 | Grand Prix des objets | `grandprix` | SIM seulement | 4.0 | [PLAN_SERIE_GP.md](4.0/PLAN_SERIE_GP.md) | Core livré (GP1 à GP3) ; entrée de l'accueil GP9 à faire |
-| Vélodrome | épreuves passées par `list_mode_options` et `set_mode_option` | SIM | 4.0 | [PLAN_SERIE_VD.md](4.0/PLAN_SERIE_VD.md) | En revue (PR #746, #769) |
+| Vélodrome | épreuves passées par `list_mode_options` et `set_mode_option` | SIM | 4.0 | [PLAN_SERIE_VD.md](4.0/PLAN_SERIE_VD.md) | Livré (PR #746 et #769, 8 novembre) |
 | Course tactique | `tactical` | SIM seulement | 5.0 | [PLAN_SERIE_CT.md](5.0/PLAN_SERIE_CT.md) | CT0 livré, CT9 maquettes validées ; reste CT1 à CT8, CT10 à CT12 |
 
 Les options d'un mode (règles du WTF, objets du Grand Prix, épreuves de piste) passent par les commandes génériques `list_mode_options` et `set_mode_option` (révision 1.7), jamais par une commande propre au mode.
@@ -188,8 +188,8 @@ Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et c
 | 1.x-DEC-1 | Arbres et herbe au vent, nuages, météo légère | P5, P6, P8 | Livré (P5, P6, P8) |
 | 1.x-DEC-2 | Sons d'ambiance et du vélo (vent selon la vitesse dans l'air, roue libre, « clac » à la reprise) | P9, P10 | Livré (P9, P10) |
 | 1.x-DEC-3 | Animaux, éoliennes, drapeaux, véhicules, bord de route, spectateurs, passants | P11 à P15, P21 | Livré (P11 à P15, P21) |
-| 1.x-UI-1 | Demi-tour sur la route depuis l'écran de pause (« Faire demi-tour »), puis aussi par Y maintenu en roulant (demande du propriétaire du 8 novembre) | N17 | En revue (PR #791 : commande `u_turn` et champ `dir`, révision 1.9 ; suite, PR #792 : Y maintenu, événement `Y_LONG`, révision 1.11) |
-| 1.x-UI-2 | Bots réglés depuis les menus : nombre, puissance de chacun, fantôme, sur l'écran Prêt (gardés d'une séance à l'autre par profil) et sur l'écran de pause (commande `set_bots`, révision 1.9) | N18 (avec O7, O32, O35, PL1) | En revue (PR #789, 8 novembre ; écran Prêt livré par O7, O35 et PL1) |
+| 1.x-UI-1 | Demi-tour sur la route depuis l'écran de pause (« Faire demi-tour »), puis aussi par Y maintenu en roulant (demande du propriétaire du 8 novembre) | N17 | Livré (PR #791 : commande `u_turn` et champ `dir`, révision 1.9 ; suite, PR #792 : Y maintenu, événement `Y_LONG`, révision 1.11 ; 9 novembre) ; demi-tour automatique en ERG et test de FTP par N26 (PR #882, 17 novembre) |
+| 1.x-UI-2 | Bots réglés depuis les menus : nombre, puissance de chacun, fantôme, sur l'écran Prêt (gardés d'une séance à l'autre par profil) et sur l'écran de pause (commande `set_bots`, révision 1.9) | N18 (avec O7, O32, O35, PL1) | Livré (PR #789, 8 novembre ; écran Prêt livré par O7, O35 et PL1) |
 | 1.x-DEC-4 | Intégration et recette : au moins 55 images/s en `low` sur la GTX 1060, p99 sous 25 ms, tout se coupe par préréglage | P16, P17 | Livré ; RECETTE_P16 validée le 27 octobre sauf vent de travers, vent de dos et décor vivant coupé ; RECETTE_P17 jamais passée |
 
 ### 5.2 Version 2.0
@@ -198,8 +198,8 @@ Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et c
 
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
-| 2.0-DEC-1 | Jour et nuit : heure, coucher de soleil, nuit étoilée | P7, P19 | En revue (P7 et P18 réunis, PR #781) ; P19 commencé ; réglage `render.day_night` séparé, coupé par défaut (demande du propriétaire du 8 novembre) |
-| 2.0-DEC-2 | Quatre saisons (feuillages, neige, vergers en fleurs), inversées dans l'hémisphère sud | P18, P19 | En revue (PR #781) ; réglage `render.seasons` séparé de celui du jour et de la nuit, coupé par défaut |
+| 2.0-DEC-1 | Jour et nuit : heure, coucher de soleil, nuit étoilée | P7, P19 | Livré (P7, P18 et P19 réunis, PR #781, 8 novembre) ; réglage `render.day_night` séparé, coupé par défaut (demande du propriétaire du 8 novembre) |
+| 2.0-DEC-2 | Quatre saisons (feuillages, neige, vergers en fleurs), inversées dans l'hémisphère sud | P18, P19 | Livré (PR #781, 8 novembre ; saisons par biome U13 #840 et mois au menu U13b #860) ; réglage `render.seasons` séparé de celui du jour et de la nuit, coupé par défaut |
 | 2.0-DEC-3 | Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | P20 | Livré (P20, PR #621) ; réglage « Textures du décor » |
 | 2.0-VNT-1 | Vent activé par défaut d'après la météo locale, repli sans vent hors ligne (règle R-NET-3) | P1 (décision n° 1) | **Non fait** (oubli relevé le 8 novembre) : reporté en 3.0 (3.0-VNT-1, lot P33, mode `local`, coupé par défaut) |
 
@@ -282,7 +282,7 @@ Détail : [PLAN_SERIE_U.md](3.0/PLAN_SERIE_U.md). Toutes les questions U-Q1 à U
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
 | 3.0-BIO-1 | Seize biomes ; au plus quatre par tuile de terrain (trois en `low`) ; biome automatique d'après les données réelles et forçage au compilateur et au menu | U1, U2, U16, U19 | En partie : U1, U16 et U19 livrés ; classification automatique U2 en revue (PR #734) |
-| 3.0-BIO-2 | Occupation du sol ESA WorldCover téléchargée par le compilateur et mise en cache | U2 | En revue (U2, PR #734) |
+| 3.0-BIO-2 | Occupation du sol ESA WorldCover téléchargée par le compilateur et mise en cache | U2 | Livré (U2, PR #734, 9 novembre) |
 | 3.0-BIO-3 | Variantes régionales de roches, terres et bâtiments à grosse maille | U4, U14 | U4 en revue (PR #785, brouillon) ; U14 attend U4 |
 | 3.0-BIO-4 | Mer, côtes et plages | U3, U9 | U3 en revue (PR #790) ; U9 attend U3 |
 | 3.0-BIO-5 | Saisons propres à chaque biome (saison sèche et saison des pluies, désert, polaire) | U13 | Bloqué : U13 attend P18 (PR #781), puis P19 |
@@ -303,12 +303,12 @@ Détail : [4.0/README.md](4.0/README.md). Code de la 4.0 déjà fusionné sur `m
 
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
-| 4.0-BON-1 | Bonus tactiques : un seul modèle de bonus dans `powerups.py`, tirage selon le contexte et refus motivé ; Plume, Casque, Puissance, Enclume, Aspiration +, Échappée, Rouleau compresseur ; réglage `powerups.mode` à trois choix ; tous coupés en ERG, ERG de session libre compris | TT1 à TT8 | Spécifié (cahiers rédigés le 8 novembre) |
+| 4.0-BON-1 | Bonus tactiques : un seul modèle de bonus dans `powerups.py`, tirage selon le contexte et refus motivé ; Plume, Casque, Puissance, Enclume, Aspiration +, Échappée, Rouleau compresseur ; réglage `powerups.mode` à trois choix ; tous coupés en ERG, ERG de session libre compris | TT1 à TT8 | Livré (TT1 à TT8 fusionnés du 9 au 13 novembre, PR #806, #810, #813, #814, #816, #824, #817, #819) ; recette du propriétaire TT8 à faire |
 | 4.0-GP-1 | Grand Prix des objets : treize objets propres à OpenRide, chacun désactivable, boîtes de ravitaillement, tirage selon le retard, effets sur la vitesse virtuelle seulement, bots qui prennent et lancent les objets, jusqu'à 11 bots | GP1 à GP11 | GP1, GP2, GP3 et GP6 livrés ; GP5 en revue (PR #779) ; reste GP4, GP7 à GP11 |
 | 4.0-VD-1 | Vélodrome couvert : piste de 250 m en bois à virages relevés, salle et tribunes, épreuves de piste (poursuite, kilomètre, scratch, points, élimination, keirin, omnium, heure…), bots du peloton sur la piste | VD0 à VD12 | VD0 livré (PR #725) ; VD1 à VD5 en revue (PR #746) ; VD6, VD7, VD9 et VD10 en revue (PR #769) |
 | 4.0-CLK-1 | Boîtier gauche du Click fiable quand Zwift tourne sur un autre appareil, essai sur le vélo (décision du 28 octobre) | K9 | Essayé le 8 novembre : le maintien sans redémarrage ne tient pas sous firmware 1.2.0, le redémarrage `0x18` reste (environ 4 s par minute) |
 | 4.0-BIO-1 | Constructions et faune propres à chaque biome (demande du 6 novembre) | U23 | Étape 1 livrée (PR #748) ; étape 2 en revue (PR #771) |
-| 4.0-DEC-1 | Panneaux d'approche plus grands (+25 %) et plus travaillés (demande du 6 novembre) | panneaux, PR #773 | En revue : captures validées le 8 novembre, banc GPU à faire |
+| 4.0-DEC-1 | Panneaux d'approche plus grands (+25 %) et plus travaillés (demande du 6 novembre) | panneaux, PR #773 | Livré (PR #773, 8 novembre ; captures validées le 8 novembre) |
 | 4.0-RES-1 | Résistance calculée sans trou à basse vitesse, sans pompage à basse cadence | RC4, RC5 | RC4 livré (PR #718, recette 4/5 le 7 novembre) ; RC5 en revue (PR #766) |
 
 ### 5.5 Version 5.0
@@ -324,8 +324,8 @@ Détail : [5.0/README.md](5.0/README.md).
 | 5.0-ERG-1 | Séance `.zwo` complète en ERG au Click : cibles, biais ± 2 % et ± 10 %, bip à T − 3 s, Z, Y, courbes lisibles (lignes 5 et 14 de la recette 1.0) | F, O17, O14 | Abandonné le 12/11 (décision du propriétaire) : recette retirée du plan ; le lecteur `.zwo` livré en 1.0 (1.0-ERG-1) reste |
 | 5.0-RND-1 | Essais de gain de performance GPU (cultures, forêt, alpin : effets d'écran, prépasse de profondeur) jusqu'à tenir les budgets du §8 | Y, [HISTORIQUE_ESSAIS_GRAPHIQUES.md](HISTORIQUE_ESSAIS_GRAPHIQUES.md) §5 | Planifié (décision du 8 novembre) |
 | 5.0-RND-2 | Graphisme et comportement des bots améliorés en toute fin de projet, sous les budgets GPU (série Y restante : Y3, Y4, Y7, Y9, Y12) | Y | Spécifié |
-| 5.0-DEM-1 | Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites (demande du 5 novembre), **avant** l'installeur | O37 | En PR (8 novembre) |
-| 5.0-INS-1 | Installation simple sur Linux, idéalement un seul fichier exécutable, avec une notice si ce n'est pas un fichier unique ; en tout dernier (demandes du 31 octobre et du 5 novembre) | J4, J9 | Spécifié (J9 rédigé le 8 novembre ; J4 en cours) |
+| 5.0-DEM-1 | Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites (demande du 5 novembre), **avant** l'installeur | O37 | Livré (O37 #811, 11 novembre) ; liste finale du jeu de base verrouillée par NT1 (PR #922, 19 novembre) : Col du lacet, Tour des nouveaux paysages, Route des Érables, Récif des tortues, Volcan en flammes, Route du Sud, Route du Grand Nord, Circuit des Prés (Grand Prix), Vélodrome 250 m, pack Cols célèbres (PK1 #867) |
+| 5.0-INS-1 | Installation simple sur Linux, idéalement un seul fichier exécutable, avec une notice si ce n'est pas un fichier unique ; en tout dernier (demandes du 31 octobre et du 5 novembre) | J4, J9 | J4 livré (PR #799, 8 novembre) ; J9 décidé le 13 novembre : AppImage seule (plan `PLAN_LOT_J9_APPIMAGE.md` hors dépôt, sous-lots J9a, J9b, J9c), en tout dernier, après les lots gelés du 19 novembre ; notice pas encore écrite |
 
 ## 6. Contrats
 
@@ -344,25 +344,23 @@ Le champ `v` reste 1 : tous les ajouts sont compatibles. Chaque révision est no
 | 1.6 | Peloton d'environ 12 bots : jusqu'à 12 éléments dans `bots` (`state`, `start`, `last_choices`), liste allégée au-delà de 5 bots | PL1 | 3.0 | Livré (PR #716, 6 novembre) |
 | 1.7 | Mode `grandprix` (argument `mode` de `start`, `hello_ack.config.modes`), objet `gp` de `state`, champs `item` et `fx` des bots, `summary.gp`, message `gp_hit` ; commandes génériques `list_mode_options` et `set_mode_option`, message `mode_options`. Fermée | GP2 | 4.0 | Livré (7 novembre) |
 | 1.8 | Collection de cartes : commandes `list_collection` et `collection_seen`, message `collection`, objet facultatif `summary.collection` | BC2 | 5.0 | Livré (PR #758, 8 novembre) ; le core annonce `rev` « 1.8 » |
-| 1.9 | Réglages de séance au menu de la série N, partagée par N17 et N18 lancés ensemble (1.7 : Grand Prix et vélodrome ; 1.8 : collection de cartes, BC2) : commande `set_bots` pendant la pause, `last_choices.bots` repris du dernier `set_bots` (N18) ; demi-tour depuis la pause, commande `u_turn` (en `PAUSED` seulement, sinon `busy`), champ facultatif `dir` de `state` (`-1` à rebours, absent vaut `1`), `grade` dans le sens roulé (N17) | N18, N17 | 1.x | N18 livré (8 novembre) ; N17 en PR ; le core annonce `rev` « 1.9 » |
-| 1.11 | Demi-tour en roulant : événement `input` `Y_LONG` (Y maintenu 0,9 s ou plus, sans zone floue) ; pendant `RUNNING`, demi-tour sans arrêt aux conditions de `u_turn`, sinon pause | N17 (suite) | 1.x | En PR (8 novembre) ; 1.10 prise par #788 |
-| 1.13 | Bonus tactiques : valeurs `feather`, `anvil`, `draft_plus`, `breakaway`, `roller` de `powerup.held` et `powerup.active` (`light`, ancien nom de `feather`, gardé une révision), champ `refused` de `powerup`, réglage `powerups.mode` à trois choix (`off`, `classiques`, `tactiques`) | TT1 | 4.0 | En PR (réservée le 8 novembre, après 1.9 à 1.12, toutes fusionnées) |
-| 1.15 | Import d'entraînements retiré (décision du propriétaire du 12 novembre) : `list_imports` et `import_workout` gardées dans le schéma mais refusées par `error` `workout_invalid`, message `imports` plus envoyé ; écran « Importer un fichier » retiré du sous-menu ERG | Retrait N16 (import) | 5.0 | En revue |
+| 1.9 | Réglages de séance au menu de la série N, partagée par N17 et N18 lancés ensemble (1.7 : Grand Prix et vélodrome ; 1.8 : collection de cartes, BC2) : commande `set_bots` pendant la pause, `last_choices.bots` repris du dernier `set_bots` (N18) ; demi-tour depuis la pause, commande `u_turn` (en `PAUSED` seulement, sinon `busy`), champ facultatif `dir` de `state` (`-1` à rebours, absent vaut `1`), `grade` dans le sens roulé (N17) | N18, N17 | 1.x | Livré (N18 #789 et N17 #791, 8 et 9 novembre) |
+| 1.10 | Bilan en tuiles et profil du segment | N20 | 1.x | Livré (PR #788, 9 novembre) |
+| 1.11 | Demi-tour en roulant : événement `input` `Y_LONG` (Y maintenu 0,9 s ou plus, sans zone floue) ; pendant `RUNNING`, demi-tour sans arrêt aux conditions de `u_turn`, sinon pause | N17 (suite) | 1.x | Livré (PR #792, 9 novembre) |
+| 1.12 | Séance conseillée : commande `get_coach`, message `coach` | CO3, CO8 | 5.0 | Livré (PR #770, 8 novembre) |
+| 1.13 | Bonus tactiques : valeurs `feather`, `anvil`, `draft_plus`, `breakaway`, `roller` de `powerup.held` et `powerup.active` (`light`, ancien nom de `feather`, gardé une révision), champ `refused` de `powerup`, réglage `powerups.mode` à trois choix (`off`, `classiques`, `tactiques`) | TT1 | 4.0 | Livré (PR #806, 9 novembre) |
+| 1.14 | Fin du Cyber-Rogue : valeur `purge` de `rogue.events`, commande `buy_life`, `life_price` et `max_lives` de `hello_ack.config` | R21 | 2.0 | Livré (PR #835, 10 novembre) |
+| 1.15 | Import d'entraînements retiré (décision du propriétaire du 12 novembre) : `list_imports` et `import_workout` gardées dans le schéma mais refusées par `error` `workout_invalid`, message `imports` plus envoyé ; écran « Importer un fichier » retiré du sous-menu ERG | Retrait N16 (import) | 5.0 | Livré (PR #843, 12 novembre) |
+| 1.16 | Lisibilité du Cyber-Rogue : champs facultatifs `phase_left_s`, `next`, `loot_stage`, `target_pct`, `firewall_gap_s`, `z_reason`, `shift_miss` de `rogue` | R22 | 2.0 | Livré (PR #842, 12 novembre) |
+| 1.17 | Retours du Cyber-Rogue : valeur `z_ok` de `rogue.events`, champs facultatifs `z_action`, `card_on`, `adrenaline_trend`, fenêtres `windows` | R23 | 2.0 | Livré (PR #884, 16 novembre ; fusionnée après la 1.18) |
+| 1.18 | Liste `riders` de 10 cyclistes du décor dans sa propre trame | AS10 | 2.0 | Livré (PR #894, 16 novembre) |
+| 1.19 | Parcours propres à un mode : `hello_ack.config.mode_routes`, `last_choices.mode_routes` ; boîtes prises `state.gp.boxes_gone` | GP13a, GP14 | 4.0 | Livré (PR #904, 16 novembre) ; révision annoncée par le core |
+| 1.20 | Règle unique de la chaussée pour tous les usagers (solution générale aux contacts) | AS11 | 2.0 | Prévue : PR #925 en revue (19 novembre), prochaine révision libre |
 | (1.5) | Série U : clés facultatives `biome` et `gravel` de `hello_ack.config`, aucun nouveau message (le menu passe par `set_setting`) | U1, U16 | 3.0 | Livré : prévu pour la 1.6, avancé dans la 1.5 avec le lot U16 (PR #639, journal d'ipc_v1.md du 31 octobre) |
 
 **Ajouts fusionnés le 29 octobre** (notés au journal de [ipc_v1.md](contracts/ipc_v1.md)) : champ facultatif `busy` de `devices.trainer` (PR #540, Control Point occupé par un autre appareil, liaison gardée) ; `set_setting` accepté pendant la séance pour les réglages `applies` = `now` (PR #552, matrice X42) ; réglage `render.draft_gauge` (jauge d'abri). Sans changement IPC : champ facultatif `reason` des lignes `event` du journal de séance (PR #542) et plus aucun bloc `freeride` en ERG (lot O19, consigne jamais sous 50 W). Aucun ajout du contrat n'est en revue au 29 octobre au soir.
 
-**Révisions réservées par des PR ouvertes (8 novembre au matin).** La règle reste « première révision libre au moment de la fusion » : ces numéros sont provisoires et chaque PR prend, à sa fusion, le numéro qui suit la dernière révision de `main`.
-
-| Révision réservée | Contenu | Lot, PR | Écart à corriger à la fusion |
-| --- | --- | --- | --- |
-| 1.9 | Commande `u_turn` et champ `dir` de `state` (demi-tour depuis la pause) | N17, PR #791 | **Même numéro que la PR #789** : la seconde fusionnée prend 1.10 |
-| 1.9 | Commande `set_bots` (bots changés en pause), ligne `bots` du journal | N18, PR #789 | Idem |
-| 1.10 | Bilan en tuiles et profil du segment | N20, PR #788 | Prend la révision qui suit N17 et N18 |
-| 1.11 | Demi-tour sur Y maintenu en roulant | suite de N17, PR #792 (brouillon) | Idem |
-| (1.7) | Objet `track` de `state` (épreuves de piste) | VD6, PR #769 | **La 1.7 est fermée** (GP2) : la PR doit prendre la révision libre suivante |
-| — | Commande `get_coach`, message `coach` | CO3, PR #770 | Le contrat doit annoncer sa révision à la fusion |
-
+**Révisions réservées.** Les réservations du 8 novembre (1.9 à 1.11, VD6, CO3) sont toutes réglées : chaque PR a pris à sa fusion la première révision libre (tableau ci-dessus, journal d’[ipc_v1.md](contracts/ipc_v1.md)). Au 19 novembre, seule la 1.20 est prévue (AS11, PR #925). La règle reste « première révision libre au moment de la fusion ».
 
 Règles de numérotation (décision du propriétaire du 27 octobre, « au plus propre », audit de cohérence) : les révisions se suivent dans l'ordre des fusions, si bien qu'un programme qui annonce `rev` « 1.3 » connaît tout ce qui est noté 1.2 et 1.3. Une révision fermée ne reçoit plus d'ajout : la 1.2 est fermée depuis la fusion de la 1.3 ; la 1.3 reste ouverte jusqu'à l'étiquette `v1.0.0` et reçoit tous les ajouts de la 1.0 qui fusionnent avant elle ; la 1.4 est celle des séries R, T et V, en un seul lot de contrat, T1 (décisions D2 de l'audit IPC et D4 de l'audit de cohérence) ; les événements de tous les boutons sont déjà dans la 1.3, une seule fois ; W1 prend la 1.5. Un ajout fait après la 1.0 hors de ces séries prend la première révision libre à sa fusion. Numérotation 1.4 et 1.5 confirmée par le propriétaire le 26 octobre (décision D2 de l'audit IPC). L'ancienne proposition N13 = 1.3, P1 = 1.4, R/T = 1.5 est périmée.
 
@@ -376,7 +374,7 @@ Règles de numérotation (décision du propriétaire du 27 octobre, « au plus p
 | Couche `segments` (format 1.3, `segments.json`) | T1, T3 | 2.0 | Format écrit (T1) ; écrite par le compilateur et le parcours de démonstration (T3) |
 | Monde vivant : `live`, origine sur grille UTM, route par parties, couches par carré, `junctions.json` | W1 | 2.0 | Livré (PR #282) |
 | Couche `biome`, variante régionale, eau `sea`, couche `coast` ; colonne `surface` de la route et classe `g` du monde ouvert ; thème 2.0 en pack de biomes | U1 | 3.0 | Format livré le 28 octobre (U1) ; couches remplies par U2 (PR #734), U3 (PR #790) et U4 (PR #785) |
-| Colonne `bank_deg` de `route.json`, surface `wood`, couche `venue` (vélodrome, format 1.7) | VD1 | 4.0 | En revue (PR #746) |
+| Colonne `bank_deg` de `route.json`, surface `wood`, couche `venue` (vélodrome, format 1.7) | VD1 | 4.0 | Livré (PR #746, 8 novembre) |
 
 ### 6.3 Configuration et réglages du menu
 
@@ -518,3 +516,4 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | 29 octobre 2026 | Révision 1.5 de l'IPC remise à l'état de `main` (W1, T12, T13, O18 livrés), ajouts du 29 octobre notés (#540, #552, `render.draft_gauge`, O19) ; 1.0-ERG-6 (O18) livré ; statuts « en revue » d'O12 et de la série W remplacés par l'état des PR, toutes fusionnées |
 | 8 novembre 2026 | Complétée à la demande du propriétaire : versions 4.0 et 5.0 (§1, §2, §5.4, §5.5), modes de jeu (§2.1), autres ajouts de la 2.0 et de la 3.0, statuts remis à l'état de `main` 3fc651a1, révisions IPC 1.6 à 1.8 et révisions réservées (§6.1), réglages du menu, vent, jour, nuit et saisons (§6.3), boutons des nouveaux modes (§7.1), budgets GPU 8 / 13 / 16 ms (§8), écarts C13 à C15 |
 | 8 novembre 2026 | Y maintenu en roulant : demi-tour sans arrêt (§7.1, ligne « Y long », clavier Maj+Y), révision 1.11 de l'IPC (§6.1), exigence 1.x-UI-1 complétée |
+| 19 novembre 2026 | Mise à jour de la documentation : §6.1 remis à l'état de `main` (révisions 1.9 à 1.19 livrées, 1.20 prévue pour AS11, réservations du 8 novembre réglées), statuts des exigences dont les lots sont fusionnés |

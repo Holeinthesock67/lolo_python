@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : parcours propres à un mode (Vélodrome, Grand Prix), règle unique, accueil et listes | Python, GDScript | GP9, VD10, O32, O38 | Moyenne | Fait (GP13a ; banc PC et captures à faire ; GP13b à venir) |
+| Série GP : parcours propres à un mode (Vélodrome, Grand Prix), règle unique, accueil et listes | Python, GDScript | GP9, VD10, O32, O38 | Moyenne | GP13a **livré le 16 novembre** (PR #904, avec GP14) ; GP13b à venir (lot gelé du 19 novembre) |
 
 Série GP (mode « Grand Prix des objets ») et série VD (vélodrome). Plan validé par le propriétaire le 15 novembre 2026 : `PLAN_PARCOURS_GRAND_PRIX.md` (dossier du projet, v2).
 

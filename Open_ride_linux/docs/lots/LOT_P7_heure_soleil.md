@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | **En PR** (lancé le 8 novembre, demande du propriétaire « Lance jour/nuit et saison du 2.0 ») ; modèle pur, sans effet à l'écran avant P19 ; issue #131 |
+| Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | **Livré le 8 novembre** (PR #781, avec P18 et P19) ; issue #131 |
 
 ## 1. Objectif
 
