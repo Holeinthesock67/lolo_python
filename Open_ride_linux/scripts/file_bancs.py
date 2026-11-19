@@ -42,7 +42,9 @@ Format de la file :
     commande = "python3 engine/tests/menu_bench.py --native --scenario w17_cap --qualite low --out {sortie}"
 
 Les commandes tournent dans `<worktree>/Open_ride_linux`, avec `{sortie}` (dossier de l'étape), `{worktree}` et
-`{projet}`, `{depot}` (le dépôt du user, pour son environnement Python) remplacés ; le portail reçoit FILE_PR,
+`{projet}`, `{depot}` (le dépôt du user, pour son environnement Python) remplacés ; chaque étape a PYTHONPATH sur
+les sources du worktree (core et compilateur), le core/.venv du dépôt en tête du PATH (lié dans le worktree),
+LC_NUMERIC=C et OPENRIDE_NO_GUI=1, comme job.sh ; le portail reçoit FILE_PR,
 FILE_ETAPE et FILE_DUREE_MIN (délai de l'étape, pour ne pas déborder sur la fenêtre du user). Verdicts :
 - OK ; CONTACTS : seules des vérifications de contacts ont échoué (non bloquant, lot AS11) ;
 - ÉCHEC : une vérification du jeu ; DÉLAI : étape arrêtée au bout de `delai_min` ;
@@ -250,9 +252,12 @@ def git(depot: Path, *args: str) -> str:
 
 
 def resoudre_tete(f: File, branche: str, reseau: bool) -> str:
+    """Tête de `branche` sur origin. Refspec explicite : le dépôt du user ne suit que main
+    (`+refs/heads/main:refs/remotes/origin/main`), un simple `git fetch origin <branche>` n'y crée pas la ref distante
+    (pilote arrêté le 19 novembre à 10h30)."""
     if reseau:
-        git(f.depot, "fetch", "--quiet", "origin", branche)
-    return git(f.depot, "rev-parse", f"refs/remotes/origin/{branche}")
+        git(f.depot, "fetch", "--quiet", "origin", f"+refs/heads/{branche}:refs/remotes/origin/{branche}")
+    return git(f.depot, "rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branche}^{{commit}}")
 
 
 MARQUE_TETE = ".file_bancs_tete"
@@ -307,6 +312,27 @@ def cache_separe(f: File, pr: PR) -> Path:
 
 
 # --- exécution -----------------------------------------------------------------------------------
+
+def environnement_etape(depot: Path, projet: Path) -> dict[str, str]:
+    """Environnement d'une étape, comme job.sh du fil de fusion : sources du worktree d'abord (PYTHONPATH : core et
+    compilateur, sinon « No module named 'openride_compiler' » dans les tests de l'engine, 19 novembre), environnement
+    Python du dépôt du user (core/.venv : VIRTUAL_ENV, PATH, et lien core/.venv dans le worktree), chiffres à la C,
+    aucune fenêtre bloquante."""
+    env = dict(os.environ)
+    env.pop("OPENRIDE_BANC_CACHES", None)
+    sources = [str(projet / "core" / "src"), str(projet / "compiler" / "src")]
+    env["PYTHONPATH"] = os.pathsep.join([*sources, *([env["PYTHONPATH"]] if env.get("PYTHONPATH") else [])])
+    venv = depot / "Open_ride_linux" / "core" / ".venv"
+    if (venv / "bin" / "python").exists():
+        env["VIRTUAL_ENV"] = str(venv)
+        env["PATH"] = os.pathsep.join([str(venv / "bin"), env.get("PATH", "")])
+        lien = projet / "core" / ".venv"
+        if (projet / "core").is_dir() and not lien.exists() and not lien.is_symlink():
+            lien.symlink_to(venv)
+    env["LC_NUMERIC"] = "C"
+    env["OPENRIDE_NO_GUI"] = "1"
+    return env
+
 
 class Arret(Exception):
     """Ctrl-C ou SIGTERM : l'étape en cours est arrêtée sans verdict."""
@@ -449,8 +475,7 @@ class Runner:
         projet = wt / "Open_ride_linux"
         cmd = e.commande.format(sortie=shlex.quote(str(dossier / "rapport")), worktree=shlex.quote(str(wt)),
                                 projet=shlex.quote(str(projet)), depot=shlex.quote(str(self.f.depot)))
-        env = dict(os.environ)
-        env.pop("OPENRIDE_BANC_CACHES", None)
+        env = environnement_etape(self.f.depot, projet)
         if pr.cache == "separe" and e.sur == "branche":
             env["OPENRIDE_BANC_CACHES"] = str(cache_separe(self.f, pr))
         self.log(f"→ {pr.id}/{e.id} sur {'main' if e.sur == 'main' else pr.branche} {sha[:8]} "

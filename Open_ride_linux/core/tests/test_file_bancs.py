@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -350,3 +351,32 @@ def test_exemple_rfs3_se_lit():
     f = fb.lire_file(ROOT / "scripts" / "file_bancs" / "exemple_rFS3.toml")
     assert [e.id for e in f.prs[0].etapes] == ["fumee", "tests-engine", "low", "high", "medium"]
     assert f.avant_etape and f.apres_etape and "{dossier}" in f.apres_etape
+
+
+def test_depot_qui_ne_suit_que_main(tmp_path, depot):
+    """Dépôt du user : refspec de fetch réduite à main ; la file doit quand même trouver la tête de la branche."""
+    _, clone = depot
+    _git(clone, "config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main")
+    _git(clone, "update-ref", "-d", "refs/remotes/origin/br")
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "p"\nbranche = "br"\n[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n')
+    assert fb.Runner(fb.lire_file(f), reseau=True, log=lambda *_: None).lancer() == 0
+    assert _etat(tmp_path)["prs"]["p"]["low"]["verdict"] == fb.OK
+
+
+def test_environnement_des_etapes_comme_job_sh(tmp_path, depot):
+    """PYTHONPATH sur les sources du worktree et core/.venv du dépôt (étape tests-engine de rFS3 du 19 novembre)."""
+    origine, clone = depot
+    _branche(origine, "eng", {"core/a.txt": "x"})
+    _git(clone, "fetch", "-q", "origin")
+    venv = clone / "Open_ride_linux" / "core" / ".venv" / "bin"
+    venv.mkdir(parents=True)
+    (venv / "python").write_text("", encoding="utf-8")
+    cmd = (f"{PY} -c \"import os; print(os.environ['PYTHONPATH']); print(os.environ['VIRTUAL_ENV']); "
+           f"print(os.environ['PATH'].split(os.pathsep)[0]); print(os.environ['LC_NUMERIC'])\"")
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "p"\nbranche = "eng"\n[[pr.etape]]\nid = "tests-engine"\ncommande = {json.dumps(cmd)}\n')
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 0
+    projet = tmp_path / "sortie" / "worktrees" / "p" / "Open_ride_linux"
+    lignes = (tmp_path / "sortie" / "p" / "tests-engine" / "journal.txt").read_text(encoding="utf-8").splitlines()
+    assert lignes[0].split(os.pathsep)[:2] == [str(projet / "core" / "src"), str(projet / "compiler" / "src")]
+    assert lignes[1] == str(venv.parent) and lignes[2] == str(venv) and lignes[3] == "C"
+    assert (projet / "core" / ".venv").resolve() == venv.parent.resolve()
