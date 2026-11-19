@@ -58,6 +58,13 @@ func set_segments(segments: Array) -> void:
 	_result_key = ""
 
 
+## Monde ouvert (lot W21) : noms des segments trouvés en roulant, ajoutés sans effacer le résultat affiché.
+func merge_segments(segments: Array) -> void:
+	for seg in segments:
+		names[str(seg["id"])] = {"name": str(seg.get("name", seg["id"])), "type": str(seg.get("type", "")),
+			"category": seg.get("category")}
+
+
 ## Message `segment_result` ; renvoie vrai s'il est nouveau (affiché), faux pour une répétition.
 func on_result(msg: Dictionary, now_s: float) -> bool:
 	var key := "%s|%s" % [str(msg.get("segment_id", "")), str(msg.get("time_s", ""))]

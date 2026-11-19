@@ -107,7 +107,7 @@ class ClassicRace:
         self.powerups = (PowerUps(self.table, seed=self.seed, set_name=self.powerup_set) if self.table
                          else PowerUps(seed=self.seed, set_name=self.powerup_set))
         every = self.powerups.table.arch_every_m if self.powerups_on else 0.0
-        self.arches = ArchSchedule(every, self.length_m, self.loop)
+        self.arches = ArchSchedule(every, self._timer_length(), self.loop)   # sans fin en monde ouvert (W21)
         self._prev_s: float | None = None
         self._arches_taken: set[tuple[int, int]] = set()   # (arche, tour) déjà payées : une fois chacune (N25)
         self._s = 0.0
