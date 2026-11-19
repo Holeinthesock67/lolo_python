@@ -1,0 +1,22 @@
+09:11:13 empreinte avant 9e9289564a638fa362e3ef68c809ad8a
+09:11:13 tête 3d22519ba
+09:11:22 tests graphiques_main
+10:00:16 fin rc=1
+10:00:16 ea1_lac low_main
+10:07:14 fin rc=0
+10:08:44 ea1_lac medium_main
+10:15:34 fin rc=0
+10:17:04 ea1_lac high_main
+10:23:59 fin rc=0
+10:25:29 build irohazaka (~/OpenRide/GPX/cols-celebres/irohazaka.gpx)
+10:25:36 fin rc=0
+10:25:36 longueur 9366 m, captures 8966,9166,9336
+10:25:36 irohazaka low_main
+10:37:51 fin rc=1
+10:37:51 irohazaka medium_main
+10:50:06 fin rc=1
+10:50:06 irohazaka high_main
+11:02:21 fin rc=1
+11:02:23 empreinte après 5acc1420617d8654749101a0acacef22
+11:02:23 clone 214ad0b2b
+11:02:23 FIN
