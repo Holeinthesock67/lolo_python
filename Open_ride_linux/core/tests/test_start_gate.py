@@ -34,7 +34,7 @@ def test_waits_scene_then_trainer_then_pedalling():
 def test_short_dropouts_do_not_reset_the_count():
     g = StartGate(cadence_rpm=30, duree_s=3)
     _run(g, 2.0, **RIDING)
-    _run(g, 1.5, **{**RIDING, "cadence_rpm": 10.0})   # à-coup de 1,5 s sous le seuil : compte gardé
+    _run(g, 1.5, **{**RIDING, "cadence_rpm": 10.0, "power_w": 10.0})   # à-coup de 1,5 s sous le seuil : compte gardé
     assert g.held_s >= 1.9
     assert _run(g, 1.1, **RIDING)
 
@@ -49,6 +49,18 @@ def test_long_stop_decays_the_count():
 def test_power_counts_when_cadence_is_missing():
     g = StartGate(cadence_rpm=30, duree_s=1)
     assert _run(g, 1.1, **{**RIDING, "cadence_rpm": None, "power_w": 60.0})
+
+
+def test_power_counts_while_the_trainer_cadence_lags():
+    """Sas du 15 novembre : la cadence du trainer arrive en retard (0 puis basse), les watts tout de suite."""
+    g = StartGate(cadence_rpm=30)
+    assert g.duree_s == 1.0
+    assert _run(g, 1.1, **{**RIDING, "cadence_rpm": 0.0, "power_w": 120.0})
+
+
+def test_neither_cadence_nor_power_is_not_pedalling():
+    g = StartGate(cadence_rpm=30, duree_s=1)
+    assert not _run(g, 3.0, **{**RIDING, "cadence_rpm": 20.0, "power_w": 20.0})
 
 
 def test_scene_timeout_for_an_engine_that_never_says_ready():
