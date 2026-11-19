@@ -16,6 +16,10 @@ Format de la file :
     depot = "~/Games/lolo_python"            # dépôt d'où partent les worktrees (reste sur main, propre)
     sortie = "~/OpenRide/file/nuit-20nov"    # etat.json, etat.md, un dossier par étape, worktrees/, caches/
 
+    avant_etape = "~/outils/portail.sh"     # facultatif : code 0 = on y va ; sinon la file attend et réessaie
+                                             # toutes les `attente_s` (60) s : fenêtre de pause du user, Godot ouvert
+    apres_etape = "~/outils/pousse_auto.sh {dossier} {pr} {etape} {verdict}"   # facultatif : poussage anonymisé
+
     [[pr]]
     id = "r907"                  # nom court de la PR dans la file
     pr = 907
@@ -23,6 +27,7 @@ Format de la file :
     tete = "602eaf1b"            # facultatif : la tête attendue ; la file refuse une autre tête
     risque = 1                   # 1 jamais tourné / cache / départ / format, 2 déjà échoué, 3 confirmation
     cache = "separe"             # "reel" (défaut) ou "separe" : copie du cache du monde ouvert, propre à la PR
+    assemblage = []              # facultatif : branches fusionnées par-dessus, en local (essai assemblé, ex. essai-ow)
     fumee = "python3 engine/tests/menu_bench.py --native --scenario w23_mer --qualite low --voies clavier --out {sortie}"
     fumee_delai_min = 8
 
@@ -42,6 +47,9 @@ Les commandes tournent dans `<worktree>/Open_ride_linux`, avec `{sortie}` (dossi
 - ÉCHEC : une vérification du jeu ; DÉLAI : étape arrêtée au bout de `delai_min` ;
 - ENVIRONNEMENT : le PC, pas la PR (code 2 des bancs, cache au mauvais schéma, réseau, disque plein) ;
 - BLOQUÉ : non jouée car la fumée de la PR n'est pas passée.
+Têtes relues (git fetch) avant les étapes de chaque PR ; une tête différente de `tete` donne ENVIRONNEMENT.
+Une PR dont le `SCHEMA_VERSION` du cache diffère de main ne tourne jamais sur le cache réel : sans `cache = "separe"`,
+ses étapes sont refusées (ENVIRONNEMENT) sans être lancées.
 Reprise : `lancer` rejoue tout ce qui n'est pas OK ou CONTACTS sur la tête actuelle ; `relancer` rejoue seulement
 les étapes en échec (les OK d'une tête précédente restent acquises et sont marquées « sur tête X »).
 Pause : un fichier `PAUSE` dans le dossier de sortie arrête la file avant l'étape suivante (« PC libre ») ;
@@ -91,6 +99,14 @@ class FileInvalide(Exception):
     """Fichier de file mal formé."""
 
 
+class Assemblage(Exception):
+    """Essai assemblé impossible : fusion des branches en conflit."""
+
+
+class TeteChangee(Exception):
+    """La tête de la PR n'est plus celle que la file attend."""
+
+
 # --- file ----------------------------------------------------------------------------------------
 
 @dataclass
@@ -115,6 +131,7 @@ class PR:
     cache: str = "reel"
     etapes: list[Etape] = field(default_factory=list)
     rang: int = 0                              # ordre d'écriture dans la file, à risque égal
+    assemblage: list[str] = field(default_factory=list)   # branches fusionnées par-dessus (essai assemblé)
 
 
 @dataclass
@@ -122,6 +139,9 @@ class File:
     depot: Path
     sortie: Path
     prs: list[PR]
+    avant_etape: str | None = None             # portail : code 0 = on y va, sinon on attend (fenêtre du user, Godot)
+    apres_etape: str | None = None             # après chaque étape (poussage anonymisé des résultats)
+    attente_s: float = 60.0
 
     def par_risque(self) -> list[PR]:
         return sorted(self.prs, key=lambda p: (p.risque, p.rang))
@@ -159,10 +179,12 @@ def lire_file(chemin: Path) -> File:
             etapes.append(Etape(str(e["id"]), str(e["commande"]), float(e.get("delai_min", 60)), sur))
         if len({e.id for e in etapes}) != len(etapes):
             raise FileInvalide(f"{pid} : identifiants d'étape en double")
-        prs.append(PR(str(pid), str(branche), d.get("pr"), d.get("tete"), int(d.get("risque", 2)), cache, etapes, rang))
+        assemblage = [str(b) for b in d.get("assemblage", [])]
+        prs.append(PR(str(pid), str(branche), d.get("pr"), d.get("tete"), int(d.get("risque", 2)), cache, etapes, rang,
+                      assemblage))
     if not prs:
         raise FileInvalide(f"{chemin} : aucune entrée [[pr]]")
-    return File(depot, sortie, prs)
+    return File(depot, sortie, prs, tete.get("avant_etape"), tete.get("apres_etape"), float(tete.get("attente_s", 60)))
 
 
 # --- état ----------------------------------------------------------------------------------------
@@ -232,16 +254,41 @@ def resoudre_tete(f: File, branche: str, reseau: bool) -> str:
     return git(f.depot, "rev-parse", f"refs/remotes/origin/{branche}")
 
 
-def worktree(f: File, nom: str, sha: str) -> Path:
-    """Worktree détaché de `sha` dans sortie/worktrees/nom (le dépôt du user reste sur main, propre)."""
+MARQUE_TETE = ".file_bancs_tete"
+
+
+def worktree(f: File, nom: str, tete: str) -> Path:
+    """Worktree détaché dans sortie/worktrees/nom (le dépôt du user reste sur main, propre). `tete` : un commit, ou
+    « sha1+sha2+… » pour un essai assemblé : sha1, puis les suivants fusionnés par-dessus (fusion locale, jamais poussée)."""
+    shas = tete.split("+")
     wt = f.sortie / "worktrees" / nom
+    marque = wt / MARQUE_TETE
     if (wt / ".git").exists():
-        if git(wt, "rev-parse", "HEAD") != sha:
-            git(wt, "checkout", "--quiet", "--detach", sha)
+        if marque.is_file() and marque.read_text(encoding="utf-8").strip() == tete:
+            return wt
+        git(wt, "reset", "--quiet", "--hard")
+        git(wt, "checkout", "--quiet", "--detach", shas[0])
     else:
         wt.parent.mkdir(parents=True, exist_ok=True)
-        git(f.depot, "worktree", "add", "--quiet", "--detach", str(wt), sha)
+        git(f.depot, "worktree", "add", "--quiet", "--detach", str(wt), shas[0])
+    for sha in shas[1:]:
+        try:
+            git(wt, "-c", "user.name=file_bancs", "-c", "user.email=file@bancs", "merge", "--quiet", "--no-edit", sha)
+        except RuntimeError as exc:
+            with contextlib.suppress(RuntimeError):
+                git(wt, "merge", "--abort")
+            raise Assemblage(f"assemblage en conflit avec {sha[:8]}") from exc
+    marque.write_text(tete + "\n", encoding="utf-8")
     return wt
+
+
+SCHEMA_SRC = "Open_ride_linux/compiler/src/openride_compiler/worldgen/osmdb.py"
+SCHEMA_RE = re.compile(r"^SCHEMA_VERSION\s*=\s*(\d+)", re.M)
+
+
+def schema_cache(texte: str | None) -> str | None:
+    m = SCHEMA_RE.search(texte or "")
+    return m.group(1) if m else None
 
 
 def cache_separe(f: File, pr: PR) -> Path:
@@ -304,17 +351,25 @@ class Runner:
             self.tetes[branche] = resoudre_tete(self.f, branche, self.reseau)
         return self.tetes[branche]
 
+    def relire(self, pr: PR) -> None:
+        """Têtes de la PR relues (git fetch) avant ses étapes : une branche poussée pendant la nuit est vue."""
+        for b in (pr.branche, *pr.assemblage):
+            self.tetes.pop(b, None)
+
     def tete_pr(self, pr: PR) -> str:
         sha = self.tete(pr.branche)
         if pr.tete and not sha.startswith(pr.tete):
-            raise FileInvalide(f"{pr.id} : tête {sha[:8]} au lieu de {pr.tete} (file à mettre à jour)")
-        return sha
+            raise TeteChangee(f"tête {sha[:8]} au lieu de {pr.tete} (file à mettre à jour)")
+        return "+".join([sha, *(self.tete(b) for b in pr.assemblage)])
 
     def a_jouer(self, pr: PR, e: Etape, mode: str) -> bool:
         v = self.etat.get(pr, e)
         if v is None or v["verdict"] not in ACQUIS:
             return True
-        sha = self.tete("main") if e.sur == "main" else self.tete_pr(pr)
+        try:
+            sha = self.tete("main") if e.sur == "main" else self.tete_pr(pr)
+        except TeteChangee:
+            return True
         if v.get("tete") == sha and v.get("empreinte", e.empreinte) == e.empreinte:
             return False
         # Après correction (relancer), une étape OK d'une tête précédente reste acquise (règle 6 du plan).
@@ -323,10 +378,71 @@ class Runner:
     def pause(self) -> bool:
         return (self.f.sortie / "PAUSE").exists()
 
-    def executer(self, pr: PR, e: Etape) -> str:
-        sha = self.tete("main") if e.sur == "main" else self.tete_pr(pr)
+    def portail(self, pr: PR, e: Etape) -> bool:
+        """Attend que `avant_etape` rende 0 (fenêtre de pause du user, Godot du user fermé…) ; faux si PAUSE."""
+        attente = False
+        while self.f.avant_etape:
+            env = {**os.environ, "FILE_PR": pr.id, "FILE_ETAPE": e.id}
+            p = subprocess.run(self.f.avant_etape, shell=True, env=env, capture_output=True, text=True, check=False)
+            if p.returncode == 0:
+                break
+            if not attente:
+                raison = (p.stdout + p.stderr).strip().splitlines()[-1:] or [f"code {p.returncode}"]
+                self.log(f"  en attente avant {pr.id}/{e.id} : {raison[0]}")
+                attente = True
+            if self.pause():
+                return False
+            time.sleep(self.f.attente_s)
+        return not self.pause()
+
+    def apres(self, pr: PR, e: Etape, verdict: str, dossier: Path) -> bool | None:
+        if not self.f.apres_etape:
+            return None
+        cmd = self.f.apres_etape.format(dossier=shlex.quote(str(dossier)), pr=shlex.quote(pr.id),
+                                        etape=shlex.quote(e.id), verdict=shlex.quote(verdict))
+        p = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=False)
+        if p.returncode:
+            self.log(f"  après l'étape : code {p.returncode} {(p.stdout + p.stderr).strip()[-200:]}")
+        return p.returncode == 0
+
+    def schema_refuse(self, pr: PR, wt: Path) -> str | None:
+        """Règle du 19 novembre : jamais le HOME réel pour une PR qui change le schéma du cache."""
+        if pr.cache == "separe":
+            return None
+        with contextlib.suppress(OSError):
+            branche = schema_cache((wt / SCHEMA_SRC).read_text(encoding="utf-8"))
+            try:
+                main = schema_cache(git(self.f.depot, "show", f"{self.tete('main')}:{SCHEMA_SRC}"))
+            except RuntimeError:
+                return None
+            if branche and main and branche != main:
+                return (f"PR qui change le schéma du cache ({main} → {branche}) : cache = \"separe\" obligatoire, "
+                        "jamais le HOME réel")
+        return None
+
+    def noter(self, pr: PR, e: Etape, verdict: str, detail: str, sha: str | None) -> str:
+        self.etat.put(pr, e, {"verdict": verdict, "detail": detail, "tete": sha, "empreinte": e.empreinte,
+                              "fin": datetime.now().isoformat(timespec="seconds")})
+        self.log(f"  {verdict} {detail}")
+        return verdict
+
+    def executer(self, pr: PR, e: Etape) -> str | None:
+        """Joue une étape et note son verdict ; None si la file s'est mise en pause avant."""
+        if not self.portail(pr, e):
+            return None
+        try:
+            sha = self.tete("main") if e.sur == "main" else self.tete_pr(pr)
+        except TeteChangee as exc:
+            return self.noter(pr, e, ENV, str(exc), None)
         nom = "main" if e.sur == "main" else pr.id
-        wt = worktree(self.f, nom, sha)
+        try:
+            wt = worktree(self.f, nom, sha)
+        except Assemblage as exc:
+            return self.noter(pr, e, ENV, str(exc), sha)
+        if e.sur == "branche":
+            refus = self.schema_refuse(pr, wt)
+            if refus:
+                return self.noter(pr, e, ENV, refus, sha)
         dossier = self.f.sortie / ("main" if e.sur == "main" else pr.id) / (e.empreinte if e.sur == "main" else e.id)
         dossier.mkdir(parents=True, exist_ok=True)
         projet = wt / "Open_ride_linux"
@@ -344,10 +460,14 @@ class Runner:
             verdict, detail = DELAI, f"arrêtée après {e.delai_min:.0f} min"
         else:
             verdict, detail = classer(code, texte)
-        self.etat.put(pr, e, {"verdict": verdict, "detail": detail, "tete": sha, "empreinte": e.empreinte,
-                              "duree_s": round(time.monotonic() - t0), "code": code, "dossier": str(dossier),
-                              "fin": datetime.now().isoformat(timespec="seconds")})
+        resultat = {"verdict": verdict, "detail": detail, "tete": sha, "empreinte": e.empreinte,
+                    "duree_s": round(time.monotonic() - t0), "code": code, "dossier": str(dossier),
+                    "fin": datetime.now().isoformat(timespec="seconds")}
+        self.etat.put(pr, e, resultat)
         self.log(f"  {verdict} {detail}".rstrip())
+        pousse = self.apres(pr, e, verdict, dossier)
+        if pousse is not None:
+            self.etat.put(pr, e, {**resultat, "apres_etape": "OK" if pousse else "ÉCHEC"})
         return verdict
 
     def fumee_ok(self, pr: PR) -> bool:
@@ -368,14 +488,15 @@ class Runner:
             if mode == "relancer":   # après correction : fumée rejouée sur la nouvelle tête avant les étapes
                 doit = doit or any(self.a_jouer(pr, e, mode) for e in pr.etapes if e.id != FUMEE)
             if doit:
-                if self.pause():
+                self.relire(pr)
+                if self.executer(pr, fum) is None:
                     return 3
-                self.executer(pr, fum)
         if fumees_seules:
             return self.code(prs)
         # 2. Longues étapes, PR par PR dans l'ordre du risque.
         for pr in prs:
             longues = [e for e in pr.etapes if e.id != FUMEE]
+            self.relire(pr)
             if not self.fumee_ok(pr):
                 for e in longues:
                     if self.a_jouer(pr, e, mode):
@@ -383,10 +504,8 @@ class Runner:
                                               "empreinte": e.empreinte})
                 continue
             for e in longues:
-                if self.a_jouer(pr, e, mode):
-                    if self.pause():
-                        return 3
-                    self.executer(pr, e)
+                if self.a_jouer(pr, e, mode) and self.executer(pr, e) is None:
+                    return 3
         ecrire_tableau(self.f, self.etat)
         return self.code(prs)
 
@@ -416,7 +535,9 @@ def tableau(f: File, etat: Etat, tetes: dict[str, str] | None = None) -> str:
                 cases.append(A_FAIRE)
                 continue
             txt = v["verdict"]
-            tete = (tetes or {}).get("main" if e.sur == "main" else pr.branche)
+            branches = ["main"] if e.sur == "main" else [pr.branche, *pr.assemblage]
+            connues = [(tetes or {}).get(b) for b in branches]
+            tete = "+".join(connues) if all(connues) else None
             if v.get("tete") and tete and v["tete"] != tete:
                 txt += f" (sur tête {v['tete'][:8]})"
             cases.append(txt)

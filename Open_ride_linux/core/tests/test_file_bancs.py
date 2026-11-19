@@ -201,10 +201,8 @@ delai_min = 0.02
     assert _etat(tmp_path)["prs"]["p"]["long"]["verdict"] == fb.DELAI
 
 
-def test_tete_attendue_et_file_invalide(tmp_path, depot):
+def test_file_invalide(tmp_path, depot):
     _, clone = depot
-    f = _file(tmp_path, clone, f'[[pr]]\nid = "p"\nbranche = "br"\ntete = "deadbeef"\nfumee = \'{_cmd(0)}\'\n')
-    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 2
     g = _file(tmp_path, clone, '[[pr]]\nid = "p"\nbranche = "br"\ncache = "partage"\n')
     assert fb.main(["etat", str(g)]) == 2
 
@@ -243,3 +241,77 @@ def test_menu_bench_refuse_un_cache_reel_dun_autre_schema(tmp_path, monkeypatch)
     assert mb.open_world_cache_dir() == (tmp_path / "pr907" / "monde", False)
     monkeypatch.delenv(mb.VARIABLE_CACHES_BANC)
     assert mb.open_world_cache_dir()[1] is True
+
+
+def _branche(origine, nom, fichiers, depuis="main"):
+    _git(origine, "checkout", "-q", "-b", nom, depuis)
+    for rel, texte in fichiers.items():
+        p = origine / "Open_ride_linux" / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(texte, encoding="utf-8")
+    _git(origine, "add", ".")
+    _git(origine, "commit", "-q", "-m", nom)
+    _git(origine, "checkout", "-q", "main")
+
+
+def test_portail_attend_puis_apres_etape_recoit_le_verdict(tmp_path, depot):
+    _, clone = depot
+    compteur, trace = tmp_path / "portail.n", tmp_path / "apres.txt"
+    portail = (f"{PY} -c \"import pathlib,sys; p=pathlib.Path(r'{compteur}'); n=int(p.read_text()) if p.exists() else 0; "
+               f"p.write_text(str(n+1)); print('Godot du user ouvert'); sys.exit(0 if n >= 2 else 1)\"")
+    apres = f"{PY} -c \"import sys; open(r'{trace}','a').write(' '.join(sys.argv[1:])+chr(10))\" {{pr}} {{etape}} {{verdict}}"
+    f = tmp_path / "file.toml"
+    f.write_text(f'[file]\ndepot = "{clone}"\nsortie = "{tmp_path / "sortie"}"\nattente_s = 0\n'
+                 f'avant_etape = {json.dumps(portail)}\napres_etape = {json.dumps(apres)}\n'
+                 f'[[pr]]\nid = "p"\nbranche = "br"\n[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n',
+                 encoding="utf-8")
+    journal = []
+    assert fb.Runner(fb.lire_file(f), reseau=False, log=journal.append).lancer() == 0
+    assert int(compteur.read_text()) == 3                    # deux refus, puis feu vert
+    assert any("en attente avant p/low : Godot du user ouvert" in l for l in journal)
+    assert trace.read_text(encoding="utf-8").split() == ["p", "low", "OK"]
+    assert _etat(tmp_path)["prs"]["p"]["low"]["apres_etape"] == "OK"
+
+
+def test_essai_assemble_fusionne_les_branches(tmp_path, depot):
+    origine, clone = depot
+    _branche(origine, "b2", {"y.txt": "b2"})
+    _git(clone, "fetch", "-q", "origin")
+    cmd = f"{PY} -c \"import pathlib; print(pathlib.Path('x.txt').read_text(), pathlib.Path('y.txt').read_text())\""
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "essai-ow"\nbranche = "br"\nassemblage = ["b2"]\n'
+                               f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(cmd)}\n')
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 0
+    assert "branche b2" in (tmp_path / "sortie" / "essai-ow" / "low" / "journal.txt").read_text(encoding="utf-8")
+    v = _etat(tmp_path)["prs"]["essai-ow"]["low"]
+    assert v["verdict"] == fb.OK and "+" in v["tete"]
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 0   # même assemblage : rien de rejoué
+    assert "sur tête" not in (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+
+
+def test_pr_qui_change_le_schema_jamais_sur_le_cache_reel(tmp_path, depot):
+    origine, clone = depot
+    src = "compiler/src/openride_compiler/worldgen/osmdb.py"
+    _branche(origine, "base", {src: "SCHEMA_VERSION = 1\n"})
+    _git(origine, "checkout", "-q", "main")
+    _git(origine, "merge", "-q", "base")
+    _branche(origine, "mer", {src: "SCHEMA_VERSION = 2\n"})
+    _git(clone, "fetch", "-q", "origin")
+    etape = f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n'
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "mer"\nbranche = "mer"\n{etape}')
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 1
+    v = _etat(tmp_path)["prs"]["mer"]["low"]
+    assert v["verdict"] == fb.ENV and "1 → 2" in v["detail"]
+    assert _passages(tmp_path, "mer", "low") == 0             # rien lancé
+    g = _file(tmp_path, clone, f'[[pr]]\nid = "mer"\nbranche = "mer"\ncache = "separe"\n{etape}')
+    assert fb.main(["lancer", str(g), "--sans-reseau"]) == 0
+
+
+def test_tete_changee_en_cours_de_file_ne_bloque_que_sa_pr(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "vieille"\nbranche = "br"\ntete = "deadbeef"\n'
+                               f'fumee = {json.dumps(_cmd(0))}\n[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n'
+                               f'[[pr]]\nid = "ok"\nbranche = "br"\n[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n')
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 1
+    etat = _etat(tmp_path)["prs"]
+    assert etat["vieille"]["fumee"]["verdict"] == fb.ENV and "deadbeef" in etat["vieille"]["fumee"]["detail"]
+    assert etat["vieille"]["low"]["verdict"] == fb.BLOQUE and etat["ok"]["low"]["verdict"] == fb.OK
