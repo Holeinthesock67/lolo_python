@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| À-coups du monde ouvert avec biomes : arbres d'une tuile proche instanciés sans calcul par arbre sur le fil principal | GDScript | W17 (livré) | Petite | En revue (banc PC rW19 passé le 15 novembre ; go du propriétaire attendu) |
+| À-coups du monde ouvert avec biomes : arbres d'une tuile proche instanciés sans calcul par arbre sur le fil principal | GDScript | W17 (livré) | Petite | **Livré le 15 novembre** (PR #906) |
 
 ## 1. Objectif
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série Y (rendu) : niveau de détail de l'herbe du bord de route selon la distance (gerbe simplifiée au-delà de 40 m, un MultiMesh par tronçon écarté hors du champ, fondu fini à 120 m au lieu de 150) et des rangs de vigne des cultures (modèle lointain au-delà de 200 m, en haie d'un rang), prés plus ou moins mûrs peints sur le sol en plaques de 90 à 250 m | GDScript + shader | Y11, U7, P5 | Petite | **En PR** (lancé le 5 novembre) ; banc PC en low, medium et high et captures avant/après à valider |
+| Série Y (rendu) : niveau de détail de l'herbe du bord de route selon la distance (gerbe simplifiée au-delà de 40 m, un MultiMesh par tronçon écarté hors du champ, fondu fini à 120 m au lieu de 150) et des rangs de vigne des cultures (modèle lointain au-delà de 200 m, en haie d'un rang), prés plus ou moins mûrs peints sur le sol en plaques de 90 à 250 m | GDScript + shader | Y11, U7, P5 | Petite | **Livré le 6 novembre** (PR #721 ; correctifs #736 et #741 le 7 novembre) |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ Le biome cultures (farmland) dépasse le budget GPU d'environ 4 ms en medium et 
 3. Captures avant/après en low, medium et high : herbe du bord de route de 20 à 120 m (pas de front au passage de 40 m), rangs de vigne de 150 à 300 m (pas de saut à 200 m). Fusion après validation des captures par le propriétaire.
 
 Pistes laissées pour plus tard : même passage propre pour les buissons nains et les roseaux (`lod0_m`), et pour les herbes hautes de `ground_details.gd` (savane, steppe).
+
+## Livraison
+
+Fusionné dans `main` : PR #721 (6 novembre), #736 et #741 (7 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

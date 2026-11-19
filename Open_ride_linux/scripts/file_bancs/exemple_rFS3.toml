@@ -1,0 +1,46 @@
+# Exemple de file : banc rFS3 de #903 (sas de départ), tiré de la recette rFS1.inc du fil de fusion, découpé en étapes.
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/exemple_rFS3.toml
+# Après une correction de #903 : python3 scripts/file_bancs.py relancer scripts/file_bancs/exemple_rFS3.toml --pr rFS3
+# Les commandes tournent dans le worktree de la PR (Open_ride_linux/) ; {depot} est le dépôt du user, dont on reprend
+# l'environnement Python (core/.venv), comme job.sh. La file pose elle-même PYTHONPATH sur les sources du worktree,
+# le core/.venv du dépôt en tête du PATH, LC_NUMERIC=C et OPENRIDE_NO_GUI=1 pour toutes les étapes.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rFS3"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rFS3-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rFS3"
+pr = 903
+branche = "claude/project-thread-6bvo2x-sas"
+tete = "b22e8799"
+risque = 1                       # jamais tourné
+# Fumée (~5 min) : import Godot, tests du sas, un passage du banc des menus en low sur une voie.
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+python -m pytest -q core/tests/test_start_gate.py && \
+python engine/tests/menu_bench.py --native --scenario sessions --voies clavier --qualite low --out {sortie}"""
+fumee_delai_min = 8
+
+[[pr.etape]]
+id = "tests-engine"
+commande = "GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 bash engine/tests/run_engine_tests.sh"
+delai_min = 60
+
+[[pr.etape]]
+id = "low"
+commande = "python engine/tests/menu_bench.py --native --scenario sessions --scenario grand_prix --qualite low --captures ecrans --out {sortie}"
+delai_min = 40
+
+[[pr.etape]]
+id = "high"                      # risque d'abord : high avant medium
+commande = "python engine/tests/menu_bench.py --native --scenario sessions --scenario grand_prix --qualite high --captures ecrans --out {sortie}"
+delai_min = 40
+
+[[pr.etape]]
+id = "medium"
+commande = "python engine/tests/menu_bench.py --native --scenario sessions --scenario grand_prix --qualite medium --captures ecrans --out {sortie}"
+delai_min = 40

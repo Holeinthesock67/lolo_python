@@ -190,10 +190,13 @@ class Navigator:
 
         if self.mode == "destination":
             assert self.target_xz is not None
-            if _dist(here, self.target_xz) <= ARRIVED_M or self._arrived(ids):
-                return self._pick_ride(branches, self.ride_heading(ridden), seen, recent, n, arrived=True)
             goal = nearest(self.graph.nodes.values(), self.target_xz)
             gnode = self.graph.nodes[goal]
+            # Lot W19 : le nœud du graphe le plus proche d'une cible au milieu d'une longue route compte aussi
+            # pour l'arrivée (sinon la cible à plus de 200 m de tout nœud n'était jamais atteinte).
+            at_goal = node == goal and _dist((gnode.x, gnode.z), self.target_xz) <= TARGET_IN_GRAPH_M
+            if at_goal or _dist(here, self.target_xz) <= ARRIVED_M or self._arrived(ids):
+                return self._pick_ride(branches, self.ride_heading(ridden), seen, recent, n, arrived=True)
             if _dist((gnode.x, gnode.z), self.target_xz) <= TARGET_IN_GRAPH_M:
                 path = self._shortest_first_step(node, goal, branches)
                 if path is not None:

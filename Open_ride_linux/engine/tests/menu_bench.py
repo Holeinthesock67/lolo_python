@@ -55,7 +55,9 @@ réseau, en quelques secondes : import de traces du lot O23).
 jouée seulement quand `--scenario` la nomme, jamais dans la liste par défaut ni en intégration continue, lot W17).
 `caches_reels` (vrai : le générateur du monde ouvert lit et complète les caches du vrai dossier personnel :
 `~/OpenRide/Cache/monde` (régions OSM, tuiles vectorielles, monde généré) et `~/.cache/openride/` (relief, WorldCover,
-OSM) ; le reste du HOME reste temporaire ; recette du PC, lot W17).
+OSM) ; le reste du HOME reste temporaire ; recette du PC, lot W17). Avec `OPENRIDE_BANC_CACHES=DOSSIER`, le cache du
+monde ouvert est DOSSIER/monde (cache séparé d'une PR, `scripts/file_bancs.py`) ; sans elle, le banc refuse de démarrer si
+une base du cache réel n'a pas le `SCHEMA_VERSION` de la branche (incident du 17 novembre : cache du jeu réécrit en schéma 2).
 
 Rapport dans `--out` : `rapport.html` (tableau scénario × voie, vérifications, captures), `resultats.json`
 et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. Code de sortie : 0 si toutes les
@@ -81,6 +83,7 @@ import shlex
 import shutil
 import signal
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -103,6 +106,58 @@ def real_caches_env() -> dict[str, str]:
     base = REAL_HOME / ".cache" / "openride"
     return {"OPENRIDE_DEM_CACHE": str(base / "dem"), "OPENRIDE_LANDCOVER_CACHE": str(base / "landcover"),
             "OPENRIDE_OSM_CACHE": str(base / "osm")}
+
+
+# Cache du monde ouvert séparé (file des bancs, 19 novembre) : `OPENRIDE_BANC_CACHES=DOSSIER` fait lire et écrire
+# le cache du monde ouvert des scénarios `caches_reels` dans DOSSIER/monde au lieu de ~/OpenRide/Cache/monde.
+# Une PR qui change le format du cache (banc de la mer #907, schéma 2, 17 novembre) ne touche plus le jeu du user.
+# Les caches du compilateur (relief, WorldCover, OSM brut téléchargé, sans format propre au dépôt) restent partagés.
+VARIABLE_CACHES_BANC = "OPENRIDE_BANC_CACHES"
+SCHEMA_RE = re.compile(r"^SCHEMA_VERSION\s*=\s*(\d+)", re.M)
+
+
+def open_world_cache_dir() -> tuple[Path, bool]:
+    """(dossier du cache du monde ouvert des scénarios `caches_reels`, vrai s'il s'agit du cache réel du user)."""
+    separe = os.environ.get(VARIABLE_CACHES_BANC)
+    if separe:
+        return Path(separe).expanduser() / "monde", False
+    return REAL_HOME / "OpenRide" / "Cache" / "monde", True
+
+
+def branch_schema_version() -> str | None:
+    """SCHEMA_VERSION de la base OSM du monde ouvert dans ce dépôt (lu dans le source : pas d'import du compilateur)."""
+    src = REPO / "compiler" / "src" / "openride_compiler" / "worldgen" / "osmdb.py"
+    with contextlib.suppress(OSError):
+        m = SCHEMA_RE.search(src.read_text(encoding="utf-8"))
+        return m.group(1) if m else None
+    return None
+
+
+def cache_schemas(cache_dir: Path) -> dict[str, str]:
+    """{base SQLite du cache (chemin relatif) : schema_version de sa table meta}, lues en lecture seule."""
+    found: dict[str, str] = {}
+    for db in sorted((cache_dir / "brut").glob("**/*.sqlite")):
+        with contextlib.suppress(sqlite3.DatabaseError, OSError):
+            con = sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)
+            try:
+                row = con.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
+            finally:
+                con.close()
+            if row is not None:
+                found[str(db.relative_to(cache_dir))] = str(row[0])
+    return found
+
+
+def schema_guard(cache_dir: Path, branch: str | None) -> str | None:
+    """Message de refus si la branche n'a pas le schéma du cache réel (elle le réécrirait ou le refuserait), sinon None."""
+    if branch is None:
+        return None
+    other = {rel: v for rel, v in cache_schemas(cache_dir).items() if v != branch}
+    if not other:
+        return None
+    rel, v = next(iter(other.items()))
+    return (f"cache réel au schéma {v} ({rel}), branche au schéma {branch} : banc refusé pour ne pas toucher "
+            f"le cache du jeu ; relancer avec {VARIABLE_CACHES_BANC}=DOSSIER (cache séparé, file_bancs.py cache = \"separe\")")
 sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
@@ -738,7 +793,7 @@ class Run:
         """Cache du monde ouvert du vrai dossier personnel (en-tête `caches_reels`)."""
         if not self.doc.get("caches_reels"):
             return {}
-        return {"open_world.cache_dir": str(REAL_HOME / "OpenRide" / "Cache" / "monde")}
+        return {"open_world.cache_dir": str(open_world_cache_dir()[0])}
 
     def start(self, n: int = 0) -> bool:
         a = self.args
@@ -747,6 +802,11 @@ class Run:
         for k in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "OPENRIDE_COMPILER"):
             env.pop(k, None)
         if self.doc.get("caches_reels"):
+            cache_dir, reel = open_world_cache_dir()
+            refus = schema_guard(cache_dir, branch_schema_version()) if reel else None
+            if not self.report.check(refus is None, "cache du monde ouvert au schéma de la branche",
+                                     refus or f"{cache_dir}{'' if reel else ' (cache séparé)'}"):
+                return False
             env.update(real_caches_env())
         if self.doc.get("compilateur") == "doublure":
             env["OPENRIDE_COMPILER"] = shlex.join([sys.executable, str(REPO / "core" / "tests" / "data" / "stub_compiler.py")])

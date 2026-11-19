@@ -141,6 +141,21 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "puissance annoncée nulle pendant 4 s à 20 s ; une nouvelle prise de contrôle rend le frein."),
         events=[{"t": 20.0, "device": "trainer", "action": "brake_loss", "seconds": 4.0}],
         rider={"watts": 320, "cadence_rpm": 80}),
+    "arrets_pedalage": _with(_READY, description=(
+        "Arrêts nets de pédalage après un effort (fins de salle du Cyber-Rogue du 15 novembre, fin d'épreuve au "
+        "vélodrome du 14 novembre, lot FR1) : 320 W à 85 tr/min, arrêts à 20 s, 45 s et 70 s, reprises 10 s plus "
+        "tard ; la puissance tombe aussitôt, la cadence annoncée reste 1,5 s. Puis un vrai frein lâché de 6 s à "
+        "100 s. Attendu : un seul « frein lâché », celui de 100 s."),
+        events=[
+            {"t": 20.0, "device": "trainer", "action": "rider", "watts": 0, "cadence_rpm": 0},
+            {"t": 30.0, "device": "trainer", "action": "rider", "watts": 320, "cadence_rpm": 85},
+            {"t": 45.0, "device": "trainer", "action": "rider", "watts": 0, "cadence_rpm": 0},
+            {"t": 55.0, "device": "trainer", "action": "rider", "watts": 320, "cadence_rpm": 85},
+            {"t": 70.0, "device": "trainer", "action": "rider", "watts": 0, "cadence_rpm": 0},
+            {"t": 80.0, "device": "trainer", "action": "rider", "watts": 320, "cadence_rpm": 85},
+            {"t": 100.0, "device": "trainer", "action": "brake_loss", "seconds": 6.0},
+        ],
+        rider={"watts": 320, "cadence_rpm": 85}),
     "connexions_retardees": _with(_READY, description=(
         "Connexions lentes : trainer à 4 s de connexion et deux échecs, Click à 2 s, ceinture à 3 s "
         "avec un échec."),

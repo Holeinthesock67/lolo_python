@@ -644,8 +644,20 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var bots_m: Array = []
 	for b in bot_places:
 		bots_m.append({"s": traffic.model_s(float(b["s"])), "lateral": _dir * float(b["lateral"])})
+	# Lot AS11 (révision 1.20) : `road_part` = [rang, parties] de la liste de la trame : le core envoie tous ses
+	# usagers de la route par parties, l'engine ne fait plus que les afficher
+	var part := -1
+	var parts := 0
+	var rp = state.get("road_part")
+	if typeof(rp) == TYPE_ARRAY and rp.size() == 2:
+		part = int(rp[0])
+		parts = maxi(1, int(rp[1]))
+	# Lot AS11 : comme les véhicules, chaque cycliste du décor garde son écart du core au cycliste de la trame (`core_s`),
+	# pas sa position absolue : le cycliste affiché est extrapolé à l'image (rejeu Volcan à 50 km/h : 0,3 m de moins,
+	# « cycliste / décor » roue dans la roue)
+	var core_s := traffic.model_s(float(state["s"])) if typeof(state.get("s")) in [TYPE_INT, TYPE_FLOAT] else NAN
 	if typeof(state.get("riders")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
-		cyclists.sync_core(_core_list(state["riders"]), int(state["seq"]), _model_s)
+		cyclists.sync_core(_core_list(state["riders"]), int(state["seq"]), _model_s, core_s, part, parts)
 	cyclists.update(_model_s, rider_v, dt_s, paused, bots_m, _dir * _rider_lane_m)   # lot AS10 : à sa vraie place (repère du décor)
 	cyclists_view.update(dt_s, paused, _model_s)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
@@ -655,8 +667,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": _dir})
 	# Lot AS6 : véhicules proches calculés par le core (liste `vehicles`, une trame sur trois)
 	if typeof(state.get("vehicles")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
-		traffic.sync_core(_core_list(state["vehicles"]), int(state["seq"]), _model_s,
-				traffic.model_s(float(state["s"])) if typeof(state.get("s")) in [TYPE_INT, TYPE_FLOAT] else NAN)
+		traffic.sync_core(_core_list(state["vehicles"]), int(state["seq"]), _model_s, core_s, part, parts)
 	traffic.update(_model_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)
