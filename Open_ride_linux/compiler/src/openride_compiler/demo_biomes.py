@@ -47,7 +47,13 @@ polaire au point le plus éloigné du départ, toundra, forêt boréale), relief
 Une boucle à plusieurs blocs suit les mêmes règles que la route ouverte (blocs de 2 km, fondus de 300 m, décor par
 bloc) ; la boucle commence et finit dans le même biome, sans fondu au départ.
 
-Jeu de base (lots O37, O38, DB1, DB2, DJ1 et DB3) : les parcours de `DEMO_SET` marqués pour le jeu de base (le tour des
+Boucle de la Corniche et Route des Vignes (lot GP13b, parcours propres au Grand Prix des objets, étiquette
+`grandprix`, avec le Circuit des Prés) : `--corniche`, boucle de 2,5 km dans le méditerranéen, relief
+`corniche_relief`, la mer à gauche en contrebas d'une falaise sur le côté est (tronçon `sea` de la boucle, côte
+rocheuse, aires `sea` jusqu'à 1 600 m) ; `--vignes`, 6 km en ligne et vallonnés dans les vignes (biome `farmland`,
+décor `vignoble` de `TOUR_DECORS`). Routes revêtues, sans épingle (rayon d'au moins 25 m).
+
+Jeu de base (lots O37, O38, DB1, DB2, DJ1, DB3 et GP13b) : les parcours de `DEMO_SET` marqués pour le jeu de base (le tour des
 nouveaux paysages, la route des Érables, le circuit, le récif, le volcan, la Route du Sud et la Route du Grand Nord) portent au menu un nom de parcours (`name` du manifeste) et
 leurs lieux des noms inventés (`PLACE_NAMES`) ; l'identifiant de fichier ne change pas. Le tour des six paysages, la
 route de la côte et la montée alpine sont sortis du jeu de base par le lot DB1 (décision du propriétaire du
@@ -67,6 +73,7 @@ ses parcours de démonstration.
     python -m openride_compiler.demo_biomes --out DOSSIER --volcan
     python -m openride_compiler.demo_biomes --out DOSSIER --recif
     python -m openride_compiler.demo_biomes --out DOSSIER --sud | --nord [--recette]
+    python -m openride_compiler.demo_biomes --out DOSSIER --corniche | --vignes [--recette]
     → DOSSIER/<id>.world/ et DOSSIER/<id>.json (parts des biomes et des surfaces)
 
 Origine inventée au degré entier (45° N, 2° E : latitude tempérée de l'hémisphère nord, aucune ville au
@@ -128,7 +135,9 @@ DEMO_SET = (("demo-biomes-paysages", "Tour des nouveaux paysages", "paysages", F
             ("demo-recif", "Récif des tortues", "recif", False, False, True),
             ("demo-volcan", "Volcan en flammes", "volcan", False, False, True),
             ("demo-biomes-sud", "Route du Sud", "sud", False, False, True),
-            ("demo-biomes-nord", "Route du Grand Nord", "nord", False, False, True))
+            ("demo-biomes-nord", "Route du Grand Nord", "nord", False, False, True),
+            ("demo-corniche", "Boucle de la Corniche", "corniche", False, True, True),
+            ("demo-vignes", "Route des Vignes", "vignes", False, False, True))
 # Tour des nouveaux paysages (lot DB1) : par bloc de 2 km, (biome, paysage du lot U25, sol, toits) ; le paysage,
 # le sol et les toits forment la variante régionale des tuiles du bloc (`None` : ce que donne le biome). Ordre
 # choisi pour que deux blocs voisins ne partagent aucun biome de base de leurs paysages (section `landscapes`
@@ -158,8 +167,14 @@ NORD = (("boreal_forest", None, None, None),
         ("polar", None, None, None),
         ("tundra", None, None, None),
         ("boreal_forest", None, None, None))
+# Route des Vignes (lot GP13b, parcours du Grand Prix des objets) : six kilomètres en ligne dans les vignes (biome
+# `farmland`, dont les rangs de vigne sont l'essence principale du thème), vallonnés (pente de `GRADE`), avec un décor
+# propre (`TOUR_DECORS`) : village vigneron au départ, domaines et coteaux, belvédère à l'arrivée.
+VIGNES = (("farmland", None, None, None),) * 3
 # Parcours en blocs de 2 km : table des blocs de chacun (biome, paysage, sol, toits).
-BLOCK_TOURS = {"paysages": PAYSAGES, "sud": SUD, "nord": NORD}
+BLOCK_TOURS = {"paysages": PAYSAGES, "sud": SUD, "nord": NORD, "vignes": VIGNES}
+# Décor de chaque bloc quand il n'est ni celui du paysage ni celui du biome (clé de `BLOCKS`, lot GP13b).
+TOUR_DECORS = {"vignes": ("vignoble",) * len(VIGNES)}
 NORD_M = BLOCK_M * len(NORD)
 NORD_LOBES = ((2, 0.16, 0.3), (3, 0.06, 1.1))
 NORD_CLIMB_M = 120.0         # du départ (taïga) à la banquise ; pente au plus ~6 %, ondulations comprises 8 %
@@ -181,6 +196,16 @@ REEF_WRECK_OFFSET_M = 45.0  # à 45 m du bord de la route, côté extérieur
 REEF_WRECK_LENGTH_M = 42.0
 REEF_TOP_M = -4.0           # le récif ne monte jamais au-dessus (sous le niveau de la mer, 0)
 REEF_SOFT_M = 3.0           # plafond adouci sur les 3 derniers mètres
+# Boucle de la Corniche (lot GP13b, parcours du Grand Prix des objets) : boucle de 2,5 km dans le méditerranéen, la mer
+# en contrebas d'une falaise sur la gauche (à l'extérieur) le long du côté est, village au départ, maquis et pins.
+CORNICHE_M = 2500.0
+CORNICHE_BIOME = "mediterranean"
+CORNICHE_LOBES = ((2, 0.16, 0.5), (3, 0.06, 1.2))
+CORNICHE_SEA = (200.0, 1150.0)  # tronçon de la route bordé par la mer (abscisses), à gauche (`SEA_SIDE`, l'extérieur)
+SEA_RAMP_M = 150.0              # fondu de la falaise aux deux bouts du tronçon, à l'intérieur du tronçon
+# Aires `sea` de la Corniche jusqu'à 1 600 m de la route : au-delà du trou de l'anneau d'horizon de l'engine (1 500 m
+# autour de la caméra, `sea_mesh.gd`), aucun fond marin à sec ne se voit entre les aires et l'horizon.
+CORNICHE_SEA_BAND_M = (BEACH_M[1], 1600.0)
 # Étiquettes des parcours de démonstration (fiche `library.tags` du manifeste, `DEMO_LIBRARY`) : un parcours d'un mode à parcours
 # propres (lot GP13, `openride_core.mode_routes`) ne se court que dans ce mode : le Circuit des Prés est au Grand
 # Prix des objets (décision du propriétaire du 15 novembre). Recette comprise : les bancs passent par le même menu.
@@ -203,6 +228,11 @@ DEMO_LIBRARY = {
     "demo-biomes-sud": {"description": "12 km des oliviers au delta, par la steppe, les dunes, la savane et la "
                                        "jungle."},
     "demo-biomes-nord": {"description": "Boucle de 10 km de la taïga à la banquise par la toundra, et retour."},
+    # Lot GP13b : les deux parcours propres au Grand Prix des objets, avec le Circuit des Prés.
+    "demo-corniche": {"description": "Boucle de 2,5 km au-dessus de la mer, entre maquis, pins et falaises.",
+                      "tags": ["grandprix"]},
+    "demo-vignes": {"description": "6 km en ligne dans les vignes, de coteau en coteau, du village au belvédère.",
+                    "tags": ["grandprix"]},
 }
 
 
@@ -276,6 +306,13 @@ PLACE_NAMES = {
     "toundra": ("Refuge du Caribou", "Refuge des Lichens"),
     "banquise": ("Station de la Banquise",),
     "banquise_vue": ("Belvédère des Glaces",),
+    # Boucle de la Corniche et Route des Vignes (lot GP13b).
+    "corniche": ("Village des Câpriers",),
+    "corniche_vue": ("Belvédère de la Corniche",),
+    "pinede": ("Pointe des Pins",),
+    "vignes": ("Village des Vendanges", "Hameau des Pressoirs", "Clos des Tonneliers"),
+    "domaine": ("Domaine des Coteaux", "Domaine du Puits", "Domaine des Grives"),
+    "vignes_vue": ("Belvédère des Sarments", "Belvédère des Tonneaux", "Belvédère des Coteaux"),
 }
 RECETTE_PLACE_NAMES = {"port": "Port Fictif", "pointe": "Pointe Fictive", "mas": "Mas Fictif",
                        "hameau": "Hameau Fictif", "etang": "Étang Fictif", "col": "Col Fictif",
@@ -292,7 +329,9 @@ RECETTE_PLACE_NAMES = {"port": "Port Fictif", "pointe": "Pointe Fictive", "mas":
                        "pilotis": "Village Fictif", "delta": "Pointe Fictive", "mares": "Étang Fictif",
                        "chenal": "Étang Fictif", "trappeurs": "Hameau Fictif",
                        "lac_nord": "Étang Fictif", "toundra": "Hameau Fictif", "banquise": "Hameau Fictif",
-                       "banquise_vue": "Belvédère Fictif"}
+                       "banquise_vue": "Belvédère Fictif",
+                       "corniche": "Village Fictif", "corniche_vue": "Belvédère Fictif", "pinede": "Pointe Fictive",
+                       "vignes": "Village Fictif", "domaine": "Hameau Fictif", "vignes_vue": "Belvédère Fictif"}
 
 # Pente de la route (%) dans un bloc, selon la position u (m) dans le bloc.
 GRADE = {
@@ -357,7 +396,8 @@ class Plan:
 
     def __init__(self, biomes: tuple[str, ...], gravel: bool, sea: bool, recette: bool = False,
                  circuit: bool = False, loop: str | None = None,
-                 variants: tuple[dict | None, ...] | None = None) -> None:
+                 variants: tuple[dict | None, ...] | None = None,
+                 decors: tuple[str, ...] | None = None) -> None:
         loop = loop or ("circuit" if circuit else None)
         circuit = loop is not None
         if circuit and LOOPS[loop]["biome"] is not None and len(set(biomes)) != 1:
@@ -366,6 +406,9 @@ class Plan:
             raise ValueError("boucle à plusieurs blocs : 2 km par bloc, sur toute la boucle")
         if variants is not None and len(variants) != len(biomes):
             raise ValueError("une variante par bloc")
+        if decors is not None and len(decors) != len(biomes):
+            raise ValueError("un décor par bloc")
+        self.decors = tuple(decors) if decors is not None else None
         self.biomes = biomes
         # Variante régionale de chaque bloc (lot DB1) : {"ground", "roofs", "landscape"} ou None.
         self.variants = tuple(variants) if variants is not None else (None,) * len(biomes)
@@ -374,7 +417,8 @@ class Plan:
         self.circuit = circuit
         self.loop = loop
         self.relief = LOOPS[loop]["relief"] if loop else None
-        self.sea = sea and "coast" in biomes and not circuit
+        # Mer : le long des blocs `coast` de la route ouverte, ou le long du tronçon `sea` d'une boucle (lot GP13b).
+        self.sea = sea and (bool(LOOPS[loop].get("sea")) if circuit else "coast" in biomes)
         self.road = sim.LoopRoad(LOOPS[loop]["length_m"], LOOPS[loop]["lobes"]) if loop \
             else sim.SRoad(BLOCK_M * len(biomes))
         self.length_m = self.road.length_m
@@ -421,7 +465,10 @@ class Plan:
         return min(max(int(s // BLOCK_M), 0), len(self.biomes) - 1)
 
     def decor(self, i: int) -> str:
-        """Clé du décor du bloc `i` dans `BLOCKS` : son paysage (lot DB1), sinon son biome."""
+        """Clé du décor du bloc `i` dans `BLOCKS` : celui du parcours (`TOUR_DECORS`, lot GP13b), sinon son paysage
+        (lot DB1), sinon son biome."""
+        if self.decors is not None:
+            return self.decors[i]
         variant = self.variants[i]
         return (variant or {}).get("landscape") or self.biomes[i]
 
@@ -451,6 +498,26 @@ class Plan:
             out[b] = out.get(b, 0.0) + np.minimum(w_in, w_out) * np.ones_like(s)
         return out
 
+    def sea_stretches(self) -> list[tuple[float, float]]:
+        """Tronçons de la route bordés par la mer (à gauche, `SEA_SIDE`) : les blocs `coast` de la route ouverte, ou
+        le tronçon `sea` de la boucle (lot GP13b)."""
+        if not self.sea:
+            return []
+        if self.circuit:
+            return [tuple(LOOPS[self.loop]["sea"])]
+        return [(i * BLOCK_M, (i + 1) * BLOCK_M) for i, b in enumerate(self.biomes) if b == "coast"]
+
+    def sea_weight(self, s, weights: dict):
+        """Part (0 à 1) de la mer au point d'abscisse `s` : le poids du biome `coast` sur la route ouverte ; sur une
+        boucle, 1 dans son tronçon `sea`, avec un fondu de `SEA_RAMP_M` à chaque bout, à l'intérieur du tronçon
+        (la falaise rentre dans la terre avant la fin des aires `sea`)."""
+        import numpy as np
+        if not self.circuit:
+            return weights.get("coast", 0.0)
+        s0, s1 = LOOPS[self.loop]["sea"]
+        s = np.asarray(s, dtype=float)
+        return np.clip(np.minimum(s - s0, s1 - s) / SEA_RAMP_M, 0.0, 1.0)
+
     def grade(self, s: float) -> float:
         u = s % BLOCK_M
         return sum(w * GRADE[b](u) for b, w in self.weights(s).items())
@@ -479,6 +546,18 @@ def circuit_relief(x, z, s=None, d=None):
     z = np.asarray(z, dtype=float)
     return (BASE_ALT_M + 40.0 + 14.0 * np.sin(x / 210.0 + 0.6) * np.cos(z / 260.0)
             - 12.0 * np.exp(-((x - 260.0) ** 2 + (z - 200.0) ** 2) / 90000.0) + _soft_cap(x / 60.0, 15.0, 30.0))
+
+
+def corniche_relief(x, z, s=None, d=None):
+    """Relief de la Boucle de la Corniche (m, lot GP13b) : la terre monte de la mer (à l'est) vers les collines de
+    l'intérieur (à l'ouest), avec des croupes ; la route longe la falaise à mi-hauteur sur le côté est et passe le
+    col de l'ouest. Pente de la route de −6 à +6 % environ, 30 à 45 m de montée par tour (`test_corniche_loop`) ; la falaise et la mer viennent de
+    `make_terrain` (tronçon `sea` de la boucle)."""
+    import numpy as np
+    x = np.asarray(x, dtype=float)
+    z = np.asarray(z, dtype=float)
+    return (BASE_ALT_M + 40.0 + _soft_cap(-x / 22.0, 26.0, 30.0)
+            + 6.0 * np.sin(x / 190.0 + 2.0) * np.cos(z / 230.0 - 0.4))
 
 
 def _soft_cap(v, knee: float, rise: float):
@@ -623,7 +702,7 @@ def make_terrain(plan: Plan):
             far = _soft_cap(np.clip(d - 162.0, 0.0, None), 0.0, FAR_RISE_M)
             side += w * (slope * np.clip(d - 12.0, 0.0, 150.0) + far_slope * far + bump)
         if plan.sea:
-            sea = weights.get("coast", 0.0) * (np.sign(dx) == SEA_SIDE)
+            sea = plan.sea_weight(s, weights) * (np.sign(dx) == SEA_SIDE)
             # Plage de la route au niveau 0 entre 36 et 70 m de l'axe, puis fond marin jusqu'à −25 m.
             t = d - BEACH_M[0]
             shore = np.where(d < BEACH_M[1], base * (1.0 - t / (BEACH_M[1] - BEACH_M[0])), -0.1 * (d - BEACH_M[1]))
@@ -763,6 +842,46 @@ def _circuit(op, rng, plan):
     _farms(op, (700.0, 1600.0), "#d9cfc1")
     for s in (1000.0, 2000.0):
         op.node(*op.point(s, out * 280.0), {"power": "generator", "generator:source": "wind", "height": "95"})
+
+
+def _corniche(op, rng, plan):
+    """Boucle de la Corniche (lot GP13b) : village aux maisons claires au départ, puis la route en haut de la falaise
+    sur le côté est, la mer à gauche (rien n'est posé de ce côté le long du tronçon `sea`), maquis et pinède à droite,
+    belvédère sur la mer ; retour par l'intérieur entre oliviers, maquis et pins. Bandes de 120 m au plus à
+    l'intérieur de la boucle (l'autre rive est à plus de 300 m)."""
+    inside, out = sim.LoopRoad.INSIDE, -sim.LoopRoad.INSIDE
+    sea0, sea1 = LOOPS["corniche"]["sea"]
+    colours = ["#f0e6d2", "#e3c9a8", "#f5efe0", "#e8b98a", "#ffffff"]
+    _houses(op, rng, 30.0, sea0 - 20.0, (inside, out), colours, plan.place("corniche", 0), church=False)
+    _houses(op, rng, plan.length_m - 150.0, plan.length_m - 20.0, (inside, out), colours, plan.place("corniche", 0),
+            church=True)
+    _veg(op, sea0 + 20.0, sea0 + 520.0, inside, 20.0, 120.0, {"natural": "scrub"})
+    _veg(op, sea0 + 560.0, sea1 + 150.0, inside, 20.0, 120.0, {"natural": "wood"})
+    op.node(*op.point((sea0 + sea1) / 2.0, out * 26.0), {"tourism": "viewpoint", "name": plan.place("corniche_vue", 0)})
+    _veg(op, sea1 + 60.0, sea1 + 600.0, out, 20.0, 220.0, {"natural": "wood"})
+    op.node(*op.point(sea1 + 330.0, out * 24.0), {"tourism": "viewpoint", "name": plan.place("pinede", 0)})
+    _veg(op, sea1 + 250.0, sea1 + 750.0, inside, 20.0, 110.0, {"landuse": "orchard"})
+    _veg(op, sea1 + 650.0, plan.length_m - 200.0, out, 20.0, 240.0, {"natural": "scrub"})
+    _veg(op, sea1 + 820.0, plan.length_m - 200.0, inside, 20.0, 110.0, {"natural": "scrub"})
+
+
+def _vineyard(op, rng, s0, s1, plan, i):
+    """Route des Vignes (lot GP13b) : vignes des deux côtés (zones `orchard` : dans le biome `farmland`, l'essence
+    principale du thème est le rang de vigne), un village vigneron au premier bloc, un hameau au deuxième, un clos au
+    dernier, un domaine (maison de maître et chai) par bloc, un bosquet et un belvédère sur les coteaux."""
+    colours = ["#f0e6d2", "#e3c9a8", "#d9cfc1", "#e8dcc4"]
+    for side in (-1, 1):
+        _veg(op, s0 + 60.0, s0 + 700.0, side, 22.0, 260.0, {"landuse": "orchard"})
+        _veg(op, s0 + 1000.0, s1 - 60.0, side, 22.0, 260.0, {"landuse": "orchard"})
+    _houses(op, rng, s0 + 720.0, s0 + 980.0, (-1, 1), colours, plan.place("vignes", i), gap=(22.0, 32.0),
+            church=i == 0)
+    side = 1 if i % 2 == 0 else -1
+    op.building(s0 + 1350.0, side * 40.0, {"building": "house", "building:levels": "3",
+                                          "building:colour": "#efe4cf", "name": plan.place("domaine", i)}, 22.0, 13.0)
+    op.building(s0 + 1385.0, side * 44.0, {"building": "farm_auxiliary", "height": "7 m",
+                                          "building:colour": "#d9c7a6"}, 30.0, 12.0)
+    _veg(op, s0 + 1500.0, s0 + 1700.0, -side, 120.0, 260.0, {"natural": "wood"})
+    op.node(*op.point(s1 - 250.0, -side * 25.0), {"tourism": "viewpoint", "name": plan.place("vignes_vue", i)})
 
 
 # --- Tour des nouveaux paysages (lot DB1) : un décor par bloc, choisi par le paysage du bloc ou son biome ---
@@ -978,7 +1097,9 @@ BLOCKS = {"coast": _coast, "mediterranean": _mediterranean, "temperate_grassland
           "ile_volcanique": _volcanic_island, "canyon": _canyon, "high_plateau": _plateau,
           # lot DB3 : les neuf biomes qui n'avaient pas de démonstration (le méditerranéen garde le sien)
           "steppe": _steppe, "sand_desert": _sand_desert, "savanna": _savanna, "jungle": _jungle,
-          "wetland": _wetland, "boreal_forest": _boreal, "tundra": _tundra, "polar": _polar}
+          "wetland": _wetland, "boreal_forest": _boreal, "tundra": _tundra, "polar": _polar,
+          # lot GP13b : Route des Vignes (`TOUR_DECORS`)
+          "vignoble": _vineyard}
 
 
 # Boucles (lots O38, SM1, DB2 et DB3) : longueur, lobes du rayon (`fake_osm.LoopRoad`), biome (`None` : un bloc de 2 km
@@ -991,8 +1112,12 @@ LOOPS = {
     "volcan": {"length_m": VOLCAN_M, "lobes": VOLCAN_LOBES, "biome": VOLCAN_BIOME, "relief": volcano_relief,
                "variant": VOLCAN_VARIANT, "sides": False},
     "nord": {"length_m": NORD_M, "lobes": NORD_LOBES, "biome": None, "relief": nord_relief, "sides": False},
+    # Lot GP13b : `sea`, tronçon de la route bordé par la mer à gauche ; `sea_band`, aires `sea` de tant à tant de
+    # mètres de l'axe (défaut `SEA_BAND_M`) ; `shore`, côte rocheuse seulement.
+    "corniche": {"length_m": CORNICHE_M, "lobes": CORNICHE_LOBES, "biome": CORNICHE_BIOME, "relief": corniche_relief,
+                 "sea": CORNICHE_SEA, "sea_band": CORNICHE_SEA_BAND_M, "shore": "rock"},
 }
-LOOP_BLOCKS = {"circuit": _circuit, "recif": _recif, "volcan": _volcan}
+LOOP_BLOCKS = {"circuit": _circuit, "recif": _recif, "volcan": _volcan, "corniche": _corniche}
 
 
 def tour_blocks(which: str) -> tuple[tuple[str, ...], tuple[dict | None, ...] | None]:
@@ -1109,7 +1234,6 @@ def write_surface(plan: Plan, manifest: dict, route: dict) -> dict[str, float]:
 def write_sea(world: Path, plan: Plan, manifest: dict, route: dict) -> dict[str, int]:
     """Couche côte et aires `sea` le long du biome `coast` (tronçons de 1 km de la route)."""
     from openride_compiler.constants import CHUNK_LENGTH_M
-    coast_s = [i * BLOCK_M for i, b in enumerate(plan.biomes) if b == "coast"]
     chunks: dict[int, dict] = {}
     water_dir = world / "water"
     water_dir.mkdir(exist_ok=True)
@@ -1119,13 +1243,17 @@ def write_sea(world: Path, plan: Plan, manifest: dict, route: dict) -> dict[str,
         px, pz = plan.road.point(s, SEA_SIDE * d)
         return [round(px - plan.offset[0], 2), round(pz - plan.offset[1], 2)]
 
-    for b0 in coast_s:
-        for k in range(int(b0 // CHUNK_LENGTH_M), int((b0 + BLOCK_M) // CHUNK_LENGTH_M)):
-            c0, c1 = k * CHUNK_LENGTH_M, (k + 1) * CHUNK_LENGTH_M
-            if k == 0:
-                c0 = 0.0
-            sandy = k % 2 == 0
-            # Côte parcourue du nord au sud (z croissant) : la mer, à l'ouest, est à droite du sens des points.
+    # Lot GP13b : une boucle (la Corniche) a une côte rocheuse seulement, sa route en haut de la falaise.
+    rocky = plan.circuit and LOOPS[plan.loop].get("shore") == "rock"
+    band = LOOPS[plan.loop].get("sea_band", SEA_BAND_M) if plan.circuit else SEA_BAND_M
+    for b0, b1 in plan.sea_stretches():
+        for k in range(int(b0 // CHUNK_LENGTH_M), int(math.ceil(b1 / CHUNK_LENGTH_M))):
+            c0, c1 = max(k * CHUNK_LENGTH_M, b0), min((k + 1) * CHUNK_LENGTH_M, b1)
+            if c1 - c0 < 1.0:
+                continue
+            sandy = k % 2 == 0 and not rocky
+            # Côte parcourue à rebours de la route : la mer, à gauche du sens de marche, est à droite du sens des
+            # points.
             line = [side_pt(s, BEACH_M[1]) for s in _frange(c1, c0, -25.0)]
             entry = chunks.setdefault(k, {"version": "1.0", "lines": [], "beaches": []})
             entry["lines"].append({"id": f"c{k}", "shore": "sand" if sandy else "rock", "points": line})
@@ -1138,8 +1266,8 @@ def write_sea(world: Path, plan: Plan, manifest: dict, route: dict) -> dict[str,
                 else {"version": "1.0", "lines": [], "areas": []}
             for a0 in [c0 + 250.0 * m for m in range(int(math.ceil((c1 - c0) / 250.0)))]:
                 a1 = min(a0 + 250.0, c1)
-                near = [side_pt(s, SEA_BAND_M[0]) for s in _frange(a0, a1, 25.0)]
-                far = [side_pt(s, SEA_BAND_M[1]) for s in _frange(a1, a0, -25.0)]
+                near = [side_pt(s, band[0]) for s in _frange(a0, a1, 25.0)]
+                far = [side_pt(s, band[1]) for s in _frange(a1, a0, -25.0)]
                 water["areas"].append({"id": f"s{k}_{int(a0 - c0)}", "kind": "sea", "level_y": 0.0,
                                        "outer": _ccw(near + far), "holes": []})
                 areas_added += 1
@@ -1202,13 +1330,15 @@ def _offline_compiler(payload: bytes, terrain, cache: Path):
 
 def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False, sea: bool = False,
              seed: int = 0, title: str | None = None, recette: bool = False, circuit: bool = False,
-             loop: str | None = None, variants: tuple[dict | None, ...] | None = None) -> dict:
+             loop: str | None = None, variants: tuple[dict | None, ...] | None = None,
+             decors: tuple[str, ...] | None = None) -> dict:
     """Écrit `out/<name>.world` et `out/<name>.json` ; renvoie le résumé (parts des biomes et des surfaces).
     `title` : nom affiché au menu (`name` du manifeste) ; sans lui ou avec `recette`, l'identifiant `name`.
     `circuit` : la boucle du circuit de démonstration (lot O38) au lieu de la route ouverte, un seul biome ;
     `loop` : une boucle de `LOOPS` (`recif` : le récif du lot SM1, seul à employer le biome `reef`) ;
-    `variants` : variante régionale de chaque bloc (lot DB1, voir `PAYSAGES`)."""
-    plan = Plan(biomes, gravel, sea, recette, circuit, loop, variants)
+    `variants` : variante régionale de chaque bloc (lot DB1, voir `PAYSAGES`) ; `decors` : décor de chaque bloc
+    (lot GP13b, voir `TOUR_DECORS`)."""
+    plan = Plan(biomes, gravel, sea, recette, circuit, loop, variants, decors)
     if plan.loop in LOOP_BLOCKS:
         unknown = [b for b in biomes if b != LOOPS[plan.loop]["biome"]]
     else:
@@ -1280,7 +1410,7 @@ def write_demo_set(out: Path, seed: int = 0, recette: bool = False) -> list[dict
         loop = which if which in LOOPS else None
         biomes, variants = tour_blocks(which)
         infos.append(generate(out, name, biomes, gravel=gravel, sea=sea, seed=seed, title=title, recette=recette,
-                              loop=loop, variants=variants))
+                              loop=loop, variants=variants, decors=TOUR_DECORS.get(which)))
     return infos
 
 
@@ -1300,6 +1430,10 @@ def main(argv: list[str] | None = None) -> int:
                       help="la Route du Sud (lot DB3) : six blocs de 2 km, du méditerranéen aux zones humides")
     what.add_argument("--nord", action="store_true",
                       help="la Route du Grand Nord (lot DB3) : boucle de 10 km, taïga, toundra et banquise")
+    what.add_argument("--corniche", action="store_true",
+                      help="la Boucle de la Corniche (lot GP13b, Grand Prix) : boucle de 2,5 km au-dessus de la mer")
+    what.add_argument("--vignes", action="store_true",
+                      help="la Route des Vignes (lot GP13b, Grand Prix) : 6 km en ligne dans les vignes")
     what.add_argument("--demo-set", action="store_true", help="les parcours de demo-biomes (le tour gravel en plus avec --recette)")
     parser.add_argument("--gravel", action="store_true", help="un tiers de la route en gravel ou dirt")
     parser.add_argument("--sea", action="store_true", help="côte inventée et mer le long du biome coast")
@@ -1315,14 +1449,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             which = ("tour" if args.tour else "circuit" if args.circuit else "recif" if args.recif
                      else "volcan" if args.volcan else "paysages" if args.paysages else "sud" if args.sud
-                     else "nord" if args.nord else args.biome)
+                     else "nord" if args.nord else "corniche" if args.corniche else "vignes" if args.vignes
+                     else args.biome)
             loop = which if which in LOOPS else None
             biomes, variants = tour_blocks(which)
-            name = args.name or ("biomes-tour" if args.tour else which if which in ("circuit", "recif", "volcan")
+            name = args.name or ("biomes-tour" if args.tour
+                                 else which if which in ("circuit", "recif", "volcan", "corniche", "vignes")
                                  else f"biomes-{which}")
-            infos = [generate(args.out, name, biomes, gravel=args.gravel, sea=args.sea or args.paysages,
+            infos = [generate(args.out, name, biomes, gravel=args.gravel,
+                              sea=args.sea or args.paysages or args.corniche,
                               seed=args.seed, title=args.title, recette=args.recette, loop=loop,
-                              variants=variants)]
+                              variants=variants, decors=TOUR_DECORS.get(which))]
     except (RuntimeError, ValueError) as exc:
         print(f"demo_biomes : {exc}", file=sys.stderr)
         return 1

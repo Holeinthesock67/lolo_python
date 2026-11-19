@@ -59,7 +59,7 @@ Remarque : …
 
 ## 2. Course en ligne à 4 bots (10 minutes au plus)
 
-Parcours « Col du lacet » (`demo`), course en ligne de 5 km, 4 adversaires, chaos normal, boîtes tous les 1 500 m, niveau des bots inchangé, tous les objets. Arrête-toi à l'arrivée ou au bout de 10 minutes.
+Parcours « Route des Vignes » (Accueil › Grand Prix des objets › Changer de parcours ; 6 km en ligne dans les vignes, lot GP13b), course en ligne de 5 km, 4 adversaires, chaos normal, boîtes tous les 1 500 m, niveau des bots inchangé, tous les objets. Arrête-toi à l'arrivée ou au bout de 10 minutes.
 
 - [ ] Départ groupé : les 4 bots et toi sur la ligne ; place et écart en haut à droite (« 3e / 5 · à 6,4 s du premier »).
 - [ ] Rangées de boîtes visibles de loin, une par voie ; roulette de 2 s puis objet dans la case en haut au centre, avec l'invite « Z : Trois musettes » (nom de l'objet).
