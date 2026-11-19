@@ -195,6 +195,7 @@ var _start_wait = StartWaitModel.new()
 const ROGUE_SCENE_ID := "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 var start_screen: Control = null   # écran d'attente « Start your engines » (start_screen.gd)
 var _was_start_waiting := false
+var _dir := 1                  # sens de la dernière trame (lot N26 : demi-tour automatique au bout du parcours)
 var _bias_locked := false     # test de FTP : + et − bloqués pendant la rampe (rappel à l'entrée)
 var _route_loaded_id := ""   # parcours affiché (chargé par _poll_route_job), "" avant le premier
 
@@ -1665,7 +1666,8 @@ func _test_menu_state(req: String) -> Dictionary:
 		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
 		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
 		"rogue": rogue_host.is_active(), "hud": hud.visible,
-		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name}
+		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name,
+		"s_m": float(_last_state.get("s", 0.0)) if _last_state.get("s", null) != null else 0.0}
 
 
 ## Décor posé en plusieurs images après les tuiles : tronçons d'herbe du bord pas encore remplis (lot Y22) et
@@ -2126,6 +2128,10 @@ func _on_state_received(state: Dictionary) -> void:
 		banner.show_message("workout_done", done_text)
 	else:
 		banner.clear_message("workout_done")
+	var end_turn := HudViewModel.end_u_turn_text(_dir, state)
+	if end_turn != "":
+		banner.show_message("press", end_turn, PRESS_HINT_S)
+	_dir = HudViewModel.direction_of(state)
 	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)

@@ -549,3 +549,23 @@ def test_group_caught_behind_a_held_group_never_touches_it(rider_v, a_rel, a_v, 
     hits, worst_dv = _held_train(rider_v, a_rel, a_v, b_rel, c_rel)
     assert hits == 0
     assert worst_dv < 0.05
+
+
+def test_decor_group_stays_behind_slower_vehicle(route: Route) -> None:
+    """Banc rDB3 (14/11) : en descente, un groupe du décor plus rapide qu'un véhicule du même sens le doublait par
+    le bord de la route (les véhicules ne regardent pas derrière eux) ; il reste désormais derrière lui."""
+    m = rc.RoadCyclists(route, (), (), 16, 7)
+    m._started, m._next_slot = True, 10 ** 6
+    rider_s = 500.0
+    g = m.place_for_test(rider_s, 7.0, "ahead", 40.0, 1, kmh=40.0)
+    v = {"s": g.s + g.dir * 40.0, "dir": g.dir, "speed_mps": 6.0}
+    m.vehicles = [v]
+    gaps = []
+    for _ in range(300):
+        m.update(rider_s, 7.0, 0.1)
+        rider_s += 0.7
+        v["s"] += g.dir * 6.0 * 0.1
+        gaps.append((v["s"] - g.s) * g.dir)
+    assert g in m.groups
+    assert min(gaps) > 0.0, "le groupe a doublé le véhicule"
+    assert gaps[-1] <= rc.VEHICLE_FOLLOW_M + 0.5, "le groupe s'est rapproché puis a suivi"

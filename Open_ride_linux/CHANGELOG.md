@@ -5,6 +5,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Une démonstration pour chaque biome (lot DB3)
+- Deux nouveaux parcours de démonstration, pour que chaque biome du jeu ait le sien. La « Route du Sud » fait 12 km des oliviers au delta : maquis méditerranéen, steppe et campement de yourtes, dunes et oasis, savane et village de cases, jungle, puis zones humides et village sur pilotis (2 km chacun). La « Route du Grand Nord » est une boucle de 10 km : taïga et lac, toundra et refuge, banquise et station polaire au point le plus haut, puis retour par la toundra et la taïga.
+- Trace, relief et décor entièrement inventés (aucune donnée réelle). Les deux parcours sont ajoutés à la prochaine installation des contenus de départ ; aucun autre parcours n'est réécrit.
+- Cyclistes du décor : dans une descente, un cycliste plus rapide qu'une voiture qui roule dans son sens reste derrière elle au lieu de la doubler par le bord de la route (contacts vus sur la boucle du Grand Nord et le volcan).
+- Plus d'herbe verte dans la neige : aucune touffe sur la banquise, et une herbe rase et rousse, clairsemée, dans la toundra.
+
 ### Une démonstration du Japon : la « Route des Érables » (lot DJ1)
 - Nouveau parcours de démonstration livré avec le jeu : 6 km de montée douce (1 à 5 %, 200 m) dans le biome Japon, entre forêts de cèdres et d'érables, trois villages aux toits de tuiles kawara, torii et lanternes, jusqu'au belvédère du « Col des Cèdres ». Trace, relief et décor sont entièrement inventés.
 - Il s'ajoute à la prochaine installation des contenus de départ, sans rien réécrire ; Hakone et le Fuji restent dans le pack Cols célèbres.
@@ -132,6 +138,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Image moins claire et plus contrastée : brume éclairée à moitié par le ciel et étalonnage en S (ombres plus denses), au même coût.
 - Route qui disparaissait sous l'herbe dans les longues montées (forêt, montagne) : le terrain lointain est de nouveau creusé sous la chaussée avec le relief exagéré.
 - Parcours demo : le sol ne recouvre plus la chaussée au km 1,74, là où la pente passe de 1 % à 3,5 %. Le terrain de démonstration reçoit le même garde-fou que les parcours compilés et la démo du dossier des parcours est remplacée au prochain lancement.
+
+### Grand Prix des objets à 11 adversaires (lot GP10)
+- Le Grand Prix des objets accepte jusqu'à 11 adversaires (au lieu de 4) grâce au peloton (réglage « Adversaires » de l'écran Prêt du mode).
+- Au bout d'un parcours en ligne, les bots arrivés s'arrêtent en file au lieu de s'empiler au même endroit ; au Grand Prix, la ligne est posée 30 m avant le bout du parcours.
+- La trame qui porte l'état des appareils garde ses bots à 11 adversaires : seuls leurs objets et effets en partent pour cette trame-là, l'écran garde les derniers reçus.
 
 ### Dernier survivant à 11 adversaires (lot DS8)
 - Jusqu'à 11 adversaires (au lieu de 4) grâce au peloton : une arche par adversaire, donc un parcours d'au moins 11 km à 1 km d'écart, ou une boucle, ou le monde ouvert. Sur un parcours trop court, l'écran Prêt propose les réglages qui tiennent.

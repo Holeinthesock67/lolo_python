@@ -1,0 +1,58 @@
+{
+  "description": "Lot EA3, recette sur le PC : monde ouvert lancé depuis Tournon-sur-Rhône (route du bord du Rhône, réseau), 5 minutes de balade avec une capture par minute : surface de la grande rivière, pente du niveau le long du cours, berges, sol qui ne perce pas, plus de ruban de 6 m dans le fleuve. À lancer en low, medium et high, sur la branche puis sur main pour comparer (les carrés du cache et la base des tuiles se refont d'eux-mêmes).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "tournon",
+        "contient": "Tournon"
+      }
+    },
+    {
+      "attendre": 20
+    },
+    {
+      "capture": "rive_depart"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_1"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_2"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_3"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_4"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_5"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 120
+    }
+  ]
+}

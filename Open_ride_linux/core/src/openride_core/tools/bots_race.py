@@ -163,8 +163,8 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
             t += dt
             step += 1
             # contacts tant que la séance tourne : après l'arrivée du cycliste, les bots n'ont plus ni abri ni placement
-            # (les bots arrivés s'arrêtent sur la ligne : hors compte)
-            runners = [(b.id, b.s, b.lane.m) for b in bots if b.id not in finish and b.s < length - 1e-6]
+            # (les bots arrivés s'arrêtent en file au bout du parcours, `session.END_GAP_M` : hors compte)
+            runners = [(b.id, b.s, b.lane.m) for b in bots if b.id not in finish and b.id not in s._end_queue]
             runners.append(("rider", s.physics.s, s._lane.m))
             now_touching = contacts(runners) if "rider" not in finish else set()
             new = now_touching - touching
@@ -178,7 +178,7 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
             touching = now_touching
             for b in bots:
                 wmin[b.id] = min(wmin[b.id], b.wbal_pct)
-                if b.id not in finish and b.s >= length - 1e-6:
+                if b.id not in finish and (b.s >= length - 1e-6 or b.id in s._end_queue):
                     finish[b.id] = t
         s._finish(save=False)
     rider_t = finish.get("rider")

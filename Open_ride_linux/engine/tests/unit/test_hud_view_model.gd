@@ -413,6 +413,16 @@ func _test_controls_help() -> void:
 		and HudViewModel.u_turn_press_text("Y_LONG", "RUNNING", true) == ""
 		and HudViewModel.u_turn_press_text("Y_SHORT", "RUNNING", false) == "",
 		"Y maintenu en roulant : demi-tour confirmé à l'écran (§7.1, révision 1.11)")
+	var at_end := {"session_state": "RUNNING", "dir": -1, "s": 1200.0, "route_length_m": 1200.0,
+		"erg": {"kind": "workout"}}
+	_check(HudViewModel.end_u_turn_text(1, at_end) == HudViewModel.END_U_TURN_TEXT
+		and HudViewModel.end_u_turn_text(-1, at_end) == ""
+		and HudViewModel.end_u_turn_text(-1, at_end.merged({"dir": null, "s": 0.5}, true)) == HudViewModel.END_U_TURN_TEXT
+		and HudViewModel.end_u_turn_text(1, at_end.merged({"s": 600.0}, true)) == ""
+		and HudViewModel.end_u_turn_text(1, at_end.merged({"erg": null}, true)) == ""
+		and HudViewModel.end_u_turn_text(1, at_end.merged({"erg": {"kind": "free"}}, true)) == ""
+		and HudViewModel.end_u_turn_text(1, at_end.merged({"session_state": "PAUSED"}, true)) == "",
+		"bout du parcours en entraînement : demi-tour automatique annoncé (lot N26), pas au milieu ni hors entraînement")
 
 
 func _init() -> void:

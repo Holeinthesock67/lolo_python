@@ -328,3 +328,16 @@ def test_no_return_into_the_wheel_of_a_rider_still_caught():
                     if abs(s_me - s_o) < d.BIKE_LENGTH_M:
                         worst = min(worst, abs(me.m - other.m))
     assert worst >= d.RIDER_WIDTH_M + 0.2   # 0,67 m avant le correctif
+
+
+def test_wide_runner_keeps_its_body_on_the_bike_bounds():
+    """Bloc coureur et voiture d'équipe (lot GP4, banc rGP4v : voiture d'un bot sur un cycliste du décor venant en
+    face, puis sur l'accotement) : un coureur plus large qu'un vélo garde ses bords là où ceux d'un vélo peuvent
+    aller, en dépassement comme à droite."""
+    wide = d.Lane(2.6, 2.6, half_width=1.03, length=d.BIKE_LENGTH_M + 7.6)
+    extra = 1.03 - d.RIDER_WIDTH_M / 2.0
+    target, passing = d.lane_target(0.0, 15.0, wide, [])
+    assert not passing and target == pytest.approx(d.LANE_MAX_M - extra)
+    wall = [(8.0 + 0.5 * k, 5.0, d.Lane(m, m, auto=False)) for k, m in enumerate((2.6, 1.6, 0.6))]
+    target, passing = d.lane_target(0.0, 15.0, d.Lane(1.0, 1.0, half_width=1.03, length=wide.length), wall)
+    assert passing and target == pytest.approx(d.PASS_LANE_MIN_M + extra)   # bord gauche d'un vélo à -1,5 m

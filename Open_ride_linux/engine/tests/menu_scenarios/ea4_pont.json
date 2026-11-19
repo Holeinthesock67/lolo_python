@@ -1,0 +1,88 @@
+{
+  "description": "Lot EA4, recette sur le PC : monde ouvert lancé depuis Seyssel (ville coupée en deux par le Rhône, pont routier au centre, réseau), 5 minutes de balade avec une capture toutes les 30 s : tablier, garde-corps, piles, rivière sous le pont. Le premier carrefour décide si la route passe le pont : à juger sur les captures. À lancer en low, medium et high, sur la branche puis sur main (les carrés du cache se refont d'eux-mêmes : WORLDGEN_VERSION 3).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "seyssel",
+        "contient": "Seyssel"
+      }
+    },
+    {
+      "attendre": 20
+    },
+    {
+      "capture": "pont_depart"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_1"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_2"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_3"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_4"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_5"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_6"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_7"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_8"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_9"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_10"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 120
+    }
+  ]
+}
