@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Plus de faux « frein lâché » quand on arrête de pédaler (lot FR1)
+- Un arrêt net de pédalage (fin de salle du Cyber-Rogue, fin d'épreuve au vélodrome) n'est plus pris pour un frein lâché par le trainer : la cadence annoncée garde son ancienne valeur environ une seconde après l'arrêt, et le jeu attend maintenant 2 s de pédales qui tournent vraiment avant de reprendre le contrôle du trainer. Même règle dans tous les modes.
+- Le rapport des décrochages applique la même règle : un arrêt suivi d'une reprise n'est plus compté comme une faute du trainer.
+
 ### Une démonstration pour chaque biome (lot DB3)
 - Deux nouveaux parcours de démonstration, pour que chaque biome du jeu ait le sien. La « Route du Sud » fait 12 km des oliviers au delta : maquis méditerranéen, steppe et campement de yourtes, dunes et oasis, savane et village de cases, jungle, puis zones humides et village sur pilotis (2 km chacun). La « Route du Grand Nord » est une boucle de 10 km : taïga et lac, toundra et refuge, banquise et station polaire au point le plus haut, puis retour par la toundra et la taïga.
 - Trace, relief et décor entièrement inventés (aucune donnée réelle). Les deux parcours sont ajoutés à la prochaine installation des contenus de départ ; aucun autre parcours n'est réécrit.

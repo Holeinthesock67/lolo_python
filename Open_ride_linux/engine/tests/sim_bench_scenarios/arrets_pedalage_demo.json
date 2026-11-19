@@ -1,0 +1,95 @@
+{
+  "description": "Arrêts nets de pédalage (lot FR1) sur le parcours de démonstration : 320 W à 85 tr/min, arrêts à 20 s, 45 s et 70 s puis reprises 10 s plus tard (puissance qui tombe aussitôt, cadence annoncée gardée 1,5 s comme le vrai trainer), puis un vrai frein lâché de 6 s à 100 s. Attendu : un seul « frein lâché », celui de 100 s ; banc GPU à faire en low, medium et high.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 320,
+    "cadence_rpm": 85
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [
+    {
+      "t": 20,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 0,
+      "cadence_rpm": 0
+    },
+    {
+      "t": 30,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 320,
+      "cadence_rpm": 85
+    },
+    {
+      "t": 45,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 0,
+      "cadence_rpm": 0
+    },
+    {
+      "t": 55,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 320,
+      "cadence_rpm": 85
+    },
+    {
+      "t": 70,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 0,
+      "cadence_rpm": 0
+    },
+    {
+      "t": 80,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 320,
+      "cadence_rpm": 85
+    },
+    {
+      "t": 100,
+      "device": "trainer",
+      "action": "brake_loss",
+      "seconds": 6
+    }
+  ],
+  "bench": {
+    "world": "demo",
+    "duration_s": 130,
+    "every_s": 10,
+    "expect": [
+      {
+        "journal": "ftms",
+        "where": {
+          "event": "brake_loss"
+        },
+        "min": 1,
+        "max": 1,
+        "recette": "FR1",
+        "label": "un seul frein lâché au journal : le vrai, pas les trois arrêts de pédalage"
+      },
+      {
+        "log": "core",
+        "motif": "le frein a lâché",
+        "min": 1,
+        "max": 1,
+        "recette": "FR1",
+        "label": "un seul avertissement « le frein a lâché » dans le journal du core"
+      }
+    ]
+  }
+}
