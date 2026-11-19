@@ -567,9 +567,9 @@ static func _roof_bike(m, base: Vector3, dir: float) -> void:
 	var head_top: Vector3 = p.call(-0.36, 0.8)
 	var head_low: Vector3 = p.call(-0.4, 0.64)
 	for t in [[bb, head_low], [seat, head_top], [bb, seat], [head_low, head_top]]:   # tubes du cadre
-		_rod(m, VEH_SECOND, t[0], t[1], 0.024, 4)
+		_rod(m, VEH_SECOND, t[0], t[1], 0.03, 4)
 	for t in [[bb, rear], [seat, rear], [head_low, front]]:   # bases, haubans et fourche
-		_rod(m, VEH_SECOND, t[0], t[1], 0.016, 3)
+		_rod(m, VEH_SECOND, t[0], t[1], 0.02, 3)
 	_box(m, VEH_DARK, p.call(0.26, 0.9), Vector3(0.08, 0.04, 0.26))            # selle
 	var stem: Vector3 = p.call(-0.44, 0.86)
 	_rod(m, VEH_METAL, head_top, stem, 0.016, 3)                                # potence
