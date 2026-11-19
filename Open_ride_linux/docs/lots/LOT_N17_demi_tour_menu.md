@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : demi-tour sur la route depuis l'écran de pause | Python + GDScript | 1.0 publiée | Moyenne | En PR : contrat IPC 1.9, core, écran de pause, caméra et HUD (8 novembre), **version 1.x** |
+| 1.x série N : demi-tour sur la route depuis l'écran de pause | Python + GDScript | 1.0 publiée | Moyenne | **Livré le 9 novembre** (PR #791, suite #792), contrat IPC 1.9, **version 1.x** |
 
 ## 1. Objectif
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Parcours de démonstration des biomes et paysages de la 6.0, qui remplace au jeu de base le tour des six paysages, la route de la côte et la montée alpine | Python | O37, O38, AT1, JP1, HP1, U25 | Petite | En PR (13 novembre, version 6.0, avant PK1, NT1 et J9) |
+| Parcours de démonstration des biomes et paysages de la 6.0, qui remplace au jeu de base le tour des six paysages, la route de la côte et la montée alpine | Python | O37, O38, AT1, JP1, HP1, U25 | Petite | Fait (fusionné le 16 novembre, #866 ; relu par le lot NT1) |
 
 Décision du propriétaire du 12 novembre 2026 à 21 h 51 (« on mettra col du lacet et un parcours avec nouveaux biomes », confirmée par carte) : le jeu final livre le Col du lacet et **un parcours qui montre les nouveaux biomes**. Il remplace le « Tour des six paysages », la « Route de la côte » et la « Montée alpine », gardés pour les bancs (`--recette`). Le vélodrome et le « Circuit des Prés » restent (modes Vélodrome et Grand Prix). Voir le bilan des parcours de démonstration du 12 novembre.
 

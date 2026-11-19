@@ -76,13 +76,17 @@ def test_circuit_is_a_grand_prix_route_and_old_demo_is_replaced(tmp_path):
 
     from openride_core.demo_world import biome_demo_outdated
 
-    assert demo_biomes.DEMO_TAGS == {"demo-circuit": ("grandprix",)}
+    assert {n: lib["tags"] for n, lib in demo_biomes.DEMO_LIBRARY.items() if "tags" in lib} == {"demo-circuit": ["grandprix"]}
     demo_biomes.generate(tmp_path, "demo-circuit", (demo_biomes.CIRCUIT_BIOME,), loop="circuit",
                          title="Circuit des Prés")
     world = tmp_path / "demo-circuit.world"
     manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["library"] == {"tags": ["grandprix"]} and mode_routes.mode_of(manifest) == "grandprix"
+    assert manifest["library"]["tags"] == ["grandprix"] and mode_routes.mode_of(manifest) == "grandprix"
     assert not biome_demo_outdated(world)
+    # circuit écrit entre les lots GP13 et NT1 (étiquette sans description) : remplacé
+    manifest["library"] = {"tags": ["grandprix"]}
+    (world / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    assert biome_demo_outdated(world)
     del manifest["library"]   # circuit écrit avant le lot GP13 : remplacé par les contenus de départ
     (world / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     assert biome_demo_outdated(world)

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : décor des montées du retour (après un demi-tour) | GDScript, Python | N23 | Moyenne | En PR : captures low/medium/high à valider (14 novembre), **version 1.x** |
+| 1.x série N : décor des montées du retour (après un demi-tour) | GDScript, Python | N23 | Moyenne | **Livré le 15 novembre** (PR #892), **version 1.x** |
 
 ## 1. Objectif
 
@@ -39,3 +39,7 @@ dans le repère du parcours (`ClimbDetector.detect_back`, `dir` −1, pied aprè
 2. Captures du banc `montees_retour` en low, medium et high (panneau d'approche du retour, chiffre peint, foule du
    sommet du retour), validées par le propriétaire.
 3. Banc GPU sur le PC en low, medium et high : attendu neutre (une seule foule à la fois, mêmes budgets).
+
+## Livraison
+
+Fusionné dans `main` : PR #892 (15 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

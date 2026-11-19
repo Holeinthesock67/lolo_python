@@ -156,3 +156,23 @@ def test_brake_back_right_after_the_control_retake_proves_the_trainer():
     assert late.kind == "indetermine" and late.back_after_s == 6.5
     alone = dc.attach(drops, [(32.7, dc.status_text({"event": "power_back", "after_s": 1.2, "power_w": 330}))], [])[0]
     assert alone.kind == "indetermine" and alone.back_after_s is None
+
+
+def lagged_stop(t):         # 14/11, vélodrome : arrêt net, la cadence annoncée reste 1 s de plus
+    if t < 30:
+        return 320.0, 85.0
+    return 0.0, (85.0 if t < 31 else 0.0)
+
+
+def test_stop_with_lagging_cadence_is_a_stop_even_with_a_false_brake_loss():
+    """Lot FR1 : même règle que le pilote (brake_watch). La cadence en retard au bout de la chute ne fait pas
+    d'un arrêt un frein lâché, même avec un vieux journal où le pilote avait écrit « frein lâché » puis
+    « puissance revenue » quand le cycliste est reparti."""
+    drops = dc.detect_drops(series(lagged_stop, hz=1.0))
+    assert len(drops) == 1 and drops[0].stopped
+    lost = (31.0, dc.status_text({"event": "brake_loss", "from_w": 320, "to_w": 0, "cadence_rpm": 85}))
+    back = (33.0, dc.status_text({"event": "power_back", "after_s": 2.0, "power_w": 300}))
+    d = dc.attach(drops, [lost, back], [])[0]
+    assert d.kind == "arret"
+    # le vrai lâcher (cadence gardée) n'est pas un arrêt
+    assert not dc.detect_drops(series(brake_loss, hz=1.0))[0].stopped

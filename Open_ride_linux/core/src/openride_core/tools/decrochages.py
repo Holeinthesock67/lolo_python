@@ -11,7 +11,9 @@ lignes `ftms` du journal écrites depuis la PR #580), plus le repère du cyclist
 - `detect_drops` : chutes de plus de `DROP_FRAC` (60 %) en moins de `DROP_WINDOW_S` (3 s) depuis au
   moins `DROP_MIN_W` (150 W) ;
 - `classify`, dans cet ordre :
-  1. `arret` : cadence sous `CADENCE_STOP_RPM` au bout de la chute ;
+  1. `arret` : cadence sous `CADENCE_STOP_RPM` au bout de la chute, ou, pour une chute à 0 W, pédales qui
+     ne tournent plus comme avant dans les `brake_watch.CONFIRM_S` qui suivent (règle commune du pilote,
+     lot FR1 : la cadence annoncée est en retard d'environ 1 s sur la puissance) ;
   2. `fatigue` : cadence tombée d'au moins `CADENCE_FALL_RPM` avant que la puissance passe sous la moitié
      de son niveau ;
   3. cadence pas restée à ± `CADENCE_SAME_RPM` de son niveau d'avant : `indetermine` ;
@@ -50,9 +52,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .. import brake_watch
+
 DROP_FRAC = 0.60          # chute : la puissance perd au moins 60 % …
 DROP_WINDOW_S = 3.0       # … en 3 s au plus …
-DROP_MIN_W = 150.0        # … depuis au moins 150 W (médiane des 3 s d'avant)
+DROP_MIN_W = brake_watch.DROP_MIN_W   # … depuis au moins 150 W (médiane des 3 s d'avant), seuil du pilote
 MERGE_S = 10.0            # deux chutes à moins de 10 s n'en font qu'une
 BEFORE_S = 5.0            # niveau d'avant : médiane des 5 s qui précèdent la chute
 CADENCE_SAME_RPM = 8.0    # trainer : cadence à ± 8 tr/min de son niveau d'avant pendant la chute
@@ -62,8 +66,8 @@ STATUS_AROUND_S = 5.0     # statuts du trainer relevés à ± 5 s de la chute
 MEAN_S = 4.0              # moyenne glissante du pompage
 PERIOD_MIN_S, PERIOD_MAX_S = 4.0, 30.0
 PERIOD_MIN_CORR = 0.30    # autocorrélation minimale pour annoncer une période
-ZERO_W = 10.0             # chute à 0 W : puissance sous 10 W …
-ZERO_CADENCE_RPM = 40.0   # … cadence d'au moins 40 tr/min
+ZERO_W = brake_watch.STOP_W   # chute à 0 W : puissance sous 10 W …
+ZERO_CADENCE_RPM = brake_watch.PEDALS_MIN_RPM   # … cadence d'au moins 40 tr/min
 GRID_S = 0.5              # pas du rééchantillonnage
 SPEED_RISE_PCT = 5.0       # trainer : volant qui s'emballe de 5 % (plus de frein)
 RETAKE_PROOF_S = 3.0       # trainer : puissance revenue au plus 3 s après la reprise du contrôle (pilote, #580) …
@@ -104,7 +108,7 @@ class Drop:
     statuses: list[str] = field(default_factory=list)
     marked: bool = False                # repère « décrochage » du cycliste à ± 10 s (lot X47)
     back_after_s: float | None = None   # frein lâché vu par le pilote, puissance revenue après la reprise (s)
-    stopped: bool = False               # cadence sous 20 tr/min au bout de la chute
+    stopped: bool = False               # arrêt de pédalage au bout de la chute (voir `classify`)
 
 
 @dataclass
@@ -161,7 +165,9 @@ def _describe(samples: list[Sample], t0: float, before_w: float, end: Sample) ->
                      if x.cadence_rpm <= cad_before - CADENCE_FALL_RPM), None)
     drop = Drop(round(t0, 2), round(before_w, 1), round(end.power_w, 1), round(end.t - t0, 2),
                 cad_before, cad_during, None if fall is None else round(half - fall, 2))
-    drop.stopped = end.cadence_rpm < CADENCE_STOP_RPM
+    after = [x.cadence_rpm for x in samples if end.t < x.t <= end.t + brake_watch.CONFIRM_S]
+    drop.stopped = end.cadence_rpm < CADENCE_STOP_RPM or (
+        end.power_w < ZERO_W and bool(after) and not brake_watch.pedals_kept(end.cadence_rpm, after))
     v0 = _median([x.speed_kmh for x in _between(samples, t0 - BEFORE_S, t0 + 0.001) if x.speed_kmh is not None])
     v1 = _median([x.speed_kmh for x in _between(samples, end.t, end.t + SPEED_AFTER_S) if x.speed_kmh is not None])
     if v0 and v1 is not None:
