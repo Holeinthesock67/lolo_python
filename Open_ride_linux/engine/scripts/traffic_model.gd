@@ -34,6 +34,7 @@ extends RefCounted
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RouteMirror := preload("res://scripts/route_mirror.gd")
+const RoadRules := preload("res://scripts/road_rules.gd")
 
 const SLOT_M := 250.0
 const BASE_RATE := 0.03
@@ -52,7 +53,8 @@ const REMOVE_BEHIND_M := 300.0
 const REMOVE_AHEAD_M := 1300.0
 const PASS_SPEED_KMH := 30.0
 const PASS_MARGIN_KMH := 10.0
-const PASS_ZONE_M := Vector2(-60.0, 30.0)   # de 60 m derrière à 30 m devant le cycliste : voie de gauche
+const PASS_ZONE_M := Vector2(-60.0, 30.0)   # avant le lot AS11 : voie de gauche de 60 m derrière à 30 m devant le cycliste ;
+                                            # depuis, fenêtre `pass_zone` (toujours dans ces bornes)
 const FOLLOW_GAP_M := 25.0
 const MIN_SPACING_M := 60.0
 const MAX_GRADE_PCT := 8.0
@@ -104,6 +106,11 @@ var direction: int = 1             # sens de marche du cycliste (lot N23) : -1 �
 var base_route = null              # parcours dans son sens, quel que soit le sens de marche
 var _others: Array = []            # cyclistes du décor et bots de la dernière image : {s, lateral, dir}
 var _core_seq: int = -1            # dernière trame `state` dont la liste `vehicles` a été reprise (lot AS6)
+## Lot AS11 (révision 1.20) : le core envoie tous ses véhicules par parties (`road_part`) ; l'engine n'en tire plus
+## aucun et ne fait plus que les afficher, extrapolés entre deux listes. Faux tant qu'aucune partie n'est reçue.
+var core_full := false
+var _cycle_prev := {}             # ... et pendant le tour d'avant : une partie perdue (images lentes) ne retire rien
+var _cycle_seen := {}              # identifiants reçus depuis la dernière partie d'un tour (lot AS11)
 
 
 ## `theme` fusionné (theme_loader.gd), `pois` les points d'intérêt (seuls les `village` comptent).
@@ -235,6 +242,13 @@ static func headlights(weather_eval: Dictionary, sun_elevation_deg: float) -> bo
 
 
 ## Écart du dépassant à la hauteur du cycliste : LATERAL_CLEARANCE_M entre sa carrosserie et le cycliste.
+## Lot AS11 : fenêtre de dépassement du cycliste par un véhicule (traffic.pass_zone du core) : de la voie de droite à sa
+## voie de dépassement à LATERAL_MPS, à la vitesse de rapprochement `closing_mps`.
+static func pass_zone(kind: String, closing_mps: float) -> Vector2:
+	return RoadRules.pass_window(float(KINDS[kind]["length"]), RoadRules.BIKE_LENGTH_M, closing_mps,
+		RIGHT_LANE_M - lane_lateral(kind), LATERAL_MPS)
+
+
 static func lane_lateral(kind: String) -> float:
 	return RoadBuilder.RIDER_LATERAL_M - (RIDER_HALF_WIDTH_M + LATERAL_CLEARANCE_M + float(KINDS[kind]["half_width"]))
 
@@ -292,7 +306,7 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 	while (_next_slot) * SLOT_M <= rider_s:
 		var ev := slot_event(_next_slot)
 		_next_slot += 1
-		if ev.is_empty() or _own_count() >= budget:
+		if ev.is_empty() or _own_count() >= budget or core_full:
 			continue
 		if int(ev["dir"]) == -1:
 			var s0 := rider_s + float(ev["ahead_m"])
@@ -339,7 +353,7 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 	vehicles = kept
 
 
-## Dépassement : voie de droite, puis voie de gauche dans PASS_ZONE_M (seulement si aucun véhicule en
+## Dépassement : voie de droite, puis voie de gauche dans sa fenêtre `pass_zone` (lot AS11 ; seulement si aucun véhicule en
 ## face ne peut arriver avant la fin du dépassement), retour à droite ensuite. Sans feu vert, il suit le
 ## cycliste à FOLLOW_GAP_M, sur la voie de droite.
 func _move_overtaker(v: Dictionary, rel: float, rider_v: float, dt_s: float) -> void:
@@ -347,23 +361,25 @@ func _move_overtaker(v: Dictionary, rel: float, rider_v: float, dt_s: float) -> 
 	var pass_mps := minf(cruise, maxf(PASS_SPEED_KMH / 3.6, rider_v + PASS_MARGIN_KMH / 3.6))
 	var left := lane_lateral(v["kind"])
 	var committed: bool = v.get("committed", false)
-	if not committed and rel >= PASS_ZONE_M.x - 40.0 and rel < 0.0 and pass_mps > rider_v \
+	var zone := pass_zone(str(v["kind"]), pass_mps - rider_v)   # lot AS11 : règle commune (draft.pass_window du core)
+	if not committed and rel >= zone.x - 40.0 and rel < 0.0 and pass_mps > rider_v \
 			and _clear_to_pass(v, rel, rider_v, pass_mps):
 		committed = true
 		v["committed"] = true
 	var spd := cruise
 	var target_lat := RIGHT_LANE_M
 	var goal := NAN
-	if committed and rel < PASS_ZONE_M.y:
+	if committed and rel < zone.y:
 		spd = pass_mps
-		target_lat = left if rel >= PASS_ZONE_M.x else RIGHT_LANE_M
+		# engagé derrière le cycliste qu'il suivait (FOLLOW_GAP_M, rapprochement nul), il déboîte d'abord
+		target_lat = left if rel >= minf(zone.x, -FOLLOW_GAP_M - 1.0) else RIGHT_LANE_M
 		# Pas sur la voie de gauche à temps (ou plus à gauche, pour laisser la place aux bots et aux cyclistes du
 		# décor) : il ne s'approche pas plus du cycliste
 		goal = _clear_of_others(v, left)
 		if absf(float(v["lateral"]) - minf(left, goal)) > 0.05 and rel > -FOLLOW_GAP_M:
 			spd = minf(spd, rider_v)
 	elif not committed:
-		if rel >= PASS_ZONE_M.x - 40.0:
+		if rel >= zone.x - 40.0:
 			spd = pass_mps
 		if rel + (spd - rider_v) * dt_s >= -FOLLOW_GAP_M:
 			spd = minf(spd, rider_v)      # il ne s'approche pas (un véhicule lent doublé reste lent)
@@ -474,7 +490,7 @@ func _hold(v: Dictionary) -> void:
 
 ## Vrai si aucun véhicule ni cycliste du décor en face ne peut croiser le dépassant avant qu'il ait fini de doubler.
 func _clear_to_pass(v: Dictionary, rel: float, rider_v: float, pass_mps: float) -> bool:
-	var t_pass := (PASS_ZONE_M.y - rel) / maxf(pass_mps - rider_v, 0.5)
+	var t_pass := (pass_zone(str(v["kind"]), pass_mps - rider_v).y - rel) / maxf(pass_mps - rider_v, 0.5)
 	for o in _others:
 		var gap_o := float(o["s"]) - float(v["s"])
 		if int(o["dir"]) == -1 and gap_o > 0.0 and gap_o < t_pass * (10.0 + pass_mps) + 100.0:
@@ -511,10 +527,16 @@ func _spawn(ev: Dictionary, s: float, dir: int) -> void:
 ## Lot AS6 : liste `vehicles` de la trame `state` numéro `seq` (au plus 4 véhicules à moins de NEAR_M, calculés
 ## par le core) ; reprise une seule fois par trame. Les véhicules reçus remplacent ceux de l'engine de même `id`,
 ## ceux de l'engine à moins de NEAR_M absents de la liste partent ; un véhicule qui sort de la liste reste au décor.
-func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN) -> void:
+## Lot AS11 (révision 1.20) : `part` et `parts` (`road_part` de la trame) : la liste est la partie `part` sur
+## `parts` de tous les véhicules du core ; ceux qu'elle donne sont repris, les autres attendent la fin du tour, où
+## ceux qu'aucune partie n'a donnés partent, quelle que soit leur distance (`core_full`).
+func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN, part: int = -1, parts: int = 0) -> void:
 	if seq == _core_seq:
 		return
 	_core_seq = seq
+	if parts > 0:
+		_sync_full(list, rider_s, core_s, part, parts)
+		return
 	# Le cycliste affiché (`rider_s`, interpolé par camera_follow.gd) est en retard sur la trame (`core_s`, position du
 	# cycliste dans le core) : chaque véhicule garde l'écart du core au cycliste, pas sa position absolue (sinon, en
 	# retard d'une trame, un tracteur doublé paraissait 1 à 2 m plus en avant : contacts du banc du 8 novembre).
@@ -560,6 +582,42 @@ func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN) -> vo
 				v["passed"] = true
 			kept.append(v)
 	vehicles = kept
+
+
+func _sync_full(list: Array, rider_s: float, core_s: float, part: int, parts: int) -> void:
+	if not core_full:
+		core_full = true
+		vehicles = vehicles.filter(func(v): return v.get("core", false))   # plus de véhicule tiré par l'engine
+	var shift := 0.0
+	if not is_nan(core_s) and absf(rider_s - core_s) < CORE_SHIFT_MAX_M:
+		shift = rider_s - core_s
+	var by_id := {}
+	for v in vehicles:
+		by_id[str(v["id"])] = v
+	for item in list:
+		if typeof(item) != TYPE_DICTIONARY or not KINDS.has(str(item.get("kind", ""))):
+			continue
+		var id := str(item.get("id", ""))
+		_cycle_seen[id] = true
+		var v: Dictionary = by_id.get(id, {})
+		if v.is_empty():
+			v = {"id": id, "wheel": 0.0, "passed": true}
+			vehicles.append(v)
+			by_id[id] = v
+		var spd := float(item.get("v", 0.0))
+		v["kind"] = str(item["kind"])
+		v["color"] = int(item.get("color", 0))
+		v["s"] = float(item.get("s", rider_s)) + shift
+		v["fresh"] = true
+		v["dir"] = 1 if int(item.get("dir", 1)) >= 0 else -1
+		v["speed_mps"] = spd
+		v["cruise_mps"] = spd
+		v["lateral"] = float(item.get("lane_m", RIGHT_LANE_M))
+		v["core"] = true
+	if part >= parts - 1:
+		vehicles = vehicles.filter(func(v): return _cycle_seen.has(str(v["id"])) or _cycle_prev.has(str(v["id"])))
+		_cycle_prev = _cycle_seen
+		_cycle_seen = {}
 
 
 ## Véhicule posé par un test (lot P32 : captures et contrôle des voies) : sorte `kind`, sens `dir`, à `rel_m` du
