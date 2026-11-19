@@ -187,7 +187,8 @@ class TileDb:
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         if self.path.is_file() and _schema_of(self.path) != str(SCHEMA_VERSION):
-            # Base d'un ancien schéma (W23 : sans la côte) : refaite, les tuiles se relisent du cache.
+            # Base d'un autre schéma (un essai de la branche W23 a écrit un schéma 2) : refaite, les
+            # tuiles se relisent du cache, sans réseau.
             for suffix in ("", "-wal", "-shm", "-journal"):
                 Path(f"{self.path}{suffix}").unlink(missing_ok=True)
         fresh = not self.path.is_file()
@@ -201,6 +202,12 @@ class TileDb:
             self.db.executemany("INSERT INTO meta VALUES (?, ?)", sorted(meta.items()))
         self.db.execute("CREATE TABLE IF NOT EXISTS tiles_loaded (z INTEGER, x INTEGER, y INTEGER, "
                         "PRIMARY KEY (z, x, y))")
+        # Côte (lot W23) : tables à part, ajoutées à une base existante ; une tuile versée sans elles
+        # (par une version plus ancienne) y est reversée pour la côte seulement (`coast_loaded`).
+        self.db.executescript(osmdb._COAST_SCHEMA)
+        self.db.execute("CREATE TABLE IF NOT EXISTS coast_loaded (z INTEGER, x INTEGER, y INTEGER, "
+                        "PRIMARY KEY (z, x, y))")
+        self.db.execute("INSERT OR IGNORE INTO meta VALUES ('coast', ?)", (osmdb.COAST_TABLES_VERSION,))
 
     def close(self) -> None:
         self.db.close()
@@ -209,8 +216,16 @@ class TileDb:
         return self.db.execute("SELECT 1 FROM tiles_loaded WHERE z = ? AND x = ? AND y = ?",
                                (ZOOM, x, y)).fetchone() is not None
 
+    def coast_loaded(self, x: int, y: int) -> bool:
+        return self.db.execute("SELECT 1 FROM coast_loaded WHERE z = ? AND x = ? AND y = ?",
+                               (ZOOM, x, y)).fetchone() is not None
+
+    def complete(self, x: int, y: int) -> bool:
+        """Tuile versée en entier, côte comprise."""
+        return self.loaded(x, y) and self.coast_loaded(x, y)
+
     def counts(self) -> dict[str, int]:
-        return {t: self.db.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in ("roads", "areas", "lines", "points")}
+        return {t: self.db.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in osmdb.TABLES}
 
     def _next_id(self, table: str) -> int:
         return int(self.db.execute(f"SELECT coalesce(max(id), 0) FROM {table}").fetchone()[0]) + 1
@@ -243,10 +258,15 @@ class TileDb:
         return [*row[:-2], nodes, coords]
 
     def load(self, x: int, y: int, data: bytes) -> dict[str, int]:
-        """Verse une tuile ; rien si elle l'est déjà. Renvoie les nombres de lignes ajoutées."""
-        if self.loaded(x, y):
+        """Verse une tuile ; rien si elle l'est déjà. Renvoie les nombres de lignes ajoutées.
+
+        Tuile versée sans la côte (version plus ancienne) : seules les tables de la côte sont remplies."""
+        full = not self.loaded(x, y)
+        if not full and self.coast_loaded(x, y):
             return {}
         rows = convert_tile(x, y, mvt.decode_tile(data))
+        if not full:
+            rows = {t: v for t, v in rows.items() if t in ("coast_lines", "coast_areas")}
         added: dict[str, int] = {}
         bb = [math.inf, math.inf, -math.inf, -math.inf]
         self.db.execute("BEGIN")
@@ -263,7 +283,12 @@ class TileDb:
                     self.db.execute(f"INSERT INTO {table}_rt VALUES (?,?,?,?,?)", (rid, box[0], box[2], box[1], box[3]))
                     bb = [min(bb[0], box[0]), min(bb[1], box[1]), max(bb[2], box[2]), max(bb[3], box[3])]
                     rid += 1
-                added[table] = len(items)
+                if items or not table.startswith("coast_"):     # côte : comptée seulement si présente
+                    added[table] = len(items)
+            self.db.execute("INSERT INTO coast_loaded VALUES (?, ?, ?)", (ZOOM, x, y))
+            if not full:
+                self.db.execute("COMMIT")
+                return added
             # emprise : celle de la tuile (même vide), réunie à l'emprise déjà connue
             w, s = mvt.tile_to_lonlat(ZOOM, x, y + 1, 1, 0, 0)
             e, n = mvt.tile_to_lonlat(ZOOM, x + 1, y, 1, 0, 0)
@@ -353,7 +378,7 @@ def coast_runs(ring: list[tuple[float, float]], outer: bool, box: tuple[int, int
 
 def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list[tuple[tuple, BBox]]]:
     """Lignes à insérer (sans identifiant de ligne) pour chaque table, avec leur emprise."""
-    out: dict[str, list[tuple[tuple, BBox]]] = {"roads": [], "areas": [], "lines": [], "points": []}
+    out: dict[str, list[tuple[tuple, BBox]]] = {t: [] for t in osmdb.TABLES}
 
     def lonlat(gx: float, gy: float, extent: int) -> tuple[float, float]:
         return mvt.tile_to_lonlat(ZOOM, 0, 0, extent, gx, gy)
@@ -423,7 +448,7 @@ def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list
                             clipped = clip_polygon([glob(p) for p in ring], *box)
                             for n, run in enumerate(coast_runs(clipped, is_outer, box)):
                                 coords = [lonlat(px, py, E) for px, py in run]
-                                out["lines"].append(((f"v{x}_{y}_{fi}_{k}_{r}_{n}", "coastline", "{}",
+                                out["coast_lines"].append(((f"v{x}_{y}_{fi}_{k}_{r}_{n}", "coastline", "{}",
                                                       osmdb.pack_coords(coords)), osmdb.bbox_of(coords)))
                     continue
                 else:
@@ -447,7 +472,7 @@ def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list
                     o = [lonlat(px, py, E) for px, py in outer]
                     hs = [[lonlat(px, py, E) for px, py in h] for h in holes]
                     geom = {"outer": [list(p) for p in o], "holes": [[list(p) for p in h] for h in hs]}
-                    out["areas"].append(((f"v{x}_{y}_{fi}_{k}", kind, json.dumps(osmdb.useful_tags(tags), ensure_ascii=False),
+                    out["coast_areas" if kind in osmdb.COAST_AREA_KINDS else "areas"].append(((f"v{x}_{y}_{fi}_{k}", kind, json.dumps(osmdb.useful_tags(tags), ensure_ascii=False),
                                           json.dumps(geom)), osmdb.bbox_of(o)))
             elif f.kind == "point" and lname in ("place", "poi", "mountain_peak"):
                 cls, sub = str(t.get("class", "")), str(t.get("subclass", ""))
@@ -603,7 +628,7 @@ class TileSource:
         while True:
             n = 0
             for x, y in self.fetch(tiles_for_bbox(bbox), prefetch=prefetch):
-                if self.db.loaded(x, y):
+                if self.db.complete(x, y):
                     n += 1
                     continue
                 try:

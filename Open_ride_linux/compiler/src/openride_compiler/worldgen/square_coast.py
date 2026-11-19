@@ -31,6 +31,7 @@ from ..frame import LocalFrame
 from .osmdb import OsmDb
 
 SEA_SEARCH_M = 5000.0     # côte cherchée jusqu'à 5 km du carré pour savoir s'il est en mer
+COAST_SQUARE_VERSION = 1  # version de la mer et de la côte des carrés (clé `coast` des versions d'un carré)
 JOIN_M = 3.0              # bouts de côte soudés (coupure des tuiles vectorielles)
 BEACH_SEARCH_M = 1000.0   # une plage dont le centre est dans le carré peut déborder
 
@@ -113,7 +114,7 @@ def square_coast(x0: float, z0: float, size_m: float, db: OsmDb, frame: LocalFra
     """
     rect = (x0, -(z0 + size_m), x0 + size_m, -z0)          # (e0, n0, e1, n1)
     m = SEA_SEARCH_M
-    near_lines = db.lines_in(bbox_of(x0 - m, z0 - m, x0 + size_m + m, z0 + size_m + m), kinds=("coastline", "cliff"))
+    near_lines = db.coast_lines_in(bbox_of(x0 - m, z0 - m, x0 + size_m + m, z0 + size_m + m))
     chains = [_en_line(frame, ln.coords) for ln in near_lines if ln.kind == "coastline"]
     cliffs = [_en_line(frame, ln.coords) for ln in near_lines if ln.kind == "cliff"]
     lines = K.assemble_coastlines(weld_ends([c for c in chains if len(c) >= 2]))
@@ -145,7 +146,7 @@ def square_coast(x0: float, z0: float, size_m: float, db: OsmDb, frame: LocalFra
     beach_pts: list[Point] = []
     beach_kinds: list[str] = []
     rings: list[tuple[str, np.ndarray]] = []
-    for a in db.areas_in(bbox_of(x0 - b, z0 - b, x0 + size_m + b, z0 + size_m + b), kinds=("beach",)):
+    for a in db.beaches_in(bbox_of(x0 - b, z0 - b, x0 + size_m + b, z0 + size_m + b)):
         ring_en = _en_line(frame, a.outer)
         outer = K._xz_ring(ring_en, outer=True)
         if outer is None:

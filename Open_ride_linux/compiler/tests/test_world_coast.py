@@ -82,11 +82,14 @@ def test_coast_runs_drop_tile_border_and_orient_sea_on_right() -> None:
 
 
 def test_tiles_write_coastline_and_beach_rows(tmp_path) -> None:
+    box = (LON - 1, LAT - 1, LON + 1, LAT + 1)
     db = tiles_db(tmp_path)
     try:
-        lines = db.lines_in((LON - 1, LAT - 1, LON + 1, LAT + 1), kinds=("coastline",))
-        beaches = db.areas_in((LON - 1, LAT - 1, LON + 1, LAT + 1), kinds=("beach",))
-        assert db.meta["schema_version"] == str(osmdb.SCHEMA_VERSION)
+        lines = db.coast_lines_in(box)
+        beaches = db.beaches_in(box)
+        assert db.has_coast and db.meta["schema_version"] == str(osmdb.SCHEMA_VERSION) == "1"
+        # Compatibilité : la côte est dans ses propres tables, un lecteur plus ancien ne la voit pas.
+        assert db.lines_in(box) == [] and db.areas_in(box) == []
     finally:
         db.close()
     assert len(lines) == 2 and {ln.kind for ln in lines} == {"coastline"}
@@ -94,15 +97,37 @@ def test_tiles_write_coastline_and_beach_rows(tmp_path) -> None:
     assert osmdb.area_kind(beaches[0].tags) == "beach"
 
 
-def test_old_tile_db_is_rebuilt(tmp_path) -> None:
+def test_tile_db_of_another_schema_is_rebuilt(tmp_path) -> None:
     path = tmp_path / "tuiles.sqlite"
     db = vt.TileDb(path)
     db.load(TX, TY, coast_tile(TX, TY))
-    db.db.execute("UPDATE meta SET value = '1' WHERE key = 'schema_version'")
+    db.db.execute("UPDATE meta SET value = '2' WHERE key = 'schema_version'")     # essai d'une version de la branche
     db.close()
     db = vt.TileDb(path)
     try:
-        assert not db.loaded(TX, TY) and db.counts()["lines"] == 0      # refaite : la tuile se reverse
+        assert not db.loaded(TX, TY) and db.counts()["coast_lines"] == 0          # refaite : la tuile se reverse
+    finally:
+        db.close()
+
+
+def test_tile_db_without_coast_gets_coast_only(tmp_path) -> None:
+    """Base des tuiles écrite par une version sans côte : la côte s'ajoute, rien n'est versé deux fois."""
+    path = tmp_path / "tuiles.sqlite"
+    db = vt.TileDb(path)
+    db.load(TX, TY, coast_tile(TX, TY))
+    before = db.counts()
+    for t in ("coast_lines", "coast_areas", "coast_lines_rt", "coast_areas_rt", "coast_loaded"):
+        db.db.execute(f"DROP TABLE {t}")
+    db.db.execute("DELETE FROM meta WHERE key = 'coast'")
+    db.close()
+    with OsmDb(path) as old:
+        assert not old.has_coast and old.coast_lines_in((LON - 1, LAT - 1, LON + 1, LAT + 1)) == []
+    db = vt.TileDb(path)
+    try:
+        assert db.loaded(TX, TY) and not db.complete(TX, TY)
+        added = db.load(TX, TY, coast_tile(TX, TY))
+        assert added == {"coast_lines": 1, "coast_areas": 1} and db.complete(TX, TY)
+        assert db.counts() == before and db.load(TX, TY, coast_tile(TX, TY)) == {}
     finally:
         db.close()
 

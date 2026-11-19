@@ -1,12 +1,12 @@
-"""Base locale OpenStreetMap du monde ouvert (lot W3, schéma version 2, partagé avec W13).
+"""Base locale OpenStreetMap du monde ouvert (lot W3, schéma version 1, partagé avec W13).
 
 Une base SQLite par région (`brut/osm/<region>.sqlite` du cache, W2) ne garde que ce dont le
 graphe (W4) et le générateur (W7) ont besoin :
 
     meta(key, value)                     schema_version, source, region, osm_date, bbox, created
     roads(id, osm_id, highway, road_class, surface, bridge, tunnel, layer, oneway, name, junction, nodes, coords)
-    areas(id, osm_id, kind, tags, geom)  building, wood, scrub, orchard, water, beach
-    lines(id, osm_id, kind, tags, coords) river, stream, canal, coastline, cliff
+    areas(id, osm_id, kind, tags, geom)  building, wood, scrub, orchard, water
+    lines(id, osm_id, kind, tags, coords) river, stream, canal
     points(id, osm_id, kind, name, lon, lat)
     roads_rt, areas_rt, lines_rt, points_rt : index R-tree (id, min_lon, max_lon, min_lat, max_lat)
 
@@ -14,11 +14,13 @@ graphe (W4) et le générateur (W7) ont besoin :
 petit-boutistes. Les voies exclues du monde ouvert (`road_class` = `x`) sont gardées pour la carte
 du menu, jamais pour le graphe.
 
-Schéma 2 (lot W23, mer et plages du monde ouvert) : mêmes tables, sortes en plus : lignes de côte
-`coastline` (la mer à droite du sens de la ligne, règle d'OSM) et falaises `cliff`, plages `beach`
-(`natural=beach` ou `natural=sand`, avec `surface`). Une base de schéma 1 n'a pas la côte : elle est
-refusée, puis reconstruite (tuiles vectorielles, depuis les fichiers du cache) ou retéléchargée
-(`region update`).
+Côte (lot W23, mer et plages du monde ouvert) : deux tables de plus, `coast_lines` (lignes de côte
+`coastline`, la mer à droite, règle d'OSM, et falaises `cliff`) et `coast_areas` (plages `beach` :
+`natural=beach` ou `natural=sand`, avec `surface`), même forme que `lines` et `areas`, avec leurs
+index R-tree ; `meta.coast` = `COAST_TABLES_VERSION`. Le schéma reste le 1 : un lecteur plus ancien
+ne voit pas ces tables et lit la base comme avant ; une base sans elles (`has_coast` faux) n'a pas
+de mer. Les tables sont à part, et non des sortes de plus dans `lines` et `areas`, pour qu'un
+lecteur plus ancien n'en fasse pas des cours d'eau.
 """
 
 from __future__ import annotations
@@ -35,7 +37,8 @@ from typing import Any, Iterable, Sequence
 
 from ..errors import CompileError
 
-SCHEMA_VERSION = 2   # 2 : côte, falaises et plages (lot W23)
+SCHEMA_VERSION = 1
+COAST_TABLES_VERSION = "1"   # tables de la côte (lot W23), lues seulement si présentes
 BATCH_ROWS = 10_000
 
 # --- classes de route (contrat W1, LOT_W1 §4.5) ---------------------------------------------------
@@ -58,10 +61,11 @@ UNPAVED = {"unpaved", "gravel", "fine_gravel", "compacted", "dirt", "earth", "gr
 _SERVICE_EXCLUDED = {"parking_aisle", "driveway", "drive-through", "emergency_access"}
 _NO_ACCESS = {"no", "private"}
 
-AREA_KINDS = ("building", "wood", "scrub", "orchard", "water", "beach")
+AREA_KINDS = ("building", "wood", "scrub", "orchard", "water")
 WATERWAY_KINDS = ("river", "stream", "canal")
-COAST_LINE_KINDS = ("coastline", "cliff")
-LINE_KINDS = (*WATERWAY_KINDS, *COAST_LINE_KINDS)
+LINE_KINDS = WATERWAY_KINDS
+COAST_LINE_KINDS = ("coastline", "cliff")       # table coast_lines (lot W23)
+COAST_AREA_KINDS = ("beach",)                   # table coast_areas (lot W23)
 PLACE_KINDS = ("city", "town", "village", "hamlet")
 SEARCH_KINDS = (*PLACE_KINDS, "mountain_pass")
 AREA_TAGS = ("height", "building:levels", "building", "colour", "natural", "landuse", "water", "name", "surface")
@@ -104,12 +108,12 @@ def area_kind(tags: dict[str, Any]) -> str | None:
     if tags.get("natural") == "water" and tags.get("water") not in ("river", "stream", "canal", "ditch", "drain"):
         return "water"
     if tags.get("natural") in ("beach", "sand"):
-        return "beach"
+        return "beach"                          # table coast_areas
     return None
 
 
 def line_kind(tags: dict[str, Any]) -> str | None:
-    """Cours d'eau (`waterway`), puis ligne de côte et falaise (`natural`, schéma 2)."""
+    """Cours d'eau (`waterway`), puis ligne de côte et falaise (`natural`, table coast_lines, lot W23)."""
     w = tags.get("waterway")
     if w in WATERWAY_KINDS:
         return w
@@ -254,6 +258,13 @@ CREATE VIRTUAL TABLE areas_rt USING rtree(id, min_lon, max_lon, min_lat, max_lat
 CREATE VIRTUAL TABLE lines_rt USING rtree(id, min_lon, max_lon, min_lat, max_lat);
 CREATE VIRTUAL TABLE points_rt USING rtree(id, min_lon, max_lon, min_lat, max_lat);
 """
+_COAST_SCHEMA = """
+CREATE TABLE IF NOT EXISTS coast_lines (id INTEGER PRIMARY KEY, osm_id TEXT, kind TEXT, tags TEXT, coords BLOB);
+CREATE TABLE IF NOT EXISTS coast_areas (id INTEGER PRIMARY KEY, osm_id TEXT, kind TEXT, tags TEXT, geom TEXT);
+CREATE VIRTUAL TABLE IF NOT EXISTS coast_lines_rt USING rtree(id, min_lon, max_lon, min_lat, max_lat);
+CREATE VIRTUAL TABLE IF NOT EXISTS coast_areas_rt USING rtree(id, min_lon, max_lon, min_lat, max_lat);
+"""
+TABLES = ("roads", "areas", "lines", "points", "coast_lines", "coast_areas")
 _INDEXES = """
 CREATE INDEX roads_class ON roads(road_class);
 CREATE INDEX areas_kind ON areas(kind);
@@ -269,9 +280,10 @@ class OsmDbWriter:
         self.db = sqlite3.connect(self.path, isolation_level=None)
         self.db.execute("PRAGMA journal_mode = OFF")
         self.db.execute("PRAGMA synchronous = OFF")
-        self.db.executescript(_SCHEMA)
-        self.meta = {"schema_version": str(SCHEMA_VERSION), "source": source, "region": region}
-        self.counts = {t: 0 for t in ("roads", "areas", "lines", "points")}
+        self.db.executescript(_SCHEMA + _COAST_SCHEMA)
+        self.meta = {"schema_version": str(SCHEMA_VERSION), "source": source, "region": region,
+                     "coast": COAST_TABLES_VERSION}
+        self.counts = {t: 0 for t in TABLES}
         self._rows: dict[str, list[tuple]] = {t: [] for t in self.counts}
         self._rt: dict[str, list[tuple]] = {t: [] for t in self.counts}
         self._bbox = [math.inf, math.inf, -math.inf, -math.inf]
@@ -315,14 +327,16 @@ class OsmDbWriter:
         if len(outer) < 3:
             return None
         geom = {"outer": [list(p) for p in outer], "holes": [[list(p) for p in h] for h in holes]}
-        return self._add("areas", (osm_id, kind, json.dumps(useful_tags(tags), ensure_ascii=False),
+        table = "coast_areas" if kind in COAST_AREA_KINDS else "areas"
+        return self._add(table, (osm_id, kind, json.dumps(useful_tags(tags), ensure_ascii=False),
                                    json.dumps(geom)), bbox_of(outer))
 
     def add_line(self, osm_id: str, kind: str, tags: dict[str, Any], coords: Sequence[tuple[float, float]]) -> int | None:
         if len(coords) < 2:
             return None
         keep = {k: str(tags[k]) for k in ("name", "width", "intermittent") if k in tags}
-        return self._add("lines", (osm_id, kind, json.dumps(keep, ensure_ascii=False), pack_coords(coords)),
+        table = "coast_lines" if kind in COAST_LINE_KINDS else "lines"
+        return self._add(table, (osm_id, kind, json.dumps(keep, ensure_ascii=False), pack_coords(coords)),
                          bbox_of(coords))
 
     def add_point(self, osm_id: str, kind: str, name: str | None, lon: float, lat: float) -> int:
@@ -416,6 +430,8 @@ class OsmDb:
         if self.meta.get("schema_version") != str(SCHEMA_VERSION):
             raise CompileError(f"{self.path} : schéma {self.meta.get('schema_version')} "
                                f"au lieu de {SCHEMA_VERSION}, refaire `region-add`")
+        self.has_coast = self.db.execute(
+            "SELECT count(*) FROM sqlite_master WHERE name IN ('coast_lines', 'coast_areas')").fetchone()[0] == 2
 
     def close(self) -> None:
         self.db.close()
@@ -444,26 +460,34 @@ class OsmDb:
                                 unpack_ids(r[11]), coords))
         return out
 
-    def areas_in(self, bbox: BBox, kinds: Iterable[str] | None = None) -> list[Area]:
+    def areas_in(self, bbox: BBox, kinds: Iterable[str] | None = None, table: str = "areas") -> list[Area]:
         extra, args = "", ()
         if kinds is not None:
             kinds = tuple(kinds)
             extra, args = f" AND o.kind IN ({','.join('?' * len(kinds))})", kinds
         out = []
-        for r in self._query("areas", "o.*", bbox, extra, args):
+        for r in self._query(table, "o.*", bbox, extra, args):
             geom = json.loads(r[4])
             if polygon_touches(geom, bbox):
                 out.append(Area(r[0], r[1], r[2], json.loads(r[3]), [tuple(p) for p in geom["outer"]],
                                 [[tuple(p) for p in h] for h in geom["holes"]]))
         return out
 
-    def lines_in(self, bbox: BBox, kinds: Iterable[str] | None = None) -> list[Line]:
+    def coast_lines_in(self, bbox: BBox) -> list[Line]:
+        """Lignes de côte et falaises (lot W23) ; rien dans une base sans les tables de la côte."""
+        return self.lines_in(bbox, table="coast_lines") if self.has_coast else []
+
+    def beaches_in(self, bbox: BBox) -> list[Area]:
+        """Plages (lot W23) ; rien dans une base sans les tables de la côte."""
+        return self.areas_in(bbox, table="coast_areas") if self.has_coast else []
+
+    def lines_in(self, bbox: BBox, kinds: Iterable[str] | None = None, table: str = "lines") -> list[Line]:
         extra, args = "", ()
         if kinds is not None:
             kinds = tuple(kinds)
             extra, args = f" AND o.kind IN ({','.join('?' * len(kinds))})", kinds
         out = []
-        for r in self._query("lines", "o.*", bbox, extra, args):
+        for r in self._query(table, "o.*", bbox, extra, args):
             coords = unpack_coords(r[4])
             if polyline_touches(coords, bbox):
                 out.append(Line(r[0], r[1], r[2], json.loads(r[3]), coords))

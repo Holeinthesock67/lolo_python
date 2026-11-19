@@ -47,7 +47,7 @@ from ..terrain import blend
 from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile
 from .graph import RoadGraph
 from .osmdb import OsmDb, WATERWAY_KINDS
-from .square_coast import square_coast
+from .square_coast import COAST_SQUARE_VERSION, square_coast
 from .store import WorldCache
 
 WORLDGEN_VERSION = 1
@@ -224,7 +224,8 @@ def half_width(road_class: str) -> float:
 def square_versions(db: OsmDb, provider: ElevationProvider) -> dict[str, Any]:
     return {"worldgen": WORLDGEN_VERSION, "osm_schema": db.meta.get("schema_version"),
             "osm_date": db.meta.get("osm_date") or None, "osm_region": db.meta.get("region"),
-            "relief": getattr(provider, "name", "inconnu")}
+            "relief": getattr(provider, "name", "inconnu"),
+            "coast": COAST_SQUARE_VERSION if db.has_coast else None}   # lot W23 : carré refait avec la mer
 
 
 def far_versions(provider: ElevationProvider) -> dict[str, Any]:
