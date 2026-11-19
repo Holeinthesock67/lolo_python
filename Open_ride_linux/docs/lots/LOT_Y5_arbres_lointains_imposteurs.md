@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | **En PR** (lancé le 6 novembre) ; mesures PC low, medium et high et captures à valider par le propriétaire ; issue #361 |
+| Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | **Livré le 6 novembre** (PR #723) ; issue #361 |
 
 ## 1. Objectif
 
@@ -27,7 +27,7 @@ O1 et Y2 livrés ; Y3 et Y4 utiles (mêmes mesures de base).
 
 ## 4. Travail demandé
 
-- **Outil de capture** (nouveau `engine/tools/bake_impostors.gd`, lancé à la main ou par `run_engine_tests.sh` en mode vérification) : rend le modèle LOD 0 de chaque sorte d'arbre (feuillus, conifères, verger si différents) sous 8 angles autour de l'axe vertical et 2 hauteurs de vue (0° et 30°), sur fond transparent, éclairage neutre, dans un atlas de 2 048 × 512 au plus avec sa carte de normales ; écrit `engine/assets/impostors/trees.png` et `trees_normal.png`, déterministes (même modèle, mêmes pixels à ± 1 niveau près). Les images sont générées par notre outil depuis nos modèles : aucune image externe.
+- **Outil de capture** (prévu : nouveau engine/tools/bake_impostors.gd, non livré sous ce nom, voir « Livraison » ; lancé à la main ou par `run_engine_tests.sh` en mode vérification) : rend le modèle LOD 0 de chaque sorte d'arbre (feuillus, conifères, verger si différents) sous 8 angles autour de l'axe vertical et 2 hauteurs de vue (0° et 30°), sur fond transparent, éclairage neutre, dans un atlas de 2 048 × 512 au plus avec sa carte de normales ; écrit engine/assets/impostors/trees.png et `trees_normal.png`, déterministes (même modèle, mêmes pixels à ± 1 niveau près). Les images sont générées par notre outil depuis nos modèles : aucune image externe.
 - **Shader** (nouveau `engine/shaders/tree_impostor.gdshader`) : quadrilatère tourné vers la caméra autour de l'axe vertical, image choisie d'après l'angle de vue (fondu entre les deux images voisines), éclairage par la carte de normales, couleur par instance (même variation que les LOD 0 et 1), `alpha scissor` (pas de mélange transparent), balancement léger du vent repris de `tree_sway` (amplitude réduite).
 - **Troisième niveau** (`tree_renderer.gd`) : par case, un `MultiMeshInstance3D` de plus pour les imposteurs, de `LOD1_MAX_DIST_M` à la fin des tuiles proches chargées ; au-delà, sur les tuiles lointaines, imposteurs seulement dans les forêts de la couche `vegetation` (densité réduite, `FAR_FOREST_FACTOR` 0,25), jusqu'à `fog_end_m`. Sans ombre. `visible_instance_count` règle la densité par préréglage ; `custom_aabb` posé pour éviter le calcul des boîtes.
 - **Feuillage** des LOD 0 et 1 en `alpha scissor` s'il utilise de la transparence aujourd'hui (sinon rien à changer).
@@ -37,7 +37,7 @@ O1 et Y2 livrés ; Y3 et Y4 utiles (mêmes mesures de base).
 ## 5. Fichiers concernés
 
 - **Modifiés :** `engine/scripts/tree_renderer.gd`, `quality_presets.gd` ; `engine/tests/unit/test_tree_renderer.gd`, `test_quality_presets.gd`, `engine/tests/perf_budgets.json` (`tree_tile_high`) ; ce cahier, `docs/lots/00_INDEX.md`, `docs/SUIVI_AVANCEMENT.md`.
-- **Nouveaux :** `engine/tools/bake_impostors.gd`, `engine/shaders/tree_impostor.gdshader`, `engine/assets/impostors/trees.png`, `trees_normal.png`, `engine/tests/unit/test_tree_impostor.gd`.
+- **Nouveaux (prévus) :** engine/tools/bake_impostors.gd, `engine/shaders/tree_impostor.gdshader`, engine/assets/impostors/trees.png, trees_normal.png, engine/tests/unit/test_tree_impostor.gd. Livrés : `engine/shaders/tree_impostor.gdshader`, `engine/scripts/forest_impostors.gd`, `engine/tests/unit/test_forest_impostors.gd` et `engine/tests/render/test_forest_impostor_render.gd` (forêts lointaines en imposteurs, PR #723).
 - **Interdits :** `vegetation_placer.gd` (placement inchangé), le compilateur, le core, les contrats ; extensions externes.
 
 ## 6. Modifications de contrat autorisées
@@ -75,3 +75,7 @@ Lancé à la demande du propriétaire le 6 novembre (« Lance aussi le lot forê
 **Banc PC du 6 novembre (48b2c2bd, `biome_temperate_forest`, forêt on contre off) :** GPU médian low 5,19 contre 5,28 ms, medium 9,25 contre 9,07 (+0,18), high 11,38 contre 11,19 (+0,19) : critère du §7.4 tenu. Garde-fou des à-coups en échec dans les trois passes « on » : une ou deux images de 100 à 133 ms à la première forêt dessinée, juste après le départ (cause « inconnue », 1 à 3 ms de CPU seulement pour poser les forêts : compilation du pipeline du shader au premier dessin). Correctif : préchauffage au chargement du parcours (`warm_up`, un bouquet minuscule devant la caméra pendant 5 images, même MultiMesh et même shader), comme les portiques. Les images « arbres » de 55 à 69 ms (pose d'une tuile d'arbres proches) existent aussi forêt coupée : sans lien avec ce lot.
 
 **Reste :** banc PC (GTX 1060) en low, medium et high, `--forest on` puis `off`, sur un parcours boisé (`biome_temperate_forest`) et sur la recette U18, critère du §7.4 (moins de 1 ms de GPU de plus en medium, sinon part ou distance réduites) ; captures avant/après validées par le propriétaire avant la fusion.
+
+## Livraison
+
+Fusionné dans `main` : PR #723 (6 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

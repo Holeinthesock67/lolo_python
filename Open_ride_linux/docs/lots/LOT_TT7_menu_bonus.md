@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série TT : réglage « Bonus » à trois choix au menu et guide d'utilisation (quand lancer chaque bonus) | GDScript + Markdown | TT1, TT6 | Petite | En revue (version 4.0) |
+| Série TT : réglage « Bonus » à trois choix au menu et guide d'utilisation (quand lancer chaque bonus) | GDScript + Markdown | TT1, TT6 | Petite | **Livré le 12 novembre** (PR #817), version 4.0 |
 
 Série TT (bonus tactiques, version 4.0). Plan de la série : `docs/4.0/PLAN_SERIE_TT.md`, recommandations retenues par le propriétaire le 29 octobre (« ok pour tout », §6 du plan). Cahier rédigé le 8 novembre 2026 (le plan les annonçait, aucun n'existait).
 
@@ -28,3 +28,7 @@ Plan §1 et §3 ; `core/src/openride_core/settings.py` (`powerups.mode`) ; `docs
 ## 5. Fichiers touchés
 
 `core/src/openride_core/settings.py`, `docs/GUIDE_UTILISATION.md`.
+
+## Livraison
+
+Fusionné dans `main` : PR #817 (12 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

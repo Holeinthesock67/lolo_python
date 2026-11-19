@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Départ direct en monde ouvert : après le préchargement, la balade part au pédalage sans repasser par l'accueil | GDScript | W11, O36 (livrés) | Petite | En revue (banc PC r872b passé le 14 novembre ; PR à valider) |
+| Départ direct en monde ouvert : après le préchargement, la balade part au pédalage sans repasser par l'accueil | GDScript | W11, O36 (livrés) | Petite | **Livré le 14 novembre** (PR #872) |
 
 ## 1. Objectif
 

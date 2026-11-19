@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Montées et sprints du monde ouvert détectés en roulant, records d'une balade à l'autre | Python | W9, T2, T4, T5, T7, W19 | Moyenne | En revue (13 novembre) |
+| Montées et sprints du monde ouvert détectés en roulant, records d'une balade à l'autre | Python | W9, T2, T4, T5, T7, W19 | Moyenne | **Livré le 19 novembre** (PR #874) |
 
 ## 1. Objectif
 

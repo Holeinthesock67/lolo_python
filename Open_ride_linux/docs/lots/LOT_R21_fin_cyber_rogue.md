@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Fin du Cyber-Rogue : événement `purge` et son de la purge, son du coffre de fin, achat d'une vie depuis le départ du mode (contrat révision 1.14) | Python, GDScript | R9, R18, R19 | Petite | En revue le 10 novembre, **version 2.0** |
+| Fin du Cyber-Rogue : événement `purge` et son de la purge, son du coffre de fin, achat d'une vie depuis le départ du mode (contrat révision 1.14) | Python, GDScript | R9, R18, R19 | Petite | **Livré le 10 novembre** (PR #835), **version 2.0** |
 
 ## 1. Objectif
 
