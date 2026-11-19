@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Retours du Cyber-Rogue : événements jamais perdus entre deux trames, chaque Z accepté ou refusé avec son, animation et raison, surchauffe et tendance de l'adrénaline affichées, vitesse toujours affichée, vue sur le vélo (contrat révision 1.17) | Python, GDScript | R22 | Moyenne | En revue le 14 novembre, **version 2.0** |
+| Retours du Cyber-Rogue : événements jamais perdus entre deux trames, chaque Z accepté ou refusé avec son, animation et raison, surchauffe et tendance de l'adrénaline affichées, vitesse toujours affichée, vue sur le vélo (contrat révision 1.17) | Python, GDScript | R22 | Moyenne | **Livré le 16 novembre** (PR #884), **version 2.0** |
 
 ## 1. Constat
 

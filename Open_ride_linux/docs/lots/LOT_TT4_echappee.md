@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série TT : bonus Échappée (les suiveurs perdent ton abri et ne répondent pas à ton attaque pendant 30 s) | Python | TT2, AS1, Y10 | Moyenne | En revue (version 4.0) |
+| Série TT : bonus Échappée (les suiveurs perdent ton abri et ne répondent pas à ton attaque pendant 30 s) | Python | TT2, AS1, Y10 | Moyenne | **Livré le 11 novembre** (PR #814), version 4.0 |
 
 Série TT (bonus tactiques, version 4.0). Plan de la série : `docs/4.0/PLAN_SERIE_TT.md`, recommandations retenues par le propriétaire le 29 octobre (« ok pour tout », §6 du plan). Cahier rédigé le 8 novembre 2026 (le plan les annonçait, aucun n'existait).
 
@@ -29,3 +29,7 @@ Plan §2 ; `core/src/openride_core/draft.py` (abri donné aux suiveurs, zone 2D 
 ## 5. Fichiers touchés
 
 `core/src/openride_core/draft.py`, `core/src/openride_core/bot_tactics.py`, `core/src/openride_core/powerups.py`, tests.
+
+## Livraison
+
+Fusionné dans `main` : PR #814 (11 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.
