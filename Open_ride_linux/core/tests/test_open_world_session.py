@@ -508,3 +508,54 @@ def test_restart_keeps_the_destination_and_drops_the_loop_finish(session):
     base = s.openworld.route.base_m
     assert wait_until(s, lambda: s.openworld.finish_s is not None, timeout=60.0)
     assert s.openworld.finish_s == pytest.approx(base + 5000.0)
+
+
+# --- lot W20 : montées et sprints en roulant, records d'une balade à l'autre --------------------------
+
+def test_open_world_drops_the_segments_of_the_previous_route(session):
+    s = session(7078, power=450.0)
+    s._on_command("select_route", {"route_id": "demo"}, 1)
+    assert s._segments, "le parcours de démonstration a des segments"
+    open_world(s)
+    assert s._segments == () and s.state.route_id.startswith("ow:")
+
+
+def ride_hills(s, meters):
+    s._on_command("start", {}, 2)
+    t0 = time.time()
+    while s.physics.s < meters and time.time() - t0 < 180:
+        step(s, 5.0)
+    assert s.physics.s >= meters
+
+
+def test_climbs_found_while_riding_are_timed_and_recorded_under_ow(session, tmp_path):
+    s = session(7080, power=450.0, stub_args=["--hills", "6", "--horizon", "3000"])
+    s.records_path = tmp_path / "records.json"
+    open_world(s)
+    ride_hills(s, 9000.0)
+    climbs = [x for x in s.race.segments if x.type == "climb"]
+    assert len(climbs) >= 2 and all(x.id.startswith("owc") for x in climbs)
+    results = [m for m in s.spy.of("segment_result") if m["kind"] == "climb"]
+    assert results and results[0]["name"].startswith("Montée n°")
+    book = json.loads((tmp_path / "records.json").read_text())
+    assert set(book["routes"]) == {"ow"}
+    index = json.loads((tmp_path / "segments_monde_ouvert.json").read_text())
+    assert set(index["segments"]) >= {m["segment_id"] for m in results}
+    s._on_command("end_session", {"save": False}, 3)
+
+
+def test_next_ride_on_the_same_road_reuses_the_ids(session, tmp_path):
+    s1 = session(7082, power=450.0, stub_args=["--hills", "6", "--horizon", "3000"])
+    s1.records_path = tmp_path / "records.json"
+    open_world(s1)
+    ride_hills(s1, 6000.0)
+    first = {m["segment_id"] for m in s1.spy.of("segment_result") if m["kind"] == "climb"}
+    s1._on_command("end_session", {"save": False}, 3)
+    s1._close_open_world(wait=True)
+    s2 = session(7084, power=450.0, stub_args=["--hills", "6", "--horizon", "3000"])
+    s2.records_path = tmp_path / "records.json"
+    open_world(s2)
+    ride_hills(s2, 6000.0)
+    second = [m for m in s2.spy.of("segment_result") if m["kind"] == "climb"]
+    assert first and {m["segment_id"] for m in second} == first
+    assert all(m["rank_total"] >= 2 for m in second)            # le passage de la balade d'avant est classé

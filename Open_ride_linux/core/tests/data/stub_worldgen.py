@@ -14,6 +14,8 @@ vivant minimal (route droite vers l'est, pente sinusoïdale, deux carrefours). P
     --unavailable        répond `world_unavailable` à `open`
     --dest-m M           en `destination`, arrivée annoncée à M (défaut 3 000 m) ; en `loop`, arrivée à
                          `loop_km` (lot W19 : `finish_m` de `revision` dès que la route engagée l'atteint)
+    --hills A            amplitude de la pente sinusoïdale en % (défaut 2 : pas de montée ; 6 : des montées
+                         de 4e catégorie tous les 2,5 km, lot W20)
 
 Après chaque message traité, `handled.<pid>.json` (à côté du dossier de séance) donne le nombre de messages
 lus et de messages écrits : un essai attend que la doublure ait répondu avant d'avancer son horloge simulée.
@@ -40,6 +42,7 @@ ap.add_argument("--late-m", type=float)
 ap.add_argument("--no-ready", action="store_true")
 ap.add_argument("--unavailable", action="store_true")
 ap.add_argument("--dest-m", type=float, default=3000.0)
+ap.add_argument("--hills", type=float, default=2.0)
 args = ap.parse_args()
 
 SESSION: Path = args.session
@@ -80,7 +83,7 @@ def write(path: Path, obj: dict) -> None:
 
 
 def grade(s: float) -> float:
-    return round(2.0 * math.sin(s / 400.0), 3)
+    return round(args.hills * math.sin(s / 400.0), 3)
 
 
 def part(k: int, length: float) -> dict:
@@ -88,7 +91,7 @@ def part(k: int, length: float) -> dict:
     ss = [lo + 10.0 * i for i in range(int(round((hi - lo) / 10.0)) + 1)]
 
     def altitude(s: float) -> float:   # intégrale de la pente : cohérente d'une partie à l'autre
-        return round(600.0 + 2.0 * 400.0 * (1.0 - math.cos(s / 400.0)) / 100.0, 3)
+        return round(600.0 + args.hills * 400.0 * (1.0 - math.cos(s / 400.0)) / 100.0, 3)
 
     return {"version": "1.0", "ds_m": 10.0, "n": len(ss), "length_m": hi - lo, "type": "open", "s0_m": lo,
             "lat": [round(LAT0, 7)] * len(ss), "lon": [round(LON0 + s / (M_PER_DEG * math.cos(math.radians(LAT0))), 7) for s in ss],
