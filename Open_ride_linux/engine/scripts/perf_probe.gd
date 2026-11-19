@@ -18,23 +18,33 @@ extends RefCounted
 ##   arbres posés ; `mark_since` : mises à jour de chaque image, fenêtre du streaming, bots, herbe, détails
 ##   du sol, décor vivant, atmosphère, arches) et la capture du banc ; la cause est l'étape la plus longue si elle prend au moins le quart
 ##   de l'image ; Godot 4.3 ne publie pas le nombre de pipelines compilés, une image lente sans étape assez
-##   longue est notée « inconnue » (compilation de shader, rendu lent, ramasse-miettes…) ;
+##   longue est notée « inconnue » (rendu lent, envoi au GPU…) ; depuis Godot 4.4, le nombre de pipelines compilés
+##   est publié (`Performance.PIPELINE_COMPILATIONS_*`) : colonne `pipelines` (compilés pendant l'image), et cause
+##   « shaders » quand aucune étape n'explique l'image et qu'au moins un pipeline a été compilé (pire image, 17/11) ;
 ## - `taches.csv` : durée de chaque tâche de fond (`task` : terrain, route, arbres, bâtiments, OSM d'un tronçon) ;
 ## - `demarrage.txt` : « Démarrage : première image jouable à N ms » (depuis le lancement de l'engine), à la
 ##   première de 10 images de suite sous 33 ms une fois le parcours chargé (`route_ready`).
+## Temps d'image (pire image, 17/11) : le plus grand du `delta` de Godot et du temps réel écoulé depuis l'image
+## précédente. Godot borne `delta` quand il prend du retard (8 pas de physique au plus, 133 à 150 ms) : toutes les
+## pires images des bancs plafonnaient à 150 ms. Le temps réel donne la vraie durée ; `delta_ms` de saccades.csv
+## garde le `delta` de Godot pour comparer.
 ## `mark` et `task` sont statiques (appelées depuis le streaming et les fils de WorkerThreadPool) et ne
 ## font rien sans sonde ouverte.
 ## Pas de class_name : chargé par preload.
 
 const COLUMNS := ["t_s", "unix_s", "fps", "frame_p50_ms", "frame_p99_ms", "frame_max_ms", "cpu_ms", "gpu_ms",
 	"draw_calls", "objects", "primitives", "vram_mb", "texture_mb", "buffer_mb", "static_mb", "nodes",
-	"near_tiles", "far_tiles", "osm_chunks", "trees", "culled_near", "capture", "capture_max_ms", "preset"]
+	"near_tiles", "far_tiles", "osm_chunks", "trees", "culled_near", "capture", "capture_max_ms", "pipelines", "preset"]
 const PERIOD_US := 1_000_000
 const CAPTURE_FRAMES := 3   # image de la capture et les deux suivantes
 const SACCADE_MS := 33.0     # image lente : plus de 33 ms (moins de 30 images/s)
 const PLAYABLE_FRAMES := 10  # démarrage : images de suite sous SACCADE_MS
 const CAUSE_SHARE := 0.25    # une étape explique une image lente si elle en prend au moins le quart
-const SACCADE_COLUMNS := ["t_s", "unix_s", "frame_ms", "distance_m", "cause", "steps"]
+const SACCADE_COLUMNS := ["t_s", "unix_s", "frame_ms", "distance_m", "cause", "steps", "delta_ms", "pipelines", "process_ms"]
+## Compteurs de pipelines compilés publiés par Godot (totaux depuis le lancement), sommés.
+const PIPELINE_MONITORS := [Performance.PIPELINE_COMPILATIONS_CANVAS, Performance.PIPELINE_COMPILATIONS_MESH,
+	Performance.PIPELINE_COMPILATIONS_SURFACE, Performance.PIPELINE_COMPILATIONS_DRAW,
+	Performance.PIPELINE_COMPILATIONS_SPECIALIZATION]
 const TASK_COLUMNS := ["t_s", "kind", "id", "ms"]
 
 ## Sonde ouverte : seule condition pour que `mark` et `task` retiennent quelque chose.
@@ -63,6 +73,9 @@ var _task_file: FileAccess = null
 var _route_ready := false
 var _good_run := 0
 var _good_run_start_ms := 0
+var _prev_frame_us := 0        # heure de l'image précédente (temps réel de l'image)
+var _pipelines_total := -1     # total des pipelines compilés à l'image précédente (-1 : pas encore lu)
+var _pipelines_sec := 0        # pipelines compilés depuis la dernière ligne
 
 
 ## Ouvre le fichier et active la mesure du temps de rendu de la vue. Renvoie false si le fichier ne
@@ -93,6 +106,9 @@ func open(csv_path: String, viewport: Viewport, preset_name: String) -> bool:
 		RenderingServer.viewport_set_measure_render_time(_viewport_rid, true)
 	_start_us = Time.get_ticks_usec()
 	_last_us = _start_us
+	_prev_frame_us = 0
+	_pipelines_total = -1
+	_pipelines_sec = 0
 	print("[perf-sonde] mesures chaque seconde dans ", csv_path)
 	return true
 
@@ -142,7 +158,11 @@ func route_ready() -> void:
 ## Cause d'une image lente de `frame_ms` : capture du banc, sinon étape la plus longue du fil principal si
 ## elle prend au moins le quart de l'image (CAUSE_SHARE), sinon « inconnue » (les étapes restent listées).
 ## `steps` : [[type, id, ms], …] ; renvoie {cause, steps (texte « type id ms | … »)}.
-static func saccade_cause(steps: Array, capture: bool, frame_ms: float) -> Dictionary:
+## `pipelines` : pipelines compilés pendant l'image ; sans étape qui explique l'image, cause « shaders » s'il y en a,
+## sinon « scripts » si les `_process` de l'image (`process_ms`, Performance.TIME_PROCESS) en prennent le quart
+## (travail des scripts pas encore noté par une étape), sinon « inconnue » (rendu, envoi au GPU, pilote…).
+static func saccade_cause(steps: Array, capture: bool, frame_ms: float, pipelines: int = 0,
+		process_ms: float = 0.0) -> Dictionary:
 	var parts := PackedStringArray()
 	var worst: Array = []
 	for st in steps:
@@ -154,10 +174,14 @@ static func saccade_cause(steps: Array, capture: bool, frame_ms: float) -> Dicti
 		cause = "capture"
 	elif not worst.is_empty() and float(worst[2]) >= frame_ms * CAUSE_SHARE:
 		cause = str(worst[0])
+	elif pipelines > 0:
+		cause = "shaders"
+	elif process_ms >= frame_ms * CAUSE_SHARE:
+		cause = "scripts"
 	return {"cause": cause, "steps": " | ".join(parts)}
 
 
-func _frame_x15(frame_ms: float, capture: bool) -> void:
+func _frame_x15(frame_ms: float, capture: bool, delta_ms: float = NAN, pipelines: int = 0, process_ms: float = 0.0) -> void:
 	_mutex.lock()
 	var steps := _steps.duplicate()
 	_steps.clear()
@@ -166,10 +190,11 @@ func _frame_x15(frame_ms: float, capture: bool) -> void:
 	if frame_ms > SACCADE_MS:
 		_good_run = 0
 		if _saccades != null:
-			var c := saccade_cause(steps, capture, frame_ms)
+			var c := saccade_cause(steps, capture, frame_ms, pipelines, process_ms)
 			_saccades.store_line(";".join(PackedStringArray([
 				"%.3f" % (float(Time.get_ticks_usec() - _start_us) / 1e6), "%.3f" % Time.get_unix_time_from_system(),
-				"%.1f" % frame_ms, "%.1f" % distance_m, c["cause"], str(c["steps"]).replace(";", ",")])))
+				"%.1f" % frame_ms, "%.1f" % distance_m, c["cause"], str(c["steps"]).replace(";", ","),
+				"%.1f" % (frame_ms if is_nan(delta_ms) else delta_ms), str(pipelines), "%.1f" % process_ms])))
 			_saccades.flush()
 			saccades_written += 1
 	elif _route_ready and startup_ms < 0:
@@ -197,17 +222,42 @@ func _flush_tasks(t_s: float) -> void:
 	_task_file.flush()
 
 
+## Temps d'image (ms) : le plus grand du `delta` de Godot et du temps réel depuis l'image précédente
+## (`prev_us`, 0 : première image, `delta` seul). Godot borne `delta` à 8 pas de physique quand il prend du retard.
+static func frame_time_ms(delta: float, prev_us: int, now_us: int) -> float:
+	var wall := float(now_us - prev_us) / 1000.0 if prev_us > 0 else 0.0
+	return maxf(delta * 1000.0, wall)
+
+
+## Total des pipelines compilés depuis le lancement (0 sans rendu, sous --headless).
+static func pipeline_total() -> int:
+	var n := 0
+	for m in PIPELINE_MONITORS:
+		n += int(Performance.get_monitor(m))
+	return n
+
+
 ## À appeler à chaque image. `streamer` : world_streamer.gd (ou null).
 func frame(delta: float, streamer = null) -> void:
 	if _file == null:
 		return
+	var t_us := Time.get_ticks_usec()
+	var frame_ms := frame_time_ms(delta, _prev_frame_us, t_us)
+	_prev_frame_us = t_us
+	var total := pipeline_total()
+	var pipelines := maxi(total - _pipelines_total, 0) if _pipelines_total >= 0 else 0
+	_pipelines_total = total
+	_pipelines_sec += pipelines
 	var capture := _capture_left > 0
 	if capture:
 		_capture_left -= 1
-		_captured.append(delta * 1000.0)
+		_captured.append(frame_ms)
 	else:
-		_frames.append(delta * 1000.0)
-	_frame_x15(delta * 1000.0, capture)
+		_frames.append(frame_ms)
+	# Temps des `_process` de l'image qui vient de finir (Godot le publie après l'image) : la sonde est appelée au
+	# début de l'image suivante, dont le temps mesuré couvre justement cette image.
+	var process_ms := float(Performance.get_monitor(Performance.TIME_PROCESS)) * 1000.0
+	_frame_x15(frame_ms, capture, delta * 1000.0, pipelines, process_ms)
 	if _viewport_rid.is_valid():
 		_cpu_sum += RenderingServer.viewport_get_measured_render_time_cpu(_viewport_rid) \
 			+ RenderingServer.get_frame_setup_time_cpu()
@@ -224,6 +274,7 @@ func frame(delta: float, streamer = null) -> void:
 	row["gpu_ms"] = _gpu_sum / n
 	row.merge(render_counters())
 	row.merge(world_counters(streamer))
+	row["pipelines"] = _pipelines_sec
 	row["preset"] = preset
 	_flush_tasks(row["t_s"])
 	_file.store_line(csv_line(row))
@@ -233,6 +284,7 @@ func frame(delta: float, streamer = null) -> void:
 	_captured.clear()
 	_cpu_sum = 0.0
 	_gpu_sum = 0.0
+	_pipelines_sec = 0
 	_last_us = now
 
 

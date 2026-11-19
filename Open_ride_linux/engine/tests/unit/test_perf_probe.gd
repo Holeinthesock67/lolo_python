@@ -110,6 +110,21 @@ func _init() -> void:
 		"étape de moins du quart de l'image : inconnue")
 	_check(PerfProbe.saccade_cause([], false, 40.0)["cause"] == "inconnue" and PerfProbe.saccade_cause([["osm", "4", 9.0]], true, 40.0)["cause"] == "capture",
 		"sans étape : inconnue ; capture prioritaire")
+	# Pire image (17/11) : cause « shaders » si des pipelines ont été compilés et qu'aucune étape n'explique l'image.
+	_check(PerfProbe.saccade_cause([["osm", "4", 9.0]], false, 140.0, 3)["cause"] == "shaders"
+		and PerfProbe.saccade_cause([["arbres", "1", 90.0]], false, 140.0, 3)["cause"] == "arbres"
+		and PerfProbe.saccade_cause([], true, 140.0, 3)["cause"] == "capture",
+		"pipelines compilés sans étape qui explique : shaders ; étape longue et capture d'abord")
+	_check(PerfProbe.saccade_cause([], false, 140.0, 0, 60.0)["cause"] == "scripts"
+		and PerfProbe.saccade_cause([], false, 140.0, 0, 10.0)["cause"] == "inconnue",
+		"scripts non notés (process_ms au moins le quart) : scripts ; sinon inconnue (rendu)")
+	# Temps d'image : Godot borne delta à 8 pas de physique (133 ms) ; le temps réel donne la vraie durée.
+	_check(is_equal_approx(PerfProbe.frame_time_ms(0.1333, 1_000_000, 1_420_000), 420.0),
+		"blocage de 420 ms, delta borné à 133 ms : 420 ms")
+	_check(is_equal_approx(PerfProbe.frame_time_ms(0.016, 1_000_000, 1_015_000), 16.0)
+		and is_equal_approx(PerfProbe.frame_time_ms(0.016, 0, 5_000_000), 16.0),
+		"temps réel plus court que delta, ou première image : delta")
+	_check(PerfProbe.pipeline_total() >= 0, "total des pipelines lisible (0 sous --headless)")
 	probe = PerfProbe.new()
 	_check(probe.open(csv, null, "low") and PerfProbe.active, "sonde rouverte : active")
 	probe.route_ready()
