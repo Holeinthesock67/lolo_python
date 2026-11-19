@@ -1,0 +1,16 @@
+== ea2_lac_loin (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : medium appliquée (fin du journal) ; dernière ligne : medium (demandée medium, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 12.5 s)
+[OK] choisir « open_world » : écran « home », focus « open_world »
+[OK] écran monde ouvert globe : « OpenRide »
+[OK] écran monde ouvert search (contient=['Montmin']) : « OpenRide »
+[OK] écran monde ouvert map : « OpenRide »
+[OK] écran monde ouvert setup (contient=['Cap :']) : « OpenRide »
+[ÉCHEC] écran monde ouvert False : menu du monde ouvert affiché
+[ÉCHEC] journal du core : « Monde ouvert prêt » : absent après 600 s
+[ÉCHEC] journal du core : « Commande start  » : absent après 60 s
+[ÉCHEC] journal du core : « -> RUNNING » : absent après 120 s
