@@ -1349,8 +1349,8 @@
     },
     "vehicles": {
       "type": "array",
-      "maxItems": 4,
-      "description": "Facultatif, révision 1.5 (lot AS6) : véhicules de la route à moins de 150 m du cycliste, calculés par le core (au plus 4, du plus proche au plus loin), envoyés une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans circulation.",
+      "maxItems": 8,
+      "description": "Facultatif, révision 1.5 (lot AS6) : véhicules de la route à moins de 150 m du cycliste, calculés par le core (au plus 4, du plus proche au plus loin), envoyés une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans circulation. Révision 1.20 (lot AS11) : tous les véhicules du core (voitures d'équipe du Grand Prix d'abord, puis du plus proche au plus loin), par parties d'au plus 8, une partie par trame (`road_part`) ; l'engine ne fait plus rouler de circulation propre et retire, à la dernière partie, ceux qu'aucune partie du tour n'a donnés.",
       "items": {
         "type": "object",
         "required": [
@@ -1414,8 +1414,8 @@
     },
     "riders": {
       "type": "array",
-      "maxItems": 10,
-      "description": "Facultatif, révision 1.5 (lot AS7) : cyclistes du décor à moins de 60 m du cycliste, calculés par le core (au plus 6, du plus proche au plus loin), envoyés avec `vehicles` une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans décor vivant. Révision 1.18 (lot AS10) : au plus 10, toujours une trame sur trois (10 Hz), mais dans la trame qui suit celle de `vehicles`, jamais avec elle.",
+      "maxItems": 8,
+      "description": "Facultatif, révision 1.5 (lot AS7) : cyclistes du décor à moins de 60 m du cycliste, calculés par le core (au plus 6, du plus proche au plus loin), envoyés avec `vehicles` une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans décor vivant. Révision 1.18 (lot AS10) : au plus 10, toujours une trame sur trois (10 Hz), mais dans la trame qui suit celle de `vehicles`, jamais avec elle. Révision 1.20 (lot AS11) : tous les cyclistes du décor du core, par parties d'au plus 8 (un groupe jamais coupé), une partie par trame (`road_part`), après les parties `vehicles`.",
       "items": {
         "type": "object",
         "required": [
@@ -1464,6 +1464,17 @@
           }
         }
       }
+    },
+    "road_part": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 99
+      },
+      "description": "Facultatif, révision 1.20 (lot AS11) : [rang, parties] de la liste `vehicles` ou `riders` de la trame, rang de 0 à parties - 1 ; présent seulement avec l'une d'elles."
     },
     "draft_w": {
       "type": "integer",
@@ -2588,8 +2599,16 @@
           "items": {
             "type": "array",
             "prefixItems": [
-              {"type": "integer", "minimum": 0, "maximum": 1},
-              {"type": "integer", "minimum": 0, "maximum": 2}
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2
+              }
             ],
             "minItems": 2,
             "maxItems": 2

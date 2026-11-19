@@ -12,6 +12,7 @@ est proposé à moins de `offer_m` et son choix est figé à `lock_m` avant lui.
 from __future__ import annotations
 
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -98,6 +99,7 @@ class OpenWorld:
         self.dead = False                    # générateur perdu après sa relance : plus de route nouvelle
         self.data = "cached"
         self.rev = 0
+        self.finish_s: float | None = None   # lot W19 : arrivée (destination, boucle) en distance de séance
         self._open_msg: dict[str, Any] = {}
         self._restarts = 0
         self._next: LiveRoute | None = None   # route du générateur relancé, en attente de sa première révision
@@ -110,6 +112,11 @@ class OpenWorld:
         self._how: dict[str, str] = {}
         self._logged: set[str] = set()       # carrefours déjà écrits au journal
         self._locked_early: set[str] = set()
+
+    @property
+    def nav(self) -> str:
+        """Navigation de la séance (`ride`, `destination`, `loop`)."""
+        return str(self._open_msg.get("nav") or "ride")
 
     # --- ouverture et fermeture ------------------------------------------------------------
 
@@ -199,6 +206,18 @@ class OpenWorld:
                 log.error("Erreur du générateur : %s", text)
         # `closed` : rien à faire ici (WorldgenClient.closed)
 
+    def _set_finish(self, msg: dict[str, Any]) -> None:
+        """Arrivée annoncée par le générateur (`revision.finish_m`, worldgen v1 §4, lot W19), rapportée à la
+        distance de la séance ; absente ou nulle : pas d'arrivée connue (balade, ou pas encore engagée)."""
+        fin = msg.get("finish_m")
+        old = self.finish_s
+        if isinstance(fin, (int, float)) and not isinstance(fin, bool) and math.isfinite(fin) and fin >= 0:
+            self.finish_s = self._base() + float(fin)
+        else:
+            self.finish_s = None
+        if self.finish_s is not None and (old is None or abs(self.finish_s - old) > 1.0):
+            log.info("Monde ouvert : arrivée (%s) à %.0f m.", self._open_msg.get("nav"), self.finish_s)
+
     def _on_revision(self, msg: dict[str, Any], s: float) -> None:
         rev = int(msg.get("rev", 0))
         self.rev = rev
@@ -210,6 +229,7 @@ class OpenWorld:
                 return
             self.route, self._next = self._next, None
             self.opening = False
+            self._set_finish(msg)
             log.info("Générateur relancé : route reprise à %.0f m.", self.route.base_m)
             return
         assert self.route is not None
@@ -224,8 +244,10 @@ class OpenWorld:
                 return
             self.opening = False
             self.ready = True
+            self._set_finish(msg)
             return
         self.route.apply_revision(rev, int(msg.get("changed_from_part", 0)))
+        self._set_finish(msg)
 
     # --- générateur perdu ---------------------------------------------------------------------
 
@@ -249,8 +271,14 @@ class OpenWorld:
         self._restarts += 1
         here = self.route.sample(s)
         log.warning("Le générateur s'est arrêté (code %s) : relance depuis %.0f m.", code, s)
-        msg = {**self._open_msg, "lat": here.lat, "lon": here.lon, "heading_deg": here.heading_deg, "nav": "ride",
-               "target": None, "loop_km": None}
+        # Lot W19 : une destination garde sa cible ; une boucle, dont le compte des kilomètres repartirait
+        # de zéro, continue en balade (sans arrivée).
+        dest = self._open_msg.get("nav") == "destination" and self._open_msg.get("target")
+        msg = {**self._open_msg, "lat": here.lat, "lon": here.lon, "heading_deg": here.heading_deg,
+               "nav": "destination" if dest else "ride", "target": self._open_msg.get("target") if dest else None,
+               "loop_km": None}
+        if not dest:
+            self.finish_s = None
         self.client = WorldgenClient(self.folder, self.config_path, self.cmd, self.extra_args)
         self._next = LiveRoute(self.folder, base_m=s)
         self.opening = True

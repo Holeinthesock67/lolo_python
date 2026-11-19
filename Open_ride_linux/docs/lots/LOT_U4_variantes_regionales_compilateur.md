@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Compilateur : variante régionale par tuile (table de géologie et d'architecture à grosse maille) | Python | U1 (U2 utile) | Petite | En PR le 8 novembre (PR #785, empilée sur U2 #734), **version 3.0** (issue #334) |
+| Compilateur : variante régionale par tuile (table de géologie et d'architecture à grosse maille) | Python | U1 (U2 utile) | Petite | **Livré le 9 novembre** (PR #785), **version 3.0** (issue #334) |
 
 ## 1. Objectif
 
@@ -55,3 +55,7 @@ Rendu des variantes (U14), carte géologique réelle.
 - `--variant GROUND,ROOFS` (un membre vide reste `null`) pour `build`, `build-all` et `add-layer biome` ; seul, il produit aussi la couche biome.
 - `verify` contrôle que `variant` est `null` ou un couple pris dans l'énumération du contrat.
 - « Modifiable par le thème » : le thème change l'aspect de chaque variante (`variants`, U14) ; le choix de la variante reste dans la table du compilateur (aucun changement de contrat).
+
+## Livraison
+
+Fusionné dans `main` : PR #785 (9 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

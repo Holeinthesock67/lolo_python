@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : demi-tour automatique au bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP ; boucle de retournement au bout des impasses du monde ouvert | Python + GDScript | N17, W8 | Petite | En PR (14 novembre) |
+| 1.x série N : demi-tour automatique au bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP ; boucle de retournement au bout des impasses du monde ouvert | Python + GDScript | N17, W8 | Petite | **Livré le 17 novembre** (PR #882), **version 1.x** |
 
 ## 1. Objectif
 

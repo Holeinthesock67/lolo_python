@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série TT : contrat IPC des bonus tactiques (valeurs de `held` et `active`, champ `refused`, réglage `powerups.mode` à trois choix), correction de la règle ERG de la spécification | Contrat | T1, révision 1.8 fermée | Petite | En revue (révision 1.13, version 4.0) |
+| Série TT : contrat IPC des bonus tactiques (valeurs de `held` et `active`, champ `refused`, réglage `powerups.mode` à trois choix), correction de la règle ERG de la spécification | Contrat | T1, révision 1.8 fermée | Petite | **Livré le 9 novembre** (PR #806, révision 1.13), version 4.0 |
 
 Série TT (bonus tactiques, version 4.0). Plan de la série : `docs/4.0/PLAN_SERIE_TT.md`, recommandations retenues par le propriétaire le 29 octobre (« ok pour tout », §6 du plan). Cahier rédigé le 8 novembre 2026 (le plan les annonçait, aucun n'existait).
 
@@ -33,3 +33,7 @@ Plan §1 à §3 ; `docs/contracts/ipc_v1.md` (objet `powerup` de `state`, révis
 ## 5. Fichiers touchés
 
 `docs/contracts/ipc_v1.md`, `docs/contracts/ipc/*.json`, `docs/SPECIFICATION_GENERALE.md`, `core/src/openride_core/config.py` (valeurs de `powerups.mode`).
+
+## Livraison
+
+Fusionné dans `main` : PR #806 (9 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

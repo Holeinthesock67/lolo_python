@@ -1382,12 +1382,25 @@ func _poll_live_world() -> void:
 		streamer.swap_route(route, int(upd["from_part"]))
 		if living_world != null:
 			living_world.set_route(route, float(streamer.get("_road_width_m")))
+		_refresh_live_markers(float(int(upd["from_part"])) * 1000.0)
 		ipc.test_log("world_revision rev=%d length_m=%.1f from_part=%d" % [upd["revision"], route.length_m, upd["from_part"]])
+	elif upd.has("segments"):
+		_refresh_live_markers()
 	elif upd.has("error"):
 		print("Monde ouvert : révision %d illisible : %s" % [upd["revision"], upd["error"]])
 		ipc.test_log("world_revision_error rev=%d" % upd["revision"])
 	if follow.has_frame():
 		streamer.set_previews(live_world.previews(float(follow.last_frame["s"])))
+
+## Monde ouvert (lot W21) : portiques et panneaux des montées et sprints trouvés en roulant, arches de bonus
+## jusqu'au bout de la route connue, jingles des lignes ; `from_s` : début de la route réécrite (nœuds refaits).
+func _refresh_live_markers(from_s: float = INF) -> void:
+	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
+	segment_markers.refresh(route, arch_every_m, from_s)
+	event_sounds.set_route(arch_every_m, route.length_m, false, SegmentMarkersModel.gate_jingles(segment_markers.marks), false)
+	segment_hud.merge_segments(route.segments)
+	ipc.test_log("world_segments n=%d marks=%d" % [route.segments.size(), segment_markers.marks.size()])
+
 
 ## Dossier du parcours : <routes>/<route_id>.world, repli sur la démo embarquée pour « demo ».
 ## Carte du parcours de l'écran d'attente du départ (StartWaitModel.route_card) : entrée de la liste des
@@ -1666,7 +1679,8 @@ func _test_menu_state(req: String) -> Dictionary:
 		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
 		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
 		"rogue": rogue_host.is_active(), "hud": hud.visible,
-		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name}
+		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name,
+		"s_m": float(_last_state.get("s", 0.0)) if _last_state.get("s", null) != null else 0.0}
 
 
 ## Décor posé en plusieurs images après les tuiles : tronçons d'herbe du bord pas encore remplis (lot Y22) et

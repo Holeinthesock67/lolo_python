@@ -275,9 +275,7 @@ def test_session_decor_group_shelters_rider(tmp_path, monkeypatch):
     assert 0.30 <= best <= 0.45
     assert who is not None and who.startswith("rider:" + g.id + "-")
     assert abs(s._lane.m - g.members[-1].lateral) < 0.3      # dans la ligne du groupe
-    s._frame_count = 1                         # lot AS10 : la trame qui suit celle de `vehicles`
-    s._fill_riders_frame()
-    riders = s.state.to_dict()["riders"]
+    _, riders = road_round(s)                  # lot AS11 : un tour des parties `road_part`
     assert len(riders) == 3 and {r["id"] for r in riders} == {f"{g.id}-{m.index}" for m in g.members}
 
 
@@ -496,16 +494,43 @@ def test_groups_avoid_the_rider_where_he_is(lane: float) -> None:
     assert hits == 0
 
 
-def test_riders_frame_never_carries_vehicles(tmp_path, monkeypatch):
-    """Lot AS10 (révision 1.18) : la liste `riders` part dans la trame qui suit celle de `vehicles`, jamais avec elle."""
-    s, g = decor_session(tmp_path, monkeypatch, 6202, rel_m=20.0)
-    for n in range(6):
-        s._frame_count = n
+def road_round(s) -> tuple[list[dict], list[dict]]:
+    """Lot AS11 (révision 1.20) : listes `vehicles` et `riders` d'un tour complet des parties (`road_part`)."""
+    s._road_queue = []
+    vehicles: list[dict] = []
+    riders: list[dict] = []
+    while True:
         s._fill_vehicles_frame()
         s._fill_riders_frame()
         frame = s.state.to_dict()
-        assert not (frame.get("vehicles") is not None and frame.get("riders") is not None)
-        assert (frame.get("riders") is not None) == (n % 3 == 1)
+        vehicles += frame.get("vehicles") or []
+        riders += frame.get("riders") or []
+        if not s._road_queue:
+            return vehicles, riders
+
+
+def test_riders_frame_never_carries_vehicles(tmp_path, monkeypatch):
+    """Lot AS10 (révision 1.18) : `riders` et `vehicles` jamais dans la même trame ; lot AS11 (révision 1.20) : une
+    partie par trame, `road_part` = [rang, parties], au plus ROAD_PART_MAX usagers, un groupe jamais coupé."""
+    from openride_core import session as session_mod
+
+    s, g = decor_session(tmp_path, monkeypatch, 6202, rel_m=20.0)
+    s._road_queue = []
+    seen = []
+    for _ in range(12):
+        s._fill_vehicles_frame()
+        s._fill_riders_frame()
+        frame = s.state.to_dict()
+        assert (frame.get("vehicles") is None) != (frame.get("riders") is None)
+        rank, parts = frame["road_part"]
+        assert 0 <= rank < parts
+        items = frame["vehicles"] if frame.get("vehicles") is not None else frame["riders"]
+        assert len(items) <= session_mod.ROAD_PART_MAX
+        seen.append(("v" if frame.get("vehicles") is not None else "r", rank, parts))
+        if frame.get("riders"):
+            ids = {r["id"].rsplit("-", 1)[0] for r in frame["riders"]}
+            assert g.id not in ids or len([r for r in frame["riders"] if r["id"].startswith(g.id + "-")]) == g.size
+    assert {x[0] for x in seen} == {"v", "r"} and all(x[2] >= 1 for x in seen)
 
 
 def _held_train(rider_v: float, a_rel: float, a_v: float, b_rel: float, c_rel: float) -> tuple[int, float]:

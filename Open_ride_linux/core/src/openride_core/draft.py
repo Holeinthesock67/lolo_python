@@ -425,6 +425,24 @@ def _side_time(lane: Lane, other: Lane) -> float:
     return 0.0 if extra <= 0.0 else SIDE_EXTRA_MARGIN * (PASS_OFFSET_M + extra) / LANE_RATE_MPS
 
 
+PASS_SAFETY_S = 1.0       # lot AS11 : on sort doubler une seconde de rapprochement avant d'avoir besoin de la place
+PASS_MARGIN_M = 0.3       # lot AS11 : marge en long d'un rabattement (`road_space.MARGIN_LEN_M`)
+
+
+def pass_window(len_a: float, len_b: float, closing_mps: float, lateral_m: float, lateral_mps: float,
+                margin_m: float = PASS_MARGIN_M) -> tuple[float, float]:
+    """Règle commune de dépassement (lot AS11, demande du propriétaire du 17 novembre : « rabattre plus tôt ») :
+    fenêtre (début, fin) de l'écart du centre de celui qui double au centre de celui qu'il double (négatif :
+    derrière) où il roule hors de sa ligne. Il sort quand il lui faut encore le temps de se décaler de `lateral_m`
+    à `lateral_mps`, plus `PASS_SAFETY_S`, avant de toucher ; il se rabat dès que, rabattu à cette vitesse de
+    rapprochement, il ne touchera plus (gabarits `len_a` et `len_b` et `margin_m`). Mêmes valeurs pour les
+    véhicules et les cyclistes du décor, au lieu d'une zone fixe propre à chacun (−60 à +30 m, 20 m devant)."""
+    reach = 0.5 * (len_a + len_b) + margin_m
+    t_lat = abs(lateral_m) / max(lateral_mps, 0.1)
+    dv = max(closing_mps, 0.5)
+    return -(reach + dv * (t_lat + PASS_SAFETY_S)), reach + dv * t_lat
+
+
 def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, float, Lane]],
                 length_m: float | None = None, is_loop: bool = False, head_mps: float = 0.0,
                 cross_mps: float = 0.0) -> tuple[float, bool]:
@@ -664,4 +682,35 @@ def blocked_by(s: float, v: float, lane: Lane, target: float, others: Iterable[t
             continue
         if best is None or gap < best[0]:
             best = (gap, o_v)
+    if best is None:
+        best = third_abreast(s, v, lane, target, others, length_m, is_loop)
     return best
+
+
+ABREAST_ARRIVE_M = 0.3   # lot AS11 : le troisième est celui qui arrive, au moins 0,3 m en retrait des deux
+
+
+def third_abreast(s: float, v: float, lane: Lane, target: float, others: Iterable[tuple[float, float, Lane]],
+                  length_m: float | None = None, is_loop: bool = False) -> tuple[float, float] | None:
+    """Lot AS11 (code de la route, décision du propriétaire du 17 novembre : deux de front au plus) : un vélo qui
+    arrive à la hauteur de deux autres déjà de front, sans les doubler (par la gauche, ou plus de PASS_SPEED_MPS plus
+    vite qu'eux), est le troisième : il est
+    enfermé (écart roue à roue au plus en retrait des deux, négatif à leur hauteur ; vitesse du plus lent) et
+    rentre dans leur roue. Voie tenue du Grand Prix (`follow` faux : ses trois voies) et véhicules : rien."""
+    if not lane.follow or lane.length != BIKE_LENGTH_M or lane.half_width != RIDER_WIDTH_M / 2.0:
+        return None
+    beside = []
+    for o_s, o_v, o_lane in others:
+        if o_lane.length != BIKE_LENGTH_M or o_lane.half_width != RIDER_WIDTH_M / 2.0:
+            continue
+        d = ahead_distance(s, o_s, length_m, is_loop)
+        if -BIKE_LENGTH_M < d < BIKE_LENGTH_M:
+            beside.append((d, o_s, o_v, o_lane))
+    for i, (d1, s1, v1, l1) in enumerate(beside):
+        for d2, s2, v2, l2 in beside[i + 1:]:
+            if abs(d1 - d2) >= BIKE_LENGTH_M or min(d1, d2) < ABREAST_ARRIVE_M:
+                continue      # pas de front entre eux, ou soi déjà à leur hauteur (départ) : ce n'est pas soi qui arrive
+            if target < min(l1.m, l2.m) - SIDE_CLEAR_M + 0.05 or v > max(v1, v2) + PASS_SPEED_MPS:
+                continue      # il les double (par la gauche, ou plus vite qu'eux) : troisième le temps de doubler
+            return min(d1, d2) - BIKE_LENGTH_M, min(v1, v2)
+    return None

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série DS : jusqu'à 11 adversaires dans le mode, après le peloton d'environ 12 bots (lot PL1) | Python, GDScript | DS2, Y18, PL1 | Moyenne | En PR (6 novembre), bancs PC et captures à faire |
+| Série DS : jusqu'à 11 adversaires dans le mode, après le peloton d'environ 12 bots (lot PL1) | Python, GDScript | DS2, Y18, PL1 | Moyenne | **Livré le 7 novembre** (PR #735) |
 
 Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_DS.md`.
 

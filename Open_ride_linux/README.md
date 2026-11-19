@@ -7,13 +7,13 @@ Matériel de référence : home trainer HomeTrainer (FTMS), Zwift Cog, Zwift Cli
 
 **Pour rouler :** le [guide d'utilisation](docs/GUIDE_UTILISATION.md) explique l'installation, l'appairage, les parcours, l'ERG et le dépannage, sans terminal. Le reste de ce fichier s'adresse au développement.
 
-## État (27 octobre 2026)
+## État (19 novembre 2026)
 
-Version `0.9.0` (fichier `VERSION`) ; la 1.0 réunit les séries N et O. OpenRide s'installe en une commande et s'utilise ensuite depuis son icône, au Click ou au clavier, sans terminal : [docs/GUIDE_UTILISATION.md](docs/GUIDE_UTILISATION.md). Le détail des lots est dans [docs/SUIVI_AVANCEMENT.md](docs/SUIVI_AVANCEMENT.md), les essais restants dans son §3 et dans [docs/PROTOCOLE_TEST_2026-10-26.md](docs/PROTOCOLE_TEST_2026-10-26.md).
+Version `2.0.0` publiée le 4 novembre (fichier `VERSION`) ; tout ce qui est entré sur `main` depuis est noté sous « Non publié » dans [CHANGELOG.md](CHANGELOG.md). OpenRide s'installe en une commande et s'utilise ensuite depuis son icône, au Click ou au clavier, sans terminal : [docs/GUIDE_UTILISATION.md](docs/GUIDE_UTILISATION.md). Le détail des lots est dans [docs/SUIVI_AVANCEMENT.md](docs/SUIVI_AVANCEMENT.md) et dans le tableau calculé par `python3 scripts/index_lots.py`.
 
-- **Sur `main` :** HomeTrainer en SIM et ERG validé sur le matériel, Zwift Click V2 à deux boîtiers, fréquence cardiaque relayée par le trainer ; séance, journal, FIT et bilan ; lancement sans terminal, écran des appareils et menus pilotés au Click selon le plan des boutons commun ; réglages ; entraînements `.zwo`, `.erg` et `.mrc` (choix, création, import) ; test de FTP, plans d'entraînement, bibliothèque de parcours et pack « Cols célèbres » ; rendu 3D (route, terrain, ciel, arbres, bâtiments, eau, sons), décor vivant et vent (série P, mises à jour 1.x), brouillard par préréglage ; outils de test de la série X.
-- **Reste pour la 1.0 :** la recette sur le matériel et la publication (O8). Écrans des plans, du test de FTP et de la bibliothèque (O12), courbes de la séance (O14), bots à l'écran (O7) et guide d'utilisation (O6) sont sur `main`.
-- **Déjà prêt pour la 2.0, sans branchement :** contrat IPC 1.4 (lot T1), modules purs des segments, bonus, records, maillots et écarts (série T), de la progression et de l'équipement (série V), mesures du monde ouvert (W0).
+- **Sur `main` :** séance SIM et ERG sur le HomeTrainer, Zwift Click V2, menus au Click et au clavier ; modes Session libre, ERG et plans, test de FTP, Cyber-Rogue, Dernier survivant, Grand Prix des objets, Vélodrome, mode WTF, monde ouvert (arrivée en Destination et en Boucle, montées et records trouvés en roulant) ; bots à profil et peloton de 11 bots, demi-tour, biomes, saisons, jour et nuit ; contrat IPC révision 1.19.
+- **Jeu de base (lot NT1) :** Col du lacet, Tour des nouveaux paysages, Route des Érables, Récif des tortues, Volcan en flammes, Route du Sud et Route du Grand Nord dans « Parcours » ; Circuit des Prés au Grand Prix ; Vélodrome 250 m ; pack « Cols célèbres » livré dans le paquet (lot PK1).
+- **Reste :** lots gelés du 19 novembre (dont AS11, contrat IPC 1.20, PR #925), puis, en tout dernier, l'installeur AppImage (lot J9 : sous-lots J9a, J9b, J9c) et sa notice.
 
 ## Installation (PC Ubuntu)
 
@@ -61,7 +61,7 @@ Open_ride_linux/
 
 ## Version
 
-Le numéro de version unique est dans le fichier `VERSION` (lot O2) ; les notes de chaque version sont dans `CHANGELOG.md`. Pour le lire : `openride --version`, `openride-core --version` ou `openride-compiler --version`, ou la première ligne du journal du lanceur (`[openride] OpenRide 0.9.0`). Pour le changer : `scripts/bump-version.sh X.Y.Z` (met à jour `VERSION`, les deux `pyproject.toml`, `engine/project.godot` et le titre de la première section du `CHANGELOG.md`, sans commit ni étiquette), puis réinstaller les paquets ; `core/tests/test_version.py` vérifie que tout concorde.
+Le numéro de version unique est dans le fichier `VERSION` (lot O2) ; les notes de chaque version sont dans `CHANGELOG.md`. Pour le lire : `openride --version`, `openride-core --version` ou `openride-compiler --version`, ou la première ligne du journal du lanceur (`[openride] OpenRide 2.0.0`). Pour le changer : `scripts/bump-version.sh X.Y.Z` (met à jour `VERSION`, les deux `pyproject.toml`, `engine/project.godot` et le titre de la première section du `CHANGELOG.md`, sans commit ni étiquette), puis réinstaller les paquets ; `core/tests/test_version.py` vérifie que tout concorde.
 
 Installation manuelle, pour le développement :
 

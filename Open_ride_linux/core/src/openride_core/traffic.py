@@ -70,7 +70,8 @@ REMOVE_BEHIND_M = 300.0
 REMOVE_AHEAD_M = 1300.0
 PASS_SPEED_KMH = 30.0
 PASS_MARGIN_KMH = 10.0
-PASS_ZONE_M = (-60.0, 30.0)      # de 60 m derrière à 30 m devant le cycliste : voie de gauche
+# Lot AS11 : voie de gauche dans la fenêtre de la règle commune (`pass_zone`, `draft.pass_window`) au lieu d'une zone
+# fixe de 60 m derrière à 30 m devant le cycliste (90 m au milieu de la route, essai du propriétaire du 17 novembre)
 FOLLOW_GAP_M = 25.0
 MIN_SPACING_M = 60.0
 MAX_GRADE_PCT = 8.0
@@ -192,6 +193,13 @@ def pick_kind(u: float) -> str:
         if u < acc:
             return k
     return list(KINDS)[-1]
+
+
+def pass_zone(kind: str, closing_mps: float) -> tuple[float, float]:
+    """Fenêtre de dépassement du cycliste par un véhicule de sorte `kind` (lot AS11) : de la voie de droite à sa
+    voie de dépassement (`lane_lateral`) à LATERAL_MPS, à la vitesse de rapprochement `closing_mps`."""
+    return draft.pass_window(KINDS[kind]["length"], draft.BIKE_LENGTH_M, closing_mps,
+                             RIGHT_LANE_M - lane_lateral(kind), LATERAL_MPS)
 
 
 def lane_lateral(kind: str) -> float:
@@ -327,7 +335,7 @@ class Traffic:
             # Lot AS10 (banc rAS10b, « montees_retour » : tracteur croisé avant le demi-tour, « tractor / cycliste ») :
             # devant dans le même sens, c'est un véhicule lent devant, comme celui que pose `place_for_test` (sa
             # voie de droite, il ne double pas, il n'est doublé que par le cycliste) ; marqué « a fini de doubler »,
-            # il roulait sur la voie de gauche à moins de PASS_ZONE_M[1] devant le cycliste qui le doublait
+            # il roulait sur la voie de gauche, à la fin de sa fenêtre de dépassement (`pass_zone`), devant le cycliste qui le doublait
             v.slow, v.hold_s = v.dir == 1 and ahead, None
             v.passed = v.committed = False
             # Lot AS10 (banc rAS10b, « montees_retour » : camion qui le doublait, « truck / cycliste ») : celui qui doublait
@@ -472,7 +480,7 @@ class Traffic:
         v.lateral = _move_toward(v.lateral, self._clear_of_others(v, RIGHT_LANE_M), LATERAL_MPS * dt_s)
 
     def _move_overtaker(self, v: Vehicle, rel: float, rider_v: float, dt_s: float) -> None:
-        """Dépassement : voie de droite, puis voie de gauche dans PASS_ZONE_M (seulement si rien ne peut
+        """Dépassement : voie de droite, puis voie de gauche dans sa fenêtre `pass_zone` (lot AS11 ; seulement si rien ne peut
         arriver en face avant la fin), retour à droite ; sans feu vert, il suit à FOLLOW_GAP_M."""
         if v.slow and not v.passed and rel <= 0.0:
             v.passed = True                      # le cycliste l'a doublé : il ne compte pas comme dépassement
@@ -480,17 +488,19 @@ class Traffic:
         cruise = v.cruise_mps
         pass_mps = min(cruise, max(PASS_SPEED_KMH / 3.6, rider_v + PASS_MARGIN_KMH / 3.6))
         left = lane_lateral(v.kind)
-        if not v.committed and PASS_ZONE_M[0] - 40.0 <= rel < 0.0 and pass_mps > rider_v \
+        zone = pass_zone(v.kind, pass_mps - rider_v)   # lot AS11 : fenêtre de la règle commune (`draft.pass_window`)
+        if not v.committed and zone[0] - 40.0 <= rel < 0.0 and pass_mps > rider_v \
                 and self._clear_to_pass(v, rel, rider_v, pass_mps):
             v.committed = True
         spd, target_lat = cruise, RIGHT_LANE_M
-        if v.committed and rel < PASS_ZONE_M[1]:
+        if v.committed and rel < zone[1]:
             spd = pass_mps
-            target_lat = left if rel >= PASS_ZONE_M[0] else RIGHT_LANE_M
+            # engagé derrière le cycliste qu'il suivait (FOLLOW_GAP_M, rapprochement nul), il déboîte d'abord
+            target_lat = left if rel >= min(zone[0], -FOLLOW_GAP_M - 1.0) else RIGHT_LANE_M
             if abs(v.lateral - left) > 0.05 and rel > -FOLLOW_GAP_M:
                 spd = min(spd, rider_v)
         elif not v.committed:
-            if rel >= PASS_ZONE_M[0] - 40.0:
+            if rel >= zone[0] - 40.0:
                 spd = pass_mps
             if rel + (spd - rider_v) * dt_s >= -FOLLOW_GAP_M:
                 spd = min(spd, rider_v)          # il ne s'approche pas (un véhicule lent doublé reste lent)
@@ -555,7 +565,7 @@ class Traffic:
             v.s = limit
 
     def _clear_to_pass(self, v: Vehicle, rel: float, rider_v: float, pass_mps: float) -> bool:
-        t_pass = (PASS_ZONE_M[1] - rel) / max(pass_mps - rider_v, 0.5)
+        t_pass = (pass_zone(v.kind, pass_mps - rider_v)[1] - rel) / max(pass_mps - rider_v, 0.5)
         for o in self._others:
             gap = o.s - v.s
             if o.dir == -1 and 0.0 < gap < t_pass * (10.0 + pass_mps) + 100.0:
