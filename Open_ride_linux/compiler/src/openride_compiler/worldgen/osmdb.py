@@ -354,7 +354,7 @@ class OsmDbWriter:
         self.db.execute("COMMIT")
         self.db.execute("VACUUM")
         self.db.close()
-        return dict(self.counts)
+        return {t: n for t, n in self.counts.items() if n or not t.startswith("coast_")}   # côte : si présente
 
     def abort(self) -> None:
         try:
