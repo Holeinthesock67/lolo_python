@@ -23,7 +23,7 @@ coureurs les traversent (c'est le jeu).
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from . import draft as draft_mod
 from . import traffic as traffic_mod
@@ -31,7 +31,7 @@ from . import traffic as traffic_mod
 BIKE_HALF_LEN_M = 0.5 * draft_mod.BIKE_LENGTH_M          # 0,85 m : `living_decor.CONTACT_BIKE_HALF_M`
 BIKE_HALF_WIDTH_M = 0.5 * draft_mod.RIDER_WIDTH_M        # 0,3 m : `traffic_model.RIDER_HALF_WIDTH_M`
 OBJECT_HALF_M = 0.4                                      # boîte ou objet posé du Grand Prix
-MARGIN_LEN_M = 0.3      # en long : extrapolation de l'engine entre deux listes (10 Hz) et arrondi au centimètre
+MARGIN_LEN_M = 0.4      # en long : extrapolation de l'engine entre deux listes et arrondi des listes au décimètre (lot AS11)
 RACER_MARGIN_M = 0.0     # entre deux coureurs (roue dans la roue, en diagonale) : le contact seulement, leur placement fait le reste
 MARGIN_WIDTH_M = 0.05   # en travers
 LATERAL_COST = 3.0      # un décalage en travers se voit plus qu'un recul de même longueur
@@ -67,6 +67,7 @@ class Body:
     move_s: bool = True
     name: str = ""
     group: str = ""          # usagers d'un même bloc (coureur et sa voiture d'équipe) : ils ne se touchent pas
+    push: bool = True        # peut être avancé (faux pour un coureur : retenu derrière seulement, jamais avancé)
 
     @property
     def rank(self) -> int:
@@ -113,8 +114,11 @@ def _racers(a: Body, b: Body) -> bool:
 
 
 def margin_len(a: Body, b: Body) -> float:
-    """Marge en long : aucune entre deux coureurs (leur placement les tient roue dans la roue), sinon `MARGIN_LEN_M`."""
-    return RACER_MARGIN_M if _racers(a, b) else MARGIN_LEN_M
+    """Marge en long : aucune entre deux coureurs ni entre un coureur et un véhicule (le placement des coureurs les
+    tient roue dans la roue, ou à l'abri derrière le véhicule, lot AS6), sinon `MARGIN_LEN_M`."""
+    if _racers(a, b) or (a.role in RACERS and b.role == "vehicle") or (b.role in RACERS and a.role == "vehicle"):
+        return RACER_MARGIN_M
+    return MARGIN_LEN_M
 
 
 def margin_width(a: Body, b: Body) -> float:
@@ -146,7 +150,9 @@ def _candidates(body: Body, hits: Sequence[Body]) -> list[tuple[float, float]]:
         reach = body.half_len + h.half_len + margin_len(body, h) + eps
         side = body.half_width + h.half_width + margin_width(body, h) + eps
         if body.move_s:
-            out += [(h.s - reach, body.lat), (h.s + reach, body.lat)]
+            out.append((h.s - body.dir * reach, body.lat))
+            if body.push:
+                out.append((h.s + body.dir * reach, body.lat))
         for lat in (h.lat - side, h.lat + side):
             if body.lat_min <= lat <= body.lat_max:
                 out.append((body.s, lat))
@@ -171,8 +177,7 @@ def _place(body: Body, placed: list[Body]) -> tuple[float, float] | None:
             cost = abs(s - body.s) + LATERAL_COST * abs(lat - body.lat)
             if best is not None and cost >= best[0]:
                 continue
-            probe = Body(body.id, body.role, s, lat, half_len=body.half_len, half_width=body.half_width,
-                         lat_min=body.lat_min, lat_max=body.lat_max, move_s=body.move_s, group=body.group)
+            probe = replace(body, s=s, lat=lat)
             more = [p for p in placed if _solid(body, p) and overlaps(probe, p)]
             if not more:
                 best = (cost, s, lat)
@@ -206,6 +211,12 @@ def resolve(bodies: Sequence[Body]) -> Report:
                          and abs(p.lat - b.lat) < p.half_width + b.half_width + margin_width(p, b)]
                 if ahead:
                     b.v = min([b.v] + [max(0.0, p.v) for p in ahead])
+                # poussé devant un usager plus rapide de son sens (le cycliste, qu'on ne freine jamais) : à sa vitesse,
+                # pour que l'affichage, qui l'extrapole entre deux listes, ne le voie pas reculer sur lui
+                behind = [p for p in hits if p.dir == b.dir and b.dir * (b.s - p.s) > 0.0
+                          and abs(p.lat - b.lat) < p.half_width + b.half_width + margin_width(p, b)]
+                if behind and not ahead:
+                    b.v = max([b.v] + [max(0.0, p.v) for p in behind])
                 rep.corrections.append(Correction(b.id, b.role, ds, dlat, b.v, first.id, first.role))
         placed.append(b)
     return rep

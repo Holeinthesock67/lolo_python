@@ -95,7 +95,7 @@ func _run() -> void:
 			parts = maxi(1, int(f[8][1]))
 		if got and typeof(f[7]) == TYPE_ARRAY:
 			if parts > 0:
-				cyclists.callv("sync_core", [_core_list(f[7], dir, traffic), seq, model_s, NAN, part, parts])
+				cyclists.callv("sync_core", [_core_list(f[7], dir, traffic), seq, model_s, traffic.model_s(float(f[1])), part, parts])
 			else:   # trace d'un core d'avant le lot AS11 (main) : listes proches seulement
 				cyclists.sync_core(_core_list(f[7], dir, traffic), seq, model_s)
 		cyclists.update(model_s, float(f[2]), dt, false, bots_m, dir * lane)

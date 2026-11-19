@@ -3840,6 +3840,10 @@ class CoreSession:
             self._step_grandprix(dt, power_used)
         if self.track_event is not None:
             self._track_after_bots()
+        if self.bots or traffic is not None:
+            # Lot AS11 : une seule règle pour tous les usagers de la chaussée, dans les deux voies, à la fin du pas
+            # (places finales : bots et Grand Prix compris), après les intentions de chacun
+            self._road_space_step(route, traffic, self.road_cyclists if traffic is not None else None)
 
         if race:
             race.step(self._t_session, dt, self.physics.s, m.power_w, self.bots)
@@ -4108,9 +4112,14 @@ class CoreSession:
         runners += [runner(b.id, b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
                     if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None
                     and (length is None or is_loop or b.s < length)]   # arrivé : arrêté sur la ligne, hors du jeu (lot PL1)
+        # Lot AS11 (règle unique) : les coureurs du sens du parcours se placent parmi tous les usagers de ce sens, pas
+        # seulement ceux proches du cycliste (à rebours, les bots, en face, rattrapaient sans les voir les cyclistes du
+        # décor de leur sens : rejeu Route du Sud, 295 contacts « bot / décor »)
         runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
-                                                       length=v.length)) for v in near if v.dir == 1]
-        runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
+                                                       length=v.length))
+                    for v in road_users if isinstance(v, traffic_mod.Vehicle) and v.dir == 1]
+        runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False))
+                    for r in road_users if isinstance(r, road_cyclists_mod.Rider) and r.dir == 1]
         draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
                                self._half_at(route))
         if reverse and traffic is not None:
@@ -4125,8 +4134,6 @@ class CoreSession:
             draft_mod.update_lanes(back, dt, length, is_loop, wind_on(traffic.route) if ws else None,
                                    (lambda u: half(traffic.model_s(u))) if half else None)
         escort_unblock(blocks)
-        # Lot AS11 : une seule règle pour tous les usagers de la chaussée, dans les deux voies, après les intentions
-        self._road_space_step(route, traffic, cyclists if traffic is not None else None)
 
         cross = cross_at(heading_deg)
         rider = None if reverse else \
@@ -4187,10 +4194,12 @@ class CoreSession:
                 continue   # fantôme : il passe à travers (comme pour le placement)
             if length is not None and not is_loop and b.s >= length:
                 continue   # arrivé : arrêté sur la ligne, hors du jeu (lot PL1)
+            # un bot peut être retenu en long (quelques centimètres, à la vitesse de celui qu'il touche) : sa voie
+            # seule ne suffit pas, son placement l'y ramène (rejeu Grand Prix à onze, « bot / bot » roue dans la roue)
             body = road_space_mod.Body(f"bot:{b.id}", "bot", model(b.s), d * lane.m, b.v, d, lat_min=bike_lo,
-                                       lat_max=bike_hi, move_s=False, group=b.id, name=f"bot {b.id}")
+                                       lat_max=bike_hi, group=b.id, name=f"bot {b.id}", push=False)
             bodies.append(body)
-            owners[body.id] = lane
+            owners[body.id] = b
         if traffic is not None:
             for v in traffic.vehicles:
                 hl, hw = road_space_mod.gabarit(v.kind)
@@ -4223,9 +4232,13 @@ class CoreSession:
             if not c.resolved:
                 continue
             owner = owners.get(c.id)
-            if isinstance(owner, draft_mod.Lane):
-                owner.m += d * c.dlat
-                owner.rate = 0.0
+            if c.role == "bot" and owner is not None:
+                owner.lane.m += d * c.dlat
+                owner.lane.rate = 0.0
+                phys = getattr(owner, "physics", None)
+                if phys is not None and c.ds:
+                    phys.s += d * c.ds        # repère de la circulation (u = L − s à rebours) vers celui du parcours
+                    phys.v = max(0.0, min(phys.v, c.v))   # retenu derrière (jamais avancé, `push` faux)
             elif isinstance(owner, traffic_mod.Vehicle):
                 owner.s += c.ds
                 owner.lateral += c.dlat
@@ -4235,7 +4248,7 @@ class CoreSession:
                 for m in owner.members:
                     m.lateral += c.dlat
                     m.lat_v = 0.0
-                if c.v < road_cyclists_mod._step_mps(owner):
+                if c.v != road_cyclists_mod._step_mps(owner):   # retenu derrière, ou poussé devant à la vitesse du plus rapide
                     owner.speed_mps = c.v
                     owner.step_mps = c.v
 
