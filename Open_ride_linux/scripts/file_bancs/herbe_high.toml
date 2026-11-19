@@ -77,7 +77,7 @@ delai_min = 40
 
 [[pr]]
 id = "rHERBE"                            # non-régression sans mer : monde ouvert avec biomes, cache réel (schéma de main)
-pr = 0
+pr = 929
 branche = "claude/project-thread-5ofk6g"
 risque = 2
 fumee = "(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); true"
