@@ -16,8 +16,11 @@ extends RefCounted
 ## - `tile_material(level, ix, iz)` : copie du matériau de base avec la texture de poids 17 × 17 de la
 ##   tuile (RGBA = les 3 biomes les plus présents en low, 4 sinon) et l'emplacement de sol de chaque biome ;
 ## - paysages (lot U25) : un emplacement de sol de plus par couple (paysage, biome de base) dont le thème décrit
-##   le sol ; une tuile de ce paysage y renvoie ses biomes (roche sombre et herbe des fjords, grès rouge des
-##   canyons…). Sans rides de sable : le sol du paysage remplace celui du biome.
+##   le sol ou l'eau ; une tuile de ce paysage y renvoie ses biomes (roche sombre et herbe des fjords, grès rouge des
+##   canyons…). Sans rides de sable : le sol du paysage remplace celui du biome ;
+## - aspect des emplacements (lot U25-p2, biome_model.gd `surface_look`) : strates colorées des parois
+##   (`ground.strata`, canyons), gradins inondés (`ground.terraces`, rizières : eau de `water.color`, diguettes de
+##   la couche `steep`) et cascades (`water.falls`, fjords) ; un biome de base peut en avoir aussi (pas d'exception).
 ## Pas de class_name : charger par preload("res://scripts/biome_textures.gd").
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -31,11 +34,16 @@ const SHADER := preload("res://shaders/terrain_biomes.gdshader")
 
 const GRID := 17
 ## Emplacements de sol (terrain_biomes.gdshader) : un par biome, puis un par couple (paysage, biome de base) dont
-## le thème décrit le sol (lot U25, `landscapes.<paysage>.biomes.<biome>.ground`), au plus MAX_LANDSCAPE_SLOTS.
+## le thème décrit le sol ou l'eau (lot U25, `landscapes.<paysage>.biomes.<biome>.ground` ou `.water`), au plus
+## MAX_LANDSCAPE_SLOTS.
 const MAX_LANDSCAPE_SLOTS := 16
 const MAX_SLOTS := 20 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
 const MAX_LAYERS := MAX_SLOTS * 3      # 3 couches par emplacement (terrain_biomes.gdshader MAX_LAYERS)
 const ROLES: Array[String] = ["grass", "rock", "snow"]
+## Couleurs des strates (lot U25-p2) : au plus STRATA_COLORS_PER_SLOT par emplacement, MAX_STRATA_COLORS en tout
+## (terrain_biomes.gdshader) ; au-delà, l'emplacement garde sa roche unie.
+const STRATA_COLORS_PER_SLOT := 4
+const MAX_STRATA_COLORS := 32
 ## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.
 const SAND_RELIEF := {"sand_desert": 1.0, "coast": 0.6}
 ## Paramètres réglés en cours de route sur le matériau du thème (ombre des nuages de P6, décor d'E3 et
@@ -54,7 +62,7 @@ var texture_px := 0                    # 0 : couleurs unies
 var estimated_bytes := 0
 var compressed := false
 var layers: Array[Dictionary] = []     # {color, inv_scale, texture, normal, a, b}
-var biome_layers := {}                 # emplacement (« biome » ou « biome|paysage ») -> {layers, rule}
+var biome_layers := {}                 # emplacement (« biome » ou « biome|paysage ») -> {layers, rule, look}
 var log_line := ""
 var _tile_materials: Array[ShaderMaterial] = []
 var _shared := {}
@@ -93,7 +101,7 @@ func biomes_in_use() -> Array[String]:
 	return BiomeIds.BIOMES.duplicate()
 
 
-## Couples [biome, paysage] du thème dont le paysage décrit le sol, dans l'ordre des paysages puis des biomes
+## Couples [biome, paysage] du thème dont le paysage décrit le sol ou l'eau, dans l'ordre des paysages puis des biomes
 ## (emplacements après ceux des biomes) ; au-delà de MAX_LANDSCAPE_SLOTS, le biome garde son sol.
 static func landscape_slots(theme: Dictionary) -> Array:
 	var out := []
@@ -106,7 +114,8 @@ static func landscape_slots(theme: Dictionary) -> Array:
 			continue
 		for b in BiomeIds.BIOMES:
 			var blk = la["biomes"].get(b, null)
-			if typeof(blk) == TYPE_DICTIONARY and typeof(blk.get("ground", null)) == TYPE_DICTIONARY and out.size() < MAX_LANDSCAPE_SLOTS:
+			if typeof(blk) == TYPE_DICTIONARY and (typeof(blk.get("ground", null)) == TYPE_DICTIONARY \
+					or typeof(blk.get("water", null)) == TYPE_DICTIONARY) and out.size() < MAX_LANDSCAPE_SLOTS:
 				out.append([b, l])
 	return out
 
@@ -149,7 +158,8 @@ func _collect_layers() -> void:
 				layers.append(entry)
 			ids.append(int(index[key]))
 		biome_layers[slot] = {"layers": ids, "rule": Vector4(float(u["slope_threshold_deg"]), float(u["snow_line_m"]),
-			float(u["blend_sharpness"]), float(SAND_RELIEF.get(b, 0.0)) if variant == null else 0.0)}
+			float(u["blend_sharpness"]), float(SAND_RELIEF.get(b, 0.0)) if variant == null else 0.0),
+			"look": model.surface_look(b, variant)}
 
 
 ## Textures des biomes en usage : {"a": [[couche, chemin relatif]], "b": [[couche, chemin relatif]]}.
@@ -203,6 +213,7 @@ func _fill_material(used: Dictionary) -> void:
 	# l'eau d'atmosphere_model.gd ; aucun paysage ne s'y rattache)
 	material.set_shader_parameter("caustic_slot", BiomeIds.BIOMES.find("reef"))
 	material.set_shader_parameter("biome_layers", ids)
+	_fill_looks()
 	var arrays := {"a": _make_array(used["a"], "a", false), "b": _make_array(used["b"], "b", true)}
 	var colors: Array[Vector4] = []
 	var maps: Array[Vector4] = []
@@ -215,6 +226,54 @@ func _fill_material(used: Dictionary) -> void:
 	material.set_shader_parameter("layer_maps", maps)
 	material.set_shader_parameter("ground_a", arrays["a"])
 	material.set_shader_parameter("ground_b", arrays["b"])
+
+
+## Aspect des emplacements (lot U25-p2) : strates, gradins et cascades, une entrée par emplacement (zéros : rien).
+func _fill_looks() -> void:
+	var strata: Array[Vector4] = []
+	var palette: Array[Vector4] = []
+	var terraces: Array[Vector4] = []
+	var water: Array[Vector4] = []
+	var falls: Array[Vector4] = []
+	var foam: Array[Vector4] = []
+	for slot in slot_names(model.theme):
+		var look: Dictionary = biome_layers[slot]["look"]
+		var st: Dictionary = look["strata"]
+		var cols := []
+		if not st.is_empty() and typeof(st.get("colors", null)) == TYPE_ARRAY:
+			for c in st["colors"]:
+				if typeof(c) == TYPE_STRING and Color.html_is_valid(c) and cols.size() < STRATA_COLORS_PER_SLOT:
+					cols.append(Color.html(c))
+		if not cols.is_empty() and palette.size() + cols.size() <= MAX_STRATA_COLORS:
+			strata.append(Vector4(maxf(float(st["band_m"]), 0.5), clampf(float(st["strength"]), 0.0, 1.0), palette.size(), cols.size()))
+			for c in cols:
+				palette.append(Vector4(c.r, c.g, c.b, 1.0))
+		else:
+			strata.append(Vector4.ZERO)
+		var te: Dictionary = look["terraces"]
+		terraces.append(Vector4.ZERO if te.is_empty() else Vector4(maxf(float(te["step_m"]), 0.2),
+			clampf(float(te["max_slope_deg"]), 0.0, 90.0), clampf(float(te["flooded"]), 0.0, 1.0), 0.0))
+		var wc: Color = look["water_color"]
+		water.append(Vector4(wc.r, wc.g, wc.b, 1.0))
+		var fa: Dictionary = look["falls"]
+		falls.append(Vector4.ZERO if fa.is_empty() else Vector4(clampf(float(fa["density"]), 0.0, 1.0),
+			clampf(float(fa["min_slope_deg"]), 0.0, 90.0), maxf(float(fa["width_m"]), 0.2), 0.0))
+		var fc: Color = ThemeRenderParams._color_or_default(fa.get("color", null), "#e8f0f2")
+		foam.append(Vector4(fc.r, fc.g, fc.b, 1.0))
+	while strata.size() < MAX_SLOTS:
+		strata.append(Vector4.ZERO)
+		terraces.append(Vector4.ZERO)
+		water.append(water[0])
+		falls.append(Vector4.ZERO)
+		foam.append(foam[0])
+	while palette.size() < MAX_STRATA_COLORS:
+		palette.append(Vector4(1.0, 1.0, 1.0, 1.0))
+	material.set_shader_parameter("slot_strata", strata)
+	material.set_shader_parameter("strata_color", palette)
+	material.set_shader_parameter("slot_terraces", terraces)
+	material.set_shader_parameter("slot_water", water)
+	material.set_shader_parameter("slot_falls", falls)
+	material.set_shader_parameter("slot_foam", foam)
 
 
 ## Tableau de textures d'une sorte de carte ; écrit l'indice de chaque couche dans layers[l][kind].
