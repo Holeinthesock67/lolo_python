@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Boucle de démonstration de 8 km dans un volcan en éruption : paysage `volcan_actif` (lave, braises, fumées, gerbes, lueur) et parcours `demo-volcan` | GDScript, Python | DB1, O38, U25, P35 | Moyenne | En PR (13 novembre, version 6.0) |
+| Boucle de démonstration de 8 km dans un volcan en éruption : paysage `volcan_actif` (lave, braises, fumées, gerbes, lueur) et parcours `demo-volcan` | GDScript, Python | DB1, O38, U25, P35 | Moyenne | Fait (fusionné le 15 novembre, #879 ; relu par le lot NT1) |
 
 Demande du propriétaire du 13 novembre 2026 à 22 h 29 : « un parcours démo exagéré feu et flammes dans un parcours volcanique ». Plan validé le même soir (carte, « plan complet ») : `/mnt/project-files/plans/PLAN_DEMO_VOLCAN_FLAMMES.md` hors dépôt. Précision à 22 h 31 : « un parcours en boucle si ça ne fait que 8 km ».
 

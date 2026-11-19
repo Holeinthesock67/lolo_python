@@ -9,6 +9,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Un arrêt net de pédalage (fin de salle du Cyber-Rogue, fin d'épreuve au vélodrome) n'est plus pris pour un frein lâché par le trainer : la cadence annoncée garde son ancienne valeur environ une seconde après l'arrêt, et le jeu attend maintenant 2 s de pédales qui tournent vraiment avant de reprendre le contrôle du trainer. Même règle dans tous les modes.
 - Le rapport des décrochages applique la même règle : un arrêt suivi d'une reprise n'est plus compté comme une faute du trainer.
 
+### Parcours de démonstration prêts pour la version finale (lot NT1)
+- Chaque parcours de démonstration a sa description sur la carte du parcours, au menu (comme le vélodrome et les cols célèbres) : par exemple « Montée de 5 km de la forêt aux alpages, avec un lacet de deux épingles serrées » pour le Col du lacet.
+- Les démonstrations déjà installées sont réécrites une fois pour recevoir leur description : « Contenus de départ » les propose (« en partie installé ») ; le Col du lacet se met à jour seul au lancement d'une séance. Les parcours du joueur ne sont jamais touchés.
+- Liste finale du jeu de base vérifiée : Col du lacet, Tour des nouveaux paysages, Route des Érables, Récif des tortues, Volcan en flammes, Route du Sud et Route du Grand Nord dans « Parcours », le Circuit des Prés dans le Grand Prix et le Vélodrome 250 m dans le mode Vélodrome, plus le pack Cols célèbres ; aucun nom de test.
+
 ### Une démonstration pour chaque biome (lot DB3)
 - Deux nouveaux parcours de démonstration, pour que chaque biome du jeu ait le sien. La « Route du Sud » fait 12 km des oliviers au delta : maquis méditerranéen, steppe et campement de yourtes, dunes et oasis, savane et village de cases, jungle, puis zones humides et village sur pilotis (2 km chacun). La « Route du Grand Nord » est une boucle de 10 km : taïga et lac, toundra et refuge, banquise et station polaire au point le plus haut, puis retour par la toundra et la taïga.
 - Trace, relief et décor entièrement inventés (aucune donnée réelle). Les deux parcours sont ajoutés à la prochaine installation des contenus de départ ; aucun autre parcours n'est réécrit.

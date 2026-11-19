@@ -110,10 +110,18 @@ def starter_parts(dirs: ContentDirs) -> dict[str, tuple[int, int]]:
     return {**cols, 
         "workouts": (sum((dirs.workouts / p.name).exists() for p in workouts), len(workouts)),
         "plans": (sum((dirs.plans / p.name).exists() for p in plans), len(plans)),
-        "routes": (sum((dirs.routes / f"{n}.world" / "manifest.json").is_file() for n in demos), len(demos)),
+        "routes": (sum(_demo_current(dirs.routes / f"{n}.world") for n in demos), len(demos)),
         "velodromes": (sum((dirs.routes / f"{n}.world" / "manifest.json").is_file() for n in _velodrome_names()),
                        len(_velodrome_names())),
     }
+
+
+def _demo_current(world: Path) -> bool:
+    """Démonstration présente et à jour (lot NT1) : une démonstration d'avant sa fiche d'aujourd'hui compte comme
+    manquante, pour que « Contenus de départ » propose de la réécrire (`install_biome_demos` la remplace)."""
+    from .demo_world import biome_demo_outdated
+
+    return (world / "manifest.json").is_file() and not biome_demo_outdated(world)
 
 
 def _velodrome_names() -> list[str]:
