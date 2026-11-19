@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : entrée « Grand Prix des objets » à l'accueil, écran de réglages et écran des objets désactivables | GDScript | GP2 | Petite | En revue (version 4.0 proposée) |
+| Série GP : entrée « Grand Prix des objets » à l'accueil, écran de réglages et écran des objets désactivables | GDScript | GP2 | Petite | **Livré le 13 novembre** (PR #858), version 4.0 |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 

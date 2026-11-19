@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Liste finale des parcours du jeu de base verrouillée, une fiche (description au menu) pour chaque démonstration, scénario de menus complet, suivi des lots de démonstration remis à jour | Python, JSON | O37, O38, DB1, DB2, DB3, DJ1, SM1, GP13 | Petite | En PR (19 novembre, avant J9) |
+| Liste finale des parcours du jeu de base verrouillée, une fiche (description au menu) pour chaque démonstration, scénario de menus complet, suivi des lots de démonstration remis à jour | Python, JSON | O37, O38, DB1, DB2, DB3, DJ1, SM1, GP13 | Petite | **Livré le 19 novembre** (PR #922, avant J9) |
 
 Bilan des circuits de démonstration (hors dépôt : `/mnt/project-files/statut/BILAN_CIRCUITS_DEMO_2026-11-12.md`, §4 et §5) et point du 19 novembre (§5) : toutes les démonstrations du jeu de base sont dans `main` ; un dernier passage de nettoyage et d'intégration se fait avant l'installateur J9, qui embarque la liste finale.
 

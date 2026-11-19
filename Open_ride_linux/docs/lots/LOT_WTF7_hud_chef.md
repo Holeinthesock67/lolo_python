@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série WTF : engine, HUD des défis, surprise du chef, bilan et sons | GDScript | WTF2, WTF4 | Moyenne | En PR le 6 novembre (version 2.0) : HUD, invite du chef et bilan livrés le 31 octobre, sons en PR |
+| Série WTF : engine, HUD des défis, surprise du chef, bilan et sons | GDScript | WTF2, WTF4 | Moyenne | **Livré** : HUD, invite du chef et bilan le 31 octobre (PR #594), sons le 6 novembre (PR #722), version 2.0 |
 
 Série WTF (mode « What the fuck », demande du propriétaire du 29 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_WTF.md`.
 

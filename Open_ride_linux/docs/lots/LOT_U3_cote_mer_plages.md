@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Compilateur : côte, mer et plages | Python | U1 | Moyenne | En PR, **version 3.0** (issue #333, lancé le 8 novembre) |
+| Compilateur : côte, mer et plages | Python | U1 | Moyenne | **Livré le 12 novembre** (PR #830, reprise de #790), **version 3.0** (issue #333) |
 
 ## 1. Objectif
 
@@ -78,3 +78,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Marées, vagues et rendu (U9), courbes bathymétriques.
+
+## Livraison
+
+Fusionné dans `main` : PR #830 (12 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

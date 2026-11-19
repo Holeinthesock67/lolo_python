@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : voie imposée qui double, objets qui ne poussent personne dans une roue | Python | GP2, GP3, PL1 | Petite | Fait (banc PC à faire) |
+| Série GP : voie imposée qui double, objets qui ne poussent personne dans une roue | Python | GP2, GP3, PL1 | Petite | **Livré le 13 novembre** (PR #850) |
 
 Série GP (mode « Grand Prix des objets »). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`. Accord du propriétaire du 12 novembre 2026 (constat du lot GP10).
 

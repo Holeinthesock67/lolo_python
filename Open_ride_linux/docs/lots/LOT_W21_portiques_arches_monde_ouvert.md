@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Portiques et lignes des montées et sprints trouvés en roulant, arches de bonus sur toute la balade | Python, GDScript | W20 | Moyenne | En revue (13 novembre) |
+| Portiques et lignes des montées et sprints trouvés en roulant, arches de bonus sur toute la balade | Python, GDScript | W20 | Moyenne | **Livré le 19 novembre** (PR #875) |
 
 ## 1. Objectif
 

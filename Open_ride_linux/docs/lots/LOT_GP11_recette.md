@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : recette sur le vélo en étapes de 10 min et banc `low`, `medium`, `high` | Recette | GP3, GP5, GP7, GP8, GP9 | Petite | Préparé le 12 novembre (recette et outil de bilan, version 4.0) ; essais sur le PC et le vélo à faire (GP9 fusionné), étape 5 complète après GP4 |
+| Série GP : recette sur le vélo en étapes de 10 min et banc `low`, `medium`, `high` | Recette | GP3, GP5, GP7, GP8, GP9 | Petite | **Livré le 17 novembre** (PR #845 : recette et outil de bilan des courses), version 4.0 |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 

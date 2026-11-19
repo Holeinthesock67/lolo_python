@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : constructions et faune propres à chaque biome | GDScript + shader | U5, U12, Y8 | Moyenne | En PR, **version 4.0** (demande du propriétaire du 6 novembre, lancée le 7 novembre) |
+| Engine : constructions et faune propres à chaque biome | GDScript + shader | U5, U12, Y8 | Moyenne | **Livré le 7 novembre** (PR #748 ; étape 2 #771 le 9 novembre), **version 4.0** |
 
 ## 1. Objectif
 
@@ -79,3 +79,7 @@ Demandée par le propriétaire le 07/11 (« Lance tout ») : les formes propres 
 - Formes propres encore absentes : toits de tourbe, minarets, échelle ou escalier des pilotis, porte des cases rondes.
 - Variantes régionales de couleur des murs et des toits (`variants.*.walls/roofs` du thème) : lot U14.
 - Sons des nouvelles espèces (barrissement, grognement), animaux qui traversent.
+
+## Livraison
+
+Fusionné dans `main` : PR #748 (7 novembre) et #771 (9 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

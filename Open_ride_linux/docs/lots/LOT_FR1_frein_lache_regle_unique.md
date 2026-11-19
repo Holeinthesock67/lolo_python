@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série FR : frein lâché jugé par une règle commune au pilote et au rapport des décrochages | Python | X44, X46 | Petite | En PR : bancs low/medium/high du scénario `arrets_pedalage_demo` à passer (19 novembre), **version 1.x** |
+| 1.x série FR : frein lâché jugé par une règle commune au pilote et au rapport des décrochages | Python | X44, X46 | Petite | **Livré le 19 novembre** (PR #923, remplace #902), **version 1.x** |
 
 ## 1. Objectif
 

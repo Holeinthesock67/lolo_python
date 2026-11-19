@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : mer animée, écume et plages | GDScript + shader | U3, U6 | Moyenne | En PR, **version 3.0** (issue #339, lancé le 12 novembre) |
+| Engine : mer animée, écume et plages | GDScript + shader | U3, U6 | Moyenne | **Livré le 13 novembre** (PR #844), **version 3.0** (issue #339) |
 
 ## 1. Objectif
 
