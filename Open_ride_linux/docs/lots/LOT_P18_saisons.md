@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Saisons : feuillages, arbres dénudés, neige, vergers en fleurs, feuilles qui tombent | GDScript + shader | P5, P8, P9, P17 ; P7 | Moyenne | **En PR** (lancé le 8 novembre, après P7) ; rien ne change à l'écran avant P19 (paramètres globaux à l'été par défaut) ; issue #142 |
+| Saisons : feuillages, arbres dénudés, neige, vergers en fleurs, feuilles qui tombent | GDScript + shader | P5, P8, P9, P17 ; P7 | Moyenne | **Livré le 8 novembre** (PR #781, avec P7 et P19) ; issue #142 |
 
 ## 1. Objectif
 

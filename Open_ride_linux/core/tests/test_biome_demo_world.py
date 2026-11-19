@@ -162,6 +162,32 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
     assert _json(demo_set / "demo-biomes-paysages.json")["name"] == "Tour des nouveaux paysages"
 
 
+def test_game_set_has_library_fiche(demo_set: Path, mbw) -> None:
+    """Lot NT1 : chaque démonstration du jeu de base porte sa fiche (description sur la carte du parcours au menu),
+    valide pour le catalogue ; une démonstration d'avant sa fiche est remplacée, jamais un parcours du joueur."""
+    from openride_core.route_stats import check_library
+
+    assert sorted(mbw.DEMO_LIBRARY) == sorted(mbw.GAME_DEMOS)
+    for name in mbw.GAME_DEMOS:
+        world = demo_set / f"{name}.world"
+        lib = _json(world / "manifest.json")["library"]
+        assert lib == mbw.library_of(name) == check_library(lib), name
+        assert 30 <= len(lib["description"]) <= 200 and lib["description"].endswith("."), name
+        assert not biome_demo_outdated(world)
+    copy = demo_set.parent / "nt1-avant-fiche" / "demo-japon.world"
+    shutil.copytree(demo_set / "demo-japon.world", copy)
+    manifest = _json(copy / "manifest.json")
+    del manifest["library"]   # écrite avant le lot NT1
+    (copy / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    assert biome_demo_outdated(copy)
+    # « Contenus de départ » la compte comme manquante (en partie installé), pour proposer de la réécrire
+    dirs = contents.ContentDirs(workouts=copy.parent / "w", plans=copy.parent / "p", routes=copy.parent)
+    assert contents.starter_parts(dirs)["routes"][0] == 0
+    shutil.rmtree(copy)
+    shutil.copytree(demo_set / "demo-japon.world", copy)
+    assert contents.starter_parts(dirs)["routes"][0] == 1
+
+
 def test_place_names_per_block(mbw) -> None:
     alpin = mbw.Plan(("alpine",) * 3, False, False)
     assert [alpin.place("col", i) for i in range(3)] == [

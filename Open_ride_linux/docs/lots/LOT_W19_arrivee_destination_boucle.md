@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Arrivée en destination et en boucle du monde ouvert : la séance se termine au but | Python | W6, W8, W9, W14 | Petite | En revue (13 novembre) |
+| Arrivée en destination et en boucle du monde ouvert : la séance se termine au but | Python | W6, W8, W9, W14 | Petite | **Livré le 19 novembre** (PR #873) |
 
 ## 1. Objectif
 

@@ -42,6 +42,9 @@ DEMO_NAME = "demo"                 # identifiant de fichier (`demo.world`), inch
 DEMO_TITLE = "Col du lacet"        # nom affiché au menu (lot O37)
 DEMO_LENGTH_M = 5000.0
 DEMO_CREATED = "2026-10-23T00:00:00+02:00"   # fixe : le fichier de démo est reproductible
+# Fiche du « Col du lacet » (lot NT1) : description sur la carte du parcours au menu, comme les autres démonstrations
+# (`openride_compiler.demo_biomes.DEMO_LIBRARY`), le vélodrome et les cols du pack.
+DEMO_LIBRARY = {"description": "Montée de 5 km de la forêt aux alpages, avec un lacet de deux épingles serrées."}
 HAIRPIN_GAP_M = 500.0       # distance entre les deux épingles du lacet (au plus 0,15 × longueur)
 HAIRPIN_GAP_MIN_M = 250.0
 
@@ -132,9 +135,9 @@ FAKE_WORLD_VERSION = "0.4.0"
 
 
 def build_manifest(name: str, route: dict, created: str | None = None,
-                   segments: list[dict] | None = None) -> dict:
+                   segments: list[dict] | None = None, library: dict | None = None) -> dict:
     segments = build_segments(route) if segments is None else segments
-    return {
+    manifest = {
         "format": "openride-world",
         "format_version": "1.3",
         "name": name,
@@ -157,11 +160,16 @@ def build_manifest(name: str, route: dict, created: str | None = None,
                          "count": len(segments), "manual_count": 0},
         },
     }
+    if library:   # fiche du parcours (lot NT1), champ facultatif du format 1.1
+        manifest["library"] = dict(library)
+    return manifest
 
 
 def write_world(out_dir: Path, name: str, length_m: float, created: str | None = None,
-                grade: Callable[[float], float] | None = None, title: str | None = None) -> Path:
-    """Écrit `out_dir/<name>.world` ; `title` : nom affiché au menu (défaut : l'identifiant `name`)."""
+                grade: Callable[[float], float] | None = None, title: str | None = None,
+                library: dict | None = None) -> Path:
+    """Écrit `out_dir/<name>.world` ; `title` : nom affiché au menu (défaut : l'identifiant `name`) ;
+    `library` : fiche du parcours (lot NT1)."""
     route = build_route(length_m, grade=grade)
     world = out_dir / f"{name}.world"
     world.mkdir(parents=True, exist_ok=True)
@@ -171,7 +179,7 @@ def write_world(out_dir: Path, name: str, length_m: float, created: str | None =
         json.dumps({"version": "1.0", "segments": segments}, indent=1, ensure_ascii=False) + "\n",
         encoding="utf-8")
     (world / "manifest.json").write_text(
-        json.dumps(build_manifest(title or name, route, created, segments), indent=2), encoding="utf-8")
+        json.dumps(build_manifest(title or name, route, created, segments, library), indent=2), encoding="utf-8")
     return world
 
 
@@ -180,13 +188,15 @@ def write_demo_world(out_dir: Path) -> Path:
     synthétique (`synthetic_terrain.py`) : sans elle, l'engine pose un sol plat sous l'altitude la plus
     basse et la route, qui monte de 120 m, semble léviter (constat du 4 novembre 2026). Couche biome
     synthétique depuis le lot W17, comme tout parcours compilé (sinon le biome par défaut partout)."""
-    world = write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED, title=DEMO_TITLE)
+    world = write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED, title=DEMO_TITLE,
+                        library=DEMO_LIBRARY)
     return add_biome_layer(add_terrain_layer(world))
 
 
 def _demo_needs_rewrite(world: Path) -> bool:
-    """Vrai si `world` manque, ou si c'est une démonstration écrite ici sans couche terrain ou par une version
-    plus ancienne du générateur (terrain qui recouvrait la chaussée au km 1,74 avant la 0.2.0)."""
+    """Vrai si `world` manque, ou si c'est une démonstration écrite ici sans couche terrain, par une version
+    plus ancienne du générateur (terrain qui recouvrait la chaussée au km 1,74 avant la 0.2.0) ou avec une autre
+    fiche que `DEMO_LIBRARY` (lot NT1)."""
     try:
         manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -197,7 +207,8 @@ def _demo_needs_rewrite(world: Path) -> bool:
     if compiler.get("name") != FAKE_WORLD_NAME:
         return False
     terrain = (manifest.get("layers") or {}).get("terrain") or {}
-    return not terrain.get("present", False) or _version(compiler.get("version")) < _version(FAKE_WORLD_VERSION)
+    return (not terrain.get("present", False) or _version(compiler.get("version")) < _version(FAKE_WORLD_VERSION)
+            or manifest.get("library") != DEMO_LIBRARY)
 
 
 def _version(text) -> tuple[int, ...]:
@@ -264,7 +275,8 @@ def retired_biome_demo_names() -> list[str]:
 def biome_demo_outdated(world: Path) -> bool:
     """Vrai si `world` est une démonstration des biomes écrite avant le lot O37 (générateur
     `make_biome_world` des tests de l'engine : nom technique au menu, lieux « Fictif »), ou par le générateur
-    actuel sans les étiquettes qu'il pose aujourd'hui (`DEMO_TAGS`, lot GP13) : remplacée par les contenus de départ."""
+    actuel avec une autre fiche que celle qu'il pose aujourd'hui (`DEMO_LIBRARY` : étiquettes de mode du lot GP13,
+    description du lot NT1) : remplacée par les contenus de départ."""
     try:
         manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -274,16 +286,15 @@ def biome_demo_outdated(world: Path) -> bool:
         return False
     if compiler.get("name") == "make_biome_world":
         return True
-    # lot GP13 : démonstration du générateur actuel écrite avant ses étiquettes de mode (Circuit des Prés hors du
-    # Grand Prix) ; jamais un parcours du joueur (autre générateur), ni sans le compilateur
+    # lots GP13 et NT1 : démonstration du générateur actuel écrite avant sa fiche d'aujourd'hui (étiquettes de mode,
+    # description) ; jamais un parcours du joueur (autre générateur), ni sans le compilateur
     try:
         module = _biome_demo_module()
     except ImportError:
         return False
     if compiler.get("name") != getattr(module, "GENERATOR", None):
         return False
-    from .mode_routes import tags_of
-    return sorted(tags_of(manifest)) != sorted(getattr(module, "DEMO_TAGS", {}).get(world.name.removesuffix(".world"), ()))
+    return manifest.get("library") != module.library_of(world.name.removesuffix(".world"))
 
 
 def write_biome_demo_worlds(out_dir: Path, recette: bool = False) -> list[dict]:

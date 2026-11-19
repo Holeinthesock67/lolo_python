@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Deux parcours de démonstration pour les neuf biomes qui n'en avaient pas : route de 12 km des oliviers au delta, boucle de 10 km de la taïga à la banquise | Python | DB1, DB2, O38 | Petite | En PR (14 novembre, version 6.0) |
+| Deux parcours de démonstration pour les neuf biomes qui n'en avaient pas : route de 12 km des oliviers au delta, boucle de 10 km de la taïga à la banquise | Python | DB1, DB2, O38 | Petite | Fait (fusionné le 17 novembre, #886 ; relu par le lot NT1) |
 
 Question du propriétaire du 14 novembre 2026 : « Il y a un parcours démo pour tous les types de biomes ? ». Étude de couverture (hors dépôt) : `/mnt/project-files/statut/COUVERTURE_BIOMES_DEMOS_2026-11-14.md`. Neuf biomes réels n'étaient montrés par aucune démonstration du jeu de base : méditerranéen (seulement dans le tour des six paysages, sorti du jeu de base par DB1), steppe, désert de sable, savane, jungle, zones humides, forêt boréale, toundra, polaire. Choix du propriétaire (carte, 6 h 34) : deux démonstrations, banc des neuf biomes d'abord ; précision à 6 h 35 : « le 6 km c'est court, fais une boucle » pour le Grand Nord ; 12 h 30 : commencer le code sans attendre le banc.
 

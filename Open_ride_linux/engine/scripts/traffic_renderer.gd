@@ -118,8 +118,22 @@ func _dress(slot: Dictionary, v: Dictionary) -> void:
 		audio.pitch_scale = snd[2]
 
 
+## Lot AS11 : véhicules dessinés. Le core fait rouler tous les véhicules (`core_full`) ; le préréglage ne règle
+## plus que le nombre dessiné (`budget` du modèle) : les plus proches du cycliste, dans l'ordre du modèle.
+static func drawn_vehicles(m, rider_s: float) -> Array:
+	var all: Array = m.vehicles
+	if m.get("core_full") != true or all.size() <= int(m.budget) or is_nan(rider_s):
+		return all
+	var by_dist := all.duplicate()
+	by_dist.sort_custom(func(a, b): return absf(float(a["s"]) - rider_s) < absf(float(b["s"]) - rider_s))
+	var keep := {}
+	for v in by_dist.slice(0, int(m.budget)):
+		keep[str(v["id"])] = true
+	return all.filter(func(v): return keep.has(str(v["id"])))
+
+
 func update() -> void:
-	var vs: Array = model.vehicles if model != null else []
+	var vs: Array = drawn_vehicles(model, float(model.get("_last_rider_s"))) if model != null else []
 	for j in range(MAX_VEHICLES):
 		var slot: Dictionary = _slots[j]
 		var root: Node3D = slot["root"]
