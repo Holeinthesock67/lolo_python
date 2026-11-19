@@ -105,6 +105,19 @@ def item_id(it: dict[str, Any]) -> str:
     return str(it.get("id", it["group"]))
 
 
+def state_frame(s: CoreSession, t: float) -> list[Any]:
+    """Trame `state` réduite à ce que lit `living_decor.gd` : [t, s, v, dir, lane_m, bots, vehicles, riders,
+    road_part], listes construites par les vraies fonctions de la séance (`_fill_vehicles_frame`)."""
+    s._frame_count += 1
+    s._fill_vehicles_frame()
+    s._fill_riders_frame()   # sans effet depuis le lot AS11 (parties de `_fill_vehicles_frame`), utile sur main
+    bots = [[round(b.s, 2), round(b.v, 3), round(draft_mod.lane_of(b) if draft_mod.lane_of(b) is not None
+                                                else draft_mod.BOT_LANE_M, 2)] for b in s.bots]
+    lane = s.physics.direction * s._lane.m   # `lane_m` de la trame : repère de la route (à rebours, à gauche de son axe)
+    return [round(t, 4), round(s.physics.s, 3), round(s.physics.v, 3), s.physics.direction, round(lane, 3), bots,
+            s.state.vehicles, s.state.riders, getattr(s.state, "road_part", None)]
+
+
 class Replay:
     def __init__(self, routes: Path, tmp: Path, mode: str = "ride") -> None:
         self.routes, self.tmp, self.n, self.mode = routes, tmp, 0, mode
@@ -135,8 +148,13 @@ class Replay:
         s._on_command("start", {"mode": self.mode} if self.mode != "ride" else {}, 2)
         return s
 
-    def run(self, route_id: str, kmh: float, seconds: float, n_bots: int, u_turn_s: float = 0.0) -> dict[str, Any]:
+    def run(self, route_id: str, kmh: float, seconds: float, n_bots: int, u_turn_s: float = 0.0,
+            trace: Path | None = None) -> dict[str, Any]:
+        """Une passe ; `trace` : trames `state` du core (30 Hz, champs lus par `living_decor.gd`) écrites pour le
+        rejeu de l'affichage dans l'engine (`engine/tests/rejeu_contacts.gd`)."""
         s = self.session(route_id, n_bots)
+        frames_out: list[list[Any]] = []
+        next_frame = 0.0
         target = kmh / 3.6
         frames: Counter[str] = Counter()
         episodes: Counter[str] = Counter()
@@ -146,16 +164,20 @@ class Replay:
         t0 = time.perf_counter()
         length = s.route.length_m if s.route is not None else 0.0
         while t < seconds - 1e-9:
-            if s.route is not None and not s.route.is_loop and s.physics.s > length - 50.0:
+            if s.route is not None and not s.route.is_loop and (s.physics.s > length - 50.0 if s.physics.direction > 0
+                                                                 else s.physics.s < 50.0):
                 break
             if u_turn_s > 0.0 and not turned and t >= u_turn_s:
                 turned = True
-                s._on_command("u_turn", {}, 3)
+                s._u_turn_riding()   # Y maintenu en roulant (révision 1.11), comme au banc demi_tour
             s.driver.base_power_w = min(1000.0, max(0.0, s.driver.base_power_w
                                                     + KP_W_PER_MPS * (target - s.physics.v) * DT))
             s._step(DT, time.monotonic())
             t += DT
             steps += 1
+            if trace is not None and t >= next_frame:
+                next_frame += 1.0 / 30.0
+                frames_out.append(state_frame(s, t))
             now: set[tuple[str, str]] = set()
             for a, b in contacts_in(road_items(s)):
                 key = pair_key(a, b)
@@ -169,6 +191,9 @@ class Replay:
                                           f"{b['lat']:.1f} m, t = {t:.0f} s, {s.physics.v * 3.6:.0f} km/h)")
             touching = now
         s._finish(save=False)
+        if trace is not None:
+            trace.write_text(json.dumps({"route": route_id, "frames": frames_out}, separators=(",", ":")),
+                             encoding="utf-8")
         return {"route": route_id, "kmh": kmh, "bots": n_bots, "u_turn_s": u_turn_s, "seconds": round(t, 1),
                 "distance_m": round(s.physics.s, 0), "frames": dict(frames), "episodes": dict(episodes),
                 "first": first, "corrections": dict(getattr(s, "road_space_counts", {})), "step_ms": round((time.perf_counter() - t0) / max(1, steps) * 1000.0, 3)}
@@ -185,6 +210,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--mode", default="ride", choices=("ride", "grandprix", "survivor"),
                     help="séance libre (bots à puissance constante) ou mode de course (adversaires à profil, --bots)")
     ap.add_argument("--json", type=Path)
+    ap.add_argument("--traces", type=Path, help="dossier où écrire les trames de chaque passe (rejeu de l'engine)")
     a = ap.parse_args(argv)
     ids = [x for x in a.parcours.split(",") if x] or sorted(p.name[:-6] for p in a.routes.glob("*.world"))
     rows = []
@@ -193,7 +219,11 @@ def main(argv: list[str] | None = None) -> int:
         for rid in ids:
             for kmh in (float(x) for x in a.kmh.split(",")):
                 for nb in (int(x) for x in a.bots.split(",")):
-                    r = rp.run(rid, kmh, a.duree, nb, a.demi_tour)
+                    tr = None
+                    if a.traces:
+                        a.traces.mkdir(parents=True, exist_ok=True)
+                        tr = a.traces / f"{rid}_{kmh:.0f}_{nb}_{a.mode}{'_dt' if a.demi_tour else ''}.json"
+                    r = rp.run(rid, kmh, a.duree, nb, a.demi_tour, tr)
                     rows.append(r)
                     total = sum(r["episodes"].values())
                     print(f"{rid:24s} {kmh:4.0f} km/h bots {nb:2d} {r['distance_m']:7.0f} m : {total:4d} épisodes "

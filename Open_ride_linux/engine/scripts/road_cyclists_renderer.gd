@@ -282,6 +282,20 @@ func _distance(pos: Vector3, s: float, cam_s: float) -> float:
 	return absf(s - cam_s) if is_finite(cam_s) else 0.0
 
 
+## Lot AS11 : cyclistes dessinés. Le core fait rouler tous les cyclistes du décor (`core_full`) ; le préréglage ne
+## règle plus que le nombre dessiné (`budget` du modèle) : les plus proches de la caméra, dans l'ordre du modèle.
+static func drawn_riders(m, cam_s: float) -> Array:
+	var all: Array = m.riders()
+	if m.get("core_full") != true or all.size() <= int(m.budget) or is_nan(cam_s):
+		return all
+	var by_dist := all.duplicate()
+	by_dist.sort_custom(func(a, b): return absf(float(a["s"]) - cam_s) < absf(float(b["s"]) - cam_s))
+	var keep := {}
+	for r in by_dist.slice(0, int(m.budget)):
+		keep[r["id"]] = true
+	return all.filter(func(r): return keep.has(r["id"]))
+
+
 func update(dt_s: float, paused: bool = false, cam_s: float = NAN) -> void:
 	_xforms.clear()
 	_cadences.clear()
@@ -293,7 +307,7 @@ func update(dt_s: float, paused: bool = false, cam_s: float = NAN) -> void:
 		_place_warm()
 	var seen := {}
 	if model != null:
-		for r in model.riders():
+		for r in drawn_riders(model, cam_s):
 			if _shown >= MAX_CYCLISTS:
 				break
 			var g: Dictionary = r["group"]

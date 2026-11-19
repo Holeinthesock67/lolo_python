@@ -35,8 +35,8 @@ MARGIN_LEN_M = 0.3      # en long : extrapolation de l'engine entre deux listes 
 RACER_MARGIN_M = 0.0     # entre deux coureurs (roue dans la roue, en diagonale) : le contact seulement, leur placement fait le reste
 MARGIN_WIDTH_M = 0.05   # en travers
 LATERAL_COST = 3.0      # un décalage en travers se voit plus qu'un recul de même longueur
-SEARCH_STEPS = 24
-ROAD_HALF_M = 3.0       # demi-chaussée de 6 m (`draft.LANE_MAX_M` + `LANE_EDGE_M`)       # places essayées au plus pour un usager coincé
+SEARCH_STEPS = 24       # places essayées au plus pour un usager coincé
+ROAD_HALF_M = 3.0       # demi-chaussée de 6 m (`draft.LANE_MAX_M` + `LANE_EDGE_M`)
 
 # Gabarits : (demi-longueur, demi-largeur) de chaque sorte d'usager, une seule table pour tout le core
 GABARITS: dict[str, tuple[float, float]] = {"bike": (BIKE_HALF_LEN_M, BIKE_HALF_WIDTH_M),
