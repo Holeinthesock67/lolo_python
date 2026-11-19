@@ -68,7 +68,7 @@ Parcours « Route des Vignes » (Accueil › Grand Prix des objets › Changer d
 - [ ] Avertissement « Musette guidée derrière ! » ou « Orage vers le premier » lisible, contour coloré, aucun flash plein écran.
 - [ ] **Aucun à-coup de résistance** à la réception d'un objet : tu relances avec tes watts, la pente ne bouge pas.
 - [ ] Bilan de fin : place, objets lancés, reçus, esquivés, temps gagné et perdu.
-- [ ] `gp_recette` : course « en ligne, 5,0 km » listée, aucune ligne « À-COUP ? ».
+- [ ] `gp_recette` : course « circuit, 1 tour(s) » listée, aucune ligne « À-COUP ? ».
 
 Remarque : …
 
@@ -109,7 +109,7 @@ Route des Vignes, 1 tour, 4 adversaires, chaos fou, boîtes tous les 1 000 m. É
 - [ ] Nuage d'orage : vole vers le premier, averse de 1,5 s ; jamais tiré par les deux premiers.
 - [ ] Vent contraire : rafales vers les coureurs devant ; **aucun ressenti** sur le trainer.
 - [ ] (GP4) Voiture d'équipe : remorquage 6 s dans son abri, abri ressenti en douceur (rampes) ; Furtif : avatar semi-transparent, vol de l'objet du coureur devant à moins de 50 m.
-- [ ] `gp_recette --dernieres 6` : plus aucun objet « à voir » (tous utilisés, tous ceux qui touchent subis au moins une fois), aucune ligne « À-COUP ? », un circuit et une course en ligne, « Bilan : tous les contrôles passent ».
+- [ ] `gp_recette --dernieres 6` : plus aucun objet « à voir » (tous utilisés, tous ceux qui touchent subis au moins une fois), aucune ligne « À-COUP ? », « Bilan : tous les contrôles passent ».
 
 Remarque : …
 
