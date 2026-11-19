@@ -1,0 +1,14 @@
+09:03:42 empreinte avant 9e9289564a638fa362e3ef68c809ad8a
+09:03:42 tête b42968643
+09:04:12 arrets_pedalage_demo low
+09:06:29 fin rc=0
+09:06:29 frein lâché : 0 lignes
+09:06:29 arrets_pedalage_demo medium
+09:08:47 fin rc=0
+09:08:47 frein lâché : 0 lignes
+09:08:47 arrets_pedalage_demo high
+09:11:04 fin rc=0
+09:11:04 frein lâché : 0 lignes
+09:11:05 empreinte après 9e9289564a638fa362e3ef68c809ad8a
+09:11:05 clone 214ad0b2b
+09:11:05 FIN
