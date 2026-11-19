@@ -283,24 +283,51 @@ class ArchSchedule:
         self.length_m = float(length_m)
         self.loop = loop
         self.positions: list[float] = []
-        if every_m > 0:
+        self.every_m = float(every_m)
+        self.endless = math.isinf(self.length_m) and not loop   # monde ouvert (lot W21) : une arche tous les every_m
+        if every_m > 0 and not self.endless:
             k = 1
             while k * every_m < self.length_m - 1e-6:
                 self.positions.append(k * every_m)
                 k += 1
 
     def crossed(self, s_prev: float, s: float) -> int:
-        """Nombre d'arches franchies entre deux positions cumulées (`s_prev` exclu, `s` inclus)."""
-        if s <= s_prev or not self.positions:
-            return 0
+        """Nombre d'arches franchies entre deux positions cumulées, dans un sens ou dans l'autre (voir `passes`)."""
+        return len(self.passes(s_prev, s))
+
+    def passes(self, s_prev: float, s: float) -> list[tuple[int, int]]:
+        """Arches franchies entre deux positions cumulées : `(indice dans positions, tour)`.
+
+        Dans le sens du parcours, `s_prev` exclu et `s` inclus ; à rebours après un demi-tour (lot N25,
+        `s` < `s_prev`), `s` inclus et `s_prev` exclu, soit le même point de franchissement vu de l'autre côté.
+        En monde ouvert (lot W21, route sans fin), l'arche n° n (à n·every_m) a la clé `(n, 0)`."""
+        if s == s_prev:
+            return []
+        if self.endless:
+            if self.every_m <= 0:
+                return []
+            e = self.every_m
+            if s > s_prev:   # n ≥ 1 tels que s_prev < n·e <= s
+                ns = range(max(1, math.floor(max(s_prev, 0.0) / e) + 1), math.floor(s / e) + 1)
+            else:            # n ≥ 1 tels que s <= n·e < s_prev
+                ns = range(max(1, math.ceil(s / e)), math.ceil(s_prev / e))
+            return [(n, 0) for n in ns]
+        if not self.positions:
+            return []
+        out: list[tuple[int, int]] = []
         if not self.loop:
-            return sum(1 for p in self.positions if s_prev < p <= s)
+            for i, p in enumerate(self.positions):
+                if (s_prev < p <= s) if s > s_prev else (s <= p < s_prev):
+                    out.append((i, 0))
+            return out
         L = self.length_m
-        count = 0
-        for p in self.positions:
-            # Nombre de k tels que s_prev < k·L + p <= s.
-            count += math.floor((s - p) / L) - math.floor((s_prev - p) / L)
-        return count
+        for i, p in enumerate(self.positions):
+            if s > s_prev:   # k tels que s_prev < k·L + p <= s
+                ks = range(math.floor((s_prev - p) / L) + 1, math.floor((s - p) / L) + 1)
+            else:            # k tels que s <= k·L + p < s_prev
+                ks = range(math.ceil((s - p) / L), math.ceil((s_prev - p) / L))
+            out += [(i, k) for k in ks]
+        return out
 
 
 @dataclass(frozen=True)

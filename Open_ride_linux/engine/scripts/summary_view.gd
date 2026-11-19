@@ -69,6 +69,7 @@ var chart: Control
 var records_box: VBoxContainer
 var records_more: Label
 var more_label: Label
+var verdict_label: Label
 var lines_grid: GridContainer
 var fit_label: Label
 var blocks_box: GridContainer
@@ -119,6 +120,10 @@ func _init() -> void:
 	more_label.clip_text = true
 	more_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	add_child(more_label)
+	verdict_label = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.WARN)   # lot R23 : résultat, cause et conseil
+	verdict_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # jamais coupé : la ligne passe à la suivante
+	verdict_label.visible = false
+	add_child(verdict_label)
 	lines_grid = _grid(ROW_SEP)
 	add_child(lines_grid)
 	fit_label = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
@@ -285,6 +290,7 @@ func _set_fonts(size: int) -> void:
 	var small: int = size - (FONT_SIZE - BLOCK_FONT_SIZE)
 	for l in lines_grid.get_children():
 		l.add_theme_font_size_override("font_size", size)
+	verdict_label.add_theme_font_size_override("font_size", size)
 	for t in _tiles:
 		var row := t.get_child(0).get_child(1) as HBoxContainer
 		(row.get_child(0) as Label).add_theme_font_size_override("font_size", size + TILE_VALUE_EXTRA)
@@ -300,6 +306,12 @@ func _set_fonts(size: int) -> void:
 
 
 func _cells_fit(width: float) -> bool:
+	if verdict_label.visible:   # verdict (lot R23) : chaque ligne entière, sans coupure
+		var vf: Font = verdict_label.get_theme_font("font")
+		var vs: int = verdict_label.get_theme_font_size("font_size")
+		for line in verdict_label.text.split("\n"):
+			if vf.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, vs).x > width:
+				return false
 	for g: GridContainer in [lines_grid, progress_grid]:
 		var col: float = (width - COLUMN_GAP * (g.columns - 1)) / g.columns
 		for l: Label in g.get_children():
@@ -377,6 +389,8 @@ func text() -> String:
 			parts.append(records_more.text)
 	if more_label.visible:
 		parts.append(more_label.text)
+	if verdict_label.visible:
+		parts.append(verdict_label.text.replace("\n", " "))
 	if lines_grid.visible:
 		parts.append(_grid_text(lines_grid))
 	if blocks_box.visible:
@@ -413,6 +427,11 @@ func update_display(summary: Dictionary, details: bool, _mode := "", ftp_w := 0.
 	_show_records(model.records_beaten(summary, names))
 	more_label.text = model.more_line(summary)
 	more_label.visible = more_label.text != ""
+	var verdict: Dictionary = model.verdict(summary)
+	verdict_label.visible = not verdict.is_empty()
+	if verdict_label.visible:
+		verdict_label.text = str(verdict["text"]) + (("\n" + str(verdict["tip"])) if str(verdict.get("tip", "")) != "" else "")
+		verdict_label.add_theme_color_override("font_color", UiTheme.OK if str(verdict.get("tone", "")) == "ok" else UiTheme.WARN)
 	var rows: Array[String] = []
 	for ln in model.mode_lines(summary):
 		var unit := str(ln.get("unit", ""))

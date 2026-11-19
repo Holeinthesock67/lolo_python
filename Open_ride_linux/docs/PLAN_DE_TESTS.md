@@ -143,6 +143,8 @@ Séance complète sur Bluetooth simulé dans la vraie scène, captures réguliè
 | `peloton` | Peloton du lot PL1 : 11 bots à profil au départ groupé, budgets GPU en low, medium et high, encart à 5 lignes |
 | `dernier_survivant` | Dernier survivant sans vélo (série DS) : départ du mode, portiques, éliminations ; banc GPU en low, medium et high (`--quality`) ; courses complètes du core dans `core/tests/test_survivor_courses.py` |
 | `dernier_survivant_onze` | Dernier survivant à 11 adversaires (lot DS8) sur `demo_long` (12 km) : départ groupé des 12 coureurs, pire cas GPU en low, medium et high ; course complète à 11 du core dans `core/tests/test_survivor_courses.py` |
+| `grand_prix` | Grand Prix des objets (GP7, GP8) : 4 bots, chaos fou, captures avant chaque rangée de boîtes et après chaque Z ; banc GPU en low, medium et high |
+| `grand_prix_onze` | Grand Prix des objets à 11 adversaires (lot GP10) : départ groupé des 12 coureurs, pire cas GPU en low, medium et high ; course complète à 11 du core dans `core/tests/test_grandprix_session.py` |
 
 Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot ni exception du core, journal et FIT écrits, fin de séance, vrai HOME inchangé, qualité appliquée égale à la demande.
 
@@ -187,7 +189,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 | Control Point occupé sans décrochage (PR #540) | Scénarios `rafale_0x80` et `montre_garmin` (§3.4), tests du pilote dans `core/tests/test_ble_sim.py` | `scripts/openride-dev.sh --trainer sim --input sim --sim-scenario montre_garmin --autostart` | Bloc vélo avec la montre Garmin allumée |
 | Coupure subie qui suspend la montée au lieu de l'annuler (PR #542) | `core/tests/test_segment_timing.py`, `core/tests/test_session_serie_t.py` | `(cd core && pytest -q tests/test_segment_timing.py tests/test_session_serie_t.py)` | — |
 | Braquets SIM resserrés à 0,65–2,00 (PR #547) | `core/tests/test_gearing_config.py` | `(cd core && pytest -q tests/test_gearing_config.py)` | Ressenti des petits braquets sur le vélo |
-| Étagement élargi à 0,455–2,60 et braquets de la piste × 1,25 (14 novembre) | `core/tests/test_gearing_config.py`, `core/tests/test_velodrome.py` | `(cd core && pytest -q tests/test_gearing_config.py tests/test_velodrome.py)` | Recette `docs/6.0/RECETTE_ETAGEMENT_BRAQUETS.md` (2 × 10 min) |
+| Braquets à pas fixe de 0,5 point par clic, braquet 12 neutre, piste + 0,5 point (15 novembre ; étagement 0,455–2,60 le 14) | `core/tests/test_gearing_config.py`, `core/tests/test_velodrome.py` | `(cd core && pytest -q tests/test_gearing_config.py tests/test_velodrome.py)` | Recette `docs/6.0/RECETTE_ETAGEMENT_BRAQUETS.md` (2 × 10 min) |
 | Séance simulée série T et boutons de l'ERG (X33, PR #534) | Scénarios `serie_t`, `erg_boutons`, `course_bots` (§3.9) | `python3 engine/tests/sim_bench.py --scenario erg_boutons` | Ne laisse au vélo que le ressenti de T11 et J7 |
 | Matrice des boutons et des réglages (X42, PR #552) | `python -m openride_core.tools.matrice_boutons --partie tout` ; `core/tests/test_matrice_boutons.py` | idem | — |
 | Cyber-Rogue de bout en bout (X40, #546) et banc visuel (X41, #548) | `python -m openride_core.tools.rogue_bout_en_bout --objective tous` ; `python3 engine/tests/rogue_bench.py --godot GODOT` | idem | Planche `rapport.html` montrée au propriétaire |

@@ -72,6 +72,9 @@ func has_frame() -> bool:
 func push_frame(t_us: int, s: float, v: float, running: bool, dir := 1) -> void:
 	dir = -1 if dir < 0 else 1
 	var turned := dir != direction   # demi-tour : nouvelle référence, sans rattrapage dans l'ancien sens
+	# départ ou reprise (pas de RUNNING avant cette trame) : nouvelle référence aussi ; sinon la position de la
+	# séance d'avant, jamais reculée en RUNNING, figeait cycliste et décor (2e partie enchaînée, 15 novembre)
+	var started := running and not _running
 	direction = dir
 	if loop_length_m > 0.0 and _has_frame:
 		var raw_prev: float = float(last_frame["s"]) - _unwrap_m
@@ -84,6 +87,7 @@ func push_frame(t_us: int, s: float, v: float, running: bool, dir := 1) -> void:
 	# chemin parcouru depuis cette image au retard, qui s'accumule quand une trame arrive avant chaque image
 	# (~15 images/s en high : jusqu'à 4 m de retard sur le core, les bots semblaient traverser le cycliste).
 	var shown := _ahead_of(displayed_s, _target(t_us)) if _has_frame and _running and not turned else displayed_s
+	turned = turned or started
 	previous_frame = last_frame
 	last_frame = {"t_us": t_us, "s": s_abs, "v": v}
 	_running = running

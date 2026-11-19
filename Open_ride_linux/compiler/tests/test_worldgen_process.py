@@ -284,3 +284,139 @@ def test_process_end_to_end_and_second_session_reuses_cache(grid, tmp_path) -> N
     out2, err2 = _run_process(tmp_path, cache_dir, msgs)
     assert out2[-1]["type"] == "closed"
     assert "carrés générés 0," in err2 and "tuiles lointaines générées 0," in err2 and "téléchargements 0," in err2
+
+
+# --- lot W19 : arrivée en destination et en boucle ------------------------------------------------
+
+def _ride_to(s: WorldSession, s_m: float, step: float = 500.0) -> None:
+    pos = 0.0
+    while pos < s_m:
+        pos = min(s_m, pos + step)
+        s.handle({"type": "progress", "s_m": pos, "v_mps": 8.0})
+
+
+def _route_point(s: WorldSession, s_m: float) -> tuple[float, float]:
+    for leg in s.legs:
+        if leg.s0 <= s_m <= leg.s1 + 1e-6:
+            k = int(np.argmin(np.abs(leg.profile.s + leg.s0 - s_m)))
+            return float(leg.profile.x[k]), float(leg.profile.z[k])
+    raise AssertionError(f"{s_m} hors de la route engagée")
+
+
+def test_ride_has_no_finish(grid, tmp_path) -> None:
+    s, rec = session(tmp_path, grid)
+    s.handle(open_msg())
+    _ride_to(s, 6000.0)
+    assert all(m["finish_m"] is None for m in rec.of("revision"))
+    assert s.finish_m is None
+
+
+def test_destination_finish_near_target(grid, tmp_path) -> None:
+    s, rec = session(tmp_path, grid)
+    lat, lon = latlon(E_REF + 2250, N_REF + 1000)        # carrefour de la grille à ~2,2 km du départ
+    s.handle({**open_msg(), "nav": "destination", "target": {"lat": lat, "lon": lon}})
+    _ride_to(s, 1500.0)
+    finish = [m["finish_m"] for m in rec.of("revision") if m["finish_m"] is not None]
+    assert finish, "l'arrivée doit être annoncée dès qu'elle entre dans la route engagée"
+    assert finish[-1] == pytest.approx(s.finish_m, abs=0.01)
+    assert 1500.0 < finish[-1] < 6000.0
+    # cible au milieu d'une route, à 250 m des deux carrefours : l'arrivée est le point de la route le plus proche
+    x, z = _route_point(s, s.finish_m)
+    assert math.hypot(x - (E_REF + 2250), z + (N_REF + 1000)) <= 15.0
+    # la route continue au-delà de l'arrivée (jamais de pause avant la ligne)
+    assert s.length_m > s.finish_m
+
+
+def test_loop_finish_close_to_length(grid, tmp_path) -> None:
+    s, rec = session(tmp_path, grid)
+    s.handle({**open_msg(), "nav": "loop", "loop_km": 8.0})
+    _ride_to(s, 9000.0)
+    assert s.finish_m is not None
+    assert 4000.0 <= s.finish_m <= 9500.0
+    x, z = _route_point(s, s.finish_m)
+    start_x, start_z = s.nav.start_xz
+    assert math.hypot(x - start_x, z - start_z) <= 15.0
+
+
+def test_choice_away_from_finish_moves_it(grid, tmp_path) -> None:
+    s, rec = session(tmp_path, grid)
+    lat, lon = latlon(E_REF + 2250, N_REF + 1000)
+    s.handle({**open_msg(), "nav": "destination", "target": {"lat": lat, "lon": lon}})
+    assert s.finish_m is not None
+    j = min(s.junctions.values(), key=lambda j: j.s_m)
+    assert j.s_m < s.finish_m
+    other = next(k for k in range(len(j.branches)) if k != j.default)
+    s.handle({"type": "choose", "junction_id": j.id, "branch": other})
+    last = rec.of("revision")[-1]
+    # nouvelle arrivée reposée par le navigateur (ou annoncée plus tard), jamais l'ancienne étape effacée
+    assert s.finish_leg is None or s.finish_leg < len(s.legs)
+    assert last["finish_m"] == (round(s.finish_m, 2) if s.finish_m is not None else None)
+
+
+# --- impasse en balade : demi-tour de la route engagée -------------------------------------------
+
+def impasse_db(path: Path, end_km: int = 3) -> Path:
+    """Route est-ouest de −5 km à `end_km` km (une seule voie, aucune autre branche) : impasse aux deux bouts."""
+    w = OsmDbWriter(path, "test", "test/impasse")
+    pts = list(range(-5000, end_km * 1000 + 1, 100))
+    w.add_road(700, {"highway": "tertiary"}, [30_000 + k for k in range(len(pts))],
+               [lonlat(E_REF + d, N_REF) for d in pts])
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    return path
+
+
+def test_ride_into_a_dead_end_turns_back_without_gap_or_pause(tmp_path) -> None:
+    s, rec = session(tmp_path, impasse_db(tmp_path / "impasse.sqlite"))
+    s.handle(open_msg(E_REF + 100, N_REF, 90.0))           # départ vers l'est, l'impasse à 2,9 km
+    for k in range(1, 41):
+        s.handle({"type": "progress", "s_m": 250.0 * k, "v_mps": 8})
+        if s.has_work():
+            s.work()
+    # Jamais « plus de route connue » : la route revient sur elle-même et continue vers l'ouest.
+    assert not any(m["type"] == "status" and m.get("data") == "missing" for m in rec.msgs)
+    assert s.length_m >= 10_000.0 + 3000.0
+    route = s._route_columns()
+    x, z, sc = (np.asarray(route[k], dtype=float) for k in ("x", "z", "s"))
+    e0, n0 = s.e0, s.n0
+    # Route continue : pas de trou entre deux points, abscisse croissante.
+    assert np.all(np.diff(sc) > 0.0)
+    assert float(np.max(np.hypot(np.diff(x), np.diff(z)))) < 15.0
+    # Boucle de retournement au bout de l'impasse : la route passe au bout, tourne dans une boucle d'au plus
+    # 50 m au-delà et de 20 m de part et d'autre, puis reprend la même voie vers l'ouest.
+    k_end = int(np.argmin(np.abs(sc - 2900.0)))
+    assert float(x[k_end]) + e0 == pytest.approx(E_REF + 3000, abs=1.0)
+    turn = (sc > 2900.0) & (sc < 2900.0 + 140.0)
+    assert 30.0 < float(np.max(x[turn])) + e0 - (E_REF + 3000) < 50.0
+    assert 15.0 < float(np.max(np.abs(z[turn] + N_REF - n0))) < 22.0
+    k_back = int(np.argmin(np.abs(sc - (2900.0 + 140.0))))
+    assert float(z[k_back]) + N_REF - n0 == pytest.approx(0.0, abs=0.5)    # de retour sur la voie
+    # Plus de cap retourné sur place : au plus 45° entre deux points (10 m), jamais 180°.
+    h = np.asarray(route["heading_deg"], dtype=float)
+    dh = np.abs((np.diff(h) + 180.0) % 360.0 - 180.0)
+    assert float(np.max(dh)) < 45.0
+    assert h[k_end - 5] == pytest.approx(90.0, abs=2.0) and h[k_back + 5] == pytest.approx(270.0, abs=2.0)
+    # L'autre bout (−5 km) a aussi sa boucle ; retour d'un seul tenant vers l'ouest entre les deux.
+    k_west = k_back + int(np.argmin(x[k_back:]))
+    assert float(x[k_west]) + e0 < E_REF - 5000 - 30.0
+    assert np.all(np.diff(x[k_back:k_west - 20]) < 0.0)
+    # Pentes bornées dans la boucle ; même altitude au même endroit, à l'aller et au retour.
+    alt = np.asarray(route["alt_m"], dtype=float)
+    k_same = int(np.argmin(np.abs(x[:k_end] - x[k_back])))          # même endroit, à l'aller
+    assert alt[k_back] == pytest.approx(alt[k_same], abs=0.5)
+    assert float(np.max(np.abs(np.asarray(route["grade_pct"])[turn]))) <= 25.0   # la boucle suit le relief
+
+
+def test_turnaround_loop_closes_on_the_dead_end() -> None:
+    from openride_compiler.worldgen.edge_profile import turnaround_points
+    for prev in ((0.0, 0.0), (10.0, -7.0), (-3.0, 12.0)):
+        end = (100.0, 50.0)
+        p = turnaround_points(end, prev)
+        assert tuple(p[0]) == end and np.hypot(*(p[-1] - np.array(end))) < 1e-6
+        steps = np.hypot(*np.diff(p, axis=0).T)
+        assert float(np.max(steps)) < 1.01
+        # cap continu : départ dans le sens d'arrivée, retour dans le sens opposé
+        d0 = (p[1] - p[0]) / steps[0]
+        d1 = (p[-1] - p[-2]) / steps[-1]
+        a = np.array(end) - np.array(prev)
+        a = a / np.hypot(*a)
+        assert float(d0 @ a) > 0.99 and float(d1 @ a) < -0.99

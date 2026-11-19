@@ -10,7 +10,10 @@ extends RefCounted
 ## - `rider_scale` : taille du cycliste (vélo minuscule : TINY_RIDER_SCALE dans la cuisine géante) ;
 ## - `sun_hour` : heure du soleil (règle de l'horloge), −1 sans elle ;
 ## - `props` : objets à poser, {kind, ds (m le long de la route depuis le cycliste), lateral (m à droite),
-##   up (m), scale, spin (rad)} ;
+##   up (m), scale, spin (rad), roll_r, rider} ; `roll_r` (m) > 0 : l'objet roule sur la route (boule du
+##   Katamari, meule) et wtf_scene.gd le fait tourner de la distance qu'il parcourt divisée par ce rayon, dans
+##   le sens de sa marche (`spin` ignoré) ; `rider` vrai : objet porté par le vélo (œufs sur le porte-bagages),
+##   `ds`, `lateral` et `up` comptés dans le repère du vélo (wtf_scene.gd `follow_rider`) ;
 ## - `skins`, `attack` : costumes des bots et mamie qui attaque (règle du peloton), passés tels quels.
 ## Le nombre d'objets suit la qualité (`low`, `medium`, `high`). Pas de class_name :
 ## preload("res://scripts/wtf/wtf_scene_model.gd").
@@ -42,6 +45,13 @@ const KITCHEN := [["plate", 5.0, -4.0, 1.6], ["cup", 8.0, 4.0, 1.8], ["fork", 13
 const SHOW_BEHIND_M := 16.0
 const VOID_LENGTH_M := 80.0     # gouffre derrière le front de l'effondrement
 const DISH_SCALE := 1.6       # plats du chef sur leur assiette (lot WTF9), lisibles à 3 m
+## Livraison d'œufs (15 novembre : gag joué, aucun œuf à l'écran) : le carton des EGGS_TOTAL œufs (copie de
+## `Eggs.EGGS` du core) est sanglé sur le porte-bagages, au-dessus de la roue arrière (REAR_AXLE d'avatar_mesh.gd,
+## 0,41 m derrière le pédalier) ; un œuf cassé y devient une flaque jaune.
+const EGGS_TOTAL := 6
+const EGG_RACK_BACK_M := 0.45
+const EGG_RACK_UP_M := 0.72
+const EGG_SCALE := 1.5        # carton cartoon (œufs ~3 × nature) : à 1, caché aux deux tiers par le cycliste
 const KATA_SCALES := {"apple": 1.0, "sign": 1.0, "cow": 1.4, "car": 1.8, "house": 4.0, "church": 7.0}
 
 
@@ -60,8 +70,10 @@ static func view(wtf: Variant, t: float, quality := "medium") -> Dictionary:
 	var kata = wtf.get("kata", null)
 	if typeof(kata) == TYPE_DICTIONARY:
 		var size := minf(float(kata.get("size", 1.0)), KATA_SHOW_MAX)
-		props.append(_prop("ball", 2.0 + KATA_BALL_M * size, KATA_LATERAL_M + KATA_BALL_M * size,
-			KATA_BALL_M * size, size, t * 4.0))
+		var ball := _prop("ball", 2.0 + KATA_BALL_M * size, KATA_LATERAL_M + KATA_BALL_M * size,
+			KATA_BALL_M * size, size, 0.0)
+		ball["roll_r"] = KATA_BALL_M * size   # roule devant le cycliste (15 novembre : t × 4 la faisait tourner à l'envers)
+		props.append(ball)
 		var nxt = kata.get("next", [])
 		if typeof(nxt) == TYPE_ARRAY:
 			for o in nxt:
@@ -106,7 +118,9 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 			var gap := minf(float(ev.get("gap_m", 0.0)), CHEESE_SHOW_M)
 			var squashed := bool(ev.get("squashed", false))
 			out["camera"] = "cheese"   # de biais, depuis le bas-côté : la face de la meule et le cycliste
-			props.append(_prop("cheese", 0.0 if squashed else -gap, 0.0, CHEESE_RADIUS_M, 1.0, -t * 3.0))
+			var wheel := _prop("cheese", 0.0 if squashed else -gap, 0.0, CHEESE_RADIUS_M, 1.0, 0.0)
+			wheel["roll_r"] = CHEESE_RADIUS_M
+			props.append(wheel)
 		"storm":
 			out["tint"] = TINT_STORM
 			var cows := mini(int(n["cows"]), int(ev.get("cows", n["cows"])))
@@ -115,6 +129,11 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 				var r := 5.0 + (i % 3) * 3.0
 				props.append(_prop("cow", STORM_AHEAD_M + r * sin(a), r * cos(a), fposmod(i * 1.3 + t, 14.0), COW_SCALE, a))
 			props.append(_prop("tornado", STORM_AHEAD_M, 0.0, 0.0, 1.0, t * 2.0))
+		"eggs":
+			var eggs := clampi(int(ev.get("eggs", EGGS_TOTAL)), 0, EGGS_TOTAL)
+			var crate := _prop("eggs_%d" % eggs, -EGG_RACK_BACK_M, 0.0, EGG_RACK_UP_M, EGG_SCALE, 0.0)
+			crate["rider"] = true
+			props.append(crate)
 		"tiny":
 			out["camera"] = "tiny"
 			out["rider_scale"] = TINY_RIDER_SCALE
@@ -141,7 +160,7 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 
 
 static func _prop(kind: String, ds: float, lateral: float, up: float, scale: float, spin: float) -> Dictionary:
-	return {"kind": kind, "ds": ds, "lateral": lateral, "up": up, "scale": scale, "spin": spin}
+	return {"kind": kind, "ds": ds, "lateral": lateral, "up": up, "scale": scale, "spin": spin, "roll_r": 0.0, "rider": false}
 
 
 ## Élévation du soleil (degrés) pour une heure : 0 à 6 h et 18 h, 60 à midi, sous l'horizon la nuit.

@@ -19,7 +19,8 @@ extends Node3D
 ## d'une boucle) a une frise en damier sous le bandeau et une ligne en damier au sol ; tout départ, une
 ## ligne blanche. Bandeau imprimé des deux côtés (demi-tour, lot N17 : `back_lines`, le dos du départ d'un
 ## parcours en ligne annonce l'arrivée). Panneaux à gauche de la route, face au cycliste qui arrive (une seule
-## face : rien ne se chronomètre à rebours). Aucune ombre portée.
+## face : rien ne se chronomètre à rebours), plaque blanche cadrée de noir des panneaux du bord de route
+## (roadside_props.gd build_board, lot GP14 du 15/11 : remplace la caisse blanche). Aucune ombre portée.
 ## - Lot DS5 : `set_survivor_arches(arches)` pose les portiques d'élimination du Dernier survivant (style `elim` :
 ##   tube à bandes rouges et noires, bandeau rouge foncé « ÉLIMINATION », frise et ligne en damier), mis à jour
 ##   par `update` comme les autres marques ; un portique de segment confondu (moins de MERGE_M) n'est pas doublé.
@@ -29,6 +30,7 @@ extends Node3D
 ##   (banc 7bx : à-coups de ~130 ms au premier portique et à la première arrivée, 400 m avant eux).
 
 const Model := preload("res://scripts/segment_markers_model.gd")
+const Props := preload("res://scripts/roadside_props.gd")
 
 const ARCH_HEIGHT_M := 5.2           # axe du tube au sommet de l'arche
 const ARCH_CORNER_M := 1.6
@@ -46,8 +48,6 @@ const FLAG_OUT_M := 1.5              # drapeaux à 1,5 m à l'extérieur des pie
 const LINE_DEPTH_M := 0.5
 const FINISH_LINE_DEPTH_M := 1.0     # damier des arrivées, plus large pour se voir de loin
 const LINE_LIFT_M := 0.03            # au-dessus de la chaussée, contre le scintillement
-const PANEL_SIZE := Vector3(1.4, 0.8, 0.05)
-const PANEL_HEIGHT_M := 1.9
 const PANEL_OUT_M := 1.5
 const LETTER_HEIGHT_M := 0.14
 const COLORS := {
@@ -59,7 +59,6 @@ const COLORS := {
 	"arch": Color(0.55, 0.20, 0.85),
 	"post": Color(0.85, 0.85, 0.87),
 	"ballast": Color(0.25, 0.25, 0.27),
-	"panel": Color(0.96, 0.96, 0.94),
 	"line": Color(0.97, 0.97, 0.97),
 	"elim": Color(0.55, 0.05, 0.07),
 }
@@ -86,6 +85,7 @@ var _box: ArrayMesh = null
 var _tube: ArrayMesh = null
 var _tube_width_m := -1.0
 var _mats: Dictionary = {}
+var _panel_meshes: Dictionary = {}  # plaques et poteaux des panneaux, par dimensions (roadside_props.gd)
 var _warm: Node3D = null            # exemplaires du préchauffage, retirés après WARM_FRAMES appels à update
 var _warm_frames := 0
 var _elim: Array = []               # portiques d'élimination du Dernier survivant : [{s (dans le tour), arch, lines}]
@@ -120,6 +120,8 @@ func _init() -> void:
 	_mats["finish_line"] = _textured(_checker_image(8, 4), Vector3(3.0, 2.0, 1.0))   # cases de 25 cm
 	for key in _mats:
 		(_mats[key] as StandardMaterial3D).roughness = 0.6   # toile enduite : léger reflet du ciel
+	_mats["segment"] = Props.board_material("segment")   # panneaux : matières de roadside_props.gd
+	_mats["sign_post"] = Props.post_material()
 
 
 static func _polka_image() -> Image:
@@ -222,6 +224,37 @@ func set_route(route, arch_every_m: float = Model.DEFAULT_ARCH_EVERY_M, p_road_w
 			segs = []
 		marks = Model.items(route, segs, arch_every_m, route_gates)
 	_starts = Model.starts(marks)
+
+
+## Monde ouvert (lot W21) : route prolongée ou réécrite depuis `from_s`, ou segments trouvés en roulant.
+## Les marques sont recalculées (portiques, panneaux, arches jusqu'au bout de la route connue) ; un nœud déjà
+## en scène est gardé si sa marque n'a pas changé et qu'elle est avant `from_s` (route inchangée sous elle),
+## pour ne pas faire clignoter un portique proche.
+func refresh(route, arch_every_m: float, from_s: float = INF) -> void:
+	_route = route
+	var segs = route.get("segments") if route != null else []
+	if typeof(segs) != TYPE_ARRAY:
+		segs = []
+	var fresh: Array = Model.items(route, segs, arch_every_m, false) if route != null else []
+	var index := {}
+	for i in range(fresh.size()):
+		index[mark_key(fresh[i])] = i
+	var kept := {}
+	for i in _nodes.keys():
+		var node: Node3D = _nodes[i]
+		var key := mark_key(marks[i]) if i < marks.size() else ""
+		if index.has(key) and float(marks[i]["s"]) < from_s:
+			kept[index[key]] = node
+		else:
+			node.queue_free()
+	_nodes = kept
+	marks = fresh
+	_starts = Model.starts(marks)
+
+
+## Clé d'une marque (lot W21) : sorte, segment, position au décimètre et textes.
+static func mark_key(m: Dictionary) -> String:
+	return "%s|%s|%.1f|%s" % [m.get("kind", ""), m.get("segment_id", ""), float(m.get("s", 0.0)), str(m.get("lines", []))]
 
 
 func clear() -> void:
@@ -438,13 +471,8 @@ func build_mark(mark: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	var kind: String = mark["kind"]
 	root.name = "%s_%d" % [kind, int(mark["s"])]
-	if kind == "panel":
-		_mesh(root, "post", Vector3(0.0, PANEL_HEIGHT_M * 0.5, 0.0), Vector3(0.08, PANEL_HEIGHT_M, 0.08))
-		var board_y := PANEL_HEIGHT_M + PANEL_SIZE.y * 0.5
-		_mesh(root, "panel", Vector3(0.0, board_y, 0.0), PANEL_SIZE)
-		var text := _label(root, mark["lines"], Vector3(0.0, board_y, PANEL_SIZE.z * 0.5 + 0.005), PANEL_SIZE.x,
-			PANEL_SIZE.y, Color(0.1, 0.1, 0.1))
-		text.outline_size = 0
+	if kind == "panel":   # plaque cadrée des panneaux du bord de route (roadside_props.gd, lot GP14)
+		Props.build_board(root, "segment", mark["lines"], _panel_meshes, _mats["segment"], _mats["sign_post"], true, false)
 		return root
 	var style: Dictionary = STYLES.get(str(mark.get("style", "")), STYLES["arch"])
 	var half := arch_half_m()

@@ -381,6 +381,8 @@ class ProfileBot(ConstantPowerBot):
         self.mass_kg = self.spec.mass_kg
         self.segments = tuple(segments)
         self.level_pct = level_pct
+        # lot BT1 : (% de la FTP visé, durée estimée de la course en s) du calibrage ; None sans effort
+        self.effort_target: tuple[float, float] | None = None
         # lot DS3 : (distance à l'arche en m, menacé, à l'abri, distance de début du sprint) ; None hors mode
         self.survival: tuple[float, bool, bool, float] | None = None
         # lot Y10 : tactique (mode « none » jusqu'au départ de séance, `bot_tactics.start_race`)
@@ -402,6 +404,7 @@ class ProfileBot(ConstantPowerBot):
         self.w_prime_j = self.spec.w_prime_j * scale
         self.peak_w = self.spec.peak_wkg * self.spec.mass_kg * scale
         self.power_w = self.cp_w
+        self.unblocked_w = self.cp_w   # puissance voulue avant l'enfermement du lot PL1 (vitesse du Grand Prix)
         self.wbal: WbalState = wbal_initial(self.w_prime_j)
         self._peak_key: tuple | None = None    # sprint (id, tour) dont le pic est entamé
         self._peak_used_s = 0.0
@@ -516,14 +519,17 @@ class ProfileBot(ConstantPowerBot):
                 tactical = False
                 if hint.wheel[0] <= BRAKE_GAP_M:
                     self.physics.v = min(self.physics.v, hint.wheel[1])   # roue contre roue : pas plus vite
+        unblocked = power
         if (self.wheel is not None and not tactical) or self.lane.blocked is not None:
             here = route.sample(self.physics.s) if route is not None else None
             grade, alt = (here.grade_pct, here.alt_m) if here else (0.0, 0.0)
             if self.wheel is not None and not tactical:
                 power = self._follow_power(power, grade, alt)
+            unblocked = power
             power = self._blocked_power(power, grade, alt)   # lot PL1 : enfermé, même en attaque
-        if power > self.cp_w and self.wbal.w_bal_j <= 0.0:
-            power = self.cp_w
+        if self.wbal.w_bal_j <= 0.0:
+            power, unblocked = min(power, self.cp_w), min(unblocked, self.cp_w)
+        self.unblocked_w = unblocked
         if power == self.peak_w and self.peak_w > 0:
             self._peak_used_s += dt
         self.power_w = power
@@ -744,21 +750,49 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
     return math.exp(best[1])
 
 
+def effort_target(prof: RouteProfile, rider: RefRider, level_pct: float, effort: Any) -> tuple[float, float]:
+    """(% de la FTP visé, durée estimée en s) pour le niveau `level_pct` et la course `effort` (lot BT1,
+    `bot_effort.target_pct`), avec le temps du cycliste de référence sans vent sur le relevé `prof`."""
+    from . import bot_effort
+
+    still = replace(rider.params, wind_mps=0.0)
+    return bot_effort.target_pct(level_pct, effort, rider.ftp_w, lambda p: prof.ref_time(still, p), prof.length_m)
+
+
+CALIBRATION_PROFILE = "rouleur"   # profil qui fixe l'échelle commune du plateau (`calibrate_bots`)
+
+
 def calibrate_bots(bots: list[Any], route: Any, rider: RefRider, level_pct: float, segments: tuple = (),
                    bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
-                   bot_params: PhysicsParams | None = None) -> dict[tuple[str, float], float]:
-    """Calibre les bots à profil de la séance (niveau du bot, `level_pct` du réglage sinon) ; un calcul
-    par couple (profil, niveau). Renvoie les échelles trouvées. `bot_params` : voir `calibrate`."""
+                   bot_params: PhysicsParams | None = None,
+                   effort: Any = None) -> dict[tuple[str, float], float]:
+    """Calibre les bots à profil de la séance (niveau du bot, `level_pct` du réglage sinon) : une seule
+    échelle par niveau, celle du profil de référence (`CALIBRATION_PROFILE`, le rouleur), donnée à tous
+    les profils de ce niveau (choix du propriétaire, 15 novembre). Le rouleur finit dans le temps du
+    cycliste de référence ; les autres gardent leurs écarts : le grimpeur gagne les montées, le sprinteur
+    y lâche et revient sur le plat et au sprint. Renvoie les échelles trouvées, par couple
+    (`CALIBRATION_PROFILE`, niveau). `bot_params` : voir `calibrate`.
+
+    `effort` (`bot_effort.Effort`, lot BT1) : le niveau devient une part de l'effort tenable sur la course
+    (courbe de puissance × objectif × niveau, `bot_effort.target_pct`) ; chaque bot garde dans
+    `effort_target` le couple (% de la FTP visé, durée estimée en s). None : le niveau seul."""
     scales: dict[tuple[str, float], float] = {}
+    targets: dict[float, tuple[float, float]] = {}
     prof: RouteProfile | None = None
     for b in bots:
         if not isinstance(b, ProfileBot):
             continue
-        key = (b.profile, float(b.level_pct if b.level_pct is not None else level_pct))
+        level = float(b.level_pct if b.level_pct is not None else level_pct)
+        key = (CALIBRATION_PROFILE, level)
         if key not in scales:
             prof = prof or RouteProfile(route)
-            scales[key] = calibrate(b.profile, route, key[1], rider, segments, bike_mass_kg, prof, bot_params)
+            if effort is not None:
+                targets[level] = effort_target(prof, rider, level, effort)
+            pct = targets[level][0] if effort is not None else level
+            scales[key] = calibrate(CALIBRATION_PROFILE, route, pct, rider, segments, bike_mass_kg, prof,
+                                    bot_params)
         b.set_scale(scales[key])
+        b.effort_target = targets.get(level)
     return scales
 
 
