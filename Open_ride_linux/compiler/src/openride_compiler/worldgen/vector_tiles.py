@@ -260,13 +260,16 @@ class TileDb:
     def load(self, x: int, y: int, data: bytes) -> dict[str, int]:
         """Verse une tuile ; rien si elle l'est déjà. Renvoie les nombres de lignes ajoutées.
 
-        Tuile versée sans la côte (version plus ancienne) : seules les tables de la côte sont remplies."""
+        Les tables générales et celles de la côte ont chacune leur marque (`tiles_loaded`,
+        `coast_loaded`) : seule la partie qui manque est versée. Une base remplie par une version sans
+        la côte reçoit la côte seule ; une base dont les tables générales ont été revidées (nouvelle
+        conversion) les reçoit seules, sans doubler la côte."""
         full = not self.loaded(x, y)
-        if not full and self.coast_loaded(x, y):
+        coast = not self.coast_loaded(x, y)
+        if not full and not coast:
             return {}
-        rows = convert_tile(x, y, mvt.decode_tile(data))
-        if not full:
-            rows = {t: v for t, v in rows.items() if t in ("coast_lines", "coast_areas")}
+        rows = {t: v for t, v in convert_tile(x, y, mvt.decode_tile(data)).items()
+                if (full if t not in osmdb.COAST_TABLES else coast)}
         added: dict[str, int] = {}
         bb = [math.inf, math.inf, -math.inf, -math.inf]
         self.db.execute("BEGIN")
@@ -283,9 +286,10 @@ class TileDb:
                     self.db.execute(f"INSERT INTO {table}_rt VALUES (?,?,?,?,?)", (rid, box[0], box[2], box[1], box[3]))
                     bb = [min(bb[0], box[0]), min(bb[1], box[1]), max(bb[2], box[2]), max(bb[3], box[3])]
                     rid += 1
-                if items or not table.startswith("coast_"):     # côte : comptée seulement si présente
+                if items or table not in osmdb.COAST_TABLES:     # côte : comptée seulement si présente
                     added[table] = len(items)
-            self.db.execute("INSERT INTO coast_loaded VALUES (?, ?, ?)", (ZOOM, x, y))
+            if coast:
+                self.db.execute("INSERT INTO coast_loaded VALUES (?, ?, ?)", (ZOOM, x, y))
             if not full:
                 self.db.execute("COMMIT")
                 return added

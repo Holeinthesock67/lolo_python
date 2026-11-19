@@ -132,6 +132,25 @@ def test_tile_db_without_coast_gets_coast_only(tmp_path) -> None:
         db.close()
 
 
+def test_tile_db_general_tables_emptied_keep_coast_once(tmp_path) -> None:
+    """Tables générales revidées (nouvelle conversion, comme le lot EA3) : elles seules se reversent."""
+    path = tmp_path / "tuiles.sqlite"
+    db = vt.TileDb(path)
+    try:
+        db.load(TX, TY, coast_tile(TX, TY))
+        before = db.counts()
+        for t in ("roads", "areas", "lines", "points"):
+            db.db.execute(f"DELETE FROM {t}")
+            db.db.execute(f"DELETE FROM {t}_rt")
+        db.db.execute("DELETE FROM tiles_loaded")
+        assert not db.loaded(TX, TY) and db.coast_loaded(TX, TY)
+        added = db.load(TX, TY, coast_tile(TX, TY))
+        assert "coast_lines" not in added and "coast_areas" not in added
+        assert db.counts() == before and db.complete(TX, TY)
+    finally:
+        db.close()
+
+
 def test_region_tags_give_coast_kinds() -> None:
     assert osmdb.line_kind({"natural": "coastline"}) == "coastline"
     assert osmdb.line_kind({"natural": "cliff"}) == "cliff"

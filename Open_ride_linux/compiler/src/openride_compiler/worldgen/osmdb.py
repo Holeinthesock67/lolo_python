@@ -264,7 +264,8 @@ CREATE TABLE IF NOT EXISTS coast_areas (id INTEGER PRIMARY KEY, osm_id TEXT, kin
 CREATE VIRTUAL TABLE IF NOT EXISTS coast_lines_rt USING rtree(id, min_lon, max_lon, min_lat, max_lat);
 CREATE VIRTUAL TABLE IF NOT EXISTS coast_areas_rt USING rtree(id, min_lon, max_lon, min_lat, max_lat);
 """
-TABLES = ("roads", "areas", "lines", "points", "coast_lines", "coast_areas")
+COAST_TABLES = ("coast_lines", "coast_areas")   # marque à part dans une base de tuiles (`coast_loaded`)
+TABLES = ("roads", "areas", "lines", "points", *COAST_TABLES)
 _INDEXES = """
 CREATE INDEX roads_class ON roads(road_class);
 CREATE INDEX areas_kind ON areas(kind);
