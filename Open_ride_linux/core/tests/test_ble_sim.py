@@ -717,14 +717,15 @@ def test_brake_loss_is_detected_and_control_retaken(caplog, recovers):
         rig.driver.set_sim_grade(2.0)
         await wait_for(lambda: rig.trainer.grade_pct == 2.0 and rig.driver._raw_power > 250, timeout=8)
         n = rig.ops().count(ftms.OP_REQUEST_CONTROL)
-        # 4 s : la puissance tombe en ~1,5 s (lot X46), il reste le temps de voir le frein toujours lâché.
-        await rig.world.apply({"t": 0, "device": "trainer", "action": "brake_loss", "seconds": 4.0,
+        # 7 s : la puissance tombe en ~1,8 s (lot X46), le pilote confirme 2 s plus tard (brake_watch.CONFIRM_S,
+        # lot FR1), il reste le temps de voir le frein toujours lâché.
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "brake_loss", "seconds": 7.0,
                                "value": recovers})
-        await wait_for(lambda: rig.driver.brake_losses == 1, timeout=6)
+        await wait_for(lambda: rig.driver.brake_losses == 1, timeout=7)
         await wait_for(lambda: rig.ops().count(ftms.OP_REQUEST_CONTROL) > n)   # contrôle repris
         if recovers:
             await wait_for(lambda: rig.driver._raw_power > 250, timeout=6)
-            assert rig.driver._brake_lost_at is None
+            assert rig.driver._brake_watch.lost_at is None
         else:
             await asyncio.sleep(0.8)
             assert rig.driver._raw_power < 10
@@ -735,3 +736,29 @@ def test_brake_loss_is_detected_and_control_retaken(caplog, recovers):
     msgs = [r.getMessage() for r in caplog.records]
     assert sum("Trainer : le frein a lâché" in m for m in msgs) == 1
     assert any("puissance revenue" in m for m in msgs) == recovers
+
+
+def test_pedal_stop_with_lagging_cadence_is_not_a_brake_loss(caplog):
+    """Lot FR1 : arrêt net après 320 W ; la puissance tombe aussitôt, la cadence annoncée reste 1,5 s
+    (CADENCE_LAG_S). Le pilote voit 0 W à 85 tr/min mais ne crie pas au frein lâché."""
+    async def scenario():
+        spec = {**READY, "rider": {"watts": 320, "cadence_rpm": 85}}
+        rig = Rig(spec).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_sim_grade(2.0)
+        await wait_for(lambda: rig.driver._raw_power > 250, timeout=8)
+        seen = []
+        for _ in range(2):
+            await rig.world.apply({"t": 0, "device": "trainer", "action": "rider", "watts": 0, "cadence_rpm": 0})
+            for _ in range(40):   # 4 s
+                await asyncio.sleep(0.1)
+                seen.append((rig.driver._raw_power, rig.driver._cadence))
+            await rig.world.apply({"t": 0, "device": "trainer", "action": "rider", "watts": 320, "cadence_rpm": 85})
+            await wait_for(lambda: rig.driver._raw_power > 250, timeout=8)
+        # la cadence en retard a bien été vue : 0 W à plus de 40 tr/min
+        assert any(p < 10 and c >= 40 for p, c in seen)
+        assert rig.driver.brake_losses == 0
+        await rig.stop()
+    with caplog.at_level("INFO"):
+        asyncio.run(scenario())
+    assert not any("le frein a lâché" in r.getMessage() for r in caplog.records)

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : périodicité des à-coups des bancs comptée en passages distincts et non en images (`perf_probe.hitch_period`) | Python | PL1 | Petite | **En PR** (3.0) ; rebanc r735c sur le PC via la file du fil de fusion |
+| Série X (outils de test) : périodicité des à-coups des bancs comptée en passages distincts et non en images (`perf_probe.hitch_period`) | Python | PL1 | Petite | **Livré le 7 novembre** (PR #767), version 3.0 |
 
 ## 1. Constat
 
@@ -51,3 +51,7 @@ Séance FTP relue à la main : 17 des 23 images de l'ancienne période sont à 5
 ## 6. Suite, à part
 
 Les deux paquets réels de r735c (bots 12 à 15 ms vers 1,3 à 1,7 km, décor 8 à 14 ms vers 2,1 à 2,8 km de demo_long) restent sous 3 images lentes par minute ; ils relèvent d'un autre lot.
+
+## Livraison
+
+Fusionné dans `main` : PR #767 (7 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

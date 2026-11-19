@@ -299,7 +299,10 @@ def test_state_frame_with_four_vehicles_and_five_bots_fits():
     worst = ipc_budget.worst_state("1.5")
     worst.pop("riders", None)          # lot AS10 : `riders` n'est jamais dans la trame de `vehicles`
     worst["vehicles"] = ipc_budget.worst_vehicles()
-    assert len(worst["vehicles"]) == tr.NEAR_MAX and len(worst["bots"]) == 5
+    from openride_core.session import ROAD_PART_MAX
+
+    # lot AS11 (révision 1.20) : une partie de ROAD_PART_MAX véhicules par trame
+    assert len(worst["vehicles"]) == ROAD_PART_MAX and len(worst["bots"]) == 5
     assert ipc_budget.size(worst) <= ipc_budget.STATE_LIMIT_1_3
     with_devices = ipc_budget.worst_state("1.4")
     with_devices["vehicles"] = worst["vehicles"]

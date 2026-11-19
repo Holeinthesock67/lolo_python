@@ -30,6 +30,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
+from . import draft
 from .route_mirror import MirroredRoute, flip_s
 
 MASK32 = 0xFFFFFFFF
@@ -54,7 +55,7 @@ SPAWN_BEHIND_M = 150.0
 REMOVE_BEHIND_M = 300.0
 REMOVE_AHEAD_M = 1200.0
 PASS_START_M = 30.0
-MERGE_AHEAD_M = 20.0
+MERGE_AHEAD_M = 20.0      # avant le lot AS11 : rabattement 20 m devant le cycliste (remplacé par `overtake_window`)
 GIVE_UP_S = 60.0
 ABREAST_M = 0.6
 FILE_GAP_M = 2.1          # d'axe à axe en file : vélo de 1,7 m (draft.BIKE_LENGTH_M) et 0,4 m de roue à roue
@@ -80,6 +81,7 @@ SIDE_SPEED_MPS = 1.5      # écart latéral : vitesse au plus, ...
 SIDE_ACCEL_MPS2 = 2.0     # ... accélération au plus (on s'écarte et on se rabat sans à-coup, essai du 7/11)
 SIDE_TAU_S = 0.5          # ... et approche de la place visée,
 SIDE_ARRIVE_MPS = 0.1     # ... à au moins 0,1 m/s jusqu'à y être
+VEHICLE_FILE_M = 80.0     # lot AS11 : un véhicule de son sens à moins de 80 m derrière, plus vite : en file
 DL_SPEED_MPS = 1.0        # passage de deux de front à la file (et retour) : recul ou retour d'un membre
 SIDE_LOOK_M = 2.5
 SIDE_CLEAR_M = 0.8
@@ -129,6 +131,14 @@ def _lerp(a: float, b: float, t: float) -> float:
 
 def _move_toward(a: float, b: float, delta: float) -> float:
     return b if abs(b - a) <= delta else a + math.copysign(delta, b - a)
+
+
+def overtake_window(closing_mps: float, lateral_m: float = MIN_CENTRE_M) -> tuple[float, float]:
+    """Lot AS11 : fenêtre où un groupe `overtake` double le cycliste hors de sa ligne (début : écart de sa tête au
+    cycliste ; fin : de sa queue), règle commune `draft.pass_window` (écart `lateral_m` jusqu'à sa ligne de
+    dépassement, au moins MIN_CENTRE_M, à SIDE_SPEED_MPS)."""
+    return draft.pass_window(draft.BIKE_LENGTH_M, draft.BIKE_LENGTH_M, closing_mps, max(lateral_m, MIN_CENTRE_M),
+                             SIDE_SPEED_MPS)
 
 
 def _step_mps(g: Any) -> float:
@@ -636,6 +646,21 @@ class RoadCyclists:
             return max(edge, BOT_LATERAL_M + MIN_CENTRE_M)
         return edge + col
 
+    def _vehicle_coming(self, g: Group) -> bool:
+        """Lot AS11 (code de la route, décision du propriétaire du 17 novembre) : un véhicule de son sens arrive derrière
+        lui (à moins de VEHICLE_FILE_M, plus vite) : le groupe se met en file pour le laisser doubler."""
+        own = _step_mps(g)
+        for v in self.vehicles:
+            if self._field(v, "dir", 1) != g.dir:
+                continue
+            vs = self._field(v, "s", None)
+            if vs is None:
+                continue
+            behind = (g.s - float(vs)) * g.dir
+            if 0.0 < behind < VEHICLE_FILE_M and float(self._field(v, "speed_mps", self._field(v, "v", 0.0))) > own:
+                return True
+        return False
+
     def _formation(self, g: Group, file: bool, dt_s: float) -> None:
         """De deux de front à la file (`file`) et retour, sans se chevaucher : en file, un membre recule à
         DL_SPEED_MPS jusqu'à sa place puis se range dans la ligne ; de retour de front, il reprend sa colonne et
@@ -692,12 +717,14 @@ class RoadCyclists:
             # Lot AS9 : il ne sort pour doubler que derrière le cycliste, à plus de SIDE_LOOK_M de sa roue (ralenti
             # devant lui par un groupe lent, c'est le cycliste qui le double : il reste sur sa droite au lieu de
             # traverser sa ligne)
-            if g.side == "right" and -PASS_START_M <= rel_now < -SIDE_LOOK_M and tail_now < MERGE_AHEAD_M:
+            # Lot AS11 (« rabattre plus tôt », 17/11) : fenêtre de la règle commune (`draft.pass_window`)
+            win = overtake_window(spd_now - rider_v, abs(g.lateral() - (self.rider_lane - MIN_CENTRE_M)))
+            if g.side == "right" and win[0] <= rel_now < -SIDE_LOOK_M and tail_now < win[1]:
                 if near:
                     spd_now = min(spd_now, rider_v)
                 else:
                     g.side = "left"
-            elif g.side == "left" and tail_now > MERGE_AHEAD_M and not near:
+            elif g.side == "left" and tail_now > win[1] and not near:
                 g.side = "right"
             # Lot AS9 : sorti tout près derrière le cycliste, il ne s'approche pas à moins de SIDE_LOOK_M de sa roue
             # tant qu'il n'est pas hors de sa ligne
@@ -766,7 +793,7 @@ class RoadCyclists:
         rel0 = rel if g.last_rel is None else g.last_rel
         g.last_rel = rel
         # En file près d'un bot (`ahead`, sur l'accotement) et sur un chemin étroit (tous les cas)
-        self._formation(g, self._narrow(g.half) or (case == "ahead" and near), dt_s)
+        self._formation(g, self._narrow(g.half) or (case == "ahead" and near) or self._vehicle_coming(g), dt_s)
         for m in members:
             self._side_step(g, m, dt_s, rider_s, bots, rider_v)
         if case == "ahead":
@@ -779,7 +806,7 @@ class RoadCyclists:
             if rel >= 0.0 > rel0 and g.salut and not g.said:
                 g.said = True
                 self.last_event = {"kind": "voice_salut", "s": g.s, "lateral": members[0].lateral}
-            if not g.passed and last_rel > MERGE_AHEAD_M:
+            if not g.passed and last_rel > overtake_window(g.speed_mps - rider_v)[1]:
                 g.passed = True
                 self.overtook_total += 1
                 if self.hold_after_pass:

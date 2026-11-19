@@ -39,6 +39,7 @@ extends RefCounted
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RouteMirror := preload("res://scripts/route_mirror.gd")
+const RoadRules := preload("res://scripts/road_rules.gd")
 
 const SLOT_M := 250.0
 ## Distance parcourue par tour de pédalier : braquet de 50 × 17, roue de 2,1 m (cyclistes du décor et bots).
@@ -87,6 +88,7 @@ const VEHICLE_CLEAR_M := 60.0         # pas d'apparition à moins de 60 m d'un v
 ## VEHICLE_FOLLOW_M derrière jusqu'à VEHICLE_ALONGSIDE_M à sa hauteur (comme road_cyclists.py du core).
 const VEHICLE_FOLLOW_M := 25.0
 const VEHICLE_ALONGSIDE_M := 8.0
+const VEHICLE_FILE_M := 80.0          # lot AS11 : véhicule de son sens à moins de 80 m derrière, plus vite : en file
 const SIDE_SPEED_MPS := 1.5           # écart latéral : vitesse au plus, ...
 const SIDE_ACCEL_MPS2 := 2.0          # ... accélération au plus (on s'écarte et on se rabat sans à-coup, essai du 7/11)
 const SIDE_TAU_S := 0.5               # ... approche de la place visée,
@@ -124,6 +126,11 @@ var _clock := 0.0
 var _bot_groups: Array = []        # bots de l'image, comme des groupes (lot P32)
 var _last_bots_s: Array = []      # abscisses des bots à l'image précédente (vitesse estimée)
 var _core_seq := -1                 # trame de la dernière liste `riders` reprise (lot AS7)
+## Lot AS11 (révision 1.20) : le core envoie tous ses cyclistes du décor par parties (`road_part`, un groupe jamais
+## coupé) ; l'engine n'en tire plus aucun et ne fait plus que les afficher. Faux tant qu'aucune partie n'est reçue.
+var core_full := false
+var _cycle_prev := {}             # ... et pendant le tour d'avant : une partie perdue (images lentes) ne retire rien
+var _cycle_seen := {}               # groupes reçus depuis la dernière partie d'un tour (lot AS11)
 var rider_lane := RIDER_LATERAL_M   # lot AS10 : vraie place du cycliste en travers (`lane_m` de la trame)
 var direction: int = 1             # sens de marche du cycliste (lot N23) : -1 à rebours, `route` est alors retourné
 var base_route = null              # parcours dans son sens, quel que soit le sens de marche
@@ -142,16 +149,29 @@ func configure(route_data, climbs: Array, pois: Array, cyclist_budget: int, rng_
 	road_width_m = p_road_width_m
 	half_width_at = p_half_width_at
 	traffic = traffic_model
+	extend_route(route_data, climbs, pois)
+	reset()
+
+
+## Route prolongée du monde ouvert (même début, abscisses gardées) : nouvelle route, montées et villages, sans
+## retirer les groupes en cours. À rebours (lot N23), le parcours retourné s'allonge par son début : les groupes
+## gardent leur place sur la route (u = L - s décalé de l'allongement).
+func extend_route(route_data, climbs: Array, pois: Array) -> void:
+	var grown := 0.0 if base_route == null or route_data == null else float(route_data.length_m) - float(base_route.length_m)
+	base_route = route_data
+	route = route_data if direction > 0 or route_data == null else RouteMirror.new(route_data)
+	if direction < 0:
+		for g in groups:
+			g["s"] = float(g["s"]) + grown
 	_villages.clear()
 	for p in pois:
 		if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "village":
 			_villages.append(Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0))))
-	_climbs.clear()
+	_base_climbs.clear()
 	for c in climbs:
 		if typeof(c) == TYPE_DICTIONARY:
-			_climbs.append(Vector2(float(c.get("start_s", 0.0)), float(c.get("summit_s", c.get("end_s", 0.0)))))
-	_base_climbs = _climbs.duplicate()
-	reset()
+			_base_climbs.append(Vector2(float(c.get("start_s", 0.0)), float(c.get("summit_s", c.get("end_s", 0.0)))))
+	_climbs = _base_climbs.duplicate() if direction > 0 else _back_climbs.duplicate()   # retour : set_back_climbs
 
 
 ## Lot N24 : montées du retour (climb_detector.gd `detect_back`, repère du parcours, pied au-dessus du sommet), gardées
@@ -357,7 +377,7 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, b
 	while _next_slot * SLOT_M <= rider_s:
 		var ev := slot_event(_next_slot)
 		_next_slot += 1
-		if not ev.is_empty() and rider_count() + int(ev["size"]) <= budget:
+		if not ev.is_empty() and rider_count() + int(ev["size"]) <= budget and not core_full:
 			_spawn(ev, rider_s, rider_v, bots)
 	# Bots vus comme des groupes d'un cycliste (lot P32) : vitesse estimée d'une image à l'autre
 	_bot_groups = []
@@ -507,6 +527,23 @@ func _base_lateral(g: Dictionary, m: Dictionary) -> float:
 ## De deux de front à la file (`file`) et retour, sans se chevaucher : en file, un membre recule à DL_SPEED_MPS
 ## jusqu'à sa place puis se range dans la ligne ; de retour de front, il reprend sa colonne et ne remonte qu'une
 ## fois à côté de celui qu'il suit.
+## Lot AS11 (code de la route, 17/11) : un véhicule de son sens arrive derrière (à moins de VEHICLE_FILE_M, plus
+## vite) : le groupe se met en file pour le laisser doubler (road_cyclists._vehicle_coming du core).
+func _vehicle_coming(g: Dictionary) -> bool:
+	if traffic == null:
+		return false
+	var own := _step_mps(g)
+	for v in traffic.vehicles:
+		if int(v.get("dir", 1)) != int(g["dir"]):
+			continue
+		if not v.has("s"):
+			continue
+		var behind := (float(g["s"]) - float(v["s"])) * int(g["dir"])
+		if behind > 0.0 and behind < VEHICLE_FILE_M and float(v.get("speed_mps", 0.0)) > own:
+			return true
+	return false
+
+
 func _formation(g: Dictionary, file: bool, dt_s: float) -> void:
 	var members: Array = g["members"]
 	for i in range(members.size()):
@@ -581,12 +618,14 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		var tail_now := rel_now - float(members.size() - 1) * FILE_GAP_M
 		# Lot AS9 : il ne sort pour doubler que derrière le cycliste, à plus de SIDE_LOOK_M de sa roue (ralenti devant
 		# lui par un groupe lent, c'est le cycliste qui le double : il reste sur sa droite au lieu de traverser sa ligne)
-		if str(g["side"]) == "right" and rel_now >= -PASS_START_M and rel_now < -SIDE_LOOK_M and tail_now < MERGE_AHEAD_M:
+		# Lot AS11 (« rabattre plus tôt », 17/11) : fenêtre de la règle commune (draft.pass_window du core)
+		var win := overtake_window(spd_now - rider_v, absf(_group_lateral(g) - (rider_lane - MIN_CENTRE_M)))
+		if str(g["side"]) == "right" and rel_now >= win.x and rel_now < -SIDE_LOOK_M and tail_now < win.y:
 			if near:
 				spd_now = minf(spd_now, rider_v)       # un bot à côté : attend derrière, sur la droite
 			else:
 				g["side"] = "left"
-		elif str(g["side"]) == "left" and tail_now > MERGE_AHEAD_M and not near:
+		elif str(g["side"]) == "left" and tail_now > win.y and not near:
 			g["side"] = "right"
 		# Lot AS9 : sorti tout près derrière le cycliste, il ne s'approche pas à moins de SIDE_LOOK_M de sa roue tant
 		# qu'il n'est pas hors de sa ligne
@@ -656,7 +695,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 	var rel0 := float(g.get("last_rel", rel))
 	g["last_rel"] = rel
 	# En file près d'un bot (`ahead`, sur l'accotement) et sur un chemin étroit (tous les cas)
-	_formation(g, _narrow(float(g["half"])) or (case_name == "ahead" and near), dt_s)
+	_formation(g, _narrow(float(g["half"])) or (case_name == "ahead" and near) or _vehicle_coming(g), dt_s)
 	for m in members:
 		_side_step(g, m, dt_s, rider_s, bots, rider_v)
 	match case_name:
@@ -670,7 +709,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 			if rel >= 0.0 and rel0 < 0.0 and g["salut"] and not g.get("said", false):
 				g["said"] = true
 				last_event = {"kind": "voice_salut", "pos": world_position(g, members[0])}
-			if not g["passed"] and last_rel > MERGE_AHEAD_M:
+			if not g["passed"] and last_rel > overtake_window(float(g["speed_mps"]) - rider_v).y:
 				g["passed"] = true
 				overtook_total += 1
 			# Ne gagne plus de terrain : disparaît après GIVE_UP_S
@@ -874,6 +913,12 @@ func _lane_free_for(g: Dictionary, rider_s: float) -> bool:
 	return true
 
 
+## Lot AS11 : fenêtre où un groupe `overtake` double le cycliste hors de sa ligne (road_cyclists.overtake_window).
+static func overtake_window(closing_mps: float, lateral_m: float = MIN_CENTRE_M) -> Vector2:
+	return RoadRules.pass_window(RoadRules.BIKE_LENGTH_M, RoadRules.BIKE_LENGTH_M, closing_mps, maxf(lateral_m, MIN_CENTRE_M),
+		SIDE_SPEED_MPS)
+
+
 ## Abscisse et écart latéral de chaque cycliste : [{group, member, s, lateral, dir}].
 func riders() -> Array:
 	var out := []
@@ -900,14 +945,20 @@ func riders() -> Array:
 ##   camera_follow.gd) n'est pas au même endroit, chaque cycliste du core garde donc son écart du core au
 ##   cycliste, pas sa position absolue (comme les véhicules, traffic_model.sync_core), et n'est pas extrapolé
 ##   une fois de plus à l'image de sa reprise (`fresh`).
-func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN) -> void:
+## Lot AS11 (révision 1.20) : `part` et `parts` (`road_part` de la trame) : la liste donne des groupes entiers ;
+## les groupes qu'elle ne donne pas attendent la fin du tour, où ceux qu'aucune partie n'a donnés partent.
+func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN, part: int = -1, parts: int = 0) -> void:
 	if seq == _core_seq:
 		return
 	_core_seq = seq
+	if parts > 0 and not core_full:
+		core_full = true
+		groups = groups.filter(func(g): return str(g["case"]) == "core")   # plus de groupe tiré par l'engine
 	var shift := 0.0
 	if not is_nan(core_s) and absf(rider_s - core_s) < CORE_SHIFT_MAX_M:
 		shift = rider_s - core_s
 	var full := list.size() >= CORE_LIST_MAX
+	var keep_missing := parts == 0      # lot AS11 : en parties, un groupe arrive entier, un membre absent est parti
 	var by_id := {}
 	var decor_by_id := {}
 	for g in groups:
@@ -979,12 +1030,12 @@ func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN) -> vo
 			cm["col"] = 0
 			members.append(cm)
 		for m in cg["members"]:
-			if not seen.has(str(m["id"])) and _still_on_road(cg, m, rider_s, full):
+			if keep_missing and not seen.has(str(m["id"])) and _still_on_road(cg, m, rider_s, full):
 				_anchor(m, shift_core, float(cg["s"]) * dir, head)
 				members.append(m)
 		if not eg.is_empty():
 			for m in eg["members"]:
-				if not seen.has(str(m["id"])) and _still_on_road(eg, m, rider_s, full):
+				if keep_missing and not seen.has(str(m["id"])) and _still_on_road(eg, m, rider_s, full):
 					_anchor(m, shift_decor, float(eg["s"]) * int(eg["dir"]), head)
 					m["col"] = 0
 					m.erase("col0")
@@ -1007,6 +1058,19 @@ func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN) -> vo
 		cg["sync_at"] = _clock
 		cg["fresh"] = true              # déjà à sa place de cette image : pas extrapolé une fois de plus
 	var kept := []
+	if parts > 0:
+		for gid in items_of:
+			_cycle_seen[gid] = true
+		var last := part >= parts - 1
+		for g in groups:
+			var gid := str(g["id"])
+			if items_of.has(gid) or (not last or _cycle_seen.has(gid) or _cycle_prev.has(gid)) and str(g["case"]) == "core":
+				kept.append(g)
+		if last:
+			_cycle_prev = _cycle_seen
+			_cycle_seen = {}
+		groups = kept + added
+		return
 	for g in groups:
 		var is_core := str(g["case"]) == "core"
 		if is_core and items_of.has(str(g["id"])):

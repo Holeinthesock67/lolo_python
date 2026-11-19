@@ -231,6 +231,13 @@ def test_ensure_demo_world_copies_bundled_demo_and_upgrades_old_one(tmp_path):
     demo_world.ensure_demo_world(tmp_path)
     assert (world / "manifest.json").read_bytes() == (repo_demo / "manifest.json").read_bytes()
     assert (world / "route.json").read_bytes() == (repo_demo / "route.json").read_bytes()
+    # Démonstration écrite avant sa fiche (lot NT1, description au menu) : remplacée.
+    manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["library"] == demo_world.DEMO_LIBRARY
+    del manifest["library"]
+    (world / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    demo_world.ensure_demo_world(tmp_path)
+    assert (world / "manifest.json").read_bytes() == (repo_demo / "manifest.json").read_bytes()
     # Démonstration à jour, ou parcours « demo » qui n'est pas le nôtre : laissés tels quels.
     (world / "route.json").write_text("{}", encoding="utf-8")
     demo_world.ensure_demo_world(tmp_path)
