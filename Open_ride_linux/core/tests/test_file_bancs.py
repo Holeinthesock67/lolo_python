@@ -350,3 +350,13 @@ def test_exemple_rfs3_se_lit():
     f = fb.lire_file(ROOT / "scripts" / "file_bancs" / "exemple_rFS3.toml")
     assert [e.id for e in f.prs[0].etapes] == ["fumee", "tests-engine", "low", "high", "medium"]
     assert f.avant_etape and f.apres_etape and "{dossier}" in f.apres_etape
+
+
+def test_depot_qui_ne_suit_que_main(tmp_path, depot):
+    """Dépôt du user : refspec de fetch réduite à main ; la file doit quand même trouver la tête de la branche."""
+    _, clone = depot
+    _git(clone, "config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main")
+    _git(clone, "update-ref", "-d", "refs/remotes/origin/br")
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "p"\nbranche = "br"\n[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n')
+    assert fb.Runner(fb.lire_file(f), reseau=True, log=lambda *_: None).lancer() == 0
+    assert _etat(tmp_path)["prs"]["p"]["low"]["verdict"] == fb.OK

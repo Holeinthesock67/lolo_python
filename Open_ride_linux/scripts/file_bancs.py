@@ -250,9 +250,12 @@ def git(depot: Path, *args: str) -> str:
 
 
 def resoudre_tete(f: File, branche: str, reseau: bool) -> str:
+    """Tête de `branche` sur origin. Refspec explicite : le dépôt du user ne suit que main
+    (`+refs/heads/main:refs/remotes/origin/main`), un simple `git fetch origin <branche>` n'y crée pas la ref distante
+    (pilote arrêté le 19 novembre à 10h30)."""
     if reseau:
-        git(f.depot, "fetch", "--quiet", "origin", branche)
-    return git(f.depot, "rev-parse", f"refs/remotes/origin/{branche}")
+        git(f.depot, "fetch", "--quiet", "origin", f"+refs/heads/{branche}:refs/remotes/origin/{branche}")
+    return git(f.depot, "rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branche}^{{commit}}")
 
 
 MARQUE_TETE = ".file_bancs_tete"
