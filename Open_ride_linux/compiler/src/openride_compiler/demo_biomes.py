@@ -181,10 +181,37 @@ REEF_WRECK_OFFSET_M = 45.0  # à 45 m du bord de la route, côté extérieur
 REEF_WRECK_LENGTH_M = 42.0
 REEF_TOP_M = -4.0           # le récif ne monte jamais au-dessus (sous le niveau de la mer, 0)
 REEF_SOFT_M = 3.0           # plafond adouci sur les 3 derniers mètres
-# Étiquettes des parcours de démonstration (fiche `library.tags` du manifeste) : un parcours d'un mode à parcours
+# Étiquettes des parcours de démonstration (fiche `library.tags` du manifeste, `DEMO_LIBRARY`) : un parcours d'un mode à parcours
 # propres (lot GP13, `openride_core.mode_routes`) ne se court que dans ce mode : le Circuit des Prés est au Grand
 # Prix des objets (décision du propriétaire du 15 novembre). Recette comprise : les bancs passent par le même menu.
-DEMO_TAGS = {"demo-circuit": ("grandprix",)}
+# Lot NT1 (intégration des démos dans la version finale) : chaque parcours de démonstration porte sa fiche
+# (`library` du manifeste, champs de `route_stats.LIBRARY_KEYS`), comme le vélodrome et les cols du pack : la
+# description s'affiche sur la carte du parcours au menu ; mêmes textes que le guide d'utilisation. Une seule table
+# pour la fiche entière (description et étiquettes) ; une démonstration écrite avec une autre fiche est remplacée
+# par les contenus de départ (`openride_core.demo_world.biome_demo_outdated`).
+DEMO_LIBRARY = {
+    "demo-biomes-paysages": {"description": "14 km du fjord aux hauts plateaux, par les landes atlantiques, les "
+                                            "rizières, le Japon, une île volcanique et un canyon rouge."},
+    "demo-japon": {"description": "6 km de montée douce au Japon, entre forêts de cèdres, villages aux toits de "
+                                  "tuiles et belvédères."},
+    "demo-circuit": {"description": "Boucle de 3 km dans les prés, pour les courses en tours.",
+                     "tags": ["grandprix"]},
+    "demo-recif": {"description": "Boucle de 8 km sous la mer, du lagon au tombant, entre laminaires et coraux, "
+                                  "jusqu'à une épave."},
+    "demo-volcan": {"description": "Boucle de 8 km dans un volcan en éruption, entre coulées de lave, braises et "
+                                   "fumées, jusqu'à la crête du cratère."},
+    "demo-biomes-sud": {"description": "12 km des oliviers au delta, par la steppe, les dunes, la savane et la "
+                                       "jungle."},
+    "demo-biomes-nord": {"description": "Boucle de 10 km de la taïga à la banquise par la toundra, et retour."},
+}
+
+
+def library_of(name: str) -> dict | None:
+    """Fiche du manifeste d'un parcours de démonstration (copie), ou None pour un parcours sans fiche."""
+    lib = DEMO_LIBRARY.get(name)
+    return None if lib is None else {k: list(v) if isinstance(v, list) else v for k, v in lib.items()}
+
+
 # Volcan en flammes (lot DB2, demande du 13 novembre : « parcours démo exagéré feu et flammes », en boucle) : 8 km,
 # biome volcanique dans le paysage `volcan_actif` (lave, braises, fumées : engine volcano_fx.gd), départ dans la plaine
 # de cendres, montée régulière jusqu'à la crête du cratère à mi-boucle, descente par l'autre flanc.
@@ -1219,8 +1246,8 @@ def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False
     manifest["created"] = CREATED
     manifest["name"] = name if recette or not title else title
     manifest["compiler"] = {"name": GENERATOR, "version": manifest["compiler"]["version"]}
-    if DEMO_TAGS.get(name):
-        manifest["library"] = {"tags": sorted(DEMO_TAGS[name])}
+    if library_of(name):
+        manifest["library"] = library_of(name)
     (world / "route.json").write_text(json.dumps(route, separators=(",", ":")), encoding="utf-8")
     (world / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     info = {"route": name, "name": manifest["name"], "length_m": route["length_m"], "type": route["type"],

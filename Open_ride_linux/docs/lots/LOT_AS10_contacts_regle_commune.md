@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Contacts des cyclistes du décor, des véhicules et du cycliste corrigés une seule fois pour tous les parcours, le demi-tour et le monde ouvert : liste `riders` de 10, groupe rendu par le core qui garde sa vitesse, chacun vu à sa vraie place en travers, pas de roue prise chez celui qu'on rattrape vite, placement à rebours | GDScript, Python | AS9 | Moyenne | En PR le 15 novembre (empilée sur #893), banc PC à passer |
+| Contacts des cyclistes du décor, des véhicules et du cycliste corrigés une seule fois pour tous les parcours, le demi-tour et le monde ouvert : liste `riders` de 10, groupe rendu par le core qui garde sa vitesse, chacun vu à sa vraie place en travers, pas de roue prise chez celui qu'on rattrape vite, placement à rebours | GDScript, Python | AS9 | Moyenne | **Livré le 16 novembre** (PR #894) ; les contacts restants relèvent du lot AS11 (PR #925, en revue) |
 
 Série AS, suite du lot AS9 (#893). Demande du propriétaire du 15 novembre : résoudre les contacts de façon globale,
 pas parcours par parcours, « de manière générale et égal en open world », véhicules compris.
@@ -114,3 +114,7 @@ aucun contact avec la vraie place du cycliste. Placement seul (36 à 52 km/h der
 Même banc pour tous, low, medium et high (budgets GPU 8, 13 et 16 ms), 0 contact attendu : `sim_bench.py --speed-kmh 55`
 sur le volcan et `demo_long`, `montees_retour --crowd all` (demi-tour), le parcours DB1, et un passage en monde ouvert ;
 captures validées par le propriétaire avant fusion.
+
+## Livraison
+
+Fusionné dans `main` : PR #894 (16 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

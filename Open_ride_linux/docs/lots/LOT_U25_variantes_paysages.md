@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Paysages célèbres posés en variantes des biomes existants (canyons, fjords, îles volcaniques, rizières), partie 1 : contrat, pose, sol et arbres | Python, GDScript | U4, U14, U24 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| Paysages célèbres posés en variantes des biomes existants (canyons, fjords, îles volcaniques, rizières), partie 1 : contrat, pose, sol et arbres | Python, GDScript | U4, U14, U24 | Moyenne | Partie 1 **livrée le 12 novembre** (PR #851) ; partie 2 (U25-p2) à venir, **version 6.0** |
 
 ## 1. Objectif
 

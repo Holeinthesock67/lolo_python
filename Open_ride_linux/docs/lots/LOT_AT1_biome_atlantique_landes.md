@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 18e biome `atlantic_heath` (Asturies, Pays basque, Bretagne, îles britanniques) : bruyère, ajonc, fougère aigle, murets de pierre sèche, pose par table régionale commune aux parcours et au monde ouvert | Python, GDScript, JSON | U24, JP1 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| 18e biome `atlantic_heath` (Asturies, Pays basque, Bretagne, îles britanniques) : bruyère, ajonc, fougère aigle, murets de pierre sèche, pose par table régionale commune aux parcours et au monde ouvert | Python, GDScript, JSON | U24, JP1 | Moyenne | **Livré le 12 novembre** (PR #853, avec AT2), **version 6.0** |
 
 ## 1. Objectif
 
@@ -41,3 +41,7 @@ La règle est dans `biomes.py` (`regional_rule`, `Inputs.regional` injectable co
 - Tests : `compiler/tests/test_biome_zones.py` (table, cols connus, Köppen hors liste, forêts et cultures gardées, injection) ; `engine/tests/unit/test_ground_details.gd` §9 (murets des deux côtés, alignés, jamais à moins de 3 m du bord bouts compris, maillage dans l'ordre avant de Godot) ; espèces par `test_vegetation_biomes.gd`, `test_tree_faces.gd`, `test_forest_impostors.gd` ; comptes de biomes tirés de la liste.
 - Captures cloud (rendu logiciel, vitrine des biomes, low, medium, high, 1680x1050) : `/mnt/project-files/captures/at1-landes-2026-11-12/`, à valider par le propriétaire.
 - Banc GPU sur le PC (budgets 8, 13 et 16 ms) : vitrine `--biomes atlantic_heath,temperate_grassland` en low, medium et high par la file du PC ; attendu proche de la prairie (plantes basses à 72 à 180 triangles, murets légers).
+
+## Livraison
+
+Fusionné dans `main` : PR #853 (12 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

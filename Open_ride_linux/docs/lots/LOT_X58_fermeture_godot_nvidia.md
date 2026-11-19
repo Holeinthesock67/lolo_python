@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X : trouver pourquoi Godot ne se ferme pas en `--native` sur le pilote NVIDIA (fils vk/cuda en attente) et retirer si possible le contournement de 3 s du lanceur | Python + GDScript | X55 | Petite | En cours (outils livrés, passage PC à faire) |
+| Série X : trouver pourquoi Godot ne se ferme pas en `--native` sur le pilote NVIDIA (fils vk/cuda en attente) et retirer si possible le contournement de 3 s du lanceur | Python + GDScript | X55 | Petite | Cause et correction livrées le 12 novembre (PR #805) ; passage sur le PC à faire |
 
 Suite du lot X55 (31 octobre) : sur le PC cible, la fermeture par la souris bloque après « scène libérée, arrêt des serveurs de Godot », seulement en `--native` (fils `vk*` et `cuda` en futex) ; le lanceur tue Godot au bout de 3 s (`launcher.ENGINE_SHUTDOWN_S`). Le cahier X55 renvoyait la cause « après la 1.0 », sans lot. Cahier rédigé le 8 novembre.
 
@@ -148,3 +148,7 @@ $B --voies souris --repeter 10 --qualite high --out $O/high
 Attendu : 50 sur 50 « sortie immédiate » avec le bon code, aucune pile gdb ; puis un lancement par le lanceur
 (Quitter, puis « Relancer » : code 64) pour vérifier qu'aucun plantage n'est compté et que le démarrage suivant ne
 recompile pas tous les shaders.
+
+## Livraison
+
+Fusionné dans `main` : PR #805 (12 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

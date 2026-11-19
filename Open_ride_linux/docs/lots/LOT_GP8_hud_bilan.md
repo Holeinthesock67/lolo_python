@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : case d'objet et roulette, place et tours, bande de course, choix de voie, avertissements et bilan | GDScript | GP2, GP6 | Moyenne | En PR, captures à valider (version 4.0 proposée) |
+| Série GP : case d'objet et roulette, place et tours, bande de course, choix de voie, avertissements et bilan | GDScript | GP2, GP6 | Moyenne | **Livré le 9 novembre** (PR #797), version 4.0 |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 

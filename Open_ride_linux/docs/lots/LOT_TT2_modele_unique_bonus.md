@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série TT : core, modèle unique de bonus décrit par des données dans `powerups.py` (effets du Grand Prix compris), tirage selon le contexte, refus motivé ; Plume, Casque, Puissance, Enclume | Python | TT1, T6, T7, GP1 | Moyenne | En revue (version 4.0) |
+| Série TT : core, modèle unique de bonus décrit par des données dans `powerups.py` (effets du Grand Prix compris), tirage selon le contexte, refus motivé ; Plume, Casque, Puissance, Enclume | Python | TT1, T6, T7, GP1 | Moyenne | **Livré le 9 novembre** (PR #810), version 4.0 |
 
 Série TT (bonus tactiques, version 4.0). Plan de la série : `docs/4.0/PLAN_SERIE_TT.md`, recommandations retenues par le propriétaire le 29 octobre (« ok pour tout », §6 du plan). Cahier rédigé le 8 novembre 2026 (le plan les annonçait, aucun n'existait).
 
@@ -33,3 +33,7 @@ Plan §2 et §3 ; `core/src/openride_core/powerups.py` (T6) ; `core/src/openride
 ## 5. Fichiers touchés
 
 `core/src/openride_core/powerups.py`, `core/src/openride_core/grandprix/effects.py`, `core/src/openride_core/classic.py`, `core/tests/test_powerups*.py`.
+
+## Livraison
+
+Fusionné dans `main` : PR #810 (9 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

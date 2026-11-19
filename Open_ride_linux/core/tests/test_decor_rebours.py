@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 from test_traffic import straight_route
+from test_road_cyclists import road_round
 from test_u_turn import make_session, ride_until, u_turn
 
 from openride_core import road_cyclists as rc
@@ -127,20 +128,20 @@ def test_session_shows_vehicles_and_cyclists_after_u_turn(tmp_path, monkeypatch)
     seen_r: list[dict] = []
 
     def look() -> bool:   # listes `vehicles` et `riders` d'une trame qui les porte, à chaque pas
-        s._frame_count = 0
-        s._fill_vehicles_frame()
-        s._frame_count = session_mod.RIDERS_FRAME_AT   # lot AS10 : `riders` dans la trame qui suit celle de `vehicles`
-        s._fill_riders_frame()
-        seen_v.extend({**v, "rel": v["s"] - s.physics.s} for v in s.state.vehicles or [])
-        seen_r.extend({**r, "rel": r["s"] - s.physics.s} for r in s.state.riders or [])
+        vehicles, riders = road_round(s)   # lot AS11 : un tour des parties `road_part`
+        seen_v.extend({**v, "rel": v["s"] - s.physics.s} for v in vehicles)
+        seen_r.extend({**r, "rel": r["s"] - s.physics.s} for r in riders)
         return s.physics.s <= 800.0
 
     ride_until(s, look)
     assert s.traffic is traffic                       # même circulation, retournée, pas recréée
     assert traffic.spawned_total > spawned
     assert seen_v and seen_r
-    # Liste `vehicles` et `riders` toujours dans le repère du parcours, autour du cycliste
-    assert all(abs(v["rel"]) < tr.NEAR_M for v in seen_v) and all(abs(r["rel"]) < rc.NEAR_M for r in seen_r)
+    # Liste `vehicles` et `riders` toujours dans le repère du parcours, autour du cycliste (lot AS11 : tous les usagers
+    # du core, de REMOVE_BEHIND_M derrière à REMOVE_AHEAD_M devant dans son sens de marche, plus seulement les proches)
+    reach = max(tr.REMOVE_BEHIND_M, tr.REMOVE_AHEAD_M, rc.REMOVE_BEHIND_M, rc.REMOVE_AHEAD_M) + 50.0
+    assert all(abs(v["rel"]) < reach for v in seen_v) and all(abs(r["rel"]) < reach for r in seen_r)
+    assert any(abs(v["rel"]) < tr.NEAR_M for v in seen_v) and any(abs(r["rel"]) < rc.NEAR_M for r in seen_r)
     # Le tracteur du banc est posé devant le cycliste dans son sens de marche : vers les s décroissants
     assert any(v["dir"] == -1 and v["rel"] < 0.0 for v in seen_v)
     assert traffic.bench_forced >= 2
@@ -194,7 +195,7 @@ def test_vehicles_met_before_u_turn_never_touch_the_rider_after_it(tmp_path, mon
         for v in t.vehicles:
             if abs(v.s - u) < v.length * 0.5 + 0.85:
                 worst = min(worst, abs(v.lateral - s._lane.m) - v.half_width - tr.RIDER_HALF_WIDTH_M)
-            if v.dir == 1 and 0.0 < v.s - u < tr.PASS_ZONE_M[1] and v.lateral < tr.RIGHT_LANE_M - 0.05:
+            if v.dir == 1 and 0.0 < v.s - u < 30.0 and v.lateral < tr.RIGHT_LANE_M - 0.05:   # 30 m : ancienne PASS_ZONE_M
                 ahead_left += 1                              # devant lui dans son sens, mais pas sur sa voie
         return s.physics.s <= 1500.0
 
