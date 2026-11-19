@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites | Python + GDScript | U19, O25 | Moyenne | En PR (8 novembre, version 5.0, avant J9) |
+| Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites | Python + GDScript | U19, O25 | Moyenne | Fait (fusionné le 11 novembre, #811 ; relu par le lot NT1) |
 
 Demande du propriétaire du 5 novembre 2026 (9 h 28 et 9 h 30) : garder à la fin les mondes demo déjà créés dans le jeu de base, les nettoyer des artefacts de test et leur donner un nom de parcours explicite ; **à faire avant l'installeur** (lot J9). Cahier rédigé le 8 novembre (la demande n'était notée que dans la feuille de route).
 

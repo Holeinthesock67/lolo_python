@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : voitures, camions, tracteurs et cyclistes du décor après un demi-tour | Python, GDScript | N17 | Moyenne | En PR : core et engine, captures low/medium/high à valider (14 novembre), **version 1.x** |
+| 1.x série N : voitures, camions, tracteurs et cyclistes du décor après un demi-tour | Python, GDScript | N17 | Moyenne | **Livré le 15 novembre** (PR #890), **version 1.x** |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ un demi-tour sur le parcours retourné (principe du projet : pas d'exception, un
    l'engine (`test_decor_rebours.gd`, `test_traffic_model.gd`, `test_road_cyclists_*.gd`, `test_living_decor.gd`) au vert.
 2. Captures du banc `circulation_rebours` en low, medium et high, après le demi-tour, validées par le propriétaire.
 3. Banc GPU sur le PC en low, medium et high : attendu neutre (même budget de véhicules et de cyclistes).
+
+## Livraison
+
+Fusionné dans `main` : PR #890 (15 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

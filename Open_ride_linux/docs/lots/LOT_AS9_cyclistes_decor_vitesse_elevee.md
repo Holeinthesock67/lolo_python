@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Cyclistes du décor sans contact à 50–75 km/h : groupe à cheval sur les 60 m de la liste `riders`, places du core recalées sur le cycliste affiché, groupe ralenti qui ne traverse plus la ligne du cycliste | GDScript, Python | AS7, AS8 | Petite | En PR le 14 novembre, banc PC et captures à valider |
+| Cyclistes du décor sans contact à 50–75 km/h : groupe à cheval sur les 60 m de la liste `riders`, places du core recalées sur le cycliste affiché, groupe ralenti qui ne traverse plus la ligne du cycliste | GDScript, Python | AS7, AS8 | Petite | **Livré le 16 novembre** (PR #893) |
 
 Série AS, suite des lots AS7 (cyclistes du décor calculés par le core) et AS8 (groupes de l'engine rattrapés par un groupe
 du core). Lot séparé du volcan (#879), où le défaut a été vu.
@@ -58,7 +58,7 @@ Pas de changement de contrat IPC (la liste reste « au plus 6 cyclistes à moins
 - `engine/tests/unit/test_road_cyclists_limit.gd` (nouveau) : groupe de 3 à cheval sur les 60 m (tous au core, à leur
   place dans la file, aucun contact en 2 s), tête sortie de la liste par l'avant gardée à sa place, recalage sur le
   cycliste affiché, pas de double extrapolation, pas de recalage au-delà de 50 m. Sur `main` : 7 vérifications sur 9 en échec.
-- `core/tests/test_road_cyclists.py::test_no_contact_at_high_speed` (nouveau) : 55, 65 et 75 km/h, 4 graines, 600 s,
+- `core/tests/test_road_cyclists.py` (`test_no_contact_at_high_speed`) (nouveau) : 55, 65 et 75 km/h, 4 graines, 600 s,
   aucun contact du core seul avec le cycliste ni entre groupes ; échoue sur `main` à 65 km/h.
 - `test_road_cyclists_core.gd` mis à jour (l'image de la reprise n'extrapole plus) ; `test_road_cyclists_model.gd`,
   `test_road_cyclists_parity.gd`, `test_road_cyclists_yield.gd` et `core/tests/test_road_cyclists.py` verts.
@@ -88,3 +88,7 @@ vers 60 m (45 à 75 km/h). Restent, hors des signatures du banc, pour un lot sui
 
 Banc `sim_bench.py` sur le volcan (#879) et une démo rapide en low, medium et high, `--speed-kmh 55` : 0 contact attendu,
 budgets GPU 8, 13 et 16 ms, pire image notée ; captures validées par le propriétaire avant fusion.
+
+## Livraison
+
+Fusionné dans `main` : PR #893 (16 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Parcours de démonstration du biome Japon livré avec le jeu, en plus de Hakone et du Fuji du pack Cols célèbres | Python | DB1, JP1–JP8, O37 | Petite | En PR (13 novembre, version 6.0, après DB1, avant NT1 et J9) |
+| Parcours de démonstration du biome Japon livré avec le jeu, en plus de Hakone et du Fuji du pack Cols célèbres | Python | DB1, JP1–JP8, O37 | Petite | Fait (fusionné le 16 novembre, #877 ; relu par le lot NT1) |
 
 Décision du propriétaire du 13 novembre 2026 à 22 h 26 (« Oui je veux un parcours demo en plus des cols ») : le jeu livre aussi une démonstration du Japon. Le plan de la série JP (lot JP8) disait « pas de monde démo Japon », puisque Hakone et le Fuji sont dans le pack ; le propriétaire a tranché le contraire.
 

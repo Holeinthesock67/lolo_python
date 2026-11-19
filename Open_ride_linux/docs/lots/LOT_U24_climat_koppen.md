@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Compilateur : zone climatique des biomes d'après une carte de Köppen-Geiger embarquée, paysages volcaniques | Python | U2 | Petite | En PR le 9 novembre, **version 3.0** |
+| Compilateur : zone climatique des biomes d'après une carte de Köppen-Geiger embarquée, paysages volcaniques | Python | U2 | Petite | **Livré le 12 novembre** (PR #833), **version 3.0** |
 
 ## 1. Objectif
 
@@ -65,3 +65,7 @@ fichier complet et scripts : `/mnt/project-files/mesures/2026-11-09-u24-koppen/`
 | Fuji | méditerranéen 98 %, alpin 1 %, rocaille 1 % | forêt tempérée 59 %, forêt boréale 35 %, prairie 4 %, alpin 1 %, volcanique 0,4 % |
 | Ventoux | forêt 38 %, méditerranéen 36 %, rocaille 12 %, prairie 9 % | forêt 63 %, prairie 15 %, rocaille 12 %, méditerranéen 5 % |
 | Teide | steppe 63 %, désert de sable 31 %, savane 7 % | prairie 59 %, volcanique 31 %, forêt 6 %, steppe 4 % |
+
+## Livraison
+
+Fusionné dans `main` : PR #833 (12 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

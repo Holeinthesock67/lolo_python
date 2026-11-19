@@ -25,6 +25,8 @@ Comportements reproduits (essais réels du 23 et 24 octobre 2026) :
   ponctuelle, coupure, silence des données, contrôle FTMS perdu ou refusé, décrochage du frein
   (`brake_loss`, lot X46 : puissance annoncée qui tombe vers 0 W et vitesse du volant qui baisse, cadence
   inchangée, comme à la séance du 29 octobre) ;
+- **cadence en retard** (lot FR1) : quand le cycliste cesse de pédaler, la cadence annoncée garde son
+  ancienne valeur `CADENCE_LAG_S` s, comme le vrai trainer (la puissance, elle, tombe tout de suite) ;
 - **braquet réel** (lot X46) : avec `chainring` et `sprocket` dans la section `rider`, le cycliste roule à
   braquet fixe (pignon unique) et la cadence annoncée suit le volant du modèle réaliste.
 
@@ -273,6 +275,10 @@ RESPONSES = ("instant", "realiste")
 REALISTE = {"brake_delay_s": 0.6, "brake_tau_up_s": 2.0, "brake_tau_down_s": 4.9,
             "flywheel_kg_m2": 0.6, "notify_jitter_s": 0.04}
 WHEEL_RADIUS_M = 0.336         # rayon de la roue : ramène l'inertie du volant à une masse à la jante
+# Cadence annoncée en retard sur la puissance (journaux du 14 et du 15 novembre, lot FR1) : quand le cycliste
+# arrête de pédaler, le trainer garde l'ancienne cadence environ 1 s ; 1,5 s ici, pour garder de la marge.
+CADENCE_LAG_S = 1.5
+COAST_TAU_S = 8.0              # roue libre : le volant perd 1/e de sa vitesse en 8 s (20 → 14 km/h en 3 s)
 RIDER_TAU_S = 1.0              # le cycliste rattrape sa cadence (braquet fixe) en une seconde environ
 RIDER_RESERVE = 2.5            # puissance maximale du cycliste : 2,5 × son effort habituel
 SUBSTEP_S = 0.01
@@ -441,6 +447,9 @@ class SimTrainer(SimDevice):
         self.brake_loss_from = 0.0
         self.brake_loss_until = 0.0
         self.brake_recovers = True
+        self._cadence_shown = 0.0          # dernière cadence annoncée en pédalant
+        self._coast_kmh = 0.0              # vitesse du volant (modèle simple), qui baisse en roue libre
+        self._pedals_stopped_at: float | None = None   # arrêt de pédalage : cadence gardée CADENCE_LAG_S
         self.pending_att_errors: list[int] = []
         self.pending_silent_responses = 0
         self.commands: list[CpRecord] = []
@@ -590,13 +599,20 @@ class SimTrainer(SimDevice):
             cap = self.rider_max_w if self.rider_max_w is not None else RIDER_RESERVE * max(rider.power_w, 1.0)
             self.power_w = self.model.step(dt, cmd, self._ride_speed(rider), cap)
             return 3.6 * self.model.v
-        if self.mode == "erg" and self.target_w is not None and rider.cadence_rpm > 0:
+        if rider.cadence_rpm <= 0:
+            # Arrêt de pédalage : la puissance mesurée tombe aussitôt (journaux du 14 et du 15 novembre, lot FR1),
+            # seule la cadence annoncée traîne (`_lagged_cadence`) et le volant ralentit en roue libre.
+            self.power_w = 0.0
+            self._coast_kmh *= math.exp(-dt / COAST_TAU_S)
+            return self._coast_kmh if self._coast_kmh > 1.0 else 0.0
+        if self.mode == "erg" and self.target_w is not None:
             goal = self.target_w + 2.0 * math.sin(t * 1.5)
         else:
             goal = rider.power_w
         alpha = 1.0 - math.exp(-dt / max(self.erg_tau_s, 1e-3))
         self.power_w += alpha * (goal - self.power_w)
-        return 3.6 * (max(self.power_w, 0.0) / 0.9) ** (1 / 3) if self.power_w > 0 else 0.0
+        self._coast_kmh = 3.6 * (max(self.power_w, 0.0) / 0.9) ** (1 / 3) if self.power_w > 0 else 0.0
+        return self._coast_kmh
 
     async def _data_loop(self) -> None:
         period = 1.0 / self.ibd_hz
@@ -609,6 +625,18 @@ class SimTrainer(SimDevice):
             data = self.frame(t, dt)
             if data is not None:
                 self.notify(ftms.INDOOR_BIKE_DATA, data)
+
+    def _lagged_cadence(self, t: float, cadence: float) -> float:
+        """Cadence annoncée : à l'arrêt du pédalage, l'ancienne valeur reste `CADENCE_LAG_S` s (lot FR1)."""
+        if cadence > 0:
+            self._cadence_shown, self._pedals_stopped_at = cadence, None
+            return cadence
+        if self._cadence_shown > 0 and self._pedals_stopped_at is None:
+            self._pedals_stopped_at = t
+        if self._pedals_stopped_at is not None and t - self._pedals_stopped_at < CADENCE_LAG_S:
+            return self._cadence_shown
+        self._cadence_shown, self._pedals_stopped_at = 0.0, None
+        return 0.0
 
     def frame(self, t: float, dt: float) -> bytes | None:
         """Avance de `dt` s jusqu'à `t` et renvoie la trame Indoor Bike Data (None pendant un silence)."""
@@ -628,6 +656,7 @@ class SimTrainer(SimDevice):
         if self.model is not None and self.rider.gear is not None and cadence > 0:
             cadence = gear_cadence_rpm(self.model.v, *self.rider.gear)   # braquet fixe : suit le volant
         cadence += 1.5 * math.sin(t * 0.7) if cadence > 0 else 0.0
+        cadence = self._lagged_cadence(t, cadence)
         flags = 0x0004 | 0x0040   # vitesse (bit 0 à 0), cadence, puissance
         fields = (int(round(speed_kmh * 100)), int(round(max(cadence, 0.0) * 2)), int(round(power_w)))
         if not self.relayed_hr_enabled:

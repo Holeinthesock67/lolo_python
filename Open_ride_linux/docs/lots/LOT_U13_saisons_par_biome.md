@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : calendriers de saisons par biome (sèche et des pluies, polaire, aucune) | GDScript | U5, P18 | Petite | **En PR** (12 novembre, **version 3.0**, issue #343) ; branchement dans la scène (poids des biomes passés par `main.gd`) à faire quand `main.gd` sera libre |
+| Engine : calendriers de saisons par biome (sèche et des pluies, polaire, aucune) | GDScript | U5, P18 | Petite | **Livré le 12 novembre** (PR #840) ; suite U13b le 13 novembre (PR #860 : mois au menu, biome sous la roue), **version 3.0** (issue #343) |
 
 ## 1. Objectif
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : rendu des boîtes, des objets et des projectiles, effets de glissade, d'averse et de super-forme, sons | GDScript | GP2, GP6 | Grande | En PR, captures et banc à valider (version 4.0 proposée) |
+| Série GP : rendu des boîtes, des objets et des projectiles, effets de glissade, d'averse et de super-forme, sons | GDScript | GP2, GP6 | Grande | **Livré le 11 novembre** (PR #831), version 4.0 |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 

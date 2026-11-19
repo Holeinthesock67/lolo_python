@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série TT : équilibrage au banc simulé (cycliste virtuel X27), puis recette sur le vélo en étapes de 10 min | Python + recette | TT2 à TT7 | Petite | En revue (banc fait le 8 novembre ; recette du propriétaire à faire) |
+| Série TT : équilibrage au banc simulé (cycliste virtuel X27), puis recette sur le vélo en étapes de 10 min | Python + recette | TT2 à TT7 | Petite | **Livré le 13 novembre** (PR #819, banc et rapport) ; recette du propriétaire à faire |
 
 Série TT (bonus tactiques, version 4.0). Plan de la série : `docs/4.0/PLAN_SERIE_TT.md`, recommandations retenues par le propriétaire le 29 octobre (« ok pour tout », §6 du plan). Cahier rédigé le 8 novembre 2026 (le plan les annonçait, aucun n'existait).
 
@@ -29,3 +29,7 @@ Plan §2 ; outil du cycliste virtuel (lot X27) ; `recettes-physiques/PLAN_SESSIO
 ## 5. Fichiers touchés
 
 `core/src/openride_core/tools/` (banc), `docs/4.0/RAPPORT_EQUILIBRAGE_TT8.md`.
+
+## Livraison
+
+Fusionné dans `main` : PR #819 (13 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

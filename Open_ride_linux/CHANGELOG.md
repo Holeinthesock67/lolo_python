@@ -5,6 +5,60 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
+- En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
+- Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).
+- Portiques et lignes au départ et à l'arrivée de ces montées et sprints ; arches de bonus tous les 5 km pendant toute la balade, et plus seulement sur les 3 premiers kilomètres (lot W21).
+- Dès que le monde est préchargé, la balade part au pédalage, sans repasser par l'accueil ni l'écran Prêt (lot W18).
+- Plus d'à-coups des arbres à l'entrée d'une tuile proche (lot W22).
+- Au bout d'une impasse, la route fait une boucle de retournement d'environ 130 m au lieu de revenir sur place (lot N26).
+
+### Demi-tour complet (lots N22 à N26)
+- Après un demi-tour, le décor se charge dans le sens de la marche : portiques, herbe, détails du sol et gags du mode WTF (lot N22).
+- Voitures, camions, tracteurs et cyclistes du décor circulent aussi à rebours (lot N23) ; les montées du retour ont leurs panneaux d'approche, chiffres peints, spectateurs et parapentes (lot N24) ; les arches de bonus se comptent à rebours, une fois chacune par tour (lot N25).
+- Pendant un entraînement ERG ou un test de FTP, le bout d'un parcours en ligne fait demi-tour tout seul, sans arrêt (bandeau « Bout du parcours : demi-tour, l'entraînement continue ») ; une fois l'entraînement fini, le bout suivant termine la séance (lot N26).
+
+### Grand Prix des objets : voiture d'équipe, Furtif et recette (lots GP4, GP11)
+- Objets « Voiture d'équipe » (remorquage dans l'abri d'un véhicule) et « Furtif » (échappée et vol d'objet) (lot GP4) ; la voiture ne passe plus sous un coureur plus lent et ne touche plus les usagers de la route (correctifs du 16 et du 17 novembre).
+- Recette du Grand Prix en étapes de 10 min et outil de bilan des courses : `python -m openride_core.tools.gp_recette [--dernieres N] [--json]` (lot GP11).
+
+### Bots, braquets et contacts
+- Échelle unique des bots, réglée sur le rouleur : une seule échelle par niveau pour tous les profils (lot T13).
+- Têtes et casques ronds des bots à tous les niveaux de détail ; jusqu'à 11 bots détaillés à tous les préréglages (`BOT_DETAIL_MAX`).
+- Vélodrome : la tactique des bots de l'épreuve est donnée une seule fois, avec une graine commune.
+- Braquets : étagement élargi (0,455 à 2,60, gamme × 1,25 sur la piste), puis pas fixe de 0,5 point de pente par clic, braquet 12 neutre.
+- Cyclistes du décor : rattrapés par un groupe du core, ils s'écartent ou roulent à sa vitesse (lot AS8) ; plus de contact à vitesse élevée, 50 à 75 km/h (lot AS9) ; contacts corrigés par une règle commune aux parcours, au demi-tour et au monde ouvert, liste `riders` de 10 cyclistes (lot AS10, contrat IPC révision 1.18).
+
+### Fin de séance et modes
+- Fin de séance : « Rejouer » (même parcours, même mode, mêmes choix), « Menu principal », et Y ramène au menu ; la 2e partie enchaînée ne reste plus figée ; les feux verts « GO ! » disparaissent dès l'arrêt de la séance.
+- Cyber-Rogue : chaque Z répond (son, animation, raison d'un refus), surchauffe et baisse d'adrénaline expliquées, vitesse et vue sur le vélo (lot R23, contrat IPC révision 1.17) ; le boss reste à l'écran après une phase gagnée.
+- Mode WTF : œufs visibles sur le porte-bagages, boule du Katamari qui roule dans le bon sens.
+
+### Essais physiques guidés (lots EP1 à EP3)
+- `run --autostart --seance FICHIER` joue au lancement une liste de commandes du menu (parcours, bots, mode, épreuve de piste…) : l'essai part sur le terrain voulu (lot EP1).
+- `python -m openride_core.tools.essai_physique` : une fiche par essai (`data/essais/*.toml`), étapes déclenchées par le journal de séance (lot EP2) ; la consigne s'affiche dans le bandeau du jeu, plein écran compris (lot EP3).
+
+### Outils de test et file des bancs du PC
+- Banc simulé : options `--seasons`, `--day-night` et `--month` ; les bancs tournent en été par défaut.
+- Banc des menus : un seul départ du monde ouvert, l'étape gabarit `depart_monde_ouvert`, que tous les scénarios du monde ouvert utilisent ; un départ recopié est refusé.
+- `scripts/file_bancs.py` : file des bancs du PC écrite en TOML, en étapes courtes avec reprise (une étape réussie n'est pas rejouée sur la même tête), fumées d'abord, cache séparé pour une PR qui change le format du cache.
+- e2e : le + attend le départ (braquet 12 → 12 intermittent) ; captures de test avec le menu à jour.
+
+### Contrat IPC
+- Révisions 1.17 (retours du Cyber-Rogue, R23), 1.18 (liste `riders`, AS10) et 1.19 (parcours propres à un mode et boîtes prises, GP13 et GP14) ; le core annonce `rev` « 1.19 ». La 1.20 est prévue pour le lot AS11 (en revue).
+
+### Aussi sur `main` depuis la 2.0.0, sans note détaillée ici
+Voir les cahiers de `docs/lots/` (ligne de statut et section « Livraison ») : jour et nuit, saisons, saisons par biome et mois au menu (P7, P18, P19, U13, U13b) ; lumières de nuit (P35) ; biomes au compilateur, variantes régionales, climat de Köppen, sons d'ambiance, constructions et faune par biome (U2, U4, U24, U11, U23) ; biomes Japon, Atlantique et hauts plateaux, cols Khardung La et Abra Málaga, glissières japonaises (JP1 à JP8, AT1, AT2, HP2) ; bonus tactiques (TT1 à TT8, contrat 1.13) ; Grand Prix des objets au menu, objets, HUD et bilan (GP2, GP3, GP5, GP7, GP8, GP9) ; vélodrome couvert (VD1 à VD7, VD9, VD10) ; peloton de 11 bots (PL1) ; tactique des bots à profil (Y10) ; séance conseillée (CO1, CO3 à CO6, CO8, CO9) ; collection de cartes (BC1 à BC6) ; fin et lisibilité du Cyber-Rogue (R21, R22) ; demi-tour depuis la pause et Y maintenu, bots changés en pause, bilan en tuiles (N17, N18, N20, N21, contrat 1.9 à 1.11) ; paquets installables hors du dépôt (J4) ; vent de la météo du jour et roue lenticulaire (P33, P34) ; fermeture de Godot (X58).
+
+### Plus de faux « frein lâché » quand on arrête de pédaler (lot FR1)
+- Un arrêt net de pédalage (fin de salle du Cyber-Rogue, fin d'épreuve au vélodrome) n'est plus pris pour un frein lâché par le trainer : la cadence annoncée garde son ancienne valeur environ une seconde après l'arrêt, et le jeu attend maintenant 2 s de pédales qui tournent vraiment avant de reprendre le contrôle du trainer. Même règle dans tous les modes.
+- Le rapport des décrochages applique la même règle : un arrêt suivi d'une reprise n'est plus compté comme une faute du trainer.
+
+### Parcours de démonstration prêts pour la version finale (lot NT1)
+- Chaque parcours de démonstration a sa description sur la carte du parcours, au menu (comme le vélodrome et les cols célèbres) : par exemple « Montée de 5 km de la forêt aux alpages, avec un lacet de deux épingles serrées » pour le Col du lacet.
+- Les démonstrations déjà installées sont réécrites une fois pour recevoir leur description : « Contenus de départ » les propose (« en partie installé ») ; le Col du lacet se met à jour seul au lancement d'une séance. Les parcours du joueur ne sont jamais touchés.
+- Liste finale du jeu de base vérifiée : Col du lacet, Tour des nouveaux paysages, Route des Érables, Récif des tortues, Volcan en flammes, Route du Sud et Route du Grand Nord dans « Parcours », le Circuit des Prés dans le Grand Prix et le Vélodrome 250 m dans le mode Vélodrome, plus le pack Cols célèbres ; aucun nom de test.
+
 ### Une démonstration pour chaque biome (lot DB3)
 - Deux nouveaux parcours de démonstration, pour que chaque biome du jeu ait le sien. La « Route du Sud » fait 12 km des oliviers au delta : maquis méditerranéen, steppe et campement de yourtes, dunes et oasis, savane et village de cases, jungle, puis zones humides et village sur pilotis (2 km chacun). La « Route du Grand Nord » est une boucle de 10 km : taïga et lac, toundra et refuge, banquise et station polaire au point le plus haut, puis retour par la toundra et la taïga.
 - Trace, relief et décor entièrement inventés (aucune donnée réelle). Les deux parcours sont ajoutés à la prochaine installation des contenus de départ ; aucun autre parcours n'est réécrit.

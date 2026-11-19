@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : groupes de cyclistes du décor calculés par le core et sources d'abri | Python + GDScript | AS2, AS6 (AS4 conseillé) | Grande | Prêt (version 2.0) |
+| Série AS : groupes de cyclistes du décor calculés par le core et sources d'abri | Python + GDScript | AS2, AS6 (AS4 conseillé) | Grande | **Livré le 5 novembre** (PR #704 ; suite #719 le 6 novembre), version 2.0 |
 
 Série AS, version 2.0. Demande du propriétaire du 29 octobre 2026 (« abri derrière véhicules ou groupes à intégrer »).
 
@@ -81,3 +81,7 @@ Le lot dépend d'AS2 (écart latéral, `lane_m`) et d'AS6 (circulation du core, 
 - un cycliste qui quitte la route laisse son avatar caché à un suivant de même apparence (3 avatars de réserve par apparence au plus) ;
 - banc PC du 5 novembre (GTX 1060, tête 5a301a05) : affichage à 0,30 ms pour 16 avatars, mais p99 GPU en hausse (low 6,86 contre 5,58 ms, medium 14,76 contre 13,88, high 18,19 contre 17,48, intégrée high 24,66) et garde-fou à-coups en échec en high, à l'entrée des avatars dans le champ. Correctifs : préchauffage au chargement (`warm_up`, après la route, comme les portiques : niveaux du préréglage des 16 apparences construits, une racine de réserve par apparence montrée minuscule devant la caméra trois images), création en roulant notée dans la sonde (étape « cyclistes » de `saccades.csv`), ombre portée au niveau 0 seulement ; scènes de près du banc visuel `cyclistes_decor_tenues` (caméra de côté, trois tenues) et `cyclistes_decor_double` (groupe qui double à gauche) ;
 - coût : ligne `road_cyclists_view_frame` de `perf_budgets.json` (16 avatars, 0,5 ms sur le PC, à mesurer) ; bancs GPU low, medium et high et captures (`abri_cyclistes_decor*`, `decor_vivant`, `voies_depassement`) sur le PC, validés par le propriétaire avant la fusion. Si un banc dépasse son budget (6, 12 ou 14 ms), on baisse d'abord le nombre de cyclistes du préréglage concerné (`LIVING`).
+
+## Livraison
+
+Fusionné dans `main` : PR #704 (5 novembre) et #719 (6 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

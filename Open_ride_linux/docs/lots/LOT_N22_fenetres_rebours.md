@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : fenêtres d'affichage dans le sens de la marche après un demi-tour | GDScript | N17 | Petite | En PR : engine seul, captures low/medium/high à valider (14 novembre), **version 1.x** |
+| 1.x série N : fenêtres d'affichage dans le sens de la marche après un demi-tour | GDScript | N17 | Petite | **Livré le 15 novembre** (PR #889), **version 1.x** |
 
 ## 1. Objectif
 
@@ -28,3 +28,7 @@ cycliste, du mauvais côté.
    `test_wtf_scene.gd`).
 2. Captures avant/après en low, medium et high (`vitrine_portiques.gd`, vues `loin_sprint` et `rebours_loin_sprint` : portique à 150 m) validées par le propriétaire.
 3. Banc GPU sur le PC en low, medium et high : attendu neutre (même nombre de tronçons, seulement placés de l'autre côté).
+
+## Livraison
+
+Fusionné dans `main` : PR #889 (15 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.
