@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série Y (rendu) : spectateurs et passants remodelés (tubes profilés, coude articulé, mains, chaussures, visage), tenues plus variées (short, jupe, veste, casquette, chapeau, barbe, moustache, lunettes de soleil, queue de cheval, chignon, sac à dos, écharpe de supporter), huit gestes d'encouragement et quatre attitudes au calme, tête qui suit le cycliste, drapeaux à motifs, pancartes, taille et carrure tirées par personne, deux niveaux de détail | GDScript + shader | Y14, P15, P21 | Moyenne | **En PR** (prévu en 5.0, lancé le 5 novembre) ; captures à valider, banc PC en low, medium et high |
+| Série Y (rendu) : spectateurs et passants remodelés (tubes profilés, coude articulé, mains, chaussures, visage), tenues plus variées (short, jupe, veste, casquette, chapeau, barbe, moustache, lunettes de soleil, queue de cheval, chignon, sac à dos, écharpe de supporter), huit gestes d'encouragement et quatre attitudes au calme, tête qui suit le cycliste, drapeaux à motifs, pancartes, taille et carrure tirées par personne, deux niveaux de détail | GDScript + shader | Y14, P15, P21 | Moyenne | **Livré le 5 novembre** (PR #715), version 5.0 |
 
 ## 1. Objectif
 
@@ -56,3 +56,7 @@ Banc PC du 5 novembre (GTX 1060, montée du village avec `--crowd all`, tête be
 - Banc PC (fil de fusion) : main contre la branche, low, medium et high, avec `--probe`. Aucun monde de banc n'a de montée d'au moins 3 km (démo et village : 1,5 km), donc aucun spectateur par défaut ; `--crowd all` (engine `--crowd=all`, réservé aux bancs) les place aussi sur la montée de 1,5 km du village. Sur main, l'option n'existe pas : comparer la branche avec `--crowd all` à main sans spectateurs revient à mesurer tout le coût des spectateurs, Y14 compris.
   - Spectateurs (montée du village) : `sim_bench.py --scenario montee_descente --world village --crowd all --probe --quality Q`.
   - Passants (deux villages, effort constant) : `sim_bench.py --scenario rendu_invisible --world village --probe --quality Q`.
+
+## Livraison
+
+Fusionné dans `main` : PR #715 (5 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

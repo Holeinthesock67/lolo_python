@@ -9,6 +9,10 @@ extends RefCounted
 ##   pendant une lecture se fondent en une seule (la plus récente).
 ## - `poll()` (fil principal, à chaque image) échange la route et rend {} ou la révision appliquée ; la
 ##   route d'avant n'est jamais modifiée (les travaux de maillage en cours la gardent).
+## - Lot W21 : `segments.json` du dossier de séance (écrit par le core, montées et sprints trouvés en roulant,
+##   même schéma que la couche segments d'un `.world`) relu quand il change (lu au plus toutes les 2 s) ;
+##   seuls les segments déjà dans la route lue sont posés sur la route (`route.segments`) ; `poll()` rend alors
+##   `segments` (la liste posée), aussi après chaque route échangée.
 ## - `previews(s)` : amorces de 500 m des branches non suivies des carrefours à moins de 1 500 m devant.
 ## - Recentrage : `recenter_target` et `to_render` (positions 64 bits ramenées à l'origine de rendu,
 ##   multiple de 1 000 m, avant la conversion en 32 bits).
@@ -20,6 +24,8 @@ const BgTasks := preload("res://scripts/bg_tasks.gd")
 const PREVIEW_AHEAD_M := 1500.0
 const RECENTER_STEP_M := 1000.0
 const DEFAULT_RECENTER_M := 10000.0
+const SEGMENTS_FILE := "segments.json"
+const SEGMENTS_CHECK_MS := 2000
 
 var world_dir := ""
 var route = null
@@ -34,6 +40,9 @@ var _result := {}
 var _wanted_rev := 0         # plus haute révision annoncée par le core
 var _failed_rev := 0         # dernière révision dont la lecture a échoué (pas de nouvelle tentative)
 var _running_rev := 0
+var _segments_raw: Array = []   # dernier contenu valide de segments.json (lot W21)
+var _segments_text := ""
+var _segments_check_ms := -SEGMENTS_CHECK_MS
 
 
 # --- lecture -----------------------------------------------------------------------------
@@ -89,6 +98,9 @@ func close() -> void:
 		_task = -1
 	route = null
 	junctions = []
+	_segments_raw = []
+	_segments_text = ""
+	_segments_check_ms = -SEGMENTS_CHECK_MS
 	revision = 0
 	_wanted_rev = 0
 	_failed_rev = 0
@@ -149,8 +161,48 @@ func _read_job(dir: String, from_part: int, base, live_rev: int) -> void:
 func poll() -> Dictionary:
 	if _task < 0 or not BgTasks.done(_task):
 		_maybe_start()
+		if check_segments():
+			return {"segments": route.segments}
 		return {}
 	return _finish()
+
+
+## Lot W21 : relit `segments.json` s'il a changé depuis la dernière lecture (au plus toutes les 2 s,
+## `force` pour les tests) et le pose sur la route. Renvoie vrai si la liste posée a changé.
+func check_segments(force: bool = false) -> bool:
+	if route == null or world_dir == "":
+		return false
+	var now := Time.get_ticks_msec()
+	if not force and now - _segments_check_ms < SEGMENTS_CHECK_MS:
+		return false
+	_segments_check_ms = now
+	var path := world_dir.path_join(SEGMENTS_FILE)
+	if not FileAccess.file_exists(path):
+		return false
+	var text := FileAccess.get_file_as_string(path)   # quelques Ko ; la date du fichier est à la seconde près
+	if text == _segments_text and not force:
+		return false
+	var doc = JSON.parse_string(text)
+	if typeof(doc) != TYPE_DICTIONARY or typeof(doc.get("segments")) != TYPE_ARRAY:
+		return false                 # fichier abîmé : on garde la liste d'avant
+	_segments_text = text
+	_segments_raw = doc["segments"]
+	return apply_segments(route)
+
+
+## Pose sur `r` les segments connus dont la fin est dans la route lue ; vrai si la liste a changé.
+func apply_segments(r) -> bool:
+	if r == null:
+		return false
+	var before: Array = r.segments
+	var inside: Array = []
+	for seg in _segments_raw:
+		if typeof(seg) == TYPE_DICTIONARY and typeof(seg.get("s_end")) in [TYPE_INT, TYPE_FLOAT] \
+				and float(seg["s_end"]) <= float(r.length_m) + 0.01:
+			inside.append(seg)
+	if not r.load_segments_dict({"version": "1.0", "segments": inside}):
+		print("Monde ouvert : segments ignorés : %s" % r.segments_error)
+	return str(r.segments) != str(before)
 
 
 ## Attend la fin de la lecture en cours (tests, fermeture) puis applique son résultat.
@@ -171,7 +223,10 @@ func _finish() -> Dictionary:
 		junctions = res["junctions"]
 		revision = int(res["revision"])
 		last_error = ""
-		out = {"revision": revision, "from_part": int(res["from_part"]), "route": route, "junctions": junctions}
+		check_segments(true)
+		apply_segments(route)        # la route échangée ne connaît pas encore les segments (lot W21)
+		out = {"revision": revision, "from_part": int(res["from_part"]), "route": route, "junctions": junctions,
+			"segments": route.segments}
 	else:
 		last_error = str(res.get("error", "lecture impossible"))
 		_failed_rev = int(res.get("revision", 0))

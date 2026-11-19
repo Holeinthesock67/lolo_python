@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : bots réglés depuis les menus (écran Prêt et écran de pause) | Python + GDScript | O3, O4, O7, O32, O35, PL1 | Moyenne | En PR : interne (contrat et menus), **version 1.x**, contrat IPC révision 1.9 |
+| 1.x série N : bots réglés depuis les menus (écran Prêt et écran de pause) | Python + GDScript | O3, O4, O7, O32, O35, PL1 | Moyenne | **Livré le 8 novembre** (PR #789), contrat IPC 1.9, **version 1.x** |
 
 ## 1. Objectif
 
@@ -57,3 +57,7 @@ Aucune recette sur le vélo : les critères se vérifient en séance simulée.
 ## 8. Hors périmètre
 
 Bots à profil choisis un par un sur l'écran de pause avec leur niveau propre (la liste `BOT_CHOICES` de l'écran Prêt reste la même) ; liste de bots dans Réglages et `config.toml` (voir §2) ; bots du Dernier survivant et du Grand Prix (composés par le core).
+
+## Livraison
+
+Fusionné dans `main` : PR #789 (8 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

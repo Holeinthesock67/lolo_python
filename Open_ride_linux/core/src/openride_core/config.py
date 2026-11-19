@@ -269,8 +269,8 @@ class DepartConfig:
     et quelques secondes de pédalage avant de lancer chrono, distance, ERG et bots ; `immediat` part à
     la commande `start`, comme avant."""
     mode: str = field(default_factory=lambda: DEPART_MODE_DEFAULT)
-    cadence_rpm: int = 30          # cadence à tenir pour partir (ou 40 W si le trainer ne donne pas la cadence)
-    duree_s: int = 3               # secondes de pédalage cumulées, à-coups de moins de 2 s tolérés
+    cadence_rpm: int = 30          # cadence à tenir pour partir (ou 40 W : la cadence du trainer arrive en retard)
+    duree_s: int = 1               # secondes de pédalage cumulées, à-coups de moins de 2 s tolérés (sas du 15/11)
     attente_decor_s: int = 60      # au plus : l'engine n'a pas dit son décor prêt (ancien engine, sans engine)
 
 

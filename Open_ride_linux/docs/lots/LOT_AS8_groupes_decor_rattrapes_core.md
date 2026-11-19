@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Un groupe de cyclistes de l'engine rattrapé par un groupe du core plus rapide s'écarte et le laisse passer (contacts vers 60 m sur les cols) | GDScript | AS7 | Petite | En PR le 13 novembre, banc PC et captures à valider |
+| Un groupe de cyclistes de l'engine rattrapé par un groupe du core plus rapide s'écarte et le laisse passer (contacts vers 60 m sur les cols) | GDScript | AS7 | Petite | **Livré le 14 novembre** (PR #876) |
 
 Série AS, suite du lot AS7 (même famille de cause que le correctif #719 du 6 novembre).
 
@@ -14,7 +14,7 @@ Recette PC rPK1 du 13 novembre (pack « Cols célèbres », PR #867), compteur d
 Stelvio : 6, 4 et 57 ; Ticlio : 0, 6 et 12 ; pires images jusqu'à 150 ms.
 
 Cause : dans `road_cyclists_model.gd`, un groupe `core` n'est déplacé que par le core (`_move` l'extrapole et s'arrête là), et
-`core/road_cyclists.py` ne connaît pas les groupes que l'engine tire seul (décor lointain, au-delà de 55 m, ou liste pleine).
+`core/src/openride_core/road_cyclists.py` ne connaît pas les groupes que l'engine tire seul (décor lointain, au-delà de 55 m, ou liste pleine).
 Un groupe du core plus rapide traverse donc un groupe `ahead` ou `oncoming` de l'engine qui roule sur sa ligne. L'inverse
 (groupe de l'engine plus rapide qui rattrape un groupe du core) était déjà réglé par le dépassement du lot P32.
 
@@ -50,3 +50,7 @@ la règle ne joue qu'en présence d'un groupe `core`.
 
 Banc sur les `.world` du pack Cols (`paquet/packs/cols_celebres/routes` : Hakone, Stelvio, Ticlio) en low, medium et high :
 0 contact attendu, budgets GPU 8, 13 et 16 ms, pire image notée ; captures validées par le propriétaire avant fusion.
+
+## Livraison
+
+Fusionné dans `main` : PR #876 (14 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.

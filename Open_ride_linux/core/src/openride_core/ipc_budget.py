@@ -211,24 +211,32 @@ def _extras_1_5(d: dict[str, Any]) -> None:
                        "data": "downloading"}
     # Lot AS7 : cyclistes du décor proches ; lot AS10 (révision 1.18) : au plus 10, dans la trame qui suit celle de
     # `vehicles`, jamais avec elle : la trame la plus lourde porte l'une ou l'autre liste, la plus longue des deux
+    # Lot AS11 (révision 1.20) : tous les usagers, par parties d'au plus ROAD_PART_MAX, une partie par trame, avec
+    # `road_part` = [rang, parties]
     vehicles, riders = worst_vehicles(), worst_riders()
     if size({"riders": riders}) >= size({"vehicles": vehicles}):
         d["riders"] = riders
     else:
         d["vehicles"] = vehicles
+    d["road_part"] = [99, 99]
 
 
 def worst_vehicles() -> list[dict[str, Any]]:
-    """Lot AS6 : au plus 4 véhicules proches, chacun au plus long (identifiant de case, sorte la plus longue)."""
+    """Lot AS6 : véhicules, chacun au plus long (identifiant de case, sorte la plus longue) ; lot AS11 : une partie
+    de ROAD_PART_MAX."""
+    from .session import ROAD_PART_MAX
+
     return [{"id": "v1000099", "kind": "tractor", "color": 7, "s": 123_456.79 + i, "dir": -1,
-             "v": 22.22, "lane_m": -2.33} for i in range(4)]
+             "v": 22.22, "lane_m": -2.33} for i in range(ROAD_PART_MAX)]
 
 
 def worst_riders() -> list[dict[str, Any]]:
-    """Lot AS7 : cyclistes du décor proches (lot AS10 : au plus `STATE_MAX`, 10), identifiants de case et
-    d'apparence au plus long."""
+    """Lot AS7 : cyclistes du décor, identifiants de case et d'apparence au plus long (lot AS11 : une partie de
+    ROAD_PART_MAX au lieu des `STATE_MAX` plus proches)."""
+    from .session import ROAD_PART_MAX
+
     return [{"id": "c1000099-5", "s": 123_456.79 + i, "dir": -1, "v": 19.44, "lane_m": -2.33,
-             "look": 1_048_575} for i in range(road_cyclists.STATE_MAX)]
+             "look": 1_048_575} for i in range(ROAD_PART_MAX)]
 
 
 PELOTON_BOTS = 12   # lot PL1 : 11 bots et un fantôme (bots.MAX_BOTS)

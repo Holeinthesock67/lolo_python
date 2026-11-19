@@ -21,7 +21,7 @@ import signal
 import threading
 import time
 import zlib
-from collections import deque
+from collections import Counter, deque
 from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
@@ -46,6 +46,8 @@ from .mock_driver import MockDriver
 from .garage import GarageError, ProgressionService, estimate_w_prime, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
+from . import open_world_segments as ow_segments
+from .open_world_segments import LiveSegments, OwIndex
 from .physics import PhysicsParams, RiderPhysics, draft_saving_w, equilibrium_speed, resistive_force
 from . import surface_physics, velodrome
 from . import powerups as powerups_mod, profiles
@@ -61,6 +63,7 @@ from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import bot_tactics
 from . import draft as draft_mod
 from . import road_cyclists as road_cyclists_mod
+from . import road_space as road_space_mod
 from . import traffic as traffic_mod
 from .wind import CALM, WindModel, apparent_yaw_deg, cross_component, grade_offset_pct, head_component, wind_frame
 from . import survivor as survivor_mod
@@ -87,6 +90,7 @@ log = logging.getLogger("core")
 DT_PHYSICS = 0.02        # 50 Hz
 SCAN_ATTEMPTS = 3        # recherche du menu Appareils : essais si BlueZ répond « InProgress »
 DT_STATE = 1.0 / 30.0    # 30 Hz
+OW_SEGMENTS_PERIOD_S = 2.0   # monde ouvert : montées et sprints recherchés sur la route connue (lot W20)
 STATS_PERIOD_S = 60.0
 # Commandes qui annulent un départ au pédalage en attente (lot O36) ; un nouveau `start` le remplace.
 START_CANCEL_COMMANDS = ("pause", "end_session", "select_workout", "start_run", "start_open_world",
@@ -98,8 +102,8 @@ MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 RETIRED_IMPORT_COMMANDS = ("list_imports", "import_workout")
 BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
-VEHICLES_FRAME_EVERY = 3   # liste `vehicles` 10 fois par seconde (lot AS6), extrapolée par l'engine
-RIDERS_FRAME_AT = 1        # lot AS10 : liste `riders` (10 Hz aussi) dans la trame qui suit celle de `vehicles`
+ROAD_PART_MAX = 8          # lot AS11 (révision 1.20) : usagers de la route par partie de `vehicles` ou `riders`, une partie
+                           # par trame (10 Hz pour un tour de 3 parties : véhicules, deux parties de cyclistes du décor)
 ESCORT_GAP_M = traffic_mod.DRAFT_REF_GAP_M   # voiture d'équipe (lot GP4) : 3 m du pare-chocs à la roue avant (abri de référence d'AS6)
 ESCORT_COLOR = 0           # teinte de la voiture d'équipe (indice des couleurs de la circulation)
 TRAFFIC_SEED = 0         # graine de la circulation : celle de traffic_model.gd (lot AS6)
@@ -368,6 +372,8 @@ class CoreSession:
         self._lane = self._rider_lane()   # écart à l'axe du cycliste (lot AS2)
         self.traffic: traffic_mod.Traffic | None = None   # circulation de la route (lot AS6)
         self.road_cyclists: road_cyclists_mod.RoadCyclists | None = None   # cyclistes du décor (lot AS7)
+        self.road_space_counts: Counter[str] = Counter()   # lot AS11 : places corrigées par le registre de la chaussée
+        self._road_queue: list[tuple[str, int, int, list[str]]] = []   # lot AS11 : parties des listes à envoyer
         self._surface_widths: dict[str, float] | None = None   # largeurs des chemins du thème (option gravel)
         self._world_src: tuple[Route, Path, dict] | None = None   # route, dossier et manifeste du .world choisi
         self._suction = 0.0           # aspiration d'un véhicule qui double (lot AS6)
@@ -461,6 +467,8 @@ class CoreSession:
         self._identify: dict[str, Any] | None = None
         # Monde ouvert (lot W9) : générateur et route engagée ; `worldgen_cmd` remplace la commande (essais).
         self.openworld: OpenWorld | None = None
+        self._ow_segments: LiveSegments | None = None   # montées et sprints du monde ouvert (lot W20)
+        self._ow_seg_at = -1e9
         self.worldgen_cmd: list[str] | None = None
         self.worldmenu: Any = None                 # WorldMenu du lot W11, créé à la première demande ; remplaçable (essais)
         self.worldgen_args: list[str] = []
@@ -2059,6 +2067,10 @@ class CoreSession:
                 self._sync_erg_state()
                 self.state.route_id = f"ow:{ow.id}"
                 self.state.route_length_m = ow.route.length_m
+                # lot W20 : plus aucun segment du parcours chargé avant ; ceux du monde ouvert viennent en roulant
+                self._segments = ()
+                self._ow_segments = LiveSegments(index=OwIndex.load(self._ow_index_path()))
+                self._ow_seg_at = -1e9
                 self.physics.place(0.0)
                 self.state.dir = None
                 self._set_session_clock(0.0)
@@ -2072,12 +2084,84 @@ class CoreSession:
             self.state.route_length_m = ow.route.length_m
         s = self.physics.s
         self.state.open_world = ow.state_field(s)
+        self._ow_segments_tick(ow, s, now_mono)
         if st == "RUNNING" and ow.should_pause(s):
             log.warning("Plus de route connue devant (%.0f m) : pause.", ow.known_ahead(s))
             self._set_state("PAUSED", "world_data")
         elif st == "PAUSED" and self.state.pause_reason == "world_data" and ow.can_resume(s):
             log.info("Route de nouveau connue (%.0f m) : reprise.", ow.known_ahead(s))
             self._set_state("RUNNING")
+
+    def _ow_index_path(self) -> Path:
+        """Index des segments du monde ouvert du profil, à côté de ses records (lot W20)."""
+        return Path(self.records_path).with_name(ow_segments.INDEX_NAME)
+
+    def _ow_segments_tick(self, ow: OpenWorld, s: float, now_mono: float) -> None:
+        """Montées et sprints du monde ouvert (lot W20) : détectés sur la route connue toutes les
+        `OW_SEGMENTS_PERIOD_S` secondes, ajoutés au mode classique, retirés si la route change sous eux."""
+        live = self._ow_segments
+        if live is None or ow.route is None or not ow.route.ready or now_mono - self._ow_seg_at < OW_SEGMENTS_PERIOD_S:
+            return
+        self._ow_seg_at = now_mono
+        try:
+            win = ow_segments.route_window(ow.route, s - ow_segments.BEHIND_M)
+        except WorldError:
+            return
+        added, removed = live.update(win, s)
+        if not added and not removed:
+            return
+        if self.race is not None:
+            self.race.drop_segments(removed)
+            self.race.add_segments(added)
+        self._segments = tuple(live.accepted)
+        self._write_ow_segments(ow, s)
+        for seg in added:
+            log.info("Monde ouvert : %s « %s » retenue de %.0f à %.0f m.",
+                     "montée" if seg.type == "climb" else "sprint", seg.name, seg.s_start, seg.s_end)
+        if removed:
+            log.info("Monde ouvert : %d segment(s) retiré(s), route changée après un carrefour.", len(removed))
+
+    def _write_ow_segments(self, ow: OpenWorld, s: float) -> None:
+        """Lot W21 : `segments.json` du monde vivant, que l'engine relit pour poser portiques et panneaux ;
+        écrit hors de la boucle à 50 Hz."""
+        if ow.folder is None or ow.route is None or self._ow_segments is None:
+            return
+        layer = ow_segments.live_layer(self._ow_segments.accepted, ow.route.base_m, s)
+        folder = ow.folder
+
+        def write() -> None:
+            try:
+                ow_segments.write_live_layer(folder, layer)
+            except OSError as exc:
+                log.warning("Segments du monde ouvert non écrits pour l'engine : %s", exc)
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            write()
+            return
+        self._spawn(asyncio.to_thread(write))
+
+    def _save_ow_index(self) -> None:
+        """Index des segments du monde ouvert écrit hors de la boucle à 50 Hz, avec les records."""
+        live = self._ow_segments
+        if live is None or not live.index.dirty or not self._records_writable:
+            return
+        snapshot, path = copy.deepcopy(live.index), self._ow_index_path()
+        live.index.dirty = False
+
+        def save() -> None:
+            try:
+                snapshot.save(path)
+            except OSError as exc:
+                log.error("Index des segments du monde ouvert non écrit (%s) : %s", path, exc)
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            save()
+            return
+        self._spawn(asyncio.to_thread(save))
 
     def _set_session_clock(self, t: float) -> None:
         """Remet le temps de séance (nouveau parcours, reprise d'un journal) ; la fenêtre de la puissance 3 s
@@ -3278,8 +3362,10 @@ class CoreSession:
         plain = PhysicsParams.from_config(self.cfg)
         gain_mode = "off" if header is None else ("zero" if self._base_params == plain else "compute")
         if classic:
+            ow = self.openworld is not None   # lot W20 : records communs à toutes les balades, segments en roulant
             self.race = ClassicRace(
-                route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
+                route_id=ow_segments.RECORDS_ROUTE_ID if ow else (self.state.route_id or "demo"),
+                segments=self._segments, length_m=route.length_m, open_ended=ow,
                 loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
                 powerups_on=self.cfg.powerups.mode != "off",
                 powerup_set=self.cfg.powerups.mode if self.cfg.powerups.mode != "off" else "classiques",
@@ -3322,6 +3408,7 @@ class CoreSession:
         if race.book_dirty:
             race.book_dirty = False
             self._save_records(race.book)
+            self._save_ow_index()   # lot W20 : identifiants des segments du monde ouvert qui ont un record
 
     def _segment_gain(self, job: GainJob) -> None:
         """`equipment_gain_s` d'un passage (lot V5) : simulation hors de la boucle à 50 Hz."""
@@ -3775,6 +3862,10 @@ class CoreSession:
             self._step_grandprix(dt, power_used)
         if self.track_event is not None:
             self._track_after_bots()
+        if self.bots or traffic is not None:
+            # Lot AS11 : une seule règle pour tous les usagers de la chaussée, dans les deux voies, à la fin du pas
+            # (places finales : bots et Grand Prix compris), après les intentions de chacun
+            self._road_space_step(route, traffic, self.road_cyclists if traffic is not None else None)
 
         if race:
             race.step(self._t_session, dt, self.physics.s, m.power_w, self.bots)
@@ -3835,6 +3926,10 @@ class CoreSession:
                 # à rebours (lot N17), le départ du parcours est l'arrivée
                 log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
                 self._finish(True)
+        elif self.openworld is not None and self.openworld.finish_s is not None and st.s >= self.openworld.finish_s:
+            # lot W19 : destination atteinte, ou boucle revenue au départ
+            log.info("Monde ouvert : arrivée atteinte (%s, %.0f m).", self.openworld.nav, st.s)
+            self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
             self._finish(True)
@@ -3972,6 +4067,7 @@ class CoreSession:
         riders_m: list[road_cyclists_mod.Rider] = []
         road_users: list[Any] = []                    # tous les usagers de la route (voitures d'équipe, lot GP4)
         rider_u = self.physics.s
+        cyclists: road_cyclists_mod.RoadCyclists | None = None
         if traffic is not None:
             # Lot N23 : à rebours, circulation et cyclistes du décor roulent sur le parcours retourné (u = L - s),
             # où le cycliste avance encore vers les u croissants, sur la droite de son sens de marche ; les bots,
@@ -4038,9 +4134,14 @@ class CoreSession:
         runners += [runner(b.id, b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
                     if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None
                     and (length is None or is_loop or b.s < length)]   # arrivé : arrêté sur la ligne, hors du jeu (lot PL1)
+        # Lot AS11 (règle unique) : les coureurs du sens du parcours se placent parmi tous les usagers de ce sens, pas
+        # seulement ceux proches du cycliste (à rebours, les bots, en face, rattrapaient sans les voir les cyclistes du
+        # décor de leur sens : rejeu Route du Sud, 295 contacts « bot / décor »)
         runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
-                                                       length=v.length)) for v in near if v.dir == 1]
-        runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
+                                                       length=v.length))
+                    for v in road_users if isinstance(v, traffic_mod.Vehicle) and v.dir == 1]
+        runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False))
+                    for r in road_users if isinstance(r, road_cyclists_mod.Rider) and r.dir == 1]
         draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
                                self._half_at(route))
         if reverse and traffic is not None:
@@ -4085,27 +4186,149 @@ class CoreSession:
             if base is not None:
                 bot.params.cda_m2 = base * (1.0 - getattr(bot, "push", 0.0))
 
-    def _fill_vehicles_frame(self) -> None:
-        """Liste `vehicles` une trame sur trois (10 Hz, lot AS6) : au plus 4 véhicules à moins de 150 m, les
-        voitures d'équipe du Grand Prix d'abord (lot GP4)."""
-        traffic = self.traffic
-        self.state.vehicles = None
-        if self._frame_count % VEHICLES_FRAME_EVERY != 0:
-            return
-        cars = [v for v in self._escorts if abs(v.s - self.physics.s) < traffic_mod.NEAR_M]
+    def _road_space_step(self, route: Route | None, traffic: traffic_mod.Traffic | None,
+                         cyclists: road_cyclists_mod.RoadCyclists | None) -> None:
+        """Registre de la chaussée (lot AS11) : cycliste, voitures d'équipe, bots, véhicules et groupes de cyclistes du
+        décor, dans les deux voies et dans le repère de la circulation (u = L − s à rebours, lot N23), placés par
+        `road_space.resolve` ; les places corrigées sont écrites dans les modèles et comptées (`road_space_counts`)."""
+        d = self.physics.direction
+        model = traffic.model_s if traffic is not None else (lambda x: x)
+        length = route.length_m if route else None
+        is_loop = bool(route and route.is_loop)
+        bodies: list[road_space_mod.Body] = []
+        owners: dict[str, Any] = {}
+        hw_bike = road_space_mod.BIKE_HALF_WIDTH_M
+        lo, hi = draft_mod.PASS_LANE_MIN_M, draft_mod.LANE_MAX_M
+        bike_lo, bike_hi = (lo, hi) if d > 0 else (-hi, -lo)
+        bodies.append(road_space_mod.Body("me", "rider", model(self.physics.s), self._lane.m, self.physics.v, 1,
+                                          move_s=False, group=GP_ME, name="cycliste"))
+        gp = self.grandprix
+        racers = list(gp.racers) if gp is not None else []
+        for e in self._escorts:
+            idx = int(e.id[2:]) if e.id[2:].isdigit() else -1
+            grp = racers[idx] if 0 <= idx < len(racers) else e.id
+            hl, hw = road_space_mod.gabarit(e.kind)
+            bodies.append(road_space_mod.Body(e.id, "escort", model(e.s), d * e.lateral, e.speed_mps, d, hl, hw,
+                                              move_s=False, group=grp, name=e.kind))
+        for b in self.bots:
+            lane = getattr(b, "lane", None)
+            if lane is None or getattr(b, "kind", "constant") != "constant":
+                continue   # fantôme : il passe à travers (comme pour le placement)
+            if length is not None and not is_loop and b.s >= length:
+                continue   # arrivé : arrêté sur la ligne, hors du jeu (lot PL1)
+            # un bot peut être retenu en long (quelques centimètres, à la vitesse de celui qu'il touche) : sa voie
+            # seule ne suffit pas, son placement l'y ramène (rejeu Grand Prix à onze, « bot / bot » roue dans la roue)
+            body = road_space_mod.Body(f"bot:{b.id}", "bot", model(b.s), d * lane.m, b.v, d, lat_min=bike_lo,
+                                       lat_max=bike_hi, group=b.id, name=f"bot {b.id}", push=False)
+            bodies.append(body)
+            owners[body.id] = b
         if traffic is not None:
-            cars += [traffic.on_route(v) for v in traffic.near(traffic.model_s(self.physics.s))]
-        if traffic is not None or cars:
-            self.state.vehicles = traffic_mod.state_list(cars[:traffic_mod.NEAR_MAX])
+            for v in traffic.vehicles:
+                hl, hw = road_space_mod.gabarit(v.kind)
+                edge = road_space_mod.ROAD_HALF_M - hw
+                body = road_space_mod.Body(f"v:{v.id}", "vehicle", v.s, v.lateral, v.speed_mps, v.dir, hl, hw,
+                                           -edge, edge, name=v.kind)
+                bodies.append(body)
+                owners[body.id] = v
+        if cyclists is not None:
+            for g in cyclists.groups:
+                if not g.members:
+                    continue
+                ss = [g.s - g.dir * m.dl for m in g.members]
+                ls = [m.lateral for m in g.members]
+                mid_l = 0.5 * (min(ls) + max(ls))
+                half_l = 0.5 * (max(ls) - min(ls))
+                body = road_space_mod.Body(
+                    f"g:{g.id}", "cyclist", 0.5 * (min(ss) + max(ss)), mid_l,
+                    road_cyclists_mod._step_mps(g), g.dir, 0.5 * (max(ss) - min(ss)) + road_space_mod.BIKE_HALF_LEN_M,
+                    half_l + hw_bike, -road_space_mod.ROAD_HALF_M + half_l + hw_bike,
+                    road_space_mod.ROAD_HALF_M - half_l - hw_bike, name=g.case)
+                bodies.append(body)
+                owners[body.id] = g
+        if len(bodies) < 2:
+            return
+        rep = road_space_mod.resolve(bodies)
+        for c in rep.corrections:
+            key = f"{c.role}/{c.against_role}" if c.resolved else f"{c.role}/{c.against_role} (coincé)"
+            self.road_space_counts[key] += 1
+            if not c.resolved:
+                continue
+            owner = owners.get(c.id)
+            if c.role == "bot" and owner is not None:
+                owner.lane.m += d * c.dlat
+                owner.lane.rate = 0.0
+                phys = getattr(owner, "physics", None)
+                if phys is not None and c.ds:
+                    phys.s += d * c.ds        # repère de la circulation (u = L − s à rebours) vers celui du parcours
+                    phys.v = max(0.0, min(phys.v, c.v))   # retenu derrière (jamais avancé, `push` faux)
+            elif isinstance(owner, traffic_mod.Vehicle):
+                owner.s += c.ds
+                owner.lateral += c.dlat
+                owner.speed_mps = min(owner.speed_mps, c.v)
+            elif isinstance(owner, road_cyclists_mod.Group):
+                owner.s += c.ds
+                for m in owner.members:
+                    m.lateral += c.dlat
+                    m.lat_v = 0.0
+                if c.v != road_cyclists_mod._step_mps(owner):   # retenu derrière, ou poussé devant à la vitesse du plus rapide
+                    owner.speed_mps = c.v
+                    owner.step_mps = c.v
+
+    def _fill_vehicles_frame(self) -> None:
+        """Lot AS11 (révision 1.20) : le core seul fait rouler les usagers de la route ; il les envoie tous, par parties
+        d'au plus `ROAD_PART_MAX`, une partie par trame (`_road_part`) : véhicules (voitures d'équipe du Grand Prix
+        d'abord) puis cyclistes du décor, un groupe jamais coupé entre deux parties. `road_part` = [rang, parties] de
+        la liste de la trame ; à la dernière partie d'une sorte, l'engine retire ceux qu'aucune partie n'a donnés."""
+        self.state.vehicles = None
+        self.state.riders = None
+        self.state.road_part = None
+        traffic, cyclists = self.traffic, self.road_cyclists
+        if traffic is None and not self._escorts:
+            self._road_queue = []
+            return
+        if not self._road_queue:
+            self._road_queue = self._road_parts(traffic, cyclists)
+        kind, rank, parts, ids = self._road_queue.pop(0)
+        if kind == "vehicles":
+            by_id = {v.id: v for v in self._escorts}
+            if traffic is not None:
+                by_id.update({v.id: traffic.on_route(v) for v in traffic.vehicles})
+            self.state.vehicles = traffic_mod.state_list(by_id[i] for i in ids if i in by_id)
+        else:
+            wanted = set(ids)
+            self.state.riders = road_cyclists_mod.state_items(
+                cyclists.on_route(r) for r in cyclists.riders() if r.group in wanted) if cyclists is not None else []
+        self.state.road_part = [rank, parts]
+
+    def _road_parts(self, traffic: traffic_mod.Traffic | None,
+                    cyclists: road_cyclists_mod.RoadCyclists | None) -> list[tuple[str, int, int, list[str]]]:
+        """Parties d'un tour des listes `vehicles` et `riders` (lot AS11), du plus proche au plus loin du cycliste :
+        identifiants des véhicules, puis des groupes de cyclistes du décor (un groupe tient dans une partie)."""
+        me = self.physics.s
+        cars = [v.id for v in self._escorts]
+        if traffic is not None:
+            u = traffic.model_s(me)
+            cars += [v.id for v in sorted(traffic.vehicles, key=lambda v: abs(v.s - u))]
+        veh = [cars[k:k + ROAD_PART_MAX] for k in range(0, len(cars), ROAD_PART_MAX)] or [[]]
+        groups: list[list[str]] = [[]]
+        sizes = [0]
+        if cyclists is not None:
+            u = cyclists.model_s(me)
+            for g in sorted(cyclists.groups, key=lambda g: abs(g.s - u)):
+                if not g.members:
+                    continue
+                if sizes[-1] + len(g.members) > ROAD_PART_MAX and groups[-1]:
+                    groups.append([])
+                    sizes.append(0)
+                groups[-1].append(g.id)
+                sizes[-1] += len(g.members)
+        out = [("vehicles", k, len(veh), ids) for k, ids in enumerate(veh)]
+        if cyclists is not None:
+            out += [("riders", k, len(groups), ids) for k, ids in enumerate(groups)]
+        return out
 
     def _fill_riders_frame(self) -> None:
-        """Liste `riders` (10 Hz, lot AS7) : cyclistes du décor à moins de 60 m. Lot AS10 (révision 1.18) : au plus 10,
-        dans la trame qui suit celle de `vehicles`, jamais avec elle (la trame la plus chargée reste sous 4 096 octets)."""
-        cyclists = self.road_cyclists
-        self.state.riders = None
-        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == RIDERS_FRAME_AT:
-            self.state.riders = road_cyclists_mod.state_items(
-                cyclists.on_route(r) for r in cyclists.near(cyclists.model_s(self.physics.s)))
+        """Lot AS11 : la liste `riders` part avec les parties de `_fill_vehicles_frame` (rien à faire ici)."""
 
     def _fill_wind_frame(self) -> None:
         """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (taille de la trame)."""

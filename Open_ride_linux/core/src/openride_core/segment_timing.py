@@ -171,7 +171,7 @@ class SegmentTimer:
         crossed = [(seg, lap) for seg in self.segments for lap in self._laps_crossed(s0, s, seg.s_start)]
         self._fresh = False
         for seg, lap in crossed:
-            base = lap * self.length_m
+            base = lap * self.length_m if lap else 0.0   # sans fin en monde ouvert (lot W20) : 0 × ∞
             t_in = _interp_t(t0, s0, t, s, base + seg.s_start)
             a = _Active(seg=seg, lap=lap, s0=base + seg.s_start, s1=base + seg.s_end,
                         t_start=t_in)
@@ -195,6 +195,20 @@ class SegmentTimer:
             segment_id=a.seg.id, lap=a.lap, t_start=a.t_start, t_end=t_out, time_s=time_s,
             avg_power_w=avg_p, avg_wkg=avg_p / mass if mass else None,
             avg_speed_kmh=3.6 * (a.s1 - a.s0) / time_s, bonuses=tuple(a.bonuses))
+
+    def add(self, seg: SegmentLike) -> None:
+        """Segment ajouté en roulant (monde ouvert, lot W20) ; chronométré quand son départ est franchi."""
+        if not 0.0 <= seg.s_start < seg.s_end <= self.length_m + 0.01:
+            raise ValueError(f"segment {seg.id} hors du parcours : {seg.s_start}–{seg.s_end}")
+        self.segments.append(seg)
+        self.segments.sort(key=lambda x: x.s_start)
+
+    def drop(self, segment_id: str, reason: str = "route") -> None:
+        """Segment retiré (route réécrite sous lui, lot W20) : son passage en cours est annulé."""
+        self.segments = [x for x in self.segments if x.id != segment_id]
+        for a in [a for a in self._active if a.seg.id == segment_id]:
+            self.cancelled.append((a.seg.id, a.lap, reason))
+            self._active.remove(a)
 
     def pause(self, reason: str = "user") -> None:
         """Pause de la séance : passages en cours annulés (pause voulue) ou suspendus (pause subie)."""

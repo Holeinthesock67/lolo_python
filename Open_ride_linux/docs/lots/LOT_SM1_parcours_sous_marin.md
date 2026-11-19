@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Biome `reef` (fond marin), ambiance sous l'eau, laminaires, coraux, gorgones, poissons, tortues, raies, boucle de 8 km « Récif des tortues » | Python, GDScript, JSON | O37, O38, U10, U12, HP1 | Moyenne | En PR le 13 novembre |
+| Biome `reef` (fond marin), ambiance sous l'eau, laminaires, coraux, gorgones, poissons, tortues, raies, boucle de 8 km « Récif des tortues » | Python, GDScript, JSON | O37, O38, U10, U12, HP1 | Moyenne | Fait (fusionné le 14 novembre, #878 ; relu par le lot NT1) |
 
 ## 1. Objectif
 

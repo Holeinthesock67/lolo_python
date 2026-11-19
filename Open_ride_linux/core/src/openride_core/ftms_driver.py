@@ -23,6 +23,7 @@ from typing import Any, Awaitable, Callable
 from . import ftms, latency_log
 from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, note_trainer_write
 from .config import BikeConfig, TrainerConfig
+from .brake_watch import BrakeWatch
 from .mock_driver import TrainerMetrics
 from .physics import G, RHO0
 
@@ -34,18 +35,9 @@ RESEND_S = 2.0           # valeur par défaut de [trainer] resend_s : consigne r
 MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
 TRACE_IBD_EVERY_S = 0.9   # avec trace_ftms : une ligne de mesures par notification Indoor Bike Data (≈ 1 Hz)
-# Frein lâché par le trainer (29 octobre : 449 W puis 0 W en 2 s, à 73 tr/min et 31 km/h, sans erreur
-# ni statut) : puissance qui passe de plus de BRAKE_LOSS_FROM_W à moins de BRAKE_LOSS_TO_W en
-# BRAKE_LOSS_WINDOW_S, pédales et volant encore en mouvement ; une reprise de contrôle au plus
-# toutes les BRAKE_LOSS_COOLDOWN_S.
-BRAKE_LOSS_FROM_W = 200.0
-BRAKE_LOSS_TO_W = 10.0
-BRAKE_LOSS_WINDOW_S = 3.0
-BRAKE_LOSS_MIN_RPM = 40.0
-BRAKE_LOSS_MIN_KMH = 15.0
-BRAKE_LOSS_COOLDOWN_S = 10.0
-BRAKE_BACK_W = 50.0   # puissance qui revient après la reprise : le frein est revenu
-BRAKE_BACK_WINDOW_S = 15.0
+# Frein lâché par le trainer (29 octobre) : règle unique dans brake_watch.py (lot FR1), partagée avec le
+# rapport des décrochages ; une puissance qui tombe pendant que la cadence annoncée est en retard n'est
+# plus prise pour un frein lâché.
 ERG_EPSILON_W = 1.0
 RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
@@ -364,12 +356,9 @@ class FtmsDriver:
         self._trainer_speed_kmh: float | None = None
         self._trainer_resistance: int | None = None
         self._trace_ibd_at = float("-inf")
-        self._last_brake_loss_at = float("-inf")
         self.event_sink: Callable[[dict], None] | None = None   # lignes `ftms` du journal (posé par la session)
         self.brake_losses = 0   # pertes de frein détectées (reprise de contrôle tentée à chacune)
-        self._loaded_at = float("-inf")   # dernier instant à plus de BRAKE_LOSS_FROM_W
-        self._loaded_w = 0.0
-        self._brake_lost_at: float | None = None
+        self._brake_watch = BrakeWatch()   # frein lâché (lot FR1)
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
         self._hr_relay_val: int | None = None
@@ -698,35 +687,29 @@ class FtmsDriver:
             log.debug("Ligne ftms du journal perdue", exc_info=True)
 
     def _check_brake_loss(self, now: float, power_w: float) -> None:
-        """Détecte un frein lâché par le trainer et tente une reprise du contrôle (voir BRAKE_LOSS_*)."""
-        if power_w >= BRAKE_LOSS_FROM_W:
-            self._loaded_at, self._loaded_w = now, power_w
-        if self._brake_lost_at is not None:
-            if power_w >= BRAKE_BACK_W and self._cadence >= BRAKE_LOSS_MIN_RPM:
-                log.info("Trainer : puissance revenue (%.0f W) %.1f s après la reprise du contrôle",
-                         power_w, now - self._brake_lost_at)
-                self._emit("power_back", after_s=round(now - self._brake_lost_at, 1), power_w=round(power_w))
-                self._brake_lost_at = None
-            elif now - self._brake_lost_at > BRAKE_BACK_WINDOW_S:
-                log.warning("Trainer : la puissance n'est pas revenue %.0f s après la reprise du contrôle",
-                            BRAKE_BACK_WINDOW_S)
-                self._emit("power_not_back", after_s=BRAKE_BACK_WINDOW_S)
-                self._brake_lost_at = None
+        """Détecte un frein lâché par le trainer et tente une reprise du contrôle (règle de brake_watch.py)."""
         want = self._want
         loaded = want.mode != "erg" or want.value >= 100.0   # ERG à 0 W (repos d'un bloc) : pas de frein attendu
-        speed_ok = self._trainer_speed_kmh is None or self._trainer_speed_kmh >= BRAKE_LOSS_MIN_KMH
-        if (power_w < BRAKE_LOSS_TO_W and now - self._loaded_at <= BRAKE_LOSS_WINDOW_S and loaded
-                and self._cadence >= BRAKE_LOSS_MIN_RPM and speed_ok
-                and now - self._last_brake_loss_at >= BRAKE_LOSS_COOLDOWN_S):
-            self._last_brake_loss_at = now
-            self._brake_lost_at = now
-            self.brake_losses += 1
-            speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.0f} km/h"
-            log.warning("Trainer : le frein a lâché (%.0f W puis %.0f W à %.0f tr/min, volant %s) ; "
-                        "contrôle repris et consigne renvoyée", self._loaded_w, power_w, self._cadence, speed)
-            self._emit("brake_loss", from_w=round(self._loaded_w), to_w=round(power_w),
-                       cadence_rpm=round(self._cadence), speed_kmh=self._trainer_speed_kmh)
-            self._forget_sent()   # nouvelle prise de contrôle et renvoi de la consigne au prochain tour
+        for ev in self._brake_watch.step(now, power_w, self._cadence, self._trainer_speed_kmh, loaded):
+            if ev.kind == "brake_loss":
+                self.brake_losses += 1
+                speed = "—" if ev.speed_kmh is None else f"{ev.speed_kmh:.0f} km/h"
+                log.warning("Trainer : le frein a lâché (%.0f W puis %.0f W à %.0f tr/min, volant %s) ; "
+                            "contrôle repris et consigne renvoyée", ev.from_w, ev.to_w, ev.cadence_rpm, speed)
+                self._emit("brake_loss", from_w=round(ev.from_w), to_w=round(ev.to_w),
+                           cadence_rpm=round(ev.cadence_rpm), speed_kmh=ev.speed_kmh)
+                self._forget_sent()   # nouvelle prise de contrôle et renvoi de la consigne au prochain tour
+            elif ev.kind == "power_back":
+                log.info("Trainer : puissance revenue (%.0f W) %.1f s après la reprise du contrôle",
+                         ev.power_w, ev.after_s)
+                self._emit("power_back", after_s=round(ev.after_s, 1), power_w=round(ev.power_w))
+            elif ev.kind == "power_not_back":
+                log.warning("Trainer : la puissance n'est pas revenue %.0f s après la reprise du contrôle",
+                            ev.after_s)
+                self._emit("power_not_back", after_s=ev.after_s)
+            elif ev.kind == "rider_stopped":
+                log.info("Trainer : le cycliste a cessé de pédaler %.1f s après la reprise du contrôle "
+                         "(retour du frein non jugé)", ev.after_s)
 
     def _trace_ibd(self, now: float) -> None:
         """Avec trace_ftms : ce que le trainer annonce lui-même (vitesse du volant, niveau de

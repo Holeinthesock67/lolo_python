@@ -283,7 +283,9 @@ class ArchSchedule:
         self.length_m = float(length_m)
         self.loop = loop
         self.positions: list[float] = []
-        if every_m > 0:
+        self.every_m = float(every_m)
+        self.endless = math.isinf(self.length_m) and not loop   # monde ouvert (lot W21) : une arche tous les every_m
+        if every_m > 0 and not self.endless:
             k = 1
             while k * every_m < self.length_m - 1e-6:
                 self.positions.append(k * every_m)
@@ -297,8 +299,20 @@ class ArchSchedule:
         """Arches franchies entre deux positions cumulées : `(indice dans positions, tour)`.
 
         Dans le sens du parcours, `s_prev` exclu et `s` inclus ; à rebours après un demi-tour (lot N25,
-        `s` < `s_prev`), `s` inclus et `s_prev` exclu, soit le même point de franchissement vu de l'autre côté."""
-        if s == s_prev or not self.positions:
+        `s` < `s_prev`), `s` inclus et `s_prev` exclu, soit le même point de franchissement vu de l'autre côté.
+        En monde ouvert (lot W21, route sans fin), l'arche n° n (à n·every_m) a la clé `(n, 0)`."""
+        if s == s_prev:
+            return []
+        if self.endless:
+            if self.every_m <= 0:
+                return []
+            e = self.every_m
+            if s > s_prev:   # n ≥ 1 tels que s_prev < n·e <= s
+                ns = range(max(1, math.floor(max(s_prev, 0.0) / e) + 1), math.floor(s / e) + 1)
+            else:            # n ≥ 1 tels que s <= n·e < s_prev
+                ns = range(max(1, math.ceil(s / e)), math.ceil(s_prev / e))
+            return [(n, 0) for n in ns]
+        if not self.positions:
             return []
         out: list[tuple[int, int]] = []
         if not self.loop:

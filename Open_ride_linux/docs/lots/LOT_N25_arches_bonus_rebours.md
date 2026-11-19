@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : arches de bonus franchies à rebours après un demi-tour | Python | N17 | Petite | En PR : core seul (14 novembre), **version 1.x** |
+| 1.x série N : arches de bonus franchies à rebours après un demi-tour | Python | N17 | Petite | **Livré le 17 novembre** (PR #888), **version 1.x** |
 
 ## 1. Objectif
 
@@ -26,3 +26,7 @@ Choix du propriétaire le 8 novembre : **les compter à rebours** (plutôt que l
 1. Tests du core au vert (`test_powerups.py` : `test_arches_crossed_backwards_after_u_turn`,
    `test_classic_race_pays_each_arch_once_in_either_direction`).
 2. Pas de capture : rien ne change à l'écran (règle seulement).
+
+## Livraison
+
+Fusionné dans `main` : PR #888 (17 novembre). Statut relevé par la mise à jour de la documentation du 19 novembre 2026.
