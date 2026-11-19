@@ -1,0 +1,124 @@
+{
+  "description": "Lots W19, W20 et W21 (monde ouvert), recette sur le PC : départ de Sarre-Union trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie une montée ou un sprint repéré en roulant (W20), les portiques posés par l'engine (W21), un résultat de segment rangé sous « ow » (W20), l'arrivée de la boucle au retour au départ et la balade enregistrée (W19), l'index des segments du profil (W20). Captures : écran du cap, départ, segments annoncés, quatre vues de la route, résultat, bilan. À lancer en low, medium et high, sur la tête de la branche W21 (elle contient W19 et W20).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "sarre union",
+        "contient": "Sarre-Union",
+        "cap": [
+          {
+            "note": "Ligne suivante (navigation), Balade -> Destination -> Boucle",
+            "touche": "Plus"
+          },
+          {
+            "touche": "Right"
+          },
+          {
+            "touche": "Right"
+          },
+          {
+            "note": "Ligne de la longueur : 30 km par défaut, ramenée à 10 km",
+            "touche": "Plus"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "monde": "setup",
+            "contient": [
+              "Boucle",
+              "Longueur : 10 km"
+            ]
+          },
+          {
+            "capture": "cap_boucle_10km"
+          }
+        ]
+      }
+    },
+    {
+      "note": "Lot W20 : une montée ou un sprint repéré sur la route engagée (environ 2 km à l'avance). Échec possible sur une boucle toute plate : le dire au fil W, ce n'est pas un défaut",
+      "journal": "core",
+      "motif": "Monde ouvert : (montée|sprint) « .* » retenue",
+      "delai": 900
+    },
+    {
+      "note": "Lot W21 : l'engine a relu segments.json et posé les portiques",
+      "journal": "engine",
+      "motif": "world_segments n=[1-9]",
+      "delai": 30
+    },
+    {
+      "capture": "segments_annonces"
+    },
+    {
+      "attendre": 90
+    },
+    {
+      "capture": "route_1"
+    },
+    {
+      "attendre": 90
+    },
+    {
+      "capture": "route_2"
+    },
+    {
+      "attendre": 90
+    },
+    {
+      "capture": "route_3"
+    },
+    {
+      "attendre": 90
+    },
+    {
+      "capture": "route_4"
+    },
+    {
+      "note": "Lot W20 : résultat d'un segment du monde ouvert (identifiant owc… ou ows…), chronométré et rangé sous « ow »",
+      "journal": "engine",
+      "motif": "segment_result id=ow[cs]",
+      "delai": 1200
+    },
+    {
+      "capture": "resultat_segment"
+    },
+    {
+      "note": "Lot W19 : la boucle se termine d'elle-même au retour au départ",
+      "journal": "core",
+      "motif": "Monde ouvert : arrivée atteinte \\(loop",
+      "delai": 1800
+    },
+    {
+      "journal": "core",
+      "motif": "Balade enregistrée",
+      "delai": 60
+    },
+    {
+      "attendre": 5
+    },
+    {
+      "capture": "bilan"
+    },
+    {
+      "note": "Lot W20 : index des segments du monde ouvert écrit dans le profil (records d'une balade à l'autre)",
+      "fichier": "OpenRide/**/segments_monde_ouvert.json",
+      "delai": 30
+    }
+  ]
+}

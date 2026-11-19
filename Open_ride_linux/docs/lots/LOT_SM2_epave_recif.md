@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Point d'intérêt `wreck` (OSM `historic=wreck`), épave d'un caboteur avant l'arrivée du « Récif des tortues » ; aspect de chaussée par biome (piste de sable du fond marin) ; plus de passants sous l'eau | Python, GDScript, JSON | SM1, P12 | Petite | En PR le 14 novembre |
+| Point d'intérêt `wreck` (OSM `historic=wreck`), épave d'un caboteur avant l'arrivée du « Récif des tortues » ; aspect de chaussée par biome (piste de sable du fond marin) ; plus de passants sous l'eau | Python, GDScript, JSON | SM1, P12 | Petite | Fait (fusionné le 15 novembre, #891 ; relu par le lot NT1) |
 
 ## 1. Objectif
 
