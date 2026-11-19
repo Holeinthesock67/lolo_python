@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Parcours de démonstration prêts pour la version finale (lot NT1)
+- Chaque parcours de démonstration a sa description sur la carte du parcours, au menu (comme le vélodrome et les cols célèbres) : par exemple « Montée de 5 km de la forêt aux alpages, avec un lacet de deux épingles serrées » pour le Col du lacet.
+- Les démonstrations déjà installées sont réécrites une fois pour recevoir leur description : « Contenus de départ » les propose (« en partie installé ») ; le Col du lacet se met à jour seul au lancement d'une séance. Les parcours du joueur ne sont jamais touchés.
+- Liste finale du jeu de base vérifiée : Col du lacet, Tour des nouveaux paysages, Route des Érables, Récif des tortues, Volcan en flammes, Route du Sud et Route du Grand Nord dans « Parcours », le Circuit des Prés dans le Grand Prix et le Vélodrome 250 m dans le mode Vélodrome, plus le pack Cols célèbres ; aucun nom de test.
+
 ### Une démonstration pour chaque biome (lot DB3)
 - Deux nouveaux parcours de démonstration, pour que chaque biome du jeu ait le sien. La « Route du Sud » fait 12 km des oliviers au delta : maquis méditerranéen, steppe et campement de yourtes, dunes et oasis, savane et village de cases, jungle, puis zones humides et village sur pilotis (2 km chacun). La « Route du Grand Nord » est une boucle de 10 km : taïga et lac, toundra et refuge, banquise et station polaire au point le plus haut, puis retour par la toundra et la taïga.
 - Trace, relief et décor entièrement inventés (aucune donnée réelle). Les deux parcours sont ajoutés à la prochaine installation des contenus de départ ; aucun autre parcours n'est réécrit.
