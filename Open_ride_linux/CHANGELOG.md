@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Plus de faux « frein lâché » quand on arrête de pédaler (lot FR1)
+- Un arrêt net de pédalage (fin de salle du Cyber-Rogue, fin d'épreuve au vélodrome) n'est plus pris pour un frein lâché par le trainer : la cadence annoncée garde son ancienne valeur environ une seconde après l'arrêt, et le jeu attend maintenant 2 s de pédales qui tournent vraiment avant de reprendre le contrôle du trainer. Même règle dans tous les modes.
+- Le rapport des décrochages applique la même règle : un arrêt suivi d'une reprise n'est plus compté comme une faute du trainer.
+
 ### Parcours de démonstration prêts pour la version finale (lot NT1)
 - Chaque parcours de démonstration a sa description sur la carte du parcours, au menu (comme le vélodrome et les cols célèbres) : par exemple « Montée de 5 km de la forêt aux alpages, avec un lacet de deux épingles serrées » pour le Col du lacet.
 - Les démonstrations déjà installées sont réécrites une fois pour recevoir leur description : « Contenus de départ » les propose (« en partie installé ») ; le Col du lacet se met à jour seul au lancement d'une séance. Les parcours du joueur ne sont jamais touchés.

@@ -373,22 +373,31 @@ def test_brake_loss_is_detected_and_control_taken_again(caplog):
     drv.set_sim_grade(2.8)
     drv._last_sent = ("sim", 2.8)
     with caplog.at_level(logging.INFO, logger="ftms_driver"):
-        _drive(drv, now, [(0.0, 449, 73), (2.0, 449, 73), (4.0, 0, 73), (6.0, 0, 0)])
+        _drive(drv, now, [(0.0, 449, 73), (2.0, 449, 73), (4.0, 0, 73), (5.0, 0, 72), (6.0, 0, 73)])
     msgs = [r.getMessage() for r in caplog.records]
     assert drv.brake_losses == 1 and drv._last_sent is None
     assert sum("le frein a lâché (449 W puis 0 W à 73 tr/min, volant 30 km/h)" in m for m in msgs) == 1
 
     with caplog.at_level(logging.INFO, logger="ftms_driver"):
         _drive(drv, now, [(7.0, 320, 70)])
-    assert any(m.startswith("Trainer : puissance revenue (320 W) 3.0 s") for m in
+    assert any(m.startswith("Trainer : puissance revenue (320 W) 1.0 s") for m in
                (r.getMessage() for r in caplog.records))
 
 
 @pytest.mark.parametrize("frames, mode_value, why", [
     ([(0.0, 449, 73), (5.0, 0, 73)], ("sim", 2.8), "chute trop lente (plus de 3 s)"),
-    ([(0.0, 150, 73), (2.0, 0, 73)], ("sim", 2.8), "pas de charge avant la chute"),
+    ([(0.0, 140, 73), (2.0, 0, 73), (3.0, 0, 73), (4.0, 0, 73)], ("sim", 2.8), "pas de charge avant la chute"),
     ([(0.0, 449, 73), (2.0, 0, 20)], ("sim", 2.8), "cycliste qui a cessé de pédaler"),
-    ([(0.0, 300, 80), (2.0, 0, 80)], ("erg", 0.0), "repos d'un bloc ERG à 0 W"),
+    # 15 novembre (fins de salle du Cyber-Rogue) : la puissance tombe une seconde avant la cadence
+    ([(0.0, 449, 73), (1.0, 0, 73), (2.0, 0, 0), (3.0, 0, 0)], ("sim", 2.8), "arrêt de pédalage, cadence en retard"),
+    ([(0.0, 449, 73), (1.0, 0, 73), (2.0, 300, 75), (3.0, 300, 75)], ("sim", 2.8), "creux d'une seconde"),
+    ([(0.0, 300, 80), (2.0, 0, 80), (3.0, 0, 80), (4.0, 0, 80)], ("erg", 0.0), "repos d'un bloc ERG à 0 W"),
+    # Lot FR1 : cadence en retard de plus d'une seconde (vélodrome du 14/11, marge du retard réel)
+    ([(0.0, 449, 73), (1.0, 0, 73), (2.0, 0, 73), (2.5, 0, 0)], ("sim", 2.8), "arrêt, cadence en retard de 1,5 s"),
+    # trainer à 8 Hz : la cadence annoncée fond pendant que la puissance est à 0
+    ([(0.0, 400, 90)] + [(1.0 + k / 8, 0, max(0, 90 - 6 * k)) for k in range(24)], ("sim", 2.8), "cadence qui baisse"),
+    # mesures à 1 Hz : un seul relevé après la chute ne suffit pas
+    ([(0.0, 400, 80), (1.0, 0, 80), (5.5, 0, 80)], ("sim", 2.8), "trop peu de relevés pour trancher"),
 ])
 def test_no_brake_loss_when_the_rider_or_the_workout_explains_it(frames, mode_value, why):
     now = [100.0]
@@ -405,8 +414,24 @@ def test_brake_loss_retried_at_most_every_ten_seconds():
     now = [100.0]
     drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
     drv.set_sim_grade(1.0)
-    _drive(drv, now, [(0.0, 400, 80), (1.0, 0, 80), (2.0, 400, 80), (3.0, 0, 80), (12.0, 400, 80), (13.0, 0, 80)])
-    assert drv.brake_losses == 2   # 1 s et 13 s : jamais deux fois en moins de 10 s
+    _drive(drv, now, [(0.0, 400, 80), (1.0, 0, 80), (2.0, 0, 80), (3.0, 0, 80), (4.0, 400, 80), (5.0, 0, 80),
+                      (6.0, 0, 80), (7.0, 0, 80), (13.0, 400, 80), (14.0, 0, 80), (15.0, 0, 80), (16.0, 0, 80)])
+    assert drv.brake_losses == 2   # 3 s et 16 s : jamais deux fois en moins de 10 s
+
+
+def test_rider_who_stops_then_restarts_does_not_prove_the_brake_came_back(caplog):
+    """Lot FR1 : après une reprise du contrôle, un cycliste qui s'arrête puis repart n'écrit pas « puissance
+    revenue » (le rapport des décrochages en ferait une preuve contre le trainer)."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(2.0)
+    lines = []
+    drv.event_sink = lines.append
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _drive(drv, now, [(0.0, 400, 80), (1.0, 0, 80), (2.0, 0, 80), (3.0, 0, 80), (4.0, 0, 10), (8.0, 300, 85)])
+    events = [ln["event"] for ln in lines]
+    assert events == ["brake_loss"]
+    assert any("le cycliste a cessé de pédaler 1.0 s après la reprise" in r.getMessage() for r in caplog.records)
 
 
 # --- 7. Spin Down Status et statuts à paramètres (hypothèse du 29 octobre) -------------------------
@@ -434,12 +459,12 @@ def test_ftms_events_reach_the_journal_sink():
     drv.event_sink = got.append
     drv._on_status(None, bytearray([0x14, 0x02]))
     drv._on_training_status(None, bytearray([0x00, 0x0d]))
-    _drive(drv, now, [(0, 450, 80), (1, 440, 80), (2, 5, 80)])
+    _drive(drv, now, [(0, 450, 80), (1, 440, 80), (2, 5, 80), (3, 5, 80), (4, 5, 80)])   # lot FR1 : preuve sur 2 s
     drv.set_sim_grade(2.0)
     kinds = [(g["event"], g.get("code"), g.get("data")) for g in got]
     assert ("status", "0x14", "02") in kinds and ("training_status", None, "000d") in kinds
     loss = next(g for g in got if g["event"] == "brake_loss")
-    assert loss["kind"] == "ftms" and loss["from_w"] == 440 and loss["to_w"] == 5 and loss["cadence_rpm"] == 80
+    assert loss["kind"] == "ftms" and loss["from_w"] == 445 and loss["to_w"] == 5 and loss["cadence_rpm"] == 80
 
 
 def test_ftms_line_is_written_by_the_recorder(tmp_path):
