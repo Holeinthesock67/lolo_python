@@ -42,7 +42,8 @@ Format de la file :
     commande = "python3 engine/tests/menu_bench.py --native --scenario w17_cap --qualite low --out {sortie}"
 
 Les commandes tournent dans `<worktree>/Open_ride_linux`, avec `{sortie}` (dossier de l'étape), `{worktree}` et
-`{projet}` remplacés. Verdicts :
+`{projet}`, `{depot}` (le dépôt du user, pour son environnement Python) remplacés ; le portail reçoit FILE_PR,
+FILE_ETAPE et FILE_DUREE_MIN (délai de l'étape, pour ne pas déborder sur la fenêtre du user). Verdicts :
 - OK ; CONTACTS : seules des vérifications de contacts ont échoué (non bloquant, lot AS11) ;
 - ÉCHEC : une vérification du jeu ; DÉLAI : étape arrêtée au bout de `delai_min` ;
 - ENVIRONNEMENT : le PC, pas la PR (code 2 des bancs, cache au mauvais schéma, réseau, disque plein) ;
@@ -382,7 +383,7 @@ class Runner:
         """Attend que `avant_etape` rende 0 (fenêtre de pause du user, Godot du user fermé…) ; faux si PAUSE."""
         attente = False
         while self.f.avant_etape:
-            env = {**os.environ, "FILE_PR": pr.id, "FILE_ETAPE": e.id}
+            env = {**os.environ, "FILE_PR": pr.id, "FILE_ETAPE": e.id, "FILE_DUREE_MIN": f"{e.delai_min:.0f}"}
             p = subprocess.run(self.f.avant_etape, shell=True, env=env, capture_output=True, text=True, check=False)
             if p.returncode == 0:
                 break
@@ -447,7 +448,7 @@ class Runner:
         dossier.mkdir(parents=True, exist_ok=True)
         projet = wt / "Open_ride_linux"
         cmd = e.commande.format(sortie=shlex.quote(str(dossier / "rapport")), worktree=shlex.quote(str(wt)),
-                                projet=shlex.quote(str(projet)))
+                                projet=shlex.quote(str(projet)), depot=shlex.quote(str(self.f.depot)))
         env = dict(os.environ)
         env.pop("OPENRIDE_BANC_CACHES", None)
         if pr.cache == "separe" and e.sur == "branche":

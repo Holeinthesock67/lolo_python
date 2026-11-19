@@ -315,3 +315,38 @@ def test_tete_changee_en_cours_de_file_ne_bloque_que_sa_pr(tmp_path, depot):
     etat = _etat(tmp_path)["prs"]
     assert etat["vieille"]["fumee"]["verdict"] == fb.ENV and "deadbeef" in etat["vieille"]["fumee"]["detail"]
     assert etat["vieille"]["low"]["verdict"] == fb.BLOQUE and etat["ok"]["low"]["verdict"] == fb.OK
+
+
+def test_portail_pc_fenetre_du_user_et_godot(tmp_path):
+    """portail_pc.sh : attend la fin de la fenêtre du user (ou son marqueur) et l'absence de Godot."""
+    import time
+
+    script = ROOT / "scripts" / "file_bancs" / "portail_pc.sh"
+    binf = tmp_path / "bin"
+    binf.mkdir()
+    pgrep = binf / "pgrep"
+    pgrep.write_text("#!/bin/sh\n[ -f \"$GODOT_OUVERT\" ] && { echo '42 Godot_v4.7'; exit 0; }\nexit 1\n", encoding="utf-8")
+    pgrep.chmod(0o755)
+    fen = tmp_path / "fenetre.txt"
+    now = int(time.time())
+    fen.write_text(f"{now + 600} {now + 3600} pc_rendu\n", encoding="utf-8")
+    env = {"PATH": f"{binf}:/usr/bin:/bin", "HOME": str(tmp_path), "FENETRE": str(fen),
+           "GODOT_OUVERT": str(tmp_path / "godot"), "FILE_DUREE_MIN": "30"}
+
+    def code(**extra):
+        return subprocess.run(["bash", str(script)], env={**env, **extra}, capture_output=True, text=True)
+
+    p = code()
+    assert p.returncode == 1 and "fenêtre du user" in p.stdout     # 30 min déborderaient sur la fenêtre
+    assert code(FILE_DUREE_MIN="5").returncode == 0                  # 5 min finissent avant
+    (tmp_path / "pc_rendu").touch()
+    assert code().returncode == 0                                    # marqueur « PC rendu »
+    (tmp_path / "godot").touch()
+    p = code()
+    assert p.returncode == 1 and "Godot" in p.stdout
+
+
+def test_exemple_rfs3_se_lit():
+    f = fb.lire_file(ROOT / "scripts" / "file_bancs" / "exemple_rFS3.toml")
+    assert [e.id for e in f.prs[0].etapes] == ["fumee", "tests-engine", "low", "high", "medium"]
+    assert f.avant_etape and f.apres_etape and "{dossier}" in f.apres_etape
