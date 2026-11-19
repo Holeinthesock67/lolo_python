@@ -270,7 +270,7 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert "demo-japon (Route des Érables) : 6.1 km" in out
     assert "demo-biomes-sud (Route du Sud) : 12.1 km" in out
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
-    assert "demo-corniche (Boucle de la Corniche) : 2.5 km" in out and "demo-vignes (Route des Vignes) : 6.1 km" in out
+    assert "demo-corniche (Boucle de la Corniche) : 2.5 km" in out and "demo-vignes (Route des Vignes) : 5.0 km" in out
     assert len(list(tmp_path.glob("*.world"))) == 9
 
 
@@ -689,24 +689,50 @@ def test_corniche_loop(demo_set: Path, mbw) -> None:
     assert _json(demo_set / "demo-corniche.json")["generated"]["poi"] >= 2
 
 
-def test_vignes_route(demo_set: Path, mbw) -> None:
-    """Route des Vignes (lot GP13b) : 6 km en ligne dans le biome `farmland` (rangs de vigne du thème), vallonnée
-    (pente de −3 à +3 %, au moins 40 m de montée cumulée), vignes des deux côtés (zones `orchard`), un village, un
-    hameau, un clos, un domaine et un belvédère par bloc."""
+def test_vignes_loop(demo_set: Path, mbw) -> None:
+    """Route des Vignes (lot GP13b, en boucle depuis la remarque du propriétaire du 19 novembre) : boucle fermée et
+    sinueuse de 5 km dans le biome `farmland` (rangs de vigne du thème) : au moins huit virages francs (cap qui tourne
+    de plus de 40° sur 100 m) mais aucun sous 25 m de rayon, l'autre rive à plus de 200 m ; vallonnée (pente de −6 à
+    +6 %, 50 à 80 m de montée par tour) ; vignes des deux côtés, village, hameau, clos, trois domaines et trois
+    belvédères."""
+    import numpy as np
+    from openride_compiler.fake_osm import LoopRoad
+
     world = demo_set / "demo-vignes.world"
     route = _json(world / "route.json")
-    assert route["type"] == "open" and route["length_m"] == pytest.approx(6000.0, abs=150.0)
+    assert route["type"] == "loop" and route["length_m"] == pytest.approx(mbw.VIGNES_M, abs=5.0)
+    assert (route["x"][0], route["z"][0], route["alt_m"][0]) == (route["x"][-1], route["z"][-1], route["alt_m"][-1])
     assert _json(world / "manifest.json")["layers"]["biome"]["shares"] == {"farmland": 100.0}
-    assert -3.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 3.0
+    assert -6.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 6.0
     climb = sum(max(b - a, 0.0) for a, b in zip(route["alt_m"], route["alt_m"][1:]))
-    assert climb >= 40.0, climb
-    assert mbw.TOUR_DECORS["vignes"] == ("vignoble",) * 3
+    assert 50.0 <= climb <= 80.0, climb
+    road = LoopRoad(mbw.VIGNES_M, mbw.VIGNES_LOBES, mbw.VIGNES_WIGGLES)
+    assert road.radius_min() >= 25.0
+    h = np.degrees(np.unwrap(np.arctan2(road._hx, -road._hz)))
+    k = int(round(100.0 / road.STEP))
+    turns = np.abs(h[k:] - h[:-k]) > 40.0
+    bends = int(np.count_nonzero(turns[1:] & ~turns[:-1]))   # débuts de virage franc
+    assert bends >= 8, bends
+    pts = np.column_stack((road._x[:-1], road._z[:-1]))
+    far = [np.hypot(*(pts[i] - pts[j])) for i in range(0, len(pts), 25) for j in range(0, len(pts), 25)
+           if min(abs(i - j), len(pts) - abs(i - j)) * road.STEP > 700.0]
+    assert min(far) > 200.0
     generated = _json(demo_set / "demo-vignes.json")["generated"]
-    assert generated["vegetation"] >= 12 and generated["poi"] >= 6
+    assert generated["vegetation"] >= 8 and generated["poi"] >= 6
     for f in (world / "biome" / "near").glob("*.json"):
         assert _json(f)["variant"] is None, f.name
 
 
-def test_decors_must_match_blocks(mbw) -> None:
-    with pytest.raises(ValueError, match="un décor par bloc"):
-        mbw.Plan(("farmland", "farmland"), False, False, decors=("vignoble",))
+def test_loop_wiggles_keep_the_loop_closed() -> None:
+    """Lot GP13b : les lacets d'une boucle (`wiggles`) gardent la longueur et la fermeture, avec à peu près l'amplitude
+    voulue de part et d'autre de la boucle sans lacets."""
+    import numpy as np
+    from openride_compiler.fake_osm import LoopRoad
+
+    plain = LoopRoad(3000.0, ((2, 0.2, 0.0),))
+    wavy = LoopRoad(3000.0, ((2, 0.2, 0.0),), ((10, 30.0, 0.0),))
+    assert wavy.length_m == plain.length_m == 3000.0
+    assert np.hypot(*np.subtract(wavy.xz(0.0), wavy.xz(2999.9))) < 1.0
+    _, dx = plain.locate(wavy._x[:-1], wavy._z[:-1])
+    assert 20.0 < float(dx.max() - dx.min()) / 2.0 < 40.0   # amplitude des lacets (la remise à la longueur resserre un peu la boucle)
+    assert wavy.radius_min() < plain.radius_min()
