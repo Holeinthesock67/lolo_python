@@ -419,11 +419,12 @@ ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
 ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 
 # Valeurs permises des champs textuels à choix fermé.
-# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) `high_plateau` (lot HP1) et `reef` (fond marin, lot SM1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
+# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) `high_plateau` (lot HP1) `reef` (fond marin, lot SM1) et les trois biomes du rang 4 (lot V6-r4) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
 BIOMES: tuple[str, ...] = (
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
     "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau", "reef",
+    "cloud_forest", "eucalypt_woodland", "temperate_rainforest",   # lot V6-r4 (6.0)
 )
 
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {

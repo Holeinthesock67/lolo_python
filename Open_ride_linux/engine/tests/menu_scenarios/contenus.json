@@ -19,6 +19,7 @@
     {"fichier": ".local/share/openride/routes/demo-volcan.world/manifest.json", "existe": true},
     {"fichier": ".local/share/openride/routes/demo-biomes-sud.world/manifest.json", "existe": true},
     {"fichier": ".local/share/openride/routes/demo-biomes-nord.world/manifest.json", "existe": true},
+    {"fichier": ".local/share/openride/routes/demo-biomes-forets.world/manifest.json", "existe": true},
     {"fichier": ".local/share/openride/routes/velodrome-250.world/manifest.json", "existe": true},
     {"journal": "core", "motif": "Contenu « starter » : Ajouté"},
     {"appui": "Y_SHORT"},

@@ -76,7 +76,7 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     """Jeu de base : le tour des nouveaux paysages, le circuit, le récif et le volcan (lots O38, SM1, DB1 et DB2) ;
     recette : en plus les parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    assert names == ["demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
+    assert names == ["demo-biomes-forets.world", "demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
                      "demo-circuit.world", "demo-japon.world", "demo-recif.world", "demo-volcan.world"]
     retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
                "demo-biomes-tour.world"]
@@ -149,7 +149,7 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
     assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-japon": "Route des Érables",
                       "demo-circuit": "Circuit des Prés", "demo-recif": "Récif des tortues",
                       "demo-volcan": "Volcan en flammes", "demo-biomes-sud": "Route du Sud",
-                      "demo-biomes-nord": "Route du Grand Nord"}
+                      "demo-biomes-nord": "Route du Grand Nord", "demo-biomes-forets": "Route des Trois Forêts"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
     assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
@@ -234,7 +234,7 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
         kept[n] = f.read_bytes()
     assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and sorted(written) == ["demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-japon",
+    assert note == "" and sorted(written) == ["demo-biomes-forets", "demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-japon",
                                                  "demo-recif", "demo-volcan"]
     assert not gravel.exists()
     assert _json(old)["name"] == "Circuit des Prés"
@@ -268,7 +268,8 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert "demo-japon (Route des Érables) : 6.1 km" in out
     assert "demo-biomes-sud (Route du Sud) : 12.1 km" in out
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
-    assert len(list(tmp_path.glob("*.world"))) == 7
+    assert "demo-biomes-forets (Route des Trois Forêts) : " in out
+    assert len(list(tmp_path.glob("*.world"))) == 8
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
