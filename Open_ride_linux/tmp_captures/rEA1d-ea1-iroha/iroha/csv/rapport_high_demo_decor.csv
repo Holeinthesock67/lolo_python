@@ -1,0 +1,37 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+35.3;0;0;0;0;0;0;0;
+40.8;0;0;0;0;0;6;0;
+46.3;0;1;0;0;0;6;0;
+47.4;26;6;0;0;0;6;0;
+51.5;26;6;0;0;0;6;0;
+52.1;26;6;0;0;0;6;0;
+52.4;26;6;0;0;0;6;0;
+52.7;26;6;0;0;0;6;0;
+58.0;26;6;0;0;0;6;0;
+62.0;26;6;0;0;0;6;0;
+64.0;26;6;0;0;0;6;0;
+70.0;26;6;0;0;0;6;0;
+76.0;26;6;0;0;0;6;0;
+77.0;26;6;0;0;0;6;0;voice_allez=1
+82.0;26;6;0;0;0;6;0;voice_allez=1
+88.0;26;6;0;0;0;6;0;voice_allez=1
+92.0;26;6;0;0;1;6;0;voice_allez=1
+94.0;26;6;0;0;1;6;0;voice_allez=1
+100.0;26;6;0;0;1;6;0;voice_allez=1
+106.0;26;6;0;0;3;7;0;airliner_rumble=1 voice_allez=1
+112.0;31;6;0;0;3;7;0;airliner_rumble=1 voice_allez=1
+118.0;31;6;0;0;3;7;0;airliner_rumble=1 voice_allez=1
+124.0;31;6;0;0;3;7;0;airliner_rumble=1 voice_allez=2
+130.0;31;6;0;0;3;7;0;airliner_rumble=1 voice_allez=2
+136.0;31;6;0;0;3;7;0;airliner_rumble=1 voice_allez=2
+142.0;31;6;0;0;3;7;0;airliner_rumble=1 voice_allez=2
+148.0;31;6;0;0;3;8;0;airliner_rumble=1 voice_allez=2
+152.0;31;6;0;0;2;8;0;airliner_rumble=2 voice_allez=2
+154.0;31;6;0;0;2;8;0;airliner_rumble=2 voice_allez=2
+160.0;31;6;0;0;2;8;0;airliner_rumble=2 voice_allez=2
+166.0;31;6;0;0;4;8;0;airliner_rumble=2 voice_allez=2
+172.0;31;6;0;0;3;8;0;airliner_rumble=2 voice_allez=2
+178.0;31;6;0;0;6;8;0;airliner_rumble=2 voice_allez=2
+184.0;31;6;0;0;6;8;0;airliner_rumble=2 voice_allez=2
+202.0;31;6;0;0;4;8;0;airliner_rumble=2 voice_allez=2
+216.1;31;6;0;0;3;8;0;airliner_rumble=2 voice_allez=3
