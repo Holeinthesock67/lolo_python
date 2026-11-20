@@ -5,6 +5,7 @@ extends Node3D
 # Chargement explicite : sans passer par l'éditeur, Godot ne connaît pas encore les class_name.
 const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const WarmupPlan := preload("res://scripts/warmup_plan.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -130,6 +131,9 @@ var junction_view = null
 var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
+## Préchauffage unique (lot PI2) : une étape par image, dès le chargement du parcours.
+var _warmup = WarmupPlan.new()
+var _wtf_warm_queued := false
 var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
 var _quit_code := 0
 var _test_cam_last_us := 0
@@ -1038,7 +1042,7 @@ func _step_start_wait(delta: float) -> void:
 	# Cyber-Rogue : la scène du mode, préchauffée pendant l'attente (lot Y20), tient lieu de décor du départ.
 	var rogue_scene: bool = rogue_host.is_active()
 	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
-			0 if rogue_scene else streamer.pending_count(), delta * 1000.0):
+			_warmup.pending() + (0 if rogue_scene else streamer.pending_count()), delta * 1000.0):
 		print("Décor du départ prêt : %s (à %d ms)" % [_start_wait.route_id, Time.get_ticks_msec()])
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
@@ -1155,6 +1159,8 @@ func _process(delta: float) -> void:
 	if Input.mouse_mode != mouse:
 		Input.mouse_mode = mouse
 	_poll_route_job()
+	if _warmup.step() != "" and _warmup.pending() == 0:
+		print("Préchauffage fini (ms) : %s (à %d ms)" % [_warmup.summary(), Time.get_ticks_msec()])
 	_poll_live_world()
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
@@ -1464,6 +1470,23 @@ func _load_phase(phases: Dictionary, name: String) -> void:
 	phases["t"] = now
 
 
+## Étapes du préchauffage d'un parcours (lot PI2), jouées une par image par warmup_plan.gd : premier dessin des
+## portiques (et du portique d'élimination si le mode est préparé), des spectateurs, des passants et des
+## cyclistes du décor (lots Y21 et AS7), puis des forêts lointaines (lot Y5). Avant, toutes dans la même image.
+func _warmup_steps() -> Array:
+	var steps: Array = [["portiques", func(): segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")]]
+	if living_decor != null:
+		if living_decor.crowd_view != null:
+			steps.append(["spectateurs", func(): living_decor.crowd_view.warm_up(camera)])
+		if living_decor.passersby_view != null:
+			steps.append(["passants", func(): living_decor.passersby_view.warm_up(camera)])
+		if living_decor.cyclists_view != null and int(living_decor.living.get("cyclists", 0)) > 0:
+			steps.append(["cyclistes", func(): living_decor.cyclists_view.warm_up(camera)])
+	if streamer.forest_impostors != null:
+		steps.append(["forets", func(): streamer.forest_impostors.warm_up(camera)])
+	return steps
+
+
 func _poll_route_job() -> void:
 	if _route_job.is_empty() or not BgTasks.done(_route_job["task"]):
 		return
@@ -1519,15 +1542,10 @@ func _poll_route_job() -> void:
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	gp_scene.set_route(route)
 	_load_phase(phases, "portiques_gp")
-	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
-	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
-	_load_phase(phases, "prechauffage_portiques")
-	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
-		living_decor.warm_up(camera)
-	_load_phase(phases, "prechauffage_decor")
-	if streamer.forest_impostors != null:   # forêts lointaines (lot Y5) : pipeline compilé avant la première forêt
-		streamer.forest_impostors.warm_up(camera)
-	_load_phase(phases, "prechauffage_forets")
+	# Préchauffage unique (lot PI2) : une étape par image dès le menu, le départ attend la fin du plan.
+	_warmup.start(_warmup_steps())
+	_wtf_warm_queued = false
+	_load_phase(phases, "prechauffage_plan")
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -2182,14 +2200,17 @@ func _on_state_received(state: Dictionary) -> void:
 			start_screen.set_route(_start_route_card(state.get("route_id", null)))
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
-		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed():
-			wtf_scene.warm_up(camera)
+		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed() and not _wtf_warm_queued:
+			_wtf_warm_queued = true   # étape du préchauffage unique (lot PI2) : une image à elle, avant le départ
+			_warmup.add("wtf", func(): wtf_scene.warm_up(camera))
 	elif _was_start_waiting and str(state.get("session_state", "")) == "RUNNING":
 		start_screen.show_go()
 	else:
 		start_screen.show_wait(null, 0.0)
 		if str(state.get("session_state", "")) != "RUNNING":   # séance finie ou en pause : pas de feux sur le bilan
 			start_screen.cancel_go()
+	if not waiting:
+		_wtf_warm_queued = false
 	_was_start_waiting = waiting
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
