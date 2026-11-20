@@ -5,6 +5,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Paysages, partie 2 : canyons, rizières, fjords (lot U25-p2)
+- Canyons : strates de grès rouge, orange, ocre et brun sur les parois ; brume chaude, rivières boueuses.
+- Rizières : gradins inondés qui reflètent le ciel, diguettes de terre, marches en eau ou en riz ; air chaud et humide.
+- Fjords : cascades d'écume qui coulent sur les parois raides ; eau verte et profonde, lumière froide.
+- Le ciel et la mer suivent le paysage de la tuile, avec un passage en douceur ; nouveaux membres facultatifs du thème `ground.strata`, `ground.terraces` et `water.falls`.
+
 ### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
 - En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
 - Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).

@@ -7,6 +7,9 @@ extends RefCounted
 ## - `params_at(model, weights, daylight, weather, quality)` (pur) : paramètres pour des poids de biomes
 ##   (`biome_model.gd`), une lumière du jour (`daylight_from_theme`, puis P7) et une météo évaluée
 ##   (`weather_model.gd evaluate`) ;
+## - paysages (lot U25-p2) : les poids sont tenus par clé de rendu (« biome|paysage » quand le paysage de la
+##   tuile décrit le biome, biome_model.gd `keyed_weights_at`) : le ciel d'un fjord ou d'un canyon est celui
+##   que le thème donne au biome dans ce paysage ;
 ## - `smoothed_weights(s)` : poids moyennés sur WINDOW_M de route centrés sur `s`, pour qu'un changement
 ##   de biome se fasse en douceur (au plus 1/51 de l'écart tous les 10 m) ; `at(s, daylight, weather)`
 ##   enchaîne les deux.
@@ -103,10 +106,12 @@ static func params_at(biome_model, weights: Dictionary, daylight: Dictionary, we
 	var under_w := 0.0
 	var under_water := Color(0, 0, 0)
 	for b in weights.keys():
-		by_biome[b] = biome_model.params(b)
-		if b in HEAT_BIOMES:
+		# Clé « biome » ou « biome|paysage » (lot U25-p2) : ciel et eau du biome dans son paysage
+		by_biome[b] = biome_model.params_of(b) if biome_model.has_method("params_of") else biome_model.params(b)
+		var base := str(b).get_slice("|", 0)
+		if base in HEAT_BIOMES:
 			heat_w += float(weights[b])
-		if b in UNDERWATER_BIOMES:
+		if base in UNDERWATER_BIOMES:
 			under_w += float(weights[b])
 			under_water += (by_biome[b]["water"]["color"] as Color) * float(weights[b])
 	var mix: Dictionary = biome_model.blend(weights, by_biome)
@@ -186,7 +191,7 @@ func _weights_at_step(k: int) -> Dictionary:
 	if _cache.size() >= CACHE_MAX:
 		_cache.clear()
 	var p: Vector2 = pos_at.call(k * STEP_M)
-	var w: Dictionary = model.weights_at(p.x, p.y)
+	var w: Dictionary = model.keyed_weights_at(p.x, p.y)
 	_cache[k] = w
 	return w
 
@@ -194,6 +199,17 @@ func _weights_at_step(k: int) -> Dictionary:
 ## Poids moyennés sur WINDOW_M (51 pas de 10 m) centrés sur `s`, interpolés entre deux fenêtres voisines :
 ## continus en `s`, de somme 1.
 func smoothed_weights(s: float) -> Dictionary:
+	var out := {}
+	var keyed := smoothed_keyed_weights(s)
+	for k in keyed.keys():
+		var b := str(k).get_slice("|", 0)
+		out[b] = float(out.get(b, 0.0)) + float(keyed[k])
+	return out
+
+
+## Comme `smoothed_weights`, par clé de rendu (« biome » ou « biome|paysage », biome_model.gd `keyed_weights_at`,
+## lot U25-p2) : le ciel passe d'un paysage à l'autre en douceur, comme d'un biome à l'autre.
+func smoothed_keyed_weights(s: float) -> Dictionary:
 	var n := int(WINDOW_M / STEP_M) + 1
 	var start := (s - WINDOW_M * 0.5) / STEP_M
 	var k0 := floori(start)
@@ -214,4 +230,4 @@ func smoothed_weights(s: float) -> Dictionary:
 
 
 func at(s: float, daylight: Dictionary, weather: Dictionary, quality: String) -> Dictionary:
-	return params_at(model, smoothed_weights(s), daylight, weather, quality)
+	return params_at(model, smoothed_keyed_weights(s), daylight, weather, quality)
