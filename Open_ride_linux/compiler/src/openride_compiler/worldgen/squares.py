@@ -49,9 +49,10 @@ from .graph import RoadGraph
 from .osmdb import OsmDb
 from .store import WorldCache
 
-# 2 (13/11) : garde-fou de la chaussée ; 3 (20/11) : garde-fou aussi dans les tunnels et sur les ponts. Les carrés
-# déjà en cache sont recalculés.
-WORLDGEN_VERSION = 3
+# Garde-fou de la chaussée (13/11, #871), étendu aux tunnels et aux ponts (20/11) : 4, pour ne pas reprendre les
+# numéros 2 et 3 des lots EA1, EA3 et EA4 en cours (un même numéro pour deux contenus différents garderait un
+# carré périmé en cache). À la fusion avec ces lots, prendre un numéro plus grand que tous. Carrés recalculés.
+WORLDGEN_VERSION = 4
 SQUARE_M = 1000
 FAR_M = 5000
 MARGIN_M = 50.0
