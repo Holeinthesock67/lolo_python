@@ -39,7 +39,7 @@ from ..errors import CompileError
 GB = 1_000_000_000
 KINDS = ("square", "far", "biome", "dem", "tile", "osm")
 EVICTION_RANK = {"square": 0, "biome": 0, "far": 1, "dem": 2, "tile": 2, "osm": 2}
-LAYER_FILES = ("buildings", "vegetation", "water", "poi", "bridges")   # bridges : lot EA4
+LAYER_FILES = ("buildings", "vegetation", "water", "poi", "bridges", "tunnels")   # bridges : lot EA4 ; tunnels : EA5
 
 # Valeurs par défaut de la section [open_world] (mêmes que `openride_core.config.OpenWorldConfig`).
 OPEN_WORLD_DEFAULTS: dict[str, Any] = {

@@ -23,6 +23,8 @@ uniform float snow_line_m = 2200.0;
 uniform float blend_sharpness : hint_range(0.1, 32.0) = 4.0;
 
 #include "res://shaders/terrain_shade.gdshaderinc"
+// Trou dans le volume des tunnels proches (lot EA5)
+#include "res://shaders/tunnel_cut.gdshaderinc"
 
 void vertex() {
 	v_world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -53,4 +55,8 @@ void fragment() {
 	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n, tri_weights, 0.0, VERTEX, VIEW_MATRIX, normal_out);
 	NORMAL = normal_out;
 	ROUGHNESS = roughness * (1.0 - 0.35 * season_ground_wet);   // sol détrempé (lot U13)
+	// Lot EA5 : terrain du volume d'un tunnel non dessiné, en dernier (dérivées calculées par tout le quad)
+	if (tunnel_cut_inside(v_world_pos)) {
+		discard;
+	}
 }

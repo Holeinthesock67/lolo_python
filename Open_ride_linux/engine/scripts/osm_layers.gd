@@ -12,8 +12,8 @@ extends RefCounted
 
 const SUPPORTED_MAJOR := 1
 const CHUNK_LENGTH_M := 1000.0
-const OSM_LAYERS := ["buildings", "vegetation", "poi", "water", "roads", "coast", "bridges"]   # coast : lot U9 ; bridges : EA4
-const KNOWN_LAYERS := ["terrain", "buildings", "vegetation", "poi", "water", "roads", "coast", "bridges"]
+const OSM_LAYERS := ["buildings", "vegetation", "poi", "water", "roads", "coast", "bridges", "tunnels"]   # coast : lot U9 ; bridges : EA4 ; tunnels : EA5
+const KNOWN_LAYERS := ["terrain", "buildings", "vegetation", "poi", "water", "roads", "coast", "bridges", "tunnels"]
 
 const BUILDING_ROOFS := ["flat", "gabled"]
 const VEGETATION_KINDS := ["wood", "scrub", "orchard", "meadow", "farmland", "grassland"]   # 1.5 : terrains ouverts (P22)
@@ -132,6 +132,18 @@ static func _valid_bridge(b: Dictionary) -> bool:
 			return false
 	for p in piers:
 		if not _is_point(p, 4):
+			return false
+	return true
+
+
+## Tunnel (format 1.11, lot EA5) : axe du tube d'au moins 2 points (x, z, y), demi-chaussée positive.
+static func _valid_tunnel(b: Dictionary) -> bool:
+	var pts = b.get("points", null)
+	if not (_has_id(b) and str(b.get("kind", "")) == "tunnel" and _is_number(b.get("half_width_m", null))
+			and float(b["half_width_m"]) > 0.0 and typeof(pts) == TYPE_ARRAY and (pts as Array).size() >= 2):
+		return false
+	for p in pts:
+		if not _is_point(p, 3):
 			return false
 	return true
 
@@ -290,8 +302,8 @@ static func _make_absolute(doc: Dictionary, layer: String, off: Vector2) -> void
 				if typeof(p) == TYPE_DICTIONARY and _is_number(p.get("x", null)) and _is_number(p.get("z", null)):
 					p["x"] = float(p["x"]) + off.x
 					p["z"] = float(p["z"]) + off.y
-		"bridges":
-			var items = doc.get("bridges", [])
+		"bridges", "tunnels":
+			var items = doc.get(layer, [])
 			if typeof(items) != TYPE_ARRAY:
 				return
 			for b in items:
@@ -347,11 +359,11 @@ static func _load_file(path: String, layer: String, offset: Vector2) -> Dictiona
 	if offset != Vector2.ZERO:
 		_make_absolute(doc, layer, offset)
 	match layer:
-		"buildings", "vegetation", "poi", "roads", "bridges":
+		"buildings", "vegetation", "poi", "roads", "bridges", "tunnels":
 			var key: String = {"buildings": "buildings", "vegetation": "areas", "poi": "points", "roads": "lines",
-				"bridges": "bridges"}[layer]
+				"bridges": "bridges", "tunnels": "tunnels"}[layer]
 			var valid: Callable = {"buildings": _valid_building, "vegetation": _valid_vegetation, "poi": _valid_poi,
-				"roads": _valid_road, "bridges": _valid_bridge}[layer]
+				"roads": _valid_road, "bridges": _valid_bridge, "tunnels": _valid_tunnel}[layer]
 			var got = _filter(doc, key, valid)
 			if got == null:
 				res["error"] = "liste « %s » absente dans %s" % [key, path]

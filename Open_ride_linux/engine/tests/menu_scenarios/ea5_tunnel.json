@@ -1,0 +1,88 @@
+{
+  "description": "Lot EA5, recette sur le PC : monde ouvert lancé depuis Sevrier (rive ouest du lac d'Annecy, tunnel sous la colline relevé au banc #936, réseau), 5 minutes de balade avec une capture toutes les 30 s : approche du portail, intérieur (voûte, lampes), sortie, colline gardée au-dessus, pas d'herbe sur la route à l'entrée. Le premier carrefour décide si la route passe le tunnel : à juger sur les captures. À lancer en low, medium et high, en cache séparé, sur la branche puis sur main (les carrés du cache se refont d'eux-mêmes : WORLDGEN_VERSION 6).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "sevrier",
+        "contient": "Sevrier"
+      }
+    },
+    {
+      "attendre": 20
+    },
+    {
+      "capture": "tunnel_depart"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_1"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_2"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_3"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_4"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_5"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_6"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_7"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_8"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_9"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "tunnel_10"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 120
+    }
+  ]
+}
