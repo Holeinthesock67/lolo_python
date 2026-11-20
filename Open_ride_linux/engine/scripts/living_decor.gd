@@ -115,6 +115,8 @@ var passersby_view: Node3D = null
 var underwater := false             # parcours sous l'eau (lot SM1, AtmosphereModel.route_underwater)
 
 var climbs: Array = []
+## Prolongations de la route appliquées (monde ouvert, tests).
+var extensions := 0
 var pois: Array = []
 var roadside_items: Array = []
 var prepared := false               # résultat de la tâche de fond appliqué
@@ -131,6 +133,8 @@ var _sound_at := -INF
 
 var _route = null
 var _road_width_m := RoadBuilder.ROAD_WIDTH_M
+var _world_dir := ""
+var _pending_extend = null            # route prolongée arrivée pendant une préparation (monde ouvert)
 var _rider_lane_m := RoadBuilder.RIDER_LATERAL_M   # écart à l'axe du cycliste de la dernière trame (lot AS2)
 var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par step (placements des tests, lot P32)
 var _rider_v := 0.0
@@ -287,6 +291,8 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	_wait_job()
 	_generation += 1
 	_route = route
+	_world_dir = world_dir
+	_pending_extend = null
 	underwater = false
 	_road_width_m = road_width_m
 	props.road_width_m = road_width_m
@@ -319,9 +325,28 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 		world_streamer.set_road_marks({})
 	if route == null or not enabled:
 		return
-	var layers: Array = osm_streamer.layers_present.duplicate() if osm_streamer != null and not world_dir.is_empty() else []
-	var job := {"gen": _generation, "route": route, "world_dir": world_dir, "layers": layers,
-		"road_width_m": road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
+	_start_job(route, false)
+
+
+## Monde ouvert : route prolongée (même début, abscisses gardées ; main.gd après chaque révision du générateur).
+## Le décor du parcours est recalculé en tâche de fond sur toute la route connue, comme au chargement, puis
+## appliqué sans rien retirer autour du cycliste : bornes, panneaux et balises des tronçons affichés reposés,
+## spectateurs et passants remplacés, véhicules et cyclistes du décor gardés sur la nouvelle route. Une
+## prolongation arrivée pendant une préparation attend la fin de celle-ci (la dernière seule est gardée).
+func extend_route(route) -> void:
+	if route == null or _route == null or not enabled:
+		return
+	if not _job.is_empty():
+		_pending_extend = route
+		return
+	_route = route
+	_start_job(route, true)
+
+
+func _start_job(route, extend: bool) -> void:
+	var layers: Array = osm_streamer.layers_present.duplicate() if osm_streamer != null and not _world_dir.is_empty() else []
+	var job := {"gen": _generation, "route": route, "world_dir": _world_dir, "layers": layers, "extend": extend,
+		"road_width_m": _road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
 	var bm = _active_biome_model()   # torii et lanternes des montées du biome japan (lot JP5) ; tuiles lues sous verrou
 	job["biome_at"] = Callable(bm, "dominant_at") if bm != null else Callable()
 	# Parcours sous l'eau (lot SM1) : ni circulation, ni cyclistes du décor, ni spectateurs, passants ou objets du bord
@@ -417,6 +442,9 @@ func _poll_job(wait: bool = false) -> void:
 	crowd_view.setup(crowd, sound_player)
 	passersby = res["passersby"]
 	passersby_view.setup_passersby(passersby, sound_player)
+	if bool(job.get("extend", false)):
+		_apply_extension(res)
+		return
 	traffic.configure(_route, theme, pois, 0 if underwater else int(living.get("vehicles", 0)))
 	# Option gravel : seuls tracteurs et motos sur les chemins (surface effective de world_streamer)
 	traffic.unpaved_at = Callable()
@@ -440,6 +468,32 @@ func _poll_job(wait: bool = false) -> void:
 	for k in _loaded_chunks:
 		props.add_chunk(_route, k, RoadsideModel.for_chunk(roadside_items, k))
 	prepared = true
+
+
+## Route prolongée prête (extend_route) : véhicules et cyclistes gardés sur la nouvelle route, éoliennes,
+## drapeaux et chiffres peints repris, objets du bord de route et luminaires des tronçons affichés reposés.
+func _apply_extension(res: Dictionary) -> void:
+	traffic.extend_route(_route, pois)
+	cyclists.extend_route(_route, climbs, pois)
+	cyclists.set_back_climbs(res["climbs_back"])   # montées du retour recalculées sur la route prolongée (N24)
+	sky.set_back_climbs([] if underwater else res["climbs_back"])
+	# Même règle qu'au chargement : sous l'eau (lot SM1, recalculé sur la route prolongée), ni circulation ni cyclistes
+	traffic.set_budget(0 if underwater else int(living.get("vehicles", 0)))
+	cyclists.set_budget(0 if underwater else int(living.get("cyclists", 0)))
+	sky.set_budget(0 if underwater else int(living.get("aircraft", 0)))
+	turbines.set_points(pois)
+	flags.set_points(pois)
+	if world_streamer != null and world_streamer.has_method("set_road_marks"):
+		world_streamer.set_road_marks(res["marks"])
+	for k in _loaded_chunks:
+		props.add_chunk(_route, k, RoadsideModel.for_chunk(roadside_items, k))
+		street_lights.add_chunk(_route, k, _chunk_buildings(k))
+	prepared = true
+	extensions += 1
+	if _pending_extend != null:
+		var next = _pending_extend
+		_pending_extend = null
+		extend_route(next)
 
 
 ## Modèle de biome du parcours quand il suit des biomes (couche ou forçage, lot U5), sinon null (lot P31).
