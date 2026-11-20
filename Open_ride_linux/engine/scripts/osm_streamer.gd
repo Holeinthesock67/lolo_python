@@ -6,7 +6,8 @@ extends Node3D
 ## - Bâtiments extrudés avec jupe de 3 m (building_mesh.gd).
 ## - Eau : cours d'eau en ruban et plans d'eau avec îles (water_mesh.gd).
 ## - Points d'intérêt (poi) pour le modèle sonore.
-## Au plus six nœuds de maillage par tronçon (bâtiments, cours d'eau, plans d'eau ; lot U9 : mer, écume, plages).
+## Au plus sept nœuds de maillage par tronçon (bâtiments, cours d'eau, plans d'eau ; lot U9 : mer, écume, plages ;
+## lot EA4 : ponts, tablier, garde-corps et piles de la couche `bridges`, bridge_mesh.gd).
 ## Lot U9 : les aires `sea` de la couche eau sont dessinées en mer animée (sea_mesh.gd, shaders/sea.gdshader)
 ## au lieu d'un plan d'eau ; couche `coast` : écume le long du rivage et plages drapées sur le terrain ; dès
 ## le premier tronçon avec de la mer, un anneau d'horizon (`sea_horizon`) prolonge la mer jusqu'au-delà du
@@ -29,6 +30,7 @@ extends Node3D
 const OsmLayers := preload("res://scripts/osm_layers.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
+const BridgeMesh := preload("res://scripts/bridge_mesh.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const RoadTrafficModel := preload("res://scripts/road_traffic_model.gd")
@@ -60,10 +62,11 @@ var _water_material: Material
 var _sea_material: ShaderMaterial      # lot U9 : mer et horizon
 var _foam_material: ShaderMaterial
 var _beach_material: ShaderMaterial
+var _bridge_material: StandardMaterial3D   # lot EA4 : tablier, garde-corps et piles
 var _horizon: MeshInstance3D = null
 var _shores_by_chunk: Dictionary = {}  # k -> Array[PackedVector2Array] (lignes de côte, lot U9)
 
-## Clé de tronçon "chunk:k" -> Array[MeshInstance3D] (au plus 6 nœuds)
+## Clé de tronçon "chunk:k" -> Array[MeshInstance3D] (au plus 7 nœuds)
 var _chunk_instances: Dictionary = {}
 var _wanted_chunks: Dictionary = {} # k -> true
 var _jobs: Dictionary = {}          # k -> {task, result, gen}
@@ -97,6 +100,7 @@ func _init_materials() -> void:
 	_foam_material.shader = SeaFoamShader
 	_beach_material = ShaderMaterial.new()
 	_beach_material.shader = BeachShader
+	_bridge_material = BridgeMesh.make_material()
 
 
 ## Matériau d'un nœud de tronçon selon sa sorte (meshes_data.kind).
@@ -110,6 +114,8 @@ func _material_for(kind: String) -> Material:
 			return _foam_material
 		"beach":
 			return _beach_material
+		"bridges":
+			return _bridge_material
 	return _water_material
 
 
@@ -431,6 +437,21 @@ func _build_chunk_job(job: Dictionary) -> void:
 						meshes_data.append({"kind": "beach", "arrays": arr})
 	PerfProbe.task("osm_cote", str(k), (Time.get_ticks_usec() - t_coast) / 1000.0)
 
+	# Ponts (lot EA4) : tablier, garde-corps et piles, altitudes affichées comme la route (relief exagéré)
+	var t_bridges := Time.get_ticks_usec()
+	if layers.has("bridges"):
+		var br_res := OsmLayers.load_chunk(w_dir, "bridges", k, job.get("route"))
+		if br_res.get("ok", false):
+			var br_items: Array = br_res.get("items", [])
+			if v_scale != 1.0:
+				br_items = scale_bridges(br_items, r_disp)
+			var br_mesh := BridgeMesh.build(br_items)
+			if int(br_mesh.get("built", 0)) > 0:
+				var arr := _arrays_from_mesh_dict(br_mesh)
+				if not arr.is_empty():
+					meshes_data.append({"kind": "bridges", "arrays": arr})
+	PerfProbe.task("osm_ponts", str(k), (Time.get_ticks_usec() - t_bridges) / 1000.0)
+
 	# Forêts (voisinage sonore et animaux : les arbres sont dessinés par tree_renderer.gd)
 	var t_veg := Time.get_ticks_usec()
 	var veg_items := []
@@ -499,6 +520,23 @@ func _build_chunk_job(job: Dictionary) -> void:
 		"sea": sea_info,
 		"shores": shores,
 	}
+
+
+## Ponts sur le relief exagéré (lot Q2) : altitudes du tablier et des piles passées par `display_y`.
+static func scale_bridges(items: Array, r_disp) -> Array:
+	var out := []
+	for b in items:
+		var bc: Dictionary = b.duplicate()
+		var pts := []
+		for p in bc.get("points", []):
+			pts.append([p[0], p[1], r_disp.display_y(float(p[2]))])
+		var piers := []
+		for p in bc.get("piers", []):
+			piers.append([p[0], p[1], r_disp.display_y(float(p[2])), r_disp.display_y(float(p[3]))])
+		bc["points"] = pts
+		bc["piers"] = piers
+		out.append(bc)
+	return out
 
 
 ## Hauteur lue sur le relief exagéré quand `v_scale` ≠ 1, comme le terrain affiché (lot Q2)
@@ -683,6 +721,8 @@ func integrate(max_new: int) -> int:
 			if kind == "buildings":
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.visibility_range_end = vis_end
+			elif kind == "bridges":   # lot EA4 : ombre du tablier sur l'eau et le fond de vallée
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			else:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 

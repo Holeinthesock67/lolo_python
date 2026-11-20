@@ -56,6 +56,7 @@ from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, spl
 from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
+from ..bridges import BRIDGES_VERSION
 from . import biome_tiles
 from .squares import (FAR_LAKE_SEARCH_M, FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox,
                       zone_frame)
@@ -352,7 +353,7 @@ class WorldSession:
         if self.session_dir is None:
             stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
             self.session_dir = self.cache.sessions_dir() / f"ow-{stamp}.world"
-        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "coast"):
+        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges", "coast"):
             (self.session_dir / sub).mkdir(parents=True, exist_ok=True)
 
     def _write_manifest(self) -> None:
@@ -377,6 +378,7 @@ class WorldSession:
                 "vegetation": {"present": True, "version": C.VEGETATION_VERSION, "source": "osm"},
                 "poi": {"present": True, "version": C.POI_VERSION},
                 "water": {"present": True, "version": C.WATER_VERSION},
+                "bridges": {"present": True, "version": BRIDGES_VERSION},   # lot EA4
                 "coast": {"present": True, "version": C.COAST_VERSION},     # lot W23 : mer et plages
                 "biome": biome_tiles.manifest_block(self._biome_sources()),
             },

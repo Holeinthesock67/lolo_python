@@ -16,7 +16,7 @@ Demande du propriétaire du 14 novembre, après l'explication de la modélisatio
 | EA1 | Niveau commun d'un lac pris dans son MNT (plus de marches entre morceaux, plus d'exutoire qui tire le lac vers le bas), sol abaissé sous l'eau ; parcours compilés et monde ouvert (`docs/lots/LOT_EA1_niveau_lacs_sol_sous_eau.md`) | I4, W7 | Petite |
 | EA2 | Eau au loin en monde ouvert : grands lacs (plus de 1 km²) écrits avec les tuiles lointaines et dessinés au-delà des carrés proches, sol lointain abaissé dessous ; même règle que EA1 (`docs/lots/LOT_EA2_eau_au_loin.md`) | EA1, W7, W10 | Moyenne |
 | EA3 | Grandes rivières en surface : `natural=water` + `water=river` (extrait) et classe `river` des tuiles vectorielles, niveau qui descend le long du cours (pas un plan horizontal) ; ruban gardé pour les rivières sans surface | EA1 | Moyenne |
-| EA4 | Ponts dessinés : tablier et garde-corps sur les `spans` « bridge » des arêtes (monde ouvert) et sur les ponts OSM croisés par un parcours compilé, piles sous un grand pont ; budgets GPU low, medium, high | EA1 | Moyenne |
+| EA4 | Ponts dessinés : tablier et garde-corps sur les `spans` « bridge » des arêtes (monde ouvert) et sur les ponts OSM croisés par un parcours compilé, piles sous un grand pont ; budgets GPU low, medium, high (`docs/lots/LOT_EA4_ponts_dessines.md`, en PR) | EA1 | Moyenne |
 
 Ordre proposé : EA1, puis EA2 (le défaut le plus visible depuis la route), EA3, EA4. Chaque lot : une branche et une PR, essai PC en low, medium et high, captures validées par le propriétaire avant fusion.
 
