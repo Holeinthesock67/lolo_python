@@ -1,0 +1,123 @@
+# File du lot HERBE1 (à-coups de l'herbe, 19/11) : mer du monde ouvert (#907, scénario w23_mer, départ Biarritz)
+# avec et sans la correction, puis non-régression sur le monde ouvert sans mer (w17_cap) contre main.
+# Trois qualités à chaque fois (règle du user), sonde --perf-probe et rapport perf_probe --budgets (à-coups compris).
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/herbe_high.toml
+# Après une correction : python3 scripts/file_bancs.py relancer scripts/file_bancs/herbe_high.toml --pr rHERBE
+#
+# #907 change SCHEMA_VERSION du cache : ses deux entrées tournent sur un cache SÉPARÉ (jamais le cache réel du user).
+# rHERBE-907 = branche de ce lot + #907 fusionnée en local (assemblage) ; r907-seule = #907 sans la correction, même
+# cache séparé : la comparaison des sondes (herbe par image, images de plus de 50 et 100 ms) est la mesure du lot.
+# Les têtes sont à remplir par le fil de fusion au moment du lancement (`tete`), comme pour rFS3.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rHERBE"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rHERBE-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rHERBE-907"
+pr = 929
+branche = "claude/project-thread-5ofk6g"
+assemblage = ["claude/project-thread-oft1se"]   # #907 (mer du monde ouvert) fusionnée par-dessus, en local
+cache = "separe"
+risque = 1                               # jamais tourné
+# Fumée (~5 min) : import Godot, tests de l'herbe et des zones d'exclusion, un passage w23_mer en low.
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_exclusion_zones bash engine/tests/run_engine_tests.sh && \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_grass_tufts bash engine/tests/run_engine_tests.sh"""
+fumee_delai_min = 15
+
+[[pr.etape]]
+id = "medium"                            # risque d'abord : medium (47 images > 50 ms sur 114 avant)
+commande = """python engine/tests/menu_bench.py --native --scenario w23_mer --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "high"
+commande = """python engine/tests/menu_bench.py --native --scenario w23_mer --voies clavier --qualite high --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality high --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "low"
+commande = """python engine/tests/menu_bench.py --native --scenario w23_mer --voies clavier --qualite low --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality low --budgets; exit $rc"""
+delai_min = 40
+
+[[pr]]
+id = "r907-seule"                        # référence : #907 sans la correction, même cache séparé
+pr = 907
+branche = "claude/project-thread-oft1se"
+cache = "separe"
+risque = 3
+fumee = "(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); true"
+fumee_delai_min = 8
+
+[[pr.etape]]
+id = "medium"
+commande = """python engine/tests/menu_bench.py --native --scenario w23_mer --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "high"
+commande = """python engine/tests/menu_bench.py --native --scenario w23_mer --voies clavier --qualite high --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality high --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "low"
+commande = """python engine/tests/menu_bench.py --native --scenario w23_mer --voies clavier --qualite low --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality low --budgets; exit $rc"""
+delai_min = 40
+
+[[pr]]
+id = "rHERBE"                            # non-régression sans mer : monde ouvert avec biomes, cache réel (schéma de main)
+pr = 929
+branche = "claude/project-thread-5ofk6g"
+risque = 2
+fumee = "(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); true"
+fumee_delai_min = 8
+
+[[pr.etape]]
+id = "w17-low"
+commande = """python engine/tests/menu_bench.py --native --scenario w17_cap --voies clavier --qualite low --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality low --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "w17-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario w17_cap --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "w17-high"
+commande = """python engine/tests/menu_bench.py --native --scenario w17_cap --voies clavier --qualite high --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality high --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "main-w17-medium"
+sur = "main"
+commande = """python engine/tests/menu_bench.py --native --scenario w17_cap --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "main-w17-low"
+sur = "main"
+commande = """python engine/tests/menu_bench.py --native --scenario w17_cap --voies clavier --qualite low --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality low --budgets; exit $rc"""
+delai_min = 40
+
+[[pr.etape]]
+id = "main-w17-high"
+sur = "main"
+commande = """python engine/tests/menu_bench.py --native --scenario w17_cap --voies clavier --qualite high --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality high --budgets; exit $rc"""
+delai_min = 40
