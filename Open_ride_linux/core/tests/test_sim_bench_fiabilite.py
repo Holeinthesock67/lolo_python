@@ -64,7 +64,7 @@ def test_probe_summary_counts_capture_frames_apart(tmp_path: Path):
     summary = pp.write_report(pp.read_engine_csv(src), tmp_path / "r")
     assert summary["stats"]["frame_max_ms"]["max"] == 19.0          # le pic de 148 ms n'est pas une saccade
     assert summary["captures"] == {"frames": 12, "max_ms": 148.0}
-    assert "Images des captures d'écran mises à part : 12 (pire 148 ms)" in (tmp_path / "r" / "sonde.txt").read_text(
+    assert "Images des captures d'écran : 12 (pire 148 ms coût compris)" in (tmp_path / "r" / "sonde.txt").read_text(
         encoding="utf-8")
 
 

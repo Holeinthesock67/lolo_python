@@ -67,16 +67,16 @@ func _init() -> void:
 	_check(lines.size() == 2 and lines[0] == ";".join(PerfProbe.COLUMNS), "en-tête et une ligne écrits")
 	_check(lines.size() == 2 and lines[1].ends_with(";medium") and lines[1].split(";")[PerfProbe.COLUMNS.find("fps")] == "55.56",
 		"ligne : 2 images en 36 ms, 55.56 images/s")
-	# Capture d'écran (lot X35) : l'image de la capture et les deux suivantes sortent de p99 et pire image.
+	# Capture d'écran (lots X35 et PI1) : son coût mesuré est retiré de son image, le reste compte.
 	var cs: Dictionary = PerfProbe.capture_stats([16.0, 16.0], [])
 	_check(cs["capture"] == 0 and not cs.has("fps"), "sans capture : rien à corriger")
 	probe = PerfProbe.new()
 	_check(probe.open(csv, null, "low"), "fichier rouvert")
 	for i in 10:
 		probe.frame(0.016)
-	probe.mark_capture()
-	probe.frame(0.150)
-	probe.frame(0.030)
+	probe.mark_capture(140.0)
+	probe.frame(0.150)                 # 150 ms dont 140 de capture : 10 ms comptés
+	probe.frame(0.016)
 	probe.frame(0.016)
 	probe.frame(0.016)
 	probe._last_us -= PerfProbe.PERIOD_US
@@ -85,11 +85,28 @@ func _init() -> void:
 	lines = FileAccess.get_file_as_string(csv).strip_edges().split("\n")
 	var cells2 := lines[1].split(";") if lines.size() == 2 else PackedStringArray()
 	var col := func(name: String) -> String: return cells2[PerfProbe.COLUMNS.find(name)] if cells2.size() == PerfProbe.COLUMNS.size() else "?"
-	_check(col.call("capture") == "3" and col.call("capture_max_ms") == "150.00",
-		"3 images de capture mises à part, pire 150 ms (%s, %s)" % [col.call("capture"), col.call("capture_max_ms")])
+	_check(col.call("capture") == "1" and col.call("capture_max_ms") == "150.00",
+		"1 image de capture, 150 ms coût compris (%s, %s)" % [col.call("capture"), col.call("capture_max_ms")])
 	_check(col.call("frame_max_ms") == "16.00" and col.call("frame_p99_ms") == "16.00",
-		"p99 et pire image sans la capture (%s, %s)" % [col.call("frame_p99_ms"), col.call("frame_max_ms")])
-	_check(col.call("fps") == "38.66", "images/s avec les images de la capture : 15 images en 388 ms (%s)" % col.call("fps"))
+		"p99 et pire image sans le coût de la capture (%s, %s)" % [col.call("frame_p99_ms"), col.call("frame_max_ms")])
+	_check(col.call("fps") == "40.11", "images/s avec le coût de la capture : 15 images en 374 ms (%s)" % col.call("fps"))
+	# Gel tombé sur une capture (banc rPI1 : 3,9 s de shaders pendant une capture de 300 ms) : il reste compté.
+	probe = PerfProbe.new()
+	_check(probe.open(csv, null, "low"), "fichier rouvert (gel pendant une capture)")
+	for i in 3:
+		probe.frame(0.016)
+	probe.mark_capture(300.0)
+	probe.frame(3.9)
+	probe._last_us -= PerfProbe.PERIOD_US
+	probe.frame(0.016)
+	probe.close()
+	lines = FileAccess.get_file_as_string(csv).strip_edges().split("\n")
+	var cells3 := lines[1].split(";") if lines.size() == 2 else PackedStringArray()
+	var max3 := cells3[PerfProbe.COLUMNS.find("frame_max_ms")] if cells3.size() == PerfProbe.COLUMNS.size() else "?"
+	_check(max3 == "3600.00", "gel de 3,9 s pendant une capture de 300 ms : 3 600 ms comptés (%s)" % max3)
+	var sac0 := FileAccess.get_file_as_string(csv.get_base_dir().path_join("saccades.csv")).strip_edges().split("\n")
+	_check(sac0.size() >= 2 and sac0[-1].split(";")[4] == "inconnue" and sac0[-1].split(";")[5].begins_with("capture  300.0"),
+		"saccade du gel : la capture n'en est pas la cause, elle reste listée (%s)" % sac0[-1])
 	# Saccades et démarrage (lot X15).
 	_check(not PerfProbe.active, "sonde fermée : inactive")
 	PerfProbe.mark("tuile", "near:0:0", 50.0)
@@ -103,20 +120,21 @@ func _init() -> void:
 	_check(PerfBudget.check("perf_probe_mark_off", per_call_us / 1000.0), "sans sonde, mark coûte moins de 20 µs (%.2f µs ; une dizaine d'appels par seconde)" % per_call_us)
 	PerfProbe.mark_since("herbe", "40", Time.get_ticks_usec() - 90_000)
 	_check(PerfProbe._steps.is_empty(), "sans sonde, mark_since ne retient rien")
-	var sc: Dictionary = PerfProbe.saccade_cause([["tuile", "near:1:2", 12.0], ["arbres", "near:1:2", 30.5]], false, 60.0)
+	var sc: Dictionary = PerfProbe.saccade_cause([["tuile", "near:1:2", 12.0], ["arbres", "near:1:2", 30.5]], 60.0)
 	_check(sc["cause"] == "arbres" and sc["steps"] == "tuile near:1:2 12.0 | arbres near:1:2 30.5",
 		"cause : l'étape la plus longue (%s)" % sc["cause"])
-	_check(PerfProbe.saccade_cause([["arbres", "near:1:2", 18.5]], false, 147.0)["cause"] == "inconnue",
+	_check(PerfProbe.saccade_cause([["arbres", "near:1:2", 18.5]], 147.0)["cause"] == "inconnue",
 		"étape de moins du quart de l'image : inconnue")
-	_check(PerfProbe.saccade_cause([], false, 40.0)["cause"] == "inconnue" and PerfProbe.saccade_cause([["osm", "4", 9.0]], true, 40.0)["cause"] == "capture",
-		"sans étape : inconnue ; capture prioritaire")
+	_check(PerfProbe.saccade_cause([], 40.0)["cause"] == "inconnue"
+		and PerfProbe.saccade_cause([["osm", "4", 9.0], ["capture", "", 30.0]], 40.0)["cause"] == "capture",
+		"sans étape : inconnue ; capture du banc : une étape comme les autres")
 	# Pire image (17/11) : cause « shaders » si des pipelines ont été compilés et qu'aucune étape n'explique l'image.
-	_check(PerfProbe.saccade_cause([["osm", "4", 9.0]], false, 140.0, 3)["cause"] == "shaders"
-		and PerfProbe.saccade_cause([["arbres", "1", 90.0]], false, 140.0, 3)["cause"] == "arbres"
-		and PerfProbe.saccade_cause([], true, 140.0, 3)["cause"] == "capture",
+	_check(PerfProbe.saccade_cause([["osm", "4", 9.0]], 140.0, 3)["cause"] == "shaders"
+		and PerfProbe.saccade_cause([["arbres", "1", 90.0]], 140.0, 3)["cause"] == "arbres"
+		and PerfProbe.saccade_cause([["capture", "", 130.0]], 140.0, 3)["cause"] == "capture",
 		"pipelines compilés sans étape qui explique : shaders ; étape longue et capture d'abord")
-	_check(PerfProbe.saccade_cause([], false, 140.0, 0, 60.0)["cause"] == "scripts"
-		and PerfProbe.saccade_cause([], false, 140.0, 0, 10.0)["cause"] == "inconnue",
+	_check(PerfProbe.saccade_cause([], 140.0, 0, 60.0)["cause"] == "scripts"
+		and PerfProbe.saccade_cause([], 140.0, 0, 10.0)["cause"] == "inconnue",
 		"scripts non notés (process_ms au moins le quart) : scripts ; sinon inconnue (rendu)")
 	# Temps d'image : Godot borne delta à 8 pas de physique (133 ms) ; le temps réel donne la vraie durée.
 	_check(is_equal_approx(PerfProbe.frame_time_ms(0.1333, 1_000_000, 1_420_000), 420.0),

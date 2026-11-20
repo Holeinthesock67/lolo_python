@@ -268,7 +268,8 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         v = values(rows, key)
         if v:
             out["stats"][key] = {"p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
-    # Images d'une capture d'écran de test (lot X35) : déjà hors p99 et pire image côté engine, comptées à part.
+    # Images d'une capture d'écran de test (lots X35 et PI1) : l'engine retire le coût mesuré de la capture de
+    # son image (le reste compte dans p99 et pire image) ; `capture_max_ms` est la pire, coût compris.
     cap = values(rows, "capture")
     if cap and sum(cap) > 0:
         out["captures"] = {"frames": int(sum(cap)), "max_ms": max(values(rows, "capture_max_ms"), default=0.0)}
@@ -292,8 +293,8 @@ def summary_text(summary: dict[str, Any], title: str) -> str:
         lines.append(f"  {name:<28} {st['p50']:>10.1f} {st['p99']:>10.1f} {st['max']:>10.1f}")
     if summary.get("captures"):
         c = summary["captures"]
-        lines += ["", f"Images des captures d'écran mises à part : {c['frames']} (pire {c['max_ms']:.0f} ms), "
-                  "hors temps d'image p99, pire image et saccades."]
+        lines += ["", f"Images des captures d'écran : {c['frames']} (pire {c['max_ms']:.0f} ms coût compris) ; "
+                  "le coût mesuré de la capture est retiré du temps d'image, le reste est compté."]
     if summary["drift"]:
         lines += ["", "Dérive (médiane de la dernière minute − première minute) :"]
         for key, d in summary["drift"].items():

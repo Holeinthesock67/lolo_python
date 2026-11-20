@@ -1718,9 +1718,11 @@ func _test_screenshot(path: String, tag: String) -> void:
 	# « Taille », garage_modif de visual_check.py).
 	_flush_menu()
 	await RenderingServer.frame_post_draw
+	var shot_us := Time.get_ticks_usec()
 	var img := get_viewport().get_texture().get_image()
 	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
-	_probe.mark_capture()   # pic de la lecture et de l'écriture : hors p99 de la sonde (lot X35)
+	# Coût de la lecture et de l'écriture, retiré de l'image par la sonde (lots X35 et PI1).
+	_probe.mark_capture((Time.get_ticks_usec() - shot_us) / 1000.0)
 	var widgets := {}
 	var nodes := {
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,

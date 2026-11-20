@@ -22,6 +22,8 @@ Plan complet : `/mnt/project-files/plans/PLAN_PIRE_IMAGE_GLOBALE_2026-11-17.md`.
 | PI1-2 | `saccades.csv` gagne trois colonnes : `delta_ms` (le delta de Godot, pour comparer), `pipelines` (pipelines compilés pendant l'image, somme des `Performance.PIPELINE_COMPILATIONS_*`, publiés depuis Godot 4.4) et `process_ms` (`Performance.TIME_PROCESS` de l'image). `moteur.csv` gagne `pipelines` (somme de la seconde). |
 | PI1-3 | Cause d'une saccade, dans cet ordre : capture, puis étape notée d'au moins le quart de l'image, puis « shaders » si au moins un pipeline a été compilé, puis « scripts » si `process_ms` fait au moins le quart de l'image, sinon « inconnue » (rendu, envoi au GPU, pilote). |
 | PI1-4 | `perf_probe.py` : le rapport des saccades donne le total des pipelines compilés, le nombre d'images plus longues que le delta de Godot, et les pipelines de chaque pire saccade. Les fichiers d'un engine plus ancien se lisent comme avant. |
+| PI1-6 | Capture du banc (après le banc rPI1) : `main.gd` mesure le coût de la capture (lecture de l'image et PNG) et le passe à `mark_capture(ms)`. La sonde le retire de l'image de la capture, puis compte le reste comme pour toute image. La capture est aussi une étape `capture` de saccades.csv, et elle n'est la cause que selon la règle des étapes. Avant, l'image de la capture et les deux suivantes étaient mises à part en entier, et un gel de 3,9 s tombé sur une capture disparaissait. |
+| PI1-7 | `process_ms` : selon l'ordre des nœuds, Godot publie le temps des `_process` à l'image lente ou à la suivante. La saccade s'écrit donc une image plus tard, avec la plus grande des deux lectures. |
 | PI1-5 | Les seuils ne changent pas : départ 150 ms, pire image 100 ms, 3 images lentes par minute au plus. Avec la vraie durée, certains bancs vont d'abord sembler pires. C'est attendu. |
 
 ## 3. Fichiers
@@ -35,7 +37,17 @@ Plan complet : `/mnt/project-files/plans/PLAN_PIRE_IMAGE_GLOBALE_2026-11-17.md`.
 2. PC, sur main et sur la branche, en low, medium et high : l'ERG sur la démo avec demi-tour (banc de r882b), `grand_prix`, `grand_prix_onze`, `demo_long`, DB1, DB3 et le récif. Pour chaque banc, un tableau des vraies durées et des causes (départ, demi-tour, Z, arbres), avec les pipelines compilés.
 3. Un passage sans capture ni sonde chiffre le coût de l'instrumentation (question du propriétaire, 17 novembre).
 
-## 5. Suite (étape 3, selon le profil)
+## 5. Banc rPI1 (nuit du 19 au 20 novembre, branche 4a3d1514 et main 80f9dd54)
+
+Scénarios passés : ERG 15 min sur la démo (sans demi-tour), `grand_prix`, demo_long et une fumée (demo medium), en low, medium et high.
+
+- **Chargement : environ 25 s de gel du fil principal avant le départ, dans tous les scénarios et dans les trois qualités.** On voit quatre images d'affilée de 14 s, 4,7 s, 2 s et 3,8 s (de 20 à 32 s), avec 70, 67, 17 et 17 pipelines compilés, et des `_process` de 11,7 s, 7 s, 2 s et 3,9 s. La première se produit pendant « cyclistes préchauffage » (1 000 ms notés). Sur main, ces mêmes gels apparaissaient à 128-146 ms.
+- La pire image « départ » de 225 à 255 ms, en échec sur la branche, est la traîne de ces gels. Le gel de 3,6 à 3,9 s qui la précède était caché, car il était compté comme une capture, d'où PI1-6.
+- Grand Prix : à chaque Z, une image de 135 à 148 ms, sans pipeline compilé et avec 16 à 27 ms de scripts. Le temps part donc dans le rendu.
+- Captures du banc : 245 à 308 ms (lecture de l'image et PNG), contre 141 à 148 ms affichés sur main.
+- ERG en low, medium et high, branche et main : « médiane 15,7 km/h, attendu 40 » vient du réglage de vitesse imposée dans une séance ERG sur le col, pas du jeu.
+
+## 6. Suite (étape 3, selon le profil)
 
 - Si ce sont les shaders : un seul préchauffage au chargement, où chaque module déclare ses matériaux et maillages, et qui remplace les préchauffages au cas par cas (Y19, Y20, cyclistes, forêts lointaines, panneaux). On y ajoute le cache des pipelines sur disque.
 - Si ce sont les scripts : les étapes qui manquent (demi-tour, objets du GP) sont notées, puis passent par une seule file limitée par image.
