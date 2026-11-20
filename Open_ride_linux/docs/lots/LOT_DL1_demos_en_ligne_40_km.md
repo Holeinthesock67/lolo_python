@@ -31,8 +31,11 @@ Demande du propriétaire du 20 novembre 2026 (18 h 28) : « Reprends les circuit
 - `captures_demo.py` : captures à l'entrée et au milieu du premier bloc de chaque biome seulement (les blocs répétés ont le même décor), sommet en fin de parcours : environ 5 h par qualité à 50 km/h, 3 h à 80 km/h.
 
 ## 3. Recette PC
-
-Catégorie rendu (règle PR #938) : captures du jeu (`captures_demo.py lancer --vitesse 80 --parcours demo,demo-biomes-paysages,demo-japon,demo-biomes-sud`) en low, medium et high, et banc des menus `parcours_demo` (descriptions « 40 km », « 42.5 km », « 48.5 km ») ; captures à valider par le propriétaire.
+Catégorie : rendu
+- Cloud : `menu_bench --scenario parcours_demo` et `--scenario contenus` (descriptions 40 / 42.5 / 48.5 km, installation des contenus de départ), suites core et compilateur
+- PC : `captures_demo.py lancer --vitesse 80 --parcours demo,demo-biomes-paysages,demo-japon,demo-biomes-sud --qualites low,medium,high` (planche à valider par le propriétaire : décor de chaque biome, panneaux de sommet « Col des Lamas », « Col des Cèdres », Col du lacet à 40 km) ; mesure GPU low, high, medium sur le Tour des nouveaux paysages (`sim_bench --world <routes>/demo-biomes-paysages.world --scenario nominal`, 10 min)
+- Bancs existants : inchangés, ils restent sur la variante de recette courte (aucune référence à refaire)
+- Versions : aucune (WORLDGEN_VERSION, SCHEMA_VERSION et révision IPC inchangés ; générateur du Col du lacet `openride-fake-world` 0.5.0)
 
 ## 4. Livraison
 
