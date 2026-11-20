@@ -53,5 +53,5 @@ func _init() -> void:
 	gone.free()
 	_check(plan.step() == "suite" and plan.pending() == 0, "étape d'un nœud libéré sautée")
 
-	print("%d vérifications, %d échec(s)" % [_checked, _failures])
+	print("test_warmup_plan : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
