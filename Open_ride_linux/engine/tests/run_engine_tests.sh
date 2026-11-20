@@ -304,6 +304,23 @@ herbe_count="$(echo "$HERBE_OUT" | grep -E "^test_herbe_route : [0-9]+ vérifica
 if [ -z "$herbe_count" ] || echo "$HERBE_OUT" | grep -q -E "SCRIPT ERROR|ERROR:"; then herbe_rc=1; fi
 if [ "${#HERBE_WORLDS[@]}" -lt 7 ]; then herbe_rc=1; fi
 record "test_herbe_route (paysage hors de la chaussée, route posée sur le sol, ${#HERBE_WORLDS[@]} parcours)" "$herbe_rc" "${herbe_count#*: }"
+
+echo "== Même décor en monde ouvert que sur les circuits (20 novembre) =="
+# Parcours ci-dessus et un monde ouvert produit par le vrai générateur (make_sim_world.py --generated, relief
+# analytique) : bornes, panneaux de montée, spectateurs, passants et couches lues, même règle pour tous.
+FAMILY_WORLDS=("${HERBE_WORLDS[@]}")
+if python3 "$ENGINE_DIR/tests/make_sim_world.py" --generated --out "$HERBE_DIR" >/dev/null 2>&1; then
+  FAMILY_WORLDS+=("$HERBE_DIR/monde-ouvert-genere.world")
+else
+  echo "monde ouvert généré non produit (compilateur installé ?) : contrôle incomplet, compté en échec"
+fi
+FAMILY_OUT="$(timeout -k 5 600 "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_familles_monde_ouvert.gd -- "${FAMILY_WORLDS[@]}" 2>&1)"
+family_rc=$?
+echo "$FAMILY_OUT" | grep -v "^Godot Engine" || true
+family_count="$(echo "$FAMILY_OUT" | grep -E "^test_familles_monde_ouvert : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+if [ -z "$family_count" ] || echo "$FAMILY_OUT" | grep -q -E "SCRIPT ERROR|ERROR:"; then family_rc=1; fi
+if [ "${#FAMILY_WORLDS[@]}" -lt 8 ]; then family_rc=1; fi
+record "test_familles_monde_ouvert (même décor en monde ouvert que sur les circuits, ${#FAMILY_WORLDS[@]} parcours)" "$family_rc" "${family_count#*: }"
 rm -rf "$HERBE_DIR"
 
 echo "== Coutures du sol multi-biome en scène réelle (série U) =="
