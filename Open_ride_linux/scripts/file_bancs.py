@@ -28,6 +28,7 @@ Format de la file :
     risque = 1                   # 1 jamais tourné / cache / départ / format, 2 déjà échoué, 3 confirmation
     cache = "separe"             # "reel" (défaut) ou "separe" : copie du cache du monde ouvert, propre à la PR
     assemblage = []              # facultatif : branches fusionnées par-dessus, en local (essai assemblé, ex. essai-ow)
+    assemblage_strategie = "ours"   # facultatif : option -X de ces fusions (« ours » ou « theirs »)
     fumee = "python3 engine/tests/menu_bench.py --native --scenario w23_mer --qualite low --voies clavier --out {sortie}"
     fumee_delai_min = 8
 
@@ -47,13 +48,14 @@ les sources du worktree (core et compilateur), le core/.venv du dépôt en tête
 LC_NUMERIC=C et OPENRIDE_NO_GUI=1, comme job.sh ; le portail reçoit FILE_PR,
 FILE_ETAPE et FILE_DUREE_MIN (délai de l'étape, pour ne pas déborder sur la fenêtre du user). Verdicts :
 - OK ; CONTACTS : seules des vérifications de contacts ont échoué (non bloquant, lot AS11) ;
+- À-COUPS : seuls des à-coups connus (pire image, images lentes), avec ou sans contacts (non bloquant, lot PI1) ;
 - ÉCHEC : une vérification du jeu ; DÉLAI : étape arrêtée au bout de `delai_min` ;
 - ENVIRONNEMENT : le PC, pas la PR (code 2 des bancs, cache au mauvais schéma, réseau, disque plein) ;
 - BLOQUÉ : non jouée car la fumée de la PR n'est pas passée.
 Têtes relues (git fetch) avant les étapes de chaque PR ; une tête différente de `tete` donne ENVIRONNEMENT.
 Une PR dont le `SCHEMA_VERSION` du cache diffère de main ne tourne jamais sur le cache réel : sans `cache = "separe"`,
 ses étapes sont refusées (ENVIRONNEMENT) sans être lancées.
-Reprise : `lancer` rejoue tout ce qui n'est pas OK ou CONTACTS sur la tête actuelle ; `relancer` rejoue seulement
+Reprise : `lancer` rejoue tout ce qui n'est pas OK, CONTACTS ou À-COUPS sur la tête actuelle ; `relancer` rejoue seulement
 les étapes en échec (les OK d'une tête précédente restent acquises et sont marquées « sur tête X »).
 Pause : un fichier `PAUSE` dans le dossier de sortie arrête la file avant l'étape suivante (« PC libre ») ;
 Ctrl-C ou SIGTERM arrête l'étape en cours sans verdict. Code de sortie : 0 si rien n'est en ÉCHEC, DÉLAI ni
@@ -80,14 +82,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-OK, CONTACTS, ECHEC, DELAI, ENV, BLOQUE, A_FAIRE = "OK", "CONTACTS", "ÉCHEC", "DÉLAI", "ENVIRONNEMENT", "BLOQUÉ", "À FAIRE"
-ACQUIS = (OK, CONTACTS)                       # verdicts qui ne se rejouent pas sur la même tête
+OK, CONTACTS, ACOUPS, ECHEC, DELAI, ENV, BLOQUE, A_FAIRE = (
+    "OK", "CONTACTS", "À-COUPS", "ÉCHEC", "DÉLAI", "ENVIRONNEMENT", "BLOQUÉ", "À FAIRE")
+ACQUIS = (OK, CONTACTS, ACOUPS)                       # verdicts qui ne se rejouent pas sur la même tête
 EN_ECHEC = (ECHEC, DELAI, ENV)
 FUMEE = "fumee"
 CACHES = ("reel", "separe")
 CODE_ENV_BANCS = 2                            # menu_bench, sim_bench, recette_pc : Godot ou xvfb-run absent
 LIGNE_ECHEC = re.compile(r"^\[ÉCHEC\] (.*)$", re.M)
 CONTACT = re.compile(r"contact", re.I)
+# À-coups connus (pire image, images lentes, périodicité) : défaut commun suivi par un fil global (lot PI1), non bloquant.
+ACOUP = re.compile(r"à-coups|pire image|images lentes", re.I)
+STRATEGIES = ("", "ours", "theirs")
 # Défauts du PC, pas de la PR : une seule réparation, puis seules les étapes touchées sont rejouées.
 MOTIFS_ENV = (
     re.compile(r"schéma \S+ au lieu de \S+"),            # cache du monde ouvert au mauvais format (17 novembre)
@@ -135,6 +141,7 @@ class PR:
     etapes: list[Etape] = field(default_factory=list)
     rang: int = 0                              # ordre d'écriture dans la file, à risque égal
     assemblage: list[str] = field(default_factory=list)   # branches fusionnées par-dessus (essai assemblé)
+    strategie: str = ""                        # « ours » ou « theirs » : option -X de la fusion d'assemblage
 
 
 @dataclass
@@ -183,8 +190,11 @@ def lire_file(chemin: Path) -> File:
         if len({e.id for e in etapes}) != len(etapes):
             raise FileInvalide(f"{pid} : identifiants d'étape en double")
         assemblage = [str(b) for b in d.get("assemblage", [])]
+        strategie = str(d.get("assemblage_strategie", ""))
+        if strategie not in STRATEGIES:
+            raise FileInvalide(f"{pid} : assemblage_strategie « {strategie} » inconnue (ours, theirs)")
         prs.append(PR(str(pid), str(branche), d.get("pr"), d.get("tete"), int(d.get("risque", 2)), cache, etapes, rang,
-                      assemblage))
+                      assemblage, strategie))
     if not prs:
         raise FileInvalide(f"{chemin} : aucune entrée [[pr]]")
     return File(depot, sortie, prs, tete.get("avant_etape"), tete.get("apres_etape"), float(tete.get("attente_s", 60)))
@@ -237,6 +247,9 @@ def classer(code: int, journal: str) -> tuple[str, str]:
     echecs = LIGNE_ECHEC.findall(journal)          # « [ÉCHEC] libellé : mesure » de menu_bench et sim_bench
     if echecs and all(CONTACT.search(ligne) for ligne in echecs):
         return CONTACTS, f"{len(echecs)} vérification(s) de contacts (non bloquant, AS11)"
+    if echecs and all(CONTACT.search(ligne) or ACOUP.search(ligne) for ligne in echecs):
+        n = sum(1 for ligne in echecs if ACOUP.search(ligne))
+        return ACOUPS, f"{n} à-coup(s) connu(s), {len(echecs) - n} contact(s) (non bloquant, PI1 et AS11) : {echecs[0]}"[:300]
     if echecs:
         return ECHEC, f"{len(echecs)} échec(s), d'abord : {echecs[0]}"[:300]
     return ECHEC, f"code {code}"
@@ -263,7 +276,7 @@ def resoudre_tete(f: File, branche: str, reseau: bool) -> str:
 MARQUE_TETE = ".file_bancs_tete"
 
 
-def worktree(f: File, nom: str, tete: str) -> Path:
+def worktree(f: File, nom: str, tete: str, strategie: str = "") -> Path:
     """Worktree détaché dans sortie/worktrees/nom (le dépôt du user reste sur main, propre). `tete` : un commit, ou
     « sha1+sha2+… » pour un essai assemblé : sha1, puis les suivants fusionnés par-dessus (fusion locale, jamais poussée)."""
     shas = tete.split("+")
@@ -279,7 +292,8 @@ def worktree(f: File, nom: str, tete: str) -> Path:
         git(f.depot, "worktree", "add", "--quiet", "--detach", str(wt), shas[0])
     for sha in shas[1:]:
         try:
-            git(wt, "-c", "user.name=file_bancs", "-c", "user.email=file@bancs", "merge", "--quiet", "--no-edit", sha)
+            option = ["-X", strategie] if strategie else []
+            git(wt, "-c", "user.name=file_bancs", "-c", "user.email=file@bancs", "merge", "--quiet", "--no-edit", *option, sha)
         except RuntimeError as exc:
             with contextlib.suppress(RuntimeError):
                 git(wt, "merge", "--abort")
@@ -463,7 +477,7 @@ class Runner:
             return self.noter(pr, e, ENV, str(exc), None)
         nom = "main" if e.sur == "main" else pr.id
         try:
-            wt = worktree(self.f, nom, sha)
+            wt = worktree(self.f, nom, sha, "" if e.sur == "main" else pr.strategie)
         except Assemblage as exc:
             return self.noter(pr, e, ENV, str(exc), sha)
         if e.sur == "branche":
