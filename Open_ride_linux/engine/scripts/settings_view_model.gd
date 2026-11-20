@@ -59,6 +59,7 @@ const CHOICE_TEXTS := {
 	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"ride.vehicle_draft": {"on": "oui", "off": "non"},
+	"bots.elo": {"on": "oui", "off": "non"},   # lot BOT-elo : niveau automatique (Elo)
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	"gravel.mode": {"off": "coupé", "auto": "chemins réels", "compacted": "chemin compact", "gravel": "gravier",
 		"dirt": "terre"},

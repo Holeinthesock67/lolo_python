@@ -566,6 +566,9 @@ func _ready() -> void:
 	ipc.coach_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_coach(msg)
 		_refresh_menu())
+	ipc.bots_preview_received.connect(func(msg: Dictionary) -> void:   # lot GP-niv : ligne « Bots » de l'écran Prêt
+		menu_flow.on_bots_preview(msg)
+		_refresh_menu())
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
@@ -1058,6 +1061,10 @@ func _refresh_menu() -> void:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
+	if shown:   # lot GP-niv : effort des bots de la course demandé au core quand la course change
+		var preview := menu_flow.wanted_bots_preview()
+		if not preview.is_empty():
+			ipc.send_command("bots_preview", preview)
 	_sync_hud(_full_screen_menu())
 	_menu_dirty = _menu_dirty or shown
 
