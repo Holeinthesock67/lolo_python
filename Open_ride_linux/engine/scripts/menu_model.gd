@@ -168,9 +168,9 @@ var mode_rows: Array = []
 var mode_launch := {"enabled": true, "detail": ""}
 var gp_items_label := "Objets"
 ## Lot GP-niv (contrat 1.22) : effort des bots de la course en watts, réponse `bots_preview` mise en texte par
-## menu_flow.gd (« ≈ 225 W pendant ≈ 9 min (Tempo) · ta cote 1540 ») ; ligne « Bots » non sélectionnable des
-## écrans Prêt à plateau composé par le core ("" : pas de ligne).
-var bots_info := ""
+## menu_flow.gd en {label, detail} (« Bots : ≈ 225 W, ≈ 9 min » — « cote 1540 ») ; ligne non sélectionnable sous
+## « Lancer » des écrans Prêt à plateau composé par le core ({} : pas de ligne).
+var bots_info := {}
 ## Objectif des bots de la course conseillée (lot GP-niv, `coach.route.objective`) : `start.objective` ; "" sinon.
 var coach_objective := ""
 ## Vélodrome (lot VD10) : parcours qui sont des pistes, épreuves du core (épreuve → réglage → [défaut, valeurs]),
@@ -323,8 +323,8 @@ func _refresh_home() -> void:
 		return
 	if mode in SETTINGS_MODES:
 		_screens[READY]["items"] = [_item("start", "Lancer", bool(mode_launch.get("enabled", true)),
-			str(mode_launch.get("detail", ""))), _item("change_route", "Changer de parcours")] + mode_rows \
-			+ ([_item(GP_ITEMS_ID, gp_items_label)] if mode == "grandprix" else []) + _bots_info_items()
+			str(mode_launch.get("detail", "")))] + _bots_info_items() + [_item("change_route", "Changer de parcours")] \
+			+ mode_rows + ([_item(GP_ITEMS_ID, gp_items_label)] if mode == "grandprix" else [])
 		_screens[READY]["title"] = "Prêt : " + str(HOME_MODES[mode]) + ("" if world_name == "" else " — " + world_name)
 		return
 	if is_track():
@@ -477,7 +477,7 @@ func track_value(option_id: String):
 func _track_items() -> Array:
 	var name := TrackNames.event_name(track_event)
 	var erg_note := " en ERG" if mode == "erg" else ""
-	var items := [_item("start", "Lancer : " + name + erg_note),
+	var items := [_item("start", "Lancer : " + name + erg_note)] + _bots_info_items() + [
 		_item(TRACK_EVENT_ID, "Épreuve : " + name)]
 	var opts: Dictionary = track_events.get(track_event, {})
 	for o in opts:
@@ -486,7 +486,7 @@ func _track_items() -> Array:
 	if track_event == "free":
 		items.append(_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"))
 	items.append(_item("change_route", "Changer de parcours"))
-	return items + _bots_info_items()
+	return items
 
 
 ## Écrans recomposés (ligne « Bots » de l'écran Prêt reçue du core, lot GP-niv).
@@ -494,9 +494,11 @@ func refresh() -> void:
 	_refresh_home()
 
 
-## Ligne « Bots » de l'écran Prêt (lot GP-niv), grisée et en dernier (le focus des autres lignes ne bouge pas).
+## Ligne « Bots » de l'écran Prêt (lot GP-niv), grisée, sous « Lancer » (bien en vue ; elle arrive pendant que le
+## focus est sur « Lancer », et une course changée ne fait que changer son texte).
 func _bots_info_items() -> Array:
-	return [_item(BOTS_INFO_ID, "Bots", false, bots_info)] if bots_info != "" else []
+	return [_item(BOTS_INFO_ID, str(bots_info["label"]), false, str(bots_info.get("detail", "")))] \
+		if not bots_info.is_empty() else []
 
 
 ## A long sur « Épreuve » : épreuve suivante ; quitter la séance libre en ERG revient en SIM.
@@ -660,7 +662,7 @@ func _clear_start() -> void:
 	start_name = ""
 	start_args = {}
 	coach_objective = ""
-	bots_info = ""
+	bots_info = {}
 
 
 ## Arguments de `start` : séance préparée (plan_day, ftp_test) et bots choisis ({} si rien).

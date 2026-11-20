@@ -279,7 +279,7 @@ var coach = CoachViewModel.new()
 ## (mode, parcours, réglages), texte de sa réponse, et une seule nouvelle demande quand le core n'avait pas encore
 ## le parcours (réponse sans watts).
 var _preview_key := ""
-var _preview_text := ""
+var _preview_row := {}
 var _preview_retried := ""
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
 var contents = ContentsViewModel.new()
@@ -1587,8 +1587,6 @@ static func mode_label(label: String, prefix: String) -> String:
 
 const PREVIEW_KEYS := ["bots.level_pct", "bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
 	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps", "grandprix.distance_km"]
-const OBJECTIVE_NAMES := {"recovery": "Récupération", "endurance": "Endurance", "tempo": "Tempo",
-	"threshold": "Seuil", "max": "À fond"}
 
 
 ## Arguments de `bots_preview` pour l'écran Prêt affiché (Dernier survivant, Grand Prix, épreuve du vélodrome) ;
@@ -1614,39 +1612,38 @@ func wanted_bots_preview() -> Dictionary:
 		vals.append(settings.item(k).get("value", null))
 	var key := JSON.stringify([args, menu.world_id, vals])
 	if key == _preview_key:
-		if menu.bots_info == "" and _preview_text != "":
-			menu.bots_info = _preview_text
+		if menu.bots_info.is_empty() and not _preview_row.is_empty():
+			menu.bots_info = _preview_row
 			menu.refresh()
 		return {}
 	_preview_key = key
-	_preview_text = ""
+	_preview_row = {}
 	return args
 
 
 ## Réponse `bots_preview` du core : ligne « Bots » de l'écran Prêt ; sans watts (parcours pas encore chargé
 ## par le core), une seule nouvelle demande pour cette course.
 func on_bots_preview(msg: Dictionary) -> void:
-	_preview_text = bots_info_text(msg)
-	if _preview_text == "" and _preview_retried != _preview_key:
+	_preview_row = bots_info_row(msg)
+	if _preview_row.is_empty() and _preview_retried != _preview_key:
 		_preview_retried = _preview_key
 		_preview_key = ""   # redemandé au prochain rafraîchissement
-	if bots_preview_args().is_empty():
-		return
-	menu.bots_info = _preview_text
+	if bots_preview_args().is_empty() or _preview_row.is_empty():
+		return   # sans watts : la ligne déjà affichée reste (pas de ligne qui disparaît sous le focus)
+	menu.bots_info = _preview_row
 	menu.refresh()
 
 
-## « ≈ 225 W pendant ≈ 9 min (Tempo) · ta cote 1540 » (règle du 14/11 : des watts, pas des %) ; "" sans watts.
-static func bots_info_text(msg: Dictionary) -> String:
+## Ligne « Bots » : {label « Bots : ≈ 225 W, ≈ 9 min », detail « cote 1540 »} (règle du 14/11 : des watts, pas
+## des % ; l'objectif est sur sa propre ligne) ; detail "" sans cote ; {} sans watts.
+static func bots_info_row(msg: Dictionary) -> Dictionary:
 	if msg.get("power_w") == null:
-		return ""
-	var text := "≈ %d W" % int(msg["power_w"])
+		return {}
+	var label := "Bots : ≈ %d W" % int(msg["power_w"])
 	if msg.get("duration_s") != null:
-		text += " pendant ≈ " + duration_text(float(msg["duration_s"]))
-	text += " (%s)" % str(OBJECTIVE_NAMES.get(str(msg.get("objective", "")), msg.get("objective", "")))
-	if msg.get("elo") is Dictionary:
-		text += " · ta cote %d" % int(msg["elo"].get("rating", 1500))
-	return text
+		label += ", ≈ " + duration_text(float(msg["duration_s"]))
+	var detail := ("cote %d" % int(msg["elo"].get("rating", 1500))) if msg.get("elo") is Dictionary else ""
+	return {"label": label, "detail": detail}
 
 
 ## « 9 min », « 1 h 05 » (durée estimée de la course).

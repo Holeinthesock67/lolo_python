@@ -182,20 +182,15 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 	return out
 
 
-const OBJECTIVE_LABELS := {"recovery": "Récupération", "endurance": "Endurance", "tempo": "Tempo",
-	"threshold": "Seuil", "max": "À fond"}
-
-
 ## Lignes « Bots » (lot GP-niv : cible visée et moyenne réelle des bots, face à ta puissance moyenne) et « Cote »
 ## (lot BOT-elo : cote après la course et son écart, place) ; [] sans ces champs (contrat 1.22).
 static func bots_lines(summary: Dictionary) -> Array:
 	var out: Array = []
 	var be = summary.get("bots_effort")
 	if be is Dictionary and be.get("target_w") != null:
-		var text := "≈ %s W visés" % _format_fr_round(be["target_w"])
+		var text := "%s W visés" % _format_fr_round(be["target_w"])   # court : la colonne du bilan coupe à ~30 signes
 		if be.get("bots_avg_w") != null:
-			text += ", %s W roulés" % _format_fr_round(be["bots_avg_w"])
-		text += " (%s)" % str(OBJECTIVE_LABELS.get(str(be.get("objective", "")), be.get("objective", "")))
+			text += ", %s roulés" % _format_fr_round(be["bots_avg_w"])
 		out.append({"label": "Bots", "value": text, "unit": ""})
 	var elo = summary.get("elo")
 	if elo is Dictionary and elo.get("after") != null:

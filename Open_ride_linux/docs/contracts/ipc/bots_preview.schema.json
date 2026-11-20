@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideBotsPreviewMessage",
-  "description": "Révision 1.22 (lot GP-niv) : réponse à `bots_preview` {mode, objective?, track?} : effort que viseront les bots de la course sur le parcours choisi, avec les réglages en cours et la cote Elo (lot BOT-elo) ; affiché sur l'écran Prêt en watts (« Bots : ≈ 225 W pendant ≈ 9 min (Tempo) »).",
+  "description": "Révision 1.22 (lot GP-niv) : réponse à `bots_preview` {mode, objective?, track?} : effort que viseront les bots de la course sur le parcours choisi, avec les réglages en cours et la cote Elo (lot BOT-elo) ; affiché sur l'écran Prêt en watts (« Bots : ≈ 225 W, ≈ 9 min » (à droite : « cote 1540 »)).",
   "type": "object",
   "required": [
     "type",

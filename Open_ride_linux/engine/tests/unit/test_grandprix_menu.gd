@@ -88,13 +88,13 @@ func _run() -> void:
 	_check(f.wanted_bots_preview().is_empty(), "même course : pas de nouvelle demande")
 	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 9, "mode": "grandprix", "objective": "tempo",
 		"ftp_pct": 92.4, "power_w": 231, "duration_s": 540, "elo": {"rating": 1540, "races": 3}})
-	_check(_ids(f)[-1] == "bots_info" and not _item(f, "bots_info")["enabled"]
-		and _item(f, "bots_info")["detail"] == "≈ 231 W pendant ≈ 9 min (Tempo) · ta cote 1540",
-		"ligne « Bots » : watts, durée, objectif et cote (%s)" % str(_item(f, "bots_info")))
-	_check(MenuFlow.bots_info_text({"power_w": null}) == "", "sans watts (parcours pas chargé) : pas de ligne")
+	_check(_ids(f)[1] == "bots_info" and not _item(f, "bots_info")["enabled"]
+		and _item(f, "bots_info")["label"] == "Bots : ≈ 231 W, ≈ 9 min" and _item(f, "bots_info")["detail"] == "cote 1540",
+		"ligne « Bots » sous Lancer : watts, durée et cote (%s)" % str(_item(f, "bots_info")))
+	_check(MenuFlow.bots_info_row({"power_w": null}).is_empty(), "sans watts (parcours pas chargé) : pas de ligne")
 	_check(MenuFlow.duration_text(3900.0) == "1 h 05", "durée de plus d'une heure : 1 h 05")
-	_check(MenuFlow.bots_info_text({"power_w": 180, "duration_s": 600, "objective": "endurance", "elo": null})
-		== "≈ 180 W pendant ≈ 10 min (Endurance)", "cote coupée : pas de cote")
+	_check(MenuFlow.bots_info_row({"power_w": 180, "duration_s": 600, "objective": "endurance", "elo": null})
+		== {"label": "Bots : ≈ 180 W, ≈ 10 min", "detail": ""}, "cote coupée : pas de cote")
 	_check(_item(f, "set:grandprix.opponents")["label"] == "Adversaires" and _item(f, "set:grandprix.opponents")["detail"] == "4",
 		"réglage : libellé court et valeur")
 	_check(_item(f, "set:grandprix.chaos")["detail"] == "normal", "chaos en français")

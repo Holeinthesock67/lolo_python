@@ -173,7 +173,7 @@ func _init() -> void:
 	var bl: Array = SummaryViewModel.bots_lines({"bots_effort": {"objective": "tempo", "ftp_pct": 88.0, "target_w": 220,
 		"duration_s": 900, "bots_avg_w": 214}, "elo": {"mode": "grandprix", "place": 1, "of": 5, "before": 1500,
 		"after": 1520, "delta": 20}})
-	_check(bl.size() == 2 and bl[0]["value"] == "≈ 220 W visés, 214 W roulés (Tempo)", "ligne Bots (%s)" % str(bl))
+	_check(bl.size() == 2 and bl[0]["value"] == "220 W visés, 214 roulés", "ligne Bots (%s)" % str(bl))
 	_check(bl[1]["label"] == "Cote" and bl[1]["value"] == "1520 (+20), 1er sur 5", "ligne Cote (%s)" % str(bl))
 	var bl2: Array = SummaryViewModel.bots_lines({"elo": {"place": 4, "of": 5, "after": 1488, "delta": -12}})
 	_check(bl2.size() == 1 and bl2[0]["value"] == "1488 (−12), 4e sur 5", "cote en baisse : signe moins")
