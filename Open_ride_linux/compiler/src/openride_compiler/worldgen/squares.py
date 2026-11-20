@@ -12,7 +12,9 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
 - `near.f32` : 101 × 101 `float32` (format §5), échantillon (i, j) en E = 1000 IX + 10 i,
   N = 1000 (IN + 1) − 10 j ; relief fondu avec **toutes** les routes qui passent à moins de 50 m
   du carré (arêtes canoniques de W4, profils de W5), ponts et tunnels exceptés ; abaissé sous les lacs,
-  étangs et réservoirs qui touchent le carré (lot EA1, `water_terrain.py`), chaussée gardée ;
+  étangs et réservoirs qui touchent le carré (lot EA1, `water_terrain.py`) et sous les grandes rivières
+  (lot EA3, `river_surface.py` : morceaux découpés au carré, niveau qui descend le long du cours),
+  chaussée gardée ;
 - `buildings.json`, `vegetation.json`, `water.json`, `poi.json` : mêmes schémas que les
   `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
   z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre ;
@@ -47,13 +49,14 @@ from .. import osm_layers as L
 from ..elevation import ElevationProvider
 from ..frame import LocalFrame, utm_transformer
 from ..terrain import blend
+from .. import river_surface as RS
 from .. import water_terrain as WT
 from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile
 from .graph import RoadGraph
 from .osmdb import OsmDb
 from .store import WorldCache
 
-WORLDGEN_VERSION = 6          # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : ponts dessinés (lot EA4) ; 4 et 5 réservés (EA3, garde-fou de la chaussée) ; 6 : tunnels dessinés (lot EA5)
+WORLDGEN_VERSION = 6          # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : ponts dessinés (EA4) ; 4 : grandes rivières (EA3) ; 5 : garde-fou de la chaussée (#936) ; 6 : tunnels dessinés (lot EA5)
 FAR_WATER_VERSION = 1         # eau des tuiles lointaines (lot EA2)
 SQUARE_M = 1000
 FAR_M = 5000
@@ -277,16 +280,29 @@ def square_water(key: SquareKey, db: OsmDb, provider: ElevationProvider, frame: 
     def height(xs, zs):
         return L.sample_terrain_y(xs, zs, frame, None, provider)
     out = []
+    rivers = []
     for a in db.areas_in(lonlat_bbox(frame, x0 - m, z0 - m, x0 + key.size_m + m, z0 + key.size_m + m),
-                         kinds=("water",)):
+                         kinds=("water", "river")):
         outer = _ring_xz(frame, a.outer, True)
         if outer is None:
             continue
         holes = [h for h in (_ring_xz(frame, h, False) for h in a.holes) if h is not None]
+        if a.kind == "river":   # lot EA3 : niveau en chaque point
+            # découpée à la fenêtre du carré élargie du rayon du niveau : dedans, mêmes points d'eau que le
+            # polygone entier (une rivière peut faire des dizaines de kilomètres)
+            r = C.RIVER_LEVEL_RADIUS_M + 2 * C.RIVER_SAMPLE_M
+            for po, ph in RS.clip_to_rect(outer, holes, x0 - r, z0 - r, x0 + key.size_m + r, z0 + key.size_m + r):
+                rivers.append({"id": a.osm_id, "kind": "river", "outer": po, "holes": ph})
+            continue
         level = WT.lake_level(outer, holes, height)
         out.append({"id": a.osm_id, "kind": L.water_area_kind(a.tags) or "lake",
                     "level_y": round(0.0 if level is None else level, 2), "outer": outer, "holes": holes,
                     "centroid": L.ring_centroid(outer)})
+    if rivers:
+        levels = RS.RiverLevels([(a["outer"], a["holes"]) for a in rivers], height)
+        for a in rivers:
+            a["levels"] = levels
+        out += rivers
     return out
 
 
@@ -424,7 +440,21 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
     m = AREA_SEARCH_M
     if water_areas is None:
         water_areas = square_water(key, db, provider, frame)
+    river_levels = None
+    river_pieces: dict[str, int] = {}
     for a in water_areas:
+        if a["kind"] == "river":   # lot EA3 : morceaux dans le carré, altitude de chaque sommet
+            river_levels = a["levels"]
+            for po, ph in RS.clip_to_rect(a["outer"], a["holes"], x0, z0, x0 + key.size_m, z0 + key.size_m):
+                o, hs = RS.piece_rings(po, ph)
+                n = river_pieces.get(a["id"], 0)
+                river_pieces[a["id"]] = n + 1
+                area = RS.river_area(f"{a['id']}_c{key.ix}_{key.i_n}_{n}", o, hs, river_levels)
+                if area is not None:
+                    area["outer"] = _rel(area["outer"], x0, z0)
+                    area["holes"] = [_rel(h, x0, z0) for h in area["holes"]]
+                    water["areas"].append(area)
+            continue
         if key.contains(*a["centroid"]):
             water["areas"].append({"id": a["id"], "kind": a["kind"], "level_y": a["level_y"],
                                    "outer": _rel(a["outer"], x0, z0), "holes": [_rel(h, x0, z0) for h in a["holes"]]})
@@ -474,6 +504,9 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
                 "width_m": L.compute_water_width(line.kind, line.tags),
                 "points": [[round(float(a) - x0, 2), round(float(b) - z0, 2), round(float(c), 2)]
                            for a, b, c in zip(px, pz, py)]})
+
+    if river_levels is not None:   # lot EA3 : plus de ruban dans la surface d'une grande rivière
+        water["lines"] = RS.trim_lines(water["lines"], river_levels, x0, z0)
 
     for p in db.points_in(bbox, kinds=POI_KINDS):
         x, z = (float(v[0]) for v in frame.to_xz(np.array([p.lat]), np.array([p.lon])))
