@@ -170,15 +170,16 @@ def chunk_areas(water_chunks: dict[Any, dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def sink_route_tiles(tiles: dict[str, dict[tuple[int, int], np.ndarray]], route: dict,
-                     areas: Iterable[dict[str, Any]]) -> int:
+                     areas: Iterable[dict[str, Any]], spans=None) -> int:
     """Parcours compilé : sol des niveaux proche et lointain abaissé sous les plans d'eau (pas l'horizon,
-    sans eau à cette distance) ; chaussée de la route gardée. Rend le nombre d'échantillons abaissés."""
-    from .terrain import LEVELS, RouteAxis, tile_coords
+    sans eau à cette distance) ; chaussée de la route gardée, hors ponts `spans` (lot EA4, comme le monde
+    ouvert). Rend le nombre d'échantillons abaissés."""
+    from .terrain import LEVELS, route_axis, tile_coords
 
     lakes = inland_areas(areas)
     if not lakes:
         return 0
-    axis = RouteAxis(route["x"], route["z"], route["alt_m"])
+    axis = route_axis(route, spans)
     reach = C.ROAD_HALF_WIDTH_M + C.BLEND_INNER_M
     count = 0
     for level in LEVELS:
