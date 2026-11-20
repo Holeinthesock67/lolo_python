@@ -426,6 +426,15 @@ def water_level_y(
     return round(float(fallback_y), 2) if level is None else level
 
 
+def dem_height(frame: LocalFrame, near_tiles: dict[tuple[int, int], np.ndarray] | None = None,
+               provider: ElevationProvider | None = None):
+    """Altitude du MNT brut s'il y en a un, sinon des tuiles proches (règle des plans d'eau, EA1 et EA3)."""
+    def height(xs: np.ndarray, zs: np.ndarray) -> np.ndarray:
+        return sample_terrain_y(np.asarray(xs, float), np.asarray(zs, float), frame,
+                                None if provider is not None else near_tiles, provider)
+    return height
+
+
 def compute_water_width(kind: str, tags: dict[str, Any]) -> float:
     """Largeur d'un cours d'eau (`width_m`) : étiquette `width`, sinon valeur par type (§8, Lot I4 §4.2)."""
     raw_w = tags.get("width")
@@ -496,7 +505,9 @@ def _water_area_kind(tags: dict[str, Any]) -> str | None:
         return "reservoir"
     if tags.get("natural") == "water":
         w = tags.get("water")
-        if w in ("river", "stream", "canal", "ditch", "drain"):
+        if w == "river":   # lot EA3 : grande rivière en surface, niveau qui descend (`river_surface.py`)
+            return "river"
+        if w in ("stream", "canal", "ditch", "drain"):
             return None
         if w in ("reservoir", "basin"):
             return "reservoir"
@@ -692,6 +703,7 @@ def build_osm_layers(
 
     seen_ids: set[str] = set()
     prefix_map = {"node": "n", "way": "w", "relation": "r"}
+    river_polys: list[tuple[str, list[list[float]], list[list[list[float]]]]] = []
 
     for resp in responses:
         for el in resp.get("elements") or []:
@@ -879,6 +891,11 @@ def build_osm_layers(
             if water_area_kind is not None:
                 water_ignored += deg_count
 
+            if water_area_kind == "river":   # découpées par carré de 1 km après la boucle (lot EA3)
+                for poly_idx, (outer, holes) in enumerate(polys):
+                    river_polys.append((obj_id if len(polys) == 1 else f"{obj_id}_{poly_idx}", outer, holes))
+                continue
+
             for poly_idx, (outer, holes) in enumerate(polys):
                 item_id = obj_id if len(polys) == 1 else f"{obj_id}_{poly_idx}"
                 if veg_info is not None and not is_building and water_area_kind is None:
@@ -932,6 +949,12 @@ def build_osm_layers(
                     chunk_dict = water_chunks.setdefault(k, {"lines": [], "areas": []})
                     chunk_dict["areas"].append(w_area_obj)
                     water_areas_count += 1
+
+    if river_polys:   # lot EA3 : grandes rivières en surface
+        from .river_surface import add_route_rivers
+        water_areas_count += add_route_rivers(river_polys, route, axis, dem_height(frame, near_tiles, provider),
+                                              water_chunks)
+        water_lines_count = sum(len(ch["lines"]) for ch in water_chunks.values())
 
     return OsmLayersResult(
         buildings_chunks=buildings_chunks,
