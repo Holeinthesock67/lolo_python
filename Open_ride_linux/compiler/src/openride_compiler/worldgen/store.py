@@ -218,6 +218,9 @@ class WorldCache:
     def far_path(self, zone: str, ix5: int, in5: int) -> Path:
         return self.root / "genere" / zone / "far" / f"{ix5}_{in5}.f32"
 
+    def far_water_path(self, zone: str, ix5: int, in5: int) -> Path:
+        """Niveau des grands lacs d'une tuile lointaine (lot EA2), à côté de son relief ; supprimé avec lui."""
+        return self.far_path(zone, ix5, in5).with_suffix(".water")
     def biome_path(self, zone: str, level: str, ix: int, i_n: int) -> Path:
         """Tuile de biome (lot W17) du carré (`near`) ou de la tuile lointaine (`far`)."""
         return self.root / "genere" / zone / "biome" / level / f"{ix}_{i_n}.json"
@@ -263,6 +266,13 @@ class WorldCache:
         target = self.far_path(zone, gx, gn)
         if not target.is_file():
             return None
+        water = self.far_water_path(zone, gx, gn)
+        link_w = Path(session_dir) / "water" / "far" / f"tile_{fx}_{fz}.f32"
+        if water.is_file():
+            link_w.parent.mkdir(parents=True, exist_ok=True)
+            _symlink(water, link_w)
+        elif link_w.is_symlink():
+            link_w.unlink()
         biome = self.biome_path(zone, "far", gx, gn)
         if biome.is_file():
             _symlink(biome, Path(session_dir) / "biome" / "far" / f"tile_{fx}_{fz}.json")
@@ -299,6 +309,8 @@ class WorldCache:
             shutil.rmtree(path, ignore_errors=True)
         else:
             path.unlink(missing_ok=True)
+            if e.kind == "far":
+                path.with_suffix(".water").unlink(missing_ok=True)   # eau lointaine (lot EA2)
         self.db.execute("DELETE FROM entries WHERE key = ?", (e.key,))
 
     def evict(self, in_use: Iterable[str] = ()) -> list[str]:
