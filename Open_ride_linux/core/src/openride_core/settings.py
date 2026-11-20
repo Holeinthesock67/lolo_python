@@ -115,6 +115,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("grandprix.distance_km", "Grand Prix : distance en ligne", "ride", 1, "km"),
     Setting("grandprix.chaos", "Grand Prix : chaos", "ride"),
     Setting("grandprix.box_every_m", "Grand Prix : écart des boîtes", "ride", 500, "m"),
+    # Course classique contre les bots (lot CR1) : écran du mode à l'accueil
+    Setting("race.opponents", "Course : adversaires", "ride"),
+    Setting("race.laps", "Course : tours de la boucle", "ride"),
     # Séance conseillée (série CO, lot CO3) : aussi réglés depuis l'écran du conseil (lot CO5)
     Setting("coach.objectif", "Conseil : objectif", "ride",
             help="Endurance : surtout de l'aérobie léger. Courses : plus d'intensité. Grimpeur : plus "
