@@ -225,7 +225,7 @@ Deux couches facultatives, chacune en fichiers `chunk_<k>.json`.
 }
 ```
 
-- `kind` : `church_bell`, `river`, `livestock`, `village`, `viewpoint` ; depuis la version 1.2 (lot P1), `wind_turbine` (OSM `power=generator` avec `generator:source=wind`, `height_m` facultatif d'après la balise `height`) et `flag` (OSM `man_made=flagpole`) ; depuis 1.9 (lot SM2), `wreck` : épave de navire (OSM `historic=wreck`, `length_m` facultatif d'après la balise `length`, 42 m sans balise), posée sur le fond ; une valeur inconnue est ignorée.
+- `kind` : `church_bell`, `river`, `livestock`, `village`, `viewpoint` ; depuis la version 1.2 (lot P1), `wind_turbine` (OSM `power=generator` avec `generator:source=wind`, `height_m` facultatif d'après la balise `height`) et `flag` (OSM `man_made=flagpole`) ; depuis 1.10 (lot SM2), `wreck` : épave de navire (OSM `historic=wreck`, `length_m` facultatif d'après la balise `length`, 42 m sans balise), posée sur le fond ; une valeur inconnue est ignorée.
 - `radius_m` : distance d'audibilité ou de visibilité.
 - L'engine associe un son à chaque `kind` selon le thème ou la configuration audio ; `name` sert à l'affichage éventuel.
 
@@ -242,6 +242,7 @@ Deux couches facultatives, chacune en fichiers `chunk_<k>.json`.
 - `lines` : cours d'eau, points (x, z, y) dans le repère du monde ; `width_m` est la largeur, 2 m par défaut.
 - `areas` : plans d'eau, avec `level_y` pour l'altitude de la surface. `kind` : `lake`, `pond`, `reservoir` ; depuis 1.6 (lot U1), `sea` : polygone de mer refermé sur le bord de l'étendue du terrain (`level_y` = 0), dont le rivage est décrit par la couche côte (§8 quinquies).
 - Règle du compilateur et du générateur du monde ouvert depuis le lot EA1 (sans changement du format) : `level_y` d'un lac, d'un étang ou d'un réservoir est la médiane du MNT dans le plan d'eau à plus de 30 m de toute rive (grille de 30 m alignée sur le repère), plafonnée au quart le plus bas de la rive ; trop petit, le minimum de la rive. Le terrain (niveaux proche et lointain) est abaissé sous ces plans d'eau à `level_y − 1` m au plus, îles et chaussée hors pont exceptées. La mer garde `level_y` = 0 et son terrain.
+- Depuis 1.10 (lot EA3), `kind` = `river` : morceau d'une grande rivière cartographiée en surface (OSM `natural=water` + `water=river`, classe `river` des tuiles vectorielles), découpé par carré de 1 km de la grille du repère (tuiles proches d'un parcours, carrés du monde ouvert). Sa surface descend le long du cours : `outer_y` (même longueur que `outer`) et `holes_y` (parallèle à `holes`) donnent l'altitude de la surface à chaque sommet, l'engine l'interpole entre eux ; `level_y` reste la médiane de ces altitudes, pour un lecteur d'avant 1.10. Règle du compilateur : altitude en un point = quart le plus bas du MNT brut aux nœuds d'une grille de 10 m dans l'eau de la rivière à moins de 150 m du point ; terrain abaissé dessous à cette altitude − 1 m, comme sous un lac ; le ruban `lines` d'un cours d'eau s'arrête à l'entrée de la surface (il reste pour les rivières sans surface).
 - Ces deux couches arrivent au sprint 6 ; le format est figé dès maintenant pour qu'un parcours compilé plus tôt puisse recevoir ces couches plus tard.
 
 ## 8 bis. Couche segments (depuis 1.3)
@@ -545,6 +546,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.9 | 15 novembre 2026 | Ajout compatible au thème (lot SM2, sans changement du format `.world`) : clé facultative `biomes.<id>.road.color` (aspect de la chaussée par biome, §9, `theme.schema.json` et sa copie du compilateur) ; `biomes.reef.road` du thème par défaut (piste de sable) |
 | 1.9 | 13 novembre 2026 | Sans changement du format (lot W21, série W) : le core écrit la couche `segments.json` (§8 bis) dans le dossier d'un monde vivant, avec les montées et sprints trouvés en roulant ; l'engine la relit (§13) |
 | 1.9 | 16 novembre 2026 | Ajout compatible (lot EA4, série EA) : couche facultative `bridges/` des ponts dessinés (§8 septies), entrée `layers.bridges` du manifeste et schéma `bridges.schema.json` ; avec elle, profil de la route en ligne droite sur les ponts et terrain non fondu dessous ; monde vivant : `bridges/tile_<ix>_<iz>.json` (§13), `WORLDGEN_VERSION` 3. Un `.world` 1.8 reste valide |
+| 1.10 | 16 novembre 2026 | Ajout compatible (lot EA3, série EA) : aire d'eau `river` (grande rivière en surface, découpée par carré de 1 km) avec `outer_y` et `holes_y` facultatifs, altitude de la surface à chaque sommet (§8, schéma `water.schema.json`) ; un lecteur d'avant 1.10 ignore ces aires. Monde ouvert : `WORLDGEN_VERSION` 3, base des tuiles vectorielles reversée depuis le cache |
 
 ## 13. Monde vivant (monde ouvert, série W)
 
