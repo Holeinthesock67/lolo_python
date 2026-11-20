@@ -1,0 +1,12 @@
+t_s,fps,maillages,appels_de_dessin,qualite,capture
+33.9,1.0,3,1127.0,medium,000_t033.png
+93.9,60.0,30,277.0,medium,001_t093.png
+153.9,59.0,30,265.0,medium,002_t153.png
+213.9,60.0,31,258.0,medium,003_t213.png
+273.9,59.0,30,357.0,medium,004_t273.png
+333.9,59.0,31,275.0,medium,005_t333.png
+393.9,60.0,32,323.0,medium,006_t393.png
+453.9,61.0,33,326.0,medium,007_t453.png
+513.9,60.0,32,312.0,medium,008_t513.png
+573.9,60.0,33,353.0,medium,009_t573.png
+601.3,45.0,33,362.0,medium,010_fin.png
