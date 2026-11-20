@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Démonstrations en ligne d'au moins 40 km (lot DL1)
+- Le Col du lacet monte sur 40 km (environ 950 m), le Tour des nouveaux paysages et la Route des Érables font 42 km, la Route du Sud 48 km : chaque paysage s'étend sur 6 à 8 km. Les boucles ne changent pas.
+- Les bancs gardent les versions courtes d'avant (variante `--recette`).
+
 ### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
 - En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
 - Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).

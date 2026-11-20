@@ -242,7 +242,7 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
     routes.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "PYTHONPATH": str(REPO / "core" / "src")}
     if kind == "demo":
-        subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--terrain",
+        subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--recette", "--terrain",
                         "--out", str(routes)], check=True, env=env, stdout=subprocess.DEVNULL)
         return "demo"
     if kind == "demo_long":

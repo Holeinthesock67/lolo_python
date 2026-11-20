@@ -350,7 +350,7 @@ def run_sim(chosen: list[Action], args: argparse.Namespace, out: Path) -> list[d
     env = {**os.environ, "HOME": str(home), "PYTHONUNBUFFERED": "1", "PYTHONPATH": str(REPO / "core" / "src")}
     for k in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME"):
         env.pop(k, None)
-    subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--terrain", "--out",
+    subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--recette", "--terrain", "--out",
                     str(routes)], check=True, env=env, stdout=subprocess.DEVNULL)
     state_port, cmd_port = free_udp_ports(2)
     cfg = tmp / "config.toml"

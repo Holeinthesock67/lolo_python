@@ -2686,7 +2686,7 @@ def main() -> int:
     report = Report()
     t0 = now()
     try:
-        gen = subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--terrain",
+        gen = subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--recette", "--terrain",
                               "--out", str(routes_dir)], env={**os.environ, "PYTHONPATH": str(CORE_SRC)},
                              capture_output=True, text=True)
         if gen.returncode != 0:

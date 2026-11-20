@@ -1,7 +1,8 @@
 """Ligne de commande du générateur de parcours synthétiques (voir `openride_core.demo_world`).
 
     python -m openride_core.tools.fake_world --out ../engine/demo --length 8000
-    python -m openride_core.tools.fake_world --demo --out ../engine/demo   # démo commune core/engine
+    python -m openride_core.tools.fake_world --demo --out ../engine/demo/jeu   # démo commune core/engine (40 km)
+    python -m openride_core.tools.fake_world --demo --recette --out ../engine/demo   # variante des bancs (5 km)
     python -m openride_core.tools.fake_world --demo --terrain --out ~/.local/share/openride/routes
 
 L'option `--terrain` ajoute la couche terrain synthétique (`openride_core.synthetic_terrain`) à un
@@ -30,10 +31,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--name", default="fake-climb")
     p.add_argument("--length", type=float, default=8000.0, help="longueur en mètres")
     p.add_argument("--demo", action="store_true", help="écrit le parcours de démonstration commun")
+    p.add_argument("--recette", action="store_true",
+                   help="avec --demo : variante de recette des bancs, 5 km au lieu de 40 (lot DL1)")
     p.add_argument("--terrain", action="store_true",
                    help="ajoute une couche terrain synthétique (tuiles proches et lointaines)")
     args = p.parse_args(argv)
-    out = write_demo_world(args.out) if args.demo else write_world(args.out, args.name, args.length)
+    out = write_demo_world(args.out, args.recette) if args.demo else write_world(args.out, args.name, args.length)
     if args.terrain and not args.demo:   # la démonstration porte déjà son terrain
         add_terrain_layer(out)
     print(f"Écrit : {out}")

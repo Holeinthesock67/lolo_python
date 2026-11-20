@@ -12,13 +12,16 @@
    approche du panneau
    du sommet (100, 70, 50, 40 et 30 m avant, en 1920×1080 pour que son nom se lise). Le sommet est le point le plus
    haut de la route ; un parcours sans montée n'a que les captures du début. Un circuit (lot O38) a en plus des
-   captures aux quarts du tour ; un parcours en blocs de 2 km (lots DB1, DJ1), à 150, 400 et 1 000 m de chaque bloc.
+   captures aux quarts du tour ; un parcours en blocs de 2 km (lots DB1, DJ1), à 150, 400 et 1 000 m du premier bloc
+   de chaque biome (lot DL1 : les blocs répétés d'un biome ont le même décor).
 3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs noms et
    écran « Prêt » de chacun.
 4. `DOSSIER/planche.html` : toutes les captures, rangées par parcours et par qualité.
 
 Prérequis : Godot (`--godot` ou `OPENRIDE_GODOT`, comme les bancs), compilateur installé, xvfb-run sans
-`--native`. Durée : environ 50 min par qualité à 50 km/h (tour des nouveaux paysages de 14 km), plus 2 min de menus.
+`--native`. Durée (lot DL1 : routes ouvertes du jeu de 40 à 48 km, Col du lacet de 40 km, sommets en fin de
+parcours) : environ 5 h par qualité à 50 km/h, 3 h à 80 km/h (`--vitesse 80`), plus 2 min de menus ;
+`--parcours` pour n'en prendre qu'une partie.
 Code de sortie : 0 si tous les bancs passent, 1 sinon.
 """
 
@@ -75,8 +78,10 @@ def marks_for(world: Path) -> tuple[list[float], float]:
         marks += [route["length_m"] * k / LOOP_PARTS for k in range(1, LOOP_PARTS)]
     info = world.with_suffix(".json")   # résumé écrit par demo-biomes à côté du parcours
     biomes = json.loads(info.read_text(encoding="utf-8")).get("biomes", []) if info.is_file() else []
-    if len(biomes) > 1 and route.get("type") != "loop":   # blocs de 2 km (lots DB1, DJ1) : chaque bloc, entrée et milieu
-        marks += [k * BLOCK_M + d for k in range(len(biomes)) for d in BLOCK_MARKS_M
+    if len(biomes) > 1 and route.get("type") != "loop":   # blocs de 2 km (lots DB1, DJ1) : entrée et milieu
+        # premier bloc de chaque biome seulement : les blocs répétés du lot DL1 (40 km) ont le même décor
+        firsts = [k for k in range(len(biomes)) if k == 0 or biomes[k] != biomes[k - 1]]
+        marks += [k * BLOCK_M + d for k in firsts for d in BLOCK_MARKS_M
                   if k * BLOCK_M + d < route["length_m"] and k * BLOCK_M + d not in marks]
     if alt[top] - min(alt) >= MIN_CLIMB_M and summit > max(START_MARKS_M) + max(SUMMIT_BEFORE_M):
         marks += [summit - d for d in SUMMIT_BEFORE_M]

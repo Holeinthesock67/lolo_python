@@ -45,7 +45,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
 En-tête d'un scénario : `description`, `voies` (défaut : les trois), `appareils` (`prets` ou `unilateral`),
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
-(vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `velodrome` (vrai : piste du
+(vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `demo_jeu` (vrai : le Col du lacet du jeu, 40 km, au lieu de sa variante de recette de 5 km, lot DL1),
+`velodrome` (vrai : piste du
 vélodrome des contenus de départ, lot VD10), `grand_prix_parcours` (vrai : deux parcours d'essai du Grand Prix,
 étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
@@ -227,7 +228,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "attendre", "distance_km", "capture", "relancer", "delai", "voies", "note",
              "depart_monde_ouvert"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "grand_prix_parcours", "reseau", "caches_reels", "etapes"}
+             "compilateur", "velodrome", "grand_prix_parcours", "reseau", "caches_reels", "etapes", "demo_jeu"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -754,7 +755,9 @@ class Run:
         self.home = self.tmp / "home"
         self.routes = self.home / ".local" / "share" / "openride" / "routes"
         self.routes.mkdir(parents=True)
-        shutil.copytree(ENGINE_DIR / "demo" / "demo.world", self.routes / "demo.world")
+        # Col du lacet : variante de recette (5 km) des bancs, celle du jeu (40 km) si le scénario le demande (lot DL1)
+        demo_dir = ENGINE_DIR / "demo" / ("jeu" if doc.get("demo_jeu") else "") / "demo.world"
+        shutil.copytree(demo_dir, self.routes / "demo.world")
         if doc.get("entrainement"):
             wdir = self.home / "OpenRide" / "Workouts"
             wdir.mkdir(parents=True)

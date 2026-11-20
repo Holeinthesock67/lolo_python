@@ -11,7 +11,7 @@ from openride_core import synthetic_biome as SB
 from openride_core.demo_world import write_demo_world
 
 ROOT = Path(__file__).resolve().parents[2]
-ENGINE_DEMO = ROOT / "engine" / "demo" / "demo.world"
+ENGINE_DEMO = ROOT / "engine" / "demo" / "jeu" / "demo.world"   # copie du jeu (lot DL1)
 SCHEMA = json.loads((ROOT / "docs" / "contracts" / "world" / "biome.schema.json").read_text(encoding="utf-8"))
 
 
