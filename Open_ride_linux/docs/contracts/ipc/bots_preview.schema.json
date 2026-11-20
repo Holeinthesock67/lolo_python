@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideBotsPreviewMessage",
+  "description": "Révision 1.22 (lot GP-niv) : réponse à `bots_preview` {mode, objective?, track?} : effort que viseront les bots de la course sur le parcours choisi, avec les réglages en cours et la cote Elo (lot BOT-elo) ; affiché sur l'écran Prêt en watts (« Bots : ≈ 225 W pendant ≈ 9 min (Tempo) »).",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "mode",
+    "objective",
+    "ftp_pct",
+    "power_w",
+    "duration_s",
+    "elo"
+  ],
+  "properties": {
+    "type": {
+      "const": "bots_preview"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "ride",
+        "wtf",
+        "survivor",
+        "grandprix",
+        "track"
+      ]
+    },
+    "objective": {
+      "type": "string",
+      "enum": [
+        "recovery",
+        "endurance",
+        "tempo",
+        "threshold",
+        "max"
+      ]
+    },
+    "ftp_pct": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Cible moyenne des bots en % de la FTP ; null sans parcours chargé."
+    },
+    "power_w": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Cible moyenne des bots en watts ; null sans parcours chargé."
+    },
+    "duration_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Durée estimée de la course en secondes ; null sans parcours chargé."
+    },
+    "elo": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Cote Elo du cycliste quand elle règle cette course (`bots.elo` = on et course à classement) ; null sinon.",
+      "required": [
+        "rating",
+        "races"
+      ],
+      "properties": {
+        "rating": {
+          "type": "integer"
+        },
+        "races": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

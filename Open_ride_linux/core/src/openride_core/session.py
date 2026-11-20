@@ -37,7 +37,7 @@ from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from . import mode_routes as mode_routes_mod
-from . import config_edit, last_choices, latency_log, local_weather, seance_file
+from . import bot_effort, bot_elo, config_edit, last_choices, latency_log, local_weather, seance_file
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -126,6 +126,7 @@ GP_RUNOUT_M = 30.0   # Grand Prix sur un parcours en ligne : la file de 12 coure
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
+START_MODES = ("ride", "wtf", "survivor", "grandprix", "track")   # `start.mode` (et `bots_preview.mode`)
 MODE_OPTIONS = ("wtf", "grandprix")   # modes à options (`list_mode_options`, `set_mode_option`, lot GP2)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
@@ -397,6 +398,10 @@ class CoreSession:
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
         self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
+        self._elo_race: tuple[str, dict[str, str]] | None = None   # (mode, id du bot -> identité Elo), lot BOT-elo
+        self._start_objective: str | None = None   # `start.objective` (course conseillée, lot GP-niv)
+        self._effort_bots: list[Any] = []   # bots calibrés au départ, même retirés depuis (bilan, lot GP-niv)
+        self._preview_prof: tuple[int, Any] | None = None   # relevé du parcours de `bots_preview` (id du parcours)
         self._track_plan: Any = None                            # consignes des bots de l'épreuve (lot VD7)
         self._race_field: bot_tactics.RaceField | None = None   # comportements de course (lot VD7)
         self._records_writable = True
@@ -567,15 +572,22 @@ class CoreSession:
             self._send_wtf_rules()
         elif name == "set_wtf_rule":
             self._set_wtf_rule(args if isinstance(args, dict) else {})
+        elif name == "bots_preview":   # révision 1.22 (lot GP-niv) : effort des bots avant le départ, en watts
+            self._send_bots_preview(args if isinstance(args, dict) else {}, cmd_id)
         elif name == "list_mode_options":   # lot GP2 : options d'un mode (règles WTF, objets du Grand Prix)
             self._send_mode_options(args if isinstance(args, dict) else {})
         elif name == "set_mode_option":
             self._set_mode_option(args if isinstance(args, dict) else {})
         elif name == "start" and st == "READY":
             game_mode = (args if isinstance(args, dict) else {}).get("mode")
-            if game_mode not in (None, "ride", "wtf", "survivor", "grandprix", "track"):
+            if game_mode not in (None, *START_MODES):
                 self.server.send_error("bad_args", "start : 'mode' vaut ride, wtf, survivor, grandprix ou track")
                 return
+            objective = (args if isinstance(args, dict) else {}).get("objective")
+            if objective is not None and objective not in bot_effort.OBJECTIVES:
+                self.server.send_error("bad_args", "start : 'objective' vaut " + ", ".join(bot_effort.OBJECTIVES))
+                return
+            self._start_objective = objective   # révision 1.22 (lot GP-niv) : course conseillée
             if game_mode == "wtf" and self._workout is not None:
                 # Mode WTF : SIM seulement, comme la Course tactique (plan de la série WTF §1).
                 self.server.send_error("bad_args", "Le mode WTF se joue sans entraînement ERG.")
@@ -2551,6 +2563,9 @@ class CoreSession:
         track_rank = None
         if track_ev is not None:   # lot VD6 : faits de l'épreuve, bilan et record de la piste
             track_rank = self._end_track(track_ev, save)
+        elo_line = self._elo_finish(survivor, grandprix, track_ev, save)   # lot BOT-elo
+        bots_effort = self._bots_effort_summary()   # lot GP-niv
+        self._start_objective = None
         if self._rec:
             rec, self._rec = self._rec, None
             journal = rec.path.name if rec.path is not None else None
@@ -2585,6 +2600,10 @@ class CoreSession:
                 summary["gp"] = grandprix.summary()
             if track_ev is not None:   # lot VD6 : place, temps, tours, record de la piste
                 summary["track"] = {**track_ev.summary(), "record_rank": track_rank}
+            if elo_line is not None:   # lot BOT-elo : cote avant, après, place
+                summary["elo"] = elo_line
+            if bots_effort is not None:   # lot GP-niv : effort visé par les bots et leur moyenne réelle
+                summary["bots_effort"] = bots_effort
             segments = race.summary() if race else None
             if segments is not None:   # série T (lot T7, révision 1.4)
                 summary["segments"] = segments
@@ -2707,15 +2726,16 @@ class CoreSession:
         except SurvivorError as exc:
             self.server.send_error("bad_args", f"Dernier survivant : {exc}")
             return None
-        return self._profile_field(sc.opponents, sc.spread)
+        return self._profile_field(sc.opponents, sc.spread, "survivor")
 
-    def _profile_field(self, opponents: int, spread: str) -> list[Any]:
-        """Plateau composé par le core (Dernier survivant, Grand Prix) : profils tournants, niveaux étalés
-        autour du réglage « Niveau des bots » (`survivor.plan_field`)."""
+    def _profile_field(self, opponents: int, spread: str, mode: str) -> list[Any]:
+        """Plateau composé par le core (Dernier survivant, Grand Prix : `mode`) : profils tournants, niveaux étalés
+        autour du réglage « Niveau des bots » (`survivor.plan_field`), puis cote Elo (`_elo_levels`)."""
         from .bots import ProfileBot, profile_bot_names
 
         plan = survivor_mod.plan_field(opponents, float(self.cfg.bots.level_pct), spread,
                                        CONFIG_BOUNDS[("bots", "level_pct")])
+        plan = self._elo_levels(plan, mode)
         names = profile_bot_names([p for p, _ in plan])
         params = PhysicsParams.from_config(self.cfg)
         return [ProfileBot(p, bot_id=f"bot{i + 1}", name=n, params=params, bike_mass_kg=self.cfg.bike.mass_kg,
@@ -2857,6 +2877,133 @@ class CoreSession:
             for line in sv.take_journal():
                 self._rec.game(line)
 
+    # --- effort des bots en watts : écran Prêt et bilan (lot GP-niv) ----------------------------
+
+    def _bots_effort_summary(self) -> dict | None:
+        """`summary.bots_effort` : objectif, cible moyenne des bots à profil (% de la FTP, W, durée estimée) et
+        leur puissance moyenne réelle ; None sans bot calibré sur un effort."""
+        eff = self._bot_effort_now
+        bots, self._effort_bots = self._effort_bots, []
+        if eff is None or not bots:
+            return None
+        ftp = self.cfg.rider.ftp_w
+        pct = sum(b.effort_target[0] for b in bots) / len(bots)
+        dur = sum(b.effort_target[1] for b in bots) / len(bots)
+        avgs = [b.avg_power_w for b in bots if b.avg_power_w is not None]
+        return {"objective": eff.objective, "ftp_pct": round(pct, 1), "target_w": int(round(ftp * pct / 100.0)),
+                "duration_s": int(round(dur)),
+                "bots_avg_w": int(round(sum(avgs) / len(avgs))) if avgs else None}
+
+    def _send_bots_preview(self, args: dict, cmd_id: int) -> None:
+        """Réponse `bots_preview` (révision 1.22) : effort que viseront les bots de la course `mode` sur le parcours
+        choisi, avec les réglages en cours (`objective` et `track` facultatifs), cote Elo comprise : objectif,
+        % de la FTP, watts, durée estimée ; `power_w` null sans parcours chargé."""
+        from .bots import RefRider, RouteProfile, effort_target
+
+        mode = args.get("mode", "ride")
+        objective = args.get("objective")
+        if mode not in START_MODES or (objective is not None and objective not in bot_effort.OBJECTIVES):
+            self.server.send_error("bad_args", "bots_preview attend 'mode' (" + ", ".join(START_MODES)
+                                   + ") et 'objective' facultatif (" + ", ".join(bot_effort.OBJECTIVES) + ")")
+            return
+        choice = None
+        if mode == "track":
+            tr = args.get("track")
+            if not isinstance(tr, dict) or not isinstance(tr.get("event"), str):
+                self.server.send_error("bad_args", "bots_preview : 'track' attend {event, réglages de l'épreuve}")
+                return
+            try:
+                choice = (tr["event"], track_mod.check(tr["event"], {k: v for k, v in tr.items() if k != "event"}))
+            except track_mod.TrackError as exc:
+                self.server.send_error("bad_args", f"Épreuve de piste : {exc}")
+                return
+        effort = self._bot_effort(mode, choice, objective)
+        level = float(self.cfg.bots.level_pct)
+        counts = choice[0] in bot_elo.TRACK_EVENTS if choice else mode in bot_elo.MODES
+        elo = None
+        if self.cfg.bots.elo == "on" and counts:
+            book = bot_elo.load(self._elo_path())
+            lo, hi = CONFIG_BOUNDS[("bots", "level_pct")]
+            level = min(max(level * bot_elo.level_factor(book.rating), lo), hi)
+            elo = {"rating": int(round(book.rating)), "races": book.races}
+        msg: dict[str, Any] = {"type": "bots_preview", "v": 1, "request_cmd_id": cmd_id, "mode": mode,
+                               "objective": effort.objective, "ftp_pct": None, "power_w": None,
+                               "duration_s": None, "elo": elo}
+        route = self.route
+        if route is not None and getattr(route, "length_m", None):
+            if self._preview_prof is None or self._preview_prof[0] != id(route):
+                self._preview_prof = (id(route), RouteProfile(route))
+            ftp = self.cfg.rider.ftp_w
+            pct, dur = effort_target(self._preview_prof[1], RefRider(ftp, self._base_params), level, effort)
+            msg.update({"ftp_pct": round(pct, 1), "power_w": int(round(ftp * pct / 100.0)),
+                        "duration_s": int(round(dur))})
+        self.server.send_raw(msg)
+
+    # --- cote Elo des bots (lot BOT-elo) -------------------------------------------------------
+
+    def _elo_path(self) -> Path:
+        """`elo.json` à côté des records du profil (`records_path` : celui des essais quand ils le donnent)."""
+        return self.records_path.with_name(bot_elo.FILE_NAME)
+
+    def _elo_levels(self, plan: list[tuple[str, float]], mode: str,
+                    event: str | None = None) -> list[tuple[str, float]]:
+        """Niveaux du plateau composé par le core multipliés par le facteur de la cote de chaque bot
+        (`bot_elo.EloBook.factor`), bornés au réglage `bots.level_pct` ; retient les identités des bots pour la mise
+        à jour de fin de course. Inchangés si la cote est coupée (`bots.elo`) ou si la course ne compte pas."""
+        self._elo_race = None
+        counts = event in bot_elo.TRACK_EVENTS if mode == "track" else mode in bot_elo.MODES
+        if self.cfg.bots.elo != "on" or not counts or not plan:
+            return plan
+        book = bot_elo.load(self._elo_path())
+        keys = bot_elo.plan_keys([p for p, _ in plan])
+        lo, hi = CONFIG_BOUNDS[("bots", "level_pct")]
+        out = [(p, round(min(max(lv * book.factor(k), lo), hi), 1)) for (p, lv), k in zip(plan, keys)]
+        self._elo_race = (mode, {f"bot{i + 1}": k for i, k in enumerate(keys)})
+        log.info("Cote Elo : %.0f (%d course(s)), plateau × %.3f.", book.rating, book.races,
+                 bot_elo.level_factor(book.rating))
+        return out
+
+    def _elo_order(self, mode: str, keys: dict[str, str], survivor: Any, grandprix: Any,
+                   track_ev: Any) -> list[list[str]] | None:
+        """Classement de la course en identités Elo ; None si la course n'est pas allée à son terme pour le
+        cycliste (arrêtée avant l'arrivée ou avant son élimination)."""
+        me = bot_elo.ME
+        if mode == "grandprix" and grandprix is not None and grandprix.racers[me].finished is not None:
+            return [[r.id] for r in grandprix.order()]
+        if mode == "survivor" and survivor is not None and survivor.racers[me].place is not None:
+            return bot_elo.order_from_places(((r.id, r.place) for r in survivor.racers.values()),
+                                             unplaced_first=True)
+        if mode == "track" and track_ev is not None and track_ev.finished:
+            return [[rid] for rid in track_ev.full_ranking()]
+        return None
+
+    def _elo_finish(self, survivor: Any, grandprix: Any, track_ev: Any, save: bool) -> dict | None:
+        """Fin de course : cotes mises à jour (`elo.json` du profil), ligne `elo` au journal ; rend `summary.elo`
+        (`mode`, `place`, `of`, `before`, `after`, `delta`), None si la course ne compte pas. Rien n'est écrit
+        pour une séance non gardée ni pour un essai simulé sans configuration (comme `_remember`)."""
+        race, self._elo_race = self._elo_race, None
+        if race is None or not save or (self.sim is not None and self.config_path is None):
+            return None
+        mode, keys = race
+        order = self._elo_order(mode, keys, survivor, grandprix, track_ev)
+        if order is None:
+            return None
+        known = {bot_elo.ME, *keys}
+        order = [[keys.get(r, r) for r in g if r in known] for g in order]
+        path = self._elo_path()
+        book = bot_elo.load(path)
+        try:
+            line = book.update(order, mode, time.time())
+            bot_elo.save(path, book)
+        except (ValueError, OSError) as exc:
+            log.warning("Cote Elo non mise à jour : %s", exc)
+            return None
+        log.info("Cote Elo (%s) : %d -> %d (%+d), place %d sur %d.", mode, line["before"], line["after"],
+                 line["delta"], line["place"], line["of"])
+        if self._rec:
+            self._rec.game({"kind": "elo", **line})
+        return {k: line[k] for k in ("mode", "place", "of", "before", "after", "delta")}
+
     def _end_survivor_bots(self) -> None:
         self._survivor_out = {}
         self._survivor_end_pending = False
@@ -2895,6 +3042,7 @@ class CoreSession:
         n = track_mod.field_size(event, settings)
         plan = survivor_mod.plan_field(n, float(self.cfg.bots.level_pct), "normal",
                                        CONFIG_BOUNDS[("bots", "level_pct")]) if n else []
+        plan = self._elo_levels(plan, "track", event)
         names = profile_bot_names([p for p, _ in plan])
         params = PhysicsParams.from_config(self.cfg)
         self._set_bots([ProfileBot(p, bot_id=f"bot{i + 1}", name=nm, params=params,
@@ -3096,7 +3244,7 @@ class CoreSession:
         except GrandPrixError as exc:
             self.server.send_error("bad_args", f"Grand Prix des objets : {exc}")
             return None
-        return self._profile_field(gc.opponents, "normal")
+        return self._profile_field(gc.opponents, "normal", "grandprix")
 
     def _start_grandprix(self) -> None:
         """Course de la séance qui commence (bots déjà calibrés par `_new_race`)."""
@@ -3309,14 +3457,15 @@ class CoreSession:
 
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
-    def _bot_effort(self, game_mode: str | None) -> Any:
-        """Course des bots (lot BT1, `bot_effort.Effort`) : objectif commun `bots.objective` et longueur de la
-        course du mode (Grand Prix : tours ou distance ; ailleurs un passage du parcours) ; au vélodrome,
-        objectif et longueur de l'épreuve (`bot_effort.track_effort`)."""
-        from . import bot_effort
-
-        if game_mode == "track" and self._track_choice is not None:
-            event, settings = self._track_choice
+    def _bot_effort(self, game_mode: str | None, track_choice: tuple[str, dict] | None = None,
+                    objective: str | None = None) -> Any:
+        """Course des bots (lot BT1, `bot_effort.Effort`) : objectif commun `bots.objective` (ou `objective`, sinon
+        celui de `start.objective`, course conseillée, lot GP-niv) et longueur de la course du mode (Grand Prix :
+        tours ou distance ; ailleurs un passage du parcours) ; au vélodrome, objectif et longueur de l'épreuve
+        (`bot_effort.track_effort`, `track_choice` ou l'épreuve choisie au départ)."""
+        track_choice = track_choice or self._track_choice
+        if game_mode == "track" and track_choice is not None:
+            event, settings = track_choice
             lap = self._track.length_m if self._track is not None else track_mod.LAP_M
             return bot_effort.track_effort(event, settings, lap)
         course_m = None
@@ -3325,7 +3474,7 @@ class CoreSession:
                 course_m = self._grandprix_course()[0]
             except GrandPrixError:
                 course_m = None
-        return bot_effort.Effort(self.cfg.bots.objective, course_m)
+        return bot_effort.Effort(objective or self._start_objective or self.cfg.bots.objective, course_m)
 
     def _new_race(self, classic: bool = True, tactics: str | None = None, game_mode: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
@@ -3380,6 +3529,7 @@ class CoreSession:
         rider = RefRider(self.cfg.rider.ftp_w, self._base_params)
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
                                 self.cfg.bike.mass_kg, bot_params=plain, effort=self._bot_effort_now)
+        self._effort_bots = [b for b in self.bots if getattr(b, "effort_target", None)]   # bilan (lot GP-niv)
         # Lot Y10 : tactique après le calibrage (forme du jour sur la CP calibrée), le mode classique seul
         seed = self._race_seed
         mode = tactics if tactics is not None else (self.bot_tactics_mode if classic else "none")
