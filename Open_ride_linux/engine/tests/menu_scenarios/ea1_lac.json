@@ -1,5 +1,5 @@
 {
-  "description": "Lot EA1, recette sur le PC : monde ouvert lancé depuis le village de Talloires (rive est du lac d'Annecy, réseau), 5 minutes de balade le long du lac avec une capture par minute : niveau de l'eau, rive, sol qui ne perce plus la surface. À lancer en low, medium et high, sur la branche puis sur main pour comparer (les carrés du cache se refont d'eux-mêmes : la version du générateur change).",
+  "description": "Lot EA1, recette sur le PC : monde ouvert lancé depuis le village de Sevrier (rive ouest du lac d'Annecy, route de rive à double sens, réseau), 5 minutes de balade le long du lac avec une capture par minute : niveau de l'eau, rive, sol qui ne perce plus la surface. Le départ de Talloires (14-17 novembre) engageait une route sans issue au bout de 600 m (pause « plus de route connue », sur main aussi). À lancer en low, medium et high, sur la branche puis sur main pour comparer (les carrés du cache se refont d'eux-mêmes : la version du générateur change).",
   "voies": [
     "clavier"
   ],
@@ -8,8 +8,8 @@
   "etapes": [
     {
       "depart_monde_ouvert": {
-        "recherche": "talloires",
-        "contient": "Talloires"
+        "recherche": "sevrier",
+        "contient": "Sevrier"
       }
     },
     {

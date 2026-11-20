@@ -56,8 +56,10 @@ from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, spl
 from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
+from ..bridges import BRIDGES_VERSION
 from . import biome_tiles
-from .squares import FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox, zone_frame
+from .squares import (FAR_LAKE_SEARCH_M, FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox,
+                      zone_frame)
 from .store import WorldCache, read_open_world_config
 
 GRID_M = 5000                 # origine de séance et cellules de chargement du graphe
@@ -351,7 +353,7 @@ class WorldSession:
         if self.session_dir is None:
             stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
             self.session_dir = self.cache.sessions_dir() / f"ow-{stamp}.world"
-        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi"):
+        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges"):
             (self.session_dir / sub).mkdir(parents=True, exist_ok=True)
 
     def _write_manifest(self) -> None:
@@ -376,6 +378,7 @@ class WorldSession:
                 "vegetation": {"present": True, "version": C.VEGETATION_VERSION, "source": "osm"},
                 "poi": {"present": True, "version": C.POI_VERSION},
                 "water": {"present": True, "version": C.WATER_VERSION},
+                "bridges": {"present": True, "version": BRIDGES_VERSION},   # lot EA4
                 "biome": biome_tiles.manifest_block(self._biome_sources()),
             },
             "live": True, "origin_kind": "utm_grid",
@@ -756,7 +759,7 @@ class WorldSession:
                 return True
             had = self.cache.get(fk.cache_key) is not None
             try:
-                generate_far(fk, self.provider, self.cache)
+                generate_far(fk, self.provider, self.cache, self.db, self._far_water_data(fk))
             except CompileError as exc:
                 self.log(f"tuile lointaine {fk.ix}_{fk.i_n} non générée : {exc}")
                 return True
@@ -772,6 +775,18 @@ class WorldSession:
             self._publish(_part_of(self.length_m))
             return True
         return False
+
+    def _far_water_data(self, fk: FarKey) -> bool:
+        """Eau lointaine (lot EA2) : tuiles vectorielles déjà sur le PC de la tuile lointaine et de sa marge
+        versées dans la base, sans rien télécharger (la file ne doit pas attendre le réseau) ; faux s'il en
+        manque (la tuile sera refaite à une séance suivante). Extrait régional : vrai."""
+        if self.tiles is None:
+            return True
+        x0, z0 = fk.corner
+        m = FAR_LAKE_SEARCH_M
+        bbox = lonlat_bbox(self.frame, x0 - m, z0 - m, x0 + fk.size_m + m, z0 + fk.size_m + m)
+        self.tiles.load_present(bbox)
+        return not self.tiles.missing(bbox)
 
     def _latlon_of_square(self, key: SquareKey) -> tuple[float, float]:
         e, n = key.center_en()
