@@ -223,6 +223,7 @@ Rien de ce tableau n'est sur `main`. À la fusion, chaque PR met à jour le cata
 - **Budgets de temps des tests :** `engine/tests/perf_budgets.json` (budget du PC, seuil de la CI), remplaçables par machine dans `~/OpenRide/perf_budgets.json`.
 - **Comparer avant et après :** `vitrine_compare.py AVANT APRES` pour les vitrines (captures, comptes et planche), `compare_captures.py AVANT APRES --out ECARTS` pour les captures du banc ; pour les chiffres, `fps.csv` et `sonde.csv` des deux bancs.
 - Toujours vérifier la ligne de qualité appliquée (§3.7) : avant la PR #481, les bancs medium et high mesuraient du `low`.
+- **Matrice de la file du PC (20 novembre) :** une PR de rendu passe low, high et medium ; une PR de logique, une fumée et medium (ligne « Catégorie » de sa section « Recette PC », `docs/lots/00_INDEX.md` §3 ; en cas de doute, rendu). Les PR sans conflit de version passent par paquets de 2 à 4 ; captures sans mesure GPU et contrôles sans GPU en cloud (`scripts/file_bancs.py --lieu cloud`). Une seule référence main par jour.
 
 ## 8. Écrire un test
 
