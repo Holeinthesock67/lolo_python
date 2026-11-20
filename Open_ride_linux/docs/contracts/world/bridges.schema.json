@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldBridgesChunk",
+  "description": "Tronçon de 1 km (parcours compilé) ou carré de 1 km (monde vivant, coordonnées relatives au coin) de la couche ponts (Format .world v1, §8 septies, depuis 1.9, lot EA4).",
+  "type": "object",
+  "required": [
+    "version",
+    "bridges"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "point3d_xzy": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    },
+    "pier": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "number"
+      },
+      "description": "[x, z, y_tablier, y_pied] : position, altitude de la chaussée au-dessus, pied enterré."
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "bridges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "half_width_m",
+          "points",
+          "piers"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "bridge"
+            ]
+          },
+          "length_m": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "half_width_m": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Demi-largeur de la chaussée (sans bas-côtés)."
+          },
+          "s0_m": {
+            "type": "number",
+            "description": "Parcours compilé : début du pont sur la route."
+          },
+          "s1_m": {
+            "type": "number",
+            "description": "Parcours compilé : fin du pont sur la route."
+          },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "$ref": "#/$defs/point3d_xzy"
+            },
+            "description": "Axe du tablier [x, z, y], y = altitude de la chaussée (profil de la route)."
+          },
+          "piers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/pier"
+            }
+          }
+        }
+      }
+    }
+  }
+}

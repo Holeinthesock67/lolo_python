@@ -50,7 +50,7 @@ from .graph import RoadGraph
 from .osmdb import OsmDb
 from .store import WorldCache
 
-WORLDGEN_VERSION = 2          # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1)
+WORLDGEN_VERSION = 3          # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : ponts dessinés (lot EA4)
 FAR_WATER_VERSION = 1         # eau des tuiles lointaines (lot EA2)
 SQUARE_M = 1000
 FAR_M = 5000
@@ -489,6 +489,36 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
     }
 
 
+def square_bridges(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
+                   provider: ElevationProvider, frame: LocalFrame) -> dict[str, Any]:
+    """Ponts du carré (lot EA4, `bridges.py`) : portions « bridge » des arêtes, rangées dans le carré qui
+    contient le milieu du pont ; tablier au profil de l'arête (celui de la route engagée), pied des piles sur
+    le MNT. Coordonnées horizontales relatives au coin du carré, comme les autres couches."""
+    from .. import bridges as BR
+
+    x0, z0 = key.corner
+
+    def ground(xs, zs):
+        lat, lon = frame.to_latlon(np.asarray(xs, float), np.asarray(zs, float))
+        return np.asarray(provider.elevations(lat, lon), dtype=float)
+    out = []
+    for k in sorted(profiles):
+        e, p = graph.edges[k], profiles[k]
+        for n, (s0, s1, kind) in enumerate(e.spans):
+            if kind != "bridge":
+                continue
+            sm = 0.5 * (float(s0) + float(s1))
+            if not key.contains(float(np.interp(sm, p.s, p.x)), float(np.interp(sm, p.s, p.z))):
+                continue
+            item = BR.bridge_item(f"{e.id}_{n}", p.s, p.x, p.z, p.alt_m, s0, s1, ground, C.ROAD_HALF_WIDTH_M)
+            if item is None:
+                continue
+            item["points"] = [[round(a - x0, 2), round(b - z0, 2), c] for a, b, c in item["points"]]
+            item["piers"] = [[round(a - x0, 2), round(b - z0, 2), c, d] for a, b, c, d in item["piers"]]
+            out.append(item)
+    return {"version": BR.BRIDGES_VERSION, "bridges": out}
+
+
 def _round(a: np.ndarray, digits: int) -> list[float]:
     return [round(float(v), digits) for v in a]
 
@@ -545,9 +575,11 @@ def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cach
     water = square_water(key, db, provider, frame)
     near = square_terrain(key, graph, profiles, provider, frame, water)
     layers = square_layers(key, db, near, provider, frame, water)
+    layers["bridges"] = square_bridges(key, graph, profiles, provider, frame)
     counts = {"edges": len(profiles), "buildings": len(layers["buildings"]["buildings"]),
               "vegetation": len(layers["vegetation"]["areas"]), "water_lines": len(layers["water"]["lines"]),
-              "water_areas": len(layers["water"]["areas"]), "poi": len(layers["poi"]["points"])}
+              "water_areas": len(layers["water"]["areas"]), "poi": len(layers["poi"]["points"]),
+              "bridges": len(layers["bridges"]["bridges"])}
     meta = {"zone": key.zone, "ix": key.ix, "in": key.i_n, "corner": list(key.corner), "versions": versions,
             "counts": counts}
     files = {"near.f32": np.ascontiguousarray(near, dtype="<f4").tobytes(),
