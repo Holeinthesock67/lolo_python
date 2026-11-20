@@ -185,6 +185,14 @@ def tile_coords(ix: int, iz: int, level: Level) -> tuple[np.ndarray, np.ndarray]
     return gx, gz
 
 
+def blend_weight(d_edge: np.ndarray) -> np.ndarray:
+    """Poids du MNT dans le fondu route / MNT à la distance `d_edge` du bord de la chaussée : 0 en deçà de
+    BLEND_INNER_M (sol à la route), 1 au-delà de BLEND_OUTER_M (MNT seul) ; 1 aussi sans route proche (inf, NaN)."""
+    d = np.asarray(d_edge, dtype=float)
+    t = np.clip((np.where(np.isfinite(d), d, C.BLEND_OUTER_M) - C.BLEND_INNER_M) / (C.BLEND_OUTER_M - C.BLEND_INNER_M), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
 def blend(y_mnt: np.ndarray, dist_axis: np.ndarray, y_route: np.ndarray,
           half_width: float = C.ROAD_HALF_WIDTH_M) -> np.ndarray:
     """Fondu route / MNT. Sans MNT (NaN) près de la route, l'altitude de la route est gardée."""
@@ -193,8 +201,7 @@ def blend(y_mnt: np.ndarray, dist_axis: np.ndarray, y_route: np.ndarray,
     near = np.isfinite(dist_axis) & (d < C.BLEND_OUTER_M)
     if not near.any():
         return y
-    t = np.clip((d[near] - C.BLEND_INNER_M) / (C.BLEND_OUTER_M - C.BLEND_INNER_M), 0.0, 1.0)
-    w = t * t * (3.0 - 2.0 * t)
+    w = blend_weight(d[near])
     road = y_route[near] - C.ROAD_SINK_M
     mnt = y[near]
     y[near] = np.where(np.isfinite(mnt), (1.0 - w) * road + w * mnt, road)

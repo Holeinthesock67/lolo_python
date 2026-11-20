@@ -57,8 +57,9 @@ from .store import WorldCache
 # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : ponts dessinés (EA4) ; 4 : grandes rivières (EA3) ;
 # 5 (20/11) : garde-fou de la chaussée (#936), ponts compris, sur la largeur du ruban de l'engine. Un même numéro pour
 # deux contenus différents garderait un carré périmé en cache : à chaque fusion, garder un numéro plus grand que tous
-# ceux déjà dans main. Carrés recalculés.
-WORLDGEN_VERSION = 5
+# ceux déjà dans main. Carrés recalculés. 6 réservé (EA5) ; 7 (20/11) : fond des lacs fondu avec la route (rive en
+# pente douce au lieu d'une chute de 7 m sous la chaussée).
+WORLDGEN_VERSION = 7
 FAR_WATER_VERSION = 1         # eau des tuiles lointaines (lot EA2)
 SQUARE_M = 1000
 FAR_M = 5000
@@ -427,8 +428,10 @@ def square_relief(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProf
                              [sp for sp in e.spans if sp[2] == "tunnel"])
     dist, y_road = RoadsAxis(pieces).nearest(gx.ravel(), gz.ravel(), C.BLEND_OUTER_M)
     y = blend(y, dist, y_road, half_width=0.0).reshape(gx.shape)
-    if water:   # lot EA1 : sol sous les lacs, chaussée gardée (hors ponts : ils ne sont pas dans l'axe)
-        WT.sink_grid(gx, gz, y, WT.inland_areas(water), protect=(np.isfinite(dist) & (dist < C.BLEND_INNER_M)).reshape(gx.shape))
+    if water:   # lot EA1 : sol sous les lacs ; près d'une route (hors ponts : ils ne sont pas dans l'axe), fond fondu
+        # avec la route comme le relief : chaussée gardée, puis rive en pente douce (20/11, route en surplomb d'une
+        # chute de 7 m au bord d'un lac)
+        WT.sink_grid(gx, gz, y, WT.inland_areas(water), road=(dist, y_road))
     # Fondu hors ponts et tunnels (la vallée reste sous un pont), garde-fou sur toute la chaussée à ciel ouvert, ponts
     # compris (20/11, « herbe au-dessus de la route »). Pas dans les tunnels : sous 40 m de colline, l'entaille faisait
     # une gorge aux parois grises (banc #936, Sevrier) ; un tunnel se dessinera (lot à venir) au lieu d'être taillé.
