@@ -253,7 +253,7 @@ def test_open_world_river_cut_by_squares_matches_on_the_border(tmp_path) -> None
     for ln in wa["lines"] + wb["lines"]:
         inside = [(n0 + 15 < 1000 * (i_n + 1) - p[1] < n1 - 15) for p in ln["points"]]
         assert not any(inside[1:-1])
-    assert json.loads((a / "meta.json").read_text())["versions"]["worldgen"] == 3
+    assert json.loads((a / "meta.json").read_text())["versions"]["worldgen"] == 4
 
 
 def test_vector_tile_river_class_is_kept_and_old_tile_base_is_refilled(tmp_path) -> None:

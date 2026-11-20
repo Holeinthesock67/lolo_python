@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Grandes rivières cartographiées en surface (`water=river`, classe `river` des tuiles vectorielles) dessinées avec un niveau qui descend le long du cours, sol abaissé dessous, ruban coupé ; parcours compilés et monde ouvert (format 1.9) | Python, GDScript | EA1 | Moyenne | En revue (PR à valider : essai PC, mesures low, medium, high et captures) |
+| Grandes rivières cartographiées en surface (`water=river`, classe `river` des tuiles vectorielles) dessinées avec un niveau qui descend le long du cours, sol abaissé dessous, ruban coupé ; parcours compilés et monde ouvert (format 1.10) | Python, GDScript | EA1 | Moyenne | En revue (PR à valider : essai PC, mesures low, medium, high et captures) |
 
 ## 1. Objectif
 
@@ -15,7 +15,7 @@ Demande du propriétaire du 14 novembre (série EA, `docs/6.0/PLAN_SERIE_EA.md`)
 
 - **Niveau en un point** (`RiverLevels.at`) : nœuds d'une grille de 10 m (`RIVER_SAMPLE_M`) alignée sur le repère, dans l'eau de la rivière (îles exceptées) ; MNT brut à ces nœuds. Pour un point : nœuds à moins de 150 m (`RIVER_LEVEL_RADIUS_M`), plan ajusté à leurs altitudes (la pente du cours ne biaise rien), puis quart le plus bas des écarts au plan (`RIVER_LEVEL_QUANTILE`, écarte les nœuds de bord mêlés à la berge par l'interpolation du MNT). Le MNT Copernicus aplanit les grandes rivières en marches qui descendent : la fenêtre les lisse en une pente. Moins de trois nœuds : MNT au point. C'est la règle des lacs d'EA1 (MNT dans l'eau, valeur basse) sur une fenêtre glissante au lieu du plan d'eau entier.
 - **Découpe** (`clip_to_rect`) : une rivière peut faire des dizaines de kilomètres ; elle est découpée par carré de 1 km de la grille du repère (`RIVER_CELL_M` : tuiles proches d'un parcours, carrés du monde ouvert). Découpe de Weiler-Atherton sur un rectangle : un bras qui sort et rentre donne deux morceaux, une île coupée par le bord devient une échancrure, sans côté dégénéré. Deux carrés voisins calculent exactement les mêmes points de coupe, et les côtés densifiés (`RIVER_EDGE_STEP_M`, 20 m) reçoivent les mêmes points dans les deux sens.
-- **Surface** : aire `kind = river` du format 1.9, avec `outer_y` et `holes_y` (altitude de chaque sommet) ; `level_y` = médiane, pour un lecteur d'avant 1.9. L'engine (`water_mesh.gd`) pose chaque sommet à son altitude ; sans ces listes (ou de mauvaise taille), surface plane à `level_y`.
+- **Surface** : aire `kind = river` du format 1.10, avec `outer_y` et `holes_y` (altitude de chaque sommet) ; `level_y` = médiane, pour un lecteur d'avant 1.10. L'engine (`water_mesh.gd`) pose chaque sommet à son altitude ; sans ces listes (ou de mauvaise taille), surface plane à `level_y`.
 - **Sol** : abaissé sous la surface à `niveau − WATER_SINK_M` (1 m) comme sous un lac, chaussée hors pont gardée (`water_terrain.sink_grid`, niveau lu en chaque échantillon).
 - **Ruban** : le cours d'eau en ligne s'arrête à l'entrée de la surface (un point dedans gardé, posé au niveau de la surface, pour qu'il la rejoigne) ; il reste pour les rivières sans surface.
 - Tout ne dépend que des coordonnées, des polygones et du MNT : le niveau d'un point est le même quel que soit le carré qui le calcule (bords communs identiques au bit près, testé).
@@ -23,8 +23,8 @@ Demande du propriétaire du 14 novembre (série EA, `docs/6.0/PLAN_SERIE_EA.md`)
 ## 3. Branchements
 
 - **Parcours compilés** : `osm_layers.build_osm_layers` met de côté les rivières, puis `river_surface.add_route_rivers` les découpe par carré de 1 km près de la route (bande `OSM_BAND_M`), range chaque morceau au tronçon le plus proche de son centre, calcule les altitudes et coupe les rubans. `cli._sink_under_water` reçoit le MNT brut pour abaisser le sol des rivières (`build`, `add-layer terrain`, `add-layer water`).
-- **Monde ouvert** : sorte d'aire `river` dans la base OSM (`osmdb.area_kind`, extraits Geofabrik : base à refaire avec `region-add` pour voir les rivières) et dans la base des tuiles vectorielles (classe `river` ; `CONVERT_VERSION` 2 : la base `tuiles.sqlite` est revidée au premier lancement et reversée depuis les tuiles du cache, sans téléchargement ; les surfaces y sont maintenant découpées au bord de la tuile par la même découpe). `squares.square_water` découpe chaque rivière à la fenêtre du carré élargie de 170 m (nœuds du niveau), `square_terrain` abaisse le sol, `square_layers` écrit les morceaux du carré et coupe les rubans ; `WORLDGEN_VERSION` 3. Un générateur d'avant EA3 ne lit pas la sorte `river` : une base déjà convertie ne change rien à `main`.
-- **Format** 1.9 (`FORMAT_VERSION`), schéma `water.schema.json`, contrat §8 et journal ; `verify` accepte `river`.
+- **Monde ouvert** : sorte d'aire `river` dans la base OSM (`osmdb.area_kind`, extraits Geofabrik : base à refaire avec `region-add` pour voir les rivières) et dans la base des tuiles vectorielles (classe `river` ; `CONVERT_VERSION` 2 : la base `tuiles.sqlite` est revidée au premier lancement et reversée depuis les tuiles du cache, sans téléchargement ; les surfaces y sont maintenant découpées au bord de la tuile par la même découpe). `squares.square_water` découpe chaque rivière à la fenêtre du carré élargie de 170 m (nœuds du niveau), `square_terrain` abaisse le sol, `square_layers` écrit les morceaux du carré et coupe les rubans ; `WORLDGEN_VERSION` 4 (3 pris par EA4). Un générateur d'avant EA3 ne lit pas la sorte `river` : une base déjà convertie ne change rien à `main`.
+- **Format** 1.10 (`FORMAT_VERSION`), schéma `water.schema.json`, contrat §8 et journal ; `verify` accepte `river`.
 
 ## 4. Hors périmètre
 

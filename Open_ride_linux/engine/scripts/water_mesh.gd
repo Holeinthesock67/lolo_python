@@ -439,7 +439,7 @@ static func build_lines(lines: Array) -> Dictionary:
 	}
 
 
-## Altitudes par sommet d'une rivière en surface (format 1.9, lot EA3) : `outer_y` et `holes_y`, parallèles
+## Altitudes par sommet d'une rivière en surface (format 1.10, lot EA3) : `outer_y` et `holes_y`, parallèles
 ## aux anneaux. Table point -> altitude ; vide si elles manquent ou ne correspondent pas aux anneaux
 ## (surface plane à `level_y`, comme un lac).
 static func vertex_levels(a: Dictionary) -> Dictionary:

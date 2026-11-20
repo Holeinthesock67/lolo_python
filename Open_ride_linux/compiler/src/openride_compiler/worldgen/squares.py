@@ -53,7 +53,7 @@ from .graph import RoadGraph
 from .osmdb import OsmDb
 from .store import WorldCache
 
-WORLDGEN_VERSION = 3          # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : grandes rivières (EA3)
+WORLDGEN_VERSION = 4          # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : ponts dessinés (EA4) ; 4 : grandes rivières (EA3)
 FAR_WATER_VERSION = 1         # eau des tuiles lointaines (lot EA2)
 SQUARE_M = 1000
 FAR_M = 5000

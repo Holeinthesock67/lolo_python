@@ -213,13 +213,13 @@ func _test_shimmer_material() -> void:
 		"ondes poussées vers le nord par un vent de 30 km/h (%.3f m en 1 s)" % step.length())
 
 
-# Lot EA3 (format 1.9) : rivière en surface, altitude à chaque sommet (`outer_y`, `holes_y`)
+# Lot EA3 (format 1.10) : rivière en surface, altitude à chaque sommet (`outer_y`, `holes_y`)
 func _test_river_surface_follows_vertex_levels() -> void:
 	var outer := [[0.0, 0.0], [200.0, 0.0], [400.0, 0.0], [400.0, 60.0], [200.0, 60.0], [0.0, 60.0]]
 	var island := [[180.0, 20.0], [180.0, 40.0], [220.0, 40.0], [220.0, 20.0]]
 	var river := {"id": "r1_c0_0_0", "kind": "river", "level_y": 99.0, "outer": outer, "holes": [island],
 		"outer_y": [100.0, 99.0, 98.0, 98.0, 99.0, 100.0], "holes_y": [[99.1, 99.1, 98.9, 98.9]]}
-	_check(OsmLayers._valid_water_area(river), "aire « river » (format 1.9) acceptée")
+	_check(OsmLayers._valid_water_area(river), "aire « river » (format 1.10) acceptée")
 	var res: Dictionary = WaterMesh.build_areas([river])
 	var stats := _mesh_area_and_up(res)
 	var verts: PackedVector3Array = res["vertices"]

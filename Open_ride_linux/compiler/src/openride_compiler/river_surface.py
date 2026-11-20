@@ -358,8 +358,8 @@ def piece_rings(outer: Sequence, holes: Sequence[Sequence]) -> tuple[Ring, list[
 
 
 def river_area(item_id: str, outer: Ring, holes: list[Ring], levels: RiverLevels) -> dict | None:
-    """Aire `river` (format 1.9) : altitude de chaque sommet (`outer_y`, `holes_y`), `level_y` médian
-    (lecteurs d'avant 1.9)."""
+    """Aire `river` (format 1.10) : altitude de chaque sommet (`outer_y`, `holes_y`), `level_y` médian
+    (lecteurs d'avant 1.10)."""
     if len(outer) < 3:
         return None
     oy = levels.at([p[0] for p in outer], [p[1] for p in outer])
