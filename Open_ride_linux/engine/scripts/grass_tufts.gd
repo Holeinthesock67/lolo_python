@@ -13,7 +13,7 @@ extends Node3D
 ##   `BAND_MIN_M` à `BAND_MAX_M` du bord de la route, des deux côtés, autour de la caméra : tronçons
 ##   de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et `CHUNKS_AHEAD` devant, dans le sens de la marche
 ##   (`direction`, -1 à rebours après un demi-tour : lot N22).
-## - Pas de touffe sur la route, dans un bâtiment ou dans l'eau (polygones `exclusions`, x et z) ;
+## - Pas de touffe sur la route, dans un bâtiment ou dans l'eau (zones `exclusions`, exclusion_zones.gd : grille de cases, coût par place indépendant de la taille des contours, lot HERBE1) ;
 ##   densité réduite avec la pente du terrain (`height_at`, facultatif).
 ## - Garde-fou de la chaussée : une touffe est toujours à `ROAD_CLEAR_M` au moins du bord de la route,
 ##   mesuré sur TOUT le parcours (road_clearance.gd) et pas seulement au point qui l'a posée : dans une
@@ -37,6 +37,7 @@ const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
+const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 
 const CHUNK_M := 40.0
 const CHUNKS_BEHIND := 1
@@ -65,7 +66,7 @@ const GROUND_BLEND_FROM_M := 15.0
 const ROAD_CLEAR_M := 1.0
 const MAX_SLOPE := 0.7          # pente (tan) au-delà de laquelle il n'y a plus de touffe
 const MAX_PER_FRAME := 120
-## Temps de remplissage par image (µs) : vérifié toutes les BATCH places. Sur un parcours sans tuile de
+## Temps de remplissage par image (µs) : vérifié avant chaque place (lot HERBE1, 19/11 : toutes les BATCH places avant). Sur un parcours sans tuile de
 ## terrain, chaque place coûte bien plus (hauteur lue sur la route) : 120 places faisaient 60 à 80 ms au
 ## début de chaque tronçon de 40 m (saccades du 04/11).
 ## Lot Y22 (bande à 80 m) : en high un tronçon a ~7 300 places ; à 1,5 ms par image le remplissage prenait
@@ -128,7 +129,8 @@ var biome_model = null
 var route = null                     # route_data.gd
 var road_half_width_m := 3.0
 var tuft_seed := 0
-var exclusions: Array = []           # Array[PackedVector2Array] : bâtiments et plans d'eau (x, z)
+## Bâtiments et plans d'eau (x, z), mer comprise : zones indexées (exclusion_zones.gd, lot HERBE1).
+var exclusions: ExclusionZones = ExclusionZones.new()
 var height_at: Callable = Callable() # (x, z) -> hauteur du terrain ; vide : hauteur de la route
 
 var _road: RoadClearance = null       # distance à la route sur tout le parcours
@@ -339,7 +341,13 @@ func update(cam_s: float) -> void:
 		var near_mm := _near_mm[g]
 		var far_mm := _far_mm[g]
 		var box := _aabb[g]
+		var limit_us: int = URGENT_FRAME_US if urgent else MAX_FRAME_US
 		for slot in range(j, end):
+			# Temps vérifié à chaque place (lot HERBE1) : une place peut coûter cher (contours, hauteur lue sur
+			# la route) ; vérifié seulement toutes les BATCH places, le budget de l'image était dépassé d'autant.
+			if slot > j and Time.get_ticks_usec() - t_start >= limit_us:
+				end = slot
+				break
 			var idx := g * _per_chunk + slot
 			_placed[idx] = 0
 			near_mm.set_instance_transform(slot, HIDDEN)
@@ -499,10 +507,8 @@ func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVect
 	var pz: float = st.z + right.z * off * side
 	if _road != null and not _road.is_clear(px, pz, road_half_width_m + ROAD_CLEAR_M):
 		return null
-	var p2 := Vector2(px, pz)
-	for poly in exclusions:
-		if Geometry2D.is_point_in_polygon(p2, poly):
-			return null
+	if exclusions.contains(px, pz):
+		return null
 	var py: float = st.y
 	if height_at.is_valid():
 		py = float(height_at.call(px, pz))

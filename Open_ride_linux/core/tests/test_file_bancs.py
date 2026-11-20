@@ -78,6 +78,10 @@ def test_classer_separe_contacts_environnement_et_echec():
     assert fb.classer(0, "")[0] == fb.OK
     assert fb.classer(1, "[ÉCHEC] décor : aucun contact sur la route : 3")[0] == fb.CONTACTS
     v, d = fb.classer(1, "[ÉCHEC] décor : aucun contact sur la route : 3\n[ÉCHEC] pire image : 140 ms")
+    assert v == fb.ACOUPS and "1 à-coup(s) connu(s), 1 contact(s)" in d
+    assert fb.classer(1, "[ÉCHEC] images lentes : 8 par minute")[0] == fb.ACOUPS
+    assert fb.ACOUPS in fb.ACQUIS
+    v, d = fb.classer(1, "[ÉCHEC] pire image : 140 ms\n[ÉCHEC] pont : tablier absent")
     assert v == fb.ECHEC and "2 échec(s)" in d
     assert fb.classer(1, "CompileError: x.sqlite : schéma 2 au lieu de 1, refaire `region-add`")[0] == fb.ENV
     assert fb.classer(2, "Godot introuvable : /x")[0] == fb.ENV
@@ -380,3 +384,27 @@ def test_environnement_des_etapes_comme_job_sh(tmp_path, depot):
     assert lignes[0].split(os.pathsep)[:2] == [str(projet / "core" / "src"), str(projet / "compiler" / "src")]
     assert lignes[1] == str(venv.parent) and lignes[2] == str(venv) and lignes[3] == "C"
     assert (projet / "core" / ".venv").resolve() == venv.parent.resolve()
+
+
+def test_assemblage_en_conflit_resolu_par_strategie(tmp_path, depot):
+    origine, clone = depot
+    _branche(origine, "b2", {"x.txt": "b2"})                 # même fichier que br : conflit
+    _git(clone, "fetch", "-q", "origin")
+    cmd = f"{PY} -c \"import pathlib; print(pathlib.Path('x.txt').read_text())\""
+    etape = f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(cmd)}\n'
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "ow"\nbranche = "br"\nassemblage = ["b2"]\n{etape}')
+    fb.main(["lancer", str(f), "--sans-reseau"])
+    assert _etat(tmp_path)["prs"]["ow"]["low"]["verdict"] != fb.OK
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "ow"\nbranche = "br"\nassemblage = ["b2"]\n'
+                               f'assemblage_strategie = "ours"\n{etape}')
+    assert fb.main(["relancer", str(f), "--sans-reseau"]) == 0
+    assert _etat(tmp_path)["prs"]["ow"]["low"]["verdict"] == fb.OK
+    assert "branche" in (tmp_path / "sortie" / "ow" / "low" / "journal.txt").read_text(encoding="utf-8")
+
+
+def test_strategie_inconnue_refusee(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, '[[pr]]\nid = "p"\nbranche = "br"\nassemblage_strategie = "octopus"\n'
+                               f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n')
+    with pytest.raises(fb.FileInvalide):
+        fb.lire_file(f)
