@@ -52,9 +52,17 @@ def test_latest_sessions_newest_first_with_route(tmp_path):
     assert cs.latest_sessions(seances, 0) == []
 
 
-def test_nothing_to_check_or_no_godot(tmp_path):
+def test_nothing_to_check_or_no_godot(tmp_path, monkeypatch):
     out = tmp_path / "sortie"
     assert cs.main(["--out", str(out), "--routes", str(tmp_path / "r"), "--seances", str(tmp_path / "s")]) == 2
     assert "rien à contrôler" in (out / "resume.txt").read_text(encoding="utf-8")
     w = _world(tmp_path / "demo.world")
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
     assert cs.main(["--out", str(out), "--godot", str(tmp_path / "pas-de-godot"), str(w)]) == 2
+    assert "Godot introuvable" in (out / "resume.txt").read_text(encoding="utf-8")
+    g = home / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64"
+    g.parent.mkdir(parents=True)
+    g.write_text("")
+    assert cs.find_godot(tmp_path / "pas-de-godot") == g

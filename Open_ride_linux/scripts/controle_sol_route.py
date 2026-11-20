@@ -53,6 +53,14 @@ def latest_sessions(seances: Path, n: int) -> list[Path]:
     return found[:n]
 
 
+def find_godot(asked: Path) -> Path | None:
+    """Le binaire demandé, sinon le Godot 4.7 le plus récent de ~/Applications/godot (comme sur le PC)."""
+    if asked.is_file():
+        return asked
+    found = sorted((Path.home() / "Applications/godot").glob("Godot_v4.7*_linux.x86_64"))
+    return found[-1] if found else None
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("mondes", nargs="*", type=Path, help="mondes .world à contrôler (défaut : parcours installés et dernières balades)")
@@ -63,15 +71,22 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dernieres", type=int, default=3, help="balades du monde ouvert contrôlées (défaut 3)")
     ap.add_argument("--delai-s", type=int, default=1800)
     a = ap.parse_args(argv)
-    worlds = list(a.mondes) or installed_worlds(a.routes) + latest_sessions(a.seances, a.dernieres)
     a.out.mkdir(parents=True, exist_ok=True)
+    worlds = list(a.mondes) or installed_worlds(a.routes) + latest_sessions(a.seances, a.dernieres)
+    print(f"parcours : {a.routes} ; balades : {a.seances} ; mondes trouvés : {len(worlds)}", flush=True)
     if not worlds:
-        (a.out / "resume.txt").write_text("rien à contrôler\n", encoding="utf-8")
-        print("rien à contrôler", file=sys.stderr)
+        why = (f"rien à contrôler : aucun parcours dans {a.routes}, aucune balade ow-*.world avec route/part_*.json "
+               f"et manifest.json dans {a.seances}")
+        (a.out / "resume.txt").write_text(why + "\n", encoding="utf-8")
+        print(why, file=sys.stderr)
         return 2
-    if not a.godot.is_file():
-        print(f"Godot introuvable : {a.godot}", file=sys.stderr)
+    godot = find_godot(a.godot)
+    if godot is None:
+        why = f"Godot introuvable : {a.godot} (GODOT ou --godot)"
+        (a.out / "resume.txt").write_text(why + "\n", encoding="utf-8")
+        print(why, file=sys.stderr)
         return 2
+    a.godot = godot
     cmd = [str(a.godot), "--headless", "--path", str(ENGINE_DIR), "--script", "res://tests/test_herbe_route.gd", "--",
            *[str(w.resolve()) for w in worlds]]
     try:
