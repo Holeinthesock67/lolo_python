@@ -283,7 +283,22 @@ func _init() -> void:
 	reset()
 
 
+## Reconstruit l'accueil et l'écran Prêt. Sur l'écran Prêt, le focus reste sur le même élément quand une ligne
+## arrive ou part au-dessus de lui (ligne « Bots » reçue après l'entrée sur l'écran, lot GP-niv) : jamais sur une
+## ligne désactivée.
 func _refresh_home() -> void:
+	var ready_id := ""
+	if _screen == READY and _focus >= 0 and _focus < _screens[READY]["items"].size():
+		ready_id = _screens[READY]["items"][_focus]["id"]
+	_build_home_and_ready()
+	if ready_id != "" and _screen == READY:
+		var items := _items()
+		var i := _index_of(ready_id)
+		if i < items.size() and items[i]["id"] == ready_id:
+			_focus = _first_enabled_from(i, 1)
+
+
+func _build_home_and_ready() -> void:
 	var world := free_world_name if free_world_name != "" else "à choisir"   # dernier parcours libre (lot GP13)
 	var items := [_item("world", "Parcours : " + world)]
 	if coach_detail != "":
