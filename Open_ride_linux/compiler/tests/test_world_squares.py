@@ -243,7 +243,8 @@ def test_zero_length_road_has_no_profile(db, tmp_path) -> None:
 
 def _square_excess(key: SquareKey, folder, db, prov) -> float:
     """Plus grand dépassement (m) du maillage du carré au-dessus de la chaussée moins ROAD_SINK_M, sur toutes les
-    routes du carré, ponts et tunnels compris (20/11), aux points de chaussée tous les mètres."""
+    routes du carré, ponts et tunnels compris (20/11), aux points de chaussée tous les mètres, sur au moins la largeur
+    du ruban de l'engine (ROAD_HALF_WIDTH_M), même pour une piste fondue sur 2 m."""
     from openride_compiler import terrain
     graph, profiles = squares.square_edges(key, db, prov)
     x0, z0 = key.corner
@@ -251,7 +252,7 @@ def _square_excess(key: SquareKey, folder, db, prov) -> float:
     worst = -math.inf
     for k in sorted(profiles):
         e = graph.edges[k]
-        for px, pz, pa, hw in squares.axis_pieces(profiles[k], squares.half_width(e.road_class), ()):
+        for px, pz, pa, hw in squares.axis_pieces(profiles[k], max(squares.half_width(e.road_class), C.ROAD_HALF_WIDTH_M), ()):
             ex, _x, _z = terrain.terrain_excess(tiles, px, pz, pa, half_width=hw)
             if len(ex):
                 worst = max(worst, float(ex.max()))
@@ -317,3 +318,20 @@ def test_square_terrain_never_covers_tunnel_road(tmp_path) -> None:
     # sommet de la colline à 100 m de la route : intact (≈ 300 + 25·exp(−100²/(2·150²)) = 320 m)
     top = float(near(b)[40, 0])
     assert top > 319.0, top
+
+
+def test_narrow_road_cleared_on_engine_width(tmp_path) -> None:
+    """20/11 (« le talus passe sur la route », lac d'Annecy) : une piste cyclable (fondue sur 2 m) sur un flanc à
+    45 % est dessinée par l'engine à la largeur du thème (6 m) quand on la roule ; le talus ne doit pas passer sur le
+    bord de ce ruban."""
+    w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/piste")
+    n_road = IN * 1000 + 500
+    pts = [lonlat(IX * 1000 - 100 + 23.0 * i, n_road - 150 + 9.0 * i + 25.0 * math.sin(i / 3.0)) for i in range(0, 50)]
+    w.add_road(1, {"highway": "cycleway"}, list(range(1, len(pts) + 1)), pts)
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db = OsmDb(tmp_path / "osm.sqlite")
+    lon, lat = lonlat(E_REF, N_REF)
+    prov = SyntheticProvider(lat, lon, lambda x, z: 400.0 + 0.45 * (z - 0.4 * x) + 4.0 * np.sin(x / 13.0) * np.cos(z / 11.0))
+    key = SquareKey(ZONE, IX, IN)
+    folder = generate_square(key, db, prov, cache(tmp_path / "cache"))
+    assert _square_excess(key, folder, db, prov) <= 1e-3

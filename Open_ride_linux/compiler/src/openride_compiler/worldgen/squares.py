@@ -260,13 +260,16 @@ def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgePro
     for k in sorted(profiles):
         e = graph.edges[k]
         pieces += axis_pieces(profiles[k], half_width(e.road_class), e.spans)
-        roads += axis_pieces(profiles[k], half_width(e.road_class), ())
+        roads += axis_pieces(profiles[k], max(half_width(e.road_class), C.ROAD_HALF_WIDTH_M), ())
     dist, y_road = RoadsAxis(pieces).nearest(gx.ravel(), gz.ravel(), C.BLEND_OUTER_M)
     y = blend(y, dist, y_road, half_width=0.0).reshape(gx.shape)
     # Fondu hors ponts et tunnels (la vallée reste sous un pont), mais garde-fou sur TOUTE la chaussée, ponts et
     # tunnels compris (20/11, « herbe au-dessus de la route ») : l'engine ne dessine pas de tunnel, et la colline
     # au-dessus d'un tunnel ou d'une trémie cachait la route et le cycliste (départ de Biarritz). Même règle que
     # les circuits : `terrain.clear_road` dégage le relief sur toute la trace, tunnels compris.
+    # Largeur dégagée : au moins la chaussée de l'engine (ROAD_HALF_WIDTH_M, ruban de 6 m du thème par défaut), même
+    # pour une piste ou un chemin fondus sur 2 m : la route engagée est dessinée à la largeur du thème quelle que soit
+    # sa classe, et le talus d'une piste cyclable passait sur le bord du ruban.
     y = clear_square_road(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, roads, (dist <= 0.0).reshape(gx.shape))
     return y[1:-1, 1:-1].astype("<f4")
 
