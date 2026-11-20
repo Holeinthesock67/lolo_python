@@ -125,21 +125,30 @@ def lake_level(outer: list, holes: list, height: HeightFn) -> float | None:
     return round(float(ys_shore.min()), 2)
 
 
-def inland_areas(areas: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Plans d'eau qui abaissent le sol : lacs, étangs, réservoirs à niveau connu (pas la mer)."""
+def inland_areas(areas: Iterable[dict[str, Any]], rivers: Any = None) -> list[dict[str, Any]]:
+    """Plans d'eau qui abaissent le sol : lacs, étangs, réservoirs à niveau connu (pas la mer) ; rivières
+    en surface (lot EA3) si `rivers` (`river_surface.RiverLevels`) donne leur niveau en chaque point."""
     out = []
     for a in areas:
-        if a.get("kind") not in C.INLAND_WATER_KINDS:
-            continue
-        lv = a.get("level_y")
-        if not isinstance(lv, (int, float)) or not np.isfinite(lv):
+        kind = a.get("kind")
+        if kind == "river":
+            lv_r = a.get("levels") or rivers
+            if lv_r is None:
+                continue
+            entry: dict[str, Any] = {"level_at": lv_r.at}
+        elif kind in C.INLAND_WATER_KINDS:
+            lv = a.get("level_y")
+            if not isinstance(lv, (int, float)) or not np.isfinite(lv):
+                continue
+            entry = {"level_y": float(lv)}
+        else:
             continue
         rings = [_ring_array(a["outer"])] + [_ring_array(h) for h in a.get("holes") or []]
         rings = [r for r in rings if len(r) >= 3]
         if rings:
             o = rings[0]
-            out.append({"level_y": float(lv), "rings": rings,
-                        "bbox": (o[:, 0].min(), o[:, 1].min(), o[:, 0].max(), o[:, 1].max())})
+            entry.update({"rings": rings, "bbox": (o[:, 0].min(), o[:, 1].min(), o[:, 0].max(), o[:, 1].max())})
+            out.append(entry)
     return out
 
 
@@ -157,8 +166,14 @@ def sink_grid(gx: np.ndarray, gz: np.ndarray, y: np.ndarray, areas: list[dict[st
         if not len(sel):
             continue
         sel = sel[rings_contain(fx[sel], fz[sel], a["rings"])]
-        target = a["level_y"] - depth
-        sel = sel[np.isfinite(fy[sel]) & (fy[sel] > target)]
+        if not len(sel):
+            continue
+        if "level_at" in a:   # rivière (lot EA3) : surface qui descend le long du cours
+            target = np.asarray(a["level_at"](fx[sel], fz[sel]), dtype=float) - depth
+        else:
+            target = np.full(len(sel), a["level_y"] - depth)
+        low = np.isfinite(fy[sel]) & np.isfinite(target) & (fy[sel] > target)
+        sel, target = sel[low], target[low]
         fy[sel] = target
         count += len(sel)
     return count
@@ -170,13 +185,17 @@ def chunk_areas(water_chunks: dict[Any, dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def sink_route_tiles(tiles: dict[str, dict[tuple[int, int], np.ndarray]], route: dict,
-                     areas: Iterable[dict[str, Any]], spans=None) -> int:
+                     areas: Iterable[dict[str, Any]], spans=None, height: HeightFn | None = None) -> int:
     """Parcours compilé : sol des niveaux proche et lointain abaissé sous les plans d'eau (pas l'horizon,
     sans eau à cette distance) ; chaussée de la route gardée, hors ponts `spans` (lot EA4, comme le monde
-    ouvert). Rend le nombre d'échantillons abaissés."""
+    ouvert). Rend le nombre d'échantillons abaissés.
+
+    `height` (MNT brut) donne le niveau des rivières en surface (lot EA3) ; sans lui, elles n'abaissent rien."""
     from .terrain import LEVELS, route_axis, tile_coords
 
-    lakes = inland_areas(areas)
+    areas = list(areas)
+    rivers = river_levels(areas, height) if height is not None else None
+    lakes = inland_areas(areas, rivers)
     if not lakes:
         return 0
     axis = route_axis(route, spans)
@@ -198,6 +217,14 @@ def sink_route_tiles(tiles: dict[str, dict[tuple[int, int], np.ndarray]], route:
                 g[:, :] = y.astype(g.dtype)
                 count += n
     return count
+
+
+def river_levels(areas: Iterable[dict[str, Any]], height: HeightFn, window=None):
+    """`RiverLevels` des aires `river` (lot EA3) ; None s'il n'y en a pas."""
+    from .river_surface import RiverLevels
+
+    polys = [(a["outer"], a.get("holes") or []) for a in areas if a.get("kind") == "river"]
+    return RiverLevels(polys, height, window) if polys else None
 
 
 def read_world_areas(world) -> list[dict[str, Any]]:

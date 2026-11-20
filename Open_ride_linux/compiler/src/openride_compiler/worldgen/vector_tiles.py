@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from ..cache import Log, stderr_log
+from .. import river_surface as RS
 from ..errors import CompileError
 from . import mvt, osmdb
 from .measure import Net
@@ -63,7 +64,12 @@ _CLASS = {"motorway": "x", "trunk": "x", "primary": "p", "secondary": "s", "tert
           "minor": "m", "service": "m"}
 _PLACE = {"city", "town", "village", "hamlet"}
 _LANDCOVER = {"wood": "wood", "forest": "wood", "scrub": "scrub", "orchard": "orchard"}
-_WATER_AREA = {"lake": "lake", "pond": "pond", "reservoir": "reservoir", "basin": "reservoir"}
+_WATER_AREA = {"lake": "lake", "pond": "pond", "reservoir": "reservoir", "basin": "reservoir",
+               "river": "river"}   # river : grandes rivières en surface (lot EA3)
+# Version des lignes versées depuis les tuiles : une base plus ancienne est refaite depuis les tuiles du
+# cache (sans téléchargement). 2 : classe `river` de la couche `water` (sorte `river`), surfaces découpées
+# au bord de la tuile sans côté dégénéré (lot EA3).
+CONVERT_VERSION = 2
 _SEA_CLASS = "ocean"
 _BEACH = {"beach": "beach", "sand": "sand"}       # sous-classe du sable de `landcover` → `natural`
 
@@ -208,6 +214,18 @@ class TileDb:
         self.db.execute("CREATE TABLE IF NOT EXISTS coast_loaded (z INTEGER, x INTEGER, y INTEGER, "
                         "PRIMARY KEY (z, x, y))")
         self.db.execute("INSERT OR IGNORE INTO meta VALUES ('coast', ?)", (osmdb.COAST_TABLES_VERSION,))
+        row = self.db.execute("SELECT value FROM meta WHERE key = 'convert_version'").fetchone()
+        if row is None or row[0] != str(CONVERT_VERSION):
+            # conversion plus ancienne : tout est revidé, les tuiles du cache seront reversées à la demande
+            self.db.execute("BEGIN")
+            for t in osmdb.TABLES:      # côte comprise (lot W23) : une conversion nouvelle refait tout
+                self.db.execute(f"DELETE FROM {t}")
+                self.db.execute(f"DELETE FROM {t}_rt")
+            self.db.execute("DELETE FROM tiles_loaded")
+            self.db.execute("DELETE FROM coast_loaded")
+            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('bbox', '')")
+            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('convert_version', ?)", (str(CONVERT_VERSION),))
+            self.db.execute("COMMIT")
 
     def close(self) -> None:
         self.db.close()
@@ -459,7 +477,8 @@ def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list
                     water = _WATER_AREA.get(str(t.get("class", "")))
                     if water is None or t.get("intermittent") == 1:
                         continue
-                    kind, tags = "water", {"natural": "water", "water": water}
+                    kind = osmdb.area_kind({"natural": "water", "water": water})   # river à part (lot EA3)
+                    tags = {"natural": "water", "water": water}
                 for k, poly in enumerate(f.geometry):
                     outer = [glob(p) for p in poly["outer"]]
                     holes = [[glob(p) for p in h] for h in poly["holes"]]
@@ -468,16 +487,18 @@ def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list
                         cy = sum(p[1] for p in outer) / len(outer)
                         if not (box[0] <= cx < box[2] and box[1] <= cy < box[3]):
                             continue
+                        pieces = [(outer, holes)]
                     else:
-                        outer = clip_polygon(outer, *box)
-                        holes = [h2 for h2 in (clip_polygon(h, *box) for h in holes) if h2]
-                        if not outer:
-                            continue
-                    o = [lonlat(px, py, E) for px, py in outer]
-                    hs = [[lonlat(px, py, E) for px, py in h] for h in holes]
-                    geom = {"outer": [list(p) for p in o], "holes": [[list(p) for p in h] for h in hs]}
-                    out["coast_areas" if kind in osmdb.COAST_AREA_KINDS else "areas"].append(((f"v{x}_{y}_{fi}_{k}", kind, json.dumps(osmdb.useful_tags(tags), ensure_ascii=False),
-                                          json.dumps(geom)), osmdb.bbox_of(o)))
+                        # découpe au bord de la tuile en morceaux propres (lot EA3) : un polygone qui sort et
+                        # rentre donne plusieurs morceaux, une île coupée devient une échancrure
+                        pieces = RS.clip_to_rect(outer, holes, *box)
+                    for n, (po, ph) in enumerate(pieces):
+                        o = [lonlat(px, py, E) for px, py in po]
+                        hs = [[lonlat(px, py, E) for px, py in h] for h in ph]
+                        geom = {"outer": [list(p) for p in o], "holes": [[list(p) for p in h] for h in hs]}
+                        out["coast_areas" if kind in osmdb.COAST_AREA_KINDS else "areas"].append(((f"v{x}_{y}_{fi}_{k}" + (f"_{n}" if n else ""), kind,
+                                              json.dumps(osmdb.useful_tags(tags), ensure_ascii=False),
+                                              json.dumps(geom)), osmdb.bbox_of(o)))
             elif f.kind == "point" and lname in ("place", "poi", "mountain_peak"):
                 cls, sub = str(t.get("class", "")), str(t.get("subclass", ""))
                 if lname == "place":
