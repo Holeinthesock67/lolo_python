@@ -102,7 +102,7 @@ const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world"
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
 const HOME_DETAILS := {"open_world": "route créée en roulant", "survivor": "à chaque arche, le dernier sort",
-	"grandprix": "course contre les bots, objets à lancer", "race": "contre les bots, sans objets, tous les parcours",
+	"grandprix": "course contre les bots, objets à lancer", "race": "contre les bots, sans objets",
 	"track": "épreuves sur la piste, en SIM ou en ERG"}
 ## Modes à écran Prêt de réglages (Dernier survivant, lot DS7 ; Grand Prix des objets, lot GP9) : le core
 ## compose le plateau, l'écran montre « Lancer », le parcours, les réglages du mode (`mode_rows`) et, pour le
