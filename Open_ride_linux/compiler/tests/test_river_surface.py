@@ -17,6 +17,7 @@ from openride_compiler import river_surface as RS
 from openride_compiler.elevation import SyntheticProvider
 from openride_compiler.terrain import NEAR, read_tile, tile_coords
 from openride_compiler.water_terrain import rings_contain
+from openride_compiler.worldgen.squares import WORLDGEN_VERSION
 
 
 def area(poly) -> float:
@@ -253,7 +254,7 @@ def test_open_world_river_cut_by_squares_matches_on_the_border(tmp_path) -> None
     for ln in wa["lines"] + wb["lines"]:
         inside = [(n0 + 15 < 1000 * (i_n + 1) - p[1] < n1 - 15) for p in ln["points"]]
         assert not any(inside[1:-1])
-    assert json.loads((a / "meta.json").read_text())["versions"]["worldgen"] == squares.WORLDGEN_VERSION
+    assert json.loads((a / "meta.json").read_text())["versions"]["worldgen"] == WORLDGEN_VERSION
 
 
 def test_vector_tile_river_class_is_kept_and_old_tile_base_is_refilled(tmp_path) -> None:
