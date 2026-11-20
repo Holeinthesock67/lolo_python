@@ -36,6 +36,7 @@ col-du-galibier.world/
     far/tile_<ix>_<iz>.json    facultative, depuis 1.6 : poids de biome des tuiles lointaines
   coast/chunk_<k>.json         facultative, depuis 1.6 : lignes de côte et plages (§8 quinquies)
   venue.json                   facultative, depuis 1.7 : lieu fermé, piste du vélodrome (§8 sexies)
+  bridges/chunk_<k>.json       facultative, depuis 1.9 : ponts dessinés (§8 septies)
 ```
 
 Les couches vivent par morceaux : `<k>` est l'indice du tronçon de route de 1 km (`k` = partie entière de `s` / 1000, `s` étant la position du point de route le plus proche de l'objet). Le terrain, lui, est découpé en tuiles fixes dans le repère du monde (§5).
@@ -141,7 +142,7 @@ Le terrain est une grille d'altitudes dans le repère du monde, en deux niveaux 
 - La valeur `NaN` marque une donnée absente ; l'engine la remplace par interpolation.
 - Seules les tuiles qui touchent l'étendue de la route sont écrites.
 
-**Cohérence avec la route.** Les altitudes sont déjà corrigées par le compilateur : autour du ruban, le terrain suit l'altitude lissée de la route, puis se fond progressivement dans le MNT entre 4 m et 25 m du bord. L'engine n'a donc aucune correction à faire et la route ne flotte pas ni ne s'enterre. Ponts et tunnels sont traités comme du terrain ordinaire en v1.
+**Cohérence avec la route.** Les altitudes sont déjà corrigées par le compilateur : autour du ruban, le terrain suit l'altitude lissée de la route, puis se fond progressivement dans le MNT entre 4 m et 25 m du bord. L'engine n'a donc aucune correction à faire et la route ne flotte pas ni ne s'enterre. Ponts et tunnels sont traités comme du terrain ordinaire en v1 ; depuis 1.9, avec la couche `bridges`, le terrain n'est pas fondu avec la route sous un pont (§8 septies).
 
 **Terrain lointain.** Il masque le bord du terrain proche. Les tuiles lointaines recouvrent le terrain proche ; l'engine dessine le proche à son altitude exacte et le lointain 2 m plus bas que ses valeurs, pour éviter le scintillement entre les deux niveaux sans rapprocher le terrain proche de la chaussée.
 
@@ -336,6 +337,27 @@ Couche facultative en un seul fichier, `venue.json`, entrée `layers.venue` du m
 
 Une couche `venue` absente ou illisible est ignorée (le parcours se roule comme une route, relèvement compris). La salle, les tribunes et le toit (lot VD5) s'ajouteront à cette couche par ajout compatible.
 
+## 8 septies. Couche ponts (depuis 1.9)
+
+Couche facultative en fichiers `bridges/chunk_<k>.json` (lot EA4, série EA, plan `docs/6.0/PLAN_SERIE_EA.md`), entrée `layers.bridges` du manifeste (`present`, `version`, `count`, `piers`, `spans`, `osm_date`), schéma `docs/contracts/world/bridges.schema.json`. `--layers …,bridges` la produit ; `add-layer <nom>.world bridges` la refait seule (profil de la route, fiche et terrain compris).
+
+```json
+{
+  "version": "1.0",
+  "bridges": [
+    {"id": "b0", "kind": "bridge", "length_m": 410.0, "half_width_m": 3.0, "s0_m": 1295.0, "s1_m": 1705.0,
+     "points": [[0.0, -1295.0, 1064.8], [0.0, -1300.0, 1065.0]],
+     "piers": [[0.0, -1325.0, 1066.2, 1042.1]]}
+  ]
+}
+```
+
+- **Portions en pont.** Points de la route accrochés à une voie OSM `bridge=*` (hors `bridge=no`), par la règle d'accrochage de la colonne `surface` (§4, lot U20 : voie à moins de 15 m, cap à moins de 30°) ; une suite de points en pont donne la portion `[s − 5 m, s + 5 m]` de ses bouts ; deux portions à moins de 20 m se rejoignent ; une portion de moins de 8 m est ignorée. `layers.bridges.spans` en donne la liste `[s0_m, s1_m]`.
+- **Profil de la route.** Sur une portion prolongée de 10 m de chaque côté (bouts ramenés aux points du profil qui l'encadrent), l'altitude brute `alt_raw_m` (inchangée dans le fichier) va en ligne droite d'un bout à l'autre avant le lissage de `alt_m`, comme le profil d'arête du monde ouvert, et `grade_pct` est recalculée : le MNT au fond d'une vallée ne tire plus la route vers le bas. Le terrain proche n'est pas fondu avec la route sous un pont (il garde le MNT) et le sol abaissé sous un lac (EA1) n'y garde pas de chaussée.
+- **Objet dessiné.** `points` : axe du tablier [x, z, y] aux points du profil, bouts compris, `y` = altitude de la chaussée ; `half_width_m` : demi-chaussée ; `piers` : piles [x, z, y_tablier, y_pied] d'un pont de 30 m et plus, également espacées d'au plus 30 m, là où le tablier est à 4 m au moins au-dessus du sol (pied enterré de 1,5 m). Un pont est rangé dans le tronçon du milieu de sa portion.
+- **Monde vivant (§13).** Fichiers `bridges/tile_<ix>_<iz>.json`, coordonnées horizontales relatives au coin du carré ; portions « bridge » des arêtes (lot W4), au profil de l'arête (celui de la route engagée), dans le carré qui contient le milieu du pont ; pas de `s0_m` ni `s1_m`.
+- L'engine dessine le tablier sous la chaussée, un garde-corps plein de chaque côté et les piles (`engine/scripts/bridge_mesh.gd`). Une couche absente ou illisible est ignorée (le parcours se roule et s'affiche comme avant).
+
 ## 9. Thèmes : palettes, textures, shader triplanaire
 
 Le thème est indépendant du parcours. Il vit dans `~/OpenRide/Themes/<nom>/` et est choisi dans `config.toml` (`render.theme`). Un thème n'agit que sur le décor, jamais sur le coureur.
@@ -523,6 +545,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.9 | 15 novembre 2026 | Ajout compatible (lot SM2, épave du Récif des tortues) : point d'intérêt `wreck` (OSM `historic=wreck`) avec `length_m` facultatif (§8, `poi.schema.json`). La requête Overpass ne change pas (cache des parcours compilés gardé) : l'épave vient des données fournies au compilateur, comme celle du parcours de démonstration du récif. Un lecteur plus ancien l'ignore |
 | 1.9 | 15 novembre 2026 | Ajout compatible au thème (lot SM2, sans changement du format `.world`) : clé facultative `biomes.<id>.road.color` (aspect de la chaussée par biome, §9, `theme.schema.json` et sa copie du compilateur) ; `biomes.reef.road` du thème par défaut (piste de sable) |
 | 1.9 | 13 novembre 2026 | Sans changement du format (lot W21, série W) : le core écrit la couche `segments.json` (§8 bis) dans le dossier d'un monde vivant, avec les montées et sprints trouvés en roulant ; l'engine la relit (§13) |
+| 1.9 | 16 novembre 2026 | Ajout compatible (lot EA4, série EA) : couche facultative `bridges/` des ponts dessinés (§8 septies), entrée `layers.bridges` du manifeste et schéma `bridges.schema.json` ; avec elle, profil de la route en ligne droite sur les ponts et terrain non fondu dessous ; monde vivant : `bridges/tile_<ix>_<iz>.json` (§13), `WORLDGEN_VERSION` 3. Un `.world` 1.8 reste valide |
 | 1.10 | 16 novembre 2026 | Ajout compatible (lot EA3, série EA) : aire d'eau `river` (grande rivière en surface, découpée par carré de 1 km) avec `outer_y` et `holes_y` facultatifs, altitude de la surface à chaque sommet (§8, schéma `water.schema.json`) ; un lecteur d'avant 1.10 ignore ces aires. Monde ouvert : `WORLDGEN_VERSION` 3, base des tuiles vectorielles reversée depuis le cache |
 
 ## 13. Monde vivant (monde ouvert, série W)
@@ -538,7 +561,7 @@ ow-20261026-201500.world/
   junctions.json           carrefours à venir
   route/part_<k>.json      route engagée, par parties de 1 km
   terrain/near/tile_<ix>_<iz>.f32, terrain/far/tile_<ix>_<iz>.f32
-  buildings/tile_<ix>_<iz>.json, vegetation/…, water/…, poi/…
+  buildings/tile_<ix>_<iz>.json, vegetation/…, water/…, poi/…, bridges/… (depuis 1.9, §8 septies)
   biome/near/tile_<ix>_<iz>.json, biome/far/tile_<ix>_<iz>.json   depuis le lot W17
 ```
 
@@ -559,7 +582,7 @@ ow-20261026-201500.world/
 
 **Route par parties** (schéma `route_part.schema.json`). `route/part_<k>.json` a les colonnes de `route.json` (§4) plus `s0_m` = 1 000 × `k`. La partie `k` contient les points de `s` = 1 000 `k` à `s` = 1 000 (`k` + 1) inclus, au pas de 10 m (la dernière partie s'arrête à `length_m`) ; le bord est partagé avec la partie suivante. `s` est croissant, `type` vaut `open`. Une partie publiée n'est réécrite qu'au-delà du point de verrouillage du carrefour dont la branche change : `changed_from_part` dit à partir de quelle partie relire. La route assemblée suit la règle d'interpolation du §4.
 
-**Couches par carré.** Le terrain garde le format du §5. Les couches `buildings`, `vegetation`, `water` et `poi` sont rangées par tuile proche, `<couche>/tile_<ix>_<iz>.json`, avec les schémas des fichiers `chunk_<k>.json` (§6 à §8), à une différence près : **les coordonnées horizontales sont relatives au coin de la tuile** (`x − 1 000 ix`, `z − 1 000 iz`) ; les altitudes `y`, `base_y` et `level_y` restent absolues. Ainsi les carrés du cache, communs à toutes les séances, sont liés dans le dossier de séance (liens symboliques) sans être réécrits. Un objet appartient à la tuile qui contient son centre.
+**Couches par carré.** Le terrain garde le format du §5. Les couches `buildings`, `vegetation`, `water`, `poi` et, depuis 1.9, `bridges` sont rangées par tuile proche, `<couche>/tile_<ix>_<iz>.json`, avec les schémas des fichiers `chunk_<k>.json` (§6 à §8), à une différence près : **les coordonnées horizontales sont relatives au coin de la tuile** (`x − 1 000 ix`, `z − 1 000 iz`) ; les altitudes `y`, `base_y` et `level_y` restent absolues. Ainsi les carrés du cache, communs à toutes les séances, sont liés dans le dossier de séance (liens symboliques) sans être réécrits. Un objet appartient à la tuile qui contient son centre.
 
 **Eau lointaine** (lot EA2, ajout compatible) : `water/far/tile_<ix>_<iz>.f32`, facultatif, une grille par tuile lointaine qui touche un grand lac (lac, étang ou réservoir de plus de 1 km², morceaux réunis) : 101 × 101 `float32` petit-boutistes, mêmes échantillons que `terrain/far/tile_<ix>_<iz>.f32` (§5), altitude `level_y` du lac (règle de la couche eau, §8) en chaque échantillon dans l'eau, NaN ailleurs. Le relief lointain de la même tuile y est abaissé à `level_y − 1` m au plus. Un lecteur qui ne le connaît pas l'ignore.
 **Couche biome (lot W17).** Le générateur écrit une tuile de biome (§8 quater, inchangée) pour chaque tuile proche et chaque tuile lointaine, avec la règle du compilateur (WorldCover, OSM, altitude, carte de Köppen, variante régionale) ; elle est liée **avant** la tuile de terrain de mêmes indices et ne change plus pendant la séance. Le manifeste porte `layers.biome` dès l'ouverture, avec `present: true`, `forced: null`, `shares: {}` et des listes `tiles` vides : les tuiles présentes sont celles de `live.json`. Une tuile de terrain sans fichier de biome prend le biome par défaut, comme au §8 quater ; un lecteur qui a cherché trop tôt la tuile de biome d'une tuile de terrain arrivée ensuite doit la relire.
