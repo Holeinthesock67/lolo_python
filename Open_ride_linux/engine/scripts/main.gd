@@ -1454,6 +1454,16 @@ func _load_route_job(job: Dictionary) -> void:
 	job["ok"] = job["route"].load_world_dir(job["path"])      # un monde vivant (manifeste `live`) est reconnu par le manifeste
 
 
+## Phase du chargement d'un parcours (lot PI1) : durée depuis la phase précédente, étape « chargement » de la sonde
+## (cause nommée d'une saccade) et ligne « Phases du chargement » du journal de l'engine.
+func _load_phase(phases: Dictionary, name: String) -> void:
+	var now := Time.get_ticks_usec()
+	var ms := (now - int(phases["t"])) / 1000.0
+	PerfProbe.mark("chargement", name, ms)
+	(phases["list"] as Array).append("%s %.0f" % [name, ms])
+	phases["t"] = now
+
+
 func _poll_route_job() -> void:
 	if _route_job.is_empty() or not BgTasks.done(_route_job["task"]):
 		return
@@ -1465,6 +1475,7 @@ func _poll_route_job() -> void:
 	if not job["ok"]:
 		banner.show_message("route", "Parcours « %s » invalide : %s" % [job["id"], job["route"].load_error])
 		return
+	var phases := {"t": Time.get_ticks_usec(), "list": []}
 	route = job["route"]
 	_route_loaded_id = job["id"]
 	_random_season = ""   # saisons « au hasard » (lot U13b) : nouveau tirage pour ce parcours
@@ -1477,11 +1488,13 @@ func _poll_route_job() -> void:
 	bots_model.loop_length_m = follow.loop_length_m
 	follow.reset()
 	_menu_s = 0.0
+	_load_phase(phases, "debut")
 	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
 	streamer.set_world(route, job["path"])
 	if living_world != null:
 		living_world.set_route(route, float(streamer.get("_road_width_m")))
 		living_world.terrain_material = streamer.get("_terrain_material")
+	_load_phase(phases, "streamer")
 	# Piste du vélodrome (plan VD §7.2, lots VD4 et VD5) : salle couverte à la place du monde ouvert (ni ciel,
 	# météo, herbe, personnages, animaux ni engins du décor de route) ; ambiance de la salle posée par
 	# _apply_sky_params, celle d'avant rendue au parcours suivant.
@@ -1493,21 +1506,28 @@ func _poll_route_job() -> void:
 		else:
 			velodrome_hall.clear()
 			velodrome_hall.restore(world_env.environment, sun)
+	_load_phase(phases, "velodrome")
 	_apply_sky_params(streamer._theme_dict)
+	_load_phase(phases, "ciel")
 	if living_decor != null:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 		living_decor.visible = not track
 	if living_world != null:
 		living_world.visible = not track
+	_load_phase(phases, "decor")
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	gp_scene.set_route(route)
+	_load_phase(phases, "portiques_gp")
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
+	_load_phase(phases, "prechauffage_portiques")
 	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
 		living_decor.warm_up(camera)
+	_load_phase(phases, "prechauffage_decor")
 	if streamer.forest_impostors != null:   # forêts lointaines (lot Y5) : pipeline compilé avant la première forêt
 		streamer.forest_impostors.warm_up(camera)
+	_load_phase(phases, "prechauffage_forets")
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1519,16 +1539,21 @@ func _poll_route_job() -> void:
 	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
 	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
+	_load_phase(phases, "segments")
 	_refresh_menu()
 	if route.segments_present:
 		print("Segments du parcours : %d" % route.segments.size())
+	_load_phase(phases, "menu")
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
+	_load_phase(phases, "fenetre")
 	banner.clear_message("route")
 	banner.clear_message("cue")
 	if _cues.load_for_route(job["id"]):
 		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
 	elif _cues.load_error != "":
 		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
+	_load_phase(phases, "fin")
+	print("Phases du chargement (ms) : ", ", ".join(PackedStringArray(phases["list"])))
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s) (à %d ms)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"], Time.get_ticks_msec()])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])

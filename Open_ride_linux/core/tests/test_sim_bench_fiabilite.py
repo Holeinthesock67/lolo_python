@@ -190,3 +190,18 @@ def test_season_option_accepts_the_setting_choices_only():
     assert set(CHOICES[("render", "seasons")]) >= {"off", "summer", "autumn", "winter"}
     with pytest.raises(SystemExit):
         sb.main(["--seasons", "monsoon", "--list"])
+
+
+def test_shader_caches_kept_between_runs_when_warm(tmp_path: Path):
+    """Lot PI1 : en mode chaud, les caches de shaders du HOME temporaire pointent vers un dossier gardé ;
+    en mode froid, rien n'est posé (premier lancement)."""
+    root = tmp_path / "caches"
+    home = tmp_path / "home"
+    home.mkdir()
+    links = sb.link_shader_caches(home, "chaud", root)
+    assert len(links) == len(sb.SHADER_CACHE_LINKS) and all(p.is_symlink() for p in links)
+    (home / ".cache" / "nvidia" / "GLCache").mkdir()
+    assert (root / "nvidia" / "GLCache").is_dir()   # écrit dans le dossier gardé
+    cold = tmp_path / "froid"
+    cold.mkdir()
+    assert sb.link_shader_caches(cold, "froid", root) == [] and not (cold / ".cache").exists()

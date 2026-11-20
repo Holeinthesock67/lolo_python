@@ -112,6 +112,8 @@ python3 engine/tests/sim_bench.py --scenario erg_village --scenario ceinture --s
 python3 engine/tests/sim_bench.py --scenario erreur_0x80 --world village --duration 60
 ```
 
+**Caches de shaders (lot PI1) :** par défaut (`--shaders chaud`), les caches de shaders de Godot et du pilote graphique du HOME temporaire sont gardés d'un passage à l'autre dans `~/.cache/openride-bench/shaders/` (`--shader-cache-dir`), comme dans le jeu de tous les jours. `--shaders froid` les laisse vides, comme un premier lancement après une installation : le banc rPI1 du 19 novembre y mesurait environ 25 s de compilation au chargement. La sonde (`--probe`) donne la vraie durée de chaque image, le nombre de pipelines compilés et les phases du chargement (ligne « Phases du chargement » de l'engine).
+
 Options : `--world demo|demo_long|village|osm|DOSSIER.world` (`demo_long` : la démonstration étirée à 12 km, lot DS8), `--workout erg_court|FICHIER.zwo`, `--duration S`, `--every S` (intervalle des captures), `--difficulty PCT` (`[trainer] difficulty_pct`), `--size 1280x720`, `--quality low|medium|high`, `--native`, `--out DOSSIER` (défaut `~/OpenRide/sim_bench/<date>`), `--keep` (garde le HOME temporaire), `--speed-kmh V` (vitesse imposée, lot X35). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque ou si le compilateur installé ne connaît pas une couche du monde `village` ou `osm`.
 
 **Budgets, comparaison avant/après et référence (lot X14)** :

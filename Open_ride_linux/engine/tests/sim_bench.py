@@ -132,6 +132,36 @@ ERG_SHORT_ZWO = """<workout_file>
 """
 
 
+# Caches de shaders (lot PI1) : le HOME temporaire du banc les vidait à chaque passage, et chaque banc mesurait un
+# premier lancement (banc rPI1 : ~25 s de compilation de shaders au chargement, en low, medium et high). « chaud » :
+# caches de Godot (shaders, pipelines Vulkan) et du pilote gardés d'un passage à l'autre dans un dossier du banc,
+# comme le jeu au quotidien ; « froid » : vides, comme un premier lancement après une installation.
+SHADER_CACHE_LINKS = (
+    (".local/share/godot/app_userdata/OpenRide Engine/shader_cache", "godot_shader_cache"),
+    (".local/share/godot/app_userdata/OpenRide Engine/vulkan", "godot_vulkan"),
+    (".cache/nvidia", "nvidia"),
+    (".cache/mesa_shader_cache", "mesa"),
+    (".cache/mesa_shader_cache_db", "mesa_db"),
+)
+SHADER_CACHE_DIR = Path.home() / ".cache" / "openride-bench" / "shaders"
+
+
+def link_shader_caches(home: Path, mode: str, root: Path) -> list[Path]:
+    """Mode « chaud » : liens du HOME temporaire `home` vers les caches gardés dans `root` (créés au besoin) ;
+    « froid » : rien (caches vides). Renvoie les liens posés."""
+    if mode != "chaud":
+        return []
+    out = []
+    for rel, name in SHADER_CACHE_LINKS:
+        target = root / name
+        target.mkdir(parents=True, exist_ok=True)
+        link = home / rel
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(target, target_is_directory=True)
+        out.append(link)
+    return out
+
+
 class BenchProc(Proc):
     """Comme Proc, sans erreur si le processus écrit encore après la fermeture de son journal."""
 
@@ -371,6 +401,7 @@ class Bench:
         home = tmp / "home"
         home.mkdir()
         self.home = home
+        link_shader_caches(home, a.shaders, a.shader_cache_dir)
         for name, table in (("powerups.toml", self.powerups), ("grandprix.toml", self.grandprix)):
             if table is not None:
                 (home / "OpenRide").mkdir(exist_ok=True)
@@ -1154,6 +1185,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))
     ap.add_argument("--keep", action="store_true", help="garder le HOME temporaire")
+    ap.add_argument("--shaders", default="chaud", choices=("chaud", "froid"),
+                    help="caches de shaders : chaud (défaut, gardés d'un passage à l'autre comme au quotidien) ou "
+                         "froid (vides, premier lancement après une installation) (lot PI1)")
+    ap.add_argument("--shader-cache-dir", type=Path, default=SHADER_CACHE_DIR,
+                    help="dossier des caches de shaders gardés en mode chaud (défaut ~/.cache/openride-bench/shaders)")
     ap.add_argument("--list", action="store_true", help="énumérer les scénarios et quitter")
     ap.add_argument("--muet", action="store_true", help="sans bips de départ et de fin")
     args = ap.parse_args(argv)
