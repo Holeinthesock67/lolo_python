@@ -4,6 +4,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_menu_flow.gd
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
+const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
@@ -88,8 +89,8 @@ func _test_full_session() -> void:
 	f.menu.focus_item("details")
 	_check(f.handle("A_LONG").is_empty() and f.show_details, "Voir le bilan détaillé")
 	f.menu.focus_item("new_session")
-	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
-			"Nouvelle séance : accueil, listes redemandées et monde rechargé")
+	_check(f.handle("A_LONG") == MAIN_MENU_VOSGES and f.state()["screen"] == "home",
+			"Menu principal : accueil, entraînement retiré, listes redemandées et monde rechargé")
 	_check(f.state()["items"][0]["label"] == "Parcours : Vosges", "le parcours reste choisi après la séance")
 	f.on_state({"session_state": "FINISHED"})
 	f.handle("MINUS_SHORT")   # Quitter (dernier élément de l'accueil)
@@ -214,12 +215,65 @@ func _test_summary_replay_and_main_menu() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {}})
 	f.menu.focus_item("new_session")
-	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home"
+	_check(f.handle("A_LONG") == MAIN_MENU_VOSGES and f.state()["screen"] == "home"
 		and f.menu.mode == "free", "Menu principal : l'accueil, mode remis à la session libre")
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {}})
-	_check(f.handle("Y_SHORT") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
+	_check(f.handle("Y_SHORT") == MAIN_MENU_VOSGES and f.state()["screen"] == "home",
 		"Retour (Y) depuis la fin de séance : Menu principal")
+
+
+const MAIN_MENU_VOSGES := {"action": "sequence", "list": [{"action": "select_workout", "workout_id": null},
+	{"action": "list", "route_id": "vosges"}]}
+
+
+## Fin de séance (20 novembre) : « Rejouer » suit le dernier lancement, « Menu principal » le même accueil
+## après tous les modes.
+func _finish_session(f) -> void:
+	f.on_state({"session_state": "RUNNING"})
+	f.on_state({"session_state": "FINISHED", "summary": {}})
+
+
+func _test_summary_same_for_all_modes() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	f.menu.world_id = "vosges"
+	# Cyber-Rogue : la run est effacée par le core à la fin ; « Rejouer » rouvre son écran de départ.
+	f._note_launch_of({"action": "start_run", "args": {}})
+	f.menu.set_rogue_ready("Objectif : boss")
+	f._note_launch_of({"action": "start"})   # « Démarrer » de l'écran Prêt du Rogue : la run reste à rejouer
+	_check(f.last_launch == "start_run", "Démarrer du Rogue après start_run : la run reste le lancement")
+	_finish_session(f)
+	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"}
+		and f.state()["screen"] == RogueMenuModel.SCREEN and f.menu.mode == "free",
+		"Rejouer après une run : écran de départ du Cyber-Rogue (%s)" % f.state()["screen"])
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "home", "Retour depuis le départ du Rogue rejoué : l'accueil")
+	# Monde ouvert : lancé depuis le globe (main.gd) ; « Rejouer » rouvre le globe.
+	f.note_launch("start_open_world")
+	_finish_session(f)
+	_check(f.handle("A_LONG") == {"action": "sequence", "list": [{"action": "list"}, {"action": "open_world_menu"}]}
+		and f.state()["screen"] == "home", "Rejouer après le monde ouvert : le globe, l'accueil derrière")
+	# Séance du jour d'un plan : rejouée comme entraînement, sans plan_day (séance du jour suivante sinon).
+	f.menu.prepare_start("Séance du jour", {"plan_day": true})
+	f._note_launch_of(f.handle("A_LONG"))
+	_check(f.last_launch == "start", "Démarrer de l'écran Prêt : lancement « start »")
+	_finish_session(f)
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "ready" and f.menu.mode == "erg" and not f.menu.start_args.has("plan_day"),
+		"Rejouer la séance du plan : écran Prêt ERG, sans plan_day (%s)" % str(f.menu.start_args))
+	# Menu principal : mode libre après tous les modes, entraînement du core retiré.
+	for prep in ["erg", "grandprix", "track", "coach"]:
+		match prep:
+			"erg": f.menu.prepare_start("ERG court", {})
+			"grandprix": f.menu.mode = "grandprix"
+			"track": f.menu.prepare_track()
+			"coach": f.menu.prepare_coach_race("Course", {}, "conseil")
+		_finish_session(f)
+		f.menu.focus_item("new_session")
+		_check(f.handle("A_LONG") == MAIN_MENU_VOSGES and f.menu.mode == "free" and f.menu.route_mode == ""
+			and f.state()["screen"] == "home", "Menu principal après %s : accueil en session libre" % prep)
 
 
 func _test_view() -> void:
@@ -622,7 +676,7 @@ func _test_plans() -> void:
 	f.on_state({"session_state": "RUNNING", "route_id": "vosges"})
 	f.on_state({"session_state": "FINISHED", "route_id": "vosges", "summary": {"duration_s": 2700.0}})
 	f.menu.focus_item("new_session")
-	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"}, "nouvelle séance : listes (plans compris) redemandées")
+	_check(f.handle("A_LONG") == MAIN_MENU_VOSGES, "Menu principal : listes (plans compris) redemandées")
 	var done: Dictionary = active.duplicate(true)
 	done["today"][0]["done"] = true
 	done["done"] = 1
@@ -1013,6 +1067,7 @@ func _test_qwk_entry() -> void:
 
 func _init() -> void:
 	_test_summary_replay_and_main_menu()
+	_test_summary_same_for_all_modes()
 	_test_qwk_entry()
 	_test_bots_menu()
 	_test_plans()
