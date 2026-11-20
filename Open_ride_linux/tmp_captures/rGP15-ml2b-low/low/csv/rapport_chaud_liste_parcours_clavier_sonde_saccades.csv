@@ -1,0 +1,36 @@
+t_s;unix_s;frame_ms;distance_m;cause;steps
+2.965;1795164393.844;143.9;0.0;inconnue;
+17.103;1795164407.982;138.8;0.0;cyclistes;menu affichage connect 51.8 | menu affichage connect 0.5 | spectateurs préchauffage 0.1 | passants préchauffage 0.0 | cyclistes préchauffage 1631.6
+20.771;1795164411.650;124.6;0.0;menu;menu affichage home 42.8 | menu affichage home 1.2 | menu affichage home 0.3 | route road:-1 22.2 | route road:0 0.6 | osm 0 1.4 | osm 1 1.3 | osm 2 1.3 | osm 3 1.3
+23.650;1795164414.529;129.6;0.0;menu;fenetre  0.8 | herbe 0 11.5 | sol 0 2.0 | feu 0 0.5 | decor  19.6 | atmosphere  0.5 | arches  0.4 | route road:1 0.6 | route road:2 0.6 | bip A_LONG 3.9 | menu appui A_LONG 0.1 | menu affichage routes 61.2
+27.537;1795164418.417;146.4;0.0;inconnue;fenetre  0.5 | herbe 0 5.1 | sol 0 0.2 | feu 0 0.1 | decor  0.9 | atmosphere  0.3 | arches  0.0 | menu affichage routes 0.2 | menu affichage routes 0.1 | tuile near:-1:-1 1.4 | arbres near:-1:-1 4.1 | tuile near:-1:0 1.3 | arbres near:-1:0 2.2 | menu affichage routes 0.2
+27.860;1795164418.739;116.7;0.0;inconnue;fenetre  0.9 | herbe 0 5.3 | sol 0 0.2 | feu 0 0.1 | spectateurs tri 0 0.0 | decor  0.9 | atmosphere  0.2 | arches  0.0 | tuile near:0:-1 2.0 | arbres near:0:-1 3.3 | tuile near:0:0 1.7 | arbres near:0:0 3.3 | menu affichage routes 0.3
+27.928;1795164418.807;66.7;0.0;inconnue;fenetre  1.9 | herbe 0 5.1 | sol 0 4.7 | feu 0 0.1 | decor  0.6 | atmosphere  0.3 | arches  0.0 | tuile near:1:0 2.0 | arbres near:1:0 2.6 | tuile near:1:-1 2.2 | arbres near:1:-1 4.3 | bip PLUS_SHORT 1.6 | menu appui PLUS_SHORT 0.1 | menu affichage routes 0.5
+27.994;1795164418.873;66.7;0.0;inconnue;fenetre  4.2 | herbe 0 5.2 | sol 0 2.2 | feu 0 0.1 | decor  0.7 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2 | tuile near:1:-2 1.9 | arbres near:1:-2 4.4 | tuile far:-1:0 2.4 | menu affichage routes 0.2
+28.080;1795164418.959;82.2;0.0;inconnue;fenetre  6.0 | herbe 0 0.8 | sol 0 1.0 | feu 0 0.1 | decor  0.6 | atmosphere  0.0 | arches  0.0 | tuile far:0:0 2.3 | menu affichage routes 0.2
+28.106;1795164418.985;34.8;0.0;inconnue;fenetre  0.8 | herbe 0 0.9 | sol 0 1.1 | feu 0 0.1 | decor  0.7 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+28.164;1795164419.043;57.5;0.0;inconnue;fenetre  0.7 | herbe 0 0.9 | sol 0 2.2 | feu 0 0.1 | decor  0.7 | atmosphere  0.1 | arches  0.0 | menu affichage routes 0.2
+28.214;1795164419.093;50.4;0.0;inconnue;fenetre  0.7 | herbe 0 1.2 | sol 0 1.8 | feu 0 0.1 | decor  0.7 | atmosphere  0.3 | arches  0.0 | menu affichage routes 0.2
+28.251;1795164419.130;37.0;0.0;inconnue;fenetre  0.7 | herbe 0 6.3 | sol 0 1.2 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.3
+28.335;1795164419.214;67.2;0.0;inconnue;fenetre  0.8 | herbe 0 5.0 | sol 0 1.3 | feu 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+28.386;1795164419.265;58.9;0.0;inconnue;fenetre  0.7 | herbe 0 5.7 | sol 0 2.5 | feu 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+28.424;1795164419.303;45.3;0.0;inconnue;fenetre  0.7 | herbe 0 5.3 | sol 0 1.8 | feu 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+28.488;1795164419.367;40.2;0.0;inconnue;fenetre  0.7 | herbe 0 3.7 | sol 0 1.0 | feu 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+28.527;1795164419.406;33.3;0.0;inconnue;fenetre  0.7 | herbe 0 3.5 | sol 0 2.5 | feu 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.3
+28.663;1795164419.542;50.1;0.0;inconnue;fenetre  0.7 | herbe 0 3.6 | sol 0 0.2 | feu 0 0.0 | decor  0.6 | atmosphere  0.1 | arches  0.0 | menu affichage routes 0.2
+28.683;1795164419.562;33.3;0.0;inconnue;fenetre  0.7 | herbe 0 3.2 | sol 0 0.0 | feu 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+28.756;1795164419.635;33.3;0.0;inconnue;fenetre  0.7 | herbe 0 3.3 | sol 0 0.0 | feu 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0 | tuile far:0:-1 2.3 | menu affichage routes 0.2
+28.775;1795164419.654;33.3;0.0;inconnue;fenetre  0.7 | herbe 0 2.6 | sol 0 0.0 | feu 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0 | tuile far:-1:1 2.4 | menu affichage routes 0.2
+28.922;1795164419.801;43.0;0.0;inconnue;fenetre  0.7 | herbe 0 3.8 | sol 0 0.0 | feu 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0 | tuile far:1:0 2.1 | menu affichage routes 0.2
+29.143;1795164420.022;59.2;0.0;inconnue;fenetre  0.5 | herbe 0 2.9 | sol 0 0.0 | feu 0 0.0 | decor  0.5 | atmosphere  0.0 | arches  0.0 | tuile far:1:-2 2.0 | bip PLUS_SHORT 1.8 | menu appui PLUS_SHORT 0.2 | menu affichage routes 0.6
+29.195;1795164420.074;54.8;0.0;inconnue;fenetre  0.8 | herbe 0 3.5 | sol 0 0.0 | feu 0 0.0 | decor  1.4 | atmosphere  0.1 | arches  0.0 | menu affichage routes 0.2
+33.974;1795164424.853;76.9;0.0;inconnue;fenetre  1.3 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.5 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.3 | menu affichage routes 0.2
+35.179;1795164426.058;60.2;0.0;inconnue;fenetre  0.5 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.1 | menu affichage routes 0.2
+36.385;1795164427.264;33.3;0.0;inconnue;fenetre  0.6 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.5 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+37.607;1795164428.486;76.8;0.0;inconnue;fenetre  0.7 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.7 | atmosphere  0.3 | arches  0.0 | menu affichage routes 0.2
+38.791;1795164429.670;33.3;0.0;inconnue;fenetre  0.4 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.4 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+41.210;1795164432.089;41.6;0.0;inconnue;fenetre  0.4 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.4 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+43.625;1795164434.504;41.6;0.0;inconnue;fenetre  0.5 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.2
+46.042;1795164436.921;41.6;0.0;inconnue;fenetre  0.5 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.4 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.1 | menu affichage routes 0.2
+48.461;1795164439.340;41.6;0.0;inconnue;fenetre  0.4 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.1
+49.673;1795164440.552;41.6;0.0;inconnue;fenetre  0.4 | herbe 0 0.0 | sol 0 0.0 | feu 0 0.0 | decor  0.4 | atmosphere  0.0 | arches  0.0 | menu affichage routes 0.1 | menu affichage routes 0.2
