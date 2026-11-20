@@ -65,7 +65,8 @@ from . import segments_layer as SEG
 from . import route_stats as RS
 from .route_stats import (SORT_KEYS, LibraryError, compute_stats, duration_at, load_library, query,
                           sidecar_path, stats_usable)
-from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
+from .terrain import build_terrain, load_terrain_tiles, replace_terrain_dir, terrain_manifest, write_terrain
+from .water_terrain import chunk_areas, read_world_areas, sink_route_tiles
 from .theme import check_theme
 from .verify import verify_world, world_info
 from .worldgen import measure, region, store, vector_tiles
@@ -364,6 +365,8 @@ def cmd_build(args: argparse.Namespace) -> int:
             manifest["layers"]["poi"] = poi_manifest(osm_res)
         if "water" in args.layers:
             manifest["layers"]["water"] = water_manifest(osm_res)
+            if tiles is not None:
+                _sink_under_water(tiles, compiled.route, chunk_areas(osm_res.water_chunks))
         if "roads" in args.layers:
             manifest["layers"]["roads"] = roads_manifest(osm_res)
         if not args.no_surface:   # surface de la route (lot U20), avec les couches OSM
@@ -412,6 +415,14 @@ def _coast(route: dict, frame: LocalFrame, osm_client: OverpassClient, near_tile
         print(f"côte : {res.lines_count} ligne(s), {res.beaches_count} plage(s), {res.sea_count} aire(s) de mer"
               + (f", {res.ignored_count} morceau(x) ignoré(s)" if res.ignored_count else ""), file=sys.stderr)
     return res
+
+
+def _sink_under_water(tiles, route: dict, areas) -> int:
+    """Sol abaissé sous les lacs, étangs et réservoirs (lot EA1, `water_terrain.py`)."""
+    n = sink_route_tiles(tiles, route, areas)
+    if n:
+        print(f"terrain : {n} échantillon(s) abaissé(s) sous les plans d'eau", file=sys.stderr)
+    return n
 
 
 def _layers_written(layers: tuple[str, ...], biome_layer) -> list[str]:
@@ -519,6 +530,7 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
     if args.layer == "terrain":
         provider = make_provider(args.offline)
         tiles = build_terrain(route, frame, provider, horizon=not getattr(args, "no_horizon", False))
+        _sink_under_water(tiles, route, read_world_areas(world))
         replace_terrain_dir(world, tiles)
         manifest.setdefault("layers", {})["terrain"] = terrain_manifest(tiles, provider)
         manifest["format_version"] = C.FORMAT_VERSION
@@ -530,7 +542,8 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
     osm_client = make_osm_client(args.offline)
     near_tiles = load_existing_near_tiles(world)
     needs_y = args.layer in ("buildings", "poi", "water", "roads")
-    # La côte demande le MNT au-delà des tuiles proches (falaises jusqu'au bord de l'étendue).
+    # La côte demande le MNT au-delà des tuiles proches (falaises jusqu'au bord de l'étendue) ; l'eau, le MNT
+    # brut pour le niveau des lacs (lot EA1 : le relief proche est déjà abaissé sous l'eau).
     needs_dem = args.layer in COAST_LAYERS
     provider = make_provider(args.offline) if ((not near_tiles and needs_y) or needs_dem) else None
     # La couche côte ne lit que la requête de la côte ; les autres lisent les tronçons de la route.
@@ -565,6 +578,9 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
     else:
         replace_layer_dir(world, "water", write_water_dir, osm_res.water_chunks)
         manifest.setdefault("layers", {})["water"] = water_manifest(osm_res)
+        tiles = load_terrain_tiles(world)
+        if tiles and _sink_under_water(tiles, route, chunk_areas(osm_res.water_chunks)):
+            replace_terrain_dir(world, tiles)
         count = osm_res.water_lines_count + osm_res.water_areas_count
     manifest["format_version"] = C.FORMAT_VERSION
     replace_manifest(world, manifest)

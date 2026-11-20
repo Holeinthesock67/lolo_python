@@ -11,8 +11,9 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
 
 - `near.f32` : 101 × 101 `float32` (format §5), échantillon (i, j) en E = 1000 IX + 10 i,
   N = 1000 (IN + 1) − 10 j ; relief fondu avec **toutes** les routes qui passent à moins de 50 m
-  du carré (arêtes canoniques de W4, profils de W5), ponts et tunnels exceptés, puis abaissé sous
-  **toutes** les chaussées, ponts et tunnels compris (`clear_square_road`, règle des circuits) ;
+  du carré (arêtes canoniques de W4, profils de W5), ponts et tunnels exceptés ; abaissé sous les lacs,
+  étangs et réservoirs qui touchent le carré (lot EA1, `water_terrain.py`), chaussée gardée ; puis abaissé
+  sous **toutes** les chaussées, ponts et tunnels compris (`clear_square_road`, règle des circuits) ;
 - `buildings.json`, `vegetation.json`, `water.json`, `poi.json` : mêmes schémas que les
   `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
   z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre ;
@@ -44,14 +45,16 @@ from .. import osm_layers as L
 from ..elevation import ElevationProvider
 from ..frame import LocalFrame, utm_transformer
 from ..terrain import blend, road_samples
+from .. import water_terrain as WT
 from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile
 from .graph import RoadGraph
 from .osmdb import OsmDb
 from .store import WorldCache
 
-# Garde-fou de la chaussée (13/11, #871), étendu aux tunnels et aux ponts (20/11) : 4, pour ne pas reprendre les
-# numéros 2 et 3 des lots EA1, EA3 et EA4 en cours (un même numéro pour deux contenus différents garderait un
-# carré périmé en cache). À la fusion avec ces lots, prendre un numéro plus grand que tous. Carrés recalculés.
+# 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1). 4 (20/11) : garde-fou de la chaussée (#871), étendu
+# aux tunnels, aux ponts et à la largeur du ruban de l'engine ; 3 est pris par les lots EA3 et EA4 en cours (un même
+# numéro pour deux contenus différents garderait un carré périmé en cache) : à leur fusion, prendre un numéro plus
+# grand que tous. Carrés recalculés.
 WORLDGEN_VERSION = 4
 SQUARE_M = 1000
 FAR_M = 5000
@@ -249,10 +252,37 @@ def square_edges(key: SquareKey, db: OsmDb, provider: ElevationProvider,
                    if not graph.edges[k].degenerate}
 
 
+def square_water(key: SquareKey, db: OsmDb, provider: ElevationProvider, frame: LocalFrame) -> list[dict]:
+    """Plans d'eau à moins de `AREA_SEARCH_M` du carré, repère de zone, avec leur niveau (lot EA1).
+
+    Sert au sol abaissé (toute aire qui touche le carré) et à la couche eau (aire dont le centre est
+    dans le carré). Le niveau ne dépend que du polygone et du MNT : deux carrés voisins, ou deux morceaux
+    d'un lac coupé par les tuiles vectorielles, trouvent le même.
+    """
+    x0, z0 = key.corner
+    m = AREA_SEARCH_M
+
+    def height(xs, zs):
+        return L.sample_terrain_y(xs, zs, frame, None, provider)
+    out = []
+    for a in db.areas_in(lonlat_bbox(frame, x0 - m, z0 - m, x0 + key.size_m + m, z0 + key.size_m + m),
+                         kinds=("water",)):
+        outer = _ring_xz(frame, a.outer, True)
+        if outer is None:
+            continue
+        holes = [h for h in (_ring_xz(frame, h, False) for h in a.holes) if h is not None]
+        level = WT.lake_level(outer, holes, height)
+        out.append({"id": a.osm_id, "kind": L.water_area_kind(a.tags) or "lake",
+                    "level_y": round(0.0 if level is None else level, 2), "outer": outer, "holes": holes,
+                    "centroid": L.ring_centroid(outer)})
+    return out
+
+
 def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
-                   provider: ElevationProvider, frame: LocalFrame) -> np.ndarray:
-    """Relief du carré fondu avec ses routes, puis garde-fou de la chaussée (clear_square_road) calculé sur
-    une case de plus tout autour : les sommets des bords communs reçoivent la même valeur dans les deux carrés."""
+                   provider: ElevationProvider, frame: LocalFrame, water: list[dict] | None = None) -> np.ndarray:
+    """Relief du carré fondu avec ses routes, abaissé sous les lacs (EA1), puis garde-fou de la chaussée
+    (clear_square_road) ; calculé sur une case de plus tout autour : les sommets des bords communs reçoivent la même
+    valeur dans les deux carrés."""
     gx, gz = grid_xz(key, NEAR_STEP_M, ring=1)
     lat, lon = frame.to_latlon(gx.ravel(), gz.ravel())
     y = np.asarray(provider.elevations(lat, lon), dtype=float)
@@ -263,6 +293,8 @@ def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgePro
         roads += axis_pieces(profiles[k], max(half_width(e.road_class), C.ROAD_HALF_WIDTH_M), ())
     dist, y_road = RoadsAxis(pieces).nearest(gx.ravel(), gz.ravel(), C.BLEND_OUTER_M)
     y = blend(y, dist, y_road, half_width=0.0).reshape(gx.shape)
+    if water:   # lot EA1 : sol sous les lacs, chaussée gardée (hors ponts : ils ne sont pas dans l'axe)
+        WT.sink_grid(gx, gz, y, WT.inland_areas(water), protect=(np.isfinite(dist) & (dist < C.BLEND_INNER_M)).reshape(gx.shape))
     # Fondu hors ponts et tunnels (la vallée reste sous un pont), mais garde-fou sur TOUTE la chaussée, ponts et
     # tunnels compris (20/11, « herbe au-dessus de la route ») : l'engine ne dessine pas de tunnel, et la colline
     # au-dessus d'un tunnel ou d'une trémie cachait la route et le cycliste (départ de Biarritz). Même règle que
@@ -345,7 +377,7 @@ def _rel(points, x0: float, z0: float) -> list[list[float]]:
 
 
 def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: ElevationProvider,
-                  frame: LocalFrame) -> dict[str, dict[str, Any]]:
+                  frame: LocalFrame, water_areas: list[dict] | None = None) -> dict[str, dict[str, Any]]:
     """Bâtiments, végétation, eau et points d'intérêt du carré, coordonnées relatives à son coin."""
     x0, z0 = key.corner
     near_tiles = {(key.ix, -(key.i_n + 1)): near}
@@ -354,6 +386,12 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
     water: dict[str, list[dict]] = {"lines": [], "areas": []}
     poi: list[dict] = []
     m = AREA_SEARCH_M
+    if water_areas is None:
+        water_areas = square_water(key, db, provider, frame)
+    for a in water_areas:
+        if key.contains(*a["centroid"]):
+            water["areas"].append({"id": a["id"], "kind": a["kind"], "level_y": a["level_y"],
+                                   "outer": _rel(a["outer"], x0, z0), "holes": [_rel(h, x0, z0) for h in a["holes"]]})
     for a in db.areas_in(lonlat_bbox(frame, x0 - m, z0 - m, x0 + key.size_m + m, z0 + key.size_m + m)):
         outer = _ring_xz(frame, a.outer, True)
         if outer is None:
@@ -372,11 +410,6 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
         elif a.kind in VEGETATION_DENSITY:
             vegetation.append({"id": a.osm_id, "kind": a.kind, "outer": _rel(outer, x0, z0),
                                "holes": [_rel(h, x0, z0) for h in holes], "density": VEGETATION_DENSITY[a.kind]})
-        elif a.kind == "water":
-            water["areas"].append({
-                "id": a.osm_id, "kind": L.water_area_kind(a.tags) or "lake",
-                "level_y": L.compute_contour_min_y(outer, frame, near_tiles, provider),
-                "outer": _rel(outer, x0, z0), "holes": [_rel(h, x0, z0) for h in holes]})
 
     bbox = lonlat_bbox(frame, x0, z0, x0 + key.size_m, z0 + key.size_m)
     for line in db.lines_in(bbox):
@@ -476,8 +509,9 @@ def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cach
         return final
     frame = zone_frame(key.zone)
     graph, profiles = square_edges(key, db, provider, frame)
-    near = square_terrain(key, graph, profiles, provider, frame)
-    layers = square_layers(key, db, near, provider, frame)
+    water = square_water(key, db, provider, frame)
+    near = square_terrain(key, graph, profiles, provider, frame, water)
+    layers = square_layers(key, db, near, provider, frame, water)
     counts = {"edges": len(profiles), "buildings": len(layers["buildings"]["buildings"]),
               "vegetation": len(layers["vegetation"]["areas"]), "water_lines": len(layers["water"]["lines"]),
               "water_areas": len(layers["water"]["areas"]), "poi": len(layers["poi"]["points"])}
