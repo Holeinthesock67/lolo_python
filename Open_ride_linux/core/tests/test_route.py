@@ -197,7 +197,7 @@ def test_session_loads_route_by_id_and_reports_errors(tmp_path, monkeypatch):
         assert s.state.session_state == "READY" and s.state.route_length_m == 700.0
         s._on_command("select_route", {"route_id": "demo"}, 3)   # créé à la demande
         assert (tmp_path / "routes" / "demo.world" / "route.json").is_file()
-        assert s.state.route_length_m == 40000.0   # Col du lacet du jeu (lot DL1)
+        assert s.state.route_length_m == 5000.0   # Col du lacet de recette des tests (lot DL1)
     asyncio.run(scenario())
 
 

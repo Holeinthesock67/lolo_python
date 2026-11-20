@@ -231,6 +231,14 @@ def _version(text) -> tuple[int, ...]:
         return (0,)
 
 
+def demo_recette() -> bool:
+    """Vrai si la démonstration à poser est la variante de recette (5 km, lot DL1) : `OPENRIDE_DEMO_RECETTE=1`,
+    posée par la suite de tests du core (ses séances roulent sur le Col du lacet de 5 km, comme les bancs)."""
+    import os
+
+    return os.environ.get("OPENRIDE_DEMO_RECETTE") == "1"
+
+
 def _bundled_demo_world(engine_dir: Path | None = None) -> Path | None:
     """Démonstration du jeu embarquée par l'engine (`engine/demo/jeu/demo.world`, identique à `write_demo_world`,
     test_segments.py ; `engine/demo/demo.world` est la variante de recette, lot DL1), si elle porte sa couche
@@ -240,7 +248,7 @@ def _bundled_demo_world(engine_dir: Path | None = None) -> Path | None:
     from .launcher import DEFAULT_ENGINE_DIR
 
     engine = Path(engine_dir or os.environ.get("OPENRIDE_ENGINE") or DEFAULT_ENGINE_DIR).expanduser()
-    world = engine / "demo" / "jeu" / f"{DEMO_NAME}.world"
+    world = engine / "demo" / ("" if demo_recette() else "jeu") / f"{DEMO_NAME}.world"
     return None if _demo_needs_rewrite(world) or not (world / "terrain").is_dir() else world
 
 
@@ -256,7 +264,7 @@ def ensure_demo_world(routes_root: Path, engine_dir: Path | None = None) -> Path
         return world
     bundled = _bundled_demo_world(engine_dir)
     if bundled is None:
-        write_demo_world(routes_root)
+        write_demo_world(routes_root, demo_recette())
         return world
     world.mkdir(parents=True, exist_ok=True)
     shutil.copytree(bundled / "terrain", world / "terrain", dirs_exist_ok=True)

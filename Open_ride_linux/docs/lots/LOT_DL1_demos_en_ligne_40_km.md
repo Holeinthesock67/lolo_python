@@ -25,6 +25,7 @@ Demande du propriétaire du 20 novembre 2026 (18 h 28) : « Reprends les circuit
 
 - Lieux : chaque clé a assez de noms pour ses blocs (3 par paysage, 4 par biome de la Route du Sud, 10 pour le Japon) ; un lieu de sommet (`SUMMIT_KEYS` : col, plateau, belvédère japonais) ne porte son premier nom qu'au dernier bloc du parcours (« Col des Cèdres », « Col des Lamas »).
 - Copies embarquées : `engine/demo/demo.world` reste la variante de recette (5 km, tests de l'engine) ; `engine/demo/jeu/demo.world` (40 km, 5 Mo) est copiée par `ensure_demo_world` dans le dossier des parcours du joueur (la séance n'attend pas l'écriture de 14 s). Générateur 0.5.0 : un Col du lacet de 5 km d'un joueur est remplacé ; celui de recette d'un banc est gardé.
+- Suite de tests du core : `OPENRIDE_DEMO_RECETTE=1` (posé par `core/tests/conftest.py`) fait poser le Col du lacet de recette par `ensure_demo_world` ; ses séances d'essai gardent ainsi le parcours de 5 km sur lequel elles ont été écrites.
 - Fiches : la longueur de la description d'une route ouverte vient de ses blocs (`{km}`), jeu ou recette ; une démonstration de recette n'est pas « périmée » pour les contenus de départ.
 - Coût : génération des sept démonstrations du jeu de base en 13 s dans le conteneur (contre environ 5 s), 6,8 à 7,6 Mo par route ouverte (contre 2 à 3 Mo).
 - `captures_demo.py` : captures à l'entrée et au milieu du premier bloc de chaque biome seulement (les blocs répétés ont le même décor), sommet en fin de parcours : environ 5 h par qualité à 50 km/h, 3 h à 80 km/h.

@@ -22,10 +22,13 @@ def records_and_powerups_in_tmp(tmp_path, monkeypatch):
     Lot O36 : `start` part tout de suite (`[depart] mode = "immediat"`), sauf dans les tests du départ
     au pédalage, qui posent `cfg.depart.mode` eux-mêmes.
     Lot PK1 : pas de paquet du pack des cols (le vrai `paquet/` du PC ne change pas les tests) ; les tests
-    du pack posent `OPENRIDE_PAQUET` eux-mêmes."""
+    du pack posent `OPENRIDE_PAQUET` eux-mêmes.
+    Lot DL1 : les séances des tests roulent sur le Col du lacet de recette (5 km), comme les bancs ; les tests
+    du Col du lacet du jeu (40 km) retirent `OPENRIDE_DEMO_RECETTE`."""
     from openride_core import config, powerups, profiles, records
     monkeypatch.setattr(config, "DEPART_MODE_DEFAULT", "immediat")
     monkeypatch.setenv("OPENRIDE_PAQUET", str(tmp_path / "paquet-absent"))
+    monkeypatch.setenv("OPENRIDE_DEMO_RECETTE", "1")
     monkeypatch.setattr(profiles, "_active", None)
     monkeypatch.setattr(records, "RECORDS_FILE", tmp_path / "OpenRide" / "records.json")
     monkeypatch.setattr(powerups, "POWERUPS_FILE", tmp_path / "OpenRide" / "powerups.toml")

@@ -219,9 +219,10 @@ def test_demo_world_segments_layer_is_reproducible(tmp_path):
     assert all(s["source"] == "auto" for s in layer["segments"]) and layer["segments"]
 
 
-def test_ensure_demo_world_copies_bundled_demo_and_upgrades_old_one(tmp_path):
+def test_ensure_demo_world_copies_bundled_demo_and_upgrades_old_one(tmp_path, monkeypatch):
     """La démonstration du dossier des parcours est copiée de l'engine (celle du jeu, lot DL1) ; une ancienne sans
     terrain est remplacée ; la variante de recette d'un banc est gardée."""
+    monkeypatch.delenv("OPENRIDE_DEMO_RECETTE")   # le Col du lacet du jeu
     repo_demo = Path(__file__).resolve().parents[2] / "engine" / "demo" / "jeu" / "demo.world"
     old = demo_world.write_world(tmp_path, demo_world.DEMO_NAME, demo_world.DEMO_LENGTH_M, created=demo_world.DEMO_CREATED)
     assert not (old / "terrain").exists()
