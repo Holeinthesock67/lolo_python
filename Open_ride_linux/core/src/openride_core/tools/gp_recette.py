@@ -98,11 +98,14 @@ class Ligne:
 def lire(path: Path) -> list[Course]:
     """Courses du Grand Prix d'un journal (une séance n'en a qu'une, mais rien ne l'impose ici)."""
     courses: list[Course] = []
+    race = False   # Course classique (lot CR1) : même journal, sans objet, hors de la recette des objets
     for line in read_journal(path):
         kind = line.get("kind")
         if kind == "gp_start":
-            courses.append(Course(str(path), line))
-        elif not courses:
+            race = line.get("mode") == "race"
+            if not race:
+                courses.append(Course(str(path), line))
+        elif not courses or race:
             continue
         elif kind == "gp":
             courses[-1].gp.append(line)

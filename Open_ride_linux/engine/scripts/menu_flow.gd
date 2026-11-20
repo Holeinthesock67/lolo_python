@@ -73,6 +73,9 @@ extends RefCounted
 ## « Niveau des bots » (tours sur un circuit, distance sur un parcours en ligne), « Objets » (une case par objet,
 ## list_mode_options et set_mode_option, grandprix/gp_items_menu_model.gd), « Lancer » avec la longueur de la
 ## course, désactivé sur un parcours en ligne trop court ; `start` part avec `mode` « grandprix » sans `bots`.
+## Course (lot CR1, contrat 1.23) : « Course » à l'accueil ouvre l'écran Prêt du mode comme le Dernier survivant,
+## sur les parcours libres : réglages `race.*` et « Niveau des bots » (tours sur une boucle ; en ligne, jusqu'à
+## l'arrivée), « Lancer » avec la longueur ; `start` part avec `mode` « race » sans `bots`.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -104,6 +107,8 @@ const SURVIVOR_PREFIX := "Survivant : "
 const GP_MIN_COURSE_M := 1000.0
 ## Grand Prix des objets (lot GP9) : préfixe des libellés du core.
 const GP_PREFIX := "Grand Prix : "
+## Course (lot CR1) : préfixe des libellés du core.
+const RACE_PREFIX := "Course : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
@@ -1297,9 +1302,9 @@ func _handle_event(event: String) -> Dictionary:
 		_refresh_wtf()
 		menu.push_screen(WtfRulesModel.SCREEN)
 		return {"action": "list_wtf_rules"}
-	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "survivor":
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) in ["survivor", "race"]:
 		ready_message = ""
-		menu.prepare_settings_mode("survivor")
+		menu.prepare_settings_mode(str(act["id"]))   # Course (lot CR1) : même écran Prêt, réglages `race.*`
 		_refresh_mode_ready()
 		return {"action": "select_workout", "workout_id": null}   # SIM seulement : le core refuse un entraînement ERG
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "track":
@@ -1536,6 +1541,9 @@ func _refresh_mode_ready() -> void:
 		menu.set_mode_ready(_mode_rows(grandprix_keys(route), GP_PREFIX),
 			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)),
 			int(settings.item("grandprix.distance_km").get("value", 10)), route), gp_items.ready_label())
+	elif menu.mode == "race":
+		menu.set_mode_ready(_mode_rows(race_keys(route), RACE_PREFIX),
+			race_launch(int(settings.item("race.laps").get("value", 3)), route))
 
 
 ## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
@@ -1605,6 +1613,28 @@ static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> 
 			"advice": ""}
 	return {"enabled": true, "detail": "course de %d km" % distance_km, "advice": ""}
 
+
+## Réglages de l'écran Prêt de la Course (lot CR1) : tours sur une boucle ; en ligne, la course va jusqu'à l'arrivée.
+static func race_keys(route: Dictionary) -> Array:
+	var line := not route.is_empty() and str(route.get("route_type", "")) != "loop"
+	return ["race.opponents"] + ([] if line else ["race.laps"]) + ["bots.level_pct", "bots.objective"]
+
+
+## Ligne « Lancer » de la Course (lot CR1) : {enabled, detail, advice}. Boucle : tours et longueur ; en ligne :
+## jusqu'à l'arrivée du parcours ; désactivé sous GP_MIN_COURSE_M (le core refuse aussi, `bad_args`).
+static func race_launch(laps: int, route: Dictionary) -> Dictionary:
+	var length = route.get("length_m", null)
+	if route.is_empty() or length == null:
+		return {"enabled": true, "detail": "", "advice": ""}
+	if str(route.get("route_type", "")) == "loop":
+		return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
+			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
+	if float(length) < GP_MIN_COURSE_M:
+		return {"enabled": false, "detail": "parcours trop court",
+			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours." % [
+				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
+	return {"enabled": true, "detail": "%s en ligne" % CatalogModel._format_fr_km(float(length)),
+		"advice": ""}
 
 
 ## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).
@@ -1829,11 +1859,24 @@ func on_contents(msg: Dictionary) -> Dictionary:
 
 func _refresh_profiles() -> void:
 	menu.set_profile(profiles.home_label(), profiles.home_title())
+	# « Qui roule ? » s'ouvre dès `hello_ack` (nombre de profils), avant la liste `profiles` : à l'arrivée
+	# de la liste, focus sur le profil en cours, pas sur « Nouveau profil » gardé par son id (banc des
+	# menus, scénario `profils`, échecs intermittents du 20 novembre).
+	var first_list := menu.current_screen() == ProfilesViewModel.SCREEN and not _has_profile_rows()
 	menu.set_screen_items(ProfilesViewModel.SCREEN, profiles.who_items(), "Qui roule ?")
+	if first_list and profiles.current_id() != "":
+		menu.focus_item("p:" + profiles.current_id())
 	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
 	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
 	menu.set_screen_items(ProfilesViewModel.RESTORE, profiles.restore_items())
 	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
+
+
+func _has_profile_rows() -> bool:
+	for it in menu.state().get("items", []):
+		if str(it.get("id", "")).begins_with("p:"):
+			return true
+	return false
 
 
 func _handle_profiles(screen: String, item_id: String) -> Dictionary:

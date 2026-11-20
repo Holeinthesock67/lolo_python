@@ -781,7 +781,7 @@
         },
         "gp": {
           "type": "object",
-          "description": "Révision 1.7 (lot GP2) : bilan du Grand Prix des objets.",
+          "description": "Révision 1.7 (lot GP2) : bilan du Grand Prix des objets. Révision 1.23 (lot CR1) : aussi le bilan de la Course, avec `mode` = « race ».",
           "required": [
             "place",
             "of",
@@ -840,6 +840,13 @@
             },
             "distance_km": {
               "type": "number"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "race"
+              ],
+              "description": "Facultatif, révision 1.23 (lot CR1) : « race » pour le bilan de la Course (aucun objet lancé ni reçu)."
             }
           }
         },
@@ -2430,7 +2437,7 @@
     },
     "gp": {
       "type": "object",
-      "description": "Facultatif, révision 1.7 (lot GP2) : présent seulement en Grand Prix des objets (`start` avec `mode: grandprix`). Les effets changent la vitesse virtuelle seulement ; la pente envoyée au trainer n'en dépend jamais.",
+      "description": "Facultatif, révision 1.7 (lot GP2) : présent seulement en Grand Prix des objets (`start` avec `mode: grandprix`). Les effets changent la vitesse virtuelle seulement ; la pente envoyée au trainer n'en dépend jamais. Révision 1.23 (lot CR1) : aussi en Course (`start` avec `mode: race`), avec `mode` = « race ».",
       "required": [
         "place",
         "of",
@@ -2635,6 +2642,13 @@
           "minItems": 2,
           "maxItems": 2,
           "description": "Sur un circuit seulement : [tour en cours, tours]."
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "race"
+          ],
+          "description": "Facultatif, révision 1.23 (lot CR1) : « race » pour la Course (course classique contre les bots, `start` avec `mode: race`) : la même course sans objet (`held` null, `obj` et `boxes` vides) ; absent en Grand Prix des objets."
         }
       },
       "additionalProperties": false
