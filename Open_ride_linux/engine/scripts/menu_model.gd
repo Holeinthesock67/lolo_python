@@ -838,19 +838,21 @@ func reset() -> void:
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
-	if mode in ["rogue", "wtf", "coach"] or mode in SETTINGS_MODES:
-		mode = "free"
+	mode = "free"   # le même accueil après tous les modes (20 novembre : plus de liste de modes à part)
 	route_mode = ""
 	_refresh_home()
 	_open(HOME, false)
 
 
-## « Rejouer » de la fin de séance : même parcours, même mode et mêmes choix (bots, fantôme, épreuve, réglages
-## du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours : l'accueil.
+## « Rejouer » d'une séance lancée par `start` : même parcours, même mode et mêmes choix (bots, fantôme, épreuve,
+## réglages du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours :
+## l'accueil. La séance du jour d'un plan est rejouée comme entraînement (le core l'a gardé choisi) : `plan_day`
+## demanderait la séance du jour suivante. Cyber-Rogue et monde ouvert : menu_flow.gd (`last_launch`).
 func replay() -> void:
 	_stack.clear()
 	_focus_stack.clear()
 	_pending = {}
+	start_args.erase("plan_day")
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
