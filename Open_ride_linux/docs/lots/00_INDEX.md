@@ -231,6 +231,19 @@ Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1 ──► Y13 ;  Y1, X
 
 **Recette.** Le propriétaire (ou Claude) relit la demande, relance les tests, vérifie les critères et fait les essais réels. Un critère non tenu renvoie le lot.
 
+**Section « Recette PC » et catégorie (décision du propriétaire du 20 novembre, file PC par paquets).** Toute PR qui passe par la file du PC a, dans sa description et dans son cahier, une section `## Recette PC` dont la première ligne donne sa catégorie :
+- `Catégorie : rendu` : la PR touche l'image (shaders, modèles, décor, biomes, terrain, eau, végétation, caméra, HUD dessiné) ; banc en low, high et medium (règle des trois qualités, budgets GPU 8, 13 et 16 ms) ;
+- `Catégorie : logique` : la PR ne change rien à l'image (menu, gel du jeu, liste des parcours, réglages, IPC sans rendu, core, outils) ; une fumée et medium seulement.
+En cas de doute, ou sans ligne lisible, la PR est classée rendu. La section liste ensuite les contrôles sans GPU à faire en cloud (vitrine sans affichage, contrôle du sol sous la route, contacts, scénarios), la mesure GPU et la planche à faire sur le PC, et dit si la PR change `WORLDGEN_VERSION`, `SCHEMA_VERSION` ou la révision IPC (deux PR qui en changent une même ne vont jamais dans le même paquet). `python3 scripts/file_bancs.py categorie CORPS.md` lit la catégorie comme le fera la file. Exemple :
+
+```
+## Recette PC
+Catégorie : logique
+- Cloud : menu_bench --scenario sessions (sans GPU)
+- PC : fumée + medium ; planche du menu
+- Versions : aucune (WORLDGEN_VERSION, SCHEMA_VERSION et révision IPC inchangés)
+```
+
 ## 4. Modèle de message pour confier un lot
 
 ```text
