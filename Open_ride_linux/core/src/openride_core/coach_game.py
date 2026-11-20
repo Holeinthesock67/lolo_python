@@ -165,7 +165,7 @@ def load_candidates(routes_root: Path | None = None, gpx_dir: Path | None = None
     root = Path(routes_root) if routes_root is not None else ROUTES_DIR
     out = []
     for e in list_routes(routes_root=root, gpx_dir=Path(gpx_dir) if gpx_dir is not None else GPX_DIR):
-        if e.status != "ready" or not e.stats or mode_of(e.library) is not None:
+        if e.status != "ready" or not e.stats or mode_of(e.library, e.route_type) is not None:
             continue
         try:
             world = load_world(root / f"{e.id}.world")

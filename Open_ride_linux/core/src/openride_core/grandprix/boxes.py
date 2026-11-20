@@ -11,7 +11,6 @@ from dataclasses import dataclass
 
 LANES = 3
 BOX_EVERY_KM = (0.5, 1.0, 1.5, 2.0, 2.5, 3.0)   # réglage du menu par pas de 500 m (lot GP2 ; 500 m depuis GP14)
-MIN_COURSE_M = 1000.0   # course en ligne la plus courte (lot GP14 : la course suit le parcours)
 FIRST_ROW_M = 500.0
 FINISH_CLEAR_M = 200.0
 REFORM_S = 2.0

@@ -63,7 +63,9 @@ def test_every_route_has_a_fiche_and_modes_by_tag() -> None:
         if name in TRACKS:
             continue   # fiche de la piste : `velodrome.build_manifest`
         assert libs[name] and libs[name]["description"], name
-    modes = {n: mode_routes.mode_of(lib) for n, lib in libs.items() if mode_routes.mode_of(lib)}
+    kinds = {name: kind for name, _, kind, *_ in demo_biomes.DEMO_SET}
+    types = {n: "loop" if kinds.get(n) in demo_biomes.LOOPS else "open" for n in libs}   # lot GPL1 : boucles seulement
+    modes = {n: mode_routes.mode_of(lib, types[n]) for n, lib in libs.items() if mode_routes.mode_of(lib, types[n])}
     assert modes == {k: v for k, v in MODE_ROUTES.items() if k not in TRACKS}
 
 

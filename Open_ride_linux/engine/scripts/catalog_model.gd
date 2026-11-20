@@ -51,10 +51,13 @@ static func tagged_route_ids(raw_routes: Array, tag: String) -> Array:
 
 
 ## Parcours de chaque mode à parcours propres (lot GP13) : `table` mode → étiquette (hello_ack.config.mode_routes).
+## Un parcours de mode est une boucle qui porte l'étiquette du mode (lot GPL1, règle du core `mode_routes.py`) :
+## une trace en ligne étiquetée reste un parcours libre.
 static func mode_route_ids(raw_routes: Array, table: Dictionary) -> Dictionary:
+	var loops: Array = raw_routes.filter(func(r): return r is Dictionary and str(r.get("route_type", "")) == "loop")
 	var out := {}
 	for m in table:
-		out[str(m)] = tagged_route_ids(raw_routes, str(table[m]))
+		out[str(m)] = tagged_route_ids(loops, str(table[m]))
 	return out
 
 

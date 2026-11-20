@@ -100,9 +100,10 @@ const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la va
 const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "bots.objective", "survivor.spread",
 	"survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
-## Course en ligne la plus courte du Grand Prix (lot GP14, `grandprix.boxes.MIN_COURSE_M` du core).
-const GP_MIN_COURSE_M := 1000.0
-## Grand Prix des objets (lot GP9) : préfixe des libellés du core.
+## Grand Prix des objets (lot GP9) : réglages de l'écran Prêt dans l'ordre du plan (§4.4), tours du circuit
+## seulement (lot GPL1 : le Grand Prix se court sur une boucle), et préfixe des libellés du core.
+const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "bots.level_pct", "bots.objective", "grandprix.chaos",
+	"grandprix.box_every_m"]
 const GP_PREFIX := "Grand Prix : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
@@ -1533,9 +1534,8 @@ func _refresh_mode_ready() -> void:
 			survivor_launch(int(settings.item("survivor.opponents").get("value", 4)),
 			int(settings.item("survivor.spacing_km").get("value", 2)), route))
 	elif menu.mode == "grandprix":
-		menu.set_mode_ready(_mode_rows(grandprix_keys(route), GP_PREFIX),
-			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)),
-			int(settings.item("grandprix.distance_km").get("value", 10)), route), gp_items.ready_label())
+		menu.set_mode_ready(_mode_rows(GRANDPRIX_KEYS, GP_PREFIX),
+			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)), route), gp_items.ready_label())
 
 
 ## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
@@ -1577,34 +1577,17 @@ static func mode_label(label: String, prefix: String) -> String:
 	return short.left(1).to_upper() + short.substr(1) if short != "" else label
 
 
-## Réglages de l'écran Prêt du Grand Prix, dans l'ordre du plan (§4.4) : tours sur un circuit, distance sur un
-## parcours en ligne, les deux tant que le parcours est inconnu.
-static func grandprix_keys(route: Dictionary) -> Array:
-	var loop := str(route.get("route_type", "")) == "loop"
-	var course: Array = ["grandprix.laps"] if loop else (["grandprix.distance_km"] if not route.is_empty()
-		else ["grandprix.laps", "grandprix.distance_km"])
-	return ["grandprix.opponents"] + course + ["bots.level_pct", "bots.objective", "grandprix.chaos", "grandprix.box_every_m"]
-
-
-## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Circuit : tours et longueur de la course ; en
-## ligne : distance, au plus le parcours (lot GP14 : « tout le parcours ») ; désactivé sous GP_MIN_COURSE_M (le
-## core refuse aussi le départ, `bad_args`).
-static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> Dictionary:
+## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Tours et longueur de la course ; désactivé sur un
+## parcours en ligne (lot GPL1 : le Grand Prix se court sur une boucle, le core refuse aussi le départ, `bad_args`).
+static func grandprix_launch(laps: int, route: Dictionary) -> Dictionary:
 	var length = route.get("length_m", null)
 	if route.is_empty() or length == null:
 		return {"enabled": true, "detail": "", "advice": ""}
-	if str(route.get("route_type", "")) == "loop":
-		return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
-			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
-	if float(length) < GP_MIN_COURSE_M:
-		return {"enabled": false, "detail": "parcours trop court",
-			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours du Grand Prix." % [
-				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
-	if float(length) < distance_km * 1000.0:
-		return {"enabled": true, "detail": "course de %s (tout le parcours)" % CatalogModel._format_fr_km(float(length)),
-			"advice": ""}
-	return {"enabled": true, "detail": "course de %d km" % distance_km, "advice": ""}
-
+	if str(route.get("route_type", "")) != "loop":
+		return {"enabled": false, "detail": "parcours en ligne",
+			"advice": "Lancer grisé : le Grand Prix se court sur une boucle.\nChoisis un parcours du Grand Prix."}
+	return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
+		CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
 
 
 ## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).

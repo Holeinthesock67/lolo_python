@@ -1,5 +1,5 @@
 {
-  "description": "Grand Prix des objets (lot GP9) : entrée de l'accueil, (lot GP13 : parcours du mode seulement, liste du mode sans le Col du lacet) écran Prêt du mode sur la course en ligne d'essai (copie de la démo, 5 km en ligne : « Lancer » désactivé avec la course de 10 km par défaut), distance ramenée à 5 km au Click (config.toml écrit par le core), écran des objets (un objet coupé, grandprix.toml écrit par le core, « Tout activer »), retour à l'écran Prêt, boucle d'essai (copie de la piste, étiquette « grandprix » : tours au lieu de la distance), retour à la course en ligne, lancement, départ du mode dans le journal du core, fin sans enregistrement et bilan. Captures nommées gp9_accueil, gp9_pret, gp9_objets et gp9_pret_boucle pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "description": "Grand Prix des objets (lot GP9 ; lot GP13 : parcours du mode seulement ; lot GPL1 : boucles seulement) : entrée de l'accueil, écran Prêt du mode sur la boucle d'essai (copie de la piste, étiquette « grandprix » : tours du circuit, plus de « Distance en ligne »), liste du mode sans la course en ligne d'essai (copie de la démo de 5 km, étiquetée « grandprix » elle aussi : une trace en ligne n'est pas un parcours de mode) ni le Col du lacet, tours ramenés à 2 au Click (config.toml écrit par le core), écran des objets (un objet coupé, grandprix.toml écrit par le core, « Tout activer »), retour à l'écran Prêt, lancement, départ du mode dans le journal du core, fin sans enregistrement et bilan, puis la course en ligne d'essai dans la liste générale des parcours. Captures nommées gp9_accueil, gp9_pret_boucle, gp9_pret et gp9_objets pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
   "etapes": [
     {
       "ecran": "home",
@@ -16,36 +16,12 @@
     },
     {
       "ecran": "ready",
-      "elements": [
-        "start",
-        "change_route",
-        "gp_items"
-      ]
-    },
-    {
-      "choisir": "change_route"
-    },
-    {
-      "ecran": "routes",
-      "elements": [
-        "gp-boucle",
-        "gp-ligne"
-      ],
-      "absent": [
-        "Col du lacet"
-      ]
-    },
-    {
-      "choisir": "gp-ligne"
-    },
-    {
-      "ecran": "ready",
-      "titre": "Prêt : Grand Prix des objets — Course en ligne (essai)",
+      "titre": "Prêt : Grand Prix des objets — Boucle (essai)",
       "elements": [
         "start",
         "change_route",
         "set:grandprix.opponents",
-        "set:grandprix.distance_km",
+        "set:grandprix.laps",
         "set:bots.level_pct",
         "set:bots.objective",
         "set:grandprix.chaos",
@@ -53,35 +29,54 @@
         "gp_items"
       ],
       "contient": [
-        "course de 5,0 km (tout le parcours)",
+        "3 tours, 0,8 km",
+        "Tours du circuit",
         "Objets : tous"
       ],
       "absent": [
+        "Distance en ligne",
         "Bot 1",
         "Fantôme de la dernière séance",
-        "Passer en session ERG",
-        "Tours du circuit"
+        "Passer en session ERG"
       ],
       "delai": 5
     },
     {
-      "capture": "gp9_pret"
+      "capture": "gp9_pret_boucle"
     },
     {
-      "choisir": "set:grandprix.distance_km"
+      "choisir": "change_route"
+    },
+    {
+      "note": "lot GPL1 : la course en ligne d'essai, étiquetée « grandprix », n'est pas un parcours du mode",
+      "ecran": "routes",
+      "elements": [
+        "gp-boucle"
+      ],
+      "absent": [
+        "Course en ligne (essai)",
+        "Col du lacet"
+      ]
+    },
+    {
+      "choisir": "gp-boucle"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Grand Prix des objets — Boucle (essai)",
+      "contient": [
+        "3 tours, 0,8 km"
+      ]
+    },
+    {
+      "choisir": "set:grandprix.laps"
     },
     {
       "ecran": "ready",
       "edition": true
     },
     {
-      "appui": [
-        "MINUS_SHORT",
-        "MINUS_SHORT",
-        "MINUS_SHORT",
-        "MINUS_SHORT",
-        "MINUS_SHORT"
-      ]
+      "appui": "MINUS_SHORT"
     },
     {
       "appui": "A_LONG"
@@ -90,16 +85,16 @@
       "ecran": "ready",
       "edition": false,
       "contient": [
-        "course de 5 km"
-      ],
-      "absent": [
-        "trop court ("
+        "2 tours, 0,5 km"
       ]
     },
     {
       "config": {
-        "grandprix.distance_km": 5
+        "grandprix.laps": 2
       }
+    },
+    {
+      "capture": "gp9_pret"
     },
     {
       "choisir": "gp_items"
@@ -153,69 +148,11 @@
       ]
     },
     {
-      "choisir": "change_route"
-    },
-    {
-      "ecran": "routes",
-      "elements": [
-        "gp-boucle",
-        "gp-ligne"
-      ]
-    },
-    {
-      "choisir": "gp-boucle"
-    },
-    {
-      "ecran": "ready",
-      "titre": "Prêt : Grand Prix des objets — Boucle (essai)",
-      "elements": [
-        "start",
-        "change_route",
-        "set:grandprix.opponents",
-        "set:grandprix.laps",
-        "set:bots.level_pct",
-        "set:bots.objective",
-        "set:grandprix.chaos",
-        "set:grandprix.box_every_m",
-        "gp_items"
-      ],
-      "contient": [
-        "3 tours, 0,8 km",
-        "Tours du circuit"
-      ],
-      "absent": [
-        "Distance en ligne"
-      ],
-      "delai": 5
-    },
-    {
-      "capture": "gp9_pret_boucle"
-    },
-    {
-      "choisir": "change_route"
-    },
-    {
-      "ecran": "routes",
-      "elements": [
-        "gp-ligne"
-      ]
-    },
-    {
-      "choisir": "gp-ligne"
-    },
-    {
-      "ecran": "ready",
-      "titre": "Prêt : Grand Prix des objets — Course en ligne (essai)",
-      "contient": [
-        "course de 5 km"
-      ]
-    },
-    {
       "choisir": "start"
     },
     {
       "journal": "core",
-      "motif": "Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet",
+      "motif": "Grand Prix des objets : 4 adversaires, 0.5 km, 12 objet",
       "delai": 15
     },
     {
@@ -238,6 +175,19 @@
     },
     {
       "ecran": "home"
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "note": "lot GPL1 : la course en ligne étiquetée reste un parcours libre, dans la liste générale",
+      "ecran": "routes",
+      "elements": [
+        "gp-ligne"
+      ],
+      "absent": [
+        "Boucle (essai)"
+      ]
     }
   ],
   "grand_prix_parcours": true

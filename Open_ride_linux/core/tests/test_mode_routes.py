@@ -17,11 +17,15 @@ from test_profils_joueurs import base, home, make, of  # noqa: F401  (fixture `h
 
 def test_table_and_mode_of():
     assert mode_routes.MODE_ROUTE_TAGS == {"track": "velodrome", "grandprix": "grandprix"}
-    assert mode_routes.mode_of({"library": {"tags": ["velodrome"]}}) == "track"
-    assert mode_routes.mode_of({"tags": ["demo", "grandprix"]}) == "grandprix"
-    assert mode_routes.mode_of({"library": {"tags": ["demo"]}}) is None
-    assert mode_routes.mode_of({"library": None}) is None and mode_routes.mode_of(None) is None
-    assert mode_routes.mode_of({"library": {"tags": "grandprix"}}) is None   # mal formé : parcours libre
+    assert mode_routes.mode_of({"library": {"tags": ["velodrome"]}}, "loop") == "track"
+    assert mode_routes.mode_of({"tags": ["demo", "grandprix"]}, "loop") == "grandprix"
+    assert mode_routes.mode_of({"library": {"tags": ["demo"]}}, "loop") is None
+    assert mode_routes.mode_of({"library": None}, "loop") is None and mode_routes.mode_of(None, "loop") is None
+    assert mode_routes.mode_of({"library": {"tags": "grandprix"}}, "loop") is None   # mal formé : parcours libre
+    # lot GPL1 : un parcours de mode est une boucle ; une trace en ligne étiquetée reste un parcours libre
+    for kind in ("open", "out_and_back", None):
+        assert mode_routes.mode_of({"tags": ["grandprix"]}, kind) is None
+        assert mode_routes.mode_of({"tags": ["velodrome"]}, kind) is None
     block = mode_routes.hello_block()
     block["x"] = "y"
     assert "x" not in mode_routes.MODE_ROUTE_TAGS   # copie
@@ -82,7 +86,7 @@ def test_circuit_is_a_grand_prix_route_and_old_demo_is_replaced(tmp_path):
                          title="Circuit des Prés")
     world = tmp_path / "demo-circuit.world"
     manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["library"]["tags"] == ["grandprix"] and mode_routes.mode_of(manifest) == "grandprix"
+    assert manifest["library"]["tags"] == ["grandprix"] and mode_routes.mode_of(manifest, "loop") == "grandprix"
     assert not biome_demo_outdated(world)
     # circuit écrit entre les lots GP13 et NT1 (étiquette sans description) : remplacé
     manifest["library"] = {"tags": ["grandprix"]}
