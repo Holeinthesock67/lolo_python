@@ -407,15 +407,15 @@ def square_relief(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProf
     for k in sorted(profiles):
         e = graph.edges[k]
         pieces += axis_pieces(profiles[k], half_width(e.road_class), e.spans)
-        roads += axis_pieces(profiles[k], max(half_width(e.road_class), C.ROAD_HALF_WIDTH_M), ())
+        roads += axis_pieces(profiles[k], max(half_width(e.road_class), C.ROAD_HALF_WIDTH_M),
+                             [sp for sp in e.spans if sp[2] == "tunnel"])
     dist, y_road = RoadsAxis(pieces).nearest(gx.ravel(), gz.ravel(), C.BLEND_OUTER_M)
     y = blend(y, dist, y_road, half_width=0.0).reshape(gx.shape)
     if water:   # lot EA1 : sol sous les lacs, chaussée gardée (hors ponts : ils ne sont pas dans l'axe)
         WT.sink_grid(gx, gz, y, WT.inland_areas(water), protect=(np.isfinite(dist) & (dist < C.BLEND_INNER_M)).reshape(gx.shape))
-    # Fondu hors ponts et tunnels (la vallée reste sous un pont), mais garde-fou sur TOUTE la chaussée, ponts et
-    # tunnels compris (20/11, « herbe au-dessus de la route ») : l'engine ne dessine pas de tunnel, et la colline
-    # au-dessus d'un tunnel ou d'une trémie cachait la route et le cycliste (départ de Biarritz). Même règle que
-    # les circuits : `terrain.clear_road` dégage le relief sur toute la trace, tunnels compris.
+    # Fondu hors ponts et tunnels (la vallée reste sous un pont), garde-fou sur toute la chaussée à ciel ouvert, ponts
+    # compris (20/11, « herbe au-dessus de la route »). Pas dans les tunnels : sous 40 m de colline, l'entaille faisait
+    # une gorge aux parois grises (banc #936, Sevrier) ; un tunnel se dessinera (lot à venir) au lieu d'être taillé.
     # Largeur dégagée : au moins la chaussée de l'engine (ROAD_HALF_WIDTH_M, ruban de 6 m du thème par défaut), même
     # pour une piste ou un chemin fondus sur 2 m : la route engagée est dessinée à la largeur du thème quelle que soit
     # sa classe, et le talus d'une piste cyclable passait sur le bord du ruban.
@@ -428,8 +428,8 @@ def clear_square_road(y: np.ndarray, x0: float, z0: float, step: float, pieces: 
                       on_road: np.ndarray | None = None) -> np.ndarray:
     """Garde-fou de la chaussée du monde ouvert (13/11, comme `terrain.clear_road` des circuits) : aucun triangle
     du maillage (découpage de terrain_tiles.gd) ne dépasse la chaussée moins ROAD_SINK_M. Pour chaque point de
-    chaussée sous un triangle trop haut, les sommets hors de la chaussée descendent juste assez ; chaque sommet
-    garde le plus bas des abaissements demandés. Tout est
+    chaussée sous un triangle trop haut, les coins au-dessus de la limite descendent juste assez, en proportion de
+    leur dépassement, jamais sous la limite ; chaque sommet garde le plus bas des abaissements demandés. Tout est
     calculé sur le relief d'origine : la valeur d'un sommet ne dépend que du relief et des routes autour de lui, pas
     de l'ordre des calculs ni de l'emprise du carré (bords communs identiques au bit près). `y` : grille [j, i] dont l'échantillon (0, 0) est en
     (x0, z0) ; rendue abaissée."""
@@ -441,8 +441,13 @@ def clear_square_road(y: np.ndarray, x0: float, z0: float, step: float, pieces: 
         px, pz, pa = road_samples(px_axis, pz_axis, alt_axis, hw)
         if len(px) == 0:
             continue
-        fx, fz = (px - x0) / step, (pz - z0) / step
-        gi, gj = np.floor(fx).astype(np.int64), np.floor(fz).astype(np.int64)
+        # Case et position dans la case calculées dans la grille de la zone (x / step), indépendamment du coin du carré :
+        # un point de chaussée sur un bord commun tombe dans la même case, au bit près, pour les deux carrés.
+        ax, az = px / step, pz / step
+        cx, cz = np.floor(ax), np.floor(az)
+        gi = cx.astype(np.int64) - int(round(x0 / step))
+        gj = cz.astype(np.int64) - int(round(z0 / step))
+        fx, fz = gi + (ax - cx), gj + (az - cz)
         inside = (gi >= 0) & (gi < n_i - 1) & (gj >= 0) & (gj < n_j - 1)
         if not inside.any():
             continue
@@ -464,20 +469,26 @@ def clear_square_road(y: np.ndarray, x0: float, z0: float, step: float, pieces: 
         hb, wb = hv[bad], w[bad]
         top = limit[bad, None]
         lim = top - 1e-3
+        # Règle de `terrain.clear_road` des circuits (chaque coin au-dessus de la limite descend en proportion de son
+        # dépassement, jamais sous la limite), en commençant par les coins hors de la chaussée : ceux de la chaussée
+        # sont à sa hauteur (fondu), et les abaisser ferait léviter la route sur une pente. Si les coins hors chaussée
+        # ne suffisent pas, ils vont à la limite et ceux de la chaussée font le reste. L'ancienne règle (13/11 : une
+        # même hauteur besoin / Σ w pour les coins hors chaussée) divisait par un poids presque nul au ras d'un coin
+        # de la chaussée : sommets enfoncés de centaines de mètres, falaises grises au bord de la route (banc #936,
+        # lac d'Annecy, 20/11).
         need = h[bad] - lim[:, 0]
-        # Sommets hors de la chaussée seulement, et au besoin sous la route : ceux de la chaussée sont à sa hauteur
-        # (fondu) ; sur une route en pente, le sommet voisin de l'axe est plus haut que ce point sans dépasser la
-        # route chez lui, et l'abaisser ferait léviter la route. Un triangle tout entier sur la chaussée (carrefour)
-        # abaisse ses sommets au-dessus de la route, en proportion de leur dépassement.
-        lower = ~on_road[vj[bad], vi[bad]] & (wb > 1e-9)
-        alone = ~lower.any(axis=1)
-        lower[alone] = hb[alone] > top[alone]
-        weight = np.where(lower, wb * np.where(alone[:, None], hb - lim, 1.0), 0.0).sum(axis=1)
-        step_v = need / np.where(weight > 0, weight, 1.0)
-        # hors chaussée : chaque sommet descend de la même hauteur `step_v` ; triangle sur la chaussée : en
-        # proportion du dépassement (alpha ≤ 1)
-        cand = np.where(alone[:, None], hb - np.minimum(step_v, 1.0)[:, None] * (hb - lim), hb - step_v[:, None])
-        np.minimum.at(clamp, (vj[bad][lower], vi[bad][lower]), cand[lower])
+        above = (hb > top) & (wb > 0)
+        road_v = on_road[vj[bad], vi[bad]]
+        excess = np.where(above, wb * (hb - lim), 0.0)
+        over_off = np.where(~road_v, excess, 0.0).sum(axis=1)
+        over_on = np.where(road_v, excess, 0.0).sum(axis=1)
+        a_off = np.minimum(need / np.where(over_off > 0, over_off, 1.0), 1.0)
+        a_off = np.where(over_off > 0, a_off, 0.0)
+        rest = np.maximum(need - a_off * over_off, 0.0)
+        a_on = np.minimum(rest / np.where(over_on > 0, over_on, 1.0), 1.0)
+        alpha = np.where(road_v, a_on[:, None], a_off[:, None])
+        cand = hb - alpha * (hb - lim)
+        np.minimum.at(clamp, (vj[bad][above], vi[bad][above]), cand[above])
     return np.minimum(y, clamp)
 
 

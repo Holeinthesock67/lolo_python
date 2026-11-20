@@ -107,7 +107,9 @@ def test_shared_border_is_bit_identical_and_road_is_flat(db, tmp_path) -> None:
     expect = np.interp(IX * 1000 + 10.0 * cols, xs, alt) - C.ROAD_SINK_M
     gap = ya[50, :].astype(float) - expect
     away = np.abs(cols - 40.5) > 1.0
-    assert np.abs(gap[away]).max() < 2e-3 and gap.max() < 2e-3
+    # jamais au-dessus du profil − 5 cm ; au plus 10 cm dessous (20/11 : sur un profil courbe, le garde-fou abaisse
+    # aussi les sommets de la chaussée de quelques centimètres quand les coins hors chaussée ne suffisent pas)
+    assert gap.max() < 2e-3 and gap[away].min() > -0.10, (gap.max(), gap[away].min())
     # Loin des routes (coin sud-ouest), relief seul.
     gx, gz = squares.grid_xz(SquareKey(ZONE, IX, IN), 10)
     lat, lon = FRAME.to_latlon(gx[100, 0:1], gz[100, 0:1])
@@ -241,10 +243,10 @@ def test_zero_length_road_has_no_profile(db, tmp_path) -> None:
     generate_square(SquareKey(ZONE, IX, IN), db0, provider(), cache(tmp_path / "cache0"))
 
 
-def _square_excess(key: SquareKey, folder, db, prov) -> float:
+def _square_excess(key: SquareKey, folder, db, prov, tunnels: bool = True) -> float:
     """Plus grand dépassement (m) du maillage du carré au-dessus de la chaussée moins ROAD_SINK_M, sur toutes les
-    routes du carré, ponts et tunnels compris (20/11), aux points de chaussée tous les mètres, sur au moins la largeur
-    du ruban de l'engine (ROAD_HALF_WIDTH_M), même pour une piste fondue sur 2 m."""
+    routes du carré, ponts compris, tunnels compris si `tunnels` (20/11), aux points de chaussée tous les mètres, sur au
+    moins la largeur du ruban de l'engine (ROAD_HALF_WIDTH_M), même pour une piste fondue sur 2 m."""
     from openride_compiler import terrain
     graph, profiles = squares.square_edges(key, db, prov)
     x0, z0 = key.corner
@@ -252,7 +254,8 @@ def _square_excess(key: SquareKey, folder, db, prov) -> float:
     worst = -math.inf
     for k in sorted(profiles):
         e = graph.edges[k]
-        for px, pz, pa, hw in squares.axis_pieces(profiles[k], max(squares.half_width(e.road_class), C.ROAD_HALF_WIDTH_M), ()):
+        skip = [] if tunnels else [sp for sp in e.spans if sp[2] == "tunnel"]
+        for px, pz, pa, hw in squares.axis_pieces(profiles[k], max(squares.half_width(e.road_class), C.ROAD_HALF_WIDTH_M), skip):
             ex, _x, _z = terrain.terrain_excess(tiles, px, pz, pa, half_width=hw)
             if len(ex):
                 worst = max(worst, float(ex.max()))
@@ -283,11 +286,10 @@ def test_square_terrain_never_covers_road(tmp_path) -> None:
     assert near(out[(0, 1)])[100, :].tobytes() == near(out[(0, 0)])[0, :].tobytes()
 
 
-def test_square_terrain_never_covers_tunnel_road(tmp_path) -> None:
-    """20/11 (« herbe au-dessus de la route », départ de Biarritz) : une route en tunnel sous une colline de 25 m.
-    Le relief n'est pas fondu dans le tunnel, mais l'engine ne dessine pas de tunnel : le garde-fou dégage la
-    colline au-dessus de toute la chaussée, comme `terrain.clear_road` pour les circuits. Les bords communs des
-    carrés restent identiques au bit près, et la colline reste en place loin de la route."""
+def test_square_terrain_tunnel_keeps_its_hill(tmp_path) -> None:
+    """20/11 : une route en tunnel sous une colline de 25 m. Le garde-fou dégage toute la chaussée à ciel ouvert,
+    jusqu'aux entrées du tunnel, mais ne taille pas de gorge au-dessus du tunnel (banc #936, Sevrier : parois
+    grises de 40 m) ; les tunnels se dessineront dans un lot à venir. Bords communs identiques au bit près."""
     w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/tunnel")
     n_road = IN * 1000 + 500
     es = list(range(IX * 1000 + 200, (IX + 1) * 1000 + 801, 50))
@@ -313,7 +315,8 @@ def test_square_terrain_never_covers_tunnel_road(tmp_path) -> None:
     a = generate_square(SquareKey(ZONE, IX, IN), db, prov, c)
     b = generate_square(SquareKey(ZONE, IX + 1, IN), db, prov, c)
     for key, folder in ((SquareKey(ZONE, IX, IN), a), (SquareKey(ZONE, IX + 1, IN), b)):
-        assert _square_excess(key, folder, db, prov) <= 1e-3, key
+        assert _square_excess(key, folder, db, prov, tunnels=False) <= 1e-3, key
+        assert _square_excess(key, folder, db, prov) > 5.0, key      # la colline reste au-dessus du tunnel
     assert near(a)[:, 100].tobytes() == near(b)[:, 0].tobytes()
     # sommet de la colline à 100 m de la route : intact (≈ 300 + 25·exp(−100²/(2·150²)) = 320 m)
     top = float(near(b)[40, 0])
@@ -344,11 +347,11 @@ def test_roadside_building_keeps_its_footing(tmp_path) -> None:
     w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/maison")
     n_road = IN * 1000 + 503
     es = list(range(IX * 1000 - 100, (IX + 1) * 1000 + 101, 50))
-    # route en trémie (tunnel court, relief non fondu) : le garde-fou entaille la butte au-dessus
+    # route sur un pont (relief non fondu dessous) : le garde-fou entaille la butte qui dépasse le tablier
     t0, t1 = es.index(IX * 1000 + 400), es.index(IX * 1000 + 650)
     nodes = list(range(1, len(es) + 1))
     w.add_road(1, {"highway": "secondary"}, nodes[:t0 + 1], [lonlat(e, n_road) for e in es[:t0 + 1]])
-    w.add_road(2, {"highway": "secondary", "tunnel": "yes"}, nodes[t0:t1 + 1], [lonlat(e, n_road) for e in es[t0:t1 + 1]])
+    w.add_road(2, {"highway": "secondary", "bridge": "yes"}, nodes[t0:t1 + 1], [lonlat(e, n_road) for e in es[t0:t1 + 1]])
     w.add_road(3, {"highway": "secondary"}, nodes[t1:], [lonlat(e, n_road) for e in es[t1:]])
     # maison de 10 m × 8 m, de 4 à 12 m au nord de l'axe
     w.add_area("w50", "building", {"building": "house"}, ring(IX * 1000 + 503, n_road + 4, 10, 8))
@@ -356,7 +359,7 @@ def test_roadside_building_keeps_its_footing(tmp_path) -> None:
     db = OsmDb(tmp_path / "osm.sqlite")
     lon, lat = lonlat(E_REF, N_REF)
     z_house = -(n_road + 3 - N_REF)            # repère local du relief, origine (E_REF, N_REF)
-    # butte de 10 m sur la trémie et la maison
+    # butte de 10 m sous le pont et la maison
     prov = SyntheticProvider(lat, lon, lambda x, z: 400.0 + 10.0 * np.exp(-((np.asarray(z) - z_house) / 12.0) ** 2))
     key = SquareKey(ZONE, IX, IN)
     graph, profiles = squares.square_edges(key, db, prov)
@@ -372,3 +375,19 @@ def test_roadside_building_keeps_its_footing(tmp_path) -> None:
     assert b["base_y"] == L.compute_footprint_base_y(outer, FRAME, tiles, prov)
     sunk = L.compute_footprint_base_y(outer, FRAME, {(key.ix, -(key.i_n + 1)): final}, prov)
     assert b["base_y"] > sunk
+
+
+def test_clear_never_digs_below_the_road() -> None:
+    """20/11 (banc #936, lac d'Annecy) : un point de chaussée au ras d'un sommet de la chaussée trop haut (route voisine
+    plus haute), les deux autres coins hors chaussée ayant un poids presque nul. L'ancienne règle divisait le besoin
+    par ce poids et enfonçait ces coins de milliers de mètres (falaises grises au bord de la route) ; aucun sommet ne
+    doit descendre sous la limite de la chaussée."""
+    y = np.zeros((3, 3))
+    y[0, 0] = 0.5                                   # sommet de la chaussée, 50 cm au-dessus de ce point de route
+    on_road = np.zeros((3, 3), dtype=bool)
+    on_road[0, 0] = True
+    piece = (np.array([0.0005, 0.0015]), np.array([0.0005, 0.0005]), np.array([0.0, 0.0]), 1e-4)
+    out = squares.clear_square_road(y.copy(), 0.0, 0.0, 10.0, [piece], on_road)
+    lim = 0.0 - C.ROAD_SINK_M - 1e-3
+    assert float(out.min()) >= lim - 1e-6, out
+    assert float(out[0, 0]) <= lim + 1e-6          # le coin de la chaussée descend à la limite : la route est dégagée
