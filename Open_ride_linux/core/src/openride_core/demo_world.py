@@ -9,10 +9,13 @@ des données factices, le compilateur utilisera UTM via pyproj).
 
     python -m openride_core.tools.fake_world --out ../engine/demo --length 8000
 
-Le parcours de démonstration commun au core et à l'engine (identifiant `demo`, 5 000 m, affiché au menu
-sous le nom `DEMO_TITLE`, lot O37) est écrit par `write_demo_world` avec une date de création fixe et sa
-couche terrain synthétique, pour être identique octet pour octet :
-    python -m openride_core.tools.fake_world --demo --out ../engine/demo
+Le parcours de démonstration commun au core et à l'engine (identifiant `demo`, affiché au menu sous le nom
+`DEMO_TITLE`, lot O37) est écrit par `write_demo_world` avec une date de création fixe et sa couche terrain
+synthétique, pour être identique octet pour octet. Lot DL1 : 40 km dans le jeu (`DEMO_LENGTH_M`, copie embarquée
+`engine/demo/jeu/`), 5 km dans sa variante de recette (`--recette`, `DEMO_RECETTE_LENGTH_M`, copie embarquée
+`engine/demo/`, celle des tests de l'engine), que les bancs gardent le temps de finir le jeu :
+    python -m openride_core.tools.fake_world --demo --out ../engine/demo/jeu
+    python -m openride_core.tools.fake_world --demo --recette --out ../engine/demo
 
 Les parcours de démonstration des biomes (lot U19 ; trois dans le jeu de base, le tour gravel en plus pour les recettes, lot O37) et le
 circuit en boucle « Circuit des Prés » (lot O38, courses en tours), le récif sous la mer « Récif des tortues » (lot SM1), la boucle « Volcan en flammes » (lot DB2), la « Route du Sud » et la boucle « Route du Grand Nord » (lot DB3) sont écrits par `write_biome_demo_worlds`, qui
@@ -40,11 +43,17 @@ DS_M = 10.0
 
 DEMO_NAME = "demo"                 # identifiant de fichier (`demo.world`), inchangé
 DEMO_TITLE = "Col du lacet"        # nom affiché au menu (lot O37)
-DEMO_LENGTH_M = 5000.0
+# Lot DL1 (demande du propriétaire du 20 novembre : « les circuits en ligne au minimum 40 km », Col du lacet compris,
+# « garder la version de 5 km pour les bancs le temps de finir le jeu ») : 40 km dans le jeu, même route (lacet à 45 %
+# de la longueur) et même pente qui ondule, environ 950 m de montée ; 5 km dans la variante de recette des bancs,
+# comme les démonstrations des biomes (`openride_compiler.demo_biomes`, `--recette`).
+DEMO_LENGTH_M = 40000.0
+DEMO_RECETTE_LENGTH_M = 5000.0
 DEMO_CREATED = "2026-10-23T00:00:00+02:00"   # fixe : le fichier de démo est reproductible
 # Fiche du « Col du lacet » (lot NT1) : description sur la carte du parcours au menu, comme les autres démonstrations
 # (`openride_compiler.demo_biomes.DEMO_LIBRARY`), le vélodrome et les cols du pack.
-DEMO_LIBRARY = {"description": "Montée de 5 km de la forêt aux alpages, avec un lacet de deux épingles serrées."}
+DEMO_LIBRARY = {"description": "Montée de 40 km de la forêt aux alpages, avec un lacet de deux épingles serrées."}
+DEMO_RECETTE_LIBRARY = {"description": "Montée de 5 km de la forêt aux alpages, avec un lacet de deux épingles serrées."}
 HAIRPIN_GAP_M = 500.0       # distance entre les deux épingles du lacet (au plus 0,15 × longueur)
 HAIRPIN_GAP_MIN_M = 250.0
 
@@ -128,10 +137,11 @@ def build_segments(route: dict) -> list[dict]:
 # Version du générateur, portée par le manifeste (`compiler.version`). 0.2.0 (7 novembre 2026) : terrain proche
 # dégagé sous la chaussée (`synthetic_terrain.clear_road`) ; 0.3.0 (8 novembre 2026, lot O37) : la
 # démonstration porte son nom de parcours `DEMO_TITLE` ; 0.4.0 (12 novembre 2026, lot W17) : couche biome
-# synthétique (forêt et alpages, `synthetic_biome.py`). Une démonstration plus ancienne du dossier des
+# synthétique (forêt et alpages, `synthetic_biome.py`) ; 0.5.0 (20 novembre 2026, lot DL1) : 40 km au lieu de 5. Une
+# démonstration plus ancienne du dossier des
 # parcours est remplacée par `ensure_demo_world`.
 FAKE_WORLD_NAME = "openride-fake-world"
-FAKE_WORLD_VERSION = "0.4.0"
+FAKE_WORLD_VERSION = "0.5.0"
 
 
 def build_manifest(name: str, route: dict, created: str | None = None,
@@ -183,20 +193,22 @@ def write_world(out_dir: Path, name: str, length_m: float, created: str | None =
     return world
 
 
-def write_demo_world(out_dir: Path) -> Path:
+def write_demo_world(out_dir: Path, recette: bool = False) -> Path:
     """Écrit le parcours de démonstration commun au core et à l'engine, avec sa couche terrain
     synthétique (`synthetic_terrain.py`) : sans elle, l'engine pose un sol plat sous l'altitude la plus
-    basse et la route, qui monte de 120 m, semble léviter (constat du 4 novembre 2026). Couche biome
-    synthétique depuis le lot W17, comme tout parcours compilé (sinon le biome par défaut partout)."""
-    world = write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED, title=DEMO_TITLE,
-                        library=DEMO_LIBRARY)
+    basse et la route, qui monte, semble léviter (constat du 4 novembre 2026). Couche biome
+    synthétique depuis le lot W17, comme tout parcours compilé (sinon le biome par défaut partout).
+    `recette` : variante courte des bancs (lot DL1)."""
+    world = write_world(out_dir, DEMO_NAME, DEMO_RECETTE_LENGTH_M if recette else DEMO_LENGTH_M,
+                        created=DEMO_CREATED, title=DEMO_TITLE,
+                        library=DEMO_RECETTE_LIBRARY if recette else DEMO_LIBRARY)
     return add_biome_layer(add_terrain_layer(world))
 
 
 def _demo_needs_rewrite(world: Path) -> bool:
     """Vrai si `world` manque, ou si c'est une démonstration écrite ici sans couche terrain, par une version
     plus ancienne du générateur (terrain qui recouvrait la chaussée au km 1,74 avant la 0.2.0) ou avec une autre
-    fiche que `DEMO_LIBRARY` (lot NT1)."""
+    fiche que celle du jeu ou de la variante de recette (lots NT1 et DL1 : un banc garde sa démonstration courte)."""
     try:
         manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -208,7 +220,7 @@ def _demo_needs_rewrite(world: Path) -> bool:
         return False
     terrain = (manifest.get("layers") or {}).get("terrain") or {}
     return (not terrain.get("present", False) or _version(compiler.get("version")) < _version(FAKE_WORLD_VERSION)
-            or manifest.get("library") != DEMO_LIBRARY)
+            or manifest.get("library") not in (DEMO_LIBRARY, DEMO_RECETTE_LIBRARY))
 
 
 def _version(text) -> tuple[int, ...]:
@@ -220,14 +232,15 @@ def _version(text) -> tuple[int, ...]:
 
 
 def _bundled_demo_world(engine_dir: Path | None = None) -> Path | None:
-    """Démonstration embarquée par l'engine (`engine/demo/demo.world`, identique à `write_demo_world`,
-    test_segments.py), si elle porte sa couche terrain."""
+    """Démonstration du jeu embarquée par l'engine (`engine/demo/jeu/demo.world`, identique à `write_demo_world`,
+    test_segments.py ; `engine/demo/demo.world` est la variante de recette, lot DL1), si elle porte sa couche
+    terrain."""
     import os
 
     from .launcher import DEFAULT_ENGINE_DIR
 
     engine = Path(engine_dir or os.environ.get("OPENRIDE_ENGINE") or DEFAULT_ENGINE_DIR).expanduser()
-    world = engine / "demo" / f"{DEMO_NAME}.world"
+    world = engine / "demo" / "jeu" / f"{DEMO_NAME}.world"
     return None if _demo_needs_rewrite(world) or not (world / "terrain").is_dir() else world
 
 
@@ -294,7 +307,9 @@ def biome_demo_outdated(world: Path) -> bool:
         return False
     if compiler.get("name") != getattr(module, "GENERATOR", None):
         return False
-    return manifest.get("library") != module.library_of(world.name.removesuffix(".world"))
+    # lot DL1 : la variante de recette (courte, celle des bancs) n'est pas périmée
+    name = world.name.removesuffix(".world")
+    return manifest.get("library") not in (module.library_of(name), module.library_of(name, recette=True))
 
 
 def write_biome_demo_worlds(out_dir: Path, recette: bool = False) -> list[dict]:

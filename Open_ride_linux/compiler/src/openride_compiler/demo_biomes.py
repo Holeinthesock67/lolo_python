@@ -55,6 +55,9 @@ route de la côte et la montée alpine sont sortis du jeu de base par le lot DB1
 bancs. Variante de recette (`recette=True`, `--recette`) pour les bancs et les fiches de recette : tous les parcours,
 dont le tour gravel, nom de parcours égal à l'identifiant et lieux « Fictif », comme avant le lot O37 ; jamais dans
 le jeu de base.
+Lot DL1 (20 novembre) : dans le jeu de base, une route ouverte fait au moins 40 km (`LINE_MIN_M`) ; chaque bloc de
+2 km est répété à la suite (tour des nouveaux paysages et Route des Érables 42,5 km, Route du Sud 48,5 km) ; la
+variante de recette garde les longueurs d'avant (14, 6 et 12 km) pour les bancs.
 Vit dans le compilateur (et non plus dans `engine/tests/`) pour qu'un jeu installé sans les tests produise
 ses parcours de démonstration.
 
@@ -190,9 +193,9 @@ REEF_SOFT_M = 3.0           # plafond adouci sur les 3 derniers mètres
 # pour la fiche entière (description et étiquettes) ; une démonstration écrite avec une autre fiche est remplacée
 # par les contenus de départ (`openride_core.demo_world.biome_demo_outdated`).
 DEMO_LIBRARY = {
-    "demo-biomes-paysages": {"description": "14 km du fjord aux hauts plateaux, par les landes atlantiques, les "
+    "demo-biomes-paysages": {"description": "{km} km du fjord aux hauts plateaux, par les landes atlantiques, les "
                                             "rizières, le Japon, une île volcanique et un canyon rouge."},
-    "demo-japon": {"description": "6 km de montée douce au Japon, entre forêts de cèdres, villages aux toits de "
+    "demo-japon": {"description": "{km} km de montée douce au Japon, entre forêts de cèdres, villages aux toits de "
                                   "tuiles et belvédères."},
     "demo-circuit": {"description": "Boucle de 3 km dans les prés, pour les courses en tours.",
                      "tags": ["grandprix"]},
@@ -200,16 +203,24 @@ DEMO_LIBRARY = {
                                   "jusqu'à une épave."},
     "demo-volcan": {"description": "Boucle de 8 km dans un volcan en éruption, entre coulées de lave, braises et "
                                    "fumées, jusqu'à la crête du cratère."},
-    "demo-biomes-sud": {"description": "12 km des oliviers au delta, par la steppe, les dunes, la savane et la "
+    "demo-biomes-sud": {"description": "{km} km des oliviers au delta, par la steppe, les dunes, la savane et la "
                                        "jungle."},
     "demo-biomes-nord": {"description": "Boucle de 10 km de la taïga à la banquise par la toundra, et retour."},
 }
 
 
-def library_of(name: str) -> dict | None:
-    """Fiche du manifeste d'un parcours de démonstration (copie), ou None pour un parcours sans fiche."""
+def library_of(name: str, recette: bool = False) -> dict | None:
+    """Fiche du manifeste d'un parcours de démonstration (copie), ou None pour un parcours sans fiche. La longueur
+    d'une route ouverte (`{km}` de la description) est celle du jeu, ou de la variante de recette (lot DL1)."""
     lib = DEMO_LIBRARY.get(name)
-    return None if lib is None else {k: list(v) if isinstance(v, list) else v for k, v in lib.items()}
+    if lib is None:
+        return None
+    out = {k: list(v) if isinstance(v, list) else v for k, v in lib.items()}
+    if "{km}" in out.get("description", ""):
+        which = next(w for n, _t, w, *_ in DEMO_SET if n == name)
+        km = len(tour_blocks(which, recette)[0]) * BLOCK_M / 1000.0
+        out["description"] = out["description"].replace("{km}", f"{km:g}")
+    return out
 
 
 # Volcan en flammes (lot DB2, demande du 13 novembre : « parcours démo exagéré feu et flammes », en boucle) : 8 km,
@@ -228,29 +239,44 @@ VOLCAN_WALL_M = 140.0        # largeur des parois du cratère (pente moyenne d'e
 VOLCAN_CONE_M = 1300.0       # largeur du cône (relief loin de la route)
 VOLCAN_ROAD_M = 220.0        # au-delà, le relief ne suit plus le profil de la route mais le cône
 GAME_DEMOS = tuple(name for name, *_, base in DEMO_SET if base)     # écrits par les contenus de départ
+# Lot DL1 (demande du propriétaire du 20 novembre : « les circuits en ligne au minimum 40 km ») : la route ouverte d'un
+# parcours du jeu de base fait au moins `LINE_MIN_M`, chaque bloc de 2 km étant répété à la suite (un biome sur 6 ou
+# 8 km au lieu de 2, même ordre climatique, `tour_blocks`), comme le Col du lacet (`demo`, core : 40 km). Les boucles
+# (tours à enchaîner), les parcours de recette seuls (tour des six paysages, côte, alpin, gravel) et toute la
+# variante de recette (`--recette`, demande du 20 novembre : « garder la version courte pour les bancs le temps de
+# finir le jeu ») ne changent pas.
+LINE_MIN_M = 40000.0
 RETIRED_DEMOS = tuple(name for name, *_, base in DEMO_SET if not base)
-# Lieux du jeu de base : un nom par bloc du même biome (trois blocs au plus), dans l'ordre de la route ; le col
-# est compté depuis la fin (le dernier bloc alpin porte le sommet, nommé sur son panneau). Variante de recette :
-# les noms « Fictif » d'avant le lot O37.
+# Lieux du jeu de base : un nom par bloc du même biome, dans l'ordre de la route, repris au début de la liste quand
+# les blocs du biome sont plus nombreux que ses noms. Un lieu de sommet (`SUMMIT_KEYS`) porte son premier nom au seul
+# dernier bloc du parcours (le sommet, nommé sur son panneau), les autres blocs prenant les suivants (lot DL1 : sans
+# cette règle, la Route des Érables de vingt blocs aurait eu sept « Col des Cèdres »). Variante de recette : les noms
+# « Fictif » d'avant le lot O37.
+SUMMIT_KEYS = frozenset({"col", "plateau", "japon_vue"})
 PLACE_NAMES = {
     "port": ("Port-Lanterne", "Anse aux Mouettes", "Port-Galets"),
     "pointe": ("Pointe des Goélands", "Pointe du Phare", "Pointe aux Sternes"),
-    "mas": ("Mas des Oliviers", "Mas de la Cigale", "Mas des Lavandes"),
+    "mas": ("Mas des Oliviers", "Mas de la Cigale", "Mas des Lavandes", "Mas des Câpriers"),
     "hameau": ("Hameau des Prés", "Les Granges", "Hameau du Ruisseau"),
     "etang": ("Étang des Saules", "Étang du Moulin", "Étang aux Hérons"),
     "col": ("Col des Edelweiss", "Belvédère du Glacier", "Belvédère des Marmottes"),
-    # Tour des nouveaux paysages (lot DB1) : un bloc par biome, un nom par clé.
-    "fjord": ("Port-Bouleau",),
-    "fjord_vue": ("Belvédère du Fjord",),
-    "lande": ("Hameau des Murets",),
-    "lande_vue": ("Pointe des Ajoncs",),
-    "rizieres": ("Village des Rizières",),
-    # Route des Érables (lot DJ1) : trois blocs `japan` ; le dernier belvédère est le sommet du parcours.
-    "japon": ("Village des Érables", "Hameau du Torii", "Village des Lanternes"),
-    "japon_vue": ("Belvédère des Cerisiers", "Belvédère du Lac", "Col des Cèdres"),
-    "volcan": ("Cratère des Fumerolles",),
-    "canyon": ("Belvédère du Canyon Rouge",),
-    "plateau": ("Col des Lamas",),
+    # Tour des nouveaux paysages (lot DB1) : trois blocs par biome depuis le lot DL1 (`LINE_MIN_M`), un nom par bloc.
+    "fjord": ("Port-Bouleau", "Anse des Phoques", "Port-Saumon"),
+    "fjord_vue": ("Belvédère du Fjord", "Pointe des Eiders", "Belvédère de la Cascade"),
+    "lande": ("Hameau des Murets", "Hameau des Bruyères", "Hameau du Menhir"),
+    "lande_vue": ("Pointe des Ajoncs", "Pointe du Calvaire", "Pointe des Courlis"),
+    "rizieres": ("Village des Rizières", "Village des Terrasses", "Village des Buffles"),
+    # Route des Érables (lot DJ1) : vingt blocs `japan` depuis le lot DL1 ; le belvédère du dernier bloc est le sommet
+    # du parcours (`SUMMIT_KEYS`), les noms des autres blocs reviennent tous les 18 à 20 km.
+    "japon": ("Village des Érables", "Hameau du Torii", "Village des Lanternes", "Hameau des Bambous",
+              "Village du Thé", "Hameau des Glycines", "Village des Pruniers", "Hameau du Sanctuaire",
+              "Village des Pins", "Hameau des Kakis"),
+    "japon_vue": ("Col des Cèdres", "Belvédère des Cerisiers", "Belvédère du Lac", "Belvédère de la Pagode",
+                  "Belvédère des Cascades", "Belvédère des Grues", "Belvédère du Jardin de Mousse",
+                  "Belvédère des Rizières", "Belvédère du Pont Rouge", "Belvédère des Lucioles"),
+    "volcan": ("Cratère des Fumerolles", "Cratère des Cendres", "Cratère du Soufre"),
+    "canyon": ("Belvédère du Canyon Rouge", "Belvédère des Arches", "Belvédère des Cheminées"),
+    "plateau": ("Col des Lamas", "Belvédère des Vigognes", "Belvédère de l'Altiplano"),
     "lagon": ("Lagon des Tortues",),
     "laminaires": ("Forêt des Laminaires",),
     "corail": ("Jardin de Corail",),
@@ -260,17 +286,19 @@ PLACE_NAMES = {
     "scories": ("Hameau des Scories",),
     "coulees": ("Belvédère des Coulées",),
     "brasier": ("Cratère du Brasier",),
-    # Route du Sud et Route du Grand Nord (lot DB3) : deux noms quand la boucle repasse dans le même biome.
-    "yourtes": ("Campement des Yourtes",),
-    "oasis": ("Oasis des Palmiers",),
-    "dunes": ("Belvédère des Dunes",),
-    "savane": ("Village des Baobabs",),
-    "savane_vue": ("Point de vue des Girafes",),
-    "canopee": ("Belvédère de la Canopée",),
-    "pilotis": ("Village des Pilotis",),
-    "delta": ("Pointe des Palétuviers",),
-    "mares": ("Mare aux Hérons",),
-    "chenal": ("Chenal des Roseaux",),
+    # Route du Sud (lot DB3, quatre blocs par biome depuis le lot DL1) et Route du Grand Nord (deux noms quand la
+    # boucle repasse dans le même biome).
+    "yourtes": ("Campement des Yourtes", "Campement des Chevaux", "Campement du Puits", "Campement des Aigles"),
+    "oasis": ("Oasis des Palmiers", "Oasis des Dattiers", "Oasis de la Source", "Oasis des Caravanes"),
+    "dunes": ("Belvédère des Dunes", "Belvédère du Grand Erg", "Belvédère des Sables", "Belvédère du Mirage"),
+    "savane": ("Village des Baobabs", "Village des Acacias", "Village des Termitières", "Village des Gazelles"),
+    "savane_vue": ("Point de vue des Girafes", "Point de vue des Éléphants", "Point de vue des Zèbres",
+                   "Point de vue des Lions"),
+    "canopee": ("Belvédère de la Canopée", "Belvédère des Toucans", "Belvédère des Lianes", "Belvédère des Orchidées"),
+    "pilotis": ("Village des Pilotis", "Village des Pêcheurs", "Village des Pirogues", "Village des Nénuphars"),
+    "delta": ("Pointe des Palétuviers", "Pointe des Flamants", "Pointe des Ibis", "Pointe des Pélicans"),
+    "mares": ("Mare aux Hérons", "Mare aux Grenouilles", "Mare des Caïmans", "Mare aux Aigrettes"),
+    "chenal": ("Chenal des Roseaux", "Chenal des Papyrus", "Chenal des Loutres", "Chenal des Joncs"),
     "trappeurs": ("Hameau des Trappeurs", "Cabanes du Lac Gelé"),
     "lac_nord": ("Lac des Huards", "Lac aux Castors"),
     "toundra": ("Refuge du Caribou", "Refuge des Lichens"),
@@ -412,9 +440,11 @@ class Plan:
         """Nom du lieu `key` dans le bloc `i` (voir `PLACE_NAMES`)."""
         if self.recette:
             return RECETTE_PLACE_NAMES[key]
-        biome = self.biomes[i]
-        k = self.biomes[i + 1:].count(biome) if key == "col" else self.biomes[:i].count(biome)
-        return PLACE_NAMES[key][k % len(PLACE_NAMES[key])]
+        names = PLACE_NAMES[key]
+        k = self.biomes[:i].count(self.biomes[i])
+        if key not in SUMMIT_KEYS:
+            return names[k % len(names)]
+        return names[0] if i == len(self.biomes) - 1 else names[1 + k % (len(names) - 1)]
 
     def block(self, s: float) -> int:
         """Bloc de 2 km de l'abscisse `s`."""
@@ -995,10 +1025,31 @@ LOOPS = {
 LOOP_BLOCKS = {"circuit": _circuit, "recif": _recif, "volcan": _volcan}
 
 
-def tour_blocks(which: str) -> tuple[tuple[str, ...], tuple[dict | None, ...] | None]:
+def line_repeat(which: str, blocks: int, recette: bool = False) -> int:
+    """Nombre de fois que chaque bloc de 2 km du parcours `which` est répété (lot DL1) : assez pour que la route
+    ouverte d'un parcours du jeu de base (`DEMO_SET`, hors `LOOPS`) fasse au moins `LINE_MIN_M`, sinon 1 ; 1 aussi
+    dans la variante de recette (`recette`), que les bancs gardent courte le temps de finir le jeu."""
+    if recette or which in LOOPS or not any(base for _n, _t, w, *_, base in DEMO_SET if w == which):
+        return 1
+    return max(1, math.ceil(LINE_MIN_M / (BLOCK_M * blocks) - 1e-9))
+
+
+def tour_blocks(which: str, recette: bool = False) -> tuple[tuple[str, ...], tuple[dict | None, ...] | None]:
     """Biomes et variantes du parcours `which` de `DEMO_SET` : un bloc de 2 km par ligne de `BLOCK_TOURS` (tour des
     nouveaux paysages, Route du Sud, Route du Grand Nord), les six biomes du premier jalon, le biome unique d'une
-    boucle, sinon trois blocs du même biome (variante de `BIOME_VARIANTS`)."""
+    boucle, sinon trois blocs du même biome (variante de `BIOME_VARIANTS`). Route ouverte du jeu de base (lot DL1) :
+    chaque bloc répété à la suite `line_repeat` fois (même biome, même variante, ordre gardé), sauf dans la
+    variante de recette (`recette`)."""
+    biomes, variants = _tour_blocks(which)
+    k = line_repeat(which, len(biomes), recette)
+    if k == 1:
+        return biomes, variants
+    return (tuple(b for b in biomes for _ in range(k)),
+            None if variants is None else tuple(v for v in variants for _ in range(k)))
+
+
+def _tour_blocks(which: str) -> tuple[tuple[str, ...], tuple[dict | None, ...] | None]:
+    """Blocs de `tour_blocks` avant la répétition du lot DL1."""
     if which in BLOCK_TOURS:
         out = []
         for _biome, landscape, ground, roofs in BLOCK_TOURS[which]:
@@ -1246,8 +1297,8 @@ def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False
     manifest["created"] = CREATED
     manifest["name"] = name if recette or not title else title
     manifest["compiler"] = {"name": GENERATOR, "version": manifest["compiler"]["version"]}
-    if library_of(name):
-        manifest["library"] = library_of(name)
+    if library_of(name, recette):
+        manifest["library"] = library_of(name, recette)
     (world / "route.json").write_text(json.dumps(route, separators=(",", ":")), encoding="utf-8")
     (world / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     info = {"route": name, "name": manifest["name"], "length_m": route["length_m"], "type": route["type"],
@@ -1278,7 +1329,7 @@ def write_demo_set(out: Path, seed: int = 0, recette: bool = False) -> list[dict
         if not (base or recette):
             continue
         loop = which if which in LOOPS else None
-        biomes, variants = tour_blocks(which)
+        biomes, variants = tour_blocks(which, recette)
         infos.append(generate(out, name, biomes, gravel=gravel, sea=sea, seed=seed, title=title, recette=recette,
                               loop=loop, variants=variants))
     return infos
@@ -1288,16 +1339,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True, type=Path, help="dossier de sortie (créé si besoin)")
     what = parser.add_mutually_exclusive_group(required=True)
-    what.add_argument("--biome", choices=TOUR + ("japan",), help="un seul biome sur 6 km")
+    what.add_argument("--biome", choices=TOUR + ("japan",), help="un seul biome sur 6 km (Japon : 42 km hors --recette, lot DL1)")
     what.add_argument("--tour", action="store_true", help="les six biomes du premier jalon, 2 km chacun")
     what.add_argument("--circuit", action="store_true", help="la boucle de 3 km du circuit de démonstration (prairie)")
     what.add_argument("--paysages", action="store_true",
-                      help="le tour des nouveaux paysages (lot DB1) : sept blocs de 2 km, mer le long du fjord")
+                      help="le tour des nouveaux paysages (lot DB1) : sept paysages de 6 km (2 km avec --recette), "
+                           "mer le long du fjord")
     what.add_argument("--recif", action="store_true", help="la boucle de 8 km du récif sous la mer (fond marin)")
     what.add_argument("--volcan", action="store_true",
                       help="la boucle de 8 km du volcan en flammes (paysage volcan_actif, crête du cratère à mi-boucle)")
     what.add_argument("--sud", action="store_true",
-                      help="la Route du Sud (lot DB3) : six blocs de 2 km, du méditerranéen aux zones humides")
+                      help="la Route du Sud (lot DB3) : six biomes de 8 km (2 km avec --recette), du méditerranéen "
+                           "aux zones humides")
     what.add_argument("--nord", action="store_true",
                       help="la Route du Grand Nord (lot DB3) : boucle de 10 km, taïga, toundra et banquise")
     what.add_argument("--demo-set", action="store_true", help="les parcours de demo-biomes (le tour gravel en plus avec --recette)")
@@ -1317,7 +1370,7 @@ def main(argv: list[str] | None = None) -> int:
                      else "volcan" if args.volcan else "paysages" if args.paysages else "sud" if args.sud
                      else "nord" if args.nord else args.biome)
             loop = which if which in LOOPS else None
-            biomes, variants = tour_blocks(which)
+            biomes, variants = tour_blocks(which, args.recette)
             name = args.name or ("biomes-tour" if args.tour else which if which in ("circuit", "recif", "volcan")
                                  else f"biomes-{which}")
             infos = [generate(args.out, name, biomes, gravel=args.gravel, sea=args.sea or args.paysages,

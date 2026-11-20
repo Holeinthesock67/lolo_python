@@ -107,7 +107,7 @@ def run(duration: float, charge: str, out: Path) -> dict:
            "PYTHONPATH": os.pathsep.join(paths + ([os.environ["PYTHONPATH"]] if os.environ.get("PYTHONPATH") else []))}
     for k in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME"):
         env.pop(k, None)
-    subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--terrain", "--out",
+    subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--recette", "--terrain", "--out",
                     str(routes)], check=True, env=env, stdout=subprocess.DEVNULL)
     log_path = out / "core.log"
     load = start_load(charge, tmp, env, duration + 5)

@@ -258,7 +258,7 @@ fi
 
 echo "== Rendu par tronçons (lot E1) =="
 # Démo commune avec couche terrain synthétique (bibliothèque standard de Python seulement).
-if ! PYTHONPATH="$CORE_SRC" python3 -m openride_core.tools.fake_world --demo --terrain --out "$ROUTES_DIR" >/dev/null; then
+if ! PYTHONPATH="$CORE_SRC" python3 -m openride_core.tools.fake_world --demo --recette --terrain --out "$ROUTES_DIR" >/dev/null; then
   echo "Génération du terrain synthétique impossible"; status=1
 fi
 STREAM_LOG="$(mktemp -t openride-stream-test.XXXXXX.log)"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import random
+import shutil
 from pathlib import Path
 
 import jsonschema
@@ -193,10 +194,16 @@ def test_from_route_on_demo_world():
 
 
 def test_demo_world_segments_layer_is_reproducible(tmp_path):
-    """Lot T3 : le parcours de démonstration porte ses segments détectés, octet pour octet."""
-    a = demo_world.write_demo_world(tmp_path / "a")
-    b = demo_world.write_demo_world(tmp_path / "b")
-    repo_demo = Path(__file__).resolve().parents[2] / "engine" / "demo" / "demo.world"
+    """Lot T3 : le parcours de démonstration porte ses segments détectés, octet pour octet ; lot DL1 : la copie
+    embarquée du jeu (`engine/demo/jeu/`, 40 km) et celle de la variante de recette (`engine/demo/`, 5 km)."""
+    engine_demo = Path(__file__).resolve().parents[2] / "engine" / "demo"
+    jeu = demo_world.write_demo_world(tmp_path / "jeu")
+    assert all((jeu / n).read_bytes() == (engine_demo / "jeu" / "demo.world" / n).read_bytes()
+               for n in ("manifest.json", "route.json", "segments.json"))
+    assert json.loads((jeu / "route.json").read_text(encoding="utf-8"))["length_m"] == demo_world.DEMO_LENGTH_M
+    a = demo_world.write_demo_world(tmp_path / "a", recette=True)
+    b = demo_world.write_demo_world(tmp_path / "b", recette=True)
+    repo_demo = engine_demo / "demo.world"
     for name in ("manifest.json", "route.json", "segments.json"):
         assert (a / name).read_bytes() == (b / name).read_bytes() == (repo_demo / name).read_bytes()
     # Couche terrain (4 novembre 2026) : mêmes tuiles, au bit près, que la démonstration embarquée.
@@ -213,8 +220,9 @@ def test_demo_world_segments_layer_is_reproducible(tmp_path):
 
 
 def test_ensure_demo_world_copies_bundled_demo_and_upgrades_old_one(tmp_path):
-    """La démonstration du dossier des parcours est copiée de l'engine ; une ancienne sans terrain est remplacée."""
-    repo_demo = Path(__file__).resolve().parents[2] / "engine" / "demo" / "demo.world"
+    """La démonstration du dossier des parcours est copiée de l'engine (celle du jeu, lot DL1) ; une ancienne sans
+    terrain est remplacée ; la variante de recette d'un banc est gardée."""
+    repo_demo = Path(__file__).resolve().parents[2] / "engine" / "demo" / "jeu" / "demo.world"
     old = demo_world.write_world(tmp_path, demo_world.DEMO_NAME, demo_world.DEMO_LENGTH_M, created=demo_world.DEMO_CREATED)
     assert not (old / "terrain").exists()
     world = demo_world.ensure_demo_world(tmp_path)
@@ -238,6 +246,20 @@ def test_ensure_demo_world_copies_bundled_demo_and_upgrades_old_one(tmp_path):
     (world / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     demo_world.ensure_demo_world(tmp_path)
     assert (world / "manifest.json").read_bytes() == (repo_demo / "manifest.json").read_bytes()
+    # Col du lacet de 5 km d'avant le lot DL1 (générateur 0.4.0) : remplacé par celui de 40 km.
+    shutil.rmtree(world)
+    demo_world.write_demo_world(tmp_path, recette=True)
+    manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
+    manifest["compiler"]["version"], manifest["library"] = "0.4.0", demo_world.DEMO_RECETTE_LIBRARY
+    (world / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    demo_world.ensure_demo_world(tmp_path)
+    assert (world / "route.json").read_bytes() == (repo_demo / "route.json").read_bytes()
+    # Variante de recette d'un banc (lot DL1, 5 km) : gardée.
+    shutil.rmtree(world)
+    demo_world.write_demo_world(tmp_path, recette=True)
+    demo_world.ensure_demo_world(tmp_path)
+    assert json.loads((world / "route.json").read_text(encoding="utf-8"))["length_m"] == \
+        demo_world.DEMO_RECETTE_LENGTH_M
     # Démonstration à jour, ou parcours « demo » qui n'est pas le nôtre : laissés tels quels.
     (world / "route.json").write_text("{}", encoding="utf-8")
     demo_world.ensure_demo_world(tmp_path)

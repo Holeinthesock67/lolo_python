@@ -179,7 +179,7 @@ def test_survivor_bench_scenario_writes_a_valid_config_and_mode(name: str, oppon
     from openride_core import survivor
     from openride_core.__main__ import build_parser
     from openride_core.config import BOUNDS as CONFIG_BOUNDS
-    from openride_core.demo_world import DEMO_LENGTH_M
+    from openride_core.demo_world import DEMO_RECETTE_LENGTH_M as DEMO_LENGTH_M   # bancs : 5 km (lot DL1)
 
     _, _, settings, _ = sim_bench.resolve_scenario(name)
     assert settings["mode"] == "survivor"
@@ -200,7 +200,7 @@ def test_grandprix_bench_scenario_writes_a_valid_config_and_mode(name: str, oppo
     `grand_prix_onze` (lot GP10) de même à 11 adversaires, annoncés au journal du core."""
     from openride_core.__main__ import build_parser
     from openride_core.config import BOUNDS as CONFIG_BOUNDS, CHOICES as CONFIG_CHOICES
-    from openride_core.demo_world import DEMO_LENGTH_M
+    from openride_core.demo_world import DEMO_RECETTE_LENGTH_M as DEMO_LENGTH_M   # bancs : 5 km (lot DL1)
 
     _, _, settings, _ = sim_bench.resolve_scenario(name)
     assert settings["mode"] == "grandprix"
