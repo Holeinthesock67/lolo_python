@@ -250,3 +250,37 @@ def test_grandprix_gp4_bench_plays_only_its_item(tmp_path: Path, scenario: str, 
     assert [round(r) for r in rows[:4]] == [round(m - 30) for m in settings["at_m"][::2]]
     z = [x["t"] for x in settings["inputs"] if x.get("key") == "Z"]
     assert len(z) >= 30 and max(z) < settings["duration_s"]
+
+
+# --- fin de séance (défaut trouvé au banc #931) -------------------------------------------------
+
+def _core_log(*spec: tuple[float, str]) -> list[tuple[float, str]]:
+    return [(T0 + t, f"12:00:00 INFO openride_core.session: {line}") for t, line in spec]
+
+
+def test_session_end_reads_new_state_after_arrow() -> None:
+    """« Séance : RUNNING -> FINISHED » : l'état lu est FINISHED, pas le premier mot de la ligne."""
+    log = _core_log((0, "Séance : READY -> RUNNING"), (100, "Séance : RUNNING -> FINISHED"))
+    ok, detail = sim_bench.session_end_verdict(log, T0 + 90)
+    assert ok and detail == "FINISHED après end_session"
+
+
+def test_session_end_accepts_finished_before_end_session() -> None:
+    """Parcours fini avant la durée demandée : FINISHED arrive avant `end_session`, la séance est finie."""
+    log = _core_log((0, "Séance : READY -> RUNNING"), (60, "Séance : RUNNING -> FINISHED"))
+    ok, detail = sim_bench.session_end_verdict(log, T0 + 90, rel=lambda t: t - T0)
+    assert ok and detail == "FINISHED avant end_session (parcours fini à 60.0 s)"
+
+
+def test_session_end_fails_when_still_running() -> None:
+    log = _core_log((0, "Séance : READY -> RUNNING"), (30, "Séance : RUNNING -> PAUSED"),
+                    (40, "Séance : PAUSED -> RUNNING"))
+    assert sim_bench.session_end_verdict(log, T0 + 90) == (False, "dernier état lu : RUNNING")
+    assert sim_bench.session_end_verdict(_core_log((0, "Core démarré")), T0 + 90)[0] is False
+
+
+def test_session_end_last_state_wins_over_earlier_finished() -> None:
+    """Endurance : un tour fini puis relancé ne compte pas comme fin de séance."""
+    log = _core_log((60, "Séance : RUNNING -> FINISHED"), (61, "Séance : FINISHED -> READY"),
+                    (62, "Séance : READY -> RUNNING"))
+    assert sim_bench.session_end_verdict(log, T0 + 90) == (False, "dernier état lu : RUNNING")
