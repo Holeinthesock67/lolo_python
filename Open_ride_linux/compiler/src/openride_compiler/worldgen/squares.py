@@ -51,11 +51,12 @@ from .graph import RoadGraph
 from .osmdb import OsmDb
 from .store import WorldCache
 
-# 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1). 4 (20/11) : garde-fou de la chaussée (#871), étendu
-# aux tunnels, aux ponts et à la largeur du ruban de l'engine ; 3 est pris par les lots EA3 et EA4 en cours (un même
-# numéro pour deux contenus différents garderait un carré périmé en cache) : à leur fusion, prendre un numéro plus
-# grand que tous. Carrés recalculés.
-WORLDGEN_VERSION = 4
+# 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1). 5 (20/11) : garde-fou de la chaussée (#936), étendu aux
+# tunnels, aux ponts et à la largeur du ruban de l'engine ; 3 et 4 sont réservés aux lots #916 et #917 (un même numéro
+# pour deux contenus différents garderait un carré périmé en cache) : à chaque fusion, garder un numéro plus grand que
+# tous ceux déjà dans main. Carrés recalculés.
+WORLDGEN_VERSION = 5
+FAR_WATER_VERSION = 1         # eau des tuiles lointaines (lot EA2)
 SQUARE_M = 1000
 FAR_M = 5000
 MARGIN_M = 50.0
@@ -66,6 +67,9 @@ NARROW_HALF_WIDTH_M = 2.0
 AXIS_NEIGHBOURS = 8          # sommets candidats par échantillon (carrefours où se croisent plusieurs routes)
 AREA_SEARCH_M = 1000.0       # une surface dont le centre est dans le carré peut déborder loin
 WATER_STEP_M = 25.0
+FAR_LAKE_MIN_M2 = 1_000_000.0   # lot EA2 : lacs dessinés au loin, plus de 1 km² (tous morceaux réunis)
+FAR_LAKE_SEARCH_M = 2000.0      # morceaux cherchés autour de la tuile lointaine pour réunir un lac coupé
+FAR_LAKE_JOIN_M = 5.0           # deux morceaux d'un lac coupé par les tuiles vectorielles se touchent à moins de 5 m
 POI_KINDS = {"village": ("village", C.POI_RADIUS_VILLAGE_M), "hamlet": ("village", C.POI_RADIUS_VILLAGE_M),
              "town": ("village", C.POI_RADIUS_VILLAGE_M),
              "church_bell": ("church_bell", C.POI_RADIUS_CHURCH_BELL_M),
@@ -233,8 +237,19 @@ def square_versions(db: OsmDb, provider: ElevationProvider) -> dict[str, Any]:
             "relief": getattr(provider, "name", "inconnu")}
 
 
-def far_versions(provider: ElevationProvider) -> dict[str, Any]:
-    return {"worldgen": WORLDGEN_VERSION, "relief": getattr(provider, "name", "inconnu")}
+def far_versions(provider: ElevationProvider, db: OsmDb | None = None,
+                 water_complete: bool = True) -> dict[str, Any]:
+    """Versions d'une tuile lointaine ; avec une base OSM, l'eau lointaine (lot EA2) en fait partie.
+
+    `water_complete` faux (tuiles vectorielles absentes) : la tuile est écrite, mais une séance suivante
+    qui attend `"water": "ok"` la refait.
+    """
+    out = {"worldgen": WORLDGEN_VERSION, "relief": getattr(provider, "name", "inconnu")}
+    if db is not None:
+        out.update({"far_water": FAR_WATER_VERSION, "osm_schema": db.meta.get("schema_version"),
+                    "osm_date": db.meta.get("osm_date") or None, "osm_region": db.meta.get("region"),
+                    "water": "ok" if water_complete else "partial"})
+    return out
 
 
 def square_edges(key: SquareKey, db: OsmDb, provider: ElevationProvider,
@@ -278,11 +293,113 @@ def square_water(key: SquareKey, db: OsmDb, provider: ElevationProvider, frame: 
     return out
 
 
+def ring_area(ring) -> float:
+    """Aire (m²) d'un anneau, formule du lacet, valeur absolue."""
+    r = np.asarray([[float(p[0]), float(p[1])] for p in ring], dtype=float)
+    if len(r) < 3:
+        return 0.0
+    x, z = r[:, 0], r[:, 1]
+    return float(abs(np.dot(x, np.roll(z, -1)) - np.dot(z, np.roll(x, -1))) / 2.0)
+
+
+def far_lakes(key: "FarKey", db: OsmDb, provider: ElevationProvider, frame: LocalFrame) -> list[dict]:
+    """Grands lacs (lot EA2) qui touchent la tuile lointaine, repère de zone, avec leur niveau (règle EA1).
+
+    Un lac compte s'il dépasse `FAR_LAKE_MIN_M2`, ses morceaux réunis : les tuiles vectorielles coupent un
+    lac en morceaux qui se touchent au bord des tuiles (sommets à moins de `FAR_LAKE_JOIN_M`) ; ils sont
+    cherchés jusqu'à `FAR_LAKE_SEARCH_M` autour de la tuile. Lacs, étangs, réservoirs : pas la mer.
+    Le niveau de chaque morceau est celui des carrés proches (`lake_level`, même polygone, même MNT).
+    """
+    x0, z0 = key.corner
+    m = FAR_LAKE_SEARCH_M
+    pieces = []
+    for a in db.areas_in(lonlat_bbox(frame, x0 - m, z0 - m, x0 + key.size_m + m, z0 + key.size_m + m),
+                         kinds=("water",)):
+        kind = L.water_area_kind(a.tags) or "lake"
+        if kind not in C.INLAND_WATER_KINDS:
+            continue
+        outer = _ring_xz(frame, a.outer, True)
+        if outer is None:
+            continue
+        holes = [h for h in (_ring_xz(frame, h, False) for h in a.holes) if h is not None]
+        area = max(0.0, ring_area(outer) - sum(ring_area(h) for h in holes))
+        pieces.append({"id": a.osm_id, "kind": kind, "outer": outer, "holes": holes, "area": area})
+    if not pieces:
+        return []
+    # morceaux qui se touchent : union-find sur les sommets proches des contours
+    parent = list(range(len(pieces)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    pts = np.array([p[:2] for pc in pieces for p in pc["outer"]], dtype=float)
+    owner = np.array([k for k, pc in enumerate(pieces) for _ in pc["outer"]], dtype=int)
+    for i, j in cKDTree(pts).query_pairs(FAR_LAKE_JOIN_M, output_type="ndarray"):
+        a, b = find(int(owner[i])), find(int(owner[j]))
+        if a != b:
+            parent[max(a, b)] = min(a, b)
+    total: dict[int, float] = {}
+    for k, pc in enumerate(pieces):
+        total[find(k)] = total.get(find(k), 0.0) + pc["area"]
+
+    def height(xs, zs):
+        return L.sample_terrain_y(xs, zs, frame, None, provider)
+    out = []
+    for k, pc in enumerate(pieces):
+        if total[find(k)] < FAR_LAKE_MIN_M2:
+            continue
+        o = np.asarray([p[:2] for p in pc["outer"]], dtype=float)
+        if o[:, 0].max() < x0 or o[:, 0].min() > x0 + key.size_m or o[:, 1].max() < z0 or o[:, 1].min() > z0 + key.size_m:
+            continue
+        level = WT.lake_level(pc["outer"], pc["holes"], height)
+        if level is None:
+            continue
+        out.append({"id": pc["id"], "kind": pc["kind"], "level_y": round(level, 2),
+                    "outer": pc["outer"], "holes": pc["holes"]})
+    return out
+
+
+def far_water_grid(key: "FarKey", y: np.ndarray, lakes: list[dict]) -> np.ndarray | None:
+    """Abaisse (sur place) le relief lointain `y` (101 × 101) sous les lacs et rend la grille de leur niveau.
+
+    Échantillon dans un lac : niveau de ce lac, et sol à `level_y − WATER_SINK_M` au plus (règle EA1) ;
+    ailleurs NaN. None si aucun échantillon n'est dans l'eau.
+    """
+    if not lakes:
+        return None
+    gx, gz = grid_xz(key, FAR_STEP_M)
+    areas = WT.inland_areas(lakes)
+    WT.sink_grid(gx, gz, y, areas)
+    level = np.full(gx.size, np.nan)
+    fx, fz = gx.ravel(), gz.ravel()
+    for a in areas:
+        bx0, bz0, bx1, bz1 = a["bbox"]
+        sel = np.flatnonzero((fx >= bx0) & (fx <= bx1) & (fz >= bz0) & (fz <= bz1))
+        if not len(sel):
+            continue
+        sel = sel[WT.rings_contain(fx[sel], fz[sel], a["rings"])]
+        level[sel] = np.fmax(level[sel], a["level_y"])
+    if not np.isfinite(level).any():
+        return None
+    return level.reshape(C.TILE_SAMPLES, C.TILE_SAMPLES)
+
+
 def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
                    provider: ElevationProvider, frame: LocalFrame, water: list[dict] | None = None) -> np.ndarray:
     """Relief du carré fondu avec ses routes, abaissé sous les lacs (EA1), puis garde-fou de la chaussée
     (clear_square_road) ; calculé sur une case de plus tout autour : les sommets des bords communs reçoivent la même
     valeur dans les deux carrés."""
+    return square_relief(key, graph, profiles, provider, frame, water)[1]
+
+
+def square_relief(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
+                  provider: ElevationProvider, frame: LocalFrame,
+                  water: list[dict] | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """(relief avant le garde-fou de la chaussée, relief final) du carré, 101 × 101 chacun. Le premier sert à poser
+    les bâtiments (20/11) : une maison du bord de route garde le pied qu'elle avait, au lieu de descendre au fond de
+    l'entaille du garde-fou et de disparaître dans le talus (banc #936, lac d'Annecy)."""
     gx, gz = grid_xz(key, NEAR_STEP_M, ring=1)
     lat, lon = frame.to_latlon(gx.ravel(), gz.ravel())
     y = np.asarray(provider.elevations(lat, lon), dtype=float)
@@ -302,8 +419,9 @@ def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgePro
     # Largeur dégagée : au moins la chaussée de l'engine (ROAD_HALF_WIDTH_M, ruban de 6 m du thème par défaut), même
     # pour une piste ou un chemin fondus sur 2 m : la route engagée est dessinée à la largeur du thème quelle que soit
     # sa classe, et le talus d'une piste cyclable passait sur le bord du ruban.
+    ground = y[1:-1, 1:-1].astype("<f4")
     y = clear_square_road(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, roads, (dist <= 0.0).reshape(gx.shape))
-    return y[1:-1, 1:-1].astype("<f4")
+    return ground, y[1:-1, 1:-1].astype("<f4")
 
 
 def clear_square_road(y: np.ndarray, x0: float, z0: float, step: float, pieces: list,
@@ -377,10 +495,13 @@ def _rel(points, x0: float, z0: float) -> list[list[float]]:
 
 
 def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: ElevationProvider,
-                  frame: LocalFrame, water_areas: list[dict] | None = None) -> dict[str, dict[str, Any]]:
-    """Bâtiments, végétation, eau et points d'intérêt du carré, coordonnées relatives à son coin."""
+                  frame: LocalFrame, water_areas: list[dict] | None = None,
+                  ground: np.ndarray | None = None) -> dict[str, dict[str, Any]]:
+    """Bâtiments, végétation, eau et points d'intérêt du carré, coordonnées relatives à son coin. `ground` : relief
+    avant le garde-fou de la chaussée (square_relief), pour le pied des bâtiments ; sinon `near`."""
     x0, z0 = key.corner
     near_tiles = {(key.ix, -(key.i_n + 1)): near}
+    ground_tiles = near_tiles if ground is None else {(key.ix, -(key.i_n + 1)): ground}
     buildings: list[dict] = []
     vegetation: list[dict] = []
     water: dict[str, list[dict]] = {"lines": [], "areas": []}
@@ -404,7 +525,7 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
             colour = a.tags.get("colour")
             buildings.append({
                 "id": a.osm_id, "outer": _rel(outer, x0, z0), "holes": [_rel(h, x0, z0) for h in holes],
-                "base_y": L.compute_footprint_base_y(outer, frame, near_tiles, provider),
+                "base_y": L.compute_footprint_base_y(outer, frame, ground_tiles, provider),
                 "height_m": L.compute_building_height(a.osm_id, a.tags), "roof": "flat",
                 "hint": {"building": str(a.tags.get("building")), "colour": colour}})
         elif a.kind in VEGETATION_DENSITY:
@@ -510,8 +631,8 @@ def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cach
     frame = zone_frame(key.zone)
     graph, profiles = square_edges(key, db, provider, frame)
     water = square_water(key, db, provider, frame)
-    near = square_terrain(key, graph, profiles, provider, frame, water)
-    layers = square_layers(key, db, near, provider, frame, water)
+    ground, near = square_relief(key, graph, profiles, provider, frame, water)
+    layers = square_layers(key, db, near, provider, frame, water, ground)
     counts = {"edges": len(profiles), "buildings": len(layers["buildings"]["buildings"]),
               "vegetation": len(layers["vegetation"]["areas"]), "water_lines": len(layers["water"]["lines"]),
               "water_areas": len(layers["water"]["areas"]), "poi": len(layers["poi"]["points"])}
@@ -526,9 +647,15 @@ def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cach
     return final
 
 
-def generate_far(key: FarKey, provider: ElevationProvider, cache: WorldCache) -> Path:
-    """Tuile lointaine de 5 km : 101 × 101 à 50 m, relief seul (niveau `far` du compilateur)."""
-    versions = far_versions(provider)
+def generate_far(key: FarKey, provider: ElevationProvider, cache: WorldCache, db: OsmDb | None = None,
+                 water_complete: bool = True) -> Path:
+    """Tuile lointaine de 5 km : 101 × 101 à 50 m (niveau `far` du compilateur).
+
+    Avec une base OSM (lot EA2) : relief abaissé sous les grands lacs (`far_lakes`, règle EA1) et grille
+    de leur niveau écrite à côté (`<IX5>_<IN5>.water`, 101 × 101 float32, NaN hors de l'eau), seulement
+    s'il y a de l'eau ; `water_complete` faux quand des tuiles vectorielles de l'emprise manquent.
+    """
+    versions = far_versions(provider, db, water_complete)
     path = cache.far_path(key.zone, key.ix, key.i_n)
     if cache.is_valid(key.cache_key, versions):
         cache.touch(key.cache_key)
@@ -536,10 +663,18 @@ def generate_far(key: FarKey, provider: ElevationProvider, cache: WorldCache) ->
     frame = zone_frame(key.zone)
     gx, gz = grid_xz(key, FAR_STEP_M)
     lat, lon = frame.to_latlon(gx.ravel(), gz.ravel())
-    y = np.asarray(provider.elevations(lat, lon), dtype=float).astype("<f4")
+    y = np.asarray(provider.elevations(lat, lon), dtype=float)
+    level = far_water_grid(key, y, far_lakes(key, db, provider, frame)) if db is not None else None
     path.parent.mkdir(parents=True, exist_ok=True)
+    water = cache.far_water_path(key.zone, key.ix, key.i_n)
+    if level is None:
+        water.unlink(missing_ok=True)
+    else:
+        tmp_w = water.with_name(f".{water.name}.tmp-{os.getpid()}")
+        tmp_w.write_bytes(level.astype("<f4").tobytes())
+        tmp_w.replace(water)
     tmp = path.with_name(f".{path.name}.tmp-{os.getpid()}")
-    tmp.write_bytes(y.tobytes())
+    tmp.write_bytes(y.astype("<f4").tobytes())
     tmp.replace(path)
     cache.add(key.cache_key, "far", path, versions)
     return path

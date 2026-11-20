@@ -335,3 +335,40 @@ def test_narrow_road_cleared_on_engine_width(tmp_path) -> None:
     key = SquareKey(ZONE, IX, IN)
     folder = generate_square(key, db, prov, cache(tmp_path / "cache"))
     assert _square_excess(key, folder, db, prov) <= 1e-3
+
+
+def test_roadside_building_keeps_its_footing(tmp_path) -> None:
+    """20/11 (banc #936, lac d'Annecy) : le garde-fou de la chaussée entaille le talus au bord de la route. Une maison
+    dont l'empreinte touche l'entaille gardait comme pied le fond de l'entaille (minimum du relief final sous
+    l'empreinte) et disparaissait dans le talus. Le pied se prend sur le relief d'avant le garde-fou."""
+    w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/maison")
+    n_road = IN * 1000 + 503
+    es = list(range(IX * 1000 - 100, (IX + 1) * 1000 + 101, 50))
+    # route en trémie (tunnel court, relief non fondu) : le garde-fou entaille la butte au-dessus
+    t0, t1 = es.index(IX * 1000 + 400), es.index(IX * 1000 + 650)
+    nodes = list(range(1, len(es) + 1))
+    w.add_road(1, {"highway": "secondary"}, nodes[:t0 + 1], [lonlat(e, n_road) for e in es[:t0 + 1]])
+    w.add_road(2, {"highway": "secondary", "tunnel": "yes"}, nodes[t0:t1 + 1], [lonlat(e, n_road) for e in es[t0:t1 + 1]])
+    w.add_road(3, {"highway": "secondary"}, nodes[t1:], [lonlat(e, n_road) for e in es[t1:]])
+    # maison de 10 m × 8 m, de 4 à 12 m au nord de l'axe
+    w.add_area("w50", "building", {"building": "house"}, ring(IX * 1000 + 503, n_road + 4, 10, 8))
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db = OsmDb(tmp_path / "osm.sqlite")
+    lon, lat = lonlat(E_REF, N_REF)
+    z_house = -(n_road + 3 - N_REF)            # repère local du relief, origine (E_REF, N_REF)
+    # butte de 10 m sur la trémie et la maison
+    prov = SyntheticProvider(lat, lon, lambda x, z: 400.0 + 10.0 * np.exp(-((np.asarray(z) - z_house) / 12.0) ** 2))
+    key = SquareKey(ZONE, IX, IN)
+    graph, profiles = squares.square_edges(key, db, prov)
+    ground, final = squares.square_relief(key, graph, profiles, prov, FRAME)
+    assert (ground - final).max() > 0.3, "le garde-fou doit entailler le talus pour que l'essai ait un sens"
+    folder = generate_square(key, db, prov, cache(tmp_path / "cache"))
+    assert near(folder).tobytes() == final.tobytes()
+    b = load(folder, "buildings")["buildings"][0]
+    x0, z0 = key.corner
+    outer = [[p[0] + x0, p[1] + z0] for p in b["outer"]]
+    tiles = {(key.ix, -(key.i_n + 1)): ground}
+    from openride_compiler import osm_layers as L
+    assert b["base_y"] == L.compute_footprint_base_y(outer, FRAME, tiles, prov)
+    sunk = L.compute_footprint_base_y(outer, FRAME, {(key.ix, -(key.i_n + 1)): final}, prov)
+    assert b["base_y"] > sunk
