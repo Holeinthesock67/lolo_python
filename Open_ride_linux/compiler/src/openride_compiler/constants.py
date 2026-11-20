@@ -128,3 +128,11 @@ COAST_BEACH_DIST_M = 30.0                 # plage à moins de 30 m : rivage `san
 COAST_SHINGLE_SURFACES = ("pebblestone", "shingle", "gravel")
 COAST_SAMPLE_STEP_M = 5.0                 # pas des points de comparaison (plages, falaises)
 COAST_LINE_STEP_M = 25.0                  # pas des points des lignes de côte écrites
+
+# --- Couches d'un parcours .world (commande `build`) ---
+WORLD_LAYERS = ("route", "terrain", "biome", "buildings", "vegetation", "poi", "water", "coast", "roads", "bridges",
+                "segments")
+# Segments (lot T3) : produits par défaut quand le core est installé, omis avec un avertissement sinon.
+# Biome (lot U2, 3.0) : par défaut aussi ; sans réseau, repli OSM et altitude avec un avertissement.
+# Un pack peut demander d'autres couches pour ses traces (`layers` de son pack.toml, lot AN1).
+DEFAULT_WORLD_LAYERS = ("route", "terrain", "biome", "segments")
