@@ -122,3 +122,19 @@ def test_settings_listed_and_mode_announced():
     items = {it["key"]: it for it in settings.current(Config())}
     assert (items["race.opponents"]["min"], items["race.opponents"]["max"], items["race.opponents"]["value"]) == (2, 11, 7)
     assert (items["race.laps"]["min"], items["race.laps"]["max"], items["race.laps"]["value"]) == (1, 10, 3)
+
+
+def test_frame_gap_is_to_the_rider_ahead():
+    """`state.gp.gap_s` (contrat §4) : écart avec le coureur de devant, avec le second en tête ; le HUD le nomme
+    (« à 1,0 s de Rouleur ») : ce n'est pas le retard sur le premier."""
+    from openride_core.grandprix import GpInput, RiderIn
+
+    gp = GrandPrixMode([ME, "b1", "b2"], 5000.0, mode="race")
+    riders = {"b1": RiderIn(300.0, 10.0, 10.0), "b2": RiderIn(250.0, 10.0, 10.0), ME: RiderIn(240.0, 10.0, 10.0)}
+    gp.start(0.0, riders)
+    gp.step(GpInput(0.02, 0.02, riders))
+    assert gp.frame(ME)["place"] == 3 and gp.frame(ME)["gap_s"] == pytest.approx(1.0)   # 10 m derrière b2
+    assert gp.gap_s(ME) == pytest.approx(6.0)                                         # retard sur le premier
+    lead = {"b1": RiderIn(300.0, 10.0, 10.0), "b2": RiderIn(250.0, 10.0, 10.0), ME: RiderIn(320.0, 10.0, 10.0)}
+    gp.step(GpInput(0.04, 0.02, lead))
+    assert gp.frame(ME)["place"] == 1 and gp.frame(ME)["gap_s"] == pytest.approx(2.0)   # avance sur le second

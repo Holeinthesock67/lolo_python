@@ -215,6 +215,19 @@ class GrandPrixMode:
             return 0.0
         return max(lead.s - r.s, 0.0) / max(r.v, V_FLOOR)
 
+    def gap_ahead_s(self, rid: str) -> float:
+        """Écart affiché (`state.gp.gap_s`, contrat §4) : avec le coureur de devant, avec le second en tête
+        (lot CR1 : le HUD nommait le coureur de devant mais donnait le retard sur le premier)."""
+        order = self.order()
+        i = [r.id for r in order].index(rid)
+        if i == 0:
+            if len(order) < 2:
+                return 0.0
+            back = order[1]
+            return max(order[0].s - back.s, 0.0) / max(back.v, V_FLOOR)
+        r = order[i]
+        return max(order[i - 1].s - r.s, 0.0) / max(r.v, V_FLOOR)
+
     def _racing(self) -> list[Racer]:
         return [r for r in self.racers.values() if r.finished is None]
 
@@ -507,7 +520,7 @@ class GrandPrixMode:
             s, kind = min(threats, key=lambda x: abs(x[0] - r.s))
             warn = [self.table.items[kind].shot_kind, round(abs(r.s - s), 1)]
         out = {
-            "place": self.place(rid), "of": len(self.racers), "gap_s": round(self.gap_s(rid), 1),
+            "place": self.place(rid), "of": len(self.racers), "gap_s": round(self.gap_ahead_s(rid), 1),
             "held": r.held, "n": r.charges, "roll_s": round(max(r.roll_until - now, 0.0), 1) if r.roll else 0.0,
             "lane": r.lane if r.lane_to is None else r.lane_to, "auto": r.auto,
             "fx": self._fx_items(r, now),

@@ -75,7 +75,7 @@ func _run() -> void:
 	_check(str(f.state()["title"]) == "Prêt : Course — Longue", "titre du mode (%s)" % f.state()["title"])
 	_check(_ids(f) == ["start", "change_route", "set:race.opponents", "set:bots.level_pct", "set:bots.objective"],
 		"en ligne : pas de tours, pas de ligne Objets (%s)" % str(_ids(f)))
-	_check(_item(f, "start")["detail"] == "25,0 km jusqu'à l'arrivée", "Lancer : jusqu'à l'arrivée (%s)" % _item(f, "start")["detail"])
+	_check(_item(f, "start")["detail"] == "25,0 km en ligne", "Lancer : jusqu'à l'arrivée (%s)" % _item(f, "start")["detail"])
 	_check(_item(f, "set:race.opponents")["label"] == "Adversaires" and _item(f, "set:race.opponents")["detail"] == "7",
 		"réglage : libellé court et valeur")
 	f.menu.focus_item("set:race.opponents")

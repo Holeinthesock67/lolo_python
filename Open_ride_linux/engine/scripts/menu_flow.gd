@@ -1633,7 +1633,7 @@ static func race_launch(laps: int, route: Dictionary) -> Dictionary:
 		return {"enabled": false, "detail": "parcours trop court",
 			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours." % [
 				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
-	return {"enabled": true, "detail": "%s jusqu'à l'arrivée" % CatalogModel._format_fr_km(float(length)),
+	return {"enabled": true, "detail": "%s en ligne" % CatalogModel._format_fr_km(float(length)),
 		"advice": ""}
 
 
