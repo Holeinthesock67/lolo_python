@@ -38,6 +38,8 @@ const TextureLevels := preload("res://scripts/texture_levels.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
+const FarWater := preload("res://scripts/far_water.gd")
+const WaterMesh := preload("res://scripts/water_mesh.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -84,6 +86,7 @@ const TEST_SEAM_TOL_M := 0.05
 var _view_now: Dictionary = {}
 var _s_now := 0.0
 var osm_streamer: Node3D = null
+var _far_water_mat: Material = null   # sans osm_streamer : eau lointaine sans reflets (lot EA2)
 ## Relief d'horizon (lot JP4, horizon_view.gd), posé par main.gd ; null : pas d'horizon.
 var horizon_view: Node3D = null
 ## Série U (lot U17, première partie) : biome forcé (`--biome=`, "auto" = données du parcours) et modèle de
@@ -260,6 +263,15 @@ func _make_biome_textures() -> void:
 
 ## Matériau d'une tuile de terrain ("near:ix:iz", "far:ix:iz" ou "flat:ix:iz") : celui du thème, ou celui
 ## de ses biomes quand le modèle de biome est actif.
+## Matériau de l'eau lointaine (lot EA2) : celui des plans d'eau proches (reflets du lot P12 compris).
+func far_water_material() -> Material:
+	if osm_streamer != null and osm_streamer.has_method("water_material") and osm_streamer.water_material() != null:
+		return osm_streamer.water_material()
+	if _far_water_mat == null:
+		_far_water_mat = WaterMesh.make_material(false)
+	return _far_water_mat
+
+
 func _terrain_material_for(key: String) -> Material:
 	if biome_textures == null:
 		return _terrain_material
@@ -669,6 +681,13 @@ func _build_job(job: Dictionary) -> void:
 					# Relief réel du lointain (avant l'enfoncement sous le proche) : pied des forêts lointaines (lot Y5),
 					# placées ensuite dans leur propre file (forest_impostors.request_tile), hors de l'attente du départ
 					job["forest_heights"] = heights
+				# Lot EA2 : grands lacs de la tuile lointaine (monde ouvert), au niveau du lac, au-dessus du sol abaissé
+				var far_levels := FarWater.load_levels(job["world_dir"], t.x, t.y)
+				if not far_levels.is_empty():
+					var t_fw := Time.get_ticks_usec()
+					job["water_arrays"] = FarWater.build_arrays(far_levels, t.x, t.y,
+						(func(y: float) -> float: return r.display_y(y)) if r != null else Callable())
+					PerfProbe.task("eau_lointaine", "%d:%d" % [t.x, t.y], (Time.get_ticks_usec() - t_fw) / 1000.0)
 				heights = TerrainTiles.sink_under_near(heights, t.x, t.y, near_index,
 					func(nx: int, nz: int) -> PackedFloat32Array: return TerrainTiles.load_tile(job["world_dir"], "near", nx, nz), v_scale)
 			else:
@@ -734,6 +753,8 @@ func _poll_jobs(wait: bool) -> void:
 				ready_item["forest_heights"] = job["forest_heights"]
 			if job.has("skirt_arrays"):
 				ready_item["skirt_arrays"] = job["skirt_arrays"]
+			if job.has("water_arrays"):
+				ready_item["water_arrays"] = job["water_arrays"]
 			_ready.append(ready_item)
 
 
@@ -757,6 +778,9 @@ func integrate(max_new: int) -> int:
 		if r["kind"] == "road" and not (r.get("skirt_arrays", []) as Array).is_empty():
 			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["skirt_arrays"])
 			mesh.surface_set_material(1, _skirt_material_now())
+		if not (r.get("water_arrays", []) as Array).is_empty():
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["water_arrays"])
+			mesh.surface_set_material(mesh.get_surface_count() - 1, far_water_material())
 		var mi := MeshInstance3D.new()
 		mi.name = (r["key"] as String).replace(":", "_")
 		mi.mesh = mesh

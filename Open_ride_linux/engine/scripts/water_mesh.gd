@@ -439,7 +439,57 @@ static func build_lines(lines: Array) -> Dictionary:
 	}
 
 
-## Construit les surfaces planes des plans d'eau (`areas` : `outer`, `holes`, `level_y`).
+## Altitudes par sommet d'une rivière en surface (format 1.10, lot EA3) : `outer_y` et `holes_y`, parallèles
+## aux anneaux. Table point -> altitude ; vide si elles manquent ou ne correspondent pas aux anneaux
+## (surface plane à `level_y`, comme un lac).
+static func vertex_levels(a: Dictionary) -> Dictionary:
+	var oy = a.get("outer_y", null)
+	if typeof(oy) != TYPE_ARRAY:
+		return {}
+	var rings: Array = [a.get("outer", null)]
+	var ys: Array = [oy]
+	var holes_raw = a.get("holes", [])
+	if typeof(holes_raw) == TYPE_ARRAY and not (holes_raw as Array).is_empty():
+		var hy = a.get("holes_y", null)
+		if typeof(hy) != TYPE_ARRAY or (hy as Array).size() != (holes_raw as Array).size():
+			return {}
+		for i in range((holes_raw as Array).size()):
+			rings.append(holes_raw[i])
+			ys.append(hy[i])
+	var out := {}
+	for i in range(rings.size()):
+		var r = rings[i]
+		var y = ys[i]
+		if typeof(r) != TYPE_ARRAY or typeof(y) != TYPE_ARRAY or (r as Array).size() != (y as Array).size():
+			return {}
+		for k in range((r as Array).size()):
+			var p = r[k]
+			if typeof(p) != TYPE_ARRAY or (p as Array).size() != 2 or not _is_number(p[0]) or not _is_number(p[1]) \
+					or not _is_number(y[k]):
+				return {}
+			out[Vector2(float(p[0]), float(p[1]))] = float(y[k])
+	return out
+
+
+## Altitude de la surface au sommet `p` : celle du sommet de l'anneau (le plus proche pour les points de
+## couture des îles, décalés de BRIDGE_EPS), sinon `flat`.
+static func level_at(levels: Dictionary, p: Vector2, flat: float) -> float:
+	if levels.is_empty():
+		return flat
+	if levels.has(p):
+		return float(levels[p])
+	var best := INF
+	var y := flat
+	for q in levels:
+		var d := p.distance_squared_to(q)
+		if d < best:
+			best = d
+			y = float(levels[q])
+	return y
+
+
+## Construit les surfaces des plans d'eau (`areas` : `outer`, `holes`, `level_y`) : planes, ou qui suivent la
+## pente d'une rivière (`outer_y`, `holes_y`, lot EA3).
 static func build_areas(areas: Array) -> Dictionary:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -531,6 +581,7 @@ static func build_areas(areas: Array) -> Dictionary:
 			skipped += 1
 			errors.append("%s : triangulation du plan d'eau impossible" % a_id)
 			continue
+		var levels := vertex_levels(a)
 
 		for tri in tris:
 			var p0: Vector2 = tri[0]
@@ -541,9 +592,9 @@ static func build_areas(areas: Array) -> Dictionary:
 				p1 = p2
 				p2 = tmp
 			var base_idx := vertices.size()
-			vertices.append(Vector3(p0.x, level_y, p0.y))
-			vertices.append(Vector3(p1.x, level_y, p1.y))
-			vertices.append(Vector3(p2.x, level_y, p2.y))
+			vertices.append(Vector3(p0.x, level_at(levels, p0, level_y), p0.y))
+			vertices.append(Vector3(p1.x, level_at(levels, p1, level_y), p1.y))
+			vertices.append(Vector3(p2.x, level_at(levels, p2, level_y), p2.y))
 			for _k in range(3):
 				normals.append(Vector3.UP)
 			uvs.append(p0)
