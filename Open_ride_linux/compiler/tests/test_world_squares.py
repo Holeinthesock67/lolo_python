@@ -243,7 +243,7 @@ def test_zero_length_road_has_no_profile(db, tmp_path) -> None:
 
 def _square_excess(key: SquareKey, folder, db, prov) -> float:
     """Plus grand dépassement (m) du maillage du carré au-dessus de la chaussée moins ROAD_SINK_M, sur toutes les
-    routes fondues du carré (ponts et tunnels exceptés), aux points de chaussée tous les mètres."""
+    routes du carré, ponts et tunnels compris (20/11), aux points de chaussée tous les mètres."""
     from openride_compiler import terrain
     graph, profiles = squares.square_edges(key, db, prov)
     x0, z0 = key.corner
@@ -251,7 +251,7 @@ def _square_excess(key: SquareKey, folder, db, prov) -> float:
     worst = -math.inf
     for k in sorted(profiles):
         e = graph.edges[k]
-        for px, pz, pa, hw in squares.axis_pieces(profiles[k], squares.half_width(e.road_class), e.spans):
+        for px, pz, pa, hw in squares.axis_pieces(profiles[k], squares.half_width(e.road_class), ()):
             ex, _x, _z = terrain.terrain_excess(tiles, px, pz, pa, half_width=hw)
             if len(ex):
                 worst = max(worst, float(ex.max()))
@@ -280,3 +280,40 @@ def test_square_terrain_never_covers_road(tmp_path) -> None:
             assert _square_excess(key, out[(di, dn)], db, prov) <= 1e-3, key
     assert near(out[(0, 0)])[:, 100].tobytes() == near(out[(1, 0)])[:, 0].tobytes()
     assert near(out[(0, 1)])[100, :].tobytes() == near(out[(0, 0)])[0, :].tobytes()
+
+
+def test_square_terrain_never_covers_tunnel_road(tmp_path) -> None:
+    """20/11 (« herbe au-dessus de la route », départ de Biarritz) : une route en tunnel sous une colline de 25 m.
+    Le relief n'est pas fondu dans le tunnel, mais l'engine ne dessine pas de tunnel : le garde-fou dégage la
+    colline au-dessus de toute la chaussée, comme `terrain.clear_road` pour les circuits. Les bords communs des
+    carrés restent identiques au bit près, et la colline reste en place loin de la route."""
+    w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/tunnel")
+    n_road = IN * 1000 + 500
+    es = list(range(IX * 1000 + 200, (IX + 1) * 1000 + 801, 50))
+    # tunnel du milieu : de E = 1000 (IX + 1) − 200 à 1000 (IX + 1) + 200, à cheval sur les deux carrés
+    t0, t1 = es.index((IX + 1) * 1000 - 200), es.index((IX + 1) * 1000 + 200)
+    nodes = list(range(1, len(es) + 1))
+    w.add_road(1, {"highway": "secondary"}, nodes[:t0 + 1], [lonlat(e, n_road) for e in es[:t0 + 1]])
+    w.add_road(2, {"highway": "secondary", "tunnel": "yes", "layer": "-1"}, nodes[t0:t1 + 1],
+               [lonlat(e, n_road) for e in es[t0:t1 + 1]])
+    w.add_road(3, {"highway": "secondary"}, nodes[t1:], [lonlat(e, n_road) for e in es[t1:]])
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db = OsmDb(tmp_path / "osm.sqlite")
+    lon, lat = lonlat(E_REF, N_REF)
+    hill_x, hill_z = (IX + 1) * 1000 - E_REF, -(n_road - N_REF)     # repère local du relief, origine (E_REF, N_REF)
+
+    def relief(x, z):
+        d2 = (np.asarray(x) - hill_x) ** 2 + (np.asarray(z) - hill_z) ** 2
+        return 300.0 + 25.0 * np.exp(-d2 / (2 * 150.0 ** 2))
+    prov = SyntheticProvider(lat, lon, relief)
+    graph, profiles = squares.square_edges(SquareKey(ZONE, IX, IN), db, prov)
+    assert any(kind == "tunnel" for k in profiles for _s0, _s1, kind in graph.edges[k].spans)
+    c = cache(tmp_path / "cache")
+    a = generate_square(SquareKey(ZONE, IX, IN), db, prov, c)
+    b = generate_square(SquareKey(ZONE, IX + 1, IN), db, prov, c)
+    for key, folder in ((SquareKey(ZONE, IX, IN), a), (SquareKey(ZONE, IX + 1, IN), b)):
+        assert _square_excess(key, folder, db, prov) <= 1e-3, key
+    assert near(a)[:, 100].tobytes() == near(b)[:, 0].tobytes()
+    # sommet de la colline à 100 m de la route : intact (≈ 300 + 25·exp(−100²/(2·150²)) = 320 m)
+    top = float(near(b)[40, 0])
+    assert top > 319.0, top

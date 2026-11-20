@@ -11,7 +11,8 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
 
 - `near.f32` : 101 × 101 `float32` (format §5), échantillon (i, j) en E = 1000 IX + 10 i,
   N = 1000 (IN + 1) − 10 j ; relief fondu avec **toutes** les routes qui passent à moins de 50 m
-  du carré (arêtes canoniques de W4, profils de W5), ponts et tunnels exceptés ;
+  du carré (arêtes canoniques de W4, profils de W5), ponts et tunnels exceptés, puis abaissé sous
+  **toutes** les chaussées, ponts et tunnels compris (`clear_square_road`, règle des circuits) ;
 - `buildings.json`, `vegetation.json`, `water.json`, `poi.json` : mêmes schémas que les
   `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
   z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre ;
@@ -48,7 +49,9 @@ from .graph import RoadGraph
 from .osmdb import OsmDb
 from .store import WorldCache
 
-WORLDGEN_VERSION = 2            # 2 (13/11) : garde-fou de la chaussée, carrés déjà en cache recalculés
+# 2 (13/11) : garde-fou de la chaussée ; 3 (20/11) : garde-fou aussi dans les tunnels et sur les ponts. Les carrés
+# déjà en cache sont recalculés.
+WORLDGEN_VERSION = 3
 SQUARE_M = 1000
 FAR_M = 5000
 MARGIN_M = 50.0
@@ -252,13 +255,18 @@ def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgePro
     gx, gz = grid_xz(key, NEAR_STEP_M, ring=1)
     lat, lon = frame.to_latlon(gx.ravel(), gz.ravel())
     y = np.asarray(provider.elevations(lat, lon), dtype=float)
-    pieces = []
+    pieces, roads = [], []
     for k in sorted(profiles):
         e = graph.edges[k]
         pieces += axis_pieces(profiles[k], half_width(e.road_class), e.spans)
+        roads += axis_pieces(profiles[k], half_width(e.road_class), ())
     dist, y_road = RoadsAxis(pieces).nearest(gx.ravel(), gz.ravel(), C.BLEND_OUTER_M)
     y = blend(y, dist, y_road, half_width=0.0).reshape(gx.shape)
-    y = clear_square_road(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, pieces, (dist <= 0.0).reshape(gx.shape))
+    # Fondu hors ponts et tunnels (la vallée reste sous un pont), mais garde-fou sur TOUTE la chaussée, ponts et
+    # tunnels compris (20/11, « herbe au-dessus de la route ») : l'engine ne dessine pas de tunnel, et la colline
+    # au-dessus d'un tunnel ou d'une trémie cachait la route et le cycliste (départ de Biarritz). Même règle que
+    # les circuits : `terrain.clear_road` dégage le relief sur toute la trace, tunnels compris.
+    y = clear_square_road(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, roads, (dist <= 0.0).reshape(gx.shape))
     return y[1:-1, 1:-1].astype("<f4")
 
 
