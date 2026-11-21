@@ -35,6 +35,7 @@ const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const GroundDetails := preload("res://scripts/ground_details.gd")
@@ -309,8 +310,8 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	vp.add_child(details)
 	var living := QualityPresets.living(preset)
 	details.configure(GroundDetails.budgets(living), route, model, ROAD_WIDTH_M)
-	details.exclusions = [PackedVector2Array([POND.position, Vector2(POND.end.x, POND.position.y), POND.end,
-		Vector2(POND.position.x, POND.end.y)])]
+	details.exclusions = ExclusionZones.new([PackedVector2Array([POND.position, Vector2(POND.end.x, POND.position.y), POND.end,
+		Vector2(POND.position.x, POND.end.y)])])
 	for i in range(400):
 		details.update(60.0)
 		if details.is_settled():
