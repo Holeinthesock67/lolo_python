@@ -225,7 +225,7 @@ class WorldSession:
         self._landcover_queue: queue.Queue[tuple[int, int]] = queue.Queue()
         self._landcover_thread: threading.Thread | None = None
         self.stats = {"squares_generated": 0, "squares_cached": 0, "far_generated": 0, "downloads": 0,
-                      "bad_lines": 0, "biome_tiles": 0}
+                      "bad_lines": 0, "biome_tiles": 0, "sea_squares": 0}
         self._last_evict = -math.inf
         self.data_state = "cached"
 
@@ -353,7 +353,7 @@ class WorldSession:
         if self.session_dir is None:
             stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
             self.session_dir = self.cache.sessions_dir() / f"ow-{stamp}.world"
-        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges"):
+        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges", "coast"):
             (self.session_dir / sub).mkdir(parents=True, exist_ok=True)
 
     def _write_manifest(self) -> None:
@@ -379,6 +379,7 @@ class WorldSession:
                 "poi": {"present": True, "version": C.POI_VERSION},
                 "water": {"present": True, "version": C.WATER_VERSION},
                 "bridges": {"present": True, "version": BRIDGES_VERSION},   # lot EA4
+                "coast": {"present": True, "version": C.COAST_VERSION},     # lot W23 : mer et plages
                 "biome": biome_tiles.manifest_block(self._biome_sources()),
             },
             "live": True, "origin_kind": "utm_grid",
@@ -389,6 +390,19 @@ class WorldSession:
     def _biome_sources(self) -> list[str]:
         sources = [self.landcover.name] if self.landcover is not None else []
         return sources + ["osm", "dem", koppen.SOURCE]
+
+    def _log_coast(self, key: SquareKey) -> None:
+        """Ligne du journal pour un carré avec mer ou côte (W23), lue dans son `meta.json`."""
+        try:
+            meta = json.loads((self.cache.square_dir(key.zone, key.ix, key.i_n) / "meta.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        counts = meta.get("counts", {})
+        sea, lines = int(counts.get("sea", 0)), int(counts.get("coast_lines", 0))
+        if sea or lines:
+            self.stats["sea_squares"] += 1
+            self.log(f"carré {key.ix}_{key.i_n} : mer ({sea} aire(s)), {lines} tronçon(s) de côte, "
+                     f"{int(counts.get('beaches', 0))} plage(s)")
 
     def _biome(self, key: SquareKey) -> None:
         """Tuile de biome du carré ou de la tuile lointaine (W17) ; une erreur laisse le biome par défaut."""
@@ -747,6 +761,7 @@ class WorldSession:
                 self.failed.add(key)
                 return True
             self.stats["squares_cached" if had else "squares_generated"] += 1
+            self._log_coast(key)
             self._biome(key)
             ix, iz = key.ix - int(self.e0) // 1000, int(self.n0) // 1000 - key.i_n - 1
             self.cache.link_square(self.session_dir, self.zone, self.e0, self.n0, ix, iz)

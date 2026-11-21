@@ -127,7 +127,7 @@ def test_search_places(tmp_path) -> None:
 def test_meta_and_schema_version(tmp_path) -> None:
     path = _random_db(tmp_path / "m.sqlite", n=3)
     with OsmDb(path) as db:
-        assert db.meta["schema_version"] == "1" and db.meta["source"] == "geofabrik"
+        assert db.meta["schema_version"] == str(osmdb.SCHEMA_VERSION) == "1" and db.meta["source"] == "geofabrik"
         assert db.meta["osm_date"] == "2026-10-20T00:00:00Z"
         lon0, lat0, lon1, lat1 = map(float, db.meta["bbox"].split(","))
         assert lon0 < lon1 and lat0 < lat1

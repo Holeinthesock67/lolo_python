@@ -126,6 +126,7 @@ GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_vis
 scripts/bump-version.sh X.Y.Z   # change le numéro unique (VERSION, pyproject, project.godot, CHANGELOG.md), lot O2
 python3 engine/tests/sim_bench.py --scenario coupures_village [--native]   # banc simulé : vrai core sur BLE simulé + vrai engine, captures et rapport (docs/OUTILS_DE_TEST.md)
 python3 scripts/file_bancs.py lancer|relancer|etat FILE.toml   # file des bancs du PC en étapes courtes avec reprise, cache séparé par PR (docs/OUTILS_DE_TEST.md)
+python3 scripts/file_bancs.py verifier|importer|categorie …     # paquets de 2 à 4 PR, matrice rendu/logique, étapes cloud (--lieu cloud), section « Recette PC »
 
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
