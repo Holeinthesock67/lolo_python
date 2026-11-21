@@ -86,10 +86,10 @@ def test_musette_needs_a_target_on_its_lane_within_150_m():
 
 
 def test_homing_needs_a_target_within_lock_range():
-    mode = race({ME: (240.0, 0), "b": (50.0, 2)})
-    assert wants(mode, *holding(mode, "b", "homing"))              # 190 m, autre voie : verrouillée
-    mode = race({ME: (260.0, 1), "b": (50.0, 1)})
-    assert not wants(mode, *holding(mode, "b", "homing"))          # 210 m
+    mode = race({ME: (340.0, 0), "b": (50.0, 2)})
+    assert wants(mode, *holding(mode, "b", "homing"))              # 290 m, autre voie : verrouillée
+    mode = race({ME: (360.0, 1), "b": (50.0, 1)})
+    assert not wants(mode, *holding(mode, "b", "homing"))          # 310 m (verrou à 300 m, lot GPO1)
     mode = race({ME: (0.0, 1), "b": (50.0, 1)})
     mode.boxes.rows = [100.0]                                       # pas de garde : la sonnette n'est pas un bouclier
     assert not wants(mode, *holding(mode, "b", "homing"))          # aucune cible devant
@@ -264,3 +264,25 @@ def test_bot_power_never_depends_on_the_rider_gap(gp_session, monkeypatch):
     (pa, gap_a), (pb, gap_b) = runs
     assert gap_a > gap_b + 100.0                                    # écarts bien différents
     assert pa == pb
+
+
+# --- voie des boîtes (lot GPO1) -----------------------------------------------------------------
+
+def test_bots_pick_the_lane_of_the_family_they_need():
+    """Devant ou dans les 5 s : « attaquer » (droite) ; loin derrière : « s'aider » (gauche) ; parfois le
+    centre ; une seule décision par rangée."""
+    from openride_core.grandprix.items import BOX_LANES
+    picks = {"lead": set(), "far": set()}
+    for seed in range(30):
+        mode = race({"lead": (5000.0, 1), "far": (100.0, 1), ME: (0.0, 1)}, seed=seed)
+        mode.racers["far"].s = 100.0
+        mode.gap_s = lambda rid, m=mode: 0.0 if rid == "lead" else 60.0
+        mode.boxes.rows = [200.0, 5100.0]
+        mode.brain.step(mode, 1.0)
+        for rid in picks:
+            r = mode.racers[rid]
+            picks[rid].add(BOX_LANES[r.lane if r.lane_to is None else r.lane_to])
+        before = mode.racers["far"].lane_to
+        mode.brain.step(mode, 1.1)
+        assert mode.racers["far"].lane_to == before
+    assert picks["lead"] == {"attack", "any"} and picks["far"] == {"help", "any"}
