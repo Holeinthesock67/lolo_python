@@ -1,0 +1,36 @@
+# Abri derrière un bot calé sur la consigne + bonus tactiques (AS5, TT1-TT8), en attente depuis le 15/11 :
+# aucun bonus n'était venu en 5 min (une arche tous les 5 km). Arche tous les 500 m le temps de l'essai.
+id = "abri-bonus"
+but = "Abri derrière un bot à ta puissance, puis bonus tactiques : nom, effet et durée lisibles"
+duree_max_s = 300
+bots_cible_pct = 100
+commandes = [
+  { cmd = "select_route", args = { route_id = "demo-circuit" } },
+  { cmd = "start", args = { bots = [ { kind = "constant", power_w = "{cible}" } ] } },
+]
+questions = [
+  "Abri ressenti et affiché, sur 5 ?",
+  "Bonus compris (nom, effet, durée) ? (oui/non + remarque)",
+]
+
+[config.powerups]
+mode = "tactiques"
+
+[surcharges."powerups.toml".obtain]
+arch_every_m = 500
+
+[[etapes]]
+quand = { kind = "event", event = "start" }
+dire = "Rejoins le bot devant, {cible} watts, et reste dans sa roue."
+
+[[etapes]]
+quand = { kind = "record", "distance>=" = 600 }
+dire = "Bonus en réserve : Z pour l'activer."
+attendu = { kind = "powerup" }
+rappel = "Z pour le bonus."
+
+[[etapes]]
+quand = { kind = "record", "distance>=" = 1700 }
+dire = "Nouveau bonus : Z, toujours dans la roue."
+attendu = { kind = "powerup" }
+rappel = "Z pour le bonus."
