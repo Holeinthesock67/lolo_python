@@ -27,14 +27,13 @@ LABEL_CONTRAST = 3.0              # WCAG 2, grand texte et éléments d'interfac
 VALUES = ("power", "speed", "cadence", "hr", "grade")
 LABELS = ("power_caption", "speed_caption", "cadence_caption", "hr_caption", "grade_caption",
           "bots_line1", "bots_line2", "bots_jerseys",
-          "segment_title", "segment_main", "bonus_held", "wind_speed", "wind_level")
+          "segment_title", "segment_main", "bonus_held", "wind_speed", "wind_direction")
 # Panneaux qui ne doivent ni sortir de l'écran ni se chevaucher (le contenu d'un panneau le recouvre, d'où
 # des panneaux seulement).
 PANELS = ("panel_left", "panel_right", "panel", "wind", "draft", "segment_panel", "bonus_panel", "bots_panel",
           "profile")
 # Libellés et valeurs de chaque colonne : ils doivent rester dans le rectangle de la colonne.
-COLUMNS = {"panel_left": ("power", "power_caption", "cadence", "cadence_caption", "hr", "hr_caption",
-                          "target", "target_caption"),
+COLUMNS = {"panel_left": ("power", "power_caption", "cadence", "cadence_caption", "hr", "hr_caption"),
            "panel_right": ("speed", "speed_caption", "grade", "grade_caption", "gear", "distance", "time")}
 TEXT_SHARE = 0.5                  # pixel de texte : au moins la moitié de l'écart entre le fond et le texte
 

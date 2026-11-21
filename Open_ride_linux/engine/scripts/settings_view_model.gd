@@ -37,8 +37,7 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
 ## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
-## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail` ; jauge d'abri
-## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
+## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 ## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
 ## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des biomes de biome_ids.gd, noms du plan U §2.
@@ -56,7 +55,6 @@ const CHOICE_TEXTS := {
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
 	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},
 	"render.fps": {"off": "non", "on": "oui", "detail": "détaillé"},
-	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"ride.vehicle_draft": {"on": "oui", "off": "non"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},

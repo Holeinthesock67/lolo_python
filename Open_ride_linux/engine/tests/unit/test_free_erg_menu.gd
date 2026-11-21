@@ -133,8 +133,8 @@ func _test_banner() -> void:
 	_check(ev["next_text"] == "Trop lent : la puissance baisse", "zone mise à jour d'une trame à l'autre")
 	_check(ErgView.is_free(CADENCE) and not ErgView.is_free(WORKOUT), "pas de blocs en session libre")
 	var hud: Dictionary = HudViewModel.session_lines({"mode": "ERG", "erg": CADENCE, "power": 210}, ev)
-	_check(hud["erg"] == "ERG: ERG cadence 90 tr/min (81–99)  |  Trop lent : la puissance baisse",
-		"ligne ERG du HUD sans temps restant (%s)" % hud["erg"])
+	_check(not hud.has("erg") and not hud["gear_shown"],
+		"ERG libre : pas de ligne ERG au HUD (bandeau seul, lot NI1), braquet caché")
 	_check("cadence cible ± 2 %" in HudViewModel.controls_text(true, "cadence")
 		and "Z = bloc suivant" not in HudViewModel.controls_text(true, "free")
 		and "Z = bloc suivant" in HudViewModel.controls_text(true), "rappel des commandes selon le mode")
