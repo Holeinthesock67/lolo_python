@@ -197,10 +197,15 @@ def test_threshold_room_keeps_open_target_and_no_overheat():
     assert out.rogue["adrenaline_trend"]["overheat_in_s"] is None
 
 
-def test_trend_is_none_outside_rooms():
+def test_warmup_trend_gains_at_target_then_none_in_corridor():
+    """Lot R26 : l'échauffement charge l'adrénaline à sa consigne ; hors salle et hors échauffement : « none »."""
     e = engine()
     r = Rider(e)
-    r.run(max_s=2.0)
+    r.run(max_s=20.0)
+    assert e.phase == "WARMUP"
+    assert r.outs[-1].rogue["adrenaline_trend"]["cause"] == "gain" and r.outs[-1].rogue["adrenaline"] > 0.0
+    while e.phase != "CORRIDOR" and r.t < 2000:
+        r.run(max_s=r.t + DT)
     assert r.outs[-1].rogue["adrenaline_trend"] == {"rate_per_s": 0.0, "cause": "none", "overheat_in_s": None}
 
 

@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Début de run et adrénaline du Cyber-Rogue (lot R26)
+- L'échauffement charge l'adrénaline à sa consigne, comme une salle : on arrive à la première porte de quoi frapper (essai du 21 novembre : « on commence sans adrénaline, il y a tout de suite une porte à frapper » ; choix du propriétaire).
+- Consignes jugées sur la puissance moyenne des 8 dernières secondes, affichée pendant la run, à 10 % de la consigne près (au moins 5 W), avec une marge de sortie (15 % sous la consigne) : sur 3 s et à 5 W près, le bruit du trainer faisait sortir de la plage sans cesse.
+- Plage en watts et écart en direct à l'écran, son d'entrée et de sortie de la plage (événements `target_in` et `target_out`, contrat IPC révision 1.28).
+
 ### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
 - En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
 - Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).
