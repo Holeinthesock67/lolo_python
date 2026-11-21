@@ -79,7 +79,7 @@ func _run() -> void:
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
 	_check(str(f.state()["title"]) == "Prêt : Grand Prix des objets — Longue", "titre du mode (%s)" % f.state()["title"])
 	_check(_ids(f) == ["start", "change_route", "set:grandprix.opponents", "set:grandprix.distance_km", "set:bots.level_pct",
-		"set:bots.objective", "set:grandprix.chaos", "set:grandprix.box_every_m", "gp_items"],
+		"set:grandprix.chaos", "set:grandprix.box_every_m", "gp_items"],
 		"parcours en ligne : Lancer, parcours, réglages avec la distance, Objets (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "course de 10 km" and _item(f, "start")["enabled"],
 		"Lancer : distance de la course")
@@ -88,13 +88,30 @@ func _run() -> void:
 	_check(f.wanted_bots_preview().is_empty(), "même course : pas de nouvelle demande")
 	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 9, "mode": "grandprix", "objective": "tempo",
 		"ftp_pct": 92.4, "power_w": 231, "duration_s": 540, "elo": {"rating": 1540, "races": 3}})
-	_check(_ids(f)[1] == "bots_info" and not _item(f, "bots_info")["enabled"]
-		and _item(f, "bots_info")["label"] == "Bots : ≈ 231 W, ≈ 9 min" and _item(f, "bots_info")["detail"] == "cote 1540",
-		"ligne « Bots » sous Lancer : watts, durée et cote (%s)" % str(_item(f, "bots_info")))
-	_check(MenuFlow.bots_info_row({"power_w": null}).is_empty(), "sans watts (parcours pas chargé) : pas de ligne")
+	_check(_ids(f)[1] == "intensity" and _item(f, "intensity")["enabled"]
+		and _item(f, "intensity")["label"] == "Intensité du jour : moyen, bots ≈ 231 W"
+		and _item(f, "intensity")["detail"] == "≈ 9 min, cote 1540",
+		"lot R1 : « Intensité du jour » sous Lancer, mot, watts, durée et cote (%s)" % str(_item(f, "intensity")))
+	_check(MenuFlow.bots_info_row({"power_w": null}).is_empty(), "sans watts (parcours pas chargé) : pas de watts")
 	_check(MenuFlow.duration_text(3900.0) == "1 h 05", "durée de plus d'une heure : 1 h 05")
 	_check(MenuFlow.bots_info_row({"power_w": 180, "duration_s": 600, "objective": "endurance", "elo": null})
-		== {"label": "Bots : ≈ 180 W, ≈ 10 min", "detail": ""}, "cote coupée : pas de cote")
+		== {"watts": "≈ 180 W", "detail": "≈ 10 min"}, "cote coupée : pas de cote")
+	# Lot R1 : A sur la ligne change la dose (moyen → dur → facile → moyen), gardée dans `bots.objective`
+	f.menu.focus_item("intensity")
+	_check(str(f.state()["status"]).begins_with("Intensité du jour : A pour facile, moyen ou dur."),
+		"focus sur la ligne : aide en mots (%s)" % f.state()["status"])
+	act = f.handle("A_LONG")
+	_check(act == {"action": "set_setting", "key": "bots.objective", "value": "max"}, "moyen → dur (%s)" % str(act))
+	_check(_item(f, "intensity")["label"] == "Intensité du jour : dur", "dur : anciens watts effacés jusqu'à la réponse")
+	_check(f.wanted_bots_preview() == {"mode": "grandprix"}, "dose changée : nouvelle demande bots_preview")
+	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 10, "mode": "grandprix", "objective": "max",
+		"ftp_pct": 115.5, "power_w": 289, "duration_s": 480, "elo": {"rating": 1540, "races": 3}})
+	_check(_item(f, "intensity")["label"] == "Intensité du jour : dur, bots ≈ 289 W", "dur : nouveaux watts")
+	_check(f.handle("A_LONG").get("value", "") == "endurance" and _item(f, "intensity")["label"].begins_with("Intensité du jour : facile"),
+		"dur → facile")
+	_check(f.handle("A_LONG").get("value", "") == "tempo", "facile → moyen")
+	_check(MenuFlow.next_intensity("recovery") == "endurance" and MenuFlow.next_intensity("threshold") == "max",
+		"récupération → facile, seuil → dur")
 	_check(_item(f, "set:grandprix.opponents")["label"] == "Adversaires" and _item(f, "set:grandprix.opponents")["detail"] == "4",
 		"réglage : libellé court et valeur")
 	_check(_item(f, "set:grandprix.chaos")["detail"] == "normal", "chaos en français")
@@ -171,7 +188,7 @@ func _run() -> void:
 
 	_check(MenuFlow.grandprix_launch(3, 10, {}) == {"enabled": true, "detail": "", "advice": ""}, "parcours inconnu : Lancer actif")
 	_check(MenuFlow.grandprix_keys({}) == ["grandprix.opponents", "grandprix.laps", "grandprix.distance_km", "bots.level_pct",
-		"bots.objective", "grandprix.chaos", "grandprix.box_every_m"], "parcours inconnu : tours et distance")
+		"grandprix.chaos", "grandprix.box_every_m"], "parcours inconnu : tours et distance")
 	_check(MenuFlow.grandprix_launch(1, 10, {"length_m": 4000.0, "route_type": "loop"})["detail"] == "1 tour, 4,0 km", "un tour au singulier")
 	_check(not MenuFlow.grandprix_launch(3, 10, {"length_m": 800.0, "route_type": "point_to_point"})["enabled"],
 		"parcours de moins de 1 km : Lancer désactivé")
