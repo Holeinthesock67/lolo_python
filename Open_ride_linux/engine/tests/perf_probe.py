@@ -26,7 +26,8 @@ Budgets du préréglage (lot X14) : `sonde.txt` juge images/s, p99, GPU de la vu
 code de sortie 1 (`report --xvfb` : rendu logiciel, budgets en INFO).
 
 Saccades et démarrage (lot X15) : l'engine écrit aussi, à côté de son fichier, `saccades.csv` (chaque
-image de plus de 33 ms avec sa cause : tuile de terrain, tronçon OSM, arbres, capture, ou « inconnue »),
+image de plus de 33 ms avec sa cause : tuile de terrain, tronçon OSM, arbres, capture, shaders compilés, ou
+« inconnue » ; durée réelle, delta de Godot et pipelines compilés, 17/11),
 `taches.csv` (durée des tâches de fond) et `demarrage.txt` (première image jouable). Le rapport y ajoute
 les 20 pires saccades, le compte par cause, les durées des tâches de fond et le temps de démarrage.
 Bibliothèque standard seulement.
@@ -267,7 +268,8 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         v = values(rows, key)
         if v:
             out["stats"][key] = {"p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
-    # Images d'une capture d'écran de test (lot X35) : déjà hors p99 et pire image côté engine, comptées à part.
+    # Images d'une capture d'écran de test (lots X35 et PI1) : l'engine retire le coût mesuré de la capture de
+    # son image (le reste compte dans p99 et pire image) ; `capture_max_ms` est la pire, coût compris.
     cap = values(rows, "capture")
     if cap and sum(cap) > 0:
         out["captures"] = {"frames": int(sum(cap)), "max_ms": max(values(rows, "capture_max_ms"), default=0.0)}
@@ -291,8 +293,8 @@ def summary_text(summary: dict[str, Any], title: str) -> str:
         lines.append(f"  {name:<28} {st['p50']:>10.1f} {st['p99']:>10.1f} {st['max']:>10.1f}")
     if summary.get("captures"):
         c = summary["captures"]
-        lines += ["", f"Images des captures d'écran mises à part : {c['frames']} (pire {c['max_ms']:.0f} ms), "
-                  "hors temps d'image p99, pire image et saccades."]
+        lines += ["", f"Images des captures d'écran : {c['frames']} (pire {c['max_ms']:.0f} ms coût compris) ; "
+                  "le coût mesuré de la capture est retiré du temps d'image, le reste est compté."]
     if summary["drift"]:
         lines += ["", "Dérive (médiane de la dernière minute − première minute) :"]
         for key, d in summary["drift"].items():
@@ -697,9 +699,15 @@ def stall_summary(stalls: dict[str, Any]) -> dict[str, Any]:
         v = [float(r["ms"]) for r in stalls["tasks"] if str(r.get("kind")) == kind and isinstance(r.get("ms"), float)]
         if v:
             tasks[kind] = {"count": len(v), "p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
+    # Pire image (17/11) : colonnes `delta_ms` (delta de Godot, borné vers 133-150 ms) et `pipelines` (compilés
+    # pendant l'image) des engines récents ; absentes d'un engine plus ancien.
+    clipped = [r for r in sac if isinstance(r.get("delta_ms"), float) and r["frame_ms"] > r["delta_ms"] + 1.0]
+    pipes = [int(r["pipelines"]) for r in sac if isinstance(r.get("pipelines"), (int, float))]
     return {"count": len(sac), "causes": dict(sorted(causes.items(), key=lambda kv: -kv[1]["count"])),
             "top": sorted(sac, key=lambda r: -r["frame_ms"])[:STALL_TOP], "tasks": tasks,
-            "startup_ms": stalls["startup_ms"]}
+            "startup_ms": stalls["startup_ms"], "clipped": len(clipped),
+            "pipelines": sum(pipes) if pipes else None,
+            "with_pipelines": sum(1 for n in pipes if n > 0)}
 
 
 def stall_text(st: dict[str, Any]) -> str:
@@ -708,12 +716,22 @@ def stall_text(st: dict[str, Any]) -> str:
              "", f"Saccades (images de plus de 33 ms) : {st['count']}"]
     for cause, c in st["causes"].items():
         lines.append(f"  {cause:<10} {c['count']:>5} image(s), pire {c['worst_ms']:.0f} ms, total {c['total_ms'] / 1000:.1f} s")
+    if st.get("pipelines") is not None:
+        lines.append(f"  pipelines compilés pendant les saccades : {st['pipelines']} "
+                     f"(dans {st['with_pipelines']} image(s))")
+    if st.get("clipped"):
+        lines.append(f"  {st['clipped']} image(s) plus longues que le delta de Godot (borné à 8 pas de physique) : "
+                     "durée réelle donnée")
     if st["top"]:
-        lines += ["", f"Les {len(st['top'])} pires saccades :", f"  {'t (s)':>8} {'ms':>7} {'distance':>9}  cause : étapes"]
+        lines += ["", f"Les {len(st['top'])} pires saccades :",
+                  f"  {'t (s)':>8} {'ms':>7} {'distance':>9} {'pipel.':>6}  cause : étapes"]
         for r in st["top"]:
             dist = r.get("distance_m")
+            pipe = r.get("pipelines")
             lines.append(f"  {r.get('t_s', 0.0):>8.1f} {r['frame_ms']:>7.1f} "
-                         f"{(f'{dist:.0f} m') if isinstance(dist, float) else '':>9}  {r.get('cause', '')} : {r.get('steps', '')}")
+                         f"{(f'{dist:.0f} m') if isinstance(dist, float) else '':>9} "
+                         f"{(str(int(pipe))) if isinstance(pipe, (int, float)) else '':>6}  "
+                         f"{r.get('cause', '')} : {r.get('steps', '')}")
     if st["tasks"]:
         lines += ["", "Tâches de fond (ms) :", f"  {'type':<10} {'nombre':>7} {'médiane':>8} {'p99':>8} {'max':>8}"]
         for kind, t in st["tasks"].items():

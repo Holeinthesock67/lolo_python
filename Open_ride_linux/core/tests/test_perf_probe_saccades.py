@@ -62,3 +62,24 @@ def test_report_command_reads_the_engine_folder(tmp_path, capsys):
     d = engine_dir(tmp_path, ["5.0;1005.0;40.0;10.0;capture;"])
     assert pp.main(["report", str(d / "moteur.csv"), "--out", str(tmp_path / "r")]) == 0
     assert "capture" in capsys.readouterr().out
+
+
+def test_real_duration_and_pipelines_reported(tmp_path):
+    """Pire image (17/11) : durée réelle au-delà du delta borné de Godot, pipelines compilés comptés."""
+    d = engine_dir(tmp_path, [])
+    (d / "saccades.csv").write_text("\n".join([
+        SAC_HEAD + ";delta_ms;pipelines",
+        "3.2;1003.2;612.0;0.0;shaders;;133.3;41",
+        "90.0;1090.0;60.0;510.0;inconnue;;60.0;0",
+    ]) + "\n", encoding="utf-8")
+    st = pp.stall_summary(pp.read_stalls(d))
+    assert st["clipped"] == 1 and st["pipelines"] == 41 and st["with_pipelines"] == 1
+    assert st["top"][0]["frame_ms"] == 612.0 and st["causes"]["shaders"]["count"] == 1
+    text = pp.stall_text(st)
+    assert "pipelines compilés pendant les saccades : 41" in text and "1 image(s) plus longues" in text
+
+
+def test_older_saccades_without_new_columns(tmp_path):
+    st = pp.stall_summary(pp.read_stalls(engine_dir(tmp_path, ["5.0;1005.0;92.0;512.0;arbres;arbres near:1:2 70.0"])))
+    assert st["pipelines"] is None and st["clipped"] == 0
+    assert "pipelines compilés" not in pp.stall_text(st)

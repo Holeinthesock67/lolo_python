@@ -37,9 +37,10 @@ TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
 # Jeu de base (lot DB1) : tour, côte et alpin sortis le 12 novembre, tour gravel le 9 novembre (recette seule) ;
-# circuit : lot O38 ; récif sous la mer : lot SM1 ; volcan en flammes : lot DB2 ; route des Érables (Japon) : lot DJ1 ; routes du Sud et du Grand Nord : lot DB3 ; Route des Trois Forêts : lot V6-r4.
+# circuit : lot O38 ; récif sous la mer : lot SM1 ; volcan en flammes : lot DB2 ; route des Érables (Japon) : lot DJ1 ; routes du Sud et du Grand Nord : lot DB3 ;
+# Boucle de la Corniche et Route des Vignes (Grand Prix) : lot GP13b ; Route des Trois Forêts : lot V6-r4.
 ROUTES = ("demo", "demo-biomes-paysages", "demo-japon", "demo-circuit", "demo-recif", "demo-volcan",
-          "demo-biomes-sud", "demo-biomes-nord", "demo-biomes-forets")
+          "demo-biomes-sud", "demo-biomes-nord", "demo-corniche", "demo-vignes", "demo-biomes-forets")
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
