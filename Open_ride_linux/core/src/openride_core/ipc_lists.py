@@ -470,16 +470,24 @@ def is_valid_collection_key(key: str, cards_by_id: dict[str, Any]) -> bool:
     return True
 
 
+def curve_cache(profile_ctx: Any, journal_dir: Path, given: Path | None = None) -> Path:
+    """Cache de la courbe de puissance (série PP) : celui donné, sinon celui du profil pour ses propres journaux,
+    sinon un cache à côté des activités lues (dossier donné : jamais le cache du profil pour d'autres séances)."""
+    if given is not None:
+        return Path(given)
+    own = getattr(profile_ctx, "journal_dir", None)
+    if own is not None and Path(journal_dir) == Path(own) and getattr(profile_ctx, "mmp_cache", None) is not None:
+        return Path(profile_ctx.mmp_cache)
+    return Path(journal_dir).parent / ".cache" / "mmp.json"
+
+
 def collection_powers(profile_ctx: Any, journal_dir: Path) -> dict[str, dict[int, float]]:
     """Meilleurs efforts par journal pour les trophées de puissance (lot PP7b), depuis le cache de la
     courbe (lot PP1) ; un cache ou une séance illisible laisse la collection sans ces cartes."""
     from .tools import power_curve
 
-    cache = getattr(profile_ctx, "mmp_cache", None)
-    if cache is None:
-        return {}
     try:
-        return power_curve.session_powers(Path(journal_dir).parent, Path(cache))
+        return power_curve.session_powers(Path(journal_dir).parent, curve_cache(profile_ctx, journal_dir))
     except Exception:
         log.exception("Collection : courbe de puissance illisible, trophées de puissance ignorés")
         return {}
