@@ -25,3 +25,9 @@ Essai du 21 novembre (élimination au vélodrome) : « très bien, mais une séa
 - Engine : `start_wait_model.gd`, `start_screen.gd`, `track/track_hud_model.gd`, `track/track_view.gd`, `track/track_names.gd` ; tests `test_start_wait_model.gd`, `test_track_hud.gd`.
 - Captures low, medium et high (trames du vrai core) : dossier du projet `velodrome/elim-ecarts/`.
 - Reste : l'échauffement n'est pas dans le FIT (la séance démarre après) ; essai vélo.
+
+## Recette PC
+Catégorie : rendu
+- Cloud : captures low, medium et high du HUD (fait, `velodrome/elim-ecarts/`), suites core et engine
+- PC : fumée + low, high, medium sur le vélodrome (élimination) ; essai vélo : échauffement passé à Z, élimination à 4 tours, victoire
+- Versions : révision IPC 1.26 ; WORLDGEN_VERSION et SCHEMA_VERSION inchangés
