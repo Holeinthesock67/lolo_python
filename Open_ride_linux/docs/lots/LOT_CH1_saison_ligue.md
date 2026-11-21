@@ -51,3 +51,9 @@ Tenir une saison de ligue en module pur, sans séance ni affichage : ce que les 
 - CH3 : lancer la manche de la semaine (plateau dans l'ordre `field_profiles`, résultat renvoyé par `record`),
   contrat IPC révision 1.30.
 - CH4 : écrans ; CH5 : classique (choix de la date, 1 h 30, séance conseillée).
+
+## Recette PC
+Catégorie : logique
+- Cloud : tests du core (`core/tests/test_league.py`), rien d'autre : le module n'est branché nulle part.
+- PC : aucun banc (rien ne change à l'écran ni dans la séance) ; la fumée du paquet suffit s'il y en a un.
+- Versions : aucune (WORLDGEN_VERSION, SCHEMA_VERSION et révision IPC inchangés)
