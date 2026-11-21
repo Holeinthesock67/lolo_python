@@ -7,13 +7,13 @@ Matériel de référence : home trainer HomeTrainer (FTMS), Zwift Cog, Zwift Cli
 
 **Pour rouler :** le [guide d'utilisation](docs/GUIDE_UTILISATION.md) explique l'installation, l'appairage, les parcours, l'ERG et le dépannage, sans terminal. Le reste de ce fichier s'adresse au développement.
 
-## État (19 novembre 2026)
+## État (21 novembre 2026)
 
 Version `2.0.0` publiée le 4 novembre (fichier `VERSION`) ; tout ce qui est entré sur `main` depuis est noté sous « Non publié » dans [CHANGELOG.md](CHANGELOG.md). OpenRide s'installe en une commande et s'utilise ensuite depuis son icône, au Click ou au clavier, sans terminal : [docs/GUIDE_UTILISATION.md](docs/GUIDE_UTILISATION.md). Le détail des lots est dans [docs/SUIVI_AVANCEMENT.md](docs/SUIVI_AVANCEMENT.md) et dans le tableau calculé par `python3 scripts/index_lots.py`.
 
-- **Sur `main` :** séance SIM et ERG sur le HomeTrainer, Zwift Click V2, menus au Click et au clavier ; modes Session libre, ERG et plans, test de FTP, Cyber-Rogue, Dernier survivant, Grand Prix des objets, Vélodrome, mode WTF, monde ouvert (arrivée en Destination et en Boucle, montées et records trouvés en roulant) ; bots à profil et peloton de 11 bots, demi-tour, biomes, saisons, jour et nuit ; contrat IPC révision 1.19.
+- **Sur `main` :** séance SIM et ERG sur le HomeTrainer, Zwift Click V2, menus au Click et au clavier ; modes Session libre, ERG et plans, test de FTP, Cyber-Rogue, Dernier survivant, Grand Prix des objets, Vélodrome, mode WTF, monde ouvert (arrivée en Destination et en Boucle, montées et records trouvés en roulant) ; bots à profil et peloton de 11 bots, demi-tour, biomes, saisons, jour et nuit ; eau du monde ouvert (lacs, grandes rivières, ponts, mer et plages) ; une seule règle de la chaussée pour tous les usagers ; contrat IPC révision 1.21.
 - **Jeu de base (lot NT1) :** Col du lacet, Tour des nouveaux paysages, Route des Érables, Récif des tortues, Volcan en flammes, Route du Sud, Route du Grand Nord et Route des Trois Forêts dans « Parcours » ; Circuit des Prés, Boucle de la Corniche et Route des Vignes au Grand Prix (lot GP13b) ; Vélodrome 250 m ; pack « Cols célèbres » livré dans le paquet (lot PK1).
-- **Reste :** lots gelés du 19 novembre (dont AS11, contrat IPC 1.20, PR #925), puis, en tout dernier, l'installeur AppImage (lot J9 : sous-lots J9a, J9b, J9c) et sa notice.
+- **Reste :** les PR ouvertes (bots et modes, retours de jeu, ménage des menus et du HUD, Cyber-Rogue, sol et relief du monde ouvert), les lots pas encore codés (retours RT2 et RT4, ménage NI3 et NI4, rivaux R4, courbe de puissance PP1 à PP8, ligue d'hiver CH1 à CH5), puis, en tout dernier, l'installeur AppImage (lot J9 : sous-lots J9a, J9b, J9c), sa notice et le bilan. Détail : [séries en cours](docs/lots/00_INDEX.md#6-séries-en-cours-21-novembre).
 
 ## Installation (PC Ubuntu)
 
