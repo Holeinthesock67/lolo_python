@@ -308,7 +308,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
     révision 1.5 : la même limite pour tout message hors messages en parties."""
     from openride_core import ipc_server
     assert ipc_server.MAX_DATAGRAM_SIZE == MAX_STATE_DATAGRAM
-    assert ipc_server.CONTRACT_REV == "1.26"   # révision 1.26 : échauffement, écarts et fin des épreuves de piste ; 1.20 : tous les usagers de la route par parties, `road_part` (AS11) ; 1.19 : parcours propres à un mode (GP13, GP14) ; 1.18 : liste `riders` de 10 (AS10) ; 1.17 : retours du Cyber-Rogue (R23, fusionnée après la 1.18) ; 1.16 : lisibilité du Cyber-Rogue (R22) ; 1.15 : import d'entraînements retiré ; 1.14 : fin du Cyber-Rogue (R21) ; 1.13 : bonus tactiques (TT1) ; 1.11 : Y maintenu (demi-tour en roulant) ; 1.10 : N20 ; 1.9 : `set_bots` (N18) et demi-tour (N17)
+    assert ipc_server.CONTRACT_REV == "1.26"   # révision 1.26 : échauffement, écarts et fin des épreuves de piste ; 1.21 : `team_car` (GP-voiture-modele) ; 1.20 : tous les usagers de la route par parties, `road_part` (AS11) ; 1.19 : parcours propres à un mode (GP13, GP14) ; 1.18 : liste `riders` de 10 (AS10) ; 1.17 : retours du Cyber-Rogue (R23, fusionnée après la 1.18) ; 1.16 : lisibilité du Cyber-Rogue (R22) ; 1.15 : import d'entraînements retiré ; 1.14 : fin du Cyber-Rogue (R21) ; 1.13 : bonus tactiques (TT1) ; 1.11 : Y maintenu (demi-tour en roulant) ; 1.10 : N20 ; 1.9 : `set_bots` (N18) et demi-tour (N17)
 
     class Sock:
         def __init__(self):
