@@ -13,8 +13,8 @@ const UiTheme := preload("res://scripts/ui_theme.gd")
 
 const CONSIGNE_W := 714.0
 const BOTTOM_OFFSET := 146.0    # au-dessus du bandeau ERG (126 px + 15) et du graphique de puissance
-const CONSIGNE_BG := Color(0.114, 0.165, 0.235, 0.92)
-const CONSIGNE_KEY := Color(0.561, 0.827, 1.0)
+const CONSIGNE_BG := UiTheme.FB_CONSIGNE_BG
+const CONSIGNE_KEY := UiTheme.FB_CONSIGNE_KEY
 const RESULT_W := 700.0
 const RESULT_TOP_FRAC := 0.35
 
@@ -62,16 +62,16 @@ func _build() -> void:
 	_c_action = _label(24, UiTheme.INK)
 	_c_action.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_c_action)
-	_c_detail = _label(15, Color(0.85, 0.89, 0.93))
+	_c_detail = _label(15, UiTheme.FB_CONSIGNE_DETAIL)
 	_c_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_c_detail)
 
-	_toast = _panel(Color.WHITE, 12)
+	_toast = _panel(UiTheme.INK, 12)
 	_bottom_center(_toast, CONSIGNE_W)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 14)
-	var tag_box := _panel(Color(0, 0, 0, 0.22), 8)
+	var tag_box := _panel(Color(UiTheme.INK_EDGE, 0.22), 8)
 	tag_box.visible = true
 	tag_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_t_tag = _label(17, UiTheme.INK)
@@ -85,7 +85,7 @@ func _build() -> void:
 	tcol.add_child(_t_sub)
 	_toast.add_child(row)
 
-	_result = _panel(Color.WHITE, 16)
+	_result = _panel(UiTheme.INK, 16)
 	_result.anchor_left = 0.5
 	_result.anchor_right = 0.5
 	_result.anchor_top = RESULT_TOP_FRAC
@@ -120,7 +120,7 @@ func update_view(view: Dictionary) -> void:
 	var t: Dictionary = view.get("toast", {})
 	_toast.visible = not t.is_empty()
 	if _toast.visible:
-		_set_fill(_toast, t.get("color", Color.DIM_GRAY))
+		_set_fill(_toast, t.get("color", UiTheme.FB_REFUS))
 		_t_tag.text = str(t.get("tag", ""))
 		_t_title.text = str(t.get("title", ""))
 		_t_sub.text = str(t.get("sub", ""))
@@ -132,7 +132,7 @@ func update_view(view: Dictionary) -> void:
 	var r: Dictionary = view.get("result", {})
 	_result.visible = not r.is_empty()
 	if _result.visible:
-		_set_fill(_result, r.get("color", Color.DIM_GRAY))
+		_set_fill(_result, r.get("color", UiTheme.FB_REFUS))
 		_r_tag.text = str(r.get("tag", ""))
 		_r_title.text = str(r.get("title", ""))
 		_r_sub.text = str(r.get("sub", ""))
@@ -157,7 +157,7 @@ func _set_chips(chips: Array) -> void:
 		_c_chips.remove_child(ch)
 		ch.queue_free()
 	for text in chips:
-		var p := _panel(Color(0, 0, 0, 0.27), 7)
+		var p := _panel(Color(UiTheme.INK_EDGE, 0.27), 7)
 		var s := p.get_theme_stylebox("panel") as StyleBoxFlat
 		s.border_color = CONSIGNE_KEY
 		s.set_border_width_all(2)

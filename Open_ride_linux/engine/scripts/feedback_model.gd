@@ -23,15 +23,15 @@ const UiTheme := preload("res://scripts/ui_theme.gd")
 
 const TOAST_S := 4.0
 const RESULT_S := 6.0
-const GOLD_BG := Color(0.69, 0.49, 0.07, 0.95)
-const PLACE_BG := Color(0.23, 0.36, 0.53, 0.95)
-const OUT_BG := Color(0.61, 0.17, 0.17, 0.95)
+const GOLD_BG := UiTheme.FB_GOLD
+const PLACE_BG := UiTheme.FB_PLACE
+const OUT_BG := UiTheme.FB_OUT
 ## Famille -> mot de tête, couleur du bandeau, son par défaut (event_sounds_model.gd JINGLES ; "" : aucun).
 const FAMILIES := {
-	"depart": {"tag": "▶ DÉPART", "color": Color(0.15, 0.39, 0.66, 0.94), "sound": ""},
-	"bien": {"tag": "+ BIEN", "color": Color(0.12, 0.54, 0.30, 0.94), "sound": "fb_bien"},
-	"attention": {"tag": "! ATTENTION", "color": Color(0.75, 0.22, 0.17, 0.94), "sound": "fb_attention"},
-	"refus": {"tag": "× REFUSÉ", "color": Color(0.36, 0.39, 0.45, 0.94), "sound": "fb_refus"},
+	"depart": {"tag": "▶ DÉPART", "color": UiTheme.FB_DEPART, "sound": ""},
+	"bien": {"tag": "+ BIEN", "color": UiTheme.FB_BIEN, "sound": "fb_bien"},
+	"attention": {"tag": "! ATTENTION", "color": UiTheme.FB_ATTENTION, "sound": "fb_attention"},
+	"refus": {"tag": "× REFUSÉ", "color": UiTheme.FB_REFUS, "sound": "fb_refus"},
 	"resultat": {"tag": "★ RÉSULTAT", "color": GOLD_BG, "sound": "jingle_winner"},
 }
 ## Ton d'un résultat -> couleur et son : victoire (or), autre place (bleu), éliminé ou abandon (rouge), fini (or).
