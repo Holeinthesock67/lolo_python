@@ -1,0 +1,32 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+12.0;23;0;0;0;0;4;0;
+27.0;23;0;0;0;0;4;0;
+42.0;23;0;0;0;0;4;0;voice_bonjour=1
+57.0;23;0;0;0;0;4;0;voice_bonjour=1
+72.0;23;0;0;0;0;5;0;airliner_rumble=1 voice_bonjour=2
+77.0;23;0;0;0;0;5;0;airliner_rumble=1 voice_bonjour=2
+80.0;23;0;0;0;0;5;0;airliner_rumble=1 voice_bonjour=2
+87.0;23;0;0;0;1;5;0;airliner_rumble=1 voice_bonjour=2
+102.0;23;0;0;0;1;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=2
+117.0;23;0;0;0;3;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=2
+132.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=2
+142.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=3
+147.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=3
+162.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+177.0;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+192.0;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+202.0;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+207.0;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+222.0;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+237.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+242.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+252.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+252.3;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+262.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+267.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+282.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+297.0;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=3
+312.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=4
+327.0;23;0;0;0;1;7;0;airliner_rumble=2 paramotor_buzz=1 voice_allez=2 voice_bonjour=4
+342.0;23;0;0;0;1;7;0;airliner_rumble=2 paramotor_buzz=1 voice_allez=2 voice_bonjour=4
+346.2;23;0;0;0;1;7;0;airliner_rumble=2 paramotor_buzz=1 voice_allez=2 voice_bonjour=4
