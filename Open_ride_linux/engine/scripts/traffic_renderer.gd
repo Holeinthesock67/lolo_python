@@ -1,7 +1,7 @@
 extends Node3D
 
 ## Affichage des véhicules de traffic_model.gd (Lot P13, refait par le Lot P25) : caisses détaillées de
-## vehicle_mesh.gd (berline, citadine, utilitaire, camion, autocar, moto, tracteur) et shaders/vehicle.gdshader,
+## vehicle_mesh.gd (berline, citadine, utilitaire, camion, autocar, moto, tracteur, voiture d'équipe) et shaders/vehicle.gdshader,
 ## un matériau par véhicule (peinture, seconde couleur, feux), roues à part qui tournent, et un lecteur 3D par
 ## véhicule (sifflement de passage, plus grave pour un camion ou un autocar, plus aigu pour une moto, ou moteur
 ## du tracteur, effet Doppler du moteur audio).
@@ -25,7 +25,7 @@ const MAX_WHEELS := 6
 const SOUND := {
 	"car_a": ["vehicle_pass", -4.0, 1.0], "car_b": ["vehicle_pass", -4.0, 1.05], "van": ["vehicle_pass", -3.0, 0.9],
 	"truck": ["vehicle_pass", -1.0, 0.7], "bus": ["vehicle_pass", -1.5, 0.75], "moto": ["vehicle_pass", -3.0, 1.35],
-	"tractor": ["tractor_engine", -2.0, 1.0],
+	"tractor": ["tractor_engine", -2.0, 1.0], "team_car": ["vehicle_pass", -4.0, 0.95],
 }
 const WHEEL_SPIN_RADIUS_M := 0.33   # rayon de traffic_model.gd `wheel` ; chaque roue tourne selon le sien
 

@@ -1011,7 +1011,28 @@ func _test_qwk_entry() -> void:
 	_check(f.state()["items"][0]["label"] == "▌", "Tout effacer")
 
 
+## « Qui roule ? » ouvert sur le seul nombre de profils de `hello_ack`, la liste `profiles` arrivant après :
+## focus sur le profil en cours, pas sur « Nouveau profil » (banc des menus, scénario `profils`, 20 novembre).
+func _test_who_rides_focus_before_list() -> void:
+	var f = MenuFlow.new()
+	f.on_hello_profile({"id": "cycliste-a", "name": "Cycliste A", "type": "joueur", "count": 2})
+	f.on_state({"session_state": "IDLE", "trainer_status": "CONNECTED", "devices": DEV_ALL}, 5.0)
+	f.on_state({"session_state": "IDLE", "trainer_status": "CONNECTED"}, 5.0 + MenuFlow.CONNECT_HOLD_S + 0.1)
+	_check(f.state()["screen"] == "profiles", "deux profils : « Qui roule ? » d'abord")
+	_check(f.menu.state()["items"][f.menu.state()["focus"]]["id"] == "new", "avant la liste : seul « Nouveau profil »")
+	var items := [{"id": "cycliste-b", "name": "Cycliste B", "type": "joueur"},
+		{"id": "cycliste-a", "name": "Cycliste A", "type": "joueur"}]
+	f.on_profiles({"items": items, "active": "cycliste-a"})
+	var st: Dictionary = f.menu.state()
+	_check(st["items"][st["focus"]]["id"] == "p:cycliste-a", "liste reçue : focus sur le profil en cours")
+	f.menu.handle("PLUS_SHORT")
+	f.on_profiles({"items": items, "active": "cycliste-a"})
+	st = f.menu.state()
+	_check(st["items"][st["focus"]]["id"] == "p:cycliste-b", "liste renvoyée ensuite : focus du joueur gardé")
+
+
 func _init() -> void:
+	_test_who_rides_focus_before_list()
 	_test_summary_replay_and_main_menu()
 	_test_qwk_entry()
 	_test_bots_menu()

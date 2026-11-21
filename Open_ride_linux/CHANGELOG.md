@@ -11,6 +11,7 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Portiques et lignes au départ et à l'arrivée de ces montées et sprints ; arches de bonus tous les 5 km pendant toute la balade, et plus seulement sur les 3 premiers kilomètres (lot W21).
 - Dès que le monde est préchargé, la balade part au pédalage, sans repasser par l'accueil ni l'écran Prêt (lot W18).
 - Plus d'à-coups des arbres à l'entrée d'une tuile proche (lot W22).
+- Banc des menus : la touche simulée ne fige plus l'engine pendant l'appui ; options `--caches-rendu` (départ à chaud, comme le jeu) et `--sonde`, scénario `liste_parcours` (lot ML2).
 - Au bout d'une impasse, la route fait une boucle de retournement d'environ 130 m au lieu de revenir sur place (lot N26).
 
 ### Demi-tour complet (lots N22 à N26)
