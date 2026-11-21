@@ -1521,9 +1521,21 @@ class CoreSession:
         ctx = profiles.current()
         activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
         cache = self.mmp_cache_path if self.mmp_cache_path is not None else ctx.mmp_cache
+        routes_root, gpx_dir = self.routes_root, self.gpx_dir or GPX_DIR
+
+        def build() -> dict:
+            from .catalog import list_routes
+
+            try:   # lot PP7 : parcours proposé pour le défi ; un catalogue illisible n'empêche pas la courbe
+                routes = list_routes(routes_root, gpx_dir)
+            except Exception:
+                log.exception("Catalogue des parcours illisible pour le défi de « Ma puissance »")
+                routes = []
+            return build_power_curve_message(cmd_id, self.cfg.rider.ftp_w, activities, cache, ctx.counted_sources,
+                                             ctx.id, routes=routes)
+
         try:
-            msg = await asyncio.to_thread(build_power_curve_message, cmd_id, self.cfg.rider.ftp_w, activities, cache,
-                                          ctx.counted_sources, ctx.id)
+            msg = await asyncio.to_thread(build)
         except Exception:
             log.exception("Erreur lors du calcul de la courbe de puissance (cmd_id=%d)", cmd_id)
             return
