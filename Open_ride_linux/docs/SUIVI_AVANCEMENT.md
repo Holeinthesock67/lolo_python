@@ -199,6 +199,10 @@ Lots entrés sur `main` sans ligne dans ce suivi, relevés d'après les PR fusio
 - [x] **Cols Khardung La et Abra Málaga** (lot HP2, fusionné le 13 novembre, #865) ; **glissières des routes japonaises** (lot JP8, #863, 13 novembre).
 - [x] **Outils de test** : banc simulé `--seasons`, `--day-night` et `--month` (#880, 14 novembre, banc rS1 ; les bancs tournent en été par défaut) ; captures de test avec le menu à jour (`garage_modif`, #910) ; e2e qui attend le départ avant le + (#914) ; gabarit `depart_monde_ouvert` du banc des menus (#920, 18 novembre) ; file des bancs du PC en étapes avec reprise (`scripts/file_bancs.py`, #924, 19 novembre ; suite #926 en revue) ; paquets, matrice rendu/logique et étapes cloud (20 novembre).
 
+### Lots du 21 novembre
+
+- [x] **Gestes de base des bots du Grand Prix et du Dernier survivant** (lot BR5, 21 novembre) : réponse aux attaques au Grand Prix, attaque avant l'arche et réponse au Dernier survivant, dans la table `bot_tactics.MODE_TACTICS` ; ce qui est propre au mode (esquive, sprint de survie, économie) garde la priorité. Recette PC : fumée + medium.
+
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
