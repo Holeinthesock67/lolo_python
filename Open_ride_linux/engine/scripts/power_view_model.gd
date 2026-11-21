@@ -202,7 +202,10 @@ func card(focused: String, names: Dictionary) -> Dictionary:
 		lines.append_array(_focused_lines(int(focused.substr(ROW_PREFIX.length())), names))
 	lines.append("● %s   ○ %s   - - FTP réglée" % [SHORT[window], SHORT["w6" if window == "m6" else "m6"]])
 	var warn = data.get("warnings", [])
-	for w in (warn if warn is Array else []):
+	var shown: Array = (warn if warn is Array else [])
+	if focused.begins_with(ROW_PREFIX) and shown.size() > 1:
+		shown = shown.slice(0, 1)   # la ligne de la durée prend la place : la carte ne déborde pas de l'écran
+	for w in shown:
 		lines.append(str(w))
 	var sheet := {"title": "MA PUISSANCE", "name": WINDOWS[window], "tiles": tiles, "lines": lines}
 	if has_data():
