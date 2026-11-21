@@ -138,3 +138,4 @@ des fichiers du projet).
 ## 6. Journal
 
 - 21/11/2026 : cahier CH0 et maquettes 01 à 05, réponses par défaut du §3 à faire valider.
+- 21/11/2026, 18 h 32 : maquettes 01 à 05 validées par le propriétaire (« Ok captures ») ; les réponses par défaut du §3 restent appliquées sauf correction.
