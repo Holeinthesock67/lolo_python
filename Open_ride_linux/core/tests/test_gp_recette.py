@@ -138,6 +138,6 @@ def test_vraie_seance_circuit_lue_par_le_bilan(env):
     assert course.format() == "circuit, 3 tour(s)"
     bil = gr.bilan([course])
     lignes = {o["item"]: o for o in bil["objets"]}
-    assert lignes["musette_x3"]["utilise"] == 3
+    assert lignes["musette_x3"]["utilise"] >= 3            # les 3 données, plus celles tirées en course
     assert bil["courses"][0]["pente_ok"]                  # aucun objet ne touche la pente envoyée (plan GP §7)
     assert bil["formats"] == {"circuit": True, "en_ligne": False} and not bil["ok"]

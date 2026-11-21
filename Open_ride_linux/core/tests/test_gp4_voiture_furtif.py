@@ -13,7 +13,7 @@ import pytest
 
 from openride_core import bot_tactics, draft, traffic
 from openride_core.grandprix import ME
-from openride_core.grandprix.items import DEFAULT_ITEMS
+from openride_core.grandprix.items import DEFAULT_ITEMS, LONG_S
 from openride_core.session import ESCORT_GAP_M
 
 from test_grandprix import V_EQ, Sim
@@ -22,7 +22,7 @@ from test_grandprix_session import DT, STATE_LIMIT_BYTES, T0_WALL, env, validato
 
 # --- règles du mode (module pur) -----------------------------------------------------------------
 
-def test_team_car_escort_lasts_its_six_seconds():
+def test_team_car_escort_lasts_its_effect():
     assert DEFAULT_ITEMS["team_car"].escort == "team_car" and "team_car" in traffic.KINDS
     assert all(not s.escort for k, s in DEFAULT_ITEMS.items() if k != "team_car")   # donnée, pas de branche
     sim = Sim({ME: 250.0, "b": 250.0})
@@ -32,11 +32,11 @@ def test_team_car_escort_lasts_its_six_seconds():
     sim.run(1.0)
     assert sim.mode.escorts() == [("b", "team_car")]
     assert sim.phys["b"].v == pytest.approx(1.5 * V_EQ, rel=1e-6)
-    sim.run(5.1)
+    sim.run(LONG_S - 0.9)                                    # effet de LONG_S (12 s, lot GPO1)
     assert sim.mode.escorts() == []
 
 
-def test_stealth_unseen_ten_seconds_and_steal_within_50_m():
+def test_stealth_unseen_for_its_effect_and_steal_within_reach():
     sim = Sim({"a": 250.0, ME: 250.0}, gap_m=40.0)          # « a » 40 m devant
     sim.give(ME, "stealth")
     sim.give("a", "homing")
@@ -45,12 +45,12 @@ def test_stealth_unseen_ten_seconds_and_steal_within_50_m():
     assert sim.mode.racers[ME].held == "homing" and sim.mode.racers["a"].held is None
     sim.run(1.0)
     assert sim.mode.unseen(ME) and not sim.mode.unseen("a")
-    sim.run(9.1)
+    sim.run(LONG_S - 0.9)
     assert not sim.mode.unseen(ME)
 
 
-def test_steal_refused_without_rider_within_50_m():
-    sim = Sim({"a": 250.0, ME: 250.0}, gap_m=60.0)          # « a » 60 m devant : trop loin
+def test_steal_refused_without_rider_within_reach():
+    sim = Sim({"a": 250.0, ME: 250.0}, gap_m=110.0)         # « a » 110 m devant : trop loin (vol à 100 m, lot GPO1)
     sim.give(ME, "stealth")
     sim.give("a", "star")
     assert sim.mode.use(ME)                                  # le Furtif part quand même
@@ -106,11 +106,11 @@ def test_team_car_drawn_and_felt_as_shelter_only(env, monkeypatch):
     me = gp.racers[ME]
     me.held, me.charges = "team_car", 1
     assert s._grandprix_press("Z_SHORT")
-    run(s, 12.0)
-    # 6 s de voiture au plus : elle attend que la place devant soit libre pendant BLOCK_LOOK_S (ici, un bot à
+    run(s, LONG_S + 6.0)
+    # LONG_S de voiture au plus (12 s, lot GPO1) : elle attend que la place devant soit libre pendant BLOCK_LOOK_S (ici, un bot à
     # rattraper la retient moins d'une seconde : 0,66 s avec l'échelle des bots de #900), puis reste jusqu'à la fin
     # de l'effet
-    assert vehicles and 6.0 / DT - 50 <= len(vehicles) <= 6.0 / DT + 3
+    assert vehicles and LONG_S / DT - 50 <= len(vehicles) <= LONG_S / DT + 3
     car = vehicles[0][0]
     assert (car["id"], car["kind"], car["dir"]) == ("tc0", "team_car", 1)
     state_v = validator("state")
@@ -174,7 +174,7 @@ def test_stealth_in_session_unseen_and_no_shelter(env):
     run(s, 1.0)
     assert s._unseen_ids() == {bot_tactics.RIDER_ID, bot.id}
     assert bot.shelters is False and all(b.shelters for b in s.bots[1:])
-    run(s, 10.0)
+    run(s, LONG_S)
     assert s._unseen_ids() == frozenset() and bot.shelters is True
 
 
