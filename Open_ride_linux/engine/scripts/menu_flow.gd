@@ -1645,17 +1645,14 @@ func on_bots_preview(msg: Dictionary) -> void:
 	menu.refresh()
 
 
-## Watts de la ligne « Intensité du jour » : {watts « ≈ 225 W », detail « ≈ 9 min, cote 1540 »} (règle du 14/11 :
-## des watts, pas des % ; durée et cote sans cote coupée) ; {} sans watts.
+## Watts de la ligne « Intensité du jour » : {watts « ≈ 225 W », cote « 1540 » ("" sans cote), duration « ≈ 9 min »
+## ("" sans durée)} (règle du 14/11 : des watts, pas des %) ; cote et durée vont dans la ligne d'état ; {} sans watts.
 static func bots_info_row(msg: Dictionary) -> Dictionary:
 	if msg.get("power_w") == null:
 		return {}
-	var parts: Array = []
-	if msg.get("duration_s") != null:
-		parts.append("≈ " + duration_text(float(msg["duration_s"])))
-	if msg.get("elo") is Dictionary:
-		parts.append("cote %d" % int(msg["elo"].get("rating", 1500)))
-	return {"watts": "≈ %d W" % int(msg["power_w"]), "detail": ", ".join(parts)}
+	return {"watts": "≈ %d W" % int(msg["power_w"]),
+		"cote": ("%d" % int(msg["elo"].get("rating", 1500))) if msg.get("elo") is Dictionary else "",
+		"duration": ("≈ " + duration_text(float(msg["duration_s"]))) if msg.get("duration_s") != null else ""}
 
 
 # --- intensité du jour (lot R1) : la dose en mots, réglage commun `bots.objective` ---------------------------
@@ -1667,6 +1664,19 @@ const INTENSITY_WORDS := {"recovery": "récupération", "endurance": "facile", "
 const INTENSITY_ORDER := ["recovery", "endurance", "tempo", "threshold", "max"]
 const INTENSITY_CYCLE := ["endurance", "tempo", "max"]
 const INTENSITY_HELP := "Intensité du jour : A pour facile, moyen ou dur. Les bots roulent à ces watts ; la course reste serrée."
+
+
+## Ligne d'état sur « Intensité du jour » : l'aide, puis la durée estimée de la course et ta cote quand le core
+## les a données (« Course estimée à ≈ 9 min. Ta cote : 1540. »).
+func intensity_help() -> String:
+	var parts: Array = []
+	var d := str(menu.bots_info.get("duration", ""))
+	var c := str(menu.bots_info.get("cote", ""))
+	if d != "":
+		parts.append("Course estimée à " + d + ".")
+	if c != "":
+		parts.append("Ta cote : " + c + ".")
+	return INTENSITY_HELP + ("" if parts.is_empty() else "\n" + " ".join(parts))
 
 
 ## Objectif suivant au cycle facile → moyen → dur → facile ; depuis récupération ou seuil, le mot suivant au-dessus.
@@ -2428,7 +2438,7 @@ func state() -> Dictionary:
 		var ready_focus := int(st.get("focus", -1))
 		if ready_message == "" and not bool(st.get("status_error", false)) and ready_focus >= 0 \
 				and ready_focus < ready_items.size() and str(ready_items[ready_focus].get("id", "")) == MenuModel.INTENSITY_ID:
-			st["status"] = INTENSITY_HELP   # lot R1 : quoi faire sur la ligne, en mots
+			st["status"] = intensity_help()   # lot R1 : quoi faire sur la ligne, en mots
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
 	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:

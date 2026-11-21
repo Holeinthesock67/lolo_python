@@ -170,7 +170,7 @@ var mode_rows: Array = []
 var mode_launch := {"enabled": true, "detail": ""}
 var gp_items_label := "Objets"
 ## Lot GP-niv (contrat 1.22) : effort des bots de la course en watts, réponse `bots_preview` mise en texte par
-## menu_flow.gd en {watts, detail} (« ≈ 225 W » — « ≈ 9 min, cote 1540 ») ; {} : pas encore de watts.
+## menu_flow.gd en {watts, cote, duration} (« ≈ 225 W », « 1540 », « ≈ 9 min ») ; {} : pas encore de watts.
 var bots_info := {}
 ## Lot R1 : dose du jour en mots (« facile », « moyen », « dur », ou « récupération » / « seuil » choisis dans les
 ## Réglages), posée par menu_flow.gd ; "" : pas de ligne « Intensité du jour ». `intensity_fixed` : l'épreuve du
@@ -514,17 +514,14 @@ func refresh() -> void:
 	_refresh_home()
 
 
-## Ligne « Intensité du jour » (lot R1) sous « Lancer », première ligne de réglage : « Intensité du jour : moyen,
-## bots ≈ 225 W » et, à droite, « ≈ 9 min, cote 1540 » ; au vélodrome, grisée, « fixée par l'épreuve ».
+## Ligne « Intensité du jour » (lot R1) sous « Lancer », première ligne de réglage : « Intensité : moyen » et, à
+## droite, « bots ≈ 225 W » (textes courts : rien de coupé dans les deux colonnes de la rangée ; cote et durée dans
+## la ligne d'état) ; au vélodrome, grisée, « Intensité fixée : dur » (l'épreuve fixe la dose).
 func _intensity_items() -> Array:
 	if intensity_word == "":
 		return []
-	var label := "Intensité du jour : " + intensity_word
-	if not bots_info.is_empty():
-		label += ", bots " + str(bots_info["watts"])
-	var detail := str(bots_info.get("detail", ""))
-	if intensity_fixed:
-		detail = "fixée par l'épreuve" + ("" if detail == "" else ", " + detail)
+	var label := ("Intensité fixée : " if intensity_fixed else "Intensité : ") + intensity_word
+	var detail := ("bots " + str(bots_info["watts"])) if not bots_info.is_empty() else ""
 	return [_item(INTENSITY_ID, label, not intensity_fixed, detail)]
 
 

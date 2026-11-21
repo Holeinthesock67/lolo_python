@@ -89,25 +89,26 @@ func _run() -> void:
 	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 9, "mode": "grandprix", "objective": "tempo",
 		"ftp_pct": 92.4, "power_w": 231, "duration_s": 540, "elo": {"rating": 1540, "races": 3}})
 	_check(_ids(f)[1] == "intensity" and _item(f, "intensity")["enabled"]
-		and _item(f, "intensity")["label"] == "Intensité du jour : moyen, bots ≈ 231 W"
-		and _item(f, "intensity")["detail"] == "≈ 9 min, cote 1540",
+		and _item(f, "intensity")["label"] == "Intensité : moyen"
+		and _item(f, "intensity")["detail"] == "bots ≈ 231 W",
 		"lot R1 : « Intensité du jour » sous Lancer, mot, watts, durée et cote (%s)" % str(_item(f, "intensity")))
 	_check(MenuFlow.bots_info_row({"power_w": null}).is_empty(), "sans watts (parcours pas chargé) : pas de watts")
 	_check(MenuFlow.duration_text(3900.0) == "1 h 05", "durée de plus d'une heure : 1 h 05")
 	_check(MenuFlow.bots_info_row({"power_w": 180, "duration_s": 600, "objective": "endurance", "elo": null})
-		== {"watts": "≈ 180 W", "detail": "≈ 10 min"}, "cote coupée : pas de cote")
+		== {"watts": "≈ 180 W", "cote": "", "duration": "≈ 10 min"}, "cote coupée : pas de cote")
 	# Lot R1 : A sur la ligne change la dose (moyen → dur → facile → moyen), gardée dans `bots.objective`
 	f.menu.focus_item("intensity")
-	_check(str(f.state()["status"]).begins_with("Intensité du jour : A pour facile, moyen ou dur."),
-		"focus sur la ligne : aide en mots (%s)" % f.state()["status"])
+	_check(str(f.state()["status"]).begins_with("Intensité du jour : A pour facile, moyen ou dur.")
+		and str(f.state()["status"]).ends_with("Course estimée à ≈ 9 min. Ta cote : 1540."),
+		"focus sur la ligne : aide en mots, durée de la course et cote (%s)" % f.state()["status"])
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_setting", "key": "bots.objective", "value": "max"}, "moyen → dur (%s)" % str(act))
-	_check(_item(f, "intensity")["label"] == "Intensité du jour : dur", "dur : anciens watts effacés jusqu'à la réponse")
+	_check(_item(f, "intensity")["detail"] == "" and _item(f, "intensity")["label"] == "Intensité : dur", "dur : anciens watts effacés jusqu'à la réponse")
 	_check(f.wanted_bots_preview() == {"mode": "grandprix"}, "dose changée : nouvelle demande bots_preview")
 	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 10, "mode": "grandprix", "objective": "max",
 		"ftp_pct": 115.5, "power_w": 289, "duration_s": 480, "elo": {"rating": 1540, "races": 3}})
-	_check(_item(f, "intensity")["label"] == "Intensité du jour : dur, bots ≈ 289 W", "dur : nouveaux watts")
-	_check(f.handle("A_LONG").get("value", "") == "endurance" and _item(f, "intensity")["label"].begins_with("Intensité du jour : facile"),
+	_check(_item(f, "intensity")["detail"] == "bots ≈ 289 W", "dur : nouveaux watts")
+	_check(f.handle("A_LONG").get("value", "") == "endurance" and _item(f, "intensity")["label"].begins_with("Intensité : facile"),
 		"dur → facile")
 	_check(f.handle("A_LONG").get("value", "") == "tempo", "facile → moyen")
 	_check(MenuFlow.next_intensity("recovery") == "endurance" and MenuFlow.next_intensity("threshold") == "max",

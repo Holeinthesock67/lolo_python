@@ -13,8 +13,9 @@ watts que viseront les bots. Critères : ludique, un défi quand il le veut, pas
 
 ## 2. La règle
 
-- **Ligne** : « Intensité du jour : moyen, bots ≈ 225 W », à droite « ≈ 9 min, cote 1540 » (durée estimée et cote
-  Elo de `bots_preview`, révision 1.22, sans nouvelle commande). Elle reprend la ligne grisée « Bots » de #941 et
+- **Ligne** : « Intensité : moyen », à droite « bots ≈ 225 W » (`bots_preview`, révision 1.22, sans nouvelle
+  commande) ; la durée estimée de la course et la cote Elo passent dans la ligne d'état quand le focus est sur la
+  ligne (premier banc du 21/11 : « Intensité du jour : … », durée et cote étaient coupés dans la rangée). Elle reprend la ligne grisée « Bots » de #941 et
   devient la première ligne de réglage, juste sous « Lancer » (« Démarrer » en session libre).
 - **Trois mots** sur le réglage commun `bots.objective` (`bot_effort.OBJECTIVES`) : **facile** = endurance (65 %),
   **moyen** = tempo (80 %, défaut), **dur** = à fond (100 %). **A** passe au mot suivant (facile → moyen → dur →
@@ -25,11 +26,11 @@ watts que viseront les bots. Critères : ludique, un défi quand il le veut, pas
   (bots à profil calibrés sur l'effort) ; pas de ligne sans bots calibrés. La ligne « Objectif des bots » quitte
   les écrans Prêt du Dernier survivant et du Grand Prix (même réglage, en double).
 - **Vélodrome** : l'épreuve fixe la dose (décision du 15 novembre, `bot_effort.TRACK_EFFORT`) : ligne grisée,
-  « fixée par l'épreuve », mot tiré de l'objectif renvoyé par `bots_preview`.
+  « Intensité fixée : dur », mot tiré de l'objectif renvoyé par `bots_preview`.
 - **Course conseillée** (Dernier survivant) : l'objectif du besoin du jour (`start.objective`) s'affiche ; A le
   change pour cette course seulement, le réglage commun ne bouge pas.
 - **Mots écrits** : focus sur la ligne, la ligne d'état dit « Intensité du jour : A pour facile, moyen ou dur. Les
-  bots roulent à ces watts ; la course reste serrée. »
+  bots roulent à ces watts ; la course reste serrée. », puis « Course estimée à ≈ 9 min. Ta cote : 1540. »
 - **Mode Course** (#939, demande du propriétaire du 21 novembre) : la même ligne ira sur son écran Prêt, branchée
   quand #939 sera fusionnée (`bots_preview_args`).
 

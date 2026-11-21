@@ -57,13 +57,13 @@ func _run() -> void:
 	f.menu.focus_item("peloton")
 	f.handle("A_LONG")
 	_check(f.wanted_bots_preview() == {"mode": "ride"}, "peloton de 4 : bots_preview de la session libre")
-	_check(_ids(f).slice(0, 2) == ["start", "intensity"] and _item(f, "intensity")["label"] == "Intensité du jour : facile",
+	_check(_ids(f).slice(0, 2) == ["start", "intensity"] and _item(f, "intensity")["label"] == "Intensité : facile",
 		"ligne sous Démarrer, mot du réglage commun (%s)" % str(_ids(f)))
 	_check(str(_ids(f)[f.state()["focus"]]) == "peloton", "focus gardé sur le peloton quand la ligne arrive")
 	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 3, "mode": "ride", "objective": "endurance",
 		"ftp_pct": 60.0, "power_w": 150, "duration_s": 1500, "elo": null})
-	_check(_item(f, "intensity")["label"] == "Intensité du jour : facile, bots ≈ 150 W" and _item(f, "intensity")["detail"] == "≈ 25 min",
-		"watts et durée, sans cote hors des courses à classement (%s)" % str(_item(f, "intensity")))
+	_check(_item(f, "intensity")["label"] == "Intensité : facile" and _item(f, "intensity")["detail"] == "bots ≈ 150 W",
+		"watts, sans cote hors des courses à classement (%s)" % str(_item(f, "intensity")))
 	f.menu.focus_item("intensity")
 	_check(f.handle("A_LONG") == {"action": "set_setting", "key": "bots.objective", "value": "tempo"}, "facile → moyen")
 
@@ -81,8 +81,8 @@ func _run() -> void:
 	t.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 4, "mode": "track", "objective": "max",
 		"ftp_pct": 120.0, "power_w": 300, "duration_s": 280, "elo": {"rating": 1500, "races": 0}})
 	var row := _item(t, "intensity")
-	_check(row.get("label", "") == "Intensité du jour : dur, bots ≈ 300 W" and not row["enabled"]
-		and row["detail"] == "fixée par l'épreuve, ≈ 5 min, cote 1500", "épreuve à fond : « dur », grisée (%s)" % str(row))
+	_check(row.get("label", "") == "Intensité fixée : dur" and not row["enabled"]
+		and row["detail"] == "bots ≈ 300 W", "épreuve à fond : « dur », grisée (%s)" % str(row))
 
 	# Course conseillée au Dernier survivant : la dose ne vaut que pour cette course
 	var c = MenuFlow.new()
@@ -93,7 +93,7 @@ func _run() -> void:
 	c.menu.prepare_settings_mode("survivor")
 	c.menu.coach_objective = "threshold"
 	_check(c.wanted_bots_preview() == {"mode": "survivor", "objective": "threshold"}, "objectif du besoin du jour envoyé")
-	_check(_item(c, "intensity")["label"] == "Intensité du jour : seuil", "seuil affiché tel quel")
+	_check(_item(c, "intensity")["label"] == "Intensité : seuil", "seuil affiché tel quel")
 	c.menu.focus_item("intensity")
 	_check(c.handle("A_LONG").is_empty() and c.menu.coach_objective == "max"
 		and c.settings.item("bots.objective")["value"] == "endurance", "seuil → dur pour cette course, réglage commun intact")
