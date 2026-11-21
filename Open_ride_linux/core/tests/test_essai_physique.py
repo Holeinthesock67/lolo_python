@@ -316,8 +316,56 @@ def test_open_world_trial_checks_it_rides_the_open_world():
 
 def test_race_trials_have_no_race_warmup():
     for fid in ("gp-voies", "velodrome-elimination"):
-        assert ("depart", "echauffement_min", 0) in EP.fiches()[fid].config
+        v = [x for sec, k, x in EP.fiches()[fid].config if (sec, k) == ("depart", "echauffement_min")]
+        assert v and 0 <= v[0] <= EP.ECHAUFFEMENT_ESSAI_MAX_MIN
     data = _fiche_gp(bots_cible_pct=100)
     del data["config"]["depart"]
     with pytest.raises(EP.FicheError, match="echauffement_min"):
         EP.lire_fiche(data)
+
+
+def test_bot_power_and_overrides_of_the_shelter_trial(tmp_path):
+    f = EP.fiches()["abri-bonus"]
+    start = dict(f.commandes)["start"]
+    assert EP.en_watts(start, 123.0) == {"bots": [{"kind": "constant", "power_w": 125}]}
+    assert f.surcharges == {"powerups.toml": {"obtain": {"arch_every_m": 500}}}
+    from openride_core.powerups import load_table
+    p = tmp_path / "powerups.toml"
+    p.write_text(EP._toml({"feather": {"factor": 0.9}, **f.surcharges["powerups.toml"]}) + "\n", encoding="utf-8")
+    assert load_table(p).arch_every_m == 500
+
+
+def test_only_known_files_can_be_overridden():
+    data = _fiche_gp(bots_cible_pct=100, surcharges={"config.toml": {"x": {"y": 1}}})
+    with pytest.raises(EP.FicheError, match="surcharge"):
+        EP.lire_fiche(data)
+
+
+def test_launch_writes_the_overrides_then_puts_everything_back(tmp_path, monkeypatch):
+    import subprocess
+    from openride_core import config as config_mod
+    monkeypatch.setattr(config_mod, "OPENRIDE_HOME", tmp_path)
+    monkeypatch.setattr(config_mod, "DEFAULT_CONFIG_PATH", tmp_path / "config.toml")
+    (tmp_path / "powerups.toml").write_text("[feather]\nfactor = 0.9\n", encoding="utf-8")
+    seen = {}
+
+    class Fin:
+        pid = 0
+
+        def __init__(self, cmd, **kw):
+            seen["powerups"] = (tmp_path / "powerups.toml").read_text(encoding="utf-8")
+            seen["config"] = "".join(q.read_text(encoding="utf-8") for q in tmp_path.rglob("*.toml")
+                                     if q.name in ("config.toml", "profil.toml"))
+            seen["seance"] = json.loads(Path(cmd[cmd.index("--seance") + 1]).read_text(encoding="utf-8"))
+
+        def poll(self):
+            return 0
+
+    from pathlib import Path
+    monkeypatch.setattr(subprocess, "Popen", Fin)
+    assert EP.lancer(EP.fiches()["abri-bonus"], "principal", True, 120.0, muet=True) == 1
+    assert "arch_every_m = 500" in seen["powerups"] and "factor = 0.9" in seen["powerups"]
+    assert 'mode = "tactiques"' in seen["config"]
+    assert seen["seance"]["commandes"][1]["args"]["bots"][0]["power_w"] == 120
+    assert (tmp_path / "powerups.toml").read_text(encoding="utf-8") == "[feather]\nfactor = 0.9\n"
+    assert not [q for q in tmp_path.rglob("*.toml") if q.name in ("config.toml", "profil.toml")]

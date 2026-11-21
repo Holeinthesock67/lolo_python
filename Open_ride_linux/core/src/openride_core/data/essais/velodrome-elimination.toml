@@ -1,6 +1,6 @@
 # Vélodrome 250 m, élimination contre 5 bots (VD6, VD7, VD9, VD10).
 id = "velodrome-elimination"
-but = "Vélodrome, élimination à 5 : bots qui courent l'épreuve, tableau, cloche, éliminations lisibles"
+but = "Vélodrome : échauffement de 3 min en ERG (Z le passe, plus et moins règlent), puis élimination à 5 : bots qui courent l'épreuve, tableau, éliminations, fin de course"
 duree_max_s = 600
 bots_cible_pct = 100   # bots réglés sur la consigne du départ
 bots_duree_s = 600     # 5 éliminations : environ 8 min (2 ou 4 tours chacune selon la version)
@@ -13,9 +13,10 @@ questions = [
   "Tableau, éliminations et fin de course lisibles ? (oui/non + remarque)",
 ]
 
-# 21/11 (#958) : pas d'échauffement de course dans un essai de 10 min (la 1re séance reste calme au départ)
+# 21/11 (#958) : échauffement de course de 3 min en ERG à juger (Z le passe, + et − règlent la cible) ;
+# la séance (10 min) part après lui. Clé ignorée tant que #958 n'est pas dans main.
 [config.depart]
-echauffement_min = 0
+echauffement_min = 3
 
 [[etapes]]
 quand = { kind = "event", event = "start" }

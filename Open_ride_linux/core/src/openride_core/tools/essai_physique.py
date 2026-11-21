@@ -84,6 +84,7 @@ class Fiche:
     bots_cible_pct: float | None = None   # bots réglés sur la consigne : effort visé = ce % de {cible}
     bots_duree_s: float | None = None     # durée de course estimée pour la courbe des bots (défaut : duree_max_s)
     rogue_balance: dict = field(default_factory=dict)   # surcharge de la table d'une run d'essai (échauffement)
+    surcharges: dict = field(default_factory=dict)      # fichier de ~/OpenRide → table posée le temps de l'essai
 
     @property
     def monde_ouvert(self) -> bool:
@@ -177,10 +178,26 @@ def lire_fiche(data: dict, source: str = "fiche") -> Fiche:
             apply_overrides(RogueBalance(), rb)
         except BalanceError as exc:
             raise FicheError(f"{source} : rogue_balance : {exc}") from None
+    surcharges = data.get("surcharges") or {}
+    for nom, table in surcharges.items():
+        if nom not in SURCHARGES_PERMISES or not isinstance(table, dict):
+            raise FicheError(f"{source} : surcharge « {nom} » refusée ({', '.join(SURCHARGES_PERMISES)})")
+    if "powerups.toml" in surcharges:
+        import tempfile
+
+        from ..powerups import PowerUpError, load_table
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                essai = Path(d) / "powerups.toml"
+                essai.write_text(_toml(surcharges["powerups.toml"]) + "\n", encoding="utf-8")
+                load_table(essai)
+        except PowerUpError as exc:
+            raise FicheError(f"{source} : surcharge powerups.toml : {exc}") from None
     bc = data.get("bots_cible_pct")
     bd = data.get("bots_duree_s")
     fiche = Fiche(fid, but, commandes, etapes, questions, config, duree,
-                  float(bc) if bc is not None else None, float(bd) if bd is not None else None, dict(rb))
+                  float(bc) if bc is not None else None, float(bd) if bd is not None else None, dict(rb),
+                  {k: dict(v) for k, v in surcharges.items()})
     ecarts = incoherences(fiche)
     if ecarts:
         raise FicheError(f"{source} : incohérent : " + " ; ".join(ecarts))
@@ -230,6 +247,9 @@ def evenements_piste(epreuve: str) -> set[str]:
     return out
 
 
+SURCHARGES_PERMISES = ("powerups.toml",)   # fichiers de ~/OpenRide qu'un essai peut surcharger (remis après)
+ECHAUFFEMENT_ESSAI_MAX_MIN = 3             # échauffement de course (#958) permis dans un essai
+
 ECART_CONSIGNE_PCT = 10.0   # consigne du départ et effort des bots : 10 points d'écart au plus
 
 
@@ -257,8 +277,17 @@ def incoherences(f: Fiche) -> list[str]:
         out.append("réglage des bots dans une séance sans bots")
     course = f.mode in ("grandprix", "survivor") or (f.mode == "track" and any(
         (a.get("track") or {}).get("event") != "free" for n, a in f.commandes if n == "start"))
-    if course and ("depart", "echauffement_min", 0) not in f.config:
-        out.append("course sans [config.depart] echauffement_min = 0 : l'échauffement de 10 min (#958) mangerait l'essai")
+    echauf = [v for sec, k, v in f.config if (sec, k) == ("depart", "echauffement_min")]
+    if course and not (echauf and isinstance(echauf[0], int) and 0 <= echauf[0] <= ECHAUFFEMENT_ESSAI_MAX_MIN):
+        out.append(f"course sans [config.depart] echauffement_min de 0 à {ECHAUFFEMENT_ESSAI_MAX_MIN} : "
+                   "l'échauffement de 10 min (#958) mangerait l'essai")
+    for n, a in f.commandes:   # bots à puissance fixe écrite en consigne : même puissance que le départ
+        for b in (a.get("bots") or []) if n == "start" else []:
+            pw = b.get("power_w") if isinstance(b, dict) else None
+            if isinstance(pw, str) and f.bots_cible_pct is not None:
+                for pct in _pcts(pw):
+                    if abs(pct - f.bots_cible_pct) > ECART_CONSIGNE_PCT:
+                        out.append(f"bot à {pct:.0f} % de la cible, bots_cible_pct {f.bots_cible_pct:.0f}")
     if any(n == "start_run" for n, _ in f.commandes):
         for e in f.etapes:
             if _pcts(e.dire):
@@ -349,6 +378,17 @@ def correspond(pred: dict, ligne: dict) -> bool:
         if not ok:
             return False
     return True
+
+
+def en_watts(v: Any, cible_w: float) -> Any:
+    """Arguments d'une commande avec `"{cible}"` / `"{cible:P}"` remplacés par des watts (nombre entier)."""
+    if isinstance(v, dict):
+        return {k: en_watts(x, cible_w) for k, x in v.items()}
+    if isinstance(v, list):
+        return [en_watts(x, cible_w) for x in v]
+    if isinstance(v, str) and v.startswith("{cible") and v.endswith("}"):
+        return int(watts(v, cible_w))
+    return v
 
 
 def watts(texte: str, cible_w: float) -> str:
@@ -567,9 +607,11 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
     seance = essais / f"seance_{fiche.id}.json"
     seance.parent.mkdir(parents=True, exist_ok=True)
     seance.write_text(json.dumps({"id": fiche.id, "but": fiche.but, "commandes": [
-        {"cmd": n, "args": a} for n, a in fiche.commandes]}, ensure_ascii=False), encoding="utf-8")
+        {"cmd": n, "args": en_watts(a, cible_w)} for n, a in fiche.commandes]}, ensure_ascii=False),
+        encoding="utf-8")
     config_path, profil_path = config_mod.DEFAULT_CONFIG_PATH, ctx.root / "profil.toml"
-    sauvegardes = {p: (p.read_bytes() if p.exists() else None) for p in (config_path, profil_path)}
+    fichiers = [config_mod.OPENRIDE_HOME / nom for nom in fiche.surcharges]
+    sauvegardes = {p: (p.read_bytes() if p.exists() else None) for p in (config_path, profil_path, *fichiers)}
     deroule = Deroule(fiche, cible_w)
     reglages = list(fiche.config)
     if fiche.a_des_bots and fiche.bots_cible_pct is not None:
@@ -583,6 +625,12 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
     try:
         if reglages:
             config_edit.update_layers(reglages, config_path, profil_path)
+        for nom, table in fiche.surcharges.items():   # posée par-dessus le fichier du joueur, remis après
+            p = config_mod.OPENRIDE_HOME / nom
+            base = tomllib.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+            for sec, val in table.items():
+                base[sec] = {**base.get(sec, {}), **val} if isinstance(val, dict) else val
+            p.write_text(_toml(base) + "\n", encoding="utf-8")
         materiel = ["--trainer", "sim", "--input", "sim", "--hr", "sim"] if sim else ["--trainer", "ftms",
                                                                                      "--input", "click"]
         depart = time.time() - 1
