@@ -226,6 +226,43 @@ def test_cache_separe_amorce_et_variable(tmp_path, depot, monkeypatch):
     assert str(racine) in (tmp_path / "sortie" / "mer" / "low" / "journal.txt").read_text(encoding="utf-8")
 
 
+def test_cache_separe_sans_les_balades_ni_les_carres_du_user(tmp_path, depot, monkeypatch):
+    """Signalement du 21 novembre : le cache « séparé » contenait 107 balades du user et d'autres zones UTM."""
+    _, clone = depot
+    reel = tmp_path / "home" / "OpenRide" / "Cache" / "monde"
+    for rel in ("brut/osm/fr.sqlite", "seances/ow-1/route.json", "genere/32T/1_2/meta.json", "mesures/m/x.json"):
+        (reel / rel).parent.mkdir(parents=True, exist_ok=True)
+        (reel / rel).write_text("x", encoding="utf-8")
+    con = sqlite3.connect(reel / "index.sqlite")
+    con.executescript("CREATE TABLE entries (key TEXT PRIMARY KEY, kind TEXT, path TEXT, bytes INTEGER, "
+                      "last_used REAL, pinned INTEGER, prefetch INTEGER, region TEXT, versions TEXT);"
+                      "CREATE TABLE regions (region TEXT PRIMARY KEY, pinned INTEGER, name TEXT, bbox TEXT);"
+                      "INSERT INTO entries VALUES ('osm:fr','osm','brut/osm/fr.sqlite',1,0,1,0,'fr','{}');"
+                      "INSERT INTO entries VALUES ('square:32T/1_2','square','genere/32T/1_2',1,0,0,0,NULL,'{}');"
+                      "INSERT INTO regions VALUES ('fr',1,'France','[]');")
+    con.commit()
+    con.close()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    f = fb.lire_file(_file(tmp_path, clone, f'[[pr]]\nid = "ow"\nbranche = "br"\ncache = "separe"\n'
+                                           f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n'))
+    # Ancien amorçage (copie complète, 19 novembre) : refait.
+    ancien = tmp_path / "sortie" / "caches" / "ow" / "monde" / "seances" / "ow-1"
+    ancien.mkdir(parents=True)
+    journal = []
+    monde = fb.cache_separe(f, f.prs[0], journal.append) / "monde"
+    assert "refait" in journal[0]
+    assert (monde / "brut" / "osm" / "fr.sqlite").is_file()
+    for absent in ("seances", "genere", "mesures"):
+        assert not (monde / absent).exists()
+    con = sqlite3.connect(monde / "index.sqlite")
+    assert con.execute("SELECT key FROM entries").fetchall() == [("osm:fr",)]
+    assert con.execute("SELECT name FROM regions").fetchall() == [("France",)]
+    con.close()
+    journal.clear()
+    assert fb.cache_separe(f, f.prs[0], journal.append) / "monde" == monde and journal == []   # amorcé une fois
+    assert (reel / "seances" / "ow-1" / "route.json").is_file()                              # cache réel intact
+
+
 def _base(path: Path, schema: str):
     path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(path)

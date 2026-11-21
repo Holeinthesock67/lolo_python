@@ -26,7 +26,7 @@ Format de la file :
     branche = "claude/project-thread-xxxxxx"
     tete = "602eaf1b"            # facultatif : la tête attendue ; la file refuse une autre tête
     risque = 1                   # 1 jamais tourné / cache / départ / format, 2 déjà échoué, 3 confirmation
-    cache = "separe"             # "reel" (défaut) ou "separe" : copie du cache du monde ouvert, propre à la PR
+    cache = "separe"             # "reel" (défaut) ou "separe" : cache du monde ouvert propre à la PR (brut/ seul)
     assemblage = []              # facultatif : branches fusionnées par-dessus, en local (essai assemblé, ex. essai-ow)
     assemblage_strategie = "ours"   # facultatif : option -X de ces fusions (« ours » ou « theirs »)
     fumee = "python3 engine/tests/menu_bench.py --native --scenario w23_mer --qualite low --voies clavier --out {sortie}"
@@ -100,7 +100,9 @@ import json
 import os
 import re
 import shlex
+import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import time
@@ -532,18 +534,51 @@ def toutes(f: File, etat: Etat) -> list[PR]:
     return sorted([*f.prs, *scissions(f, etat)], key=lambda p: (p.risque, p.rang, p.id))
 
 
-def cache_separe(f: File, pr: PR) -> Path:
-    """Dossier OPENRIDE_BANC_CACHES de la PR ; amorcé une fois par copie du cache réel du monde ouvert."""
+AMORCE = ".file_bancs_amorce"
+AMORCE_VERSION = "2 brut seul"        # 1 (19 novembre) : copie de tout le cache, balades du user comprises
+
+
+def cache_separe(f: File, pr: PR, log=print) -> Path:
+    """Dossier OPENRIDE_BANC_CACHES de la PR, amorcé une fois depuis le cache réel du monde ouvert avec les seules
+    données téléchargées (`brut/` : OSM, tuiles, relief) et leurs lignes de l'index. Jamais `seances/` (balades du
+    user), `genere/` (carrés d'autres zones), ni `mesures/` : signalement du 21 novembre, 107 balades anciennes du
+    user dans un cache « séparé ». Un cache amorcé par l'ancienne copie complète est refait."""
     racine = f.sortie / "caches" / pr.id
     monde = racine / "monde"
-    reel = Path.home() / "OpenRide" / "Cache" / "monde"
+    marque = monde / AMORCE
+    if monde.exists() and not (marque.is_file() and marque.read_text(encoding="utf-8").strip() == AMORCE_VERSION):
+        log(f"  cache séparé de {pr.id} amorcé par une copie complète : refait avec les données brutes seules")
+        shutil.rmtree(monde)
     if not monde.exists():
         racine.mkdir(parents=True, exist_ok=True)
-        if reel.is_dir():
-            subprocess.run(["cp", "-a", "--reflink=auto", str(reel), str(monde)], check=True)
-        else:
-            monde.mkdir()
+        tmp = racine / "monde.amorce"
+        shutil.rmtree(tmp, ignore_errors=True)
+        tmp.mkdir()
+        reel = Path.home() / "OpenRide" / "Cache" / "monde"
+        if (reel / "brut").is_dir():
+            subprocess.run(["cp", "-a", "--reflink=auto", str(reel / "brut"), str(tmp / "brut")], check=True)
+        index = reel / "index.sqlite"
+        if index.is_file():
+            amorcer_index(index, tmp / "index.sqlite")
+        (tmp / AMORCE).write_text(AMORCE_VERSION + "\n", encoding="utf-8")
+        os.replace(tmp, monde)
     return racine
+
+
+def amorcer_index(reel: Path, dest: Path) -> None:
+    """Copie cohérente de l'index du cache réel (lecture seule, API de sauvegarde de sqlite) réduite aux entrées de
+    `brut/` ; les régions installées (nom, emprise, épinglage) sont gardées. Index illisible : pas d'index, le
+    cache le reconstruit depuis le disque."""
+    try:
+        src = sqlite3.connect(f"file:{reel}?mode=ro", uri=True)
+        dst = sqlite3.connect(dest)
+        with contextlib.closing(src), contextlib.closing(dst):
+            src.backup(dst)
+            dst.execute("DELETE FROM entries WHERE path NOT LIKE 'brut/%'")
+            dst.commit()
+    except sqlite3.Error:
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            Path(f"{dest}{suffix}").unlink(missing_ok=True)
 
 
 # --- exécution -----------------------------------------------------------------------------------
@@ -738,7 +773,7 @@ class Runner:
                                 projet=shlex.quote(str(projet)), depot=shlex.quote(str(self.f.depot)))
         env = environnement_etape(self.f.depot, projet)
         if pr.cache == "separe" and e.sur == "branche":
-            env["OPENRIDE_BANC_CACHES"] = str(cache_separe(self.f, pr))
+            env["OPENRIDE_BANC_CACHES"] = str(cache_separe(self.f, pr, self.log))
         self.log(f"→ {pr.id}/{e.id} sur {'main' if e.sur == 'main' else pr.branche} {sha[:8]} "
                  f"(délai {e.delai_min:.0f} min)")
         t0 = time.monotonic()
