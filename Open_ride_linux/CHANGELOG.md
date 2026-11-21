@@ -11,6 +11,8 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Portiques et lignes au départ et à l'arrivée de ces montées et sprints ; arches de bonus tous les 5 km pendant toute la balade, et plus seulement sur les 3 premiers kilomètres (lot W21).
 - Dès que le monde est préchargé, la balade part au pédalage, sans repasser par l'accueil ni l'écran Prêt (lot W18).
 - Plus d'à-coups des arbres à l'entrée d'une tuile proche (lot W22).
+- Plus de gel au premier ruisseau, pont, plage ou bout de mer d'un parcours : leurs matériaux sont préparés au chargement avec le reste (lot AC2).
+- Sonde des bancs : l'image lente qui suit une capture d'écran est comptée avec la capture (elle passait à tort en « scripts » et gonflait les images lentes par minute) (lot AC1).
 - Banc des menus : la touche simulée ne fige plus l'engine pendant l'appui ; options `--caches-rendu` (départ à chaud, comme le jeu) et `--sonde`, scénario `liste_parcours` (lot ML2).
 - Au bout d'une impasse, la route fait une boucle de retournement d'environ 130 m au lieu de revenir sur place (lot N26).
 
