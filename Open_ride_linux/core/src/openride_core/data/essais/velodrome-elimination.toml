@@ -1,17 +1,21 @@
-# Vélodrome 250 m, élimination contre 7 bots (VD6, VD7, VD9, VD10).
+# Vélodrome 250 m, élimination contre 5 bots (VD6, VD7, VD9, VD10).
 id = "velodrome-elimination"
-but = "Vélodrome, élimination à 7 : bots qui courent l'épreuve, tableau, cloche, éliminations lisibles"
+but = "Vélodrome, élimination à 5 : bots qui courent l'épreuve, tableau, cloche, éliminations lisibles"
 duree_max_s = 600
 bots_cible_pct = 100   # bots réglés sur la consigne du départ
-bots_duree_s = 1200    # élimination de 40 tours
+bots_duree_s = 600     # 5 éliminations : environ 8 min (2 ou 4 tours chacune selon la version)
 commandes = [
   { cmd = "select_route", args = { route_id = "velodrome-250" } },
-  { cmd = "start", args = { mode = "track", track = { event = "elimination", opponents = 7 } } },
+  { cmd = "start", args = { mode = "track", track = { event = "elimination", opponents = 5 } } },
 ]
 questions = [
   "Vélodrome : bots crédibles sur 5 ?",
   "Tableau, éliminations et fin de course lisibles ? (oui/non + remarque)",
 ]
+
+# 21/11 (#958) : pas d'échauffement de course dans un essai de 10 min (la 1re séance reste calme au départ)
+[config.depart]
+echauffement_min = 0
 
 [[etapes]]
 quand = { kind = "event", event = "start" }

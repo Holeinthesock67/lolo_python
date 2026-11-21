@@ -23,6 +23,10 @@ box_every_m = 500
 [config.bots]
 objective = "tempo"
 
+# 21/11 (#958) : pas d'échauffement de course dans un essai de 10 min (la 1re séance reste calme au départ)
+[config.depart]
+echauffement_min = 0
+
 [[etapes]]
 quand = { kind = "event", event = "start" }
 dire = "C'est parti. {cible} watts, comme les bots."

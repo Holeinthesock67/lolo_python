@@ -255,6 +255,10 @@ def incoherences(f: Fiche) -> list[str]:
                         out.append(f"consigne du départ à {pct:.0f} % de la cible, bots à {f.bots_cible_pct:.0f} %")
     elif f.bots_cible_pct is not None or niveau_fixe:
         out.append("réglage des bots dans une séance sans bots")
+    course = f.mode in ("grandprix", "survivor") or (f.mode == "track" and any(
+        (a.get("track") or {}).get("event") != "free" for n, a in f.commandes if n == "start"))
+    if course and ("depart", "echauffement_min", 0) not in f.config:
+        out.append("course sans [config.depart] echauffement_min = 0 : l'échauffement de 10 min (#958) mangerait l'essai")
     if any(n == "start_run" for n, _ in f.commandes):
         for e in f.etapes:
             if _pcts(e.dire):

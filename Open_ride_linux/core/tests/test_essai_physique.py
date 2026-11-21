@@ -150,8 +150,10 @@ def _fiche_gp(**extra):
     data = {"id": "x", "but": "essai", "questions": ["note ?"],
             "commandes": [{"cmd": "select_route", "args": {"route_id": "demo-circuit"}},
                           {"cmd": "start", "args": {"mode": "grandprix"}}],
-            "etapes": [{"quand": {"kind": "event", "event": "start"}, "dire": "{cible} watts"}]}
-    data.update(extra)
+            "etapes": [{"quand": {"kind": "event", "event": "start"}, "dire": "{cible} watts"}],
+            "config": {"depart": {"echauffement_min": 0}}}
+    config = {**data["config"], **extra.pop("config", {})}
+    data.update(extra, config=config)
     return data
 
 
@@ -310,3 +312,12 @@ def test_open_world_trial_checks_it_rides_the_open_world():
     d = EP.Deroule(f, 100)
     assert d.lire({"kind": "header", "route_id": "demo"})[0].sorte == "terrain" and d.fini
     assert seance_file.check([{"cmd": n, "args": a} for n, a in f.commandes])
+
+
+def test_race_trials_have_no_race_warmup():
+    for fid in ("gp-voies", "velodrome-elimination"):
+        assert ("depart", "echauffement_min", 0) in EP.fiches()[fid].config
+    data = _fiche_gp(bots_cible_pct=100)
+    del data["config"]["depart"]
+    with pytest.raises(EP.FicheError, match="echauffement_min"):
+        EP.lire_fiche(data)
