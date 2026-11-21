@@ -1,4 +1,9 @@
-# Lot R27 : Cyber-Rogue sans voile en high
+# Lot R27 – Cyber-Rogue sans voile en high
+
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Cyber-Rogue sans voile en high : une seule règle de brume (linéaire), glow du high ramené à celui du medium | GDScript | R17 | Petite | En revue, **version 2.0** |
 
 ## Contexte
 
