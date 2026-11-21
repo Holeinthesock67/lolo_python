@@ -19,6 +19,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Voitures, camions, tracteurs et cyclistes du décor circulent aussi à rebours (lot N23) ; les montées du retour ont leurs panneaux d'approche, chiffres peints, spectateurs et parapentes (lot N24) ; les arches de bonus se comptent à rebours, une fois chacune par tour (lot N25).
 - Pendant un entraînement ERG ou un test de FTP, le bout d'un parcours en ligne fait demi-tour tout seul, sans arrêt (bandeau « Bout du parcours : demi-tour, l'entraînement continue ») ; une fois l'entraînement fini, le bout suivant termine la séance (lot N26).
 
+### Réglages sans lignes inutiles (lot NI2)
+- Une seule place par réglage : les réglages du Dernier survivant, du Grand Prix, de la Course et de la séance conseillée ne se règlent plus que sur leur propre écran, plus dans Réglages › Séance.
+- Une ligne sans effet est cachée tant que le choix dont elle dépend la rend inutile (force, direction et rafales du vent, ressenti du vent, mois, cadence de départ, abri derrière les véhicules) ; la Difficulté n'apparaît plus à la pause d'une séance ERG ; le Thème n'apparaît qu'avec un pack de thème installé.
+- « Textures du décor » retiré : la taille des textures suit la Qualité graphique ; une valeur choisie avant est remise par défaut au lancement (copie `config.toml.bak`).
+- « Pilotage du trainer », « Ressenti du vent » et « Pente ajoutée max » (ancien « Plafond du vent », il borne aussi l'abri et le gravel) passent dans Réglages › Avancé.
+
 ### Grand Prix des objets : voiture d'équipe, Furtif, recette et parcours (lots GP4, GP11, GP13b)
 - Deux nouveaux parcours du Grand Prix, installés avec les contenus de départ : la « Boucle de la Corniche », 2,5 km au-dessus de la mer entre maquis, pins et falaises, et la « Route des Vignes », une boucle sinueuse et vallonnée de 5 km dans les vignes, entre villages et domaines. Comme le Circuit des Prés, ils se choisissent par « Changer de parcours » dans l'écran Prêt du Grand Prix, sont revêtus de bout en bout et sans épingle (lot GP13b).
 - Objets « Voiture d'équipe » (remorquage dans l'abri d'un véhicule) et « Furtif » (échappée et vol d'objet) (lot GP4) ; la voiture ne passe plus sous un coureur plus lent et ne touche plus les usagers de la route (correctifs du 16 et du 17 novembre).
