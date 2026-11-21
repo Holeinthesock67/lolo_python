@@ -1,6 +1,9 @@
 {
   "description": "Élimination au vélodrome (lot EL1) : épreuve choisie à l'écran Prêt (élimination tous les 4 tours par défaut), départ par l'échauffement en ERG (étape « echauffement », passé par la commande skip_warmup), épreuve lancée dans le journal du core, 20 s de course (HUD, bloc ÉCARTS), fin sans enregistrement et bilan.",
   "velodrome": true,
+  "config": {
+    "depart.echauffement_min": 3
+  },
   "etapes": [
     {
       "ecran": "home",
