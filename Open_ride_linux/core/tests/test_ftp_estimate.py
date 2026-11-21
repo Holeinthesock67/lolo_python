@@ -143,3 +143,10 @@ def test_cli(tmp_path, capsys, monkeypatch):
     assert "Pas assez de données" in capsys.readouterr().out
     assert fe.main(["--dir", str(tmp_path / "rien"), "--config", str(cfg), "--accept", "260"]) == 1
     assert "ftp_w = 250" in cfg.read_text(encoding="utf-8")
+
+
+def test_far_off_set_ftp_does_not_block_the_estimate(tmp_path):
+    """FTP réglée très loin de la vraie (200 W pour une CP de 250 W) : c'est justement le cas à corriger."""
+    model_history(journal(tmp_path))
+    r = est(tmp_path, 200.0)
+    assert r["estimate"]["source"] == "cp" and abs(r["estimate"]["ftp_w"] - CP) <= 5 and r["review"] is True

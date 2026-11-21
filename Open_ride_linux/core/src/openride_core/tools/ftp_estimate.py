@@ -8,7 +8,7 @@ toutes lettres (cadrage PP §3.3) :
 1. test de rampe de moins de 6 semaines, sans avertissement bloquant (lot O10 : 75 % de la meilleure
    minute) : « Fiable » ;
 2. puissance critique (CP, modèle travail = CP × durée + W' de R16) sur les efforts **libres** de 3 à
-   20 min des 6 dernières semaines : « Fiable » avec au moins 4 durées dont 20 min, « Indicative » sinon ;
+   20 min des 6 dernières semaines (R² et W' bornés comme R16, CP entre 50 et 600 W) : « Fiable » avec au moins 4 durées dont 20 min, « Indicative » sinon ;
 3. meilleur effort libre de 20 min des 6 dernières semaines × 95 % : « Indicative ».
 
 Sans rien de tout cela : « Pas assez de données », avec la raison (« aucun effort libre de plus de
@@ -38,11 +38,12 @@ from typing import Any
 
 from .. import profiles
 from . import power_curve as pc
-from .estimate_cp import CP_RANGE, MIN_R2, WPRIME_RANGE_J, fit_cp_model
+from .estimate_cp import MIN_R2, WPRIME_RANGE_J, fit_cp_model
 
 RECENT_DAYS = 42
 CP_DURATIONS_S = (180, 300, 480, 720, 1200)
 BEST20_FACTOR = 0.95
+CP_PLAUSIBLE_W = (50.0, 600.0)   # et non 0,8 à 1,2 × FTP réglée (R16) : c'est elle qu'on cherche à corriger
 REVIEW_PCT = 5.0
 MONTHS = 6
 BLOCKING_RAMP = ("too_short", "trainer_dropout", "paused")   # ftp_test.BLOCKING
@@ -99,8 +100,8 @@ def _cp_estimate(free: dict[int, tuple[float, float]], ftp_set_w: float) -> tupl
     cp, wp, r2 = fit_cp_model([(float(d), free[d][0] * d) for d in used])
     if r2 < MIN_R2:
         return None, f"efforts libres de 3 à 20 min peu cohérents (R² = {r2:.2f})"
-    if not CP_RANGE[0] * ftp_set_w <= cp <= CP_RANGE[1] * ftp_set_w:
-        return None, f"puissance critique de {cp:.0f} W trop loin de la FTP réglée ({ftp_set_w:.0f} W)"
+    if not CP_PLAUSIBLE_W[0] <= cp <= CP_PLAUSIBLE_W[1]:   # bornes absolues : la FTP réglée est peut-être fausse
+        return None, f"puissance critique de {cp:.0f} W hors des valeurs plausibles"
     if not WPRIME_RANGE_J[0] <= wp <= WPRIME_RANGE_J[1]:
         return None, "réserve anaérobie hors des valeurs plausibles"
     conf = CONF_RELIABLE if len(used) >= 4 and 1200 in used else CONF_INDICATIVE
