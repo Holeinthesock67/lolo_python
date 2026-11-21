@@ -1,0 +1,25 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+90.1;15;6;0;0;0;0;6;kid_laugh=1
+101.6;15;6;0;0;1;1;6;airliner_rumble=1 dog_bark=1 kid_laugh=1
+121.6;15;6;0;0;1;1;6;airliner_rumble=1 dog_bark=1 kid_laugh=1
+141.6;15;6;0;0;0;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1
+161.6;15;6;0;0;0;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1
+181.6;15;6;0;0;0;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 voice_allez=1
+201.6;15;6;0;0;0;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 voice_allez=1
+217.5;15;6;0;0;0;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 voice_allez=1
+221.6;15;6;0;0;0;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 voice_allez=1
+241.6;15;6;0;0;1;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 voice_allez=1
+261.6;15;6;0;0;1;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 raptor_cry=1 voice_allez=1
+281.6;15;6;0;0;1;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 raptor_cry=1 voice_allez=1
+301.6;15;6;0;0;1;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 raptor_cry=2 voice_allez=1
+315.8;15;6;0;0;1;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 raptor_cry=2 voice_allez=2
+321.6;15;6;0;0;0;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 raptor_cry=2 voice_allez=2
+341.6;15;6;0;0;0;2;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 raptor_cry=2 voice_allez=2
+361.6;15;6;0;0;0;3;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+381.6;15;6;0;0;0;3;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+396.6;15;6;0;0;0;3;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+401.6;15;6;0;0;0;4;6;airliner_rumble=2 dog_bark=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+421.6;15;6;0;0;0;4;6;airliner_rumble=2 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+441.6;15;6;0;0;0;5;6;airliner_rumble=3 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+461.6;15;6;0;0;0;4;6;airliner_rumble=3 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+481.3;15;6;0;0;0;4;6;airliner_rumble=3 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
