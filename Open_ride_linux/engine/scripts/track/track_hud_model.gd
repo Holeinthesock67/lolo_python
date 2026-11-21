@@ -18,6 +18,7 @@ extends RefCounted
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const TrackNames := preload("res://scripts/track/track_names.gd")
+const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 
 const ME := "me"
 const ME_NAME := "Toi"
@@ -26,6 +27,7 @@ const MAX_LINES := 8
 const PACER_ID := "derny"
 const PACER_LANE_M := 0.3       # derny à la corde quand la trame n'a pas la place du cycliste
 const BOARD_LINES := 8
+const FINISH_SHOW_S := 6.0      # bandeau du résultat (« VICTOIRE ! », place) à la fin de l'épreuve
 const CROWD_LAPS := 1            # le public monte au dernier tour d'un sprint
 const RED := Color(0.47, 0.08, 0.10, 0.93)
 const GOLD_BG := Color(0.47, 0.31, 0.04, 0.93)
@@ -43,6 +45,9 @@ var _bell := false
 var _started := false
 var _crowd_key := ""
 var _team := {}                 # coureurs vus dans `order` : ton équipe (épreuves par équipes)
+var _finished := false
+var _finish_t := -1.0            # temps de séance de la première trame finie
+var _me_out := false
 
 
 func reset() -> void:
@@ -51,6 +56,9 @@ func reset() -> void:
 	_started = false
 	_crowd_key = ""
 	_team.clear()
+	_finished = false
+	_finish_t = -1.0
+	_me_out = false
 
 
 func remember_names(bots) -> void:
@@ -82,7 +90,7 @@ func view(state) -> Dictionary:
 	if ev == "omnium":
 		shown = str(tr.get("sub", "scratch"))
 	var out := {"visible": true, "event": ev, "banner": banner(tr), "laps": laps_block(tr), "list": list_block(tr),
-		"pursuit": {}, "chrono": {}, "pacer": {}, "center": {}}
+		"pursuit": {}, "chrono": {}, "pacer": {}, "center": {}, "gaps": gaps_block(tr)}
 	if ev in ["pursuit", "team_pursuit", "team_sprint"]:
 		out["pursuit"] = pursuit_block(tr)
 	elif ev in ["kilo", "500", "flying_200"]:
@@ -95,6 +103,48 @@ func view(state) -> Dictionary:
 		out["center"] = elimination_center(tr)
 	elif ev == "madison":
 		out["center"] = madison_center(tr)
+	if bool(tr.get("finished", false)):
+		# résultat affiché FINISH_SHOW_S secondes (temps de séance `t`), puis on continue à rouler (choix du 21/11)
+		var now := float(state.get("t", 0.0))
+		if _finish_t < 0.0:
+			_finish_t = now
+		if now - _finish_t < FINISH_SHOW_S:
+			out["center"] = finish_center(tr)
+	else:
+		_finish_t = -1.0
+	return out
+
+
+## Place du cycliste (ou de son équipe) dans `ranking`, 0 s'il n'y est pas.
+static func my_place(tr: Dictionary) -> int:
+	var ranking: Array = tr.get("ranking", []) if tr.get("ranking") is Array else []
+	for i in ranking.size():
+		if str(ranking[i]) == ME or str(ranking[i]) == HOME:
+			return i + 1
+	return 0
+
+
+## Épreuve finie (révision 1.26, montré FINISH_SHOW_S secondes, puis on continue à rouler) : « VICTOIRE ! » en or, ou « ARRIVÉE · 3e sur 8 ».
+func finish_center(tr: Dictionary) -> Dictionary:
+	var place := my_place(tr)
+	var of := (tr.get("ranking", []) as Array).size() if tr.get("ranking") is Array else 0
+	if place == 1:
+		var sub := "Dernier en course" if str(tr.get("event", "")) == "elimination" else "Tu remportes l'épreuve"
+		return {"title": "VICTOIRE !", "sub": sub, "color": GOLD_BG}
+	if place == 0:
+		return {"title": "ÉPREUVE TERMINÉE", "sub": "Retour au calme", "color": BLUE_BG}
+	return {"title": "ARRIVÉE · %d%s sur %d" % [place, "er" if place == 1 else "e", of], "sub": "Retour au calme",
+		"color": BLUE_BG}
+
+
+## Écarts en temps aux voisins (révision 1.26, `track.ahead` / `track.behind`, signés comme `bots[].gap_s`) :
+## {ahead: {name, text}, behind: {name, text}} ; une clé absente sans voisin ; {} sans aucun voisin.
+func gaps_block(tr: Dictionary) -> Dictionary:
+	var out := {}
+	for key in ["ahead", "behind"]:
+		var n = tr.get(key, null)
+		if n is Dictionary and n.get("id", null) != null:
+			out[key] = {"name": name_of(str(n["id"])), "text": SegmentHudModel.gap_text(float(n.get("gap_s", 0.0)))}
 	return out
 
 
@@ -129,6 +179,8 @@ func banner(tr: Dictionary) -> Dictionary:
 		"elimination":
 			color = RED
 			sub = "Le dernier sort sur la ligne"
+			if tr.get("every_laps", null) != null:
+				sub = "Le dernier sort tous les %d tours" % int(tr["every_laps"])
 			if tr.get("to_elim_m", null) != null:
 				sub += " · %s" % distance_text(float(tr["to_elim_m"]))
 		"pursuit", "team_pursuit", "team_sprint":
@@ -150,6 +202,9 @@ func banner(tr: Dictionary) -> Dictionary:
 	if bell:
 		sub = "DERNIER TOUR" if shown != "elimination" else "ÉLIMINATION À CE TOUR"
 		color = GOLD_BG if shown != "elimination" else RED
+	if bool(tr.get("finished", false)):
+		sub = "Épreuve terminée"
+		color = GOLD_BG if my_place(tr) == 1 else UiTheme.PANEL_BG
 	return {"title": title, "sub": sub, "bell": bell, "color": color}
 
 
@@ -216,6 +271,7 @@ func list_block(tr: Dictionary) -> Dictionary:
 		if not out_ids.has(id):
 			racing.append(str(id))
 	var last := str(tr.get("last", "")) if tr.get("last", null) != null else ""
+	var finished := bool(tr.get("finished", false))   # épreuve finie : plus de « dernier » (le vainqueur est seul)
 	for i in racing.size():
 		var rid: String = racing[i]
 		var value := ""
@@ -224,9 +280,9 @@ func list_block(tr: Dictionary) -> Dictionary:
 		var kind := "ok"
 		if rid == ME or rid == HOME:
 			kind = "me"
-		elif shown == "elimination" and rid == last:
+		elif shown == "elimination" and rid == last and not finished:
 			kind = "danger"
-		if shown == "elimination" and rid == ME and last == ME:
+		if shown == "elimination" and rid == ME and last == ME and not finished:
 			value = "dernier"
 		if ev in ["team_pursuit", "team_sprint"] and i == 0:
 			value = "en tête"
@@ -359,6 +415,18 @@ func sounds(state) -> Array:
 		_started = true
 		if float(tr.get("t_s", 0.0)) < 1.0:
 			out.append("track_gun")
+	# Fin de l'épreuve : arpège de la victoire et public, ou public seul ; éliminé : deux notes qui descendent.
+	var finished := bool(tr.get("finished", false))
+	if finished and not _finished:
+		if my_place(tr) == 1:
+			out.append("jingle_winner")
+		out.append("track_crowd")
+	_finished = finished
+	var out_ids: Array = tr.get("eliminated", []) if tr.get("eliminated") is Array else []
+	var me_out := out_ids.has(ME)
+	if me_out and not _me_out and not finished:
+		out.append("jingle_elim")
+	_me_out = me_out
 	var bell := bool(tr.get("bell", false))
 	if bell and not _bell:
 		out.append("track_bell")
