@@ -1,0 +1,35 @@
+# Démo « Tour des nouveaux paysages » en mode classique, 3 bots en Endurance, à allure calme (DB1, BT1, AS11, FR1).
+id = "demo-paysages"
+but = "Tour des nouveaux paysages, allure calme : bots en Endurance, contacts sur la route, route posée, frein après un arrêt de pédalage"
+duree_max_s = 600
+commandes = [
+  { cmd = "select_route", args = { route_id = "demo-biomes-paysages" } },
+  { cmd = "start", args = { bots = [
+      { kind = "profile", profile = "rouleur" },
+      { kind = "profile", profile = "climber" },
+      { kind = "profile", profile = "sprinter" },
+  ] } },
+]
+questions = [
+  "Paysages et route posée sur le sol, sur 5 ?",
+  "Bots en Endurance et dépassements (contacts) : crédibles ? (oui/non + remarque)",
+]
+
+[config.bots]
+objective = "endurance"
+level_pct = 100
+
+[[etapes]]
+quand = { kind = "event", event = "start" }
+dire = "Allure calme, {cible:90} watts. Roule avec les bots."
+
+[[etapes]]
+quand = { kind = "record", "t>=" = 240 }
+dire = "Arrête de pédaler trois secondes, puis reprends."
+attendu = { kind = "record", "cadence<=" = 5 }
+delai_s = 20
+rappel = "Trois secondes sans pédaler, puis reprends."
+
+[[etapes]]
+quand = { kind = "record", "t>=" = 540 }
+dire = "Dernière minute, tranquille."
