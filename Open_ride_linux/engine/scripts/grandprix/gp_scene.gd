@@ -71,6 +71,10 @@ func on_hit(msg: Dictionary, now_s: float) -> bool:
 	return _model.on_hit(msg, now_s)
 
 
+func on_event(msg: Dictionary, now_s: float) -> bool:
+	return _model.on_event(msg, now_s)
+
+
 ## Une fois par image. `gp` : objet `gp` de la trame (null hors du mode) ; `riders` : [{id, pos (Vector3 au
 ## sol, ou null), heading (rad), fx}] du cycliste et des bots ; `camera` : pour le préchauffage.
 func step(gp, riders: Array, now_s: float, camera: Camera3D) -> void:
@@ -108,6 +112,7 @@ func _build() -> void:
 	_mats["cloud"] = _flat(Color(0.55, 0.55, 0.62))
 	_mats["canvas"] = _flat(Color(0.86, 0.76, 0.56))
 	_mats["crate"] = _textured(_crate_image())
+	(_mats["crate"] as StandardMaterial3D).vertex_color_use_as_albedo = true   # teinte de la voie (MultiMesh)
 	_mats["star"] = _sprite(_star_image())
 	_mats["halo"] = _sprite(_ring_image())
 	_mats["rain"] = _sprite(_rain_image())
@@ -119,6 +124,7 @@ func _build() -> void:
 	_boxes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true   # couleur de la famille de la voie (lot GPO1)
 	var box := BoxMesh.new()
 	box.size = Vector3.ONE * BOX_M
 	box.material = _mats["crate"]
@@ -284,6 +290,7 @@ func _step_boxes(gp: Dictionary, now_s: float) -> void:
 		var bob := 0.08 * sin(now_s * 2.0 + float(i))
 		var spin := Basis(Vector3.UP, now_s * BOX_SPIN + float(i)) * Basis(Vector3.RIGHT, 0.35)
 		mm.set_instance_transform(i, Transform3D(spin, t.origin + Vector3(0.0, BOX_HEIGHT_M + bob, 0.0)))
+		mm.set_instance_color(i, Model.box_color(int(b.get("lane", 1))))
 	mm.visible_instance_count = list.size()
 	_shown["boxes"] = list.size()
 
@@ -342,7 +349,7 @@ func _step_riders(riders: Array, now_s: float) -> void:
 		if sparks.emitting != sparks_on:
 			sparks.emitting = sparks_on
 	_shown["looks"] = looks_shown
-	# Onomatopées au-dessus des coureurs touchés
+	# Onomatopées au-dessus des coureurs touchés, mots des boîtes et des objets utilisés (tous les coureurs)
 	var pos_of := {}
 	for r in riders:
 		if r is Dictionary and r.get("pos") is Vector3:
@@ -357,7 +364,8 @@ func _step_riders(riders: Array, now_s: float) -> void:
 			continue
 		l.text = str(w["text"])
 		l.global_position = pos_of[w["target"]] + Vector3(0.0, RIDER_TOP_M + 0.6 + WORD_RISE_M * float(w["age"]), 0.0)
-		l.modulate.a = 1.0 - 0.6 * float(w["age"])
+		var c: Color = w.get("color", Items.WARM)
+		l.modulate = Color(c.r, c.g, c.b, 1.0 - 0.6 * float(w["age"]))
 		l.visible = true
 		shown += 1
 	_shown["words"] = shown

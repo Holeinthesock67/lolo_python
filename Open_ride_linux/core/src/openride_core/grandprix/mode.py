@@ -28,9 +28,9 @@ from ..route_objects import RouteObjects, Runner
 from .brain import BotBrain
 from .boxes import BOX_EVERY_KM, LANES, ROULETTE_S, BoxRows, row_positions
 from .draw import DrawContext, draw
-from .effects import (CHAOS, DURATIONS, IMPULSES, Active, EffectSpec, apply_speed, gain_s, is_immune, is_unseen,
+from .effects import (CHAOS, DURATIONS, Active, EffectSpec, apply_speed, gain_s, is_immune, is_unseen,
                       wind_of)
-from .items import DEFAULT_TABLE, ITEM_IDS, SHIELDS, GrandPrixError, ItemSpec, ItemTable
+from .items import DEFAULT_TABLE, ITEM_IDS, SHIELDS, SHORT_S, lane_items, GrandPrixError, ItemSpec, ItemTable
 
 ME = "me"
 LANE_EDGES_M = (1.07, 1.83)          # voies des objets sur la chaussée de droite (draft.LANE_MIN_M à LANE_MAX_M)
@@ -38,7 +38,7 @@ LANE_CENTRES_M = (0.68, 1.45, 2.22)  # gauche, centre, droite : cibles du placem
 LANE_CHANGE_S = 0.6
 MANUAL_HOLD_S = 20.0                 # placement automatique repris après 20 s sans objet en vue
 VIEW_AHEAD_M, VIEW_BEHIND_M = 150.0, 100.0
-HIT_GRACE_S = 2.0
+HIT_GRACE_S = SHORT_S                # pas de nouveau coup pendant un coup reçu (lot GPO1)
 RESUME_GRACE_S = 3.0
 CHARGE_GAP_S = 1.0                   # une charge par seconde au plus
 DROP_BEHIND_M, LAUNCH_AHEAD_M = 2.0, 2.0
@@ -91,7 +91,6 @@ class Racer:
     roll_until: float = 0.0
     last_use: float = -1e9
     fx: list[Active] = field(default_factory=list)
-    impulses: list[EffectSpec] = field(default_factory=list)
     hit_until: float = -1e9
     finished: int | None = None      # rang d'arrivée
     launched: dict[str, int] = field(default_factory=dict)
@@ -251,8 +250,7 @@ class GrandPrixMode:
         out: dict[str, float] = {}
         for r in self.racers.values():
             r.fx = [a for a in r.fx if a.until_t > now]
-            r.v = apply_speed(r.v, r.v_eq, r.impulses, r.fx)
-            r.impulses.clear()
+            r.v = apply_speed(r.v, r.v_eq, r.fx)
             out[r.id] = r.v
         return out
 
@@ -326,10 +324,11 @@ class GrandPrixMode:
 
     def _roll(self, r: Racer, now: float) -> None:
         ctx = DrawContext(self.place(r.id), self.gap_s(r.id), len(self._ahead_of(r)), self._storm_flying())
-        item = draw(ctx, self.table.weights, self.enabled, self.rng)
+        item = draw(ctx, self.table.weights, self.enabled, self.rng, lane_items(r.lane))
         if item is not None:
             r.roll, r.roll_until = item, now + ROULETTE_S
-            self._log("box", r.id, item=item, place=ctx.place, gap_s=round(ctx.gap_s, 1))
+            self._log("box", r.id, item=item, place=ctx.place, gap_s=round(ctx.gap_s, 1), lane=r.lane)
+            self._event("box", r, item)
 
     def _storm_flying(self) -> bool:
         return any(self.table.items.get(o.kind, None) is not None and self.table.items[o.kind].warn_s > 0.0
@@ -351,6 +350,7 @@ class GrandPrixMode:
             r.held, r.charges = None, 0
         r.launched[item] = r.launched.get(item, 0) + 1
         self._log("use", rid, item=item)
+        self._event("use", r, item)
         if spec.steal_m:
             self._steal(r, spec.steal_m)
         return True
@@ -407,16 +407,15 @@ class GrandPrixMode:
 
     def _give(self, r: Racer, fx: Iterable[EffectSpec], item: str, by: str, now: float) -> None:
         for e in fx:
-            if e.effect in IMPULSES:
-                r.impulses.append(e)
-            elif e.effect in DURATIONS:
+            if e.effect in DURATIONS:
+                r.fx = [a for a in r.fx if not (a.item == item and a.spec.effect == e.effect)]   # relancé, pas cumulé
                 r.fx.append(Active(e, now + e.duration_s, item, by))
 
     def _hit(self, target: Racer, spec: ItemSpec, fx: tuple[EffectSpec, ...], by: str, now: float) -> bool:
         """Coup reçu ; faux s'il est arrêté (invincible, parade, coup récent, reprise après pause)."""
         if not fx or target.finished is not None:
             return False
-        knock = any(e.effect in ("slip", "cap") for e in fx)
+        knock = any(e.effect == "cap" for e in fx)
         if is_immune(target.fx) or now < self.grace_until or (knock and now < target.hit_until):
             target.dodged += 1
             return False
@@ -431,6 +430,12 @@ class GrandPrixMode:
         self._pending.append(_Pending(msg, self.t, RESULT_REPEAT))
         self._log("hit", target.id, item=spec.id, by=by, loss_s=round(loss, 1))
         return True
+
+    def _event(self, kind: str, r: Racer, item: str) -> None:
+        """Message `gp_event` (révision 1.25, lot GPO1) : boîte prise ou objet utilisé par un coureur, cycliste
+        comme bot, pour que l'engine montre la même pastille et le même son pour tous ; répété comme `gp_hit`."""
+        msg = {"type": "gp_event", "v": 1, "kind": kind, "item": item, "rider": r.id}
+        self._pending.append(_Pending(msg, self.t, RESULT_REPEAT))
 
     def _credit(self, r: Racer, item: str, fx: tuple[EffectSpec, ...]) -> None:
         gain = estimate_s(fx, r.v_eq, r.grade_pct, self.params)
@@ -530,7 +535,7 @@ class GrandPrixMode:
         return [[k, round(v, 1)] for k, v in sorted(left.items())]
 
     def due_results(self, t: float) -> list[dict]:
-        """Messages `gp_hit` à envoyer maintenant (3 fois, à une seconde d'intervalle)."""
+        """Messages `gp_hit` et `gp_event` à envoyer maintenant (3 fois, à une seconde d'intervalle)."""
         out: list[dict] = []
         for p in self._pending:
             if t >= p.at:

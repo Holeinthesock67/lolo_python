@@ -9,10 +9,10 @@ Les valeurs se modifient dans `~/OpenRide/grandprix.toml` (facultatif), bornées
 paramètre ; une valeur hors bornes ou une clé inconnue refusent tout le fichier :
 
     [gel]
-    kick = 1.3              # facteur d'un effet, par son nom
+    speed_floor = 1.3       # facteur d'un effet, par son nom
+    duration_s = 5          # durée de tous les effets à durée de l'objet
     [storm]
     cap = 0.5
-    duration_s = 1.5        # durée de tous les effets à durée de l'objet
     splash_m = 10
     [weights.lead]          # poids du tirage en tête (lead, lt5, 5to15, gt15)
     bottle = 30
@@ -51,6 +51,21 @@ FAMILIES = {
     "storm": "leader", "headwind": "leader",
     "bell": "guard",
 }
+# Boîtes de famille par voie (lot GPO1, demande du propriétaire du 21 novembre : que la voie compte) : à
+# gauche les objets pour soi et la sonnette (« s'aider »), au centre tout le tirage, à droite les attaques,
+# les pièges et les objets contre la tête (« attaquer »). Le tirage selon le retard reste, limité à la famille
+# de la voie ; une boîte donne toujours un objet (famille sans objet jouable : tout le tirage).
+BOX_LANES = ("help", "any", "attack")              # gauche, centre, droite (voies de `mode.LANE_CENTRES_M`)
+LANE_FAMILIES: dict[str, tuple[str, ...]] = {"help": ("self", "guard"), "any": (),
+                                             "attack": ("attack", "trap", "leader")}
+
+
+def lane_items(lane: int) -> frozenset[str] | None:
+    """Objets que donne une boîte de la voie `lane` ; None : tous (voie du centre)."""
+    families = LANE_FAMILIES[BOX_LANES[lane]] if 0 <= lane < len(BOX_LANES) else ()
+    return frozenset(i for i, f in FAMILIES.items() if f in families) if families else None
+
+
 SHIELDS = ("bottle", "bottle_x3", "musette", "musette_x3")   # en réserve, parent la musette guidée
 
 # Tranches du tirage selon le retard sur le premier (plan §4.2)
@@ -71,13 +86,15 @@ DEFAULT_WEIGHTS: dict[str, dict[str, float]] = {
 }
 
 # Bornes des paramètres réglables (fichier de valeurs)
-FACTOR_BOUNDS = {"kick": (1.0, 2.0), "slip": (0.2, 1.0), "speed_floor": (1.0, 2.0), "cap": (0.2, 1.0),
+FACTOR_BOUNDS = {"speed_floor": (1.0, 2.0), "cap": (0.2, 2.0),
                  "wind": (0.0, 15.0)}
 PARAM_BOUNDS = {"duration_s": (0.5, 30.0), "ttl_s": (5.0, 300.0), "range_m": (50.0, 1000.0),
                 "speed_rel_mps": (5.0, 40.0), "lock_m": (20.0, 500.0), "radius_m": (0.5, 30.0),
                 "clear_m": (1.0, 50.0), "splash_m": (0.0, 30.0), "steal_m": (10.0, 200.0),
                 "warn_s": (0.0, 5.0)}
 WEIGHT_MAX = 100.0
+# Facteurs des impulsions d'avant le lot GPO1 (tout effet dure depuis) : ignorés sans refuser le fichier
+RETIRED_KEYS = ("kick", "slip")
 
 
 class GrandPrixError(ValueError):
@@ -124,10 +141,24 @@ class ItemSpec:
                        splash_fx=tuple(e.scaled(chaos) for e in self.splash_fx))
 
 
-SLIP = (EffectSpec("slip", 0.7),)
-_GEL = dict(target="self", form="instant", self_fx=(EffectSpec("kick", 1.3),))
-_BOTTLE = dict(target="behind", form="dropped", hit_fx=SLIP, ttl_s=90.0)
-_MUSETTE = dict(target="ahead", form="projectile", hit_fx=SLIP, speed_rel_mps=15.0, range_m=400.0, ttl_s=60.0)
+# --- table de réglage des objets (lot GPO1) ------------------------------------------------------
+# Une seule règle : **tout effet dure**. Un bonus pour soi est un plancher de vitesse (au moins × f de la
+# vitesse d'équilibre), un coup reçu un plafond (au plus × f), chacun avec sa durée. Deux durées : SHORT_S
+# pour les objets courants et tous les coups reçus, LONG_S pour les objets à durée. La pause entre deux
+# coups reçus est la durée d'un coup (mode.HIT_GRACE_S = SHORT_S) : pas d'acharnement, sans cas particulier.
+SHORT_S = 5.0          # coup de fouet, glissade, averse
+LONG_S = 12.0          # super-forme, voiture d'équipe, Furtif
+WIND_S = 10.0          # vent contraire (12 s dépassait 35 % du temps à 11 bots, banc GP5 du 21/11)
+KICK = 1.3             # coup de fouet et super-forme : vitesse au moins + 30 %
+SLIP = 0.7             # glissade : vitesse au plus 70 %
+STORM = 0.5            # averse du nuage d'orage : vitesse au plus 50 %
+TOW = 1.5              # voiture d'équipe : vitesse tenue à 150 %
+WIND_MPS = 6.0         # vent contraire virtuel
+
+SLIP_FX = (EffectSpec("cap", SLIP, SHORT_S),)
+_GEL = dict(target="self", form="instant", self_fx=(EffectSpec("speed_floor", KICK, SHORT_S),))
+_BOTTLE = dict(target="behind", form="dropped", hit_fx=SLIP_FX, ttl_s=90.0)
+_MUSETTE = dict(target="ahead", form="projectile", hit_fx=SLIP_FX, speed_rel_mps=15.0, range_m=500.0, ttl_s=60.0)
 
 DEFAULT_ITEMS: dict[str, ItemSpec] = {s.id: s for s in (
     ItemSpec("gel", **_GEL),
@@ -136,19 +167,19 @@ DEFAULT_ITEMS: dict[str, ItemSpec] = {s.id: s for s in (
     ItemSpec("bottle_x3", charges=3, shot="bottle", **_BOTTLE),
     ItemSpec("musette", **_MUSETTE),
     ItemSpec("musette_x3", charges=3, shot="musette", **_MUSETTE),
-    ItemSpec("homing", target="ahead", form="projectile", hit_fx=SLIP, speed_rel_mps=15.0, range_m=600.0,
-             ttl_s=40.0, lock_m=200.0),
-    ItemSpec("storm", target="leader", form="projectile", hit_fx=(EffectSpec("cap", 0.5, 1.5),),
-             speed_rel_mps=30.0, ttl_s=120.0, splash_m=10.0, splash_fx=SLIP, warn_s=1.0),
-    ItemSpec("star", target="self", form="duration", hit_fx=SLIP, radius_m=1.5,
-             self_fx=(EffectSpec("immune", 1.0, 8.0), EffectSpec("speed_floor", 1.2, 8.0))),
-    ItemSpec("bell", target="near", form="instant", hit_fx=SLIP, radius_m=5.0, clear_m=15.0),
-    ItemSpec("headwind", target="ahead", form="duration", hit_fx=(EffectSpec("wind", 5.0, 6.0),)),
+    ItemSpec("homing", target="ahead", form="projectile", hit_fx=SLIP_FX, speed_rel_mps=15.0, range_m=600.0,
+             ttl_s=40.0, lock_m=300.0),
+    ItemSpec("storm", target="leader", form="projectile", hit_fx=(EffectSpec("cap", STORM, SHORT_S),),
+             speed_rel_mps=30.0, ttl_s=120.0, splash_m=15.0, splash_fx=SLIP_FX, warn_s=1.0),
+    ItemSpec("star", target="self", form="duration", hit_fx=SLIP_FX, radius_m=1.5,
+             self_fx=(EffectSpec("immune", 1.0, LONG_S), EffectSpec("speed_floor", KICK, LONG_S))),
+    ItemSpec("bell", target="near", form="instant", hit_fx=SLIP_FX, radius_m=8.0, clear_m=25.0),
+    ItemSpec("headwind", target="ahead", form="duration", hit_fx=(EffectSpec("wind", WIND_MPS, WIND_S),)),
     ItemSpec("team_car", target="self", form="duration",
-             self_fx=(EffectSpec("immune", 1.0, 6.0), EffectSpec("speed_floor", 1.5, 6.0),
-                      EffectSpec("cap", 1.5, 6.0)), escort="car_a"),
-    ItemSpec("stealth", target="self", form="duration", self_fx=(EffectSpec("breakaway", 1.0, 10.0),),
-             steal_m=50.0),
+             self_fx=(EffectSpec("immune", 1.0, LONG_S), EffectSpec("speed_floor", TOW, LONG_S),
+                      EffectSpec("cap", TOW, LONG_S)), escort="car_a"),
+    ItemSpec("stealth", target="self", form="duration", self_fx=(EffectSpec("breakaway", 1.0, LONG_S),),
+             steal_m=100.0),
 )}
 
 
@@ -178,6 +209,8 @@ def _item_from(spec: ItemSpec, data: Mapping) -> ItemSpec:
     fx_self, fx_hit, fx_splash, changes = list(spec.self_fx), list(spec.hit_fx), list(spec.splash_fx), {}
     for key, value in data.items():
         where = f"{spec.id}.{key}"
+        if key in RETIRED_KEYS:
+            continue
         if key in EFFECTS:
             if key not in FACTOR_BOUNDS:
                 raise GrandPrixError(f"{where} : effet sans facteur réglable")

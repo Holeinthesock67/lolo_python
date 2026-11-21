@@ -10,6 +10,7 @@ const Model := preload("res://scripts/grandprix/gp_scene_model.gd")
 const Sounds := preload("res://scripts/grandprix/gp_sound_model.gd")
 const Scene := preload("res://scripts/grandprix/gp_scene.gd")
 const EventSounds := preload("res://scripts/event_sounds_model.gd")
+const Items := preload("res://scripts/grandprix/gp_items.gd")
 
 var _failures := 0
 var _checked := 0
@@ -50,6 +51,36 @@ func _run() -> void:
 	var taken: Array = Model.boxes({"boxes": [1950, 3450], "boxes_gone": [[0, 1], [1, 0], [1, 2]]})
 	_check(taken.size() == 3 and taken.filter(func(b): return b["row"] == 0).size() == 2
 		and taken.filter(func(b): return b["row"] == 1).size() == 1, "boîtes prises : pas posées jusqu'à leur retour (lot GP14)")
+
+	# Boîtes de famille par voie (lot GPO1, révision 1.25) : gauche s'aider, centre tout, droite attaquer
+	_check(bx[0]["lane"] == 0 and bx[2]["lane"] == 2, "boîtes : voie donnée")
+	_check(Model.box_color(0) == Items.SPARK and Model.box_color(1) == Color(1, 1, 1) and Model.box_color(2) == Items.HOT
+		and Model.box_color(7) == Color(1, 1, 1), "boîtes : couleur de la famille de la voie")
+
+	# Boîte prise et objet utilisé (gp_event) : même mot pour le cycliste et les bots, doublons écartés
+	var ev_model = Model.new()
+	_check(ev_model.on_event({"type": "gp_event", "kind": "box", "item": "musette", "rider": "b1"}, 10.0), "gp_event : nouveau")
+	_check(not ev_model.on_event({"type": "gp_event", "kind": "box", "item": "musette", "rider": "b1"}, 11.0), "gp_event : doublon")
+	ev_model.on_event({"type": "gp_event", "kind": "use", "item": "gel", "rider": "me"}, 11.0)
+	var ev_words: Array = ev_model.words(11.1)
+	_check(ev_words.size() == 2 and ev_words[0]["text"] == Model.BOX_WORD and ev_words[0]["target"] == "b1"
+		and ev_words[0]["color"] == Items.color("musette") and ev_words[1]["text"] == Items.label("gel")
+		and ev_words[1]["target"] == "me", "gp_event : HOP ! puis nom de l'objet, couleur de sa famille")
+	_check(ev_model.on_event({"type": "gp_event", "kind": "use", "item": "zzz", "rider": "b1"}, 11.05)
+		and ev_model.words(11.1).size() == 2, "gp_event : objet inconnu sans mot")
+	# Sons des bots : mêmes sons, proches seulement, espacés, après ceux du cycliste
+	_check(Sounds.on_event({"kind": "box", "item": "gel", "rider": "b1"}) == "gp_roulette"
+		and Sounds.on_event({"kind": "use", "item": "bell", "rider": "b1"}) == "gp_sonnette"
+		and Sounds.on_event({"kind": "use", "item": "musette", "rider": "b1"}) == "gp_lancer"
+		and Sounds.on_event({"kind": "use", "item": "gel", "rider": "me"}) == "", "son gp_event : celui de l'objet, pas pour le cycliste")
+	_check(Sounds.bot_hit({"item": "bottle", "target": "b2"}) == "gp_glissade" and Sounds.bot_hit({"item": "bottle", "target": "me"}) == "",
+		"son d'un bot touché : celui du cycliste")
+	var bs = Sounds.new()
+	_check(bs.bot_sound("gp_lancer", 10.0, 20.0), "son de bot : proche, joué")
+	_check(not bs.bot_sound("gp_lancer", 10.0, 20.2), "son de bot : espacé de 0,5 s")
+	_check(not bs.bot_sound("gp_lancer", 40.0, 21.0), "son de bot : loin, muet")
+	bs.me_played(22.0)
+	_check(not bs.bot_sound("gp_lancer", 5.0, 22.3) and bs.bot_sound("gp_lancer", 5.0, 23.0), "son de bot : après celui du cycliste")
 
 	# Objets : voie, toute la route, sortes inconnues ignorées, douze au plus
 	var gp := {"obj": [[17, "bottle", 1520.4, 2], [18, "musette", 1610.0, 0], [19, "storm", 1700.0, -1], [20, "gel", 1.0, 1],
