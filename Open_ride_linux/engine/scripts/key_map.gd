@@ -71,6 +71,11 @@ func press(keycode: int, shift: bool, t_s: float) -> bool:
 	return true
 
 
+## Instant de l'appui de `keycode` encore enfoncé (NAN s'il ne l'est pas) : touche simulée des bancs (main.gd, lot ML2).
+func pressed_at(keycode: int) -> float:
+	return float(_down[keycode]["t"]) if _down.has(keycode) else NAN
+
+
 ## Relâchement à l'instant `t_s` : événement du Click, ou "" (touche étrangère, appui non vu, zone floue de A et Z).
 func release(keycode: int, t_s: float) -> String:
 	if not _down.has(keycode):

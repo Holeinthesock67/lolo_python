@@ -366,7 +366,13 @@
                 "japan",
                 "atlantic_heath",
                 "high_plateau",
-                "reef"
+                "reef",
+
+                "cloud_forest",
+
+                "eucalypt_woodland",
+
+                "temperate_rainforest"
               ]
             },
             "forced": {
@@ -395,7 +401,13 @@
                     "japan",
                     "atlantic_heath",
                     "high_plateau",
-                    "reef"
+                    "reef",
+
+                    "cloud_forest",
+
+                    "eucalypt_woodland",
+
+                    "temperate_rainforest"
                   ]
                 }
               ]
@@ -429,7 +441,13 @@
                   "japan",
                   "atlantic_heath",
                   "high_plateau",
-                  "reef"
+                  "reef",
+
+                  "cloud_forest",
+
+                  "eucalypt_woodland",
+
+                  "temperate_rainforest"
                 ]
               },
               "additionalProperties": {

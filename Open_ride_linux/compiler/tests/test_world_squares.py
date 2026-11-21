@@ -96,14 +96,20 @@ def test_shared_border_is_bit_identical_and_road_is_flat(db, tmp_path) -> None:
     b = generate_square(SquareKey(ZONE, IX + 1, IN), db, prov, c)
     ya, yb = near(a), near(b)
     assert ya[:, 100].tobytes() == yb[:, 0].tobytes()
-    # La route suit la ligne j = 50 (N = 1000 IN + 500) : le terrain y vaut le profil − 5 cm.
+    # La route suit la ligne j = 50 (N = 1000 IN + 500) : le terrain y vaut le profil − 5 cm, sauf au croisement
+    # (E = 1000 IX + 400, colonnes 40 et 41) où la route tertiaire monte à 30 % : le garde-fou de la chaussée
+    # (13/11) y abaisse le sommet sous la route, jamais au-dessus.
     graph, profiles = squares.square_edges(SquareKey(ZONE, IX, IN), db, prov)
     main = sorted((profiles[k] for k, e in graph.edges.items() if e.road_class == "s"), key=lambda p: p.x[0])
     assert [p.edge_id for p in main] == ["1:0", "1:10"] and main[0].x[-1] == main[1].x[0]
     xs, alt = np.concatenate([p.x for p in main]), np.concatenate([p.alt_m for p in main])
     cols = np.arange(0, 101)
     expect = np.interp(IX * 1000 + 10.0 * cols, xs, alt) - C.ROAD_SINK_M
-    assert np.abs(ya[50, :].astype(float) - expect).max() < 2e-3
+    gap = ya[50, :].astype(float) - expect
+    away = np.abs(cols - 40.5) > 1.0
+    # jamais au-dessus du profil − 5 cm ; au plus 10 cm dessous (20/11 : sur un profil courbe, le garde-fou abaisse
+    # aussi les sommets de la chaussée de quelques centimètres quand les coins hors chaussée ne suffisent pas)
+    assert gap.max() < 2e-3 and gap[away].min() > -0.10, (gap.max(), gap[away].min())
     # Loin des routes (coin sud-ouest), relief seul.
     gx, gz = squares.grid_xz(SquareKey(ZONE, IX, IN), 10)
     lat, lon = FRAME.to_latlon(gx[100, 0:1], gz[100, 0:1])
@@ -235,3 +241,153 @@ def test_zero_length_road_has_no_profile(db, tmp_path) -> None:
     assert any(e.degenerate for e in graph.edges.values())
     assert profiles and all(not graph.edges[k].degenerate for k in profiles)
     generate_square(SquareKey(ZONE, IX, IN), db0, provider(), cache(tmp_path / "cache0"))
+
+
+def _square_excess(key: SquareKey, folder, db, prov, tunnels: bool = True) -> float:
+    """Plus grand dépassement (m) du maillage du carré au-dessus de la chaussée moins ROAD_SINK_M, sur toutes les
+    routes du carré, ponts compris, tunnels compris si `tunnels` (20/11), aux points de chaussée tous les mètres, sur au
+    moins la largeur du ruban de l'engine (ROAD_HALF_WIDTH_M), même pour une piste fondue sur 2 m."""
+    from openride_compiler import terrain
+    graph, profiles = squares.square_edges(key, db, prov)
+    x0, z0 = key.corner
+    tiles = {(x0 // 1000, z0 // 1000): near(folder).astype(float)}
+    worst = -math.inf
+    for k in sorted(profiles):
+        e = graph.edges[k]
+        skip = [] if tunnels else [sp for sp in e.spans if sp[2] == "tunnel"]
+        for px, pz, pa, hw in squares.axis_pieces(profiles[k], max(squares.half_width(e.road_class), C.ROAD_HALF_WIDTH_M), skip):
+            ex, _x, _z = terrain.terrain_excess(tiles, px, pz, pa, half_width=hw)
+            if len(ex):
+                worst = max(worst, float(ex.max()))
+    return worst
+
+
+def test_square_terrain_never_covers_road(tmp_path) -> None:
+    """13/11 (« même qualité que les circuits précalculés ») : comme le compilateur (terrain.clear_road, 31/10),
+    aucun triangle du maillage de 10 m ne dépasse la chaussée, même en diagonale sur un flanc raide ; les bords
+    communs des carrés restent identiques au bit près."""
+    w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/flanc")
+    e0, n0 = IX * 1000 - 300, IN * 1000 - 300
+    pts = [lonlat(e0 + 23.0 * i, n0 + 17.0 * i) for i in range(0, 120)]    # diagonale qui traverse 4 carrés
+    w.add_road(1, {"highway": "secondary"}, list(range(1, len(pts) + 1)), pts)
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db = OsmDb(tmp_path / "osm.sqlite")
+    lon, lat = lonlat(E_REF, N_REF)
+    # flanc à 35 % en travers de la route, avec des bosses de 20 m
+    prov = SyntheticProvider(lat, lon, lambda x, z: 400.0 + 0.35 * (x - z) + 6.0 * np.sin(x / 20.0) * np.cos(z / 17.0))
+    c = cache(tmp_path / "cache")
+    out = {}
+    for di in (0, 1):
+        for dn in (0, 1):
+            key = SquareKey(ZONE, IX + di, IN + dn)
+            out[(di, dn)] = generate_square(key, db, prov, c)
+            assert _square_excess(key, out[(di, dn)], db, prov) <= 1e-3, key
+    assert near(out[(0, 0)])[:, 100].tobytes() == near(out[(1, 0)])[:, 0].tobytes()
+    assert near(out[(0, 1)])[100, :].tobytes() == near(out[(0, 0)])[0, :].tobytes()
+
+
+def test_square_terrain_tunnel_keeps_its_hill(tmp_path) -> None:
+    """20/11 : une route en tunnel sous une colline de 25 m. Le garde-fou dégage toute la chaussée à ciel ouvert,
+    jusqu'aux entrées du tunnel, mais ne taille pas de gorge au-dessus du tunnel (banc #936, Sevrier : parois
+    grises de 40 m) ; les tunnels se dessineront dans un lot à venir. Bords communs identiques au bit près."""
+    w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/tunnel")
+    n_road = IN * 1000 + 500
+    es = list(range(IX * 1000 + 200, (IX + 1) * 1000 + 801, 50))
+    # tunnel du milieu : de E = 1000 (IX + 1) − 200 à 1000 (IX + 1) + 200, à cheval sur les deux carrés
+    t0, t1 = es.index((IX + 1) * 1000 - 200), es.index((IX + 1) * 1000 + 200)
+    nodes = list(range(1, len(es) + 1))
+    w.add_road(1, {"highway": "secondary"}, nodes[:t0 + 1], [lonlat(e, n_road) for e in es[:t0 + 1]])
+    w.add_road(2, {"highway": "secondary", "tunnel": "yes", "layer": "-1"}, nodes[t0:t1 + 1],
+               [lonlat(e, n_road) for e in es[t0:t1 + 1]])
+    w.add_road(3, {"highway": "secondary"}, nodes[t1:], [lonlat(e, n_road) for e in es[t1:]])
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db = OsmDb(tmp_path / "osm.sqlite")
+    lon, lat = lonlat(E_REF, N_REF)
+    hill_x, hill_z = (IX + 1) * 1000 - E_REF, -(n_road - N_REF)     # repère local du relief, origine (E_REF, N_REF)
+
+    def relief(x, z):
+        d2 = (np.asarray(x) - hill_x) ** 2 + (np.asarray(z) - hill_z) ** 2
+        return 300.0 + 25.0 * np.exp(-d2 / (2 * 150.0 ** 2))
+    prov = SyntheticProvider(lat, lon, relief)
+    graph, profiles = squares.square_edges(SquareKey(ZONE, IX, IN), db, prov)
+    assert any(kind == "tunnel" for k in profiles for _s0, _s1, kind in graph.edges[k].spans)
+    c = cache(tmp_path / "cache")
+    a = generate_square(SquareKey(ZONE, IX, IN), db, prov, c)
+    b = generate_square(SquareKey(ZONE, IX + 1, IN), db, prov, c)
+    for key, folder in ((SquareKey(ZONE, IX, IN), a), (SquareKey(ZONE, IX + 1, IN), b)):
+        assert _square_excess(key, folder, db, prov, tunnels=False) <= 1e-3, key
+        assert _square_excess(key, folder, db, prov) > 5.0, key      # la colline reste au-dessus du tunnel
+    assert near(a)[:, 100].tobytes() == near(b)[:, 0].tobytes()
+    # sommet de la colline à 100 m de la route : intact (≈ 300 + 25·exp(−100²/(2·150²)) = 320 m)
+    top = float(near(b)[40, 0])
+    assert top > 319.0, top
+
+
+def test_narrow_road_cleared_on_engine_width(tmp_path) -> None:
+    """20/11 (« le talus passe sur la route », lac d'Annecy) : une piste cyclable (fondue sur 2 m) sur un flanc à
+    45 % est dessinée par l'engine à la largeur du thème (6 m) quand on la roule ; le talus ne doit pas passer sur le
+    bord de ce ruban."""
+    w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/piste")
+    n_road = IN * 1000 + 500
+    pts = [lonlat(IX * 1000 - 100 + 23.0 * i, n_road - 150 + 9.0 * i + 25.0 * math.sin(i / 3.0)) for i in range(0, 50)]
+    w.add_road(1, {"highway": "cycleway"}, list(range(1, len(pts) + 1)), pts)
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db = OsmDb(tmp_path / "osm.sqlite")
+    lon, lat = lonlat(E_REF, N_REF)
+    prov = SyntheticProvider(lat, lon, lambda x, z: 400.0 + 0.45 * (z - 0.4 * x) + 4.0 * np.sin(x / 13.0) * np.cos(z / 11.0))
+    key = SquareKey(ZONE, IX, IN)
+    folder = generate_square(key, db, prov, cache(tmp_path / "cache"))
+    assert _square_excess(key, folder, db, prov) <= 1e-3
+
+
+def test_roadside_building_keeps_its_footing(tmp_path) -> None:
+    """20/11 (banc #936, lac d'Annecy) : le garde-fou de la chaussée entaille le talus au bord de la route. Une maison
+    dont l'empreinte touche l'entaille gardait comme pied le fond de l'entaille (minimum du relief final sous
+    l'empreinte) et disparaissait dans le talus. Le pied se prend sur le relief d'avant le garde-fou."""
+    w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/maison")
+    n_road = IN * 1000 + 503
+    es = list(range(IX * 1000 - 100, (IX + 1) * 1000 + 101, 50))
+    # route sur un pont (relief non fondu dessous) : le garde-fou entaille la butte qui dépasse le tablier
+    t0, t1 = es.index(IX * 1000 + 400), es.index(IX * 1000 + 650)
+    nodes = list(range(1, len(es) + 1))
+    w.add_road(1, {"highway": "secondary"}, nodes[:t0 + 1], [lonlat(e, n_road) for e in es[:t0 + 1]])
+    w.add_road(2, {"highway": "secondary", "bridge": "yes"}, nodes[t0:t1 + 1], [lonlat(e, n_road) for e in es[t0:t1 + 1]])
+    w.add_road(3, {"highway": "secondary"}, nodes[t1:], [lonlat(e, n_road) for e in es[t1:]])
+    # maison de 10 m × 8 m, de 4 à 12 m au nord de l'axe
+    w.add_area("w50", "building", {"building": "house"}, ring(IX * 1000 + 503, n_road + 4, 10, 8))
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db = OsmDb(tmp_path / "osm.sqlite")
+    lon, lat = lonlat(E_REF, N_REF)
+    z_house = -(n_road + 3 - N_REF)            # repère local du relief, origine (E_REF, N_REF)
+    # butte de 10 m sous le pont et la maison
+    prov = SyntheticProvider(lat, lon, lambda x, z: 400.0 + 10.0 * np.exp(-((np.asarray(z) - z_house) / 12.0) ** 2))
+    key = SquareKey(ZONE, IX, IN)
+    graph, profiles = squares.square_edges(key, db, prov)
+    ground, final = squares.square_relief(key, graph, profiles, prov, FRAME)
+    assert (ground - final).max() > 0.3, "le garde-fou doit entailler le talus pour que l'essai ait un sens"
+    folder = generate_square(key, db, prov, cache(tmp_path / "cache"))
+    assert near(folder).tobytes() == final.tobytes()
+    b = load(folder, "buildings")["buildings"][0]
+    x0, z0 = key.corner
+    outer = [[p[0] + x0, p[1] + z0] for p in b["outer"]]
+    tiles = {(key.ix, -(key.i_n + 1)): ground}
+    from openride_compiler import osm_layers as L
+    assert b["base_y"] == L.compute_footprint_base_y(outer, FRAME, tiles, prov)
+    sunk = L.compute_footprint_base_y(outer, FRAME, {(key.ix, -(key.i_n + 1)): final}, prov)
+    assert b["base_y"] > sunk
+
+
+def test_clear_never_digs_below_the_road() -> None:
+    """20/11 (banc #936, lac d'Annecy) : un point de chaussée au ras d'un sommet de la chaussée trop haut (route voisine
+    plus haute), les deux autres coins hors chaussée ayant un poids presque nul. L'ancienne règle divisait le besoin
+    par ce poids et enfonçait ces coins de milliers de mètres (falaises grises au bord de la route) ; aucun sommet ne
+    doit descendre sous la limite de la chaussée."""
+    y = np.zeros((3, 3))
+    y[0, 0] = 0.5                                   # sommet de la chaussée, 50 cm au-dessus de ce point de route
+    on_road = np.zeros((3, 3), dtype=bool)
+    on_road[0, 0] = True
+    piece = (np.array([0.0005, 0.0015]), np.array([0.0005, 0.0005]), np.array([0.0, 0.0]), 1e-4)
+    out = squares.clear_square_road(y.copy(), 0.0, 0.0, 10.0, [piece], on_road)
+    lim = 0.0 - C.ROAD_SINK_M - 1e-3
+    assert float(out.min()) >= lim - 1e-6, out
+    assert float(out[0, 0]) <= lim + 1e-6          # le coin de la chaussée descend à la limite : la route est dégagée

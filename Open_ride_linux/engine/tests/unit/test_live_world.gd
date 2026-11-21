@@ -184,6 +184,21 @@ func _init() -> void:
 	var again := OsmLayers.load_chunk(layers_dir, "buildings", 0, live_route)
 	_check(again["items"].size() == 1 and again["items"][0]["outer"][0][0] == 1012.0, "relecture : mêmes coordonnées (aucune accumulation)")
 	_check(OsmLayers.load_chunk(layers_dir, "water", 1, live_route)["ok"], "couche absente : aucun carré, pas d'erreur")
+	# Lot W23 : mer (aire `sea` de la couche eau) et côte du carré, relatives au coin comme le reste.
+	_write_json(layers_dir.path_join("water").path_join("tile_1_0.json"), {"version": "1.0", "lines": [], "areas": [
+		{"id": "sea_1_0_0", "kind": "sea", "level_y": 0.0, "outer": [[0.0, 0.0], [0.0, 400.0], [1000.0, 400.0], [1000.0, 0.0]], "holes": []}]})
+	_write_json(layers_dir.path_join("coast").path_join("tile_1_0.json"), {"version": "1.0",
+		"lines": [{"id": "c1_0_0_0", "shore": "sand", "points": [[0.0, 400.0], [1000.0, 400.0]]}],
+		"beaches": [{"id": "v1", "kind": "sand", "outer": [[100.0, 380.0], [100.0, 420.0], [300.0, 420.0], [300.0, 380.0]], "holes": []}]})
+	var sea0 := OsmLayers.load_chunk(layers_dir, "water", 0, live_route)
+	var coast0 := OsmLayers.load_chunk(layers_dir, "coast", 0, live_route)
+	_check(sea0["ok"] and (sea0["areas"] as Array).size() == 1 and str(sea0["areas"][0]["kind"]) == "sea", "mer du carré lue")
+	if (sea0["areas"] as Array).size() == 1:
+		_check(float(sea0["areas"][0]["outer"][2][0]) == 2000.0 and float(sea0["areas"][0]["level_y"]) == 0.0, "mer : coin de tuile + relatif, niveau 0")
+	_check(coast0["ok"] and (coast0["lines"] as Array).size() == 1 and (coast0["beaches"] as Array).size() == 1, "côte du carré lue (ligne et plage)")
+	if (coast0["lines"] as Array).size() == 1 and (coast0["beaches"] as Array).size() == 1:
+		_check(float(coast0["lines"][0]["points"][1][0]) == 2000.0 and float(coast0["beaches"][0]["outer"][0][0]) == 1100.0, "côte : positions absolues")
+	_check(OsmLayers.layers_present({"format_version": "1.10", "layers": {"coast": {"present": true}, "water": {"present": true}}}).has("coast"), "manifeste du monde vivant : couche côte présente")
 	var compiled := OsmLayers.load_chunk(layers_dir, "buildings", 0)
 	_check(not compiled["ok"], "sans route vivante : lecture de chunk_<k>.json comme avant")
 

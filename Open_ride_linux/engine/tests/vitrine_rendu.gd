@@ -83,6 +83,7 @@ const VIEWS := {
 	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
 	"arbres_sud": [Vector3(153.0, 4.0, -128.0), Vector3(153.0, 4.5, -160.0), 60.0],
 	"arbres_japon": [Vector3(142.0, 6.0, -168.0), Vector3(142.0, 10.0, -205.0), 65.0],
+	"arbres_rang4": [Vector3(144.0, 8.0, -212.0), Vector3(144.0, 15.0, -260.0), 70.0],   # lot V6-r4
 	"ecorces": [Vector3(129.0, 1.8, -112.0), Vector3(129.0, 2.4, -120.0), 55.0],
 	"panneaux": [Vector3(58.5, 1.5, -15.5), Vector3(61.5, 1.3, -22.0), 50.0],
 	"panneau_col": [Vector3(58.6, 2.3, -18.6), Vector3(60.0, 2.3, -22.0), 40.0],
@@ -111,6 +112,9 @@ const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "aca
 	"tree_fern", "reed", "dwarf_shrub", "vine_row", "heather", "gorse", "bracken", "bunchgrass"]
 ## Lot JP5 (6.0) : espèces du biome `japan`, troisième rangée (vue `arbres_japon`).
 const TREES_JAPAN := ["sugi", "hinoki", "momiji", "bamboo", "sugi", "momiji"]
+## Lot V6-r4 (6.0) : grands arbres des biomes du rang 4, quatrième rangée (vue `arbres_rang4`) ; fougère
+## arborescente de la forêt de nuages pour l'échelle.
+const TREES_RANG4 := ["wax_palm", "tree_fern", "eucalyptus", "douglas_fir", "red_cedar"]
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
 ## loin de la route : les styles que prendront les biomes et les régions de la série U.
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
@@ -155,6 +159,8 @@ const ANIMALS := [
 	# Lot HP1 : lamas et yack des hauts plateaux
 	["llama", Vector3(-38.5, 0.0, 19.0), 1.6, 0.3, 1.0], ["llama", Vector3(-36.8, 0.0, 20.0), -1.4, 0.6, 1.0],
 	["yak", Vector3(-43.0, 0.0, 21.0), 1.9, 0.4, 1.0],
+	# Lot V6-r4 : kangourous du bush à eucalyptus
+	["kangaroo", Vector3(-46.5, 0.0, 19.5), 2.4, 0.2, 1.0], ["kangaroo", Vector3(-45.2, 0.0, 18.2), -2.6, 0.5, 0.0],
 ]
 
 
@@ -468,7 +474,7 @@ func _add_animals(vp: SubViewport) -> void:
 ## Arbres en LOD 0 avec le matériau de la scène principale (tree_renderer.gd, balancement au vent compris).
 func _add_trees(vp: SubViewport, preset: String) -> void:
 	var rows := [[TREES_TEMPERATE, 120.0, -120.0, 9.0], [TREES_SOUTH, 120.0, -160.0, 6.0],
-		[TREES_JAPAN, 120.0, -205.0, 9.0]]
+		[TREES_JAPAN, 120.0, -205.0, 9.0], [TREES_RANG4, 120.0, -260.0, 12.0]]
 	for row in rows:
 		var kinds: Array = row[0]
 		for i in range(kinds.size()):
