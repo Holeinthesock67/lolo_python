@@ -403,7 +403,7 @@ def test_ride_into_a_dead_end_turns_back_without_gap_or_pause(tmp_path) -> None:
     alt = np.asarray(route["alt_m"], dtype=float)
     k_same = int(np.argmin(np.abs(x[:k_end] - x[k_back])))          # même endroit, à l'aller
     assert alt[k_back] == pytest.approx(alt[k_same], abs=0.5)
-    assert float(np.max(np.abs(np.asarray(route["grade_pct"])[turn]))) <= 25.0   # la boucle suit le relief
+    assert float(np.max(np.abs(np.asarray(route["grade_pct"])[turn]))) <= 15.0   # la boucle suit le relief (garde-fou : 15 % au plus)
 
 
 def test_turnaround_loop_closes_on_the_dead_end() -> None:

@@ -54,7 +54,7 @@ def test_bridge_over_valley_stays_straight() -> None:
     assert np.max(np.abs(p.alt_m[on] - line)) <= 0.5
     without = edge_profile(straight(1000.0), prov, prov.frame)
     # Sans pont, la route descend dans la vallée ; ses flancs à 70 % sont ramenés par le garde-fou d'altitude à
-    # 25 % de pente au plus et 4 % de changement de pente par pas de 10 m (21/11) : fond à environ 285 m.
+    # 15 % de pente au plus et 4 % de changement de pente par pas de 10 m (21/11) : fond à environ 285 m.
     assert without.alt_m[50] < 290.0
     assert not AG.check(without.alt_m, without.s)
 
@@ -125,6 +125,6 @@ def test_deterministic_and_fast() -> None:
 
 
 def test_short_edge_and_grade_limit() -> None:
-    prov = provider(lambda x, z: 100.0 + 0.4 * np.asarray(x))                 # 40 % : bornée à 25 %
+    prov = provider(lambda x, z: 100.0 + 0.4 * np.asarray(x))                 # 40 % : bornée à 15 %
     p = edge_profile(straight(60.0), prov, prov.frame)
-    assert len(p.s) == 7 and np.all(np.abs(p.grade_pct) <= 25.0) and p.clamped_points > 0
+    assert len(p.s) == 7 and np.all(np.abs(p.grade_pct) <= 15.0) and p.clamped_points > 0

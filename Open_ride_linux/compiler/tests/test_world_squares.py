@@ -111,7 +111,10 @@ def test_shared_border_is_bit_identical_and_road_is_flat(db, tmp_path) -> None:
     # aussi les sommets de la chaussée de quelques centimètres quand les coins hors chaussée ne suffisent pas). Au
     # croisement, les sommets à moins de deux cases suivent la tertiaire à 30 % dessinée par l'engine (21/11 : route de
     # l'engine et bas-côtés compris, règle road_ground.py).
-    assert gap.max() < 2e-3 and gap[away].min() > -0.10, (gap.max(), gap[away].min())
+    # 21/11 (garde-fou d'altitude, pente du monde ouvert bornée à 15 %) : sur ce relief de synthèse à 28 %, la route
+    # passe en tranchée de plusieurs mètres ; la règle sol / route y abaisse aussi les sommets de l'axe (sol caché sous
+    # la chaussée), jusqu'à 1,5 m sous le profil. Jamais au-dessus.
+    assert gap.max() < 2e-3 and gap[away].min() > -1.5, (gap.max(), gap[away].min())
     # Loin des routes (coin sud-ouest), relief seul.
     gx, gz = squares.grid_xz(SquareKey(ZONE, IX, IN), 10)
     lat, lon = FRAME.to_latlon(gx[100, 0:1], gz[100, 0:1])

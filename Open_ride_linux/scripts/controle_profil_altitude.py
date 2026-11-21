@@ -6,7 +6,7 @@ trous, marches). Le garde-fou (`compiler/src/openride_compiler/worldgen/altitude
 arêtes à la génération ; ce script relit la route engagée telle que le jeu l'a roulée (`route/part_*.json` des
 balades `ow-*.world`) et liste :
 
-- les **défauts graves** : pente au-delà de ± 25 % sur un pas de 10 m, changement de pente de plus de
+- les **défauts graves** : pente au-delà de ± 15 % sur un pas de 10 m, changement de pente de plus de
   `GRAVE_CURVE_PCT` (2 × 4 %) d'un pas au suivant (le constat du banc `ea1_lac` : 0 → 21 % en 10 m), altitude
   absente ;
 - les **écarts** à la règle stricte (changement de pente de 4 % à 8 %) : attendus seulement dans les carrefours où

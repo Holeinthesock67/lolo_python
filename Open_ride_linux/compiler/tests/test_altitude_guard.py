@@ -2,7 +2,7 @@
 
 Contrôle bloquant de la CI : sur un relief de synthèse qui porte les défauts d'un modèle de surface (bosses de toits
 et d'arbres sur la route, valeurs absentes, pic isolé, marche), la route engagée du monde ouvert n'a ni pente au-delà
-de ± 25 %, ni changement de pente au-delà de 4 % par pas de 10 m, aux nœuds compris ; sans le garde-fou, le même
+de ± 15 %, ni changement de pente au-delà de 4 % par pas de 10 m, aux nœuds compris ; sans le garde-fou, le même
 monde échoue (le contrôle voit bien le défaut).
 """
 
@@ -76,7 +76,7 @@ def test_repair_fills_missing_values_and_isolated_spikes() -> None:
 
 
 def test_too_steep_on_average_is_never_made_worse() -> None:
-    """Arête plus raide en moyenne que 25 % (ruelle) : pente permise = pente moyenne, profil régulier gardé."""
+    """Arête plus raide en moyenne que 15 % (ruelle) : pente permise = pente moyenne, profil régulier gardé."""
     s = np.arange(0.0, 61.0, 10.0)
     alt = 100.0 + 0.32 * s
     out, st = AG.guard(alt, s, 20.0, 20.0)

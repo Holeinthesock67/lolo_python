@@ -11,9 +11,9 @@ fondu du terrain de tous les carrés (W7) utilisent le même, donc le terrain ne
 4. lissage Savitzky-Golay de `pipeline.py` (moyenne glissante sur 3 points sous 11 points) ;
 5. raccord aux altitudes des nœuds par une rampe linéaire sur toute l'arête ;
 6. garde-fou d'altitude (`altitude_guard.py`, 21 novembre 2026) : relief lu réparé (trous, pics) avant le lissage,
-   puis profil ramené sous ± 25 % de pente et sous 4 % de changement de pente par pas de 10 m, pente des bouts
+   puis profil ramené sous ± 15 % de pente et sous 4 % de changement de pente par pas de 10 m, pente des bouts
    à celle du nœud dans le sens de l'arête, altitudes des nœuds inchangées ;
-7. pente par différences centrées (environ 20 m), bornée à ± 25 % ; cap lissé sur environ 30 m.
+7. pente par différences centrées (environ 20 m), bornée à ± 15 % (`AG.GRADE_MAX_PCT`) ; cap lissé sur environ 30 m.
 
 Tout en numpy, sans entrée-sortie.
 """
@@ -168,8 +168,8 @@ def edge_profile(edge: Edge, provider: ElevationProvider, frame: LocalFrame,
     alt, guard_stats = AG.guard(alt, s, t0, t1)
 
     grade = _grade(alt, s, False)                                       # 7.
-    clamped = int(np.count_nonzero(np.abs(grade) > C.GRADE_LIMIT_PCT))
-    grade = np.clip(grade, -C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT)
+    clamped = int(np.count_nonzero(np.abs(grade) > AG.GRADE_MAX_PCT))
+    grade = np.clip(grade, -AG.GRADE_MAX_PCT, AG.GRADE_MAX_PCT)
     heading = _heading(x, z, False)
     versions = {"edge_profile": EDGE_PROFILE_VERSION, "altitude_guard": AG.GUARD_VERSION,
                 "relief": getattr(provider, "name", "inconnu")}
@@ -227,7 +227,7 @@ def with_turnaround(back: EdgeProfile, prev_xz: tuple[float, float], provider: E
     # Garde-fou d'altitude : la boucle part et revient avec la pente de l'impasse à son bout (raccords sans cassure).
     arrive = -float(back.grade_pct[0]) if len(back.s) >= 2 else None   # pente en arrivant au bout, à l'aller
     alt, guard_stats = AG.guard(alt, s, arrive, None if arrive is None else -arrive)
-    grade = np.clip(_grade(alt, s, False), -C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT)
+    grade = np.clip(_grade(alt, s, False), -AG.GRADE_MAX_PCT, AG.GRADE_MAX_PCT)
     heading = _heading(x, z, False)
     n = float(s[-1])
     return replace(back,
@@ -263,7 +263,7 @@ def concat(profiles: Iterable[EdgeProfile], s0: float = 0.0) -> dict[str, Any]:
     out: dict[str, Any] = {"length_m": offset}
     for name in ("x", "z", "alt_m", "lat", "lon"):
         out[name] = np.interp(s, joined["s"], joined[name])
-    g = np.clip(_grade(out["alt_m"], s, False), -C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT)
+    g = np.clip(_grade(out["alt_m"], s, False), -AG.GRADE_MAX_PCT, AG.GRADE_MAX_PCT)
     out["grade_pct"] = g
     out["heading_deg"] = _heading(out["x"], out["z"], False)
     out["s"] = s + s0
