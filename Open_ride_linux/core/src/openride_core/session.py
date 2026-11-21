@@ -1520,7 +1520,7 @@ class CoreSession:
             return
         ctx = profiles.current()
         activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
-        cache = self.mmp_cache_path if self.mmp_cache_path is not None else ctx.mmp_cache
+        cache = self._curve_cache(ctx)
         try:
             msg = await asyncio.to_thread(build_power_curve_message, cmd_id, self.cfg.rider.ftp_w, activities, cache,
                                           ctx.counted_sources, ctx.id)
@@ -1645,13 +1645,22 @@ class CoreSession:
             return
         self._spawn(self._attach_summary_power(journal_path))
 
+    def _curve_cache(self, ctx: Any) -> Path:
+        """Cache de la courbe de puissance (série PP) : celui donné à la séance, sinon celui du profil quand la
+        séance écrit dans les journaux du profil, sinon un cache à côté des activités de la séance (dossier
+        donné à la séance : jamais le cache du profil pour d'autres séances)."""
+        if self.mmp_cache_path is not None:
+            return self.mmp_cache_path
+        if Path(self.journal_dir) == Path(ctx.journal_dir):
+            return ctx.mmp_cache
+        return self.journal_dir.parent / ".cache" / "mmp.json"
+
     def _power_report(self, journal_path: Path) -> dict | None:
-        from .tools.power_records import session_report
+        from .ipc_lists import compute_summary_power
 
         ctx = self.profile_ctx
-        cache = self.mmp_cache_path if self.mmp_cache_path is not None else ctx.mmp_cache
-        return session_report(journal_path, float(self.cfg.rider.ftp_w), self.journal_dir.parent, cache,
-                              ctx.counted_sources)
+        return compute_summary_power(journal_path, float(self.cfg.rider.ftp_w), self.journal_dir.parent,
+                                     self._curve_cache(ctx), ctx.counted_sources)
 
     def _attach_power_report(self, report: dict | None) -> None:
         if report is None or self.state.summary is None:
