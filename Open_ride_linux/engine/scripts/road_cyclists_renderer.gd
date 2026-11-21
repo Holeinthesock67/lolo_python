@@ -43,6 +43,10 @@ const WARM_FRAMES := 3
 const WARM_SCALE := 0.0005          # un cycliste de 1,8 m tient dans 1 mm : rien de visible à l'écran
 const WARM_DIST_M := 2.0
 const LOD2_POSE_EVERY := 3
+## Lot AC3 : rayon (m) de la sphère d'un cycliste (1,8 m sur son vélo, centre à 0,9 m) pour savoir s'il est dans le
+## champ de la caméra ; marge comprise, pour qu'un cycliste qui entre par le bord soit déjà posé.
+const VIEW_RADIUS_M := 2.5
+const VIEW_CENTER_M := 0.9
 const SALUT_VOLUME_DB := -6.0
 const STANDING_GRADE_PCT: float = AvatarModel.DEFAULTS["standing_grade_pct"]
 ## Avatar (face vers −z local, comme bots_view.gd) tourné d'un demi-tour sous la transformée du modèle (face vers +z).
@@ -57,6 +61,9 @@ var _spare := {}                 # apparence → racines cachées, prêtes à re
 var _warm_left := 0              # images de préchauffage restantes
 var _warm_cam: Node3D = null
 var _frame := 0
+var _level_built := false        # lot AC3 : un niveau de détail déjà construit à cette image
+var posed_skipped := 0           # lot AC3 : poses évitées (cyclistes hors du champ), depuis le démarrage (tests)
+var levels_deferred := 0         # lot AC3 : constructions de niveau remises à l'image suivante (tests)
 var _shown := 0
 var _xforms: Array = []          # transformée de chaque cycliste affiché (tests)
 var _cadences: Array = []        # cadence (tr/min) de chaque cycliste affiché (tests)
@@ -263,9 +270,19 @@ func _avatar(root: Node3D, lod: int) -> AvatarView:
 				shown = n
 				break
 	var name_ := "Lod%d" % shown
+	# Lot AC3 : un seul niveau construit par image (une trentaine de nœuds : 4 à 44 ms au banc cloud du 21/11) ; un autre
+	# cycliste garde jusqu'à l'image suivante le niveau prêt le plus proche, comme pendant la préparation des pièces.
+	if not root.has_node(name_) and _level_built:
+		for n in [shown + 1, shown - 1, shown + 2, shown - 2]:
+			if n >= 0 and n <= 2 and root.has_node("Lod%d" % n):
+				shown = n
+				name_ = "Lod%d" % n
+				levels_deferred += 1
+				break
 	if not root.has_node(name_):
 		var t0 := Time.get_ticks_usec()
 		_ensure_level(root, shown)
+		_level_built = true
 		PerfProbe.mark_since("cyclistes", "niveau %d" % shown, t0)
 	if int(root.get_meta("shown_lod", -1)) != shown:
 		for child in root.get_children():
@@ -273,6 +290,20 @@ func _avatar(root: Node3D, lod: int) -> AvatarView:
 				child.visible = child.name == name_
 		root.set_meta("shown_lod", shown)
 	return root.get_node(name_)
+
+
+## Plans du champ de la caméra de la vue (normales vers l'extérieur, Camera3D.get_frustum) ; vide sans caméra.
+func _view_planes() -> Array:
+	var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
+	return cam.get_frustum() if cam != null else []
+
+
+## Vrai si la sphère (`center`, `radius`) touche le champ décrit par `planes` (tous vrais sans plans).
+static func in_view(planes: Array, center: Vector3, radius: float) -> bool:
+	for p in planes:
+		if (p as Plane).distance_to(center) > radius:
+			return false
+	return true
 
 
 func _distance(pos: Vector3, s: float, cam_s: float) -> float:
@@ -302,6 +333,8 @@ func update(dt_s: float, paused: bool = false, cam_s: float = NAN) -> void:
 	_variants.clear()
 	_shown = 0
 	_frame += 1
+	_level_built = false
+	var planes := _view_planes()
 	if _warm_left > 0:
 		_warm_left -= 1
 		_place_warm()
@@ -333,7 +366,12 @@ func update(dt_s: float, paused: bool = false, cam_s: float = NAN) -> void:
 			var lod := QualityPresets.bot_lod(quality, _distance(xf.origin, s, cam_s), int(root.get_meta("lod")))
 			root.set_meta("lod", lod)
 			var av := _avatar(root, lod)
-			if int(root.get_meta("shown_lod")) < 2 or (_frame + _shown) % LOD2_POSE_EVERY == 0 or not root.has_meta("posed"):
+			# Lot AC3 : hors du champ, sans ombre portée (niveau > SHADOW_MAX_LOD), la pose ne se voit pas : pas
+			# recalculée (une trentaine de pièces déplacées par cycliste) ; reposé dès son retour dans le champ.
+			if int(root.get_meta("shown_lod")) > SHADOW_MAX_LOD and not in_view(planes, xf.origin + Vector3.UP * VIEW_CENTER_M, VIEW_RADIUS_M):
+				root.remove_meta("posed")
+				posed_skipped += 1
+			elif int(root.get_meta("shown_lod")) < 2 or (_frame + _shown) % LOD2_POSE_EVERY == 0 or not root.has_meta("posed"):
 				var smp: Dictionary = model.route.sample(clampf(s, 0.0, model.route.length_m))
 				var standing := float(smp.get("grade_pct", 0.0)) * float(r["dir"]) >= STANDING_GRADE_PCT
 				av.apply_pose(angle, standing)
