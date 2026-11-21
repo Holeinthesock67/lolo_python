@@ -51,6 +51,8 @@ vélodrome des contenus de départ, lot VD10), `grand_prix_parcours` (vrai : deu
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
+`seances_courbe` (dossier des journaux dans le HOME, ex. `OpenRide/Profils/cycliste-1/Activities/.journal` : séances
+fabriquées d'un cycliste fictif à FTP 250 W, `openride_core.tools.courbe_fictive`, écran « Ma puissance », lot PP3).
 `reseau` (vrai : le scénario a besoin d'Internet, recherche Nominatim et routes OpenStreetMap ; recette du PC,
 jouée seulement quand `--scenario` la nomme, jamais dans la liste par défaut ni en intégration continue, lot W17).
 `caches_reels` (vrai : le générateur du monde ouvert lit et complète les caches du vrai dossier personnel :
@@ -227,7 +229,8 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "attendre", "distance_km", "capture", "relancer", "delai", "voies", "note",
              "depart_monde_ouvert"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels", "etapes"}
+             "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels",
+             "seances_courbe", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -810,6 +813,9 @@ class Run:
                             encoding="utf-8")
         for rel, members in doc.get("archives", {}).items():
             write_archive(self.home / rel, members)
+        if doc.get("seances_courbe"):   # séances fabriquées d'un cycliste fictif, FTP 250 W (« Ma puissance », lot PP3)
+            from openride_core.tools.courbe_fictive import write_sessions
+            write_sessions(self.home / doc["seances_courbe"])
         if self.args.caches_rendu is not None:   # caches de rendu d'un passage précédent (lot ML2)
             copy_render_caches(self.args.caches_rendu, self.home)
         self.state_port, self.cmd_port = free_udp_ports(2)

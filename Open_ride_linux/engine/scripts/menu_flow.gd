@@ -106,6 +106,7 @@ const GP_MIN_COURSE_M := 1000.0
 const GP_PREFIX := "Grand Prix : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
+const PowerViewModel := preload("res://scripts/power_view_model.gd")
 const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
@@ -271,6 +272,10 @@ var start_wait: Dictionary = {}
 var profiles = ProfilesViewModel.new()
 ## Historique (lot O28) : séances, cumul par semaine, tests de FTP et bilan d'une séance passée.
 var history = HistoryViewModel.new()
+## Ma puissance (série PP, lot PP3) : courbe de puissance et FTP estimée du profil en cours.
+var power = PowerViewModel.new()
+## FTP acceptée dans « Ma puissance » : en attente de la réponse `settings`, puis courbe redemandée.
+var _power_pending := false
 ## Collection de cartes (série BC, lot BC5) : album par familles, carte agrandie, première ouverture.
 var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
@@ -305,6 +310,9 @@ func _init() -> void:
 	_refresh_ftp_test()
 	menu.add_screen({"id": INTERRUPTED, "title": "Séance interrompue", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": HistoryViewModel.SCREEN, "title": "Historique", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": PowerViewModel.SCREEN, "title": "Ma puissance", "on_back": ProfilesViewModel.SCREEN, "items": []})
+	menu.add_screen({"id": PowerViewModel.MONTHS, "title": "Évolution mois par mois", "on_back": PowerViewModel.SCREEN,
+		"items": []})
 	menu.add_screen({"id": HistoryViewModel.WEEKS, "title": "Cumul par semaine", "on_back": HistoryViewModel.SCREEN,
 		"items": []})
 	menu.add_screen({"id": HistoryViewModel.FTP, "title": "Tests de FTP", "on_back": HistoryViewModel.SCREEN,
@@ -586,6 +594,11 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
 		return
+	if menu.current_screen() in PowerViewModel.SCREENS and code in ["busy", "setting_invalid"]:
+		_power_pending = false
+		power.message = "Échec : " + text
+		_refresh_power()
+		return
 	if menu.current_screen() in HistoryViewModel.SCREENS and code == "bad_args":
 		history.message = "Échec : " + text
 		return
@@ -739,6 +752,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _plan_card("plan:" + _plan_shown)
 	if screen in PlanBuilder.SCREENS:
 		return plan_builder.sheet(PlanBuilder.names_of(_workouts_raw), PlanBuilder.plan_name(_plan_ids()))
+	if screen == PowerViewModel.SCREEN:
+		return power.card(focused, route_names)
 	if screen == FTP_TEST:
 		for t in FTP_TESTS:
 			if t[0] == focused:
@@ -1271,6 +1286,11 @@ func _handle_event(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"power_accept":   # FTP proposée confirmée dans « Ma puissance » (lot PP3) : réglage du joueur, comme partout
+			_power_pending = true
+			power.message = "Enregistrement…"
+			_refresh_power()
+			return {"action": "set_setting", "key": "rider.ftp_w", "value": int(act.get("value", 0))}
 		"clear_trial_profile":   # confirmation acceptée (lot O33)
 			profiles.message = "Vidage du profil d'essai…"
 			profiles.done_message = "Profil d'essai vidé"
@@ -1382,6 +1402,8 @@ func _handle_event(event: String) -> Dictionary:
 		return {"action": "list_plans"}
 	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in PowerViewModel.SCREENS:
+		return _handle_power(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in HistoryViewModel.SCREENS:
 		return _handle_history(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in CollectionViewModel.SCREENS:
@@ -1858,6 +1880,8 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				_open_name()
 			elif item_id == "manage":
 				menu.push_screen(ProfilesViewModel.MANAGE_LIST)
+			elif item_id == ProfilesViewModel.POWER_ID:   # « Ma puissance » du profil en cours (lot PP3)
+				return _open_power()
 			elif item_id.begins_with("p:"):
 				var id := item_id.substr(2)
 				if id == profiles.current_id():
@@ -2005,6 +2029,56 @@ func garage_preview(st: Dictionary) -> Dictionary:
 		return garage.preview(GarageViewModel.AVATAR, "", settings.editing)
 	if screen in GarageViewModel.SCREENS:
 		return garage.preview(screen, focused)
+	return {}
+
+
+## Ma puissance (lot PP3) : réponse `power_curve` à `list_power_curve`.
+func on_power_curve(msg: Dictionary) -> void:
+	power.on_power_curve(msg)
+	_refresh_power()
+
+
+func _refresh_power() -> void:
+	var name := profiles.current_name()
+	menu.set_screen_items(PowerViewModel.SCREEN, power.items(route_names),
+		"Ma puissance — " + name if name != "" else "Ma puissance")
+	menu.set_screen_items(PowerViewModel.MONTHS, power.month_items())
+
+
+## Action à lancer après une réponse `settings` : la courbe redemandée si la FTP vient d'être acceptée ici.
+func take_power_refresh() -> Dictionary:
+	if not _power_pending:
+		return {}
+	_power_pending = false
+	var saved = settings.item("rider.ftp_w").get("value", power.proposal_w())
+	power.message = "FTP enregistrée : %d W" % int(round(float(saved))) if typeof(saved) in [TYPE_INT, TYPE_FLOAT] \
+		else "FTP enregistrée"
+	return {"action": "list_power_curve"}
+
+
+func _open_power() -> Dictionary:
+	_power_pending = false
+	power.begin()
+	_refresh_power()
+	menu.push_screen(PowerViewModel.SCREEN)
+	return {"action": "list_power_curve"}
+
+
+func _handle_power(screen: String, item_id: String) -> Dictionary:
+	if screen != PowerViewModel.SCREEN:
+		return {}
+	match item_id:
+		"window":
+			power.toggle_window()
+			_refresh_power()
+		"months":
+			menu.push_screen(PowerViewModel.MONTHS)
+		"ramp":
+			menu.push_screen(FTP_TEST)
+		"accept":
+			if power.proposal_w() > 0:
+				power.message = ""
+				menu.confirm(power.accept_question(), power.accept_action())
 	return {}
 
 
@@ -2292,6 +2366,9 @@ func state() -> Dictionary:
 		st["status"] = garage.message
 	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:
 		st["status"] = interrupted_message
+	elif st["screen"] in PowerViewModel.SCREENS:
+		st["status"] = power.message
+		st["status_error"] = power.message.begins_with("Échec")
 	elif st["screen"] in HistoryViewModel.SCREENS:
 		st["status"] = history.message
 		st["status_error"] = history.message.begins_with("Échec")

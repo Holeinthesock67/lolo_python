@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRidePowerCurveMessage",
+  "description": "Réponse à cmd list_power_curve (révision 1.29, série PP, lot PP3) : courbe de puissance du profil en cours (13 durées, 6 derniers mois et 6 dernières semaines), FTP estimée et sa proposition, évolution sur 6 mois ; un seul datagramme de moins de 4 096 octets.",
+  "type": "object",
+  "required": ["type", "v", "request_cmd_id", "profile_id", "ftp_set_w", "sessions", "points", "estimate",
+               "confidence", "reason", "proposal_w", "review", "delta_pct", "monthly", "warnings"],
+  "$defs": {
+    "point": {
+      "type": ["object", "null"],
+      "required": ["w", "e", "d", "r", "k"],
+      "properties": {
+        "w": {"type": "integer", "minimum": 0},
+        "e": {"enum": ["libre", "ERG", "inconnu"]},
+        "d": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "r": {"type": ["string", "null"]},
+        "k": {"type": ["string", "null"]}
+      }
+    }
+  },
+  "properties": {
+    "type": {"const": "power_curve"},
+    "v": {"type": "integer", "const": 1},
+    "request_cmd_id": {"type": "integer", "minimum": 0},
+    "profile_id": {"type": ["string", "null"]},
+    "ftp_set_w": {"type": "integer", "minimum": 0},
+    "sessions": {"type": "object", "required": ["m6", "w6"],
+                 "properties": {"m6": {"type": "integer", "minimum": 0}, "w6": {"type": "integer", "minimum": 0}}},
+    "points": {
+      "type": "array", "minItems": 13, "maxItems": 13,
+      "items": {"type": "object", "required": ["s", "m6", "w6"],
+                "properties": {"s": {"type": "integer", "minimum": 1}, "m6": {"$ref": "#/$defs/point"},
+                               "w6": {"$ref": "#/$defs/point"}}}
+    },
+    "estimate": {
+      "type": ["object", "null"],
+      "required": ["ftp_w", "source", "source_text", "date"],
+      "properties": {
+        "ftp_w": {"type": "integer", "minimum": 0},
+        "source": {"enum": ["ramp", "cp", "best20"]},
+        "source_text": {"type": "string"},
+        "date": {"type": "string"}
+      }
+    },
+    "confidence": {"enum": ["Fiable", "Indicative", "Pas assez de données"]},
+    "reason": {"type": ["string", "null"]},
+    "proposal_w": {"type": ["integer", "null"]},
+    "review": {"type": "boolean"},
+    "delta_pct": {"type": ["number", "null"]},
+    "monthly": {
+      "type": "array", "maxItems": 6,
+      "items": {"type": "object", "required": ["m", "ftp", "p5", "p20"],
+                "properties": {"m": {"type": "string", "pattern": "^\\d{4}-\\d{2}$"},
+                               "ftp": {"type": ["integer", "null"]}, "p5": {"type": ["integer", "null"]},
+                               "p20": {"type": ["integer", "null"]}}}
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  }
+}
