@@ -125,6 +125,9 @@ END_GAP_M = draft_mod.BIKE_LENGTH_M + 0.3
 GP_RUNOUT_M = 30.0   # Grand Prix sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
+# Épreuve de piste finie (vainqueur connu, arrivée, heure écoulée) : 8 s de bandeau d'arrivée et de son, puis fin
+# de séance et bilan (essai du 21 novembre : premier à l'élimination, le jeu continuait sans rien marquer).
+TRACK_END_HOLD_S = 8.0
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
 MODE_OPTIONS = ("wtf", "grandprix")   # modes à options (`list_mode_options`, `set_mode_option`, lot GP2)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
@@ -3932,6 +3935,10 @@ class CoreSession:
             self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
+            self._finish(True)
+        elif self.track_event is not None and self.track_event.end_t is not None \
+                and self._t_session - self.track_event.end_t >= TRACK_END_HOLD_S:
+            log.info("Épreuve de piste %s finie : fin de la séance.", self.track_event.event_id)
             self._finish(True)
         elif self.grandprix is not None and self.grandprix.racers[GP_ME].finished is not None:
             log.info("Grand Prix des objets : arrivée, %de sur %d.", self.grandprix.racers[GP_ME].finished,

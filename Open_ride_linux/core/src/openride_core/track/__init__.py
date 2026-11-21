@@ -57,7 +57,9 @@ EVENTS: dict[str, EventSpec] = {s.id: s for s in (
     EventSpec("scratch", Scratch, _MASS, options=(Option("laps", (10, 15, 20, 30, 40, 60), 20),)),
     EventSpec("points", Points, _MASS, options=(Option("laps", (20, 30, 40, 60), 40),)),
     EventSpec("tempo", Tempo, _MASS, options=(Option("laps", (10, 20, 30), 10),)),
-    EventSpec("elimination", Elimination, _MASS),
+    # Tours entre deux éliminations (essai du 21 novembre : 2 tours, 8 minutes, séance trop courte) : 4 par défaut,
+    # 2 pour la règle olympique ; l'omnium garde 2 tours (`omnium.PROGRAM`).
+    EventSpec("elimination", Elimination, _MASS, options=(Option("every_laps", (2, 3, 4, 5, 6), 4),)),
     EventSpec("keirin", Keirin, (3, 4, 5, 6), options=(Option("laps", (6, 8), 8),)),
     EventSpec("omnium", Omnium, _MASS),
     EventSpec("team_sprint", TeamSprint, (0, 1), team_size=3, options=(Option("place", (1, 2, 3), 1),)),
