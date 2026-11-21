@@ -22,8 +22,6 @@ const ROW_SIZE := 16
 const BANNER_W := 560.0
 const BOTTOM_W := 540.0
 const BOTTOM_OFFSET := 24.0
-const CENTER_W := 640.0
-const CENTER_TOP_FRAC := 0.62
 const RING_W := 180.0
 const RING_H := 92.0
 const RING_COLOR := Color(0.78, 0.55, 0.27)
@@ -58,9 +56,6 @@ var _chrono: PanelContainer
 var _chrono_label: Label
 var _chrono_big: Label
 var _chrono_line: Label
-var _center: PanelContainer
-var _center_title: Label
-var _center_sub: Label
 var _ring_me := 0.0
 var _ring_opp := 0.5
 var _ring_has_opp := false
@@ -219,21 +214,7 @@ func _build() -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ccol.add_child(l)
 
-	_center = _panel(Model.RED)
-	_center.anchor_left = 0.5
-	_center.anchor_right = 0.5
-	_center.anchor_top = CENTER_TOP_FRAC
-	_center.anchor_bottom = CENTER_TOP_FRAC
-	_center.offset_left = -CENTER_W / 2.0
-	_center.offset_right = CENTER_W / 2.0
-	var mcol := _vbox(_center)
-	_center_title = _label(34, UiTheme.INK)
-	_center_sub = _label(18, UiTheme.INK)
-	for l in [_center_title, _center_sub]:
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		mcol.add_child(l)
-
-	for p in [_banner, _laps, _pacer, _gaps, _list, _pursuit, _chrono, _center]:
+	for p in [_banner, _laps, _pacer, _gaps, _list, _pursuit, _chrono]:
 		add_child(p)
 
 
@@ -339,12 +320,6 @@ func update_view(view: Dictionary) -> void:
 		_chrono_big.text = str(ch.get("big", ""))
 		_chrono_line.text = str(ch.get("line", ""))
 
-	var ce: Dictionary = view.get("center", {})
-	_center.visible = not ce.is_empty()
-	if _center.visible:
-		_set_fill(_center, ce.get("color", Model.RED))
-		_center_title.text = str(ce.get("title", ""))
-		_center_sub.text = str(ce.get("sub", ""))
 
 
 ## Cloche du dernier tour (maquette VD8) : dôme, corps, rebord et battant, en or.
@@ -412,7 +387,7 @@ func test_info() -> Dictionary:
 		"pursuit": _gap.text if visible and _pursuit.visible else "",
 		"chrono": _chrono_big.text if visible and _chrono.visible else "",
 		"pacer": _pacer_text.text if visible and _pacer.visible else "",
-		"center": _center_title.text if visible and _center.visible else "", "laps_top": _laps.offset_top,
+		"laps_top": _laps.offset_top,
 		"gaps": [(_gap_rows[0][2] as Label).text if visible and _gaps.visible and (_gap_rows[0][0] as Control).visible else "",
 			(_gap_rows[1][2] as Label).text if visible and _gaps.visible and (_gap_rows[1][0] as Control).visible else ""]}
 

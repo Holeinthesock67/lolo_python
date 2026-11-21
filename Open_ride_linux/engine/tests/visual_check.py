@@ -1103,17 +1103,18 @@ def _scenes(s: Session) -> None:
     core.send_hello_ack()
     time.sleep(0.5)
 
-    # 4 ter. Fin d'un entraînement (constat du vélo du 1er novembre) : invite au bandeau, sans alerte rouge,
-    # puis pause ouverte sur « Terminer et enregistrer », que la ligne sous le titre rappelle.
+    # 4 ter. Fin d'un entraînement (constat du vélo du 1er novembre) : résultat et consigne de fin communs (lot RT1,
+    # « ENTRAÎNEMENT TERMINÉ », puis « Y puis A maintenu = bilan »), puis pause ouverte sur « Terminer et
+    # enregistrer », que la ligne sous le titre rappelle.
     core.set_scene(speed=SPEED_MPS, mode="SIM", erg=None, workout_done={"workout_name": "Sweet spot"})
     time.sleep(SETTLE_S)
     shot = s.capture("fin_entrainement")
     if shot:
         img, info = shot
-        b = info["widgets"]["banner"]
-        s.check("fin_entrainement", "invite de fin d'entraînement au bandeau",
-                b["visible"] and "« Sweet spot » terminé : Y puis A maintenu pour terminer et enregistrer" in b["text"],
-                f"« {b['text']} »")
+        fb = info.get("feedback", {})
+        s.check("fin_entrainement", "résultat et consigne de fin d'entraînement (lot RT1)",
+                fb.get("result") == "ENTRAÎNEMENT TERMINÉ" and fb.get("consigne_k") == "ENTRAÎNEMENT FINI"
+                and "Y puis A maintenu = bilan" in fb.get("chips", []), f"{fb}")
         s.check_layout("fin_entrainement", info)
     core.set_scene(speed=0.0, session_state="PAUSED", pause_reason="user", power=0.0, power_3s=0.0, cadence=0.0)
     time.sleep(SETTLE_S)
