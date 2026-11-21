@@ -38,4 +38,5 @@ Interpolation sur le logarithme de la durée, bornée aux extrémités. Objectif
 
 - Banc `bots_race` sur le PC, low, medium et high, en Tempo et en À fond.
 - Essai du propriétaire : 10 min de Grand Prix en Tempo, puis 10 min en Endurance.
-- Plus tard : puissance cible et durée affichées en watts sur l'écran Prêt (« Bots : ≈ 225 W pendant ≈ 9 min ») : demande une réponse du core avant le départ ; course conseillée (CO9) dont l'objectif suit le besoin du jour ; vraie courbe du cycliste (`estimate_cp`).
+- Fait au lot GP-niv (`LOT_BOT_ELO_niveau_et_cote_des_bots.md`, 20 novembre) : watts et durée sur l'écran Prêt, objectif de la course conseillée. Reste : vraie courbe du cycliste (`estimate_cp`).
+- Note d'origine : puissance cible et durée affichées en watts sur l'écran Prêt (« Bots : ≈ 225 W pendant ≈ 9 min ») : demande une réponse du core avant le départ ; course conseillée (CO9) dont l'objectif suit le besoin du jour ; vraie courbe du cycliste (`estimate_cp`).
