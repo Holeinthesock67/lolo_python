@@ -274,3 +274,30 @@ def test_elimination_has_no_bell_in_the_journal():
                        {"quand": {"kind": "track", "event": "bell"}, "dire": "Cloche."}]}
     with pytest.raises(EP.FicheError, match="elimination n'écrit pas"):
         EP.lire_fiche(data)
+
+
+def test_rogue_trial_has_a_short_warmup_without_touching_the_game_table(tmp_path, monkeypatch):
+    import tomllib
+    from openride_core.rogue import balance as B
+    f = EP.fiches()["rogue-depart"]
+    assert f.rogue_balance["calendars"]["30"][0] <= 1.0          # échauffement d'une minute à l'essai
+    table = tmp_path / "rb.toml"
+    table.write_text(EP._toml(f.rogue_balance) + "\n", encoding="utf-8")
+    assert tomllib.loads(table.read_text(encoding="utf-8")) == f.rogue_balance
+    monkeypatch.delenv(B.ESSAI_ENV, raising=False)
+    assert B.run_balance() is B.DEFAULT_BALANCE                  # le jeu garde ses 6 min
+    monkeypatch.setenv(B.ESSAI_ENV, str(table))
+    bal = B.run_balance()
+    assert bal.calendars[30][0] == 1.0 and bal.warmup_relic_s == 30.0
+    from openride_core.rogue.scenario import compose_run
+    steps = compose_run("endurance", 30, 1, balance=bal).steps
+    assert steps[0].kind == "warmup" and steps[0].nominal_s == 60.0 and steps[1].kind == "room"
+
+
+def test_bad_rogue_balance_is_refused():
+    data = {"id": "x", "but": "essai", "questions": ["note ?"], "rogue_balance": {"inconnu": 1},
+            "commandes": [{"cmd": "start_run", "args": {"objective": "endurance", "duration_min": 30}},
+                          {"cmd": "start", "args": {}}],
+            "etapes": [{"quand": {"kind": "event", "event": "start"}, "dire": "Go."}]}
+    with pytest.raises(EP.FicheError, match="rogue_balance"):
+        EP.lire_fiche(data)

@@ -1219,7 +1219,10 @@ class CoreSession:
         self._set_state("LOADING")
         # L'équipement de la série V ne s'applique pas dans ce mode : les châssis en tiennent lieu (lot V5).
         plain = PhysicsParams.from_config(self.cfg)
-        self.rogue = rogue_mode.RogueMode(self.cfg, request, chassis=chassis, lives=lives, params=plain)
+        from .rogue.balance import run_balance
+
+        self.rogue = rogue_mode.RogueMode(self.cfg, request, run_balance(), chassis=chassis, lives=lives,
+                                          params=plain)
         self.route, self._segments, self.race = None, (), None
         self.erg, self._workout, self._workout_id, self._ramp_watch = None, None, None, None
         self.physics = RiderPhysics(plain)

@@ -357,6 +357,17 @@ def load_balance(override: Path | None = None, *, required: bool = False) -> Rog
     return bal
 
 
+ESSAI_ENV = "OPENRIDE_ROGUE_BALANCE"   # essais physiques seulement (lot EP, 21/11) : table d'une run d'essai
+
+
+def run_balance() -> RogueBalance:
+    """Table d'une run du jeu : la table de référence, sauf pendant un essai physique qui pose
+    `OPENRIDE_ROGUE_BALANCE` (échauffement raccourci, essai du 21/11 : 6 min d'échauffement sur 10 min)."""
+    import os
+    path = os.environ.get(ESSAI_ENV)
+    return load_balance(Path(path), required=True) if path else DEFAULT_BALANCE
+
+
 def balance_hash(bal: RogueBalance) -> str:
     """Empreinte courte (8 caractères) de la table, notée dans le journal de chaque run."""
     raw = json.dumps({f.name: getattr(bal, f.name) for f in fields(bal)}, sort_keys=True, default=str)

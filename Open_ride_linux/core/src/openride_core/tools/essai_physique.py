@@ -83,6 +83,7 @@ class Fiche:
     duree_max_s: int = DUREE_MAX_S
     bots_cible_pct: float | None = None   # bots réglés sur la consigne : effort visé = ce % de {cible}
     bots_duree_s: float | None = None     # durée de course estimée pour la courbe des bots (défaut : duree_max_s)
+    rogue_balance: dict = field(default_factory=dict)   # surcharge de la table d'une run d'essai (échauffement)
 
     @property
     def mode(self) -> str | None:
@@ -165,10 +166,17 @@ def lire_fiche(data: dict, source: str = "fiche") -> Fiche:
         if not isinstance(keys, dict):
             raise FicheError(f"{source} : [config.{section}] attend une table")
         config += [(str(section), str(k), v) for k, v in keys.items()]
+    rb = data.get("rogue_balance") or {}
+    if rb:
+        from ..rogue.balance import BalanceError, RogueBalance, apply_overrides
+        try:
+            apply_overrides(RogueBalance(), rb)
+        except BalanceError as exc:
+            raise FicheError(f"{source} : rogue_balance : {exc}") from None
     bc = data.get("bots_cible_pct")
     bd = data.get("bots_duree_s")
     fiche = Fiche(fid, but, commandes, etapes, questions, config, duree,
-                  float(bc) if bc is not None else None, float(bd) if bd is not None else None)
+                  float(bc) if bc is not None else None, float(bd) if bd is not None else None, dict(rb))
     ecarts = incoherences(fiche)
     if ecarts:
         raise FicheError(f"{source} : incohérent : " + " ; ".join(ecarts))
@@ -262,6 +270,24 @@ def incoherences(f: Fiche) -> list[str]:
             if not 50 <= pct <= 150:
                 out.append(f"consigne à {pct:.0f} % de la cible (50 à 150 %)")
     return out
+
+
+def _toml(table: dict, prefixe: str = "") -> str:
+    """TOML d'une table simple (nombres, chaînes, listes, sous-tables) : surcharge écrite par le guide."""
+    def val(v: Any) -> str:
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if isinstance(v, (list, tuple)):
+            return "[" + ", ".join(val(x) for x in v) + "]"
+        if isinstance(v, str):
+            return json.dumps(v, ensure_ascii=False)
+        return repr(v)
+    out = [f"{json.dumps(k) if not k.isidentifier() else k} = {val(v)}" for k, v in table.items()
+           if not isinstance(v, dict)]
+    for k, v in table.items():
+        if isinstance(v, dict):
+            out += ["", f"[{prefixe}{k}]", _toml(v, f"{prefixe}{k}.")]
+    return "\n".join(out)
 
 
 def niveau_bots(f: Fiche, cible_w: float, ftp_w: float) -> int:
@@ -548,9 +574,15 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
         materiel = ["--trainer", "sim", "--input", "sim", "--hr", "sim"] if sim else ["--trainer", "ftms",
                                                                                      "--input", "click"]
         depart = time.time() - 1
+        env = dict(os.environ)
+        if fiche.rogue_balance:
+            from ..rogue.balance import ESSAI_ENV
+            table = essais / f"rogue_balance_{fiche.id}.toml"
+            table.write_text(_toml(fiche.rogue_balance) + "\n", encoding="utf-8")
+            env[ESSAI_ENV] = str(table)
         proc = subprocess.Popen([sys.executable, "-m", "openride_core.launcher", "--no-compile", *materiel,
                                  "--profil", profil, "--autostart", "--seance", str(seance)],
-                                start_new_session=True)
+                                start_new_session=True, env=env)
         sortie(Action("annonce", "Le jeu se lance sur le bon terrain. Pédale dès que le parcours s'affiche."))
         chemin = None
         while chemin is None:
