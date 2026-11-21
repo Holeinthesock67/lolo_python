@@ -127,5 +127,5 @@ func _run() -> void:
 	_check(not view.test_info()["visible"], "vue cachée hors séance")
 	view.queue_free()
 
-	print("%d vérifications, %d échec(s)" % [_checked, _failures])
+	print("test_feedback : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
