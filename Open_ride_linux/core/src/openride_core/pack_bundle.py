@@ -1,17 +1,18 @@
-"""Pack « Cols célèbres » livré avec le jeu (lot PK1) : dossier du paquet, manifeste, installation sans réseau.
+"""Packs de parcours livrés avec le jeu (lot PK1 « Cols célèbres », lot AN1 « Tours célèbres ») : dossier du
+paquet, manifeste, installation sans réseau.
 
-Le pack est construit une fois sur le PC (`scripts/build_pack_base.sh` : `route-pack-build cols_celebres`
-puis compilation de chaque col) et livré dans le paquet du jeu, **hors git**. Il est rangé ainsi :
+Chaque pack est construit une fois sur le PC (`scripts/build_pack_base.sh` : `route-pack-build <pack>` puis
+compilation de chaque parcours) et livré dans le paquet du jeu, **hors git**. Il est rangé ainsi :
 
-    <paquet>/packs/cols_celebres/
-        manifest.json            liste des cols, tailles, empreintes SHA-256, crédits (écrit par `manifest`)
+    <paquet>/packs/<pack>/        (cols_celebres, tours_celebres…)
+        manifest.json            liste des parcours, tailles, empreintes SHA-256, crédits (écrit par `manifest`)
         gpx/<dossier du pack>/   traces GPX, fiches .toml et pack.toml, comme `route-pack-install` les pose
         routes/<id>.world/       parcours compilés
 
 Le dossier `<paquet>` est donné par la variable `OPENRIDE_PAQUET`, sinon c'est `Open_ride_linux/paquet/`
 (installation depuis le dépôt ; l'installateur J9 y pose le pack ou donne la variable).
 
-Les contenus de départ (`contents.install_starter`, premier lancement) installent le pack depuis ce
+Les contenus de départ (`contents.install_starter`, premier lancement) installent chaque pack depuis ce
 dossier : traces dans `~/OpenRide/GPX/<dossier du pack>/`, parcours compilés dans le dossier des parcours.
 Jamais d'écrasement, jamais de réseau : un parcours n'est copié que s'il manque, et seulement si la trace
 du joueur est celle du paquet (même SHA-256), pour que le catalogue le voie « prêt » et ne le recompile pas.
@@ -112,6 +113,7 @@ class BundledRoute:
 class BundledPack:
     """Pack lu dans le paquet (manifeste chargé, fichiers non encore contrôlés)."""
     dir: Path
+    id: str                           # identifiant du pack (dossier de recettes : cols_celebres, tours_celebres)
     name: str
     folder: str                       # dossier du pack dans ~/OpenRide/GPX/
     credits: str
@@ -167,7 +169,7 @@ def write_manifest(pdir: Path, build_times: dict[str, float] | None = None, now:
     manifest = {
         "format": FORMAT,
         "pack": pdir.name,
-        "name": str(meta.get("name") or "Cols célèbres"),
+        "name": str(meta.get("name") or pdir.name),
         "folder": gpx_pack.name,
         "license": str(meta.get("license") or DEFAULT_LICENSE),
         "credits": DEFAULT_CREDITS,
@@ -200,8 +202,18 @@ def load(pdir: Path | None = None) -> BundledPack | None:
         files = [dict(f) for f in m["files"]]
     except (KeyError, TypeError, ValueError):
         return None
-    return BundledPack(pdir, str(m.get("name") or "Cols célèbres"), folder, str(m.get("credits") or DEFAULT_CREDITS),
+    pid = str(m.get("pack") or pdir.name)
+    return BundledPack(pdir, pid, str(m.get("name") or pid), folder, str(m.get("credits") or DEFAULT_CREDITS),
                        str(m.get("license") or DEFAULT_LICENSE), routes, files, int(m.get("total_bytes") or 0), m)
+
+
+def load_all(root: Path | None = None) -> list[BundledPack]:
+    """Tous les packs lisibles du paquet (`<paquet>/packs/*`), par identifiant ; [] sans paquet."""
+    base = (root if root is not None else default_root()) / "packs"
+    if not base.is_dir():
+        return []
+    packs = (load(d) for d in sorted(base.iterdir()) if d.is_dir() and not d.name.startswith("."))
+    return [p for p in packs if p is not None]
 
 
 def verify(pack: BundledPack, deep: bool = True) -> list[str]:
@@ -237,7 +249,7 @@ def _installed_folder(gpx_dir: Path, name: str) -> Path | None:
 
 
 def installed_count(pack: BundledPack, routes_dir: Path) -> int:
-    """Cols du paquet dont le parcours compilé est en place."""
+    """Parcours du pack dont le parcours compilé est en place."""
     return sum((routes_dir / f"{r.id}.world" / "manifest.json").is_file() for r in pack.routes)
 
 
@@ -291,14 +303,14 @@ def _mb(n: int) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m openride_core.pack_bundle",
-                                 description="pack Cols célèbres livré dans le paquet (lot PK1)")
+                                 description="packs de parcours livrés dans le paquet (lots PK1 et AN1)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("manifest", help="écrit manifest.json d'un pack rangé (gpx/ et routes/)")
     m.add_argument("dir", type=Path)
     m.add_argument("--times", type=Path, help="JSON {id: secondes} des temps de construction")
     v = sub.add_parser("verify", help="contrôle tailles et empreintes du paquet")
     v.add_argument("dir", type=Path, nargs="?")
-    i = sub.add_parser("info", help="liste les cols du paquet, leur poids et le total")
+    i = sub.add_parser("info", help="liste les parcours d'un pack du paquet, leur poids et le total")
     i.add_argument("dir", type=Path, nargs="?")
     i.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
@@ -309,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
         except BundleError as exc:
             print(f"pack_bundle : {exc}", file=sys.stderr)
             return 1
-        print(f"Manifeste écrit : {len(man['routes'])} col(s), {len(man['files'])} fichier(s), "
+        print(f"Manifeste écrit : {len(man['routes'])} parcours, {len(man['files'])} fichier(s), "
               f"{_mb(man['total_bytes'])}.")
         return 0
     pack = load(args.dir)
@@ -330,7 +342,7 @@ def main(argv: list[str] | None = None) -> int:
     for r in pack.routes:
         extra = f", construit en {times[r.id]} s" if r.id in times else ""
         print(f"  {r.id:<28} {_mb(r.bytes):>10}{extra}")
-    print(f"Total : {len(pack.routes)} col(s), {_mb(pack.total_bytes)}.")
+    print(f"Total : {len(pack.routes)} parcours, {_mb(pack.total_bytes)}.")
     print(f"Crédits : {pack.credits}.")
     return 0
 

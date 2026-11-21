@@ -1,0 +1,5 @@
+name = "Tours célèbres"
+description = "Boucles célèbres et publiques construites depuis OpenStreetMap, avec leurs lacs et leurs villages (lot AN1)"
+license = "ODbL 1.0 (données OpenStreetMap)"
+credits = "© contributeurs OpenStreetMap, ODbL ; altitude Copernicus GLO-30"
+layers = ["route", "terrain", "biome", "segments", "water", "buildings", "vegetation", "roads", "bridges"]

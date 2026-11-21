@@ -65,6 +65,7 @@ from .osm_layers import (
 from .pipeline import biome_tile_keys, build_biome, compile_route
 from . import segments_layer as SEG
 from . import route_stats as RS
+from .route_pack import pack_layers
 from .route_stats import (SORT_KEYS, LibraryError, compute_stats, duration_at, load_library, query,
                           sidecar_path, stats_usable)
 from .terrain import build_terrain, load_terrain_tiles, replace_terrain_dir, terrain_manifest, write_terrain
@@ -76,11 +77,8 @@ from .worldgen import measure, region, store
 from .writer import (biome_manifest, build_manifest, normalize_name, replace_biome_dir, replace_manifest,
                      sha256_of, shares_text, write_biome, write_world)
 
-LAYERS = ("route", "terrain", "biome", "buildings", "vegetation", "poi", "water", "coast", "roads", "bridges",
-          "segments")
-# Segments (lot T3) : produits par défaut quand le core est installé, omis avec un avertissement sinon.
-# Biome (lot U2, 3.0) : par défaut aussi ; sans réseau, repli OSM et altitude avec un avertissement.
-DEFAULT_LAYERS = ("route", "terrain", "biome", "segments")
+LAYERS = C.WORLD_LAYERS
+DEFAULT_LAYERS = C.DEFAULT_WORLD_LAYERS
 OSM_LAYERS = ("buildings", "vegetation", "poi", "water", "coast", "roads", "bridges")   # bridges : lot EA4
 # Couches tirées de la côte OSM (lot U3) : la mer de la couche eau et la couche côte.
 COAST_LAYERS = ("water", "coast")
@@ -152,8 +150,9 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--out", type=Path, default=C.ROUTES_DIR, help=f"dossier de sortie (défaut : {C.ROUTES_DIR})")
     b.add_argument("--out-and-back", action="store_true", help="aller-retour : la trace puis son inverse")
     b.add_argument("--force", action="store_true", help="remplace un .world existant")
-    b.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
-                   help="couches à produire, séparées par des virgules (défaut : route,terrain,biome,segments)")
+    b.add_argument("--layers", type=parse_layers, default=None,
+                   help="couches à produire, séparées par des virgules (défaut : `layers` du pack.toml du dossier "
+                        "de la trace, sinon route,terrain,biome,segments)")
     b.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                    help="impose ce biome à tout le parcours (255 partout, sans WorldCover ni OSM) ; "
                         "identifiants du Format .world §8 quater")
@@ -256,8 +255,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help=f"dossier des traces GPX (défaut : {default_gpx})")
     ba.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
                     help=f"dossier de sortie des .world (défaut : {C.ROUTES_DIR})")
-    ba.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
-                    help="couches à produire pour chaque trace (défaut : route,terrain,biome,segments)")
+    ba.add_argument("--layers", type=parse_layers, default=None,
+                    help="couches à produire pour chaque trace (défaut : `layers` du pack.toml de la trace, "
+                         "sinon route,terrain,biome,segments)")
     ba.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                     help="impose ce biome à tous les parcours compilés (255 partout)")
     ba.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS[,LANDSCAPE]",
@@ -316,6 +316,9 @@ def cmd_build(args: argparse.Namespace) -> int:
     points = read_track(args.gpx, notes)
     for note in notes:
         print(f"openride-compiler : {note}", file=sys.stderr)
+    # Couches : celles demandées, sinon celles du pack de la trace (`layers` du pack.toml, ex. lacs et villes du pack
+    # « Tours célèbres »), sinon celles par défaut ; `build-all` et la construction d'un pack passent par ici.
+    args.layers = tuple(args.layers or pack_layers(args.gpx) or DEFAULT_LAYERS)
     final = Path(args.out) / f"{name}.world"
     if final.exists() and not args.force:   # avant tout téléchargement
         raise CompileError(f"{final} existe déjà (utiliser --force pour le remplacer)")

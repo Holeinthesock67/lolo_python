@@ -19,7 +19,7 @@ from openride_compiler import cli
 from openride_compiler import route_recipe as rr
 from openride_compiler.elevation import SyntheticProvider
 from openride_compiler.errors import CompileError
-from openride_compiler.route_pack import install_pack
+from openride_compiler.route_pack import _check_pack_meta, install_pack, pack_layers
 from openride_compiler.route_stats import load_library
 
 LAT0, LON0 = ORIGIN
@@ -294,3 +294,55 @@ def test_builtin_pack_recipes() -> None:
         assert "OpenStreetMap" in sheet and not re.search(r"\d+\.\d{3,}", sheet)   # pas de coordonnées
     with pytest.raises(CompileError, match="introuvable"):
         rr.pack_dir("pack_absent")
+
+
+def test_pack_layers_are_used_by_build_and_build_all(tmp_path: Path) -> None:
+    """Lot AN1 : `layers` du pack.toml (eau et maisons d'un tour de lac) remplace les couches par défaut pour
+    toutes les traces du pack, à `build` comme à `build-all` ; `--layers` reste prioritaire."""
+    src = recipe(tmp_path).parent
+    (src / "pack.toml").write_text('name = "Essai"\nlayers = ["route", "terrain"]\n', encoding="utf-8")
+    target, done, _ = rr.build_pack(src, tmp_path / "travail", fetcher(two_roads()), PROVIDER, log=lambda _m: None)
+    _, _, folder = install_pack(target, tmp_path / "GPX")
+    assert pack_layers(folder / "col-test.gpx") == ("route", "terrain")
+    assert pack_layers(tmp_path / "seule.gpx") is None
+    assert cli.main(["build", str(folder / "col-test.gpx"), "--out", str(tmp_path / "routes"), "--offline"]) == 0
+    def present(world: Path) -> set[str]:
+        layers = json.loads((world / "manifest.json").read_text(encoding="utf-8"))["layers"]
+        return {k for k, v in layers.items() if isinstance(v, dict) and v.get("present")}
+
+    assert {"terrain"} <= present(tmp_path / "routes" / "col-test.world")
+    assert not {"biome", "segments"} & present(tmp_path / "routes" / "col-test.world")
+    assert cli.main(["build-all", "--gpx-dir", str(tmp_path / "GPX"), "--routes-dir", str(tmp_path / "r2"),
+                     "--offline"]) == 0
+    assert "terrain" in present(tmp_path / "r2" / "col-test.world") and "biome" not in present(tmp_path / "r2" / "col-test.world")
+    assert cli.main(["build", str(folder / "col-test.gpx"), "--out", str(tmp_path / "r3"), "--offline",
+                     "--layers", "route"]) == 0
+    assert "terrain" not in present(tmp_path / "r3" / "col-test.world")
+
+
+@pytest.mark.parametrize("layers,needle", [
+    ('["terrain"]', "route obligatoire"),
+    ('["route", "lave"]', "couches possibles"),
+    ('"route"', "liste"),
+])
+def test_pack_layers_validation(tmp_path: Path, layers: str, needle: str) -> None:
+    src = recipe(tmp_path).parent
+    (src / "pack.toml").write_text(f'name = "Essai"\nlayers = {layers}\n', encoding="utf-8")
+    target, _, _ = rr.build_pack(src, tmp_path / "travail", fetcher(two_roads()), PROVIDER, log=lambda _m: None)
+    with pytest.raises(CompileError, match=needle):
+        install_pack(target, tmp_path / "GPX")
+
+
+def test_builtin_tours_pack_is_the_annecy_loop() -> None:
+    """Lot AN1 : pack « Tours célèbres » ; boucle (départ = arrivée), couches du lac et des maisons."""
+    folder = rr.pack_dir("tours_celebres")
+    recipes = rr.load_recipes(folder)
+    assert [r.id for r in recipes] == ["tour-du-lac-d-annecy"]
+    r = recipes[0]
+    assert r.waypoints[0] == r.waypoints[-1] and len(r.waypoints) >= 6 and {"lac", "boucle"} <= set(r.tags)
+    assert {p.suffix for p in folder.iterdir()} == {".toml"}
+    meta = _check_pack_meta(folder / "pack.toml")
+    assert meta["name"] == "Tours célèbres"
+    assert {"route", "water", "buildings", "bridges"} <= set(meta["layers"])
+    sheet = rr.library_toml(r)
+    assert "OpenStreetMap" in sheet and not re.search(r"\d+\.\d{3,}", sheet)
