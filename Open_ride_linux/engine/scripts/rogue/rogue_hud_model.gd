@@ -13,7 +13,6 @@ const GuideModel := preload("res://scripts/rogue/rogue_guide_model.gd")
 const SMOOTH_S := 0.3
 const ADRENALINE_MAX := 100.0
 const ADRENALINE_Z := 50.0          # seuil de l'attaque Z
-const WBAL_LOW_PCT := 25.0          # rouge sous ce seuil
 const FIREWALL_DANGER_M := 30.0     # rouge sous ce seuil
 const MAX_POWER_PCT := 999.0
 
@@ -109,8 +108,6 @@ func update(state: Dictionary, now_s: float) -> void:
 	var shield_max := float(rogue.get("shield_max", 0.0))
 	var shield_frac := 0.0 if shield_max <= 0.0 else clampf(float(rogue.get("shield", 0.0)) / shield_max, 0.0, 1.0)
 	var adr_frac := clampf(float(rogue.get("adrenaline", 0.0)) / ADRENALINE_MAX, 0.0, 1.0)
-	var w_prime := float(rogue.get("w_prime_j", 0.0))
-	var wbal_pct := 0.0 if w_prime <= 0.0 else clampf(float(rogue.get("w_bal_j", 0.0)) / w_prime * 100.0, 0.0, 100.0)
 	var enemy_max := float(rogue.get("enemy_hp_max", 0.0))
 	var enemy_pct := 0.0 if enemy_max <= 0.0 else clampf(float(rogue.get("enemy_hp", 0.0)) / enemy_max * 100.0, 0.0, 100.0)
 
@@ -118,7 +115,6 @@ func update(state: Dictionary, now_s: float) -> void:
 	_blend("cadence_rpm", maxf(float(state.get("cadence", 0.0)), 0.0), alpha)
 	_blend("shield_frac", shield_frac, alpha)
 	_blend("adrenaline_frac", adr_frac, alpha)
-	_blend("wbal_pct", wbal_pct, alpha)
 	_blend("enemy_pct", enemy_pct, alpha)
 	_blend("firewall_gap_m", float(rogue.get("firewall_gap_m", 0.0)), alpha)
 
@@ -145,8 +141,6 @@ func update(state: Dictionary, now_s: float) -> void:
 		"adrenaline_frac": _smooth["adrenaline_frac"],
 		"adrenaline_z_mark": ADRENALINE_Z / ADRENALINE_MAX,
 		"z_ready": float(rogue.get("adrenaline", 0.0)) >= ADRENALINE_Z,
-		"wbal_pct": _smooth["wbal_pct"],
-		"wbal_low": _smooth["wbal_pct"] < WBAL_LOW_PCT,
 		"enemy_pct": _smooth["enemy_pct"],
 		"has_enemy": enemy_max > 0.0,
 		"firewall_gap_m": _smooth["firewall_gap_m"],
