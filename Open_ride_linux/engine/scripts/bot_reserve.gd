@@ -16,7 +16,7 @@ const UiTheme := preload("res://scripts/ui_theme.gd")
 
 const COLOR := UiTheme.WBAL
 const BG_DARK := UiTheme.TRACK               # fond de la barre sur un panneau sombre (HUD, DS, vélodrome)
-const BG_LIGHT := Color(0.07, 0.07, 0.07, 0.15)   # fond de la barre sur le papier clair du Grand Prix
+const BG_LIGHT := UiTheme.WBAL_TRACK_LIGHT   # fond de la barre sur le papier clair du Grand Prix
 const HEIGHT := 3.0
 const LEGEND := "Trait bleu : réserve des bots"
 ## Pas de redessin pour moins de 1 % d'écart (12 lignes à chaque image, lot DS8).
