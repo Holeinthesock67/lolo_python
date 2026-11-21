@@ -58,3 +58,17 @@ def test_launcher_runs_the_migration(tmp_path: Path, capsys):
     assert len(launcher.migrate_settings(home)) == 2
     assert "retiré du menu" in capsys.readouterr().out
     assert launcher.migrate_settings(tmp_path / "absent") == []
+
+
+def test_lot_ni4_living_off_is_put_back_on(tmp_path: Path):
+    """Lot NI4 (R10) : « Décor vivant : non » retiré du menu ; un `living = false` choisi avant est mis en
+    commentaire, le décor vivant repart (son coût suit la Qualité graphique)."""
+    home = tmp_path / "OpenRide"
+    home.mkdir()
+    (home / "config.toml").write_text('[render]\nquality = "low"\nliving = false\n', encoding="utf-8")
+    done = migration_reglages.migrate(home, date(2026, 11, 21))
+    assert len(done) == 1 and "render.living" in done[0]
+    text = (home / "config.toml").read_text(encoding="utf-8")
+    assert "# living = false   # réglage retiré du menu (lot NI4)" in text
+    cfg = config_mod.load(home / "config.toml", None)
+    assert cfg.render.living is True and cfg.render.quality == "low"

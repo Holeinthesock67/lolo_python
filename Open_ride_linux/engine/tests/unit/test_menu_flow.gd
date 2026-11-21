@@ -324,6 +324,33 @@ func _test_connect_screen() -> void:
 	_check(k.state()["screen"] == "confirm", "Quitter passe par la confirmation")
 
 
+## Lot NI4 (audit M2) : « Session simulée » sort de l'accueil et se range dans Réglages › Appareils ; en
+## session simulée, la même ligne propose de revenir au matériel réel. Confirmation avant la relance.
+func _test_sim_session_in_devices() -> void:
+	for in_sim in [false, true]:
+		var f = MenuFlow.new()
+		f.connect_done = true
+		f.on_state({"session_state": "IDLE"})
+		if in_sim:
+			f.menu.set_sim_session(true)
+		_check(not "sim" in _ids(f), "accueil sans « Session simulée » (%s)" % str(_ids(f)))
+		f.handle("MINUS_SHORT")
+		f.handle("MINUS_SHORT")   # Réglages
+		f.handle("A_LONG")
+		f.handle("A_LONG")   # Appareils
+		_check(f.state()["screen"] == "pairing", "Réglages → Appareils")
+		var sim: Dictionary = f.state()["items"].filter(func(it): return it["id"] == "sim")[0]
+		var label := "Revenir au matériel réel" if in_sim else "Session simulée (sans matériel)"
+		_check(sim["label"] == label and not sim["enabled"], "%s : grisée pendant la recherche" % label)
+		f.on_scan_results({"type": "scan_results", "request_cmd_id": 3, "done": true, "plus_address": null, "items": []})
+		f.menu.focus_item("sim")
+		_check(_focus_id(f) == "sim", "%s : active après la recherche" % label)
+		_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "confirm", "%s : confirmation d'abord" % label)
+		f.handle("PLUS_SHORT")   # Oui
+		var act: Dictionary = f.handle("A_LONG")
+		_check(act == {"action": "relaunch" if in_sim else "relaunch_sim"}, "%s : relance (%s)" % [label, str(act)])
+
+
 func _test_pairing_screen() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
@@ -375,21 +402,23 @@ func _test_relaunch_setting() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.on_state({"session_state": "IDLE", "difficulty_pct": 50})
-	var living := {"key": "render.living", "label": "Décor vivant", "group": "graphics", "type": "choice", "value": "on",
-		"choices": ["on", "off"], "applies": "relaunch"}
+	# Réglage booléen appliqué au prochain lancement : « Progression et Garage » (« Décor vivant », exemple d'avant,
+	# est retiré du menu au lot NI4).
+	var living := {"key": "progression.enabled", "label": "Progression et Garage", "group": "advanced", "type": "choice",
+		"value": "on", "choices": ["on", "off"], "applies": "relaunch"}
 	var feel := {"key": "wind.feel", "label": "Ressenti du vent", "group": "wind", "type": "choice", "value": "grade",
 		"choices": ["grade", "ftms"], "applies": "next_session"}
 	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [living, feel]})
-	f.settings_group = "graphics"
+	f.settings_group = "advanced"
 	f._refresh_settings()
 	f.menu.push_screen(f.SETTINGS_GROUP)
 	var rows: Array = f.state()["items"]
-	_check(rows.size() == 1 and rows[0]["detail"] == "oui", "décor vivant affiché « oui », pas de relance (%s)" % str(rows))
-	_check(f.state()["card"]["lines"] == ["Choix : oui, non (rendu de la 1.0)", "S'applique au prochain lancement d'OpenRide"],
+	_check(rows.size() == 1 and rows[0]["detail"] == "oui", "progression affichée « oui », pas de relance (%s)" % str(rows))
+	_check(f.state()["card"]["lines"] == ["Choix : oui, non (sans Garage)", "S'applique au prochain lancement d'OpenRide"],
 		"carte : choix en français et prochain lancement (%s)" % str(f.state()["card"]))
 	f.on_settings({"type": "settings", "request_cmd_id": 3, "items": [living.merged({"value": "off"}, true), feel]})
 	rows = f.state()["items"]
-	_check(rows.size() == 2 and rows[1]["id"] == "relaunch" and rows[1]["detail"] == "pour appliquer : Décor vivant",
+	_check(rows.size() == 2 and rows[1]["id"] == "relaunch" and rows[1]["detail"] == "pour appliquer : Progression et Garage",
 		"valeur changée : « Relancer OpenRide maintenant » (%s)" % str(rows))
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG") == {"action": "relaunch"}, "Relancer : action relaunch (code 64)")
@@ -498,8 +527,8 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	_check(_ids(f) == ["_sim", "seuil", "_create", "_qwk", "_help"],
-		"sous-menu ERG : liste puis Créer, QWKcode et Aide, sans import (révision 1.15) (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_help"],
+		"sous-menu ERG : liste puis Créer et Aide, sans import (révision 1.15) ni QWKcode (lot NI4) (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_help" and f.state()["card"].get("name", "") == "Choisir un entraînement",
 		"focus sur Comment ça marche ? : carte de l'aide (%s)" % str(f.state()["card"]))
@@ -514,8 +543,6 @@ func _test_erg_submenu() -> void:
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help", "A long sur un sujet : rien")
 	f.handle("Y_SHORT")
 	_check(f.state()["screen"] == "workouts" and _focus_id(f) == "_help", "Y : retour à la liste")
-	f.handle("MINUS_SHORT")
-	_check(f.state()["card"].get("name", "") == "Saisie QWKcode (GoldenCheetah)", "QWKcode : carte de l'aide")
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_create", "focus sur Créer un entraînement")
 	_check(f.state()["card"].get("name", "") == "Créer des intervalles", "Créer : carte de l'aide")
@@ -954,61 +981,20 @@ func _test_peloton_menu() -> void:
 	_check(n.peloton == 4 and n.bot_choices.is_empty(), "un seul bot de peloton : la plus petite taille, 4")
 
 
-## Lot O21 : QWKcode saisi au clavier, envoyé au core par create_workout_qwk.
+## Lot NI4 : la saisie du QWKcode au clavier (lot O21) est retirée ; « Créer un entraînement » reste, et l'aide
+## explique le fichier .qwk, toujours lu par le core.
 func _test_qwk_entry() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.on_state({"session_state": "IDLE", "route_id": "vosges"})
 	f.set_workouts([{"id": "seuil", "name": "Seuil", "duration_s": 3600}])
-	_check(not f.qwk_key("a", false, false)["used"], "hors de l'écran de saisie : la touche reste un bouton")
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	f.menu.focus_item("_qwk")
-	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_qwk"
-		and f.state()["title"] == "Saisir du QWKcode", "écran Saisir du QWKcode")
-	_check(_ids(f) == ["line:0", "save", "clear"] and not f.state()["items"][1]["enabled"],
-		"texte vide : une ligne, Enregistrer désactivé (%s)" % str(_ids(f)))
-	_check(f.state()["card"].get("name", "") == "Saisie QWKcode (GoldenCheetah)", "carte : syntaxe du QWKcode")
-	for ch in "# Seuil":
-		f.qwk_key(ch, false, false)
-	f.qwk_key("", true, false)
-	for ch in "4x 5m@280 r3m@1400":
-		_check(f.qwk_key(ch, false, false)["used"], "« %s » écrit" % ch)
-	f.qwk_key("", false, true)   # Retour arrière : 1400 → 140
-	var items: Array = f.state()["items"]
-	_check(items[0]["label"] == "# Seuil" and items[1]["label"] == "4x 5m@280 r3m@140▌" and _focus_id(f) == "line:1",
-		"deux lignes, curseur en fin de la dernière (%s)" % str(items.map(func(it): return it["label"])))
-	_check(items[2]["enabled"] and items[2]["detail"] == "1 segment", "Enregistrer : 1 segment")
-	f.qwk_key("", true, false)
-	f.qwk_key("", true, false)   # pas deux lignes vides
-	_check(_ids(f) == ["line:0", "line:1", "line:2", "save", "clear"], "une seule ligne vide en fin")
-	f.qwk_key("", false, true)
-	_check(_ids(f).size() == 4 and f.state()["items"][1]["label"].ends_with("▌"), "Retour arrière remonte d'une ligne")
-	f.menu.focus_item("save")
-	var act: Dictionary = f.qwk_key("", true, false)
-	_check(act.get("action", {}) == {"action": "create_workout_qwk", "text": "# Seuil\n4x 5m@280 r3m@140"},
-		"Entrée sur Enregistrer : create_workout_qwk (%s)" % str(act))
-	f.on_error("workout_invalid", "ligne 2 : cible trop haute")
-	_check(f.state()["screen"] == "workout_qwk" and f.state()["status"] == "Échec : ligne 2 : cible trop haute",
-		"erreur du core sur l'écran de saisie, texte gardé")
-	f.handle("Y_SHORT")
-	f.menu.focus_item("_qwk")
-	f.handle("A_LONG")
-	_check(f.state()["items"][0]["label"] == "# Seuil", "texte gardé en revenant sur l'écran")
-	f.menu.focus_item("save")
-	_check(f.handle("A_LONG") == {"action": "create_workout_qwk", "text": "# Seuil\n4x 5m@280 r3m@140"},
-		"A maintenu sur Enregistrer : même commande")
-	f.on_workout_saved({"type": "workout_saved", "request_cmd_id": 21, "workout_id": "seuil_2", "name": "Seuil",
-		"created": true})
-	_check(f.state()["screen"] == "workouts" and f.state()["status"] == "Créé : Seuil", "retour à la liste")
-	f.menu.focus_item("_qwk")
-	f.handle("A_LONG")
-	_check(_ids(f) == ["line:0", "save", "clear"], "texte vidé après l'enregistrement")
-	f.qwk_key("x", false, false)
-	f.menu.focus_item("clear")
-	f.handle("A_LONG")
-	_check(f.state()["items"][0]["label"] == "▌", "Tout effacer")
+	_check(not "_qwk" in _ids(f) and "_create" in _ids(f), "liste ERG : plus de « Saisir du QWKcode », Créer reste")
+	_check(not f.has_method("qwk_key"), "plus de saisie au clavier du QWKcode")
+	_check(not f.state()["items"].any(func(it): return "QWKcode" in str(it.get("label", ""))),
+		"aucune ligne QWKcode dans la liste")
 
 
 ## « Qui roule ? » ouvert sur le seul nombre de profils de `hello_ack`, la liste `profiles` arrivant après :
@@ -1043,6 +1029,7 @@ func _init() -> void:
 	_test_settings_screen()
 	_test_connect_screen()
 	_test_pairing_screen()
+	_test_sim_session_in_devices()
 	_test_relaunch_setting()
 	_test_full_session()
 	_test_abandon_and_summary_quit()

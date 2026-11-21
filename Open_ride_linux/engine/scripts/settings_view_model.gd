@@ -42,7 +42,8 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 ## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
 ## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des biomes de biome_ids.gd, noms du plan U §2.
-## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
+## Lot O26 : ressenti et mode du vent, thème par défaut (le décor vivant est retiré du menu au lot NI4) ; « Son »
+## (`audio.enabled`, lot NI4) : oui / non.
 ## Pilotage du trainer (lots RC1-RC3) : `trainer.control` prend `resistance` / `sim`.
 ## Jour et nuit, saisons (lot P19) : `render.day_night` et `render.seasons`, coupés par défaut ; `render.month`
 ## (lot U13b) : date du PC ou mois choisi.
@@ -68,7 +69,7 @@ const CHOICE_TEXTS := {
 		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique",
 		"japan": "Japon", "atlantic_heath": "Atlantique et landes",
 		"high_plateau": "hauts plateaux", "reef": "fond marin"},
-	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
+	"audio.enabled": {"on": "oui", "off": "non (silence)"},   # lot NI4 : tout le son d'un seul choix
 	"render.day_night": {"off": "coupé", "theme": "heure du thème", "real": "heure du PC", "accelerated": "une journée en une heure"},
 	"render.seasons": {"off": "coupées", "theme": "celle du thème", "date": "selon la date", "random": "au hasard",
 		"spring": "printemps", "summer": "été", "autumn": "automne", "winter": "hiver"},

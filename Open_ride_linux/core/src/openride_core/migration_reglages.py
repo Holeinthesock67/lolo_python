@@ -23,6 +23,8 @@ from .config_repair import key_lines
 RETIRED: tuple[tuple[str, str, str], ...] = (
     # R5 : « Textures du décor » ; « auto » suit la Qualité graphique (basses et moyennes avaient la même taille)
     ("render", "texture_level", "réglage retiré du menu (lot NI2), suit la Qualité graphique"),
+    # R10 (lot NI4) : « Décor vivant : non (rendu de la 1.0) » ; décor vivant toujours actif, coût réglé par la qualité
+    ("render", "living", "réglage retiré du menu (lot NI4), décor vivant toujours actif, coût réglé par la Qualité graphique"),
 )
 
 

@@ -95,7 +95,7 @@ func _run() -> void:
 	g.compute(st, _rogue({"shift_miss": {"reason": "wrong_way", "dt_s": 0.1}}), 92.0, ["shift_missed"])
 	_check(g.take_toasts()[0]["title"] == "Mauvais sens", "arche : mauvais sens")
 	g.compute(st, _rogue(), 92.0, ["perfect_shift"])
-	_check(g.take_toasts()[0]["title"] == "PERFECT SHIFT +10", "Perfect Shift réussi")
+	_check(g.take_toasts()[0]["title"] == "CHANGEMENT PARFAIT +10", "changement parfait réussi")
 	g.compute(st, _rogue(), 92.0, [])
 	_check(g.take_toasts().is_empty(), "sans événement : aucun retour")
 	for reason in ["adrenaline", "overheat", "no_target", "no_charge", "no_roc_charge", "no_surge", "no_hack", "cursed", "recovery", "gold"]:
