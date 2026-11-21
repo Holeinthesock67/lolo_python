@@ -584,3 +584,50 @@ def compute_summary_collection(profile_ctx: Any,
         "card": card_line(ann.card),
         "others": ann.others,
     }
+
+
+# --- Ma puissance (série PP, lot PP3, révision 1.29) -------------------------------------------------
+
+POWER_CURVE_MAX_BYTES = 4096
+
+
+def _curve_point(p: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Point compact d'une fenêtre : {w, e, d, r, k} (watts, effort, date, parcours, entraînement), None sans effort."""
+    if not p or p.get("watts") is None:
+        return None
+    sess = p.get("session") or {}
+    return {"w": p["watts"], "e": p["effort"], "d": p["date"], "r": sess.get("route_id"),
+            "k": sess.get("workout_id")}
+
+
+def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir: Path, cache_path: Path,
+                              sources, profile_id: str | None = None, now: float | None = None) -> dict[str, Any]:
+    """Réponse à `list_power_curve` : courbe du profil en cours (13 durées, 6 mois et 6 semaines, PP1), FTP estimée
+    et sa proposition (PP2), évolution sur 6 mois ; un seul datagramme de moins de 4 096 octets."""
+    from .tools import ftp_estimate, power_curve
+
+    now = time.time() if now is None else now
+    kept = power_curve.kept_sessions(power_curve.session_entries(activities_dir, cache_path), tuple(sources))
+    m6 = power_curve.window_curve(kept, power_curve.WINDOWS["months6"], now)
+    w6 = power_curve.window_curve(kept, power_curve.WINDOWS["weeks6"], now)
+    est = ftp_estimate.estimate_from_sessions(kept, ftp_w, now)
+    e = est["estimate"]
+    msg = {"type": "power_curve", "v": 1, "request_cmd_id": request_cmd_id, "profile_id": profile_id,
+           "ftp_set_w": est["ftp_set_w"], "sessions": {"m6": m6["sessions"], "w6": w6["sessions"]},
+           "points": [{"s": a["seconds"], "m6": _curve_point(a), "w6": _curve_point(b)}
+                      for a, b in zip(m6["points"], w6["points"])],
+           "estimate": ({"ftp_w": e["ftp_w"], "source": e["source"], "source_text": e["source_text"],
+                         "date": e["date"]} if e else None),
+           "confidence": est["confidence"], "reason": est["reason"],
+           "proposal_w": est["proposal"]["ftp_w"] if est["proposal"] else None,
+           "review": est["review"], "delta_pct": est["delta_pct"],
+           "monthly": [{"m": x["month"], "ftp": x["ftp_w"], "p5": x["best_5min_w"], "p20": x["best_20min_w"]}
+                       for x in est["monthly"]],
+           "warnings": est["warnings"]}
+    if len(json.dumps(msg, ensure_ascii=False).encode("utf-8")) > POWER_CURVE_MAX_BYTES:   # noms très longs
+        for pt in msg["points"]:
+            for key in ("m6", "w6"):
+                if pt[key]:
+                    pt[key]["r"] = (pt[key]["r"] or "")[:24] or None
+                    pt[key]["k"] = None
+    return msg

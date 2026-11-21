@@ -39,9 +39,9 @@ func _test_model() -> void:
 	_check(m.should_ask(), "deux profils joueur : « Qui roule ? » au démarrage")
 	m.on_profiles(PROFILES)
 	var who: Array = m.who_items()
-	_check(_ids(who) == ["p:cycliste-a", "p:cycliste-b", "new", "manage"], "profil en cours d'abord, puis création et gestion")
+	_check(_ids(who) == ["p:cycliste-a", "power", "p:cycliste-b", "new", "manage"], "profil en cours d'abord, sa ligne « Ma puissance » (lot PP3), puis création et gestion")
 	_check(str(who[0]["detail"]).contains("niveau 7") and str(who[0]["detail"]).contains("29/10"), "niveau et dernière séance")
-	_check(str(who[1]["detail"]).contains("aucune séance"), "profil sans séance")
+	_check(str(who[2]["detail"]).contains("aucune séance"), "profil sans séance")
 	# changement de profil : hello_ack arrive avant le message `profiles` ; « Qui roule ? » ouvert entre les deux
 	m.on_hello({"id": "cycliste-b", "name": "Cycliste B", "type": "joueur", "count": 2})
 	who = m.who_items()
@@ -106,6 +106,8 @@ func _test_flow() -> void:
 	_check(f.state()["title"] == "OpenRide — Cycliste A" and f.state()["items"][0]["label"] == "Profil : Cycliste A",
 		"titre et ligne « Profil » de l'accueil")
 	_check(f.handle("A_LONG") == {"action": "list_profiles"}, "ligne « Profil » : liste demandée")
+	f.handle("PLUS_SHORT")
+	_check(f.state()["items"][f.state()["focus"]]["id"] == "power", "« Ma puissance » juste sous le profil en cours (lot PP3)")
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG") == {"action": "select_profile", "id": "cycliste-b"}, "A maintenu sur un autre profil : select_profile")
 	_check(f.state()["status"] == "Changement de profil…", "attente du core affichée")

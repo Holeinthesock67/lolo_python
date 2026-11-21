@@ -87,6 +87,7 @@
         "clear_watch_advice",
         "list_collection",
         "collection_seen",
+        "list_power_curve",
         "list_mode_options",
         "set_mode_option",
         "set_bots",
