@@ -23,6 +23,8 @@ Règles (cahier CH0, §3, validé le 21 novembre 2026) :
 - **Pause** : gèle le calendrier par semaines entières ; au-delà de `PAUSE_MAX_WEEKS` semaines gelées en tout
   (pauses additionnées), la saison est close
   au classement du moment, sans trophée.
+- **Dureté** (lot CH2) : `round_ratings` étale les rivaux et les décale pour 10 % de chances de victoire par
+  manche ; `rider_update` tient la cote du cycliste contre ces cotes.
 - **Fin de saison** : trophée d'or, d'argent ou de bronze sur le podium, « Trophée de régularité » pour au moins
   6 manches courues hors podium.
 """
@@ -539,3 +541,93 @@ def save(path: Path, season: Season) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps(season.to_dict(), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     os.replace(tmp, path)
+
+
+# --- calibrage à 10 % de victoire (lot CH2) -------------------------------------------------------
+#
+# Dans un plateau de 12 à forces égales, la part juste de victoire est 1/12 (8 %). Le propriétaire veut environ
+# 10 % : les rivaux sont étalés autour du cycliste (le haut du plateau un peu plus fort, le bas un peu plus faible)
+# puis décalés ensemble, manche par manche, pour que la probabilité de victoire du cycliste au modèle de l'Elo
+# (Plackett-Luce, 400 points = 10 contre 1) vaille `TARGET_WIN`. La cote du cycliste est mise à jour contre ces
+# cotes de manche (`rider_update`) : à l'équilibre, sa cote est sa vraie force et il gagne 10 % des manches, quel
+# que soit son niveau. Le niveau d'un bot en séance suit sa cote de manche (`bot_elo.level_factor`).
+
+TARGET_WIN = 0.10
+SPREAD_WIDTH = 150.0            # écart du premier au dernier rival de l'étalement, points Elo
+
+
+def spread(season: Season) -> dict[str, float]:
+    """Étalement fixe de la saison : rang de force de chaque rival (tiré par la graine), de +W/2 à −W/2."""
+    keys = field_keys()
+    rng = random.Random(season.seed * 7919 + 1)
+    order = keys[:]
+    rng.shuffle(order)
+    n = len(order)
+    return {k: SPREAD_WIDTH * (0.5 - i / (n - 1)) for i, k in enumerate(order)}
+
+
+def win_probability(rider: float, rivals: Iterable[float]) -> float:
+    """Probabilité de victoire du cycliste de cote `rider` contre ces cotes (Plackett-Luce, échelle Elo)."""
+    return 1.0 / (1.0 + sum(math.pow(10.0, (r - rider) / ELO_SCALE) for r in rivals))
+
+
+def round_ratings(season: Season, rnd: Round, rating: float, offsets: Mapping[str, float] | None = None,
+                  target: float = TARGET_WIN) -> dict[str, float]:
+    """Cotes des rivaux pour une manche : cote du cycliste + écart propre du bot (Elo) + étalement de la saison +
+    avantage du caractère sur le terrain, le tout décalé pour que le cycliste ait `target` de chances de gagner."""
+    offsets = offsets or {}
+    aff = AFFINITY.get(rnd.terrain, {})
+    sp = spread(season)
+    rel = {r.key: offsets.get(r.key, 0.0) + sp[r.key] + aff.get(r.profile, 0.0) for r in season.rivals}
+    # Σ 10^((rel + c)/400) = 1/target − 1  →  c fermé.
+    total = sum(math.pow(10.0, v / ELO_SCALE) for v in rel.values())
+    shift = ELO_SCALE * math.log10((1.0 / target - 1.0) / total)
+    return {k: rating + v + shift for k, v in rel.items()}
+
+
+def level_factors(ratings: Mapping[str, float]) -> dict[str, float]:
+    """Facteur de niveau de chaque bot de la manche (`bot_elo.level_factor` : +2,5 % de puissance par 100 points)."""
+    from . import bot_elo
+
+    return {k: bot_elo.level_factor(v) for k, v in ratings.items()}
+
+
+def rider_update(book: Any, places: Mapping[str, int], ratings: Mapping[str, float], ts: float | None = None
+                 ) -> dict[str, Any]:
+    """Cote du cycliste après une manche, contre les cotes de la manche (`round_ratings`), avec le K et les bornes
+    de la cote commune (`bot_elo.EloBook`) ; les écarts propres des bots suivent la règle commune (K des bots,
+    recentrés et bornés). Rend la ligne de résultat de `EloBook.update` (mode `league`)."""
+    from . import bot_elo
+
+    if ME not in places or set(places) - {ME} != set(ratings):
+        raise LeagueError("classement de la manche sans le cycliste ou incomplet")
+    racers = list(places)
+    eff = dict(ratings)
+    eff[ME] = book.rating
+    n = len(racers) - 1
+    delta = {}
+    for a in racers:
+        total = 0.0
+        for b in racers:
+            if a == b:
+                continue
+            score = 1.0 if places[a] < places[b] else (0.5 if places[a] == places[b] else 0.0)
+            total += score - bot_elo.expected(eff[a], eff[b])
+        delta[a] = total / n
+    old = book.rating
+    lo, hi = bot_elo.RATING_BOUNDS
+    book.rating = min(max(old + book.k_rider() * delta[ME], lo), hi)
+    for b in racers:
+        if b != ME:
+            book.offsets[b] = book.offsets.get(b, 0.0) + bot_elo.K_BOT * delta[b]
+    mean = sum(book.offsets[b] for b in racers if b != ME) / n
+    for b in racers:
+        if b != ME:
+            book.offsets[b] = round(min(max(book.offsets[b] - mean, -bot_elo.OFFSET_MAX), bot_elo.OFFSET_MAX), 1)
+    book.races += 1
+    line = {"mode": "league", "place": places[ME], "of": len(racers), "before": round(old),
+            "after": round(book.rating), "delta": round(book.rating) - round(old)}
+    if ts is not None:
+        line["ts"] = round(ts, 3)
+    book.history = (book.history + [line])[-bot_elo.HISTORY_MAX:]
+    return line
