@@ -2,7 +2,7 @@
 
 Une seule liste fait foi : le « Col du lacet » (`demo_world.DEMO_NAME`), les démonstrations des biomes marquées
 pour le jeu de base dans `openride_compiler.demo_biomes.DEMO_SET` (`GAME_DEMOS`) et les pistes de
-`velodrome.TRACKS`. Ce test la verrouille (décisions du propriétaire des 9, 12, 13 et 14 novembre 2026) et vérifie
+`velodrome.TRACKS`. Ce test la verrouille (décisions du propriétaire des 9, 12, 13, 14 et 15 novembre 2026) et vérifie
 que les outils de la recette suivent la même liste : `engine/tests/captures_demo.py` (captures de chaque parcours)
 et le scénario de menus `parcours_demo` (liste des parcours, écran Prêt de chacun, modes Grand Prix et Vélodrome).
 Le pack « Cols célèbres » (lot PK1) vient du paquet et n'est pas dans cette liste.
@@ -34,10 +34,13 @@ FINAL = {   # identifiant de fichier → nom au menu
     "demo-volcan": "Volcan en flammes",
     "demo-biomes-sud": "Route du Sud",
     "demo-biomes-nord": "Route du Grand Nord",
+    "demo-corniche": "Boucle de la Corniche",
+    "demo-vignes": "Route des Vignes",
     "velodrome-250": "Vélodrome 250 m",
 }
 RETIRED = ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
-MODE_ROUTES = {"demo-circuit": "grandprix", "velodrome-250": "track"}   # hors de la liste générale (lot GP13)
+MODE_ROUTES = {"demo-circuit": "grandprix", "demo-corniche": "grandprix", "demo-vignes": "grandprix",
+               "velodrome-250": "track"}   # hors de la liste générale (lots GP13 et GP13b)
 
 
 def _base_game() -> dict[str, str]:
@@ -52,7 +55,8 @@ def test_final_list_is_locked() -> None:
 
 
 def test_every_route_has_a_fiche_and_modes_by_tag() -> None:
-    """Chaque parcours du jeu de base a une description au menu ; seuls le circuit et la piste sont d'un mode."""
+    """Chaque parcours du jeu de base a une description au menu ; seuls les parcours du Grand Prix et la piste sont
+    d'un mode."""
     libs = {demo_world.DEMO_NAME: demo_world.DEMO_LIBRARY,
             **{n: demo_biomes.library_of(n) for n in demo_biomes.GAME_DEMOS}}
     for name in FINAL:
@@ -92,7 +96,8 @@ def test_menu_scenario_follows_the_list() -> None:
     titles = {s["titre"] for s in steps if s.get("ecran") == "ready" and "titre" in s}
     for n in free:
         assert f"Prêt : session libre — {FINAL[n]}" in titles, n
-    assert f"Prêt : Grand Prix des objets — {FINAL['demo-circuit']}" in titles
+    for n in ("demo-circuit", "demo-corniche", "demo-vignes"):
+        assert f"Prêt : Grand Prix des objets — {FINAL[n]}" in titles, n
     assert f"Prêt : {FINAL['velodrome-250']}" in titles
     captures = {s["capture"] for s in steps if "capture" in s}
     assert captures == {"parcours_liste"} | {f"pret_{n}" for n in FINAL}
