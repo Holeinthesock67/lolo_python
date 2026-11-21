@@ -1635,6 +1635,38 @@ class CoreSession:
         except Exception:
             log.exception("Erreur lors du calcul de summary.collection")
 
+    def _after_session_power(self, journal_path: Path) -> None:
+        """Records de puissance et signal « FTP à revoir » au bilan (série PP, lot PP4) : `summary.power_records`
+        et `summary.ftp_review`, calculés hors de la boucle à 50 Hz, absents si rien à dire."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : calcul direct
+            self._attach_power_report(self._power_report(journal_path))
+            return
+        self._spawn(self._attach_summary_power(journal_path))
+
+    def _power_report(self, journal_path: Path) -> dict | None:
+        from .tools.power_records import session_report
+
+        ctx = self.profile_ctx
+        cache = self.mmp_cache_path if self.mmp_cache_path is not None else ctx.mmp_cache
+        return session_report(journal_path, float(self.cfg.rider.ftp_w), self.journal_dir.parent, cache,
+                              ctx.counted_sources)
+
+    def _attach_power_report(self, report: dict | None) -> None:
+        if report is None or self.state.summary is None:
+            return
+        if report["records"]:
+            self.state.summary["power_records"] = report["records"]
+        if report["ftp_review"] is not None:
+            self.state.summary["ftp_review"] = report["ftp_review"]
+
+    async def _attach_summary_power(self, journal_path: Path) -> None:
+        try:
+            self._attach_power_report(await asyncio.to_thread(self._power_report, journal_path))
+        except Exception:
+            log.exception("Erreur lors du calcul des records de puissance du bilan")
+
     def _setting_file(self, key: str) -> Path:
         """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),
         `config.toml` pour un réglage de la machine (lot MJ4)."""
@@ -2532,6 +2564,7 @@ class CoreSession:
     def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
         journal: str | None = None
+        journal_path: Path | None = None
         records_done: list[dict] | None = []
         race, self.race = self.race, None
         wtf, self.wtf = self.wtf, None
@@ -2576,6 +2609,7 @@ class CoreSession:
         if self._rec:
             rec, self._rec = self._rec, None
             journal = rec.path.name if rec.path is not None else None
+            journal_path = rec.path
             ftp_result = self._write_ftp_test(rec)
             if ftp_result is not None:
                 self._ftp_result = ftp_result
@@ -2635,6 +2669,8 @@ class CoreSession:
         if journal is not None and final_state == "FINISHED":
             self._after_session(journal, records_done)
             self._after_session_collection()
+            if journal_path is not None:
+                self._after_session_power(journal_path)
 
     # --- mode « What the fuck » (série WTF, lot WTF2) -----------------------------------
 
