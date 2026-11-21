@@ -1385,7 +1385,8 @@
               "truck",
               "bus",
               "moto",
-              "tractor"
+              "tractor",
+              "team_car"
             ]
           },
           "color": {
