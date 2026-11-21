@@ -470,6 +470,21 @@ def is_valid_collection_key(key: str, cards_by_id: dict[str, Any]) -> bool:
     return True
 
 
+def collection_powers(profile_ctx: Any, journal_dir: Path) -> dict[str, dict[int, float]]:
+    """Meilleurs efforts par journal pour les trophées de puissance (lot PP7b), depuis le cache de la
+    courbe (lot PP1) ; un cache ou une séance illisible laisse la collection sans ces cartes."""
+    from .tools import power_curve
+
+    cache = getattr(profile_ctx, "mmp_cache", None)
+    if cache is None:
+        return {}
+    try:
+        return power_curve.session_powers(Path(journal_dir).parent, Path(cache))
+    except Exception:
+        log.exception("Collection : courbe de puissance illisible, trophées de puissance ignorés")
+        return {}
+
+
 def build_collection_message(request_cmd_id: int, profile_ctx: Any,
                              journal_dir: Path | None = None,
                              table_path: Path | None = None,
@@ -488,7 +503,7 @@ def build_collection_message(request_cmd_id: int, profile_ctx: Any,
     cache = FactsCache(journal_dir / CACHE_NAME)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
                          counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
-    col = evaluate(progress, cards, table, now=now)
+    col = evaluate(progress, cards, table, now=now, powers=collection_powers(profile_ctx, journal_dir))
     seen = load_seen(seen_path(profile_ctx.root))
 
     return {
@@ -531,7 +546,8 @@ def collection_earned(profile_ctx: Any, journal_dir: Path | None = None,
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR),
                          cache=FactsCache(journal_dir / CACHE_NAME),
                          counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
-    col = evaluate(progress, load_catalogue(table=table), table, now=now)
+    col = evaluate(progress, load_catalogue(table=table), table, now=now,
+                   powers=collection_powers(profile_ctx, journal_dir))
     return [(e.start_ts, e.key) for e in col.earned if e.start_ts is not None]
 
 
@@ -575,7 +591,7 @@ def compute_summary_collection(profile_ctx: Any,
     cache = FactsCache(journal_dir / CACHE_NAME)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
                          counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
-    col = evaluate(progress, cards, table, now=now)
+    col = evaluate(progress, cards, table, now=now, powers=collection_powers(profile_ctx, journal_dir))
     seen = load_seen(seen_path(profile_ctx.root))
     ann = announcement(col, seen)
     if ann.card is None:

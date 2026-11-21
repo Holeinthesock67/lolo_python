@@ -22,6 +22,8 @@
 #                peut passer le 31 décembre), ou autour de Pâques (`easter_from`, `easter_to`,
 #                jours depuis le dimanche de Pâques) ; une édition par année
 #   anniversaire séance au moins `years` ans après la première séance comptée
+#   puissance    séance dont le meilleur effort de `seconds` secondes (une des 13 durées de la courbe
+#                de puissance, lot PP1), libre ou ERG, atteint `watts` (palier en watts fixes, lot PP7b)
 
 # --- distance cumulée ------------------------------------------------------------------------
 
@@ -418,3 +420,104 @@ family = "anniversaire"
 rarity = "legendaire"
 visual = "bougie_2"
 rule = { kind = "anniversaire", years = 2 }
+
+# --- puissance (paliers en watts fixes, décision du propriétaire du 21 novembre, lot PP7b) --------
+
+[[cards]]
+id = "watts_5s_600"
+title = "Étincelle"
+text = "600 W tenus 5 secondes : le sprint s'allume."
+family = "puissance"
+rarity = "commune"
+visual = "eclair_600"
+rule = { kind = "puissance", seconds = 5, watts = 600 }
+
+[[cards]]
+id = "watts_5s_800"
+title = "Coup de tonnerre"
+text = "800 W tenus 5 secondes."
+family = "puissance"
+rarity = "rare"
+visual = "eclair_800"
+rule = { kind = "puissance", seconds = 5, watts = 800 }
+
+[[cards]]
+id = "watts_5s_1000"
+title = "Mille watts"
+text = "1 000 W tenus 5 secondes : la foudre."
+family = "puissance"
+rarity = "epique"
+visual = "eclair_1000"
+rule = { kind = "puissance", seconds = 5, watts = 1000 }
+
+[[cards]]
+id = "watts_1min_350"
+title = "Minute brûlante"
+text = "350 W tenus une minute."
+family = "puissance"
+rarity = "commune"
+visual = "flamme_350"
+rule = { kind = "puissance", seconds = 60, watts = 350 }
+
+[[cards]]
+id = "watts_1min_450"
+title = "Minute de feu"
+text = "450 W tenus une minute."
+family = "puissance"
+rarity = "rare"
+visual = "flamme_450"
+rule = { kind = "puissance", seconds = 60, watts = 450 }
+
+[[cards]]
+id = "watts_5min_250"
+title = "Cinq minutes d'acier"
+text = "250 W tenus cinq minutes."
+family = "puissance"
+rarity = "commune"
+visual = "moteur_250"
+rule = { kind = "puissance", seconds = 300, watts = 250 }
+
+[[cards]]
+id = "watts_5min_300"
+title = "Moteur à 300"
+text = "300 W tenus cinq minutes."
+family = "puissance"
+rarity = "rare"
+visual = "moteur_300"
+rule = { kind = "puissance", seconds = 300, watts = 300 }
+
+[[cards]]
+id = "watts_5min_350"
+title = "Cinq minutes en or"
+text = "350 W tenus cinq minutes."
+family = "puissance"
+rarity = "epique"
+visual = "moteur_350"
+rule = { kind = "puissance", seconds = 300, watts = 350 }
+
+[[cards]]
+id = "watts_20min_200"
+title = "Vingt minutes au train"
+text = "200 W tenus vingt minutes."
+family = "puissance"
+rarity = "commune"
+visual = "rouleur_200"
+rule = { kind = "puissance", seconds = 1200, watts = 200 }
+
+[[cards]]
+id = "watts_20min_250"
+title = "Rouleur de fond"
+text = "250 W tenus vingt minutes."
+family = "puissance"
+rarity = "rare"
+visual = "rouleur_250"
+rule = { kind = "puissance", seconds = 1200, watts = 250 }
+
+[[cards]]
+id = "watts_20min_300"
+title = "Locomotive"
+text = "300 W tenus vingt minutes : rien ne t'arrête."
+family = "puissance"
+rarity = "epique"
+visual = "rouleur_300"
+rule = { kind = "puissance", seconds = 1200, watts = 300 }

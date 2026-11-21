@@ -256,6 +256,17 @@ def session_entries(directory: Path, cache_path: Path) -> list[tuple[Path, dict]
     return out
 
 
+def session_powers(directory: Path, cache_path: Path) -> dict[str, dict[int, float]]:
+    """Meilleurs efforts de chaque journal du dossier, nom du journal -> {durée en s: watts}, libres ou
+    ERG (le meilleur des deux), pour les trophées de puissance de la collection (lot PP7b). Le tri des
+    séances comptées est celui de la progression (`collection.evaluate` ne lit que ses séances)."""
+    out: dict[str, dict[int, float]] = {}
+    for p, e in session_entries(directory, cache_path):
+        if p.suffix == ".jsonl" and e.get("all"):
+            out[p.name] = {int(d): float(w) for d, w in e["all"].items()}
+    return out
+
+
 def kept_sessions(found: list[tuple[Path, dict]], sources: Iterable[str]) -> list[tuple[Path, dict]]:
     """Séances comptées : source du profil, jamais un rejeu ; FIT écarté quand son journal est là."""
     sources = set(sources)
