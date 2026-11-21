@@ -1523,7 +1523,7 @@ def _menu_scenes(s: Session) -> None:
         m = info["widgets"]["menu"]
         s.check("menu_accueil", "menu en plein écran, HUD de séance caché", m["rect"][2] >= 0.99 * s.width
                 and m["rect"][3] >= 0.99 * s.height and not info["widgets"]["power"]["visible"], f"rectangle {m['rect']}")
-        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 53 cartes | Session simulée | Garage"}, contains=True)
         focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
         s.check("menu_accueil", "sélection très visible (cadre cyan)", focus >= 0.003, f"{focus:.2%} de pixels cyan")
     # Appui long sur A du Click relayé par le core : liste des parcours.
@@ -2513,7 +2513,7 @@ def _collection_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("collection_album", info, {"menu_title": "Collection", "menu": "Heure | 3 / 4"}, contains=True)
         s.check_texts("collection_album", info, {"menu": "[c:leve_tot_10]"}, contains=True)
-        s.check_texts("collection_album", info, {"menu": "17 / 42 cartes · 2 nouvelles"}, contains=True)
+        s.check_texts("collection_album", info, {"menu": "17 / 53 cartes · 2 nouvelles"}, contains=True)
         s.check_layout("collection_album", info)
     press("A_LONG", wait=0.6)
     shot = s.capture("collection_carte")
