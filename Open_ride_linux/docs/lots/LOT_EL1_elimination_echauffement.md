@@ -22,12 +22,19 @@ Essai du 21 novembre (élimination au vélodrome) : « très bien, mais une séa
 ## 3. Livraison
 
 - Core : `warmup.py`, `start_gate.py`, `session.py`, `track/base.py`, `track/elimination.py`, `track/__init__.py`, `bot_effort.py`, `config.py`, `settings.py`, `ipc_budget.py` ; tests `test_warmup.py`, `test_track_events.py`, `test_track_session.py`, `test_bot_effort.py`.
+- Banc : scénario `engine/tests/menu_scenarios/elimination.json` (écran Prêt, étape d'échauffement, `skip_warmup`, épreuve lancée, bilan).
 - Engine : `start_wait_model.gd`, `start_screen.gd`, `track/track_hud_model.gd`, `track/track_view.gd`, `track/track_names.gd` ; tests `test_start_wait_model.gd`, `test_track_hud.gd`.
 - Captures low, medium et high (trames du vrai core) : dossier du projet `velodrome/elim-ecarts/`.
 - Reste : l'échauffement n'est pas dans le FIT (la séance démarre après) ; essai vélo.
 
 ## Recette PC
 Catégorie : rendu
-- Cloud : captures low, medium et high du HUD (fait, `velodrome/elim-ecarts/`), suites core et engine
-- PC : fumée + low, high, medium sur le vélodrome (élimination) ; essai vélo : échauffement passé à Z, élimination à 4 tours, victoire
+- Cloud : captures low, medium et high du HUD (fait, `velodrome/elim-ecarts/`), suites core et engine ; scénario `menu_bench` `elimination` joué sur les trois voies (toutes les étapes vertes ; seul échec : Vulkan absent du cloud)
+- PC, depuis `/home/utilisateur/Games/lolo_python/Open_ride_linux` (environ 5 min par qualité, trois voies) :
+  - fumée : `python3 engine/tests/menu_bench.py --scenario velodrome --qualite medium`
+  - `python3 engine/tests/menu_bench.py --scenario elimination --qualite low --captures ecrans --sonde`
+  - `python3 engine/tests/menu_bench.py --scenario elimination --qualite high --captures ecrans --sonde`
+  - `python3 engine/tests/menu_bench.py --scenario elimination --qualite medium --captures ecrans --sonde`
+- `sim_bench` ne connaît pas le vélodrome : rien à y lancer
+- Essai vélo : échauffement passé à Z, élimination à 4 tours, victoire
 - Versions : révision IPC 1.26 ; WORLDGEN_VERSION et SCHEMA_VERSION inchangés

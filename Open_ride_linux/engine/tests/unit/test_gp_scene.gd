@@ -82,6 +82,8 @@ func _run() -> void:
 	_check(Model.looks([["star", 5.2], ["bottle", 1.0]]) == ["halo", "slip"], "effets du cycliste (paires [objet, reste])")
 	_check(Model.looks(["musette", "homing", "storm"]) == ["slip", "rain"], "effets d'un bot, sans doublon")
 	_check(Model.looks(null).is_empty() and Model.looks(["bell"]).is_empty(), "sonnette : rien sur le coureur")
+	_check(Model.looks([["team_car", 4.0]]).is_empty(),
+		"voiture d'équipe : pas d'effet sur le coureur, c'est un véhicule `team_car` de traffic_renderer.gd")
 	_check(Model.shown_looks("low", ["gust", "slip", "kick"]) == ["slip"], "low : rafales et traits coupés")
 	_check(Model.shown_looks("high", ["gust", "kick"]) == ["gust", "kick"], "high : tous les effets")
 	_check(Model.particles("low", "rain") == 0 and Model.particles("low", "halo") == 0, "low : sans particules")

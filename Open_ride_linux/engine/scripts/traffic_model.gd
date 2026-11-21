@@ -75,7 +75,8 @@ const NEAR_M := 150.0                       # lot AS6 : véhicules calculés par
 const CORE_SHIFT_MAX_M := 50.0               # écart cycliste affiché / cycliste du core au-delà duquel (saut, boucle) on ne recale pas
 const CORE_MARGIN_M := 10.0                 # un véhicule qui vient de sortir de la liste n'est pas retiré
 ## Sortes (Lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd (rétroviseurs compris), part des
-## tirages et plage de vitesse.
+## tirages et plage de vitesse. `team_car` (voiture d'équipe du Grand Prix, lot GP-voiture-modele) : part nulle,
+## jamais tirée dans la circulation, seulement envoyée par le core devant un coureur remorqué.
 const KINDS := {
 	"car_a": {"half_width": 1.03, "length": 4.6, "share": 0.3, "kmh": Vector2(50.0, 70.0)},
 	"car_b": {"half_width": 1.0, "length": 4.1, "share": 0.25, "kmh": Vector2(50.0, 70.0)},
@@ -84,6 +85,7 @@ const KINDS := {
 	"bus": {"half_width": 1.44, "length": 12.2, "share": 0.04, "kmh": Vector2(45.0, 60.0)},
 	"moto": {"half_width": 0.41, "length": 2.1, "share": 0.07, "kmh": Vector2(55.0, 80.0)},
 	"tractor": {"half_width": 1.07, "length": 3.8, "share": 0.15, "kmh": Vector2(20.0, 30.0)},
+	"team_car": {"half_width": 1.04, "length": 4.8, "share": 0.0, "kmh": Vector2(50.0, 70.0)},
 }
 const COLORS := 8
 const HEADLIGHT_FOG := 0.3
@@ -236,14 +238,20 @@ func slot_event(k: int) -> Dictionary:
 	}
 
 
-## Sorte tirée d'après `u` (0 à 1) et les parts de KINDS, dans l'ordre de la table.
+## Sorte tirée d'après `u` (0 à 1) et les parts de KINDS, dans l'ordre de la table ; au-delà de la somme des
+## parts (arrondis), la dernière sorte tirable (part non nulle).
 static func pick_kind(u: float) -> String:
 	var acc := 0.0
+	var last := ""
 	for k in KINDS:
-		acc += float(KINDS[k]["share"])
+		var share := float(KINDS[k]["share"])
+		if share <= 0.0:
+			continue
+		last = k
+		acc += share
 		if u < acc:
 			return k
-	return KINDS.keys()[KINDS.size() - 1]
+	return last
 
 
 ## Phares allumés (Lot P25) : brume (`fog_boost`) ou pluie de weather_model.gd, ou soleil bas du thème.
