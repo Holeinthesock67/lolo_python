@@ -106,9 +106,11 @@ def test_shared_border_is_bit_identical_and_road_is_flat(db, tmp_path) -> None:
     cols = np.arange(0, 101)
     expect = np.interp(IX * 1000 + 10.0 * cols, xs, alt) - C.ROAD_SINK_M
     gap = ya[50, :].astype(float) - expect
-    away = np.abs(cols - 40.5) > 1.0
+    away = np.abs(cols - 40.5) > 2.0
     # jamais au-dessus du profil − 5 cm ; au plus 10 cm dessous (20/11 : sur un profil courbe, le garde-fou abaisse
-    # aussi les sommets de la chaussée de quelques centimètres quand les coins hors chaussée ne suffisent pas)
+    # aussi les sommets de la chaussée de quelques centimètres quand les coins hors chaussée ne suffisent pas). Au
+    # croisement, les sommets à moins de deux cases suivent la tertiaire à 30 % dessinée par l'engine (21/11 : route de
+    # l'engine et bas-côtés compris, règle road_ground.py).
     assert gap.max() < 2e-3 and gap[away].min() > -0.10, (gap.max(), gap[away].min())
     # Loin des routes (coin sud-ouest), relief seul.
     gx, gz = squares.grid_xz(SquareKey(ZONE, IX, IN), 10)
@@ -378,16 +380,16 @@ def test_roadside_building_keeps_its_footing(tmp_path) -> None:
 
 
 def test_clear_never_digs_below_the_road() -> None:
-    """20/11 (banc #936, lac d'Annecy) : un point de chaussée au ras d'un sommet de la chaussée trop haut (route voisine
-    plus haute), les deux autres coins hors chaussée ayant un poids presque nul. L'ancienne règle divisait le besoin
-    par ce poids et enfonçait ces coins de milliers de mètres (falaises grises au bord de la route) ; aucun sommet ne
-    doit descendre sous la limite de la chaussée."""
+    """20/11 (banc #936, lac d'Annecy) : un point de chaussée au ras d'un sommet trop haut (route voisine plus haute),
+    les deux autres coins ayant un poids presque nul. L'ancienne règle divisait le besoin par ce poids et enfonçait ces
+    coins de milliers de mètres (falaises grises au bord de la route) ; aucun sommet ne doit descendre sous la limite
+    de la chaussée (règle bornée de road_ground.fit)."""
+    from openride_compiler import road_ground as RG
     y = np.zeros((3, 3))
-    y[0, 0] = 0.5                                   # sommet de la chaussée, 50 cm au-dessus de ce point de route
-    on_road = np.zeros((3, 3), dtype=bool)
-    on_road[0, 0] = True
-    piece = (np.array([0.0005, 0.0015]), np.array([0.0005, 0.0005]), np.array([0.0, 0.0]), 1e-4)
-    out = squares.clear_square_road(y.copy(), 0.0, 0.0, 10.0, [piece], on_road)
-    lim = 0.0 - C.ROAD_SINK_M - 1e-3
-    assert float(out.min()) >= lim - 1e-6, out
-    assert float(out[0, 0]) <= lim + 1e-6          # le coin de la chaussée descend à la limite : la route est dégagée
+    y[0, 0] = 0.5                                   # sommet sous la chaussée, 50 cm au-dessus de ce point de route
+    lim = 0.0 - C.ROAD_SINK_M
+    upper = (np.array([0.0005]), np.array([0.0005]), np.array([lim]))
+    e = np.empty(0)
+    RG.fit_grid(y, 0.0, 0.0, 10.0, upper, (e, e, e))
+    assert float(y.min()) >= lim - 1e-3 - 1e-6, y
+    assert float(y[0, 0]) <= lim + 1e-6             # le sommet descend à la limite : la route est dégagée

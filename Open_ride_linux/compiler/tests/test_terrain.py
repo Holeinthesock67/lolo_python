@@ -151,7 +151,9 @@ def test_blend_in_tiles(world):
         near = d <= 4.0
         diff = g[near] - (y_route[near] - 0.05)
         assert np.all(diff < 0.01) and np.all(diff > -0.5)
-        assert diff.size == 0 or np.median(diff) > -0.05
+        # route de l'engine (Catmull-Rom) et non plus segments droits (21/11, road_ground.py) : dans les virages, les
+        # sommets du bord suivent la chaussée dessinée, quelques centimètres sous l'axe en segments droits
+        assert diff.size == 0 or np.median(diff) > -0.10
         ring = (d >= 27.0) & (d <= 33.0)
         assert np.all(np.abs(g[ring] - mnt[ring]) < 0.01)
         on_road += int(near.sum())
@@ -405,7 +407,7 @@ def test_hairpin_terrain_never_above_road(monkeypatch):
     route = _hairpin()
     frame = LocalFrame.at(*ORIGIN)
     prov = SyntheticProvider(*ORIGIN, _flank)
-    monkeypatch.setattr(terrain, "clear_road", lambda *a, **k: 0)
+    monkeypatch.setattr(terrain, "fit_route_ground", lambda *a, **k: {"lowered": 0, "raised": 0, "left_low": 0})
     raw = terrain.build_level(route, frame, prov, NEAR, log=lambda m: None)
     before, _, _ = terrain.terrain_excess(raw, route["x"], route["z"], route["alt_m"])
     assert before.max() > 0.5                              # le défaut existe bien sans garde-fou
