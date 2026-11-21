@@ -1991,6 +1991,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 	menu_flow.menu.set_track_events(ipc.core_config.get("track"))   # écran Prêt du vélodrome (lot VD10)
 	menu_flow.menu.set_mode_routes(ipc.core_config.get("mode_routes"))   # parcours propres aux modes (lot GP13)
+	menu_flow.menu.set_free_route_tag(ipc.core_config.get("free_route_tag"))   # parcours de mode restés libres (lot GPL1)
 	if not menu_flow.routes_raw.is_empty():
 		menu_flow.set_routes(menu_flow.routes_raw)   # table reçue après la liste : parcours des modes recalculés
 	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34

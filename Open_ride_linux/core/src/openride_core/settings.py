@@ -112,7 +112,6 @@ SETTINGS: tuple[Setting, ...] = (
     # Grand Prix des objets (série GP, lot GP2) ; écran du mode et entrée à l'accueil au lot GP9
     Setting("grandprix.opponents", "Grand Prix : adversaires", "ride"),
     Setting("grandprix.laps", "Grand Prix : tours du circuit", "ride"),
-    Setting("grandprix.distance_km", "Grand Prix : distance en ligne", "ride", 1, "km"),
     Setting("grandprix.chaos", "Grand Prix : chaos", "ride"),
     Setting("grandprix.box_every_m", "Grand Prix : écart des boîtes", "ride", 500, "m"),
     # Séance conseillée (série CO, lot CO3) : aussi réglés depuis l'écran du conseil (lot CO5)

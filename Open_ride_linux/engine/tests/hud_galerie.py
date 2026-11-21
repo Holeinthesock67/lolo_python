@@ -84,8 +84,9 @@ def _gp_bots(s_now: float, count: int = 0) -> list[dict[str, Any]]:
 
 
 def _gp(s_now: float, spec: dict[str, Any]) -> dict[str, Any]:
-    gp = GP_BASE | {k: v for k, v in spec.items() if k != "obj_ahead"}
+    gp = GP_BASE | {k: v for k, v in spec.items() if k not in ("obj_ahead", "boxes_ahead")}
     gp["obj"] = [[i + 1, kind, round(s_now + ds, 1), lane] for i, (kind, ds, lane) in enumerate(spec.get("obj_ahead", []))]
+    gp["boxes"] = [round(s_now + ds) for ds in spec.get("boxes_ahead", [])]   # rangées de boîtes, devant (lot GPH1)
     return gp
 
 
@@ -158,12 +159,15 @@ CAS: list[dict[str, Any]] = [
     # super-forme (maquette 4), 12 coureurs (lot GP10), bilan (maquette 7, en dernier : écran de fin de séance)
     {"name": "gp_hud", "gp": {"obj_ahead": [("bottle", 60.0, 1)]},
      "expect": {"item": "musette_x3", "key": "Z : Trois musettes", "place": "3e / 5", "warn": "",
-                "hint": "Bidon glissant en vue : A ou ← →"}, "hidden": ["bots_panel"]},
+                "hint": "Bidon glissant devant sur ta voie : A ou ← → pour l'éviter"}, "hidden": ["bots_panel"]},
+    # Aide des voies (lot GPH1) : boîte de sa voie prise par un bot, réserve vide
+    {"name": "gp_boite_prise", "gp": {"held": None, "n": 0, "boxes_ahead": [80.0], "boxes_gone": [[0, 1]]},
+     "expect": {"hint": "Boîte prise sur ta voie : A ou ← → pour en changer"}, "hidden": ["bots_panel"]},
     {"name": "gp_attaque", "gp": {"n": 2, "warn": ["homing", 42.0], "obj_ahead": [("homing", -42.0, 1), ("bottle", 25.0, 0)]},
      "expect": {"warn": "Musette guidée derrière !", "outline": True}},
     {"name": "gp_orage_roulette", "gp": {"roll_s": 1.2, "held": None, "n": 0, "fx": [["star", 5.2]], "auto": True,
                                          "lane": 2, "pick": False, "obj_ahead": [("storm", 140.0, -1)]},
-     "expect": {"warn": "Orage vers le premier", "outline": False, "hint": "← → : voie"}},
+     "expect": {"warn": "Orage vers le premier", "outline": False, "hint": "← → : changer de voie"}},
     {"name": "gp_12_coureurs", "gp": {"place": 9, "of": 12, "gap_s": 3.0, "held": "homing", "n": 1, "lap": None},
      "gp_count": 11, "expect": {"place": "9e / 12", "key": "Z : Musette guidée"}},
     {"name": "gp_bilan", "state": {"session_state": "FINISHED", "summary": GP_SUMMARY},

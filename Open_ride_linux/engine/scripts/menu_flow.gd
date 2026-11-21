@@ -73,6 +73,8 @@ extends RefCounted
 ## « Niveau des bots » (tours sur un circuit, distance sur un parcours en ligne), « Objets » (une case par objet,
 ## list_mode_options et set_mode_option, grandprix/gp_items_menu_model.gd), « Lancer » avec la longueur de la
 ## course, désactivé sur un parcours en ligne trop court ; `start` part avec `mode` « grandprix » sans `bots`.
+## Aide du Grand Prix (lot GPH1) : « Comment ça marche ? », dernière ligne de son écran Prêt, met le résumé du mode
+## dans la carte et ouvre l'écran « Aide Grand Prix » (grandprix/gp_help.gd), un sujet par ligne.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -92,6 +94,7 @@ const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
 const GpItemsMenuModel := preload("res://scripts/grandprix/gp_items_menu_model.gd")
+const GpHelp := preload("res://scripts/grandprix/gp_help.gd")
 ## Dernier survivant (lot DS7) : réglages de l'écran Prêt du mode, dans l'ordre du plan (§4).
 const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et survivor.spacing_km (config.py)
 const SURVIVOR_SPACING_KM := [1, 3]
@@ -100,9 +103,10 @@ const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la va
 const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "bots.objective", "survivor.spread",
 	"survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
-## Course en ligne la plus courte du Grand Prix (lot GP14, `grandprix.boxes.MIN_COURSE_M` du core).
-const GP_MIN_COURSE_M := 1000.0
-## Grand Prix des objets (lot GP9) : préfixe des libellés du core.
+## Grand Prix des objets (lot GP9) : réglages de l'écran Prêt dans l'ordre du plan (§4.4), tours du circuit
+## seulement (lot GPL1 : le Grand Prix se court sur une boucle), et préfixe des libellés du core.
+const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "bots.level_pct", "bots.objective", "grandprix.chaos",
+	"grandprix.box_every_m"]
 const GP_PREFIX := "Grand Prix : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
@@ -333,6 +337,7 @@ func _init() -> void:
 	menu.add_screen({"id": WtfRulesModel.SCREEN, "title": "Mode WTF", "on_back": MenuModel.HOME, "items": []})
 	_refresh_wtf()
 	menu.add_screen({"id": GpItemsMenuModel.SCREEN, "title": "Grand Prix : objets", "on_back": MenuModel.READY, "items": []})
+	menu.add_screen({"id": GpHelp.SCREEN, "title": GpHelp.TITLE, "on_back": MenuModel.READY, "items": GpHelp.items()})
 	_refresh_gp_items()
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
 	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
@@ -640,9 +645,11 @@ func set_routes(raw: Array) -> void:
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	# Parcours propres aux modes (lot GP13) : la liste montre ceux du mode de l'écran Prêt, ou les parcours libres
 	var by_mode: Dictionary = CatalogModel.mode_route_ids(raw, menu.mode_routes)
-	menu.set_mode_route_ids(by_mode, route_names)   # dont les pistes, écran Prêt du vélodrome (lot VD10)
+	# Parcours de mode restés libres (étiquette `free_route_tag`, lot GPL1) : aussi dans la liste générale
+	var shared: Array = CatalogModel.tagged_route_ids(raw, menu.free_route_tag) if menu.free_route_tag != "" else []
+	menu.set_mode_route_ids(by_mode, route_names, shared)   # dont les pistes, écran Prêt du vélodrome (lot VD10)
 	_routes_mode_shown = menu.routes_mode
-	raw = CatalogModel.routes_of_mode(raw, by_mode, menu.routes_mode)
+	raw = CatalogModel.routes_of_mode(raw, by_mode, menu.routes_mode, menu.free_route_tag)
 	var tags: Array = CatalogModel.route_tags(raw)
 	if route_tag != "" and not route_tag in tags:
 		route_tag = ""
@@ -716,6 +723,8 @@ func card(st: Dictionary) -> Dictionary:
 	var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
 	var screen := str(st["screen"])
 	if screen == MenuModel.READY:
+		if focused == MenuModel.GP_HELP_ID:   # Grand Prix (lot GPH1) : résumé du mode à la place de la fiche
+			return GpHelp.sheet(GpHelp.SUMMARY)
 		return _sheet(routes_raw, menu.world_id, func(r): return CatalogModel.route_sheet(r))
 	if screen == MenuModel.ROUTES:
 		if focused in ROUTE_HELP_TOPICS:
@@ -723,6 +732,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
 	if screen == ROUTE_HELP:
 		return RouteHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == GpHelp.SCREEN:
+		return GpHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
 	if screen == ROUTE_IMPORT:
 		return _route_import_card(focused)
 	if screen == MenuModel.WORKOUTS:
@@ -1317,6 +1328,11 @@ func _handle_event(event: String) -> Dictionary:
 		_refresh_gp_items()
 		menu.push_screen(GpItemsMenuModel.SCREEN)
 		return {"action": "list_mode_options", "mode": GpItemsMenuModel.MODE}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == MenuModel.GP_HELP_ID:
+		menu.push_screen(GpHelp.SCREEN)
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == GpHelp.SCREEN:
+		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == GpItemsMenuModel.SCREEN:
 		var gp_act: Dictionary = gp_items.handle(str(act["id"]))
 		_refresh_gp_items()
@@ -1533,9 +1549,8 @@ func _refresh_mode_ready() -> void:
 			survivor_launch(int(settings.item("survivor.opponents").get("value", 4)),
 			int(settings.item("survivor.spacing_km").get("value", 2)), route))
 	elif menu.mode == "grandprix":
-		menu.set_mode_ready(_mode_rows(grandprix_keys(route), GP_PREFIX),
-			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)),
-			int(settings.item("grandprix.distance_km").get("value", 10)), route), gp_items.ready_label())
+		menu.set_mode_ready(_mode_rows(GRANDPRIX_KEYS, GP_PREFIX),
+			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)), route), gp_items.ready_label())
 
 
 ## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
@@ -1577,34 +1592,17 @@ static func mode_label(label: String, prefix: String) -> String:
 	return short.left(1).to_upper() + short.substr(1) if short != "" else label
 
 
-## Réglages de l'écran Prêt du Grand Prix, dans l'ordre du plan (§4.4) : tours sur un circuit, distance sur un
-## parcours en ligne, les deux tant que le parcours est inconnu.
-static func grandprix_keys(route: Dictionary) -> Array:
-	var loop := str(route.get("route_type", "")) == "loop"
-	var course: Array = ["grandprix.laps"] if loop else (["grandprix.distance_km"] if not route.is_empty()
-		else ["grandprix.laps", "grandprix.distance_km"])
-	return ["grandprix.opponents"] + course + ["bots.level_pct", "bots.objective", "grandprix.chaos", "grandprix.box_every_m"]
-
-
-## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Circuit : tours et longueur de la course ; en
-## ligne : distance, au plus le parcours (lot GP14 : « tout le parcours ») ; désactivé sous GP_MIN_COURSE_M (le
-## core refuse aussi le départ, `bad_args`).
-static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> Dictionary:
+## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Tours et longueur de la course ; désactivé sur un
+## parcours en ligne (lot GPL1 : le Grand Prix se court sur une boucle, le core refuse aussi le départ, `bad_args`).
+static func grandprix_launch(laps: int, route: Dictionary) -> Dictionary:
 	var length = route.get("length_m", null)
 	if route.is_empty() or length == null:
 		return {"enabled": true, "detail": "", "advice": ""}
-	if str(route.get("route_type", "")) == "loop":
-		return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
-			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
-	if float(length) < GP_MIN_COURSE_M:
-		return {"enabled": false, "detail": "parcours trop court",
-			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours du Grand Prix." % [
-				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
-	if float(length) < distance_km * 1000.0:
-		return {"enabled": true, "detail": "course de %s (tout le parcours)" % CatalogModel._format_fr_km(float(length)),
-			"advice": ""}
-	return {"enabled": true, "detail": "course de %d km" % distance_km, "advice": ""}
-
+	if str(route.get("route_type", "")) != "loop":
+		return {"enabled": false, "detail": "parcours en ligne",
+			"advice": "Lancer grisé : le Grand Prix se court sur une boucle.\nChoisis un parcours du Grand Prix."}
+	return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
+		CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
 
 
 ## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).
