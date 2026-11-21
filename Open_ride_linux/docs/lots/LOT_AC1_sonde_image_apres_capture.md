@@ -1,5 +1,10 @@
 # Lot AC1 : l'image qui suit une capture est comptée avec la capture
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| À-coups de main : l'image lente qui suit une capture du banc est comptée avec la capture, process_ms non hérité | GDScript | PI1 | Petite | En cours (PR #953, banc PC à faire) |
+
 Fil global « Supprimer les à-coups récurrents de main » (21/11). Analyse complète :
 `/mnt/project-files/statut/ACOUPS_MAIN_2026-11-21.md` (bancs de la nuit rNUIT20).
 

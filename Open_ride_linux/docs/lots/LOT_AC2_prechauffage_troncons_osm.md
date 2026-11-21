@@ -1,5 +1,10 @@
 # Lot AC2 : préchauffage des tronçons OSM (bâtiments, eau, mer, côte, ponts)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| À-coups de main : préchauffage des tronçons OSM (bâtiments, eau, mer, écume, plages, ponts) dans le plan unique | GDScript | PI2 | Petite | En cours (PR #953, banc PC à faire) |
+
 Fil global « Supprimer les à-coups récurrents de main » (21/11). Analyse : `/mnt/project-files/statut/ACOUPS_MAIN_2026-11-21.md`.
 
 ## Constat
