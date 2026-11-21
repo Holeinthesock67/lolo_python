@@ -59,9 +59,6 @@ class Setting:
     applies: str = "next_session"
     scale: float = 1   # valeur du menu = valeur du fichier × scale (lot O26)
     help: str = ""
-    # Lot NI2 (règle commune des lignes sans effet) : ((clé, valeurs du menu), …) ; la ligne n'agit que si
-    # une de ces clés a une de ses valeurs, et l'engine la cache sinon. Vide : toujours utile.
-    when: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
     @property
     def section(self) -> str:
@@ -88,7 +85,6 @@ class Setting:
 # `settings` pour ces écrans et pour `set_setting`.
 SCREEN_GROUP = "screen"
 SCREEN_SECTIONS = ("survivor", "grandprix", "race", "coach")
-_WIND_SET = ("wind.mode", ("fixed", "gusty"))   # force et direction : vent constant ou en rafales seulement
 
 SETTINGS: tuple[Setting, ...] = (
     # Cycliste
@@ -120,11 +116,9 @@ SETTINGS: tuple[Setting, ...] = (
     # Avancé au lot NI2 (R7)
     Setting("trainer.control", "Pilotage du trainer", "advanced"),
     Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
-    Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min",
-            when=(("depart.mode", ("pedalage",)),)),
+    Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
-    # Pas de circulation sans décor vivant (contrat IPC, `vehicles`)
-    Setting("ride.vehicle_draft", "Abri derrière les véhicules", "ride", when=(("render.living", ("on",)),)),
+    Setting("ride.vehicle_draft", "Abri derrière les véhicules", "ride"),   # lot AS6
     # Dernier survivant (série DS, lot DS2) ; écran du mode au lot DS7
     Setting("survivor.opponents", "Survivant : adversaires", "ride"),
     Setting("survivor.spacing_km", "Survivant : écart des arches", "ride", 1, "km"),
@@ -163,8 +157,7 @@ SETTINGS: tuple[Setting, ...] = (
                  "parcours, calendrier de chaque biome), au hasard à chaque parcours (hiver deux fois moins "
                  "souvent) ou une saison au choix : feuillages d'automne, arbres nus et neige plus bas l'hiver."),
     Setting("render.month", "Mois", "graphics", applies="now",   # lot U13b
-            help="Date du PC, ou un mois au choix (le 15) : saisons « selon la date » et longueur du jour.",
-            when=(("render.seasons", ("date",)), ("render.day_night", ("theme", "real", "accelerated")))),
+            help="Date du PC, ou un mois au choix (le 15) : saisons « selon la date » et longueur du jour."),
     Setting("render.living", "Décor vivant", "graphics", applies="relaunch"),   # lot O26
     Setting("render.visual_grade_scale", "Relief exagéré", "graphics", 25, "%", "relaunch", 100),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
@@ -180,15 +173,14 @@ SETTINGS: tuple[Setting, ...] = (
             help="Constant ou en rafales : force et direction réglées ci-dessous. Celui du thème : vent du "
                  "thème. Météo du jour : vent réel au départ du parcours, lu par le lanceur chez Open-Meteo "
                  "(position arrondie à 10 km) ; sans réseau, séance sans vent."),
-    Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h", when=(_WIND_SET,)),
-    Setting("wind.from_deg", "Direction du vent", "wind", 45, "°", when=(_WIND_SET,)),
-    Setting("wind.gust_pct", "Rafales", "wind", 10, "%", when=(("wind.mode", ("gusty",)),)),
+    Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h"),
+    Setting("wind.from_deg", "Direction du vent", "wind", 45, "°"),
+    Setting("wind.gust_pct", "Rafales", "wind", 10, "%"),
     # Lot NI2 (R8, R9) : choix d'essai et plafond commun (vent, abri, gravel) rangés en Avancé
     Setting("wind.max_grade_offset_pct", "Plafond des suppléments de pente", "advanced", 1, "pts de pente",
             help="Borne tout ce qui s'ajoute à la pente du parcours : vent, abri derrière un coureur ou un "
                  "véhicule, et roulement du gravel."),
-    Setting("wind.feel", "Ressenti du vent", "advanced",   # lot O26
-            when=(("wind.mode", ("fixed", "gusty", "theme", "local")),)),
+    Setting("wind.feel", "Ressenti du vent", "advanced"),   # lot O26
     # Avancé (lot O27) : monde ouvert hors ligne, plafonds de disque, progression du Garage
     Setting("open_world.network", "Télécharger les cartes", "advanced"),
     Setting("open_world.cache_max_gb", "Cache du monde", "advanced", 1, "Go"),
@@ -201,6 +193,19 @@ BOOL_CHOICES = ("on", "off")
 # gardé dans un groupe : un réglage changé de groupe (lot NI2) reste écrit près de ses voisins.
 GROUPS = ("rider", "ride", "graphics", "sound", "wind", "advanced", SCREEN_GROUP)
 SETTINGS = tuple(sorted(SETTINGS, key=lambda s: GROUPS.index(s.menu_group)))
+# Règle commune des lignes sans effet (lot NI2, R3) : clé → ((clé dont elle dépend, valeurs du menu), …). La ligne
+# n'agit que si l'une de ces clés a une de ses valeurs ; l'engine la cache sinon, sa valeur gardée (champ `when`).
+# Une seule table pour tous les réglages : un réglage qui dépend d'un autre choix s'ajoute ici, sans exception.
+_WIND_SET = ("wind.mode", ("fixed", "gusty"))   # force et direction : vent constant ou en rafales seulement
+WHEN: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
+    "depart.cadence_rpm": (("depart.mode", ("pedalage",)),),
+    "ride.vehicle_draft": (("render.living", ("on",)),),   # pas de circulation sans décor vivant (contrat, `vehicles`)
+    "render.month": (("render.seasons", ("date",)), ("render.day_night", ("theme", "real", "accelerated"))),
+    "wind.speed_kmh": (_WIND_SET,),
+    "wind.from_deg": (_WIND_SET,),
+    "wind.gust_pct": (("wind.mode", ("gusty",)),),
+    "wind.feel": (("wind.mode", ("fixed", "gusty", "theme", "local")),),
+}
 KEYS = tuple(s.key for s in SETTINGS)
 
 
@@ -267,8 +272,8 @@ def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict
                                 "applies": s.applies}
         if s.help:
             item["help"] = s.help
-        if s.when:
-            item["when"] = [{"key": k, "in": list(v)} for k, v in s.when]
+        if s.key in WHEN:
+            item["when"] = [{"key": k, "in": list(v)} for k, v in WHEN[s.key]]
         if s.key == "wind.mode" and cfg.wind.mode == "local":   # état de la dernière lecture (lot P33)
             from . import local_weather
 
