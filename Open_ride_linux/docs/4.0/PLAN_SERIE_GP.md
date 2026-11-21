@@ -121,7 +121,7 @@ Tout se règle dans le menu, sans ligne de commande (lot GP9) :
 | Réglage (section `[grandprix]` de `config.toml`) | Valeurs | Défaut |
 | --- | --- | --- |
 | Adversaires (`opponents`) | 2 à 11 (2 à 4 avant GP10) | 4 |
-| Tours (`laps`) ou distance (`distance_km`) | 1 à 5 ; 5 à 30 km | 3 ; 10 km |
+| Tours (`laps`) ; distance en ligne (`distance_km`) retirée au lot GPL1 : le mode se court sur une boucle seulement | 1 à 5 | 3 |
 | Niveau des bots (`bots.level_pct`, réglage existant) | 50 à 150 % de la FTP | inchangé |
 | Chaos (`chaos`) | doux, normal, fou : forces et fréquence des objets × 0,7, × 1, × 1,3 | normal |
 | Écart des boîtes (`box_every_m`, lot GP2 : en mètres, au pas de 500 m comme les autres réglages à pas) | 1 000 à 3 000 m | 1 500 m |
