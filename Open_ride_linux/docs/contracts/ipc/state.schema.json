@@ -2281,6 +2281,7 @@
           "enum": [
             "decor",
             "trainer",
+            "echauffement",
             "pedalage"
           ]
         },
@@ -2299,6 +2300,55 @@
         "waited_s": {
           "type": "number",
           "minimum": 0
+        },
+        "warmup": {
+          "type": "object",
+          "description": "Révision 1.26 : échauffement sur place en ERG avant une course (Dernier survivant, Grand Prix, épreuves de piste hors séance libre ; `[depart] echauffement_min`) ; présent seulement quand la séance qui part en a un.",
+          "required": [
+            "target_w",
+            "left_s",
+            "total_s",
+            "block",
+            "block_left_s",
+            "next_target_w",
+            "done"
+          ],
+          "properties": {
+            "target_w": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "left_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "total_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "block": {
+              "enum": [
+                "warmup",
+                "steady",
+                "interval_on",
+                "interval_off"
+              ]
+            },
+            "block_left_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "next_target_w": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "done": {
+              "type": "boolean"
+            }
+          }
         }
       }
     },
@@ -2767,6 +2817,51 @@
             }
           },
           "description": "Keirin : derny (distance sur la piste, vitesse, encore en piste)."
+        },
+        "ahead": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "id",
+            "gap_s"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 8
+            },
+            "gap_s": {
+              "type": "number"
+            }
+          },
+          "description": "Révision 1.26 : coureur juste devant le cycliste et écart en temps de passage (s, positif), null sans voisin devant, cycliste sorti ou épreuve finie."
+        },
+        "behind": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "id",
+            "gap_s"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 8
+            },
+            "gap_s": {
+              "type": "number"
+            }
+          },
+          "description": "Révision 1.26 : coureur juste derrière et écart en temps de passage (s, négatif ou nul), null sans voisin derrière."
+        },
+        "every_laps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Révision 1.26 : élimination, tours entre deux éliminations."
         }
       }
     }

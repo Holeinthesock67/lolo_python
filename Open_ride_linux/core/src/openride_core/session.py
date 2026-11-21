@@ -79,6 +79,7 @@ from .wtf.mode import WtfMode
 from .free_erg import CadenceLock, FreeErg, start_cadence, start_power
 from .ftp_test import KINDS as FTP_TEST_KINDS
 from .start_gate import StartGate
+from . import warmup as warmup_mod
 from .ftp_test import FtpResult, RampWatch, cooldown_index, estimate_ftp
 from .ftp_test import kind_of as ftp_test_kind
 from .ftp_test import workout_for as ftp_test_workout
@@ -125,9 +126,6 @@ END_GAP_M = draft_mod.BIKE_LENGTH_M + 0.3
 GP_RUNOUT_M = 30.0   # Grand Prix sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
-# Épreuve de piste finie (vainqueur connu, arrivée, heure écoulée) : 8 s de bandeau d'arrivée et de son, puis fin
-# de séance et bilan (essai du 21 novembre : premier à l'élimination, le jeu continuait sans rien marquer).
-TRACK_END_HOLD_S = 8.0
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
 MODE_OPTIONS = ("wtf", "grandprix")   # modes à options (`list_mode_options`, `set_mode_option`, lot GP2)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
@@ -613,6 +611,8 @@ class CoreSession:
         elif name == "scene_ready":   # révision 1.5 (lot O36) : décor du départ prêt dans l'engine
             rid = (args if isinstance(args, dict) else {}).get("route_id")
             self._scene_route = str(rid) if rid not in (None, "") else None
+        elif name == "skip_warmup":   # révision 1.26 : passe l'échauffement d'une course
+            self._skip_warmup()
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
         elif name == "set_ride_mode":
@@ -630,7 +630,7 @@ class CoreSession:
         """`start` accepté : départ tout de suite (`[depart] mode = "immediat"`) ou attente en READY."""
         dep = self.cfg.depart
         gate = StartGate(float(dep.cadence_rpm), float(dep.duree_s), float(dep.attente_decor_s),
-                         immediate=dep.mode == "immediat")
+                         immediate=dep.mode == "immediat", warmup=self._warmup_for(game_mode))
         if gate.open:
             self._begin_session(game_mode)
             return
@@ -639,7 +639,29 @@ class CoreSession:
         log.info("Départ au pédalage : attente du décor, du trainer puis de %d s à %d tr/min.",
                  dep.duree_s, dep.cadence_rpm)
 
+    def _warmup_for(self, game_mode: str | None) -> "warmup_mod.Warmup | None":
+        """Échauffement d'une course (`warmup.py`, une règle pour tous les modes de course), None sinon."""
+        minutes = int(self.cfg.depart.echauffement_min)
+        race = True
+        if game_mode == "track" and self._track_choice is not None:
+            race = track_mod.EVENTS[self._track_choice[0]].race
+        if not warmup_mod.needed(game_mode, minutes, race):
+            return None
+        return warmup_mod.Warmup(minutes, float(self.cfg.rider.ftp_w))
+
+    def _skip_warmup(self) -> bool:
+        """Z court ou `skip_warmup` pendant l'échauffement : départ au pédalage tout de suite."""
+        gate = self._start_gate
+        if gate is None or not gate.warming:
+            return False
+        gate.warmup.skip()
+        log.info("Échauffement passé (%.0f s sur %.0f).", gate.warmup.elapsed_s, gate.warmup.total_s)
+        return True
+
     def _clear_start_gate(self) -> None:
+        gate = self._start_gate
+        if gate is not None and gate.warmup is not None and gate.warmup.elapsed_s > 0.0:
+            self.driver.set_sim_grade(0.0)   # fin de l'ERG de l'échauffement : la séance repart en SIM
         self._start_gate = self._start_mode = None
         self.state.start_wait = None
 
@@ -665,6 +687,11 @@ class CoreSession:
             log.info("Départ : étape %s -> %s%s (%.1f s)", was, gate.phase,
                      " (décor non signalé par l'engine)" if gate.decor_timeout and was == "decor" else "",
                      gate.waited_s)
+        if gate.phase == "echauffement":
+            self.driver.set_target_power(gate.warmup.target_w)
+        if was == "echauffement" and gate.phase != "echauffement":
+            log.info("Échauffement %s (%.0f s).", "passé" if gate.warmup.skipped else "fini", gate.warmup.elapsed_s)
+            self.driver.set_sim_grade(0.0)
         if opened:
             mode = self._start_mode
             self._clear_start_gate()
@@ -3562,6 +3589,14 @@ class CoreSession:
                 return
             self._on_command("pause", {}, 0)   # en attente du départ (lot O36) : annule le départ
             return
+        if self._start_gate is not None and self._start_gate.warming:
+            # Échauffement (demande du 21 novembre) : Z court le passe, + et − règlent la cible comme en ERG.
+            self.server.send_input_event(ev.value)
+            if ev == InputEvent.Z_SHORT:
+                self._skip_warmup()
+            elif ev in BIAS_STEPS:
+                self._start_gate.warmup.erg.change_bias(BIAS_STEPS[ev])
+            return
         # Relayé à l'engine : menus hors séance, retour sonore (bips) et explications pendant la séance.
         self.server.send_input_event(ev.value)
         if self.openworld is not None and ev.value in CHOICE_EVENTS and self.state.session_state == "RUNNING":
@@ -3935,10 +3970,6 @@ class CoreSession:
             self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
-            self._finish(True)
-        elif self.track_event is not None and self.track_event.end_t is not None \
-                and self._t_session - self.track_event.end_t >= TRACK_END_HOLD_S:
-            log.info("Épreuve de piste %s finie : fin de la séance.", self.track_event.event_id)
             self._finish(True)
         elif self.grandprix is not None and self.grandprix.racers[GP_ME].finished is not None:
             log.info("Grand Prix des objets : arrivée, %de sur %d.", self.grandprix.racers[GP_ME].finished,

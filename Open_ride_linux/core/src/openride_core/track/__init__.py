@@ -44,11 +44,12 @@ class EventSpec:
     options: tuple[Option, ...] = ()
     fixed: dict = field(default_factory=dict)
     erg: bool = False                    # la séance libre seule accepte l'ERG (plan §5)
+    race: bool = True                    # course : échauffement avant le départ (`warmup.py`) ; pas la séance libre
 
 
 _MASS = tuple(range(3, 12))
 EVENTS: dict[str, EventSpec] = {s.id: s for s in (
-    EventSpec("free", Free, tuple(range(0, 12)), erg=True),
+    EventSpec("free", Free, tuple(range(0, 12)), erg=True, race=False),
     EventSpec("pursuit", Pursuit, (0, 1), options=(Option("distance_m", (3000, 4000), 4000),)),
     EventSpec("kilo", TimeTrial, (0,), fixed={"variant": "kilo"}),
     EventSpec("500", TimeTrial, (0,), fixed={"variant": "500"}),
