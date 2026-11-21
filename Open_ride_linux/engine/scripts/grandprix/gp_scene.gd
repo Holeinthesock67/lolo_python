@@ -21,6 +21,9 @@ const Items := preload("res://scripts/grandprix/gp_items.gd")
 const MAX_RIDERS := 12
 const BOX_M := 0.6
 const BOX_HEIGHT_M := 0.9
+const SIGN_PX := [0.009, 0.003]       # symbole lisible de loin ; mot de 0,7 m au plus (voies de 0,77 m)
+const SIGN_UP_M := [0.95, 0.42]        # au-dessus de la boîte : symbole, puis mot
+const SIGN_STAGGER_M := 0.22           # mot de la voie du centre plus haut : les trois mots ne se touchent pas
 const BOX_SPIN := 1.2                 # rad/s
 const OBJ_HEIGHT_M := {"bottle": 0.12, "musette": 0.6, "homing": 0.8, "storm": 4.5}
 const RIDER_TOP_M := 1.9              # au-dessus du casque
@@ -37,7 +40,7 @@ var _boxes: MultiMeshInstance3D
 var _pools := {}                      # sorte -> [Node3D]
 var _rigs: Array = []                 # [{root, looks: {look: Node3D}, rain: CPUParticles3D, sparks: CPUParticles3D}]
 var _labels: Array = []               # Label3D des onomatopées
-var _box_signs: Array = []            # Label3D des signes des boîtes (« + BONUS », « ? SURPRISE », « ! ATTAQUE »)
+var _box_signs: Array = []            # [symbole, mot] (Label3D) des boîtes : « + BONUS », « ? SURPRISE », « ! ATTAQUE »
 var _mats := {}
 var _active := false
 var _warm_left := -1                  # -1 : jamais préchauffé
@@ -162,17 +165,20 @@ func _build() -> void:
 		add_child(l)
 		_labels.append(l)
 	for i in range(Model.MAX_ROWS * Model.LANE_CENTRES_M.size()):
-		var sign := Label3D.new()
-		sign.name = "GpBoxSign%d" % i
-		sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		sign.font_size = 72
-		sign.pixel_size = 0.005
-		sign.outline_size = 20
-		sign.outline_modulate = Items.INK
-		sign.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		sign.visible = false
-		add_child(sign)
-		_box_signs.append(sign)
+		var pair: Array = []
+		for k in range(2):   # symbole (gros), puis mot
+			var sign := Label3D.new()
+			sign.name = "GpBoxSign%d_%d" % [i, k]
+			sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sign.font_size = 64
+			sign.pixel_size = SIGN_PX[k]
+			sign.outline_size = 16
+			sign.outline_modulate = Items.INK
+			sign.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			sign.visible = false
+			add_child(sign)
+			pair.append(sign)
+		_box_signs.append(pair)
 	set_quality(quality)
 
 
@@ -306,13 +312,17 @@ func _step_boxes(gp: Dictionary, now_s: float) -> void:
 		var lane := int(b.get("lane", 1))
 		mm.set_instance_color(i, Model.box_color(lane))
 		if i < _box_signs.size():
-			var sign: Label3D = _box_signs[i]
-			sign.text = Model.box_sign(lane)
-			sign.modulate = Model.box_color(lane)
-			sign.global_position = t.origin + Vector3(0.0, BOX_HEIGHT_M + BOX_M + 0.35, 0.0)
-			sign.visible = true
+			var words: Array = Model.box_sign(lane)
+			for k in range(2):
+				var sign: Label3D = _box_signs[i][k]
+				sign.text = str(words[k])
+				sign.modulate = Model.box_color(lane)
+				var up: float = SIGN_UP_M[k] + (SIGN_STAGGER_M if k == 1 and lane == 1 else 0.0)
+				sign.global_position = t.origin + Vector3(0.0, BOX_HEIGHT_M + BOX_M + up, 0.0)
+				sign.visible = true
 	for i in range(list.size(), _box_signs.size()):
-		(_box_signs[i] as Label3D).visible = false
+		for sign in _box_signs[i]:
+			(sign as Label3D).visible = false
 	mm.visible_instance_count = list.size()
 	_shown["boxes"] = list.size()
 
