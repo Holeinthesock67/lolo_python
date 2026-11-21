@@ -506,7 +506,8 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 		"danger", "%d %%" % int(roundf(float(values.get("enemy_pct", 0.0)))), -1.0, false)
 	_bar("shield", fight, float(values.get("shield_frac", 0.0)), "parry", str(values.get("shield_text", "")), -1.0,
 		float(values.get("shield_frac", 1.0)) < 0.25)
-	_bar("adrenaline", fight, float(values.get("adrenaline_frac", 0.0)), "gold", str(values.get("adrenaline_text", "")),
+	var charging := fight or phase == "WARMUP"   # lot R26 : l'échauffement charge l'adrénaline
+	_bar("adrenaline", charging, float(values.get("adrenaline_frac", 0.0)), "gold", str(values.get("adrenaline_text", "")),
 		float(values.get("adrenaline_z_mark", 0.5)), false)
 	_bar("wbal", phase != "CORRIDOR", float(values.get("wbal_pct", 0.0)) / 100.0, "energy",
 		"%d %%" % int(roundf(float(values.get("wbal_pct", 0.0)))), -1.0, bool(values.get("wbal_low", false)))
@@ -515,7 +516,7 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	holo.modulate = Palette.color(str(values.get("posture_token", "neutral")), adapted)
 	var trend := str(g.get("adr_trend", ""))
 	adr_trend_label.text = trend
-	adr_trend_label.visible = fight and trend != ""
+	adr_trend_label.visible = charging and trend != ""
 	adr_trend_label.add_theme_color_override("font_color", UiTheme.DANGER if bool(values.get("overheat", false)) else UiTheme.DIM)
 	var gear := int(values.get("gear", 1))
 	if gear != _gear_shown:

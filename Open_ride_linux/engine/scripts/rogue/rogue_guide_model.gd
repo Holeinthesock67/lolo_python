@@ -68,7 +68,7 @@ const Z_CALL := {"strike_target": "Z : FRAPPE !", "parry_zone": "Z : PARADE !", 
 ## Règles du jeu, en bandeau défilant pendant l'échauffement (lot R23, demande du propriétaire).
 const RULES := [
 	"RÈGLES DU CYBER-ROGUE",
-	"Tiens la consigne de puissance : l'adrénaline monte",
+	"Tiens la consigne de puissance, dès l'échauffement : l'adrénaline monte",
 	"Z frappe l'ennemi quand ta roue passe sur l'anneau rouge, avec 50 d'adrénaline ou plus",
 	"Le Firewall te poursuit : roule au-dessus de la consigne pour garder ton avance, sinon ton bouclier fond",
 	"Endurance : reste dans la plage ; au-dessus du plafond pendant 5 s, c'est la surchauffe (adrénaline qui fond, Z bloqué)",
@@ -267,9 +267,10 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 		var tgt_lo := int(target.get("lo", 0)) if target is Dictionary else 0
 		var tgt_hi = target.get("hi", null) if target is Dictionary else null
 		var band := target_band(tgt_lo, tgt_hi, ftp_w)
-		var sub := "Garde %s" % band if tgt_lo > 0 else ""
+		var live := live_gap(power_pct, tgt_lo, tgt_hi, ftp_w, rogue.get("in_target", null))   # lot R26 : écart en direct
+		var sub := ("Garde %s · %s" % [band, live]) if tgt_lo > 0 else ""
 		if level == "warn" and tgt_lo > 0:
-			sub = "Accélère : %s" % band
+			sub = "Accélère : %s · %s" % [band, live]
 		if gap_m <= 0.0:
 			sub = "Bouclier qui fond · or perdu"
 		out["fw"] = {"text": "TE TOUCHE !" if gap_m <= 0.0 else "%d s d'avance" % int(round(float(gap_s))), "sub": sub, "level": level}
@@ -277,7 +278,8 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 		var lo := int(target.get("lo", 0))
 		var hi = target.get("hi", null)
 		var big := ("≤ %s" % watts(float(hi), ftp_w)) if lo <= 0 and hi != null else target_band(lo, hi, ftp_w)
-		var inside := power_pct >= float(lo) and (hi == null or power_pct <= float(hi))
+		var flag = rogue.get("in_target", null)   # lot R26 : plage jugée par le core (tolérance et marge comprises)
+		var inside: bool = bool(flag) if flag is bool else (power_pct >= float(lo) and (hi == null or power_pct <= float(hi)))
 		out["consigne"] = {"big": big, "sub": "Tu es à %s%s" % [watts(power_pct, ftp_w, 1).trim_suffix(" FTP"), " ✔" if inside else ""], "ok": inside}
 	out["adr_trend"] = adrenaline_trend_text(rogue)
 	out["rules"] = "     •     ".join(RULES) if phase == "WARMUP" else ""
@@ -298,7 +300,7 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 			hint = "Relique : choisis une carte, puis prends-la"
 			keys = [["A / ← →", "changer", ""], ["A long", "prendre la relique", "on"], ["Y", "pause", ""]]
 		else:
-			hint = "Roule souple, rien à faire pour l'instant : la grille se charge"
+			hint = "Tiens la consigne : ton adrénaline se charge pour la première salle"   # lot R26
 			keys = [["+ / −", "vitesse", ""], ["Y", "pause", ""], ["↑ / ↓", "vue", ""]]
 	elif phase == "COOLDOWN":
 		hint = "Roule souple jusqu'au bilan"
@@ -450,6 +452,25 @@ static func target_band(lo: int, hi: Variant, ftp: float = 0.0) -> String:
 	if ftp <= 0.0:
 		return "%d–%d %% FTP" % [lo, int(hi)]
 	return "%s–%s" % [watts(lo, ftp).trim_suffix(" W"), watts(int(hi), ftp)]
+
+
+## Écart en direct à la consigne (lot R26) : « tu es à 196 W ✔ » dans la plage, sinon « tu es à 168 W (−12 W) » ou
+## « (+15 W) » au-dessus du plafond. `inside` : `rogue.in_target` (révision 1.22) ; null : comparaison simple.
+static func live_gap(power_pct: float, lo: int, hi: Variant, ftp: float, inside: Variant) -> String:
+	var now := watts(power_pct, ftp, 1).trim_suffix(" FTP")
+	var ok: bool = bool(inside) if inside is bool else (power_pct >= float(lo) and (hi == null or power_pct <= float(hi)))
+	if ok:
+		return "tu es à %s ✔" % now
+	if ftp <= 0.0:
+		return "tu es à %s" % now
+	var gap_w := 0
+	if power_pct < float(lo):
+		gap_w = -int(round((float(lo) - power_pct) * ftp / 100.0))
+	elif hi != null and power_pct > float(hi):
+		gap_w = int(round((power_pct - float(hi)) * ftp / 100.0))
+	if gap_w == 0:
+		return "tu es à %s" % now
+	return "tu es à %s (%s%d W)" % [now, "+" if gap_w > 0 else "−", absi(gap_w)]
 
 
 ## Tendance de l'adrénaline (champ `adrenaline_trend`, révision 1.17) : « +0,5/s », « −2/s surchauffe »,
