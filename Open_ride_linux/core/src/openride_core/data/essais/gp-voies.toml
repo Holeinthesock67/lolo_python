@@ -1,8 +1,10 @@
 # Grand Prix des objets sur le Circuit des Prés : sas, voies, objets, voiture d'équipe, bots Tempo (GP14, GP4, BT1, AS11).
-# Version du 21/11 : boîtes tous les 500 m, bots en Tempo à 80 %, consignes courtes (une action, pas de question en roulant).
+# Version du 21/11 : boîtes tous les 500 m, bots en Tempo réglés sur la consigne, consignes courtes (une action, pas de question en roulant).
 id = "gp-voies"
 but = "Grand Prix au Circuit des Prés : départ au pédalage, changement de voie, objets avec leur son, voiture d'équipe, bots en Tempo"
 duree_max_s = 600
+bots_cible_pct = 100   # bots réglés sur la consigne du départ (contrôle de cohérence)
+bots_duree_s = 1200    # 3 tours de 3 km
 commandes = [
   { cmd = "select_route", args = { route_id = "demo-circuit" } },
   { cmd = "start", args = { mode = "grandprix" } },
@@ -20,16 +22,14 @@ box_every_m = 500
 
 [config.bots]
 objective = "tempo"
-level_pct = 80
 
 [[etapes]]
 quand = { kind = "event", event = "start" }
-dire = "C'est parti. {cible} watts."
+dire = "C'est parti. {cible} watts, comme les bots."
 
 [[etapes]]
 quand = { kind = "record", "distance>=" = 250 }
 dire = "Flèche gauche, puis flèche droite."
-attente_max_s = 120
 
 [[etapes]]
 quand = { kind = "gp", event = "box", rider = "me" }

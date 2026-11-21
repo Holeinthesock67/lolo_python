@@ -1,4 +1,5 @@
 # Cyber-Rogue : début de run en endurance (R22, R23), consignes calées sur les vraies phases de la run.
+# 21/11 : le jeu donne lui-même la puissance visée (échauffement, salles) : le guide ne dit jamais de watts.
 id = "rogue-depart"
 but = "Cyber-Rogue : fin de l'échauffement annoncée, première salle, Z expliqué, écart de l'ennemi lisible"
 duree_max_s = 600
@@ -13,18 +14,12 @@ questions = [
 
 [[etapes]]
 quand = { kind = "event", event = "start" }
-dire = "Échauffement à {cible:80} watts. Le jeu dit-il le temps restant et la suite ?"
-
-[[etapes]]
-quand = { kind = "rogue", event = "phase", "phase!=" = "WARMUP" }
-dire = "L'échauffement est fini. Roule à {cible} watts."
-attente_max_s = 480
+dire = "Échauffement. Suis la puissance affichée par le jeu."
 
 [[etapes]]
 quand = { kind = "rogue", event = "room_start" }
-dire = "Première salle. Appuie sur Z quand l'anneau est plein. Le jeu te dit-il pourquoi s'il refuse ?"
+dire = "Première salle. Z quand l'anneau est plein."
 
 [[etapes]]
 quand = { kind = "rogue", event = "room_won" }
-dire = "Salle gagnée. Regarde l'écart de l'ennemi derrière, en secondes."
-attente_max_s = 300
+dire = "Salle gagnée. Regarde l'écart de l'ennemi derrière."

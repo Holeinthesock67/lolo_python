@@ -2,6 +2,8 @@
 id = "demo-paysages"
 but = "Tour des nouveaux paysages, allure calme : bots en Endurance, contacts sur la route, route posée, frein après un arrêt de pédalage"
 duree_max_s = 600
+bots_cible_pct = 90    # bots à l'allure calme demandée au départ
+bots_duree_s = 1800    # un passage de 14 km
 commandes = [
   { cmd = "select_route", args = { route_id = "demo-biomes-paysages" } },
   { cmd = "start", args = { bots = [
@@ -17,15 +19,15 @@ questions = [
 
 [config.bots]
 objective = "endurance"
-level_pct = 100
 
 [[etapes]]
 quand = { kind = "event", event = "start" }
-dire = "Allure calme, {cible:90} watts. Roule avec les bots."
+dire = "Allure calme, {cible:90} watts, comme les bots."
 
 [[etapes]]
-quand = { kind = "record", "t>=" = 240 }
-dire = "Arrête de pédaler trois secondes, puis reprends."
+# sur le plat et en pédalant (pas en montée, pas déjà à l'arrêt), après 3 min
+quand = { kind = "record", "t>=" = 180, "grade<=" = 1.5, "grade>=" = -1.5, "power>=" = 60 }
+dire = "Sur ce plat : arrête de pédaler trois secondes, puis reprends."
 attendu = { kind = "record", "cadence<=" = 5 }
 delai_s = 20
 rappel = "Trois secondes sans pédaler, puis reprends."

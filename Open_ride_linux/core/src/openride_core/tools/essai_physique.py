@@ -11,7 +11,8 @@ une seule forme de séance, sans exception.
 3. Les **étapes suivent le jeu**, jamais l'horloge : chaque étape attend une ligne du journal de séance
    (`quand`, lu en direct, une ligne par seconde), donne sa consigne (voix, bip, bandeau dans le jeu),
    puis, si elle a un `attendu`, regarde au journal si l'action a eu lieu : « vu », ou un seul rappel.
-   Une étape dont le déclencheur ne vient pas (`attente_max_s` de séance) est annoncée et sautée.
+   Toutes les étapes sont armées dès le départ et partent quand le jeu les déclenche, dans l'ordre du jeu ;
+   une étape dont le déclencheur ne vient pas se tait (comptée à la fin, essai du 21/11).
 4. Au plus 10 min de **pédalage réel** (temps de séance `t` du journal) : le guide arrête OpenRide (la
    séance est enregistrée), remet les réglages, puis pose 2 ou 3 questions notées dans `essais.txt`.
 
@@ -46,7 +47,7 @@ from .. import seance_file
 
 FICHES_DIR = Path(__file__).resolve().parents[1] / "data" / "essais"
 DUREE_MAX_S = 600                 # règle du propriétaire : 10 min de pédalage au plus par séance
-ATTENTE_MAX_S = 180.0             # étape sautée si son déclencheur ne vient pas en 3 min de séance
+ATTENTE_MAX_S = 180.0             # ancien délai avant de sauter une étape : lu, plus utilisé (21/11)
 DELAI_ATTENDU_S = 30.0            # temps laissé pour faire l'action demandée, avant le rappel
 QUESTIONS_MAX = 3
 CIBLE_DEFAUT_W = 100              # sans séance réelle au journal (premier essai)
@@ -79,6 +80,35 @@ class Fiche:
     questions: list[str]
     config: list[tuple[str, str, Any]] = field(default_factory=list)
     duree_max_s: int = DUREE_MAX_S
+    bots_cible_pct: float | None = None   # bots réglés sur la consigne : effort visé = ce % de {cible}
+    bots_duree_s: float | None = None     # durée de course estimée pour la courbe des bots (défaut : duree_max_s)
+
+    @property
+    def mode(self) -> str | None:
+        for name, args in self.commandes:
+            if name == "start":
+                return args.get("mode")
+        return None
+
+    @property
+    def a_des_bots(self) -> bool:
+        """Vrai si la séance roule avec des bots (Grand Prix, vélodrome, ou `bots` donnés au départ)."""
+        for name, args in self.commandes:
+            if name == "start" and (args.get("mode") in ("grandprix", "track", "survivor") or args.get("bots")):
+                return True
+        return False
+
+    @property
+    def objectif_bots(self) -> str:
+        """Objectif des bots (lot BT1) : celui de l'épreuve au vélodrome, sinon `[config.bots] objective`."""
+        from ..bot_effort import DEFAULT_OBJECTIVE, TRACK_EFFORT
+        for name, args in self.commandes:
+            if name == "start" and args.get("mode") == "track":
+                return TRACK_EFFORT.get(str((args.get("track") or {}).get("event")), ("tempo",))[0]
+        for section, cle, v in self.config:
+            if (section, cle) == ("bots", "objective"):
+                return str(v)
+        return DEFAULT_OBJECTIVE
 
     @property
     def route_id(self) -> str | None:
@@ -134,7 +164,73 @@ def lire_fiche(data: dict, source: str = "fiche") -> Fiche:
         if not isinstance(keys, dict):
             raise FicheError(f"{source} : [config.{section}] attend une table")
         config += [(str(section), str(k), v) for k, v in keys.items()]
-    return Fiche(fid, but, commandes, etapes, questions, config, duree)
+    bc = data.get("bots_cible_pct")
+    bd = data.get("bots_duree_s")
+    fiche = Fiche(fid, but, commandes, etapes, questions, config, duree,
+                  float(bc) if bc is not None else None, float(bd) if bd is not None else None)
+    ecarts = incoherences(fiche)
+    if ecarts:
+        raise FicheError(f"{source} : incohérent : " + " ; ".join(ecarts))
+    return fiche
+
+
+def _pcts(texte: str) -> list[float]:
+    """% de la cible demandés par une consigne (`{cible}` = 100, `{cible:120}` = 120)."""
+    out, i = [], 0
+    while (a := texte.find("{cible", i)) >= 0:
+        b = texte.find("}", a)
+        if b < 0:
+            break
+        out.append(float(texte[a + 6:b].lstrip(":") or "100"))
+        i = b + 1
+    return out
+
+
+ECART_CONSIGNE_PCT = 10.0   # consigne du départ et effort des bots : 10 points d'écart au plus
+
+
+def incoherences(f: Fiche) -> list[str]:
+    """Contrôle de cohérence d'une fiche (essai du 21/11 : consigne 125 W, bots à 140 W) : une séance avec
+    des bots règle leur effort sur la consigne (`bots_cible_pct`, jamais un niveau fixe en % de la FTP), et
+    la consigne donnée au départ demande la même puissance que les bots, à 10 points près."""
+    from ..bot_effort import OBJECTIVES
+    out = []
+    niveau_fixe = any((s, k) == ("bots", "level_pct") for s, k, _ in f.config)
+    if f.a_des_bots:
+        if f.bots_cible_pct is None:
+            out.append("séance avec bots sans 'bots_cible_pct' (bots réglés sur la consigne)")
+        if niveau_fixe:
+            out.append("[config.bots] level_pct fixe : le niveau des bots se calcule depuis la consigne")
+        if f.objectif_bots not in OBJECTIVES:
+            out.append(f"objectif des bots « {f.objectif_bots} » inconnu ({', '.join(OBJECTIVES)})")
+        depart = [e for e in f.etapes if e.quand.get("kind") == "event" and e.quand.get("event") == "start"]
+        if f.bots_cible_pct is not None:
+            for e in depart:
+                for pct in _pcts(e.dire):
+                    if abs(pct - f.bots_cible_pct) > ECART_CONSIGNE_PCT:
+                        out.append(f"consigne du départ à {pct:.0f} % de la cible, bots à {f.bots_cible_pct:.0f} %")
+    elif f.bots_cible_pct is not None or niveau_fixe:
+        out.append("réglage des bots dans une séance sans bots")
+    if any(n == "start_run" for n, _ in f.commandes):
+        for e in f.etapes:
+            if _pcts(e.dire):
+                out.append("Cyber-Rogue : le jeu donne lui-même la puissance visée, pas de {cible} dans les consignes")
+                break
+    for e in f.etapes:
+        for pct in _pcts(e.dire):
+            if not 50 <= pct <= 150:
+                out.append(f"consigne à {pct:.0f} % de la cible (50 à 150 %)")
+    return out
+
+
+def niveau_bots(f: Fiche, cible_w: float, ftp_w: float) -> int:
+    """`bots.level_pct` qui donne aux bots l'effort `bots_cible_pct` % de la cible : effort des bots =
+    FTP × courbe(durée) × objectif × niveau (`bot_effort`), borné au réglage (50 à 150)."""
+    from ..bot_effort import curve_pct, share_pct
+    duree = f.bots_duree_s or float(f.duree_max_s)
+    vise_w = cible_w * (f.bots_cible_pct or 100.0) / 100.0
+    pleine_w = ftp_w * share_pct(f.objectif_bots) / 100.0 * curve_pct(duree) / 100.0
+    return int(min(150, max(50, round(100.0 * vise_w / pleine_w)))) if pleine_w > 0 else 100
 
 
 def fiches(dossier: Path = FICHES_DIR) -> dict[str, Fiche]:
@@ -228,16 +324,35 @@ class Action:
 
 
 class Deroule:
-    """Déroulé d'une fiche, nourri ligne par ligne par le journal de séance ; module pur (testé sans jeu)."""
+    """Déroulé d'une fiche, nourri ligne par ligne par le journal de séance ; module pur (testé sans jeu).
+
+    Chaque étape suit le jeu à l'instant t (retour du 21/11 : « cette étape n'arrive pas, je passe à la
+    suivante » revenait sans cesse) : toutes les étapes sont armées dès le vrai départ et chacune part au
+    moment où son déclencheur arrive, dans l'ordre où le jeu les donne et non dans celui de la fiche. Deux
+    étapes au même déclencheur partent à la 1re puis à la 2e occurrence (1er objet, 2e objet). Une étape
+    dont le déclencheur ne vient pas se tait : rien n'est annoncé en roulant, elle est comptée à la fin.
+    Une consigne liée au temps ou à la distance attend `CALME_S` après la consigne précédente."""
+
+    CALME_S = 8.0
 
     def __init__(self, fiche: Fiche, cible_w: float) -> None:
         self.fiche, self.cible_w = fiche, cible_w
-        self.i = 0                          # étape attendue
         self.t = 0.0                        # temps de séance (s), lu dans les lignes qui le portent
-        self.t_etape = 0.0                  # début de l'attente de l'étape en cours
-        self.en_attente: tuple[Etape, float, bool] | None = None   # étape donnée, fin du délai, rappel fait
+        self.parti = not any(e.quand.get("kind") == "event" and e.quand.get("event") == "start"
+                             for e in fiche.etapes)
+        self.faites: set[int] = set()
+        self.attentes: list[list] = []      # [étape, fin du délai, rappel fait]
+        self.derniere_t = -1e9
         self.fini = False
-        self.vus = self.sautes = 0
+        self.vus = 0
+
+    @property
+    def i(self) -> int:
+        return len(self.faites)
+
+    @property
+    def sautes(self) -> int:
+        return len(self.fiche.etapes) - len(self.faites)
 
     def _txt(self, s: str) -> str:
         return watts(s, self.cible_w)
@@ -248,46 +363,44 @@ class Deroule:
         out: list[Action] = []
         if ligne.get("kind") == "header":
             attendu = self.fiche.route_id
-            if ligne.get("route_id") != attendu:
+            if attendu is not None and ligne.get("route_id") != attendu:   # run Cyber-Rogue : pas de parcours
                 self.fini = True
                 return [Action("terrain", f"Mauvais terrain : parcours {ligne.get('route_id')} au lieu de "
                                           f"{attendu}. J'arrête, cet essai ne compte pas.")]
             return out
         if ligne.get("kind") == "record" and isinstance(ligne.get("t"), (int, float)):
             self.t = max(self.t, float(ligne["t"]))   # temps de séance : seules les lignes à 1 Hz le portent
-        if self.en_attente is not None:
-            etape, limite, rappele = self.en_attente
+        if ligne.get("kind") == "event" and ligne.get("event") == "start":
+            self.parti = True
+        for att in list(self.attentes):
+            etape, limite, rappele = att
             if correspond(etape.attendu or {}, ligne):
                 out.append(Action("vu", "Vu, merci."))
                 self.vus += 1
-                self._suivante()
+                self.attentes.remove(att)
             elif self.t >= limite:
-                if rappele:
-                    self._suivante()
-                else:
+                if not rappele:
                     out.append(Action("rappel", self._txt(etape.rappel or etape.dire)))
-                    self.en_attente = (etape, self.t + etape.delai_s, True)
-        if self.en_attente is None and self.i < len(self.fiche.etapes):
-            etape = self.fiche.etapes[self.i]
-            if correspond(etape.quand, ligne):
+                    att[1], att[2] = self.t + etape.delai_s, True
+                else:
+                    self.attentes.remove(att)
+        if self.parti:
+            evenement = ligne.get("kind") != "record"
+            for k, etape in enumerate(self.fiche.etapes):
+                if k in self.faites or not correspond(etape.quand, ligne):
+                    continue
+                if not evenement and self.t - self.derniere_t < self.CALME_S:
+                    break                       # repris à la ligne suivante : un record vaut encore
+                self.faites.add(k)
+                self.derniere_t = self.t
                 out.append(Action("consigne", self._txt(etape.dire)))
                 if etape.attendu:
-                    self.en_attente = (etape, self.t + etape.delai_s, False)
-                else:
-                    self._suivante()
-            elif self.t - self.t_etape >= etape.attente_max_s:
-                out.append(Action("saute", "Cette étape n'arrive pas, je passe à la suivante."))
-                self.sautes += 1
-                self._suivante()
+                    self.attentes.append([etape, self.t + etape.delai_s, False])
+                break                           # une seule consigne par ligne du jeu
         if self.t >= self.fiche.duree_max_s or (ligne.get("kind") == "event" and ligne.get("event") == "stop"):
             self.fini = True
             out.append(Action("fin", "Stop. Arrête de pédaler, j'enregistre et je ferme le jeu."))
         return out
-
-    def _suivante(self) -> None:
-        self.en_attente = None
-        self.i += 1
-        self.t_etape = self.t
 
 
 # ---------------------------------------------------------------- entrées-sorties (sur le PC)
@@ -374,10 +487,17 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
     config_path, profil_path = config_mod.DEFAULT_CONFIG_PATH, ctx.root / "profil.toml"
     sauvegardes = {p: (p.read_bytes() if p.exists() else None) for p in (config_path, profil_path)}
     deroule = Deroule(fiche, cible_w)
+    reglages = list(fiche.config)
+    if fiche.a_des_bots and fiche.bots_cible_pct is not None:
+        ftp_w = float(config_mod.load(config_path, profil_path if profil_path.exists() else None).rider.ftp_w)
+        niveau = niveau_bots(fiche, cible_w, ftp_w)
+        reglages.append(("bots", "level_pct", niveau))
+        print(f"  Bots : {fiche.objectif_bots}, réglés sur {watts('{cible:%g}' % fiche.bots_cible_pct, cible_w)} W "
+              f"(niveau {niveau} %)\n")
     proc = None
     try:
-        if fiche.config:
-            config_edit.update_layers(fiche.config, config_path, profil_path)
+        if reglages:
+            config_edit.update_layers(reglages, config_path, profil_path)
         materiel = ["--trainer", "sim", "--input", "sim", "--hr", "sim"] if sim else ["--trainer", "ftms",
                                                                                      "--input", "click"]
         depart = time.time() - 1
@@ -411,7 +531,7 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
             else:
                 p.write_bytes(contenu)
     lignes = [f"[{dt.datetime.now():%Y-%m-%d %H:%M}] {fiche.id} : {deroule.i}/{len(fiche.etapes)} étapes, "
-              f"{deroule.vus} vues, {deroule.sautes} sautées, {deroule.t:.0f} s de séance, cible {cible_w:.0f} W"]
+              f"{deroule.vus} vues, {deroule.sautes} jamais venues, {deroule.t:.0f} s de séance, cible {cible_w:.0f} W"]
     for q in fiche.questions:
         try:
             r = input(f"  ? {q}\n    > ").strip()

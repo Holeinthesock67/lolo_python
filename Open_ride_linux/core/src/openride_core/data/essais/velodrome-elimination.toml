@@ -2,6 +2,8 @@
 id = "velodrome-elimination"
 but = "Vélodrome, élimination à 7 : bots qui courent l'épreuve, tableau, cloche, éliminations lisibles"
 duree_max_s = 600
+bots_cible_pct = 100   # bots réglés sur la consigne du départ
+bots_duree_s = 1200    # élimination de 40 tours
 commandes = [
   { cmd = "select_route", args = { route_id = "velodrome-250" } },
   { cmd = "start", args = { mode = "track", track = { event = "elimination", opponents = 7 } } },
@@ -16,8 +18,8 @@ quand = { kind = "event", event = "start" }
 dire = "Départ. Roule à {cible} watts dans le peloton."
 
 [[etapes]]
-quand = { kind = "track", event = "out" }
-dire = "Premier éliminé. As-tu vu qui sort, et entendu le signal ?"
+quand = { kind = "track", event = "out", "rider!=" = "me" }
+dire = "Premier éliminé : regarde qui sort."
 
 [[etapes]]
 quand = { kind = "track", event = "bell" }
@@ -25,5 +27,4 @@ dire = "La cloche : reste devant le dernier jusqu'à la ligne, à {cible:115} wa
 
 [[etapes]]
 quand = { kind = "track", event = "out", rider = "me" }
-dire = "Tu es éliminé. Continue à rouler tranquille, regarde si les bots finissent la course."
-attente_max_s = 420
+dire = "Tu es éliminé. Roule tranquille jusqu'à la fin."

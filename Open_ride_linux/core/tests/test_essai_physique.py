@@ -65,30 +65,47 @@ def test_watts_are_direct_and_rounded():
 def test_steps_follow_the_game_not_the_clock():
     d = EP.Deroule(fiche(), 100)
     assert d.lire({"kind": "header", "route_id": "col"}) == []
-    assert d.lire(rec(0.0)) == []                         # rien avant le vrai départ
+    assert d.lire(rec(0.0, 600.0)) == []                  # rien avant le vrai départ
     assert [a.texte for a in d.lire({"kind": "event", "event": "start"})] == ["Roule à 100 watts."]
-    assert d.lire(rec(60.0, 400.0)) == []                 # l'étape 2 attend une boîte, la distance ne compte pas
+    assert d.lire(rec(60.0, 400.0)) == []
     assert [a.sorte for a in d.lire({"kind": "gp", "event": "box", "rider": "me", "t": 3.0})] == ["consigne"]
-    assert [a.texte for a in d.lire(rec(85.0, 600.0))] == ["Z !"]   # 20 s sans Z : un seul rappel
+    # 20 s sans Z : un seul rappel ; la distance de 500 m part au même instant, dans l'ordre du jeu
+    assert [a.texte for a in d.lire(rec(85.0, 600.0))] == ["Z !", "500 m."]
     assert [a.sorte for a in d.lire({"kind": "gp", "event": "use", "rider": "me"})] == ["vu"]
-    assert [a.texte for a in d.lire(rec(86.0, 610.0))] == ["500 m."]
-    assert d.vus == 1 and not d.fini
+    assert d.vus == 1 and d.sautes == 0 and not d.fini
 
 
-def test_reminder_once_then_next_step():
+def test_steps_fire_in_game_order_not_fiche_order():
+    d = EP.Deroule(fiche(), 100)
+    d.lire({"kind": "event", "event": "start"})
+    assert [a.texte for a in d.lire(rec(30.0, 520.0))] == ["500 m."]   # avant toute boîte
+    assert [a.texte for a in d.lire({"kind": "gp", "event": "box", "rider": "me"})] == ["Objet."]
+
+
+def test_reminder_once_then_silence():
     d = EP.Deroule(fiche(), 100)
     d.lire({"kind": "event", "event": "start"})
     d.lire({"kind": "gp", "event": "box", "rider": "me"})
     assert [a.sorte for a in d.lire(rec(21.0))] == ["rappel"]
-    assert [a.sorte for a in d.lire(rec(42.0, 900.0))] == ["consigne"]   # pas de 2e rappel : étape suivante
+    assert d.lire(rec(42.0)) == []                      # pas de 2e rappel
     assert d.vus == 0
 
 
-def test_missing_trigger_is_skipped_after_attente_max():
+def test_missing_trigger_stays_silent():
     d = EP.Deroule(fiche(), 100)
     d.lire({"kind": "event", "event": "start"})
-    assert [a.sorte for a in d.lire(rec(EP.ATTENTE_MAX_S + 1))] == ["saute"]
-    assert d.sautes == 1 and d.i == 2
+    assert d.lire(rec(EP.ATTENTE_MAX_S + 1)) == []      # rien d'annoncé en roulant
+    assert d.sautes == 2 and d.i == 1
+
+
+def test_time_step_waits_after_a_consigne():
+    f = fiche(etapes=[{"quand": {"kind": "event", "event": "start"}, "dire": "Go."},
+                      {"quand": {"kind": "record", "t>=": 1}, "dire": "Temps."}])
+    d = EP.Deroule(f, 100)
+    d.lire(rec(0.0))
+    d.lire({"kind": "event", "event": "start"})
+    assert d.lire(rec(2.0)) == []                        # 8 s de calme après « Go. »
+    assert [a.texte for a in d.lire(rec(9.0))] == ["Temps."]
 
 
 def test_wrong_terrain_stops():
@@ -125,3 +142,59 @@ def test_cli_lists_and_shows(capsys):
     assert EP.main(["liste"]) == 0 and "gp-voies" in capsys.readouterr().out
     assert EP.main(["voir", "gp-voies"]) == 0 and "demo-circuit" in capsys.readouterr().out
     assert EP.main(["voir", "absent"]) == 2
+
+
+# --- cohérence consigne / bots (essai du 21 novembre : consigne 125 W, bots à 140 W) ---------------------
+
+def _fiche_gp(**extra):
+    data = {"id": "x", "but": "essai", "questions": ["note ?"],
+            "commandes": [{"cmd": "select_route", "args": {"route_id": "demo-circuit"}},
+                          {"cmd": "start", "args": {"mode": "grandprix"}}],
+            "etapes": [{"quand": {"kind": "event", "event": "start"}, "dire": "{cible} watts"}]}
+    data.update(extra)
+    return data
+
+
+def test_bots_sans_reglage_sur_la_consigne_refuses():
+    with pytest.raises(EP.FicheError, match="bots_cible_pct"):
+        EP.lire_fiche(_fiche_gp())
+
+
+def test_niveau_fixe_des_bots_refuse():
+    with pytest.raises(EP.FicheError, match="level_pct fixe"):
+        EP.lire_fiche(_fiche_gp(bots_cible_pct=100, config={"bots": {"level_pct": 80}}))
+
+
+def test_consigne_du_depart_loin_des_bots_refusee():
+    with pytest.raises(EP.FicheError, match="consigne du départ"):
+        EP.lire_fiche(_fiche_gp(bots_cible_pct=130))
+
+
+def test_niveau_des_bots_calcule_sur_la_consigne():
+    f = EP.lire_fiche(_fiche_gp(bots_cible_pct=100, bots_duree_s=1200, config={"bots": {"objective": "tempo"}}))
+    from openride_core.bot_effort import curve_pct
+    niveau = EP.niveau_bots(f, 125.0, 250.0)
+    effort_w = 250.0 * 0.80 * curve_pct(1200) / 100.0 * niveau / 100.0
+    assert abs(effort_w - 125.0) < 2.0
+
+
+def test_niveau_des_bots_borne():
+    f = EP.lire_fiche(_fiche_gp(bots_cible_pct=100))
+    assert EP.niveau_bots(f, 400.0, 100.0) == 150 and EP.niveau_bots(f, 20.0, 400.0) == 50
+
+
+def test_objectif_du_velodrome_suit_l_epreuve():
+    data = _fiche_gp(bots_cible_pct=100)
+    data["commandes"][1]["args"] = {"mode": "track", "track": {"event": "elimination", "opponents": 7}}
+    assert EP.lire_fiche(data).objectif_bots == "tempo"
+
+
+def test_run_rogue_sans_parcours_pas_de_mauvais_terrain():
+    f = EP.fiches()["rogue-depart"]
+    d = EP.Deroule(f, 120.0)
+    assert d.lire({"kind": "header", "route_id": "rogue", "version": 1}) == [] and not d.fini
+
+
+def test_fiches_livrees_coherentes():
+    for f in EP.fiches().values():
+        assert EP.incoherences(f) == [], f.id
