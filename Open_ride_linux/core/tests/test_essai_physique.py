@@ -301,3 +301,12 @@ def test_bad_rogue_balance_is_refused():
             "etapes": [{"quand": {"kind": "event", "event": "start"}, "dire": "Go."}]}
     with pytest.raises(EP.FicheError, match="rogue_balance"):
         EP.lire_fiche(data)
+
+
+def test_open_world_trial_checks_it_rides_the_open_world():
+    f = EP.fiches()["mer-biarritz"]
+    assert f.monde_ouvert and f.commandes[0][0] == "start_open_world"
+    assert EP.Deroule(f, 100).lire({"kind": "header", "route_id": "ow:ow-20261122-0900"}) == []
+    d = EP.Deroule(f, 100)
+    assert d.lire({"kind": "header", "route_id": "demo"})[0].sorte == "terrain" and d.fini
+    assert seance_file.check([{"cmd": n, "args": a} for n, a in f.commandes])

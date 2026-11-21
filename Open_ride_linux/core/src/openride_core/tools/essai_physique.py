@@ -86,6 +86,10 @@ class Fiche:
     rogue_balance: dict = field(default_factory=dict)   # surcharge de la table d'une run d'essai (échauffement)
 
     @property
+    def monde_ouvert(self) -> bool:
+        return any(n == "start_open_world" for n, _ in self.commandes)
+
+    @property
     def mode(self) -> str | None:
         for name, args in self.commandes:
             if name == "start":
@@ -432,6 +436,10 @@ class Deroule:
         out: list[Action] = []
         if ligne.get("kind") == "header":
             attendu = self.fiche.route_id
+            if self.fiche.monde_ouvert and not str(ligne.get("route_id") or "").startswith("ow:"):
+                self.fini = True
+                return [Action("terrain", f"Mauvais terrain : parcours {ligne.get('route_id')} au lieu du monde "
+                                          "ouvert. J'arrête, cet essai ne compte pas.")]
             if attendu is not None and ligne.get("route_id") != attendu:   # run Cyber-Rogue : pas de parcours
                 self.fini = True
                 return [Action("terrain", f"Mauvais terrain : parcours {ligne.get('route_id')} au lieu de "
@@ -583,14 +591,15 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
         proc = subprocess.Popen([sys.executable, "-m", "openride_core.launcher", "--no-compile", *materiel,
                                  "--profil", profil, "--autostart", "--seance", str(seance)],
                                 start_new_session=True, env=env)
-        sortie(Action("annonce", "Le jeu se lance sur le bon terrain. Pédale dès que le parcours s'affiche."))
+        sortie(Action("annonce", "Le jeu se lance sur le bon terrain. Pédale dès que le parcours s'affiche."
+                      + (" Le monde se prépare d'abord, une à deux minutes." if fiche.monde_ouvert else "")))
         chemin = None
         while chemin is None:
             if proc.poll() is not None:
                 print("  Le jeu s'est arrêté avant la séance : voir ~/run_trainer.log.")
                 return 1
-            if time.time() - depart > 300:
-                print("  Pas de journal de séance après 5 min : j'arrête.")
+            if time.time() - depart > (600 if fiche.monde_ouvert else 300):   # monde ouvert : génération
+                print("  Pas de journal de séance à temps : j'arrête.")
                 return 1
             chemin = journal_neuf(ctx.journal_dir, depart)
             time.sleep(1.0)
@@ -684,7 +693,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     f = toutes[args.id]
     if args.cmd == "voir":
-        print(f"{f.id} : {f.but}\nTerrain : {f.route_id or 'run Cyber-Rogue'}, {f.duree_max_s // 60} min au plus")
+        print(f"{f.id} : {f.but}\nTerrain : {f.route_id or ('monde ouvert' if f.monde_ouvert else 'run Cyber-Rogue')}, {f.duree_max_s // 60} min au plus")
         for i, e in enumerate(f.etapes, 1):
             print(f"  {i}. quand {e.quand} : {e.dire}" + (f"  (attendu {e.attendu})" if e.attendu else ""))
         for q in f.questions:
