@@ -66,7 +66,7 @@
     {"note": "Lot O27 : sous-écran Avancé ; monde ouvert hors ligne pris sans relancer, progression au prochain lancement",
      "choisir": "group:advanced"},
     {"ecran": "settings_group", "groupe": "advanced", "titre": "Réglages › Avancé",
-     "contient": ["Pilotage du trainer — SIM du trainer", "Plafond des suppléments de pente — 4 pts de pente", "Ressenti du vent — par la pente",
+     "contient": ["Pilotage du trainer — SIM du trainer", "Pente ajoutée max — 4 pts", "Ressenti du vent — par la pente",
                   "Télécharger les cartes — oui", "Cache du monde — 5 Go", "Place pour les thèmes — 5 Go", "Progression et Garage — oui"]},
     {"capture": "ni2_avance"},
     {"choisir": "set:open_world.network"},

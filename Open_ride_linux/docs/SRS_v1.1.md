@@ -438,7 +438,7 @@ from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à
 gust_pct = 0                 # 0 à 100, rafales du mode "gusty" ("theme" et "local" ont les leurs) ; réglable dans le menu
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11) ; menu : « Ressenti du vent » (Réglages › Avancé, lot NI2)
-max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; menu « Plafond des suppléments de pente » (Réglages › Avancé, lot NI2 : vent, abri et gravel)
+max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; menu « Pente ajoutée max » (Réglages › Avancé, lot NI2 : vent, abri et gravel)
 [gravel]
 mode = "off"                 # "off" (défaut), "auto" (surface du parcours), "compacted", "gravel" ou "dirt" (tout le parcours)
 factor_compacted = 2.0       # roulement multiplié sur les portions compactées, 1 à 3

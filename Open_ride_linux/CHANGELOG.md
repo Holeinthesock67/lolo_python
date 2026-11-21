@@ -23,7 +23,7 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Une seule place par réglage : les réglages du Dernier survivant, du Grand Prix, de la Course et de la séance conseillée ne se règlent plus que sur leur propre écran, plus dans Réglages › Séance.
 - Une ligne sans effet est cachée tant que le choix dont elle dépend la rend inutile (force, direction et rafales du vent, ressenti du vent, mois, cadence de départ, abri derrière les véhicules) ; la Difficulté n'apparaît plus à la pause d'une séance ERG ; le Thème n'apparaît qu'avec un pack de thème installé.
 - « Textures du décor » retiré : la taille des textures suit la Qualité graphique ; une valeur choisie avant est remise par défaut au lancement (copie `config.toml.bak`).
-- « Pilotage du trainer », « Ressenti du vent » et « Plafond des suppléments de pente » (ancien « Plafond du vent », il borne aussi l'abri et le gravel) passent dans Réglages › Avancé.
+- « Pilotage du trainer », « Ressenti du vent » et « Pente ajoutée max » (ancien « Plafond du vent », il borne aussi l'abri et le gravel) passent dans Réglages › Avancé.
 
 ### Grand Prix des objets : voiture d'équipe, Furtif et recette (lots GP4, GP11)
 - Objets « Voiture d'équipe » (remorquage dans l'abri d'un véhicule) et « Furtif » (échappée et vol d'objet) (lot GP4) ; la voiture ne passe plus sous un coureur plus lent et ne touche plus les usagers de la route (correctifs du 16 et du 17 novembre).

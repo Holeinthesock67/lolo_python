@@ -192,7 +192,7 @@ def test_gravel_setting_lot_u16(tmp_path: Path):
     g = items["gravel.mode"]
     assert (g["group"], g["value"], g["applies"]) == ("ride", "off", "next_session")
     assert g["choices"] == ["off", "auto", "compacted", "gravel", "dirt"]
-    assert "Chemins réels" in g["help"] and "plafond des suppléments de pente" in g["help"]
+    assert "Chemins réels" in g["help"] and "pente ajoutée maximale" in g["help"]
     assert "help" not in items["wind.speed_kmh"]
     path = tmp_path / "config.toml"
     path.write_text(START, encoding="utf-8")
@@ -418,7 +418,7 @@ def test_lot_ni2_one_place_per_setting_and_rule_for_useless_lines():
     assert {"survivor.opponents", "grandprix.chaos", "coach.objectif"} <= set(screen)
     assert not [k for k, it in by_key.items() if k.split(".")[0] in settings.SCREEN_SECTIONS and k not in screen]
     assert "render.texture_level" not in by_key
-    assert by_key["wind.max_grade_offset_pct"]["label"] == "Plafond des suppléments de pente"
+    assert by_key["wind.max_grade_offset_pct"]["label"] == "Pente ajoutée max"
     assert {by_key[k]["group"] for k in ("trainer.control", "wind.feel", "wind.max_grade_offset_pct")} == {"advanced"}
     whens = {k: it["when"] for k, it in by_key.items() if "when" in it}
     assert set(whens) == {"depart.cadence_rpm", "ride.vehicle_draft", "render.month", "wind.speed_kmh",

@@ -110,7 +110,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gravel.mode", "Gravel", "ride",
             help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
                  "Chemin compact, gravier ou terre : toute la route. Roulement 2 à 3 fois plus dur, "
-                 "sous le plafond des suppléments de pente."),
+                 "dans la limite de la pente ajoutée maximale."),
     # Pilotage du trainer hors ERG (lots RC1-RC3, choix du propriétaire du 1er novembre) : résistance calculée
     # par le core (aucun lâcher après le sprint aux essais 7rc2) ou SIM du trainer ; choix d'essai rangé en
     # Avancé au lot NI2 (R7)
@@ -177,9 +177,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("wind.from_deg", "Direction du vent", "wind", 45, "°"),
     Setting("wind.gust_pct", "Rafales", "wind", 10, "%"),
     # Lot NI2 (R8, R9) : choix d'essai et plafond commun (vent, abri, gravel) rangés en Avancé
-    Setting("wind.max_grade_offset_pct", "Plafond des suppléments de pente", "advanced", 1, "pts de pente",
-            help="Borne tout ce qui s'ajoute à la pente du parcours : vent, abri derrière un coureur ou un "
-                 "véhicule, et roulement du gravel."),
+    Setting("wind.max_grade_offset_pct", "Pente ajoutée max", "advanced", 1, "pts",
+            help="Points de pente au plus ajoutés à la pente du parcours, pour tout ce qui s'y ajoute : vent, "
+                 "abri derrière un coureur ou un véhicule, et roulement du gravel."),
     Setting("wind.feel", "Ressenti du vent", "advanced"),   # lot O26
     # Avancé (lot O27) : monde ouvert hors ligne, plafonds de disque, progression du Garage
     Setting("open_world.network", "Télécharger les cartes", "advanced"),
