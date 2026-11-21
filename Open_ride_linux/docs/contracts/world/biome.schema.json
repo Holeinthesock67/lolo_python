@@ -33,7 +33,13 @@
         "japan",
         "atlantic_heath",
         "high_plateau",
-        "reef"
+        "reef",
+
+        "cloud_forest",
+
+        "eucalypt_woodland",
+
+        "temperate_rainforest"
       ]
     },
     "groundVariant": {

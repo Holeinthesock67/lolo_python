@@ -5,6 +5,13 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Trois nouveaux biomes : forêt de nuages, bush à eucalyptus, forêt pluviale tempérée (lot V6-r4)
+- Forêt de nuages des Andes, d'Amérique centrale et d'Afrique de l'Est : fougères arborescentes, palmiers à cire, brouillard épais, perroquets et singes.
+- Bush à eucalyptus d'Australie : eucalyptus clairsemés, terre rouge, herbes sèches, kangourous, maisons à toit de tôle.
+- Forêt pluviale tempérée de la côte Pacifique, du Chili, de Nouvelle-Zélande et de Tasmanie : douglas et thuyas géants, mousses, brume.
+- Posés tout seuls sur les vraies routes de ces régions (parcours compilés et monde ouvert), et au choix dans « Biome du décor ».
+- Nouveau parcours de démonstration « Route des Trois Forêts » (6 km, du bush à la forêt de nuages).
+
 ### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
 - En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
 - Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).
@@ -19,7 +26,8 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Voitures, camions, tracteurs et cyclistes du décor circulent aussi à rebours (lot N23) ; les montées du retour ont leurs panneaux d'approche, chiffres peints, spectateurs et parapentes (lot N24) ; les arches de bonus se comptent à rebours, une fois chacune par tour (lot N25).
 - Pendant un entraînement ERG ou un test de FTP, le bout d'un parcours en ligne fait demi-tour tout seul, sans arrêt (bandeau « Bout du parcours : demi-tour, l'entraînement continue ») ; une fois l'entraînement fini, le bout suivant termine la séance (lot N26).
 
-### Grand Prix des objets : voiture d'équipe, Furtif et recette (lots GP4, GP11)
+### Grand Prix des objets : voiture d'équipe, Furtif, recette et parcours (lots GP4, GP11, GP13b)
+- Deux nouveaux parcours du Grand Prix, installés avec les contenus de départ : la « Boucle de la Corniche », 2,5 km au-dessus de la mer entre maquis, pins et falaises, et la « Route des Vignes », une boucle sinueuse et vallonnée de 5 km dans les vignes, entre villages et domaines. Comme le Circuit des Prés, ils se choisissent par « Changer de parcours » dans l'écran Prêt du Grand Prix, sont revêtus de bout en bout et sans épingle (lot GP13b).
 - Objets « Voiture d'équipe » (remorquage dans l'abri d'un véhicule) et « Furtif » (échappée et vol d'objet) (lot GP4) ; la voiture ne passe plus sous un coureur plus lent et ne touche plus les usagers de la route (correctifs du 16 et du 17 novembre).
 - Recette du Grand Prix en étapes de 10 min et outil de bilan des courses : `python -m openride_core.tools.gp_recette [--dernieres N] [--json]` (lot GP11).
 

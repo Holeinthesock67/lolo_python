@@ -495,10 +495,12 @@ func _run() -> void:
 	var share_sum := 0.0
 	for kind in TrafficModel.KINDS:
 		share_sum += float(TrafficModel.KINDS[kind]["share"])
-	_check(drawn.size() == TrafficModel.KINDS.size() and safe and absf(share_sum - 1.0) < 1e-6,
+	_check(drawn.size() == TrafficModel.KINDS.size() - 1 and not drawn.has("team_car") and safe and absf(share_sum - 1.0) < 1e-6,
 		"sept sortes tirées sur 200 graines, vitesses dans la plage de chaque sorte (%s)" % str(drawn))
 	_check(TrafficModel.pick_kind(0.0) == "car_a" and TrafficModel.pick_kind(0.999) == "tractor",
 		"tirage de la sorte dans l'ordre de la table")
+	_check(TrafficModel.pick_kind(1.0) == "tractor" and float(TrafficModel.KINDS["team_car"]["share"]) == 0.0,
+		"voiture d'équipe jamais tirée, même au-delà de la somme des parts")
 	var sun := 45.0
 	_check(not TrafficModel.headlights({"fog_boost": 0.0, "rain": 0.0}, sun) and TrafficModel.headlights({"fog_boost": 0.5}, sun)
 		and TrafficModel.headlights({"rain": 0.6}, sun) and TrafficModel.headlights({}, 3.0),
