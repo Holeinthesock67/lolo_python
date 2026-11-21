@@ -6,11 +6,13 @@ extends RefCounted
 
 ## Les seize biomes du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1)
 ## `atlantic_heath` (lot AT1) et `high_plateau` (lot HP1), version 6.0, puis `reef` (fond marin, lot SM1 :
-## parcours de démonstration sous-marin, rendu sous l'eau par atmosphere_model.gd).
+## parcours de démonstration sous-marin, rendu sous l'eau par atmosphere_model.gd), puis les trois biomes du rang 4
+## de l'étude 6.0 (lot V6-r4) : `cloud_forest`, `eucalypt_woodland`, `temperate_rainforest`.
 const BIOMES: Array[String] = [
 	"temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
 	"polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
 	"wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau", "reef",
+	"cloud_forest", "eucalypt_woodland", "temperate_rainforest",   # lot V6-r4 (6.0) : biomes du rang 4
 ]
 
 const DEFAULT_BIOME := "temperate_grassland"
@@ -34,6 +36,7 @@ const SPECIES: Array[String] = [
 	"heather", "gorse", "bracken",   # lot AT1 (6.0) : bruyère, ajonc, fougère aigle des landes atlantiques
 	"bunchgrass",                    # lot HP1 (6.0) : touffe d'ichu des hauts plateaux
 	"kelp", "coral", "sea_fan",      # lot SM1 : laminaire, corail branchu, gorgone en éventail du fond marin
+	"wax_palm", "eucalyptus", "douglas_fir", "red_cedar",   # lot V6-r4 (6.0) : palmier à cire, eucalyptus, douglas, thuya géant
 ]
 
 const GROUND_ROLES: Array[String] = ["flat", "steep", "high"]
