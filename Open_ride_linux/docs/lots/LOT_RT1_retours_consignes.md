@@ -39,7 +39,7 @@ commune : dossier du projet `plans/AUDIT_RETOURS_JEU_2026-11-21.md` ; maquettes 
 ## Recette PC
 Catégorie : rendu
 - Cloud : suites unitaires de l'engine, captures low, medium et high (`captures/rt1-retours/`)
-- Fumée (≈ 5 min) : `python3 engine/tests/menu_bench.py --native --scenario velodrome --scenario dernier_survivant --qualite low --voies clavier --out {sortie}`
+- Fumée (≈ 5 min) : `python3 engine/tests/menu_bench.py --native --scenario elimination --scenario dernier_survivant --qualite low --voies clavier --out {sortie}`
 - Matrice, une étape par qualité, ordre low, high, medium (≈ 30 min chacune, ≈ 1 h 30 en tout) :
   `python3 engine/tests/sim_bench.py --native --probe --scenario dernier_survivant --scenario grand_prix --scenario erg_village --quality {qualite} --out {sortie}`
   (Dernier survivant 7 min, Grand Prix 8 min, ERG court 5 min 45 jusqu'à « ENTRAÎNEMENT TERMINÉ » ; budgets GPU 8, 13 et 16 ms ; HUD seulement, aucun changement 3D attendu)
