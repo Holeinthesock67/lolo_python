@@ -73,6 +73,8 @@ extends RefCounted
 ## « Niveau des bots » (tours sur un circuit, distance sur un parcours en ligne), « Objets » (une case par objet,
 ## list_mode_options et set_mode_option, grandprix/gp_items_menu_model.gd), « Lancer » avec la longueur de la
 ## course, désactivé sur un parcours en ligne trop court ; `start` part avec `mode` « grandprix » sans `bots`.
+## Aide du Grand Prix (lot GPH1) : « Comment ça marche ? », dernière ligne de son écran Prêt, met le résumé du mode
+## dans la carte et ouvre l'écran « Aide Grand Prix » (grandprix/gp_help.gd), un sujet par ligne.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -92,6 +94,7 @@ const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
 const GpItemsMenuModel := preload("res://scripts/grandprix/gp_items_menu_model.gd")
+const GpHelp := preload("res://scripts/grandprix/gp_help.gd")
 ## Dernier survivant (lot DS7) : réglages de l'écran Prêt du mode, dans l'ordre du plan (§4).
 const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et survivor.spacing_km (config.py)
 const SURVIVOR_SPACING_KM := [1, 3]
@@ -334,6 +337,7 @@ func _init() -> void:
 	menu.add_screen({"id": WtfRulesModel.SCREEN, "title": "Mode WTF", "on_back": MenuModel.HOME, "items": []})
 	_refresh_wtf()
 	menu.add_screen({"id": GpItemsMenuModel.SCREEN, "title": "Grand Prix : objets", "on_back": MenuModel.READY, "items": []})
+	menu.add_screen({"id": GpHelp.SCREEN, "title": GpHelp.TITLE, "on_back": MenuModel.READY, "items": GpHelp.items()})
 	_refresh_gp_items()
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
 	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
@@ -719,6 +723,8 @@ func card(st: Dictionary) -> Dictionary:
 	var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
 	var screen := str(st["screen"])
 	if screen == MenuModel.READY:
+		if focused == MenuModel.GP_HELP_ID:   # Grand Prix (lot GPH1) : résumé du mode à la place de la fiche
+			return GpHelp.sheet(GpHelp.SUMMARY)
 		return _sheet(routes_raw, menu.world_id, func(r): return CatalogModel.route_sheet(r))
 	if screen == MenuModel.ROUTES:
 		if focused in ROUTE_HELP_TOPICS:
@@ -726,6 +732,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
 	if screen == ROUTE_HELP:
 		return RouteHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == GpHelp.SCREEN:
+		return GpHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
 	if screen == ROUTE_IMPORT:
 		return _route_import_card(focused)
 	if screen == MenuModel.WORKOUTS:
@@ -1320,6 +1328,11 @@ func _handle_event(event: String) -> Dictionary:
 		_refresh_gp_items()
 		menu.push_screen(GpItemsMenuModel.SCREEN)
 		return {"action": "list_mode_options", "mode": GpItemsMenuModel.MODE}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == MenuModel.GP_HELP_ID:
+		menu.push_screen(GpHelp.SCREEN)
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == GpHelp.SCREEN:
+		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == GpItemsMenuModel.SCREEN:
 		var gp_act: Dictionary = gp_items.handle(str(act["id"]))
 		_refresh_gp_items()

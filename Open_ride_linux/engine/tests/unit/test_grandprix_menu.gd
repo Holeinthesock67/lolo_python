@@ -87,8 +87,8 @@ func _run() -> void:
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
 	_check(str(f.state()["title"]) == "Prêt : Grand Prix des objets — Grande boucle", "titre du mode (%s)" % f.state()["title"])
 	_check(_ids(f) == ["start", "change_route", "set:grandprix.opponents", "set:grandprix.laps", "set:bots.level_pct",
-		"set:bots.objective", "set:grandprix.chaos", "set:grandprix.box_every_m", "gp_items"],
-		"Lancer, parcours, réglages avec les tours (plus de distance en ligne), Objets (%s)" % str(_ids(f)))
+		"set:bots.objective", "set:grandprix.chaos", "set:grandprix.box_every_m", "gp_items", "_gp_help"],
+		"Lancer, parcours, réglages avec les tours (plus de distance en ligne), Objets, aide (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "3 tours, 12,0 km" and _item(f, "start")["enabled"],
 		"Lancer : tours et longueur de la course (%s)" % _item(f, "start")["detail"])
 	_check(_item(f, "set:grandprix.opponents")["label"] == "Adversaires" and _item(f, "set:grandprix.opponents")["detail"] == "4",
@@ -143,6 +143,26 @@ func _run() -> void:
 	f.handle("Y_SHORT")
 	_check(f.state()["screen"] == "ready" and _item(f, "gp_items")["label"] == "Objets : 11 sur 13",
 		"retour à l'écran Prêt : ligne Objets à jour (%s)" % str(_item(f, "gp_items")))
+
+	# Aide du mode (lot GPH1) : résumé dans la carte de l'écran Prêt, écran « Aide Grand Prix » un sujet par ligne
+	f.menu.focus_item("start")
+	_check(str(f.card(f.state()).get("title", "")) != "Aide Grand Prix", "focus sur Lancer : fiche du parcours, pas l'aide")
+	f.menu.focus_item("_gp_help")
+	var card: Dictionary = f.card(f.state())
+	_check(_item(f, "_gp_help")["label"] == "Comment ça marche ?" and card.get("title", "") == "Aide Grand Prix"
+		and card.get("name", "") == "Le Grand Prix en bref", "« Comment ça marche ? » : résumé du mode dans la carte (%s)" % str(card))
+	_check(" ".join(card.get("lines", [])).contains("A ou ← →") and " ".join(card.get("lines", [])).contains("Z"),
+		"résumé : boîtes, Z, changement de voie")
+	act = f.handle("A_LONG")
+	_check(act.is_empty() and f.state()["screen"] == "gp_help", "A long : écran « Aide Grand Prix »")
+	_check(_ids(f) == ["help:summary", "help:boxes", "help:lanes", "help:buttons", "help:hits"], "sujets de l'aide (%s)" % str(_ids(f)))
+	f.menu.focus_item("help:lanes")
+	card = f.card(f.state())
+	_check(card.get("name", "") == "À quoi servent les voies" and " ".join(card.get("lines", [])).contains("abri"),
+		"sujet des voies : son explication, abri compris")
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "gp_help", "un sujet ne fait rien")
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "ready", "Y : retour à l'écran Prêt")
 
 	f.menu.focus_item("start")
 	act = f.handle("A_LONG")

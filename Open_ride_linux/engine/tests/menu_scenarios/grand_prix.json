@@ -1,5 +1,5 @@
 {
-  "description": "Grand Prix des objets (lot GP9 ; lot GP13 : parcours du mode seulement ; lot GPL1 : boucles seulement) : entrée de l'accueil, écran Prêt du mode sur la boucle d'essai (copie de la piste, étiquette « grandprix » : tours du circuit, plus de « Distance en ligne »), liste du mode sans la course en ligne d'essai (copie de la démo de 5 km, étiquetée « grandprix » elle aussi : une trace en ligne n'est pas un parcours de mode) ni le Col du lacet, tours ramenés à 2 au Click (config.toml écrit par le core), écran des objets (un objet coupé, grandprix.toml écrit par le core, « Tout activer »), retour à l'écran Prêt, lancement, départ du mode dans le journal du core, fin sans enregistrement et bilan, puis la course en ligne d'essai dans la liste générale des parcours. Captures nommées gp9_accueil, gp9_pret_boucle, gp9_pret et gp9_objets pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "description": "Grand Prix des objets (lot GP9 ; lot GP13 : parcours du mode seulement ; lot GPL1 : boucles seulement) : entrée de l'accueil, écran Prêt du mode sur la boucle d'essai (copie de la piste, étiquette « grandprix » : tours du circuit, plus de « Distance en ligne »), liste du mode sans la course en ligne d'essai (copie de la démo de 5 km, étiquetée « grandprix » elle aussi : une trace en ligne n'est pas un parcours de mode) ni le Col du lacet, tours ramenés à 2 au Click (config.toml écrit par le core), écran des objets (un objet coupé, grandprix.toml écrit par le core, « Tout activer »), retour à l'écran Prêt, lancement, départ du mode dans le journal du core, fin sans enregistrement et bilan, puis la course en ligne d'essai dans la liste générale des parcours. Aide du mode (lot GPH1 : « Comment ça marche ? », résumé dans la carte, écran « Aide Grand Prix »). Captures nommées gp9_accueil, gp9_pret_boucle, gp9_pret, gp9_objets, gph1_pret_aide et gph1_aide_voies pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
   "etapes": [
     {
       "ecran": "home",
@@ -26,7 +26,8 @@
         "set:bots.objective",
         "set:grandprix.chaos",
         "set:grandprix.box_every_m",
-        "gp_items"
+        "gp_items",
+        "_gp_help"
       ],
       "contient": [
         "3 tours, 0,8 km",
@@ -137,6 +138,58 @@
     },
     {
       "choisir": "item:storm"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "ready",
+      "contient": [
+        "Objets : 12 sur 13"
+      ]
+    },
+    {
+      "note": "lot GPH1 : « Comment ça marche ? » montre le résumé du mode dans la carte, puis ouvre l'aide",
+      "aller": "_gp_help"
+    },
+    {
+      "ecran": "ready",
+      "focus": "_gp_help",
+      "contient": [
+        "Comment ça marche ?",
+        "Le Grand Prix en bref"
+      ]
+    },
+    {
+      "capture": "gph1_pret_aide"
+    },
+    {
+      "choisir": "_gp_help"
+    },
+    {
+      "ecran": "gp_help",
+      "titre": "Aide Grand Prix",
+      "elements": [
+        "help:summary",
+        "help:boxes",
+        "help:lanes",
+        "help:buttons",
+        "help:hits"
+      ]
+    },
+    {
+      "aller": "help:lanes"
+    },
+    {
+      "ecran": "gp_help",
+      "focus": "help:lanes",
+      "contient": [
+        "À quoi servent les voies",
+        "abri"
+      ]
+    },
+    {
+      "capture": "gph1_aide_voies"
     },
     {
       "appui": "Y_SHORT"
