@@ -1,0 +1,40 @@
+{
+  "description": "Lot W23, recette sur le PC : monde ouvert au départ d'une ville côtière (Biarritz, recherche par nom), mer, écume, plages et horizon marin du monde vivant ; départ direct (W18) et 3 minutes de balade, une capture par minute. À lancer en low, medium et high (réseau : tuiles OpenFreeMap et relief Copernicus de la côte basque).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "biarritz",
+        "contient": "Biarritz"
+      }
+    },
+    {
+      "note": "Lot W23 : le générateur a écrit la mer et la côte d'au moins un carré",
+      "journal": "core",
+      "motif": "mer \\(",
+      "delai": 120
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_1"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_2"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_3"
+    }
+  ]
+}
