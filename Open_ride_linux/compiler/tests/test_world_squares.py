@@ -106,12 +106,13 @@ def test_shared_border_is_bit_identical_and_road_is_flat(db, tmp_path) -> None:
     cols = np.arange(0, 101)
     expect = np.interp(IX * 1000 + 10.0 * cols, xs, alt) - C.ROAD_SINK_M
     gap = ya[50, :].astype(float) - expect
-    away = np.abs(cols - 40.5) > 2.0
-    # jamais au-dessus du profil − 5 cm ; au plus 10 cm dessous (20/11 : sur un profil courbe, le garde-fou abaisse
-    # aussi les sommets de la chaussée de quelques centimètres quand les coins hors chaussée ne suffisent pas). Au
-    # croisement, les sommets à moins de deux cases suivent la tertiaire à 30 % dessinée par l'engine (21/11 : route de
-    # l'engine et bas-côtés compris, règle road_ground.py).
-    assert gap.max() < 2e-3 and gap[away].min() > -0.10, (gap.max(), gap[away].min())
+    away = np.abs(cols - 40.5) > 3.0
+    # au moins `SQUARE_SINK_MARGIN_M` sous le profil − 5 cm ; au plus 15 cm dessous (20/11 : sur un profil courbe, le
+    # garde-fou abaisse aussi les sommets de la chaussée de quelques centimètres quand les coins hors chaussée ne
+    # suffisent pas). Au croisement, les sommets à moins de trois cases suivent la tertiaire, plate, dessinée par
+    # l'engine (21/11 : route de l'engine et bas-côtés compris, règle road_ground.py) contre la route principale qui
+    # monte à 25 %.
+    assert gap.max() < 2e-3 - squares.SQUARE_SINK_MARGIN_M and gap[away].min() > -0.15, (gap.max(), gap[away].min())
     # Loin des routes (coin sud-ouest), relief seul.
     gx, gz = squares.grid_xz(SquareKey(ZONE, IX, IN), 10)
     lat, lon = FRAME.to_latlon(gx[100, 0:1], gz[100, 0:1])

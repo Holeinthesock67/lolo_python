@@ -260,9 +260,9 @@ def fit_route_ground(tiles: dict[tuple[int, int], np.ndarray], route: dict, leve
         head = _heading(x, z, False)
     s = route_s(route) if "n" in route and "ds_m" in route else None
     ground = [(sp[0], sp[1]) for sp in (spans or [])]
-    upper, lower = RG.corridor(x, z, route["alt_m"], head, s=s, ground_spans=ground,
-                               loop=route.get("type") == "loop")
-    return RG.fit_tiles(tiles, level.tile_m, upper, lower)
+    upper, lower = RG.corridor_s(x, z, route["alt_m"], head, s=s, ground_spans=ground,
+                                 loop=route.get("type") == "loop")
+    return RG.fit_tiles(tiles, level.tile_m, upper[:3], RG.drop_covered_feet(upper, lower, upper[3], lower[3]))
 
 
 # --- garde-fou de la chaussée -----------------------------------------------------------------

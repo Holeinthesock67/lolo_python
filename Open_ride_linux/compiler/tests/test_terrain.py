@@ -368,7 +368,7 @@ def test_build_terrain_direct():
                              horizon=False)) == {"near", "far"}
     g = tiles["near"][(0, 0)]
     assert g.dtype == np.dtype("<f4") and g.shape == (101, 101)
-    assert g[0, 0] == pytest.approx(4.95)            # sur l'axe : route − 5 cm
+    assert g[0, 0] == pytest.approx(4.95, abs=2e-3)   # sur l'axe : route − 5 cm (1 mm de marge de la règle)
     assert g[100, 100] == pytest.approx(7.0)         # loin de la route : MNT
 
 

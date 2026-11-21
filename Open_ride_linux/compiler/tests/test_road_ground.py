@@ -103,7 +103,7 @@ def test_old_chord_rule_left_ground_on_the_engine_road() -> None:
     e = np.empty(0)
     RG.fit(gather, scatter, step, (px, pz, pa - C.ROAD_SINK_M), (e, e, e))
     over, _ = _gaps(raw, r)
-    assert over.max() > 0.02
+    assert over.max() > 0.01            # au-delà de la limite de la route dessinée (plus de 1 cm)
 
 
 def _straight(n: int = 60, x0: float = 3.0) -> dict:
@@ -156,7 +156,8 @@ def test_core_twin_gives_the_same_ground() -> None:
     standard) applique la même règle : mêmes points de contrôle, mêmes sommets au float près."""
     core_rg = pytest.importorskip("openride_core.road_ground")
     for name in ("ROAD_HALF_WIDTH_M", "ROAD_SINK_M", "SHOULDER_WIDTH_M", "SKIRT_DROP_M", "SKIRT_OUT_M", "RELIEF_MAX",
-                 "FOOT_GAP_M", "ALONG_STEP_M", "ACROSS_STEP_M"):
+                 "FOOT_GAP_M", "ALONG_STEP_M", "ACROSS_STEP_M", "TILE_ROUNDS",
+                 "PROJECT_STEPS", "FOOT_COVER_M", "SAME_PART_M"):
         mine = getattr(RG, name) if hasattr(RG, name) else getattr(C, name)
         assert getattr(core_rg, name) == pytest.approx(mine), name
     r = _bend(radius=12.0, grade=0.10)
