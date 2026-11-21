@@ -238,6 +238,10 @@ var _live_cue = LiveCue.new()
 ## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd), plein écran sur une couche
 ## au-dessus du HUD, qui est caché pendant un menu (lot « présentation des menus »).
 var menu_flow = MenuFlow.new()
+## Touche simulée tenue (_test_key, lot ML2) : messages de test en attente de son relâchement, durée demandée par touche.
+var _test_key_held := false
+var _test_queue: Array = []
+var _test_hold_s := {}
 ## Clavier = Click (lot O17) : touche et durée d'appui vers événement du Click.
 var key_map = KeyMap.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
@@ -738,7 +742,9 @@ func _on_input_event(event_name: String) -> void:
 	if not BEEPS.has(event_name):
 		return
 	print("Bip : ", event_name)
+	var t_beep := Time.get_ticks_usec()
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
+	PerfProbe.mark_since("bip", event_name, t_beep)
 	var mark := HudViewModel.dropout_mark_text(event_name, session_state, rogue_host.is_active(), menu_flow.is_visible())
 	if mark == "":
 		mark = HudViewModel.u_turn_press_text(event_name, session_state, menu_flow.is_visible())
@@ -795,7 +801,9 @@ func _menu_event(event_name: String) -> void:
 		return
 	if not menu_flow.is_visible():
 		return
+	var t0 := Time.get_ticks_usec()
 	_run_menu_action(menu_flow.handle(event_name))
+	PerfProbe.mark_since("menu", "appui " + event_name, t0)
 	_refresh_menu()
 
 
@@ -1079,6 +1087,7 @@ func _flush_menu() -> void:
 	var t0 := Time.get_ticks_usec()
 	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	PerfProbe.mark("menu", "affichage " + str(st["screen"]), ms)
 	_menu_perf["n"] += 1
 	_menu_perf["total_ms"] += ms
 	_menu_perf["max_ms"] = maxf(_menu_perf["max_ms"], ms)
@@ -1129,6 +1138,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			return   # saisie du QWKcode (lot O21) : caractères, Entrée nouvelle ligne, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
+	if _test_hold_s.has(key.keycode):   # touche simulée (_test_key) : durée demandée, pas celle des images
+		now_s = key_map.pressed_at(key.keycode) + float(_test_hold_s[key.keycode])
 	var ev: String = key_map.release(key.keycode, now_s)
 	if ev == "":
 		return
@@ -1388,6 +1399,8 @@ func _poll_live_world() -> void:
 		streamer.swap_route(route, int(upd["from_part"]))
 		if living_world != null:
 			living_world.set_route(route, float(streamer.get("_road_width_m")))
+		if living_decor != null:   # bornes, panneaux, spectateurs, véhicules… sur toute la route connue
+			living_decor.extend_route(route)
 		_refresh_live_markers(float(int(upd["from_part"])) * 1000.0)
 		ipc.test_log("world_revision rev=%d length_m=%.1f from_part=%d" % [upd["revision"], route.length_m, upd["from_part"]])
 	elif upd.has("segments"):
@@ -1587,6 +1600,9 @@ func _poll_route_job() -> void:
 ## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py) ;
 ## « freeze » fige le décor (vent, nuages, herbe, personnages, animaux) à un instant donné.
 func _on_test_message(msg: Dictionary) -> void:
+	if _test_key_held:   # touche simulée tenue : ce message attend son relâchement (_test_key, lot ML2)
+		_test_queue.append(msg)
+		return
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
@@ -1625,8 +1641,10 @@ func _on_test_message(msg: Dictionary) -> void:
 
 ## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…, ou un caractère seul comme
 ## « @ », dont le code Godot est le code ASCII, lot O21) : appui, puis relâchement `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
-## Les deux événements sont traités tout de suite (flush_buffered_events) et l'attente bloque l'image en cours :
-## la durée mesurée par key_map.gd est celle demandée, même à 1 image/s sous Xvfb.
+## Lot ML2 : l'attente ne bloque plus l'image en cours (OS.delay_usec figeait le fil principal pendant tout l'appui,
+## d'où une image de 150 ms à chaque appui des bancs, rML2 du 17 novembre, absente du jeu). Les images continuent
+## pendant l'appui ; key_map.gd classe le relâchement avec la durée demandée (`_test_hold_s`), même à 1 image/s sous
+## Xvfb ; les messages de test reçus pendant l'appui attendent le relâchement (`_test_queue`), dans l'ordre.
 func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 	var code := OS.find_keycode_from_string(key_name)
 	if code == KEY_NONE and key_name.length() == 1:
@@ -1643,14 +1661,22 @@ func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 		down.unicode = (key_name.to_upper() if shift else key_name.to_lower()).unicode_at(0)
 	elif code == KEY_SPACE:
 		down.unicode = 32
+	_test_key_held = true
 	Input.parse_input_event(down)
 	Input.flush_buffered_events()
-	OS.delay_usec(maxi(hold_ms, 0) * 1000)
+	var release_us := Time.get_ticks_usec() + maxi(hold_ms, 0) * 1000
+	while Time.get_ticks_usec() < release_us:
+		await get_tree().process_frame
 	var up: InputEventKey = down.duplicate()
 	up.pressed = false
+	_test_hold_s[code] = maxi(hold_ms, 0) / 1000.0
 	Input.parse_input_event(up)
 	Input.flush_buffered_events()
+	_test_hold_s.erase(code)
 	ipc.test_log("key done=%s shift=%s hold_ms=%d" % [key_name, shift, hold_ms])
+	_test_key_held = false
+	while not _test_queue.is_empty() and not _test_key_held:   # messages arrivés pendant l'appui, dans l'ordre
+		_on_test_message(_test_queue.pop_front())
 
 
 ## Souris simulée : `kind` click (bouton gauche), right, wheel_up, wheel_down ou move ; sur la rangée de l'élément

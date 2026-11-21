@@ -15,7 +15,7 @@ ROUTE_FIELDS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
 SURFACES = ("paved", "compacted", "gravel", "dirt", "wood")   # colonne facultative surface (1.6, lot U20 ; wood : 1.7, lot VD1)
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 
-FORMAT_VERSION = "1.8"   # 1.8 : niveau de terrain horizon (lot JP4) ; 1.6 : colonne surface de la route (lot U20) ; 1.5 : prés, champs et routes voisines (lot P22) ; 1.4 : monde vivant (W1)
+FORMAT_VERSION = "1.10"   # 1.10 : grandes rivières en surface (lot EA3) ; 1.9 : couche bridges (lot EA4) ; 1.8 : niveau de terrain horizon (lot JP4) ; 1.6 : colonne surface de la route (lot U20) ; 1.5 : prés, champs et routes voisines (lot P22) ; 1.4 : monde vivant (W1)
 SUPPORTED_MAJOR = 1
 ROUTE_VERSION = "1.0"
 COMPILER_NAME = "openride-compiler"
@@ -95,7 +95,7 @@ WRECK_DEFAULT_LENGTH_M = 42.0   # longueur d'une épave sans balise `length` (lo
 WIND_TURBINE_DEFAULT_HEIGHT_M = 100.0
 POI_RIVER_PASSAGE_DIST_M = 50.0
 WATER_LINE_KINDS = ("river", "stream", "canal")
-WATER_AREA_KINDS = ("lake", "pond", "reservoir", "sea")   # 1.6 : sea (lot U1)
+WATER_AREA_KINDS = ("lake", "pond", "reservoir", "sea", "river")   # 1.6 : sea (lot U1) ; 1.10 : river (lot EA3)
 WATER_WIDTH_DEFAULT_M = 2.0
 WATER_WIDTH_RIVER_M = 6.0
 WATER_WIDTH_STREAM_M = 2.0
@@ -106,6 +106,21 @@ COAST_VERSION = "1.0"
 COAST_SHORES = ("sand", "shingle", "rock", "cliff")
 COAST_BEACH_KINDS = ("sand", "shingle")
 SEA_LEVEL_Y = 0.0                         # niveau de la mer (contrat §8 : `level_y` = 0)
+
+# Lot EA1 : niveau des plans d'eau et sol abaissé dessous (`water_terrain.py`).
+INLAND_WATER_KINDS = ("lake", "pond", "reservoir")   # la mer garde son niveau 0 (U3) et son sol
+LAKE_SAMPLE_M = 30.0          # maille des échantillons du MNT dans un plan d'eau (pixel GLO-30), alignée sur le repère
+LAKE_SHORE_CLEAR_M = 30.0     # échantillons gardés pour le niveau : à plus d'un pixel du MNT de toute rive
+LAKE_SHORE_STEP_M = 10.0      # pas des échantillons de la rive
+LAKE_SHORE_QUANTILE = 0.25    # plafond du niveau : quart le plus bas de la rive (un exutoire seul ne compte pas)
+WATER_SINK_M = 1.0            # sol sous un plan d'eau : au plus 1 m sous la surface
+
+# Lot EA3 : grandes rivières en surface (`river_surface.py`), niveau qui descend le long du cours.
+RIVER_SAMPLE_M = 10.0         # maille des nœuds du MNT dans l'eau d'une rivière, alignée sur le repère
+RIVER_LEVEL_RADIUS_M = 150.0  # fenêtre glissante du niveau (lisse les marches du MNT aplani)
+RIVER_LEVEL_QUANTILE = 0.25   # quart le plus bas des nœuds de la fenêtre (écarte les bords mêlés à la berge)
+RIVER_EDGE_STEP_M = 20.0      # côtés des anneaux d'une rivière densifiés : l'altitude suit la pente
+RIVER_CELL_M = 1000.0         # découpe en carrés de 1 km de la grille du repère (tuiles proches, carrés)
 COAST_CLIFF_DIST_M = 30.0                 # `natural=cliff` à moins de 30 m : rivage `cliff`
 COAST_CLIFF_SLOPE_DEG = 45.0              # ou pente du MNT au-dessus de 45° côté terre
 COAST_SLOPE_OFFSETS_M = (0.0, 10.0, 20.0, 30.0)   # points du MNT pris vers la terre pour la pente

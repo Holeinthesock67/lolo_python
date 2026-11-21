@@ -84,6 +84,11 @@ func _test_thresholds() -> void:
 	km.press(KEY_PLUS, false, 4.8)
 	_check(km.release(KEY_PLUS, 5.0) == "PLUS_LONG", "durée mesurée depuis le premier appui")
 	_check(not km.press(KEY_SPACE, false, 6.0), "touche étrangère : press renvoie faux")
+	# Touche simulée des bancs (lot ML2) : relâchement daté de l'appui + durée demandée, quelle que soit l'horloge.
+	km.press(KEY_A, false, 7.0)
+	_check(km.pressed_at(KEY_A) == 7.0, "pressed_at : instant de l'appui")
+	_check(km.release(KEY_A, km.pressed_at(KEY_A) + 1.1) == "A_LONG", "A tenu 1,1 s (durée demandée) : A long")
+	_check(is_nan(km.pressed_at(KEY_A)), "pressed_at d'une touche relâchée : NAN")
 
 
 func _init() -> void:

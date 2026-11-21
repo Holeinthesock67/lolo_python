@@ -67,7 +67,7 @@ func _test_straight_river() -> void:
 	var uvs: PackedVector2Array = res["uvs"]
 	var offsets_ok := true
 	var y_ok := true
-	for v in verts:
+	for v: Vector3 in verts:
 		if not is_equal_approx(absf(v.x), 3.0):
 			offsets_ok = false
 		if not is_equal_approx(v.y, 500.05):
@@ -96,7 +96,7 @@ func _test_right_angle_river() -> void:
 	var poly: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(40.0, 0.0), Vector2(40.0, 40.0)]
 	var max_dist := 0.0
 	var verts: PackedVector3Array = res["vertices"]
-	for v in verts:
+	for v: Vector3 in verts:
 		max_dist = maxf(max_dist, _dist_to_polyline(Vector2(v.x, v.z), poly))
 	_check(res["built"] == 1 and max_dist <= 6.0 + 1e-4,
 		"rivière en angle droit : distance max à la polyligne = %.3f m (≤ width_m = 6 m)" % max_dist)
@@ -213,6 +213,40 @@ func _test_shimmer_material() -> void:
 		"ondes poussées vers le nord par un vent de 30 km/h (%.3f m en 1 s)" % step.length())
 
 
+# Lot EA3 (format 1.10) : rivière en surface, altitude à chaque sommet (`outer_y`, `holes_y`)
+func _test_river_surface_follows_vertex_levels() -> void:
+	var outer := [[0.0, 0.0], [200.0, 0.0], [400.0, 0.0], [400.0, 60.0], [200.0, 60.0], [0.0, 60.0]]
+	var island := [[180.0, 20.0], [180.0, 40.0], [220.0, 40.0], [220.0, 20.0]]
+	var river := {"id": "r1_c0_0_0", "kind": "river", "level_y": 99.0, "outer": outer, "holes": [island],
+		"outer_y": [100.0, 99.0, 98.0, 98.0, 99.0, 100.0], "holes_y": [[99.1, 99.1, 98.9, 98.9]]}
+	_check(OsmLayers._valid_water_area(river), "aire « river » (format 1.10) acceptée")
+	var res: Dictionary = WaterMesh.build_areas([river])
+	var stats := _mesh_area_and_up(res)
+	var verts: PackedVector3Array = res["vertices"]
+	var ok: bool = res["built"] == 1 and absf(stats["area"] - (24000.0 - 800.0)) < 1.0 and stats["all_up"]
+	var lo := INF
+	var hi := -INF
+	for v: Vector3 in verts:
+		lo = minf(lo, v.y)
+		hi = maxf(hi, v.y)
+		var expect := 100.0 - v.x / 200.0
+		if v.x >= 180.0 and v.x <= 220.0 and v.z >= 20.0 and v.z <= 40.0:
+			expect = 99.1 if v.x < 200.0 else 98.9
+		if absf(v.y - expect) > 1e-3:
+			ok = false
+	_check(ok and is_equal_approx(lo, 98.0) and is_equal_approx(hi, 100.0),
+		"rivière en surface : sommets à leur altitude, de 100 m à l'amont à 98 m à l'aval, île ouverte")
+	# altitudes absentes ou qui ne correspondent pas : surface plane à level_y, comme un lac
+	var bad: Dictionary = river.duplicate(true)
+	bad["outer_y"] = [100.0, 99.0]
+	var flat: Dictionary = WaterMesh.build_areas([bad])
+	var all_flat: bool = flat["built"] == 1
+	for v: Vector3 in flat["vertices"]:
+		if not is_equal_approx(v.y, 99.0):
+			all_flat = false
+	_check(all_flat, "outer_y de mauvaise taille : surface plane à level_y")
+
+
 func _init() -> void:
 	_test_straight_river()
 	_test_right_angle_river()
@@ -221,5 +255,6 @@ func _init() -> void:
 	_test_invalid_cases()
 	_test_determinism()
 	_test_shimmer_material()
+	_test_river_surface_follows_vertex_levels()
 	print("test_water_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
