@@ -282,7 +282,42 @@ func power_chart(summary: Dictionary) -> Dictionary:
 ## Records battus pendant la séance (`summary.segments.passes`, `pr` vrai), du dernier au premier (la vue
 ## en montre MAX_RECORD_LINES) : {name, time, before} ; `before` : ancien record (`pr_time_s`, révision 1.10) ou
 ## « premier temps ». names : identifiant du segment → nom (couche `segments` du parcours).
+##
+## Puis les records de puissance de la séance (`summary.power_records`, série PP, lot PP4, révision 1.29), des
+## plus longs aux plus courts : « Puissance 5 min · libre », « 310 W », « avant 300 W » (ou « premier effort »).
 func records_beaten(summary: Dictionary, names: Dictionary = {}) -> Array:
+	var out: Array = _segment_records(summary, names)
+	var pw = summary.get("power_records", null)
+	if pw is Array:
+		for i in range(pw.size() - 1, -1, -1):
+			var r = pw[i]
+			if not (r is Dictionary) or not (r.get("w") is int or r.get("w") is float):
+				continue
+			var s := int(r.get("s", 0))
+			var dur := ("%d s" % s) if s < 60 else ("%d min" % (s / 60))
+			var prev = r.get("prev_w", null)
+			out.append({"name": "Puissance %s · %s" % [dur, str(r.get("e", ""))],
+				"time": "%d W" % int(round(float(r["w"]))),
+				"before": ("avant %d W" % int(round(float(prev)))) if (prev is int or prev is float) else "premier effort"})
+	return out
+
+
+## Signal « FTP à revoir » du bilan (`summary.ftp_review`, lot PP4) : proposition seulement, à accepter au menu ;
+## {} sans signal.
+func ftp_review(summary: Dictionary) -> Dictionary:
+	var fr = summary.get("ftp_review", null)
+	if not (fr is Dictionary) or not (fr.get("estimate_w") is int or fr.get("estimate_w") is float):
+		return {}
+	var est := int(round(float(fr["estimate_w"])))
+	var cur := int(round(float(fr.get("ftp_set_w", 0)))) if (fr.get("ftp_set_w") is int or fr.get("ftp_set_w") is float) else 0
+	var higher := est > cur
+	return {"text": "FTP à revoir : ta FTP estimée est de %d W, ta FTP réglée de %d W (%s)."
+			% [est, cur, "plus haute" if higher else "plus basse"],
+		"tip": "Pour la changer : « Qui roule ? › Ma puissance », au menu. Rien n'est changé sans toi.",
+		"tone": "warn"}
+
+
+func _segment_records(summary: Dictionary, names: Dictionary) -> Array:
 	var segs = summary.get("segments", null)
 	if not (segs is Dictionary) or not (segs.get("passes") is Array):
 		return []
@@ -362,7 +397,7 @@ const ROGUE_OBJECTIVES := {"endurance": "Endurance", "threshold": "Seuil", "vo2m
 func verdict(summary: Dictionary) -> Dictionary:
 	var rogue = summary.get("rogue", null)
 	if not (rogue is Dictionary):
-		return {}
+		return ftp_review(summary)   # lot PP4 : hors Cyber-Rogue, la place du verdict porte le signal de FTP
 	var result := str(rogue.get("result", ""))
 	if result == "victory":
 		return {"text": "Victoire : boss vaincu !", "tip": "", "tone": "ok"}
