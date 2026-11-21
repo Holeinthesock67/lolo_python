@@ -1,0 +1,10 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+26.6;1;10;0;0;0;0;5;
+93.3;0;15;0;0;1;1;6;airliner_rumble=1 raptor_cry=1 voice_allez=1
+237.3;48;21;1;0;4;2;0;airliner_rumble=2 raptor_cry=1 vehicle_pass=1 voice_allez=1 voice_bonjour=1
+381.2;48;16;0;1;4;4;0;airliner_rumble=2 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 tractor_engine=1 vehicle_pass=1 voice_allez=2 voice_bonjour=1
+524.9;48;36;1;0;8;6;0;airliner_rumble=3 crow_caw=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=1 tractor_engine=1 vehicle_pass=3 voice_allez=3 voice_bonjour=1
+668.8;16;40;1;0;7;5;0;airliner_rumble=3 crow_caw=1 dog_bark=2 helicopter_rotor=1 kid_laugh=2 paramotor_buzz=1 raptor_cry=2 tractor_engine=1 vehicle_pass=3 voice_allez=4 voice_bonjour=2
+811.8;15;40;1;0;8;4;0;airliner_rumble=3 crow_caw=1 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 kid_laugh=2 paramotor_buzz=1 raptor_cry=3 tractor_engine=1 vehicle_pass=3 voice_allez=5 voice_bonjour=2
+954.4;15;40;1;0;8;6;0;airliner_rumble=5 crow_caw=2 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 kid_laugh=2 paramotor_buzz=1 raptor_cry=3 tractor_engine=1 vehicle_pass=3 voice_allez=8 voice_bonjour=2
+1161.0;7;30;0;0;0;8;0;airliner_rumble=7 crow_caw=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 kid_laugh=2 paramotor_buzz=1 raptor_cry=8 tractor_engine=1 vehicle_pass=3 voice_allez=8 voice_bonjour=2
