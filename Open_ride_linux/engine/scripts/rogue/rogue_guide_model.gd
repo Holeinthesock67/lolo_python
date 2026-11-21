@@ -455,7 +455,7 @@ static func target_band(lo: int, hi: Variant, ftp: float = 0.0) -> String:
 
 
 ## Écart en direct à la consigne (lot R26) : « tu es à 196 W ✔ » dans la plage, sinon « tu es à 168 W (−12 W) » ou
-## « (+15 W) » au-dessus du plafond. `inside` : `rogue.in_target` (révision 1.22) ; null : comparaison simple.
+## « (+15 W) » au-dessus du plafond. `inside` : `rogue.in_target` (révision 1.28) ; null : comparaison simple.
 static func live_gap(power_pct: float, lo: int, hi: Variant, ftp: float, inside: Variant) -> String:
 	var now := watts(power_pct, ftp, 1).trim_suffix(" FTP")
 	var ok: bool = bool(inside) if inside is bool else (power_pct >= float(lo) and (hi == null or power_pct <= float(hi)))

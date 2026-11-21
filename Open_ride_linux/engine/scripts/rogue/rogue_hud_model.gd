@@ -105,7 +105,7 @@ func update(state: Dictionary, now_s: float) -> void:
 
 	var power_pct := 0.0
 	if _ftp_w > 0.0:
-		# lot R26 : la puissance jugée par le mode (moyenne de 8 s, révision 1.22) ; avant : `power_3s` de la trame
+		# lot R26 : la puissance jugée par le mode (moyenne de 8 s, révision 1.28) ; avant : `power_3s` de la trame
 		var judged = rogue.get("power_judged_w", null)
 		var shown_w: float = float(judged) if (judged is float or judged is int) else float(state.get("power_3s", 0.0))
 		power_pct = clampf(roundf(shown_w / _ftp_w * 100.0), 0.0, MAX_POWER_PCT)

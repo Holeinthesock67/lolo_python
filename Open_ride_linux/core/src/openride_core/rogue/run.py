@@ -694,7 +694,7 @@ class RunEngine:
             "z_action": getattr(self, "_z_action", None) if "z_ok" in events else None,
             "card_on": getattr(self, "_card_on", None) if "card_on" in events else None,
             "adrenaline_trend": self._adrenaline_trend(),
-            # révision 1.22 (lot R26) : puissance jugée (moyenne de `judged_power_s`) et plage tenue
+            # révision 1.28 (lot R26) : puissance jugée (moyenne de `judged_power_s`) et plage tenue
             "power_judged_w": round(getattr(self, "judged_w", 0.0), 1),
             "in_target": self._band_now()[1],
         }
