@@ -56,6 +56,8 @@ func _run() -> void:
 	_check(bx[0]["lane"] == 0 and bx[2]["lane"] == 2, "boîtes : voie donnée")
 	_check(Model.box_color(0) == Items.SPARK and Model.box_color(1) == Color(1, 1, 1) and Model.box_color(2) == Items.HOT
 		and Model.box_color(7) == Color(1, 1, 1), "boîtes : couleur de la famille de la voie")
+	_check(Model.box_sign(0) == "+ BONUS" and Model.box_sign(1) == "? SURPRISE" and Model.box_sign(2) == "! ATTAQUE"
+		and Model.box_sign(-1) == "? SURPRISE", "boîtes : signe écrit au-dessus (symbole et mot)")
 
 	# Boîte prise et objet utilisé (gp_event) : même mot pour le cycliste et les bots, doublons écartés
 	var ev_model = Model.new()

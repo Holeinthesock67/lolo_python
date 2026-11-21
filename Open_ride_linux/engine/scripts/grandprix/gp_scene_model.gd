@@ -48,6 +48,9 @@ const BOX_WORD := "HOP !"
 ## soi, sonnette), centre tout le tirage, droite « attaquer » (attaques, pièges, contre la tête).
 const BOX_LANES := ["help", "any", "attack"]
 const BOX_COLOR := {"help": Items.SPARK, "any": Color(1.0, 1.0, 1.0), "attack": Items.HOT}
+## Signe écrit au-dessus de chaque boîte (demande du propriétaire du 21 novembre : les couleurs seules ne se lisent
+## pas) : un symbole et un mot court, la couleur ne fait que renforcer. Mêmes mots dans l'aide du mode.
+const BOX_SIGN := {"help": "+ BONUS", "any": "? SURPRISE", "attack": "! ATTAQUE"}
 const HIT_REPEAT_S := 3.5                      # le core répète `gp_hit` 3 fois à 1 s : doublons ignorés
 const MAX_WORDS := 6
 
@@ -199,6 +202,13 @@ static func box_color(lane: int) -> Color:
 	if lane < 0 or lane >= BOX_LANES.size():
 		return BOX_COLOR["any"]
 	return BOX_COLOR[BOX_LANES[lane]]
+
+
+## Signe écrit au-dessus des boîtes de la voie `lane` (« + BONUS », « ? SURPRISE », « ! ATTAQUE »).
+static func box_sign(lane: int) -> String:
+	if lane < 0 or lane >= BOX_LANES.size():
+		return BOX_SIGN["any"]
+	return BOX_SIGN[BOX_LANES[lane]]
 
 
 func _fresh(key: String, now_s: float) -> bool:

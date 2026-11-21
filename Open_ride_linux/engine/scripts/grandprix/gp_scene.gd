@@ -37,6 +37,7 @@ var _boxes: MultiMeshInstance3D
 var _pools := {}                      # sorte -> [Node3D]
 var _rigs: Array = []                 # [{root, looks: {look: Node3D}, rain: CPUParticles3D, sparks: CPUParticles3D}]
 var _labels: Array = []               # Label3D des onomatopées
+var _box_signs: Array = []            # Label3D des signes des boîtes (« + BONUS », « ? SURPRISE », « ! ATTAQUE »)
 var _mats := {}
 var _active := false
 var _warm_left := -1                  # -1 : jamais préchauffé
@@ -160,6 +161,18 @@ func _build() -> void:
 		l.visible = false
 		add_child(l)
 		_labels.append(l)
+	for i in range(Model.MAX_ROWS * Model.LANE_CENTRES_M.size()):
+		var sign := Label3D.new()
+		sign.name = "GpBoxSign%d" % i
+		sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sign.font_size = 72
+		sign.pixel_size = 0.005
+		sign.outline_size = 20
+		sign.outline_modulate = Items.INK
+		sign.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		sign.visible = false
+		add_child(sign)
+		_box_signs.append(sign)
 	set_quality(quality)
 
 
@@ -290,7 +303,16 @@ func _step_boxes(gp: Dictionary, now_s: float) -> void:
 		var bob := 0.08 * sin(now_s * 2.0 + float(i))
 		var spin := Basis(Vector3.UP, now_s * BOX_SPIN + float(i)) * Basis(Vector3.RIGHT, 0.35)
 		mm.set_instance_transform(i, Transform3D(spin, t.origin + Vector3(0.0, BOX_HEIGHT_M + bob, 0.0)))
-		mm.set_instance_color(i, Model.box_color(int(b.get("lane", 1))))
+		var lane := int(b.get("lane", 1))
+		mm.set_instance_color(i, Model.box_color(lane))
+		if i < _box_signs.size():
+			var sign: Label3D = _box_signs[i]
+			sign.text = Model.box_sign(lane)
+			sign.modulate = Model.box_color(lane)
+			sign.global_position = t.origin + Vector3(0.0, BOX_HEIGHT_M + BOX_M + 0.35, 0.0)
+			sign.visible = true
+	for i in range(list.size(), _box_signs.size()):
+		(_box_signs[i] as Label3D).visible = false
 	mm.visible_instance_count = list.size()
 	_shown["boxes"] = list.size()
 
