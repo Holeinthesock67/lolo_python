@@ -121,6 +121,9 @@ LIGNE_ECHEC = re.compile(r"^\[ÉCHEC\] (.*)$", re.M)
 CONTACT = re.compile(r"contact", re.I)
 # À-coups connus (pire image, images lentes, périodicité) : défaut commun suivi par un fil global (lot PI1), non bloquant.
 ACOUP = re.compile(r"à-coups|pire image|images lentes", re.I)
+# Délais de capture du rendu logiciel d'un conteneur cloud (Xvfb, lavapipe, sans GPU) : une image redemandée ne dit
+# rien de la PR (nuit du 20 novembre, captures #932 et #935). Ignorés dans les étapes `lieu = "cloud"` seulement.
+DELAI_CAPTURE_CLOUD = re.compile(r"images enregistrées après le chargement.*captures de l'engine", re.I)
 STRATEGIES = ("", "ours", "theirs")
 SCINDE = "SCINDÉ"                              # étape d'un paquet en échec, rejouée PR par PR (voir scissions)
 LIEUX = ("pc", "cloud")
@@ -349,8 +352,9 @@ class Etat:
 
 # --- verdict d'une étape -------------------------------------------------------------------------
 
-def classer(code: int, journal: str) -> tuple[str, str]:
-    """(verdict, détail) d'une étape terminée, d'après son code de sortie et son journal."""
+def classer(code: int, journal: str, lieu: str = "pc") -> tuple[str, str]:
+    """(verdict, détail) d'une étape terminée, d'après son code de sortie et son journal. En cloud, les délais de
+    capture du rendu logiciel sont retirés des échecs (OK si rien d'autre n'a échoué)."""
     if code == 0:
         return OK, ""
     for motif in MOTIFS_ENV:
@@ -360,6 +364,11 @@ def classer(code: int, journal: str) -> tuple[str, str]:
     if code == CODE_ENV_BANCS:
         return ENV, f"code {code} (outil ou affichage absent)"
     echecs = LIGNE_ECHEC.findall(journal)          # « [ÉCHEC] libellé : mesure » de menu_bench et sim_bench
+    if lieu == "cloud" and echecs:
+        lents = [ligne for ligne in echecs if DELAI_CAPTURE_CLOUD.search(ligne)]
+        echecs = [ligne for ligne in echecs if not DELAI_CAPTURE_CLOUD.search(ligne)]
+        if lents and not echecs:
+            return OK, f"{len(lents)} délai(s) de capture du rendu logiciel ignoré(s) (cloud)"
     if echecs and all(CONTACT.search(ligne) for ligne in echecs):
         return CONTACTS, f"{len(echecs)} vérification(s) de contacts (non bloquant, AS11)"
     if echecs and all(CONTACT.search(ligne) or ACOUP.search(ligne) for ligne in echecs):
@@ -737,7 +746,7 @@ class Runner:
         if code is None:
             verdict, detail = DELAI, f"arrêtée après {e.delai_min:.0f} min"
         else:
-            verdict, detail = classer(code, texte)
+            verdict, detail = classer(code, texte, e.lieu)
         resultat = {"verdict": verdict, "detail": detail, "tete": sha, "empreinte": e.empreinte,
                     "duree_s": round(time.monotonic() - t0), "code": code, "dossier": str(dossier),
                     "fin": datetime.now().isoformat(timespec="seconds")}
@@ -812,13 +821,14 @@ class Runner:
         return None
 
     def scinder(self, paquets: list[PR]) -> list[PR]:
-        """Marque SCINDÉ les étapes en ÉCHEC ou DÉLAI des paquets (pas ENVIRONNEMENT ni REFUSÉ : le PC ou la
-        composition, pas une PR) et rend les PR séparées nouvelles."""
+        """Marque SCINDÉ les étapes du PC en ÉCHEC ou DÉLAI des paquets (pas ENVIRONNEMENT ni REFUSÉ : le PC ou la
+        composition, pas une PR) et rend les PR séparées nouvelles. Une étape cloud n'est jamais séparée d'office :
+        ses captures servent à toutes les PR du paquet et se relisent sur la planche (nuit du 20 novembre)."""
         avant = {p.id for p in scissions(self.f, self.etat)}
         for pr in paquets:
             for e in self.etapes(pr):
                 v = self.etat.get(pr, e)
-                if e.sur == "branche" and v and v["verdict"] in (ECHEC, DELAI):
+                if e.sur == "branche" and e.lieu == "pc" and v and v["verdict"] in (ECHEC, DELAI):
                     self.etat.put(pr, e, {**v, "verdict": SCINDE, "avant": v["verdict"],
                                           "detail": f"{v['verdict']} en paquet, rejouée PR par PR : {v.get('detail', '')}"[:300]})
                     self.log(f"  {pr.id}/{e.id} : {v['verdict']} en paquet, séparé PR par PR")

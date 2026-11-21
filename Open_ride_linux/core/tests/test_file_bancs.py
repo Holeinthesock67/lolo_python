@@ -591,3 +591,25 @@ def test_exemple_paquet_se_lit():
     assert p1.est_paquet and p1.categorie == fb.RENDU and len(p1.membres) == 3
     assert [e.id for e in p1.etapes if e.lieu == "cloud"] == ["contacts", "vitrine"]
     assert next(p for p in f.prs if p.id == "r933").categorie == fb.LOGIQUE
+
+
+def test_delais_de_capture_du_cloud_ignores_seulement_en_cloud():
+    lent = "[ÉCHEC] 9/10 images enregistrées après le chargement, 2 redemandée(s), réponse en 1.49 s : captures de l'engine"
+    assert fb.classer(1, lent)[0] == fb.ECHEC                      # sur le PC : un vrai échec
+    v, d = fb.classer(1, lent + "\n" + lent, "cloud")
+    assert v == fb.OK and "2 délai(s)" in d
+    v, d = fb.classer(1, lent + "\n[ÉCHEC] pont : tablier absent", "cloud")
+    assert v == fb.ECHEC and "pont" in d and "1 échec(s)" in d
+
+
+def test_etape_cloud_dun_paquet_jamais_separee(tmp_path, depot):
+    origine, clone = depot
+    for b in ("pa", "pb"):
+        _branche(origine, b, {f"{b}.txt": b})
+    _git(clone, "fetch", "-q", "origin")
+    corps = (f'[[paquet.etape]]\nid = "cap"\nlieu = "cloud"\n'
+             f'commande = {json.dumps(_cmd(1, "[ÉCHEC] décor : herbe absente"))}\n')
+    f = _file(tmp_path, clone, _paquet(clone, ["pa", "pb"], corps))
+    assert fb.main(["lancer", str(f), "--sans-reseau", "--lieu", "cloud"]) == 1
+    etat = _etat(tmp_path)["prs"]
+    assert etat["p1"]["cap"]["verdict"] == fb.ECHEC and not any(k.startswith("p1.") for k in etat)
