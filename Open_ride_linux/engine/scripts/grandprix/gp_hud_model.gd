@@ -20,6 +20,7 @@ extends RefCounted
 ## preload("res://scripts/grandprix/gp_hud_model.gd").
 
 const Items := preload("res://scripts/grandprix/gp_items.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")   # jauge W′ des bots (lot RW)
 
 const ME := "me"
 const ME_NAME := "Toi"
@@ -138,12 +139,15 @@ func place_view(gp: Dictionary, strip: Array) -> Dictionary:
 	return {"place": place_text(place), "of": ("/ %d" % of) if of > 0 else "", "lap": lap_text, "gap": gap_text}
 
 
-## Bande de course : [{place, name, me, gap, item, hit, boost}], du premier au dernier, MAX_ROWS au plus.
+## Bande de course : [{place, name, me, gap, item, hit, boost, wbal}], du premier au dernier, MAX_ROWS au plus.
+## `wbal` : réserve W′ du bot de 0 à 1, −1 sans barre (cycliste, bot loin sans `wbal_pct` ; lot RW, Grand Prix
+## et Course).
 ## Le cycliste est rangé à la place que donne le core (`gp.place`), les bots par position sur la route ;
 ## `gap` : retard sur le premier (« — » pour lui), d'après les écarts `gap_s` des bots ou, pour un bot loin
 ## qui ne les porte plus, distance ÷ vitesse du cycliste (repli du core).
 func strip_rows(gp: Dictionary, bots, rider_s := NAN, rider_v := 0.0) -> Array:
 	var others: Array = []   # [id, s, retard sur le cycliste en s (négatif devant)]
+	var reserve := BotReserve.by_id(bots)
 	if bots is Array:
 		for b in bots:
 			if not b is Dictionary or str(b.get("id", "")) == "" or str(b.get("kind", "constant")) == "ghost":
@@ -183,7 +187,7 @@ func strip_rows(gp: Dictionary, bots, rider_s := NAN, rider_v := 0.0) -> Array:
 			fx = fxs.get(id, [])
 		rows.append({"place": i + 1, "name": name_of(id), "me": id == ME, "gap": gap_text,
 			"item": held if Items.known(held) else "", "hit": _any_family(fx, Items.HIT_FAMILIES),
-			"boost": _any_family(fx, ["self"])})
+			"boost": _any_family(fx, ["self"]), "wbal": -1.0 if id == ME else float(reserve.get(id, -1.0))})
 	return rows
 
 
