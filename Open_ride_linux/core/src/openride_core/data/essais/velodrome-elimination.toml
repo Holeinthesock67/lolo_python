@@ -10,7 +10,7 @@ commandes = [
 ]
 questions = [
   "Vélodrome : bots crédibles sur 5 ?",
-  "Tableau, cloche et éliminations lisibles ? (oui/non + remarque)",
+  "Tableau, éliminations et fin de course lisibles ? (oui/non + remarque)",
 ]
 
 [[etapes]]
@@ -21,10 +21,11 @@ dire = "Départ. Roule à {cible} watts dans le peloton."
 quand = { kind = "track", event = "out", "rider!=" = "me" }
 dire = "Premier éliminé : regarde qui sort."
 
-[[etapes]]
-quand = { kind = "track", event = "bell" }
-dire = "La cloche : reste devant le dernier jusqu'à la ligne, à {cible:115} watts."
 
 [[etapes]]
 quand = { kind = "track", event = "out", rider = "me" }
 dire = "Tu es éliminé. Roule tranquille jusqu'à la fin."
+
+[[etapes]]
+quand = { kind = "track", event = "finish" }
+dire = "Course finie. Regarde le classement."

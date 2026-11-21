@@ -23,3 +23,7 @@ dire = "Première salle. Z quand l'anneau est plein."
 [[etapes]]
 quand = { kind = "rogue", event = "room_won" }
 dire = "Salle gagnée. Regarde l'écart de l'ennemi derrière."
+
+[[etapes]]
+quand = { kind = "rogue", event = "room_fled" }
+dire = "Salle perdue : l'ennemi t'a échappé. Regarde l'écart."

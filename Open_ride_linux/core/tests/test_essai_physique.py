@@ -260,3 +260,17 @@ def test_consigne_carries_the_game_instant():
     d = EP.Deroule(fiche(), 100)
     a = d.lire({"kind": "event", "event": "start", "ts": 123.5})[0]
     assert a.ts_jeu == 123.5
+
+
+def test_elimination_has_no_bell_in_the_journal():
+    assert "bell" not in EP.evenements_piste("elimination")
+    assert {"start", "out", "finish"} <= EP.evenements_piste("elimination")
+    assert "bell" in EP.evenements_piste("scratch")
+    data = {"id": "x", "but": "essai", "questions": ["note ?"], "bots_cible_pct": 100,
+            "commandes": [{"cmd": "select_route", "args": {"route_id": "velodrome-250"}},
+                          {"cmd": "start", "args": {"mode": "track", "track": {"event": "elimination",
+                                                                                "opponents": 7}}}],
+            "etapes": [{"quand": {"kind": "event", "event": "start"}, "dire": "{cible} watts"},
+                       {"quand": {"kind": "track", "event": "bell"}, "dire": "Cloche."}]}
+    with pytest.raises(EP.FicheError, match="elimination n'écrit pas"):
+        EP.lire_fiche(data)

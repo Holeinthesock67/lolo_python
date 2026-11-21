@@ -201,6 +201,23 @@ EVENEMENTS = {
              "resistance_fallback"},
 }
 
+def evenements_piste(epreuve: str) -> set[str]:
+    """Événements `track` qu'une épreuve écrit vraiment (lus dans le code de sa classe et de ses parents) :
+    la cloche n'existe qu'aux courses en peloton à l'arrivée (scratch, points…), pas à l'élimination."""
+    import inspect
+    import re
+
+    from .. import track as track_mod
+    spec = track_mod.EVENTS.get(epreuve)
+    if spec is None:
+        return set()
+    out: set[str] = set()
+    for c in spec.cls.__mro__:
+        if c.__module__.startswith("openride_core.track"):
+            out |= set(re.findall(r'_emit\("(\w+)"', inspect.getsource(c)))
+    return out
+
+
 ECART_CONSIGNE_PCT = 10.0   # consigne du départ et effort des bots : 10 points d'écart au plus
 
 
@@ -231,11 +248,16 @@ def incoherences(f: Fiche) -> list[str]:
             if _pcts(e.dire):
                 out.append("Cyber-Rogue : le jeu donne lui-même la puissance visée, pas de {cible} dans les consignes")
                 break
+    epreuve = next((str((a.get("track") or {}).get("event")) for n, a in f.commandes
+                    if n == "start" and a.get("mode") == "track"), None)
+    piste = evenements_piste(epreuve) if epreuve else None
     for e in f.etapes:
         for pred in (e.quand, e.attendu or {}):
             sorte, ev = pred.get("kind"), pred.get("event")
             if sorte in EVENEMENTS and ev is not None and ev not in EVENEMENTS[sorte]:
                 out.append(f"déclencheur {sorte}/{ev} : le jeu n'écrit pas cet événement au journal")
+            elif sorte == "track" and piste is not None and ev is not None and ev not in piste:
+                out.append(f"déclencheur track/{ev} : l'épreuve {epreuve} n'écrit pas cet événement")
         for pct in _pcts(e.dire):
             if not 50 <= pct <= 150:
                 out.append(f"consigne à {pct:.0f} % de la cible (50 à 150 %)")
