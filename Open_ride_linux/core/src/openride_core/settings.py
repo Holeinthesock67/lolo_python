@@ -127,7 +127,6 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
-    Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
             help="Automatique : les biomes du parcours, ou de la région en monde ouvert (prairie tempérée sans "

@@ -5,6 +5,13 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### HUD sans éléments inutiles (lot NI1)
+- Plus de ligne « ÉTAT: RUNNING | TRAINER… | ENTRÉE… » en haut de l'écran : le bandeau central ne parle que de la prochaine montée, ou d'un problème (core attendu, trainer perdu) ; sinon il disparaît.
+- La cible ERG n'est plus qu'au bandeau ERG (case « CIBLE ERG » retirée) ; la pente n'est plus affichée au vélodrome (toujours 0 %).
+- Le vent tient en une flèche et deux lignes : « 26 km/h » et « de face » (plus de barres, de niveau ni de pastille).
+- Cyber-Rogue : la vitesse engagée n'est plus qu'au pavé VITESSE.
+- La jauge d'abri au-dessus des bots et son réglage sont retirés : la pastille « Abri 30 % » du HUD dit la même chose.
+
 ### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
 - En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
 - Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).
