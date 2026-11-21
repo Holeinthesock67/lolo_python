@@ -170,7 +170,7 @@ func who_items() -> Array:
 			out.append(row)
 		else:
 			rest.append(row)
-	if current_id() != "":   # juste sous le profil en cours : sa courbe et sa FTP estimée (lot PP3)
+	if not out.is_empty():   # juste sous le profil en cours, une fois la liste reçue : sa courbe et sa FTP (PP3)
 		out.append({"id": POWER_ID, "label": "Ma puissance", "enabled": true,
 			"detail": "courbe et FTP estimée de " + current_name()})
 	out.append_array(rest)
