@@ -25,6 +25,7 @@ from typing import Iterable
 import numpy as np
 
 from ..constants import LENGTH_EPS_M
+from ..errors import CompileError
 from ..frame import LocalFrame
 from . import osmdb
 from .osmdb import BBox, OsmDb, Road
@@ -148,9 +149,16 @@ class RoadGraph:
         return sorted(set(self.edges) - before)
 
     def _add_ways(self, roads: Iterable[Road]) -> None:
-        new = [r for r in roads if r.osm_id not in self.ways]
-        for r in new:
-            self.ways[r.osm_id] = r
+        """Voies nouvelles. Deux voies différentes sous le même identifiant sont refusées (21/11) : le graphe
+        n'en garderait qu'une, celle lue en premier, et deux emprises donneraient deux réseaux différents."""
+        new = []
+        for r in roads:
+            old = self.ways.get(r.osm_id)
+            if old is None:
+                self.ways[r.osm_id] = r
+                new.append(r)
+            elif list(old.nodes) != list(r.nodes):
+                raise CompileError(f"voie {r.osm_id} en double dans la base avec deux tracés différents")
         self._project(new)
 
     def _project(self, ways: Iterable[Road]) -> None:

@@ -129,10 +129,11 @@ def build_segments(route: dict) -> list[dict]:
 # Version du générateur, portée par le manifeste (`compiler.version`). 0.2.0 (7 novembre 2026) : terrain proche
 # dégagé sous la chaussée (`synthetic_terrain.clear_road`) ; 0.3.0 (8 novembre 2026, lot O37) : la
 # démonstration porte son nom de parcours `DEMO_TITLE` ; 0.4.0 (12 novembre 2026, lot W17) : couche biome
-# synthétique (forêt et alpages, `synthetic_biome.py`). Une démonstration plus ancienne du dossier des
+# synthétique (forêt et alpages, `synthetic_biome.py`) ; 0.5.0 (21 novembre 2026) : règle unique sol / route
+# (`road_ground.py` : route de l'engine, talus appuyés). Une démonstration plus ancienne du dossier des
 # parcours est remplacée par `ensure_demo_world`.
 FAKE_WORLD_NAME = "openride-fake-world"
-FAKE_WORLD_VERSION = "0.4.0"
+FAKE_WORLD_VERSION = "0.5.0"
 
 
 def build_manifest(name: str, route: dict, created: str | None = None,
