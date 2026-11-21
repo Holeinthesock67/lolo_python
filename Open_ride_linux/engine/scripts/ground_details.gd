@@ -28,6 +28,7 @@ const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
+const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 
 const CHUNK_M := 60.0
 const CHUNKS_BEHIND := 1
@@ -76,7 +77,8 @@ var route = null
 var biome_model = null
 var road_half_width_m := 3.0
 var detail_seed := 0
-var exclusions: Array = []           # Array[PackedVector2Array] : bâtiments et plans d'eau (x, z)
+## Bâtiments et plans d'eau (x, z), mer comprise : zones indexées (exclusion_zones.gd, lot HERBE1).
+var exclusions: ExclusionZones = ExclusionZones.new()
 var height_at: Callable = Callable() # (x, z) -> hauteur du terrain ; vide : hauteur de la route
 
 ## Une couche par MultiMesh : {kind, shape, mm, per_chunk}
@@ -278,10 +280,8 @@ func detail_at(kind: String, shape: int, k: int, slot: int, stations: PackedVect
 		return null
 	if road_distance(px, pz) < clear:
 		return null
-	var p2 := Vector2(px, pz)
-	for poly in exclusions:
-		if Geometry2D.is_point_in_polygon(p2, poly):
-			return null
+	if exclusions.contains(px, pz):
+		return null
 	var py: float = float(height_at.call(px, pz)) if height_at.is_valid() else st.y
 	var yaw := float((h2 >> 16) & 0xFFFF) / 65536.0 * TAU
 	var basis := Basis(Vector3.UP, yaw)
@@ -328,9 +328,8 @@ func _row_at(kind: String, k: int, slot: int, stations: PackedVector4Array) -> V
 	for p in [a, c, b]:
 		if road_distance(p.x, p.z) < clear:
 			return null
-		for poly in exclusions:
-			if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), poly):
-				return null
+		if exclusions.contains(p.x, p.z):
+			return null
 	var ya: float = float(height_at.call(a.x, a.z)) if height_at.is_valid() else st.y
 	var yb: float = float(height_at.call(b.x, b.z)) if height_at.is_valid() else st.y
 	var yc: float = float(height_at.call(c.x, c.z)) if height_at.is_valid() else st.y

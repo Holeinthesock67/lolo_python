@@ -108,6 +108,9 @@ LATENCY_MIN_PRESSES = 10   # lot X7 : appuis du Click appariés de bout en bout
 LATENCY_P95_MS = 150.0     # notification → image affichée, p95 (strict en fenêtre réelle)
 SPEED_WARMUP_S = 20.0   # départ arrêté : hors médiane de la vitesse
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
+# Changement d'état de la séance au journal du core (« Séance : RUNNING -> FINISHED ») : l'état lu est le
+# NOUVEL état, après la flèche, jamais le premier mot de la ligne.
+SESSION_TRANSITION = re.compile(r"Séance : \S+ -> (\w+)")
 # Lot S1 : apparitions ignorées pendant le premier chargement (m de route).
 POP_WARMUP_M = 100.0
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
@@ -158,6 +161,23 @@ class Report:
 
 
 # --- scénarios ---------------------------------------------------------------------------------
+
+def session_end_verdict(lines: list[tuple[float, str]], t_end: float,
+                        rel: Any = lambda t: t) -> tuple[bool, str]:
+    """Fin de séance d'après les changements d'état du core : réussie si le dernier état est FINISHED (ou
+    ERROR), que FINISHED soit venu de `end_session` (envoyé à `t_end`) ou avant, quand le parcours finit
+    avant la durée demandée. `rel` convertit un instant en secondes depuis le début du banc."""
+    states = [(t, m.group(1)) for t, line in lines if (m := SESSION_TRANSITION.search(line))]
+    if not states:
+        return False, "aucun changement d'état de la séance lu"
+    t, last = states[-1]
+    if last == "FINISHED":
+        return True, ("FINISHED après end_session" if t >= t_end
+                      else f"FINISHED avant end_session (parcours fini à {rel(t):.1f} s)")
+    if last == "ERROR":
+        return True, "ERROR"
+    return False, f"dernier état lu : {last}"
+
 
 def bench_scenarios() -> dict[str, Path]:
     return {p.stem: p for p in sorted(BENCH_SCENARIOS_DIR.glob("*.json"))}
@@ -243,8 +263,8 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         world = next(work.glob("*.world"))
         shutil.copytree(world, routes / world.name, dirs_exist_ok=True)
         return world.stem
-    if kind in ("village", "osm"):
-        script = "make_sim_world.py" if kind == "village" else "make_osm_world.py"
+    if kind in ("village", "osm", "pont"):
+        script = {"village": "make_sim_world.py", "osm": "make_osm_world.py", "pont": "make_bridge_world.py"}[kind]
         problem = compiler_problem(world_layers(kind))
         if problem:
             print(f"ÉCHEC monde {kind} : {problem}", file=sys.stderr)
@@ -257,16 +277,18 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, village, osm, ouvert ou dossier .world)")
+        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, village, osm, pont, ouvert ou dossier .world)")
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
 
 def world_layers(kind: str) -> tuple[str, ...]:
-    """Couches que le script du monde `village` ou `osm` demande au compilateur."""
+    """Couches que le script du monde `village`, `osm` ou `pont` (lot EA4) demande au compilateur."""
+    import make_bridge_world
     import make_osm_world
     import make_sim_world
-    return ("route", "terrain") + (make_sim_world.LAYERS if kind == "village" else make_osm_world.LAYERS)
+    return ("route", "terrain") + {"village": make_sim_world.LAYERS, "osm": make_osm_world.LAYERS,
+                                   "pont": make_bridge_world.LAYERS}[kind]
 
 
 def missing_layers(wanted: tuple[str, ...], known: tuple[str, ...]) -> list[str]:
@@ -475,13 +497,13 @@ class Bench:
                     f"{self.duration:.0f} s" if alive else f"code de sortie {engine.p.returncode}")
             t_end = now()
             send_cmd(cmd_port, CMD_ID_BASE, "end_session", {"save": True})
-            fin = core.wait_for(r"FINISHED", 10.0, after=t_end)
+            core.wait_for(r"Séance : \S+ -> FINISHED", 10.0, after=t_end)
             time.sleep(1.0)
             self._shot(engine, state_port, "fin")
             time.sleep(1.5)
             self._collect(core, engine)
-            r.check(fin is not None or self._final_state(core) in ("FINISHED", "ERROR"), "fin de séance",
-                    "FINISHED après end_session" if fin else f"dernier état lu : {self._final_state(core)}")
+            ok, detail = session_end_verdict(core.lines, t_end, self.rel)
+            r.check(ok, "fin de séance", detail)
         finally:
             for p in (engine,):
                 if p is not None:
@@ -638,10 +660,6 @@ class Bench:
             if started is not None:
                 self.laps += 1
                 after = started[0]
-
-    def _final_state(self, core: Proc) -> str:
-        states = core.matching(r"\b(RUNNING|PAUSED|FINISHED|ERROR)\b")
-        return states[-1][1].group(1) if states else "?"
 
     def _collect(self, core: Proc, engine: Proc) -> None:
         for t, m in core.matching(r".+"):
@@ -1105,7 +1123,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
         "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), village (bâtiments, montée et descente), osm, ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
+    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), village (bâtiments, montée et descente), osm, pont (ponts dessinés, lot EA4), ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
                     "l'emporte sur le monde du scénario")
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")

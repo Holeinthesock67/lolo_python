@@ -131,7 +131,7 @@ def test_region_add_update_list(tmp_path, cache, capsys) -> None:
     assert sorted(p.name for p in db_path.parent.iterdir()) == ["mini-region.sqlite"]
     entry = cache.get("osm:mini-region")
     assert entry.kind == "osm" and entry.region == "mini-region"
-    assert entry.versions == {"schema_version": 1, "osm_date": "2026-10-21T09:30:00Z",
+    assert entry.versions == {"schema_version": osmdb.SCHEMA_VERSION, "osm_date": "2026-10-21T09:30:00Z",
                               "last_modified": server.last_modified}
     (r,) = region.region_list(cache)
     assert r["id"] == "mini-region" and r["database"] and r["bbox"][0] < r["bbox"][2]

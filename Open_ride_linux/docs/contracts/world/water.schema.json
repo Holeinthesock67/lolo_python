@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideWorldWaterChunk",
-  "description": "Tronçon de 1 km de la couche eau (Format .world v1, §8 ; mer depuis 1.6, lot U1).",
+  "description": "Tronçon de 1 km de la couche eau (Format .world v1, §8 ; mer depuis 1.6, lot U1 ; rivières en surface depuis 1.10, lot EA3).",
   "type": "object",
   "required": [
     "version",
@@ -98,9 +98,10 @@
               "lake",
               "pond",
               "reservoir",
-              "sea"
+              "sea",
+              "river"
             ],
-            "description": "Depuis 1.6 : sea, polygone de mer refermé sur le bord de l'étendue du terrain, level_y = 0."
+            "description": "Depuis 1.6 : sea, polygone de mer refermé sur le bord de l'étendue du terrain, level_y = 0. Depuis 1.10 : river, morceau d'une grande rivière en surface (outer_y, holes_y)."
           },
           "level_y": {
             "type": "number"
@@ -113,6 +114,23 @@
             "items": {
               "$ref": "#/$defs/ring"
             }
+          },
+          "outer_y": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Depuis 1.10 (river) : altitude de la surface à chaque sommet de outer, même longueur ; absent : surface plane à level_y."
+          },
+          "holes_y": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "description": "Depuis 1.10 (river) : altitudes des sommets de chaque île, parallèle à holes."
           }
         }
       }

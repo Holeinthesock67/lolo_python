@@ -17,6 +17,10 @@ aucune différence.
   quantifiées à 1e-7°. Voies : identifiant négatif tiré de la tuile, de l'objet et du morceau.
 - Bâtiments : gardés dans la tuile qui contient leur centre (ils sont entiers dans la marge) ;
   autres surfaces découpées au carré de la tuile (Sutherland-Hodgman).
+- Côte (lot W23) : les tuiles n'ont pas de ligne de côte, mais la mer (`water`, classe `ocean`) ; ses
+  bords découpés au carré de la tuile, sauf ceux qui longent le bord de la tuile, deviennent des lignes
+  `coastline` orientées comme dans OSM (la mer à droite) ; les plages sont le sable de `landcover`
+  (`sand`, sous-classes `beach` et `sand`). La base reçoit ainsi la même chose qu'un extrait régional.
 - Une tuile versée deux fois ne crée pas de doublon (table `tiles_loaded`).
 - Préchargement (W-Q4) : départs des séances passées (première partie de route de chaque séance du
   cache), classés par fréquence puis récence ; tuiles et relief à moins de `prefetch_radius_km`,
@@ -37,6 +41,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from ..cache import Log, stderr_log
+from .. import river_surface as RS
 from ..errors import CompileError
 from . import mvt, osmdb
 from .measure import Net
@@ -59,7 +64,14 @@ _CLASS = {"motorway": "x", "trunk": "x", "primary": "p", "secondary": "s", "tert
           "minor": "m", "service": "m"}
 _PLACE = {"city", "town", "village", "hamlet"}
 _LANDCOVER = {"wood": "wood", "forest": "wood", "scrub": "scrub", "orchard": "orchard"}
-_WATER_AREA = {"lake": "lake", "pond": "pond", "reservoir": "reservoir", "basin": "reservoir"}
+_WATER_AREA = {"lake": "lake", "pond": "pond", "reservoir": "reservoir", "basin": "reservoir",
+               "river": "river"}   # river : grandes rivières en surface (lot EA3)
+# Version des lignes versées depuis les tuiles : une base plus ancienne est refaite depuis les tuiles du
+# cache (sans téléchargement). 2 : classe `river` de la couche `water` (sorte `river`), surfaces découpées
+# au bord de la tuile sans côté dégénéré (lot EA3).
+CONVERT_VERSION = 2
+_SEA_CLASS = "ocean"
+_BEACH = {"beach": "beach", "sand": "sand"}       # sous-classe du sable de `landcover` → `natural`
 
 
 # --- identifiants -------------------------------------------------------------------------------
@@ -163,11 +175,28 @@ def clip_polygon(ring: list[tuple[float, float]], x0: float, y0: float, x1: floa
 
 # --- base des tuiles --------------------------------------------------------------------------------
 
+def _schema_of(path: Path) -> str | None:
+    try:
+        con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        try:
+            row = con.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return None
+    return row[0] if row else None
+
+
 class TileDb:
     """Base `tuiles.sqlite` au schéma de W3, remplie tuile par tuile."""
 
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
+        if self.path.is_file() and _schema_of(self.path) != str(SCHEMA_VERSION):
+            # Base d'un autre schéma (un essai de la branche W23 a écrit un schéma 2) : refaite, les
+            # tuiles se relisent du cache, sans réseau.
+            for suffix in ("", "-wal", "-shm", "-journal"):
+                Path(f"{self.path}{suffix}").unlink(missing_ok=True)
         fresh = not self.path.is_file()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(self.path, isolation_level=None)
@@ -179,6 +208,24 @@ class TileDb:
             self.db.executemany("INSERT INTO meta VALUES (?, ?)", sorted(meta.items()))
         self.db.execute("CREATE TABLE IF NOT EXISTS tiles_loaded (z INTEGER, x INTEGER, y INTEGER, "
                         "PRIMARY KEY (z, x, y))")
+        # Côte (lot W23) : tables à part, ajoutées à une base existante ; une tuile versée sans elles
+        # (par une version plus ancienne) y est reversée pour la côte seulement (`coast_loaded`).
+        self.db.executescript(osmdb._COAST_SCHEMA)
+        self.db.execute("CREATE TABLE IF NOT EXISTS coast_loaded (z INTEGER, x INTEGER, y INTEGER, "
+                        "PRIMARY KEY (z, x, y))")
+        self.db.execute("INSERT OR IGNORE INTO meta VALUES ('coast', ?)", (osmdb.COAST_TABLES_VERSION,))
+        row = self.db.execute("SELECT value FROM meta WHERE key = 'convert_version'").fetchone()
+        if row is None or row[0] != str(CONVERT_VERSION):
+            # conversion plus ancienne : tout est revidé, les tuiles du cache seront reversées à la demande
+            self.db.execute("BEGIN")
+            for t in osmdb.TABLES:      # côte comprise (lot W23) : une conversion nouvelle refait tout
+                self.db.execute(f"DELETE FROM {t}")
+                self.db.execute(f"DELETE FROM {t}_rt")
+            self.db.execute("DELETE FROM tiles_loaded")
+            self.db.execute("DELETE FROM coast_loaded")
+            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('bbox', '')")
+            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('convert_version', ?)", (str(CONVERT_VERSION),))
+            self.db.execute("COMMIT")
 
     def close(self) -> None:
         self.db.close()
@@ -187,8 +234,16 @@ class TileDb:
         return self.db.execute("SELECT 1 FROM tiles_loaded WHERE z = ? AND x = ? AND y = ?",
                                (ZOOM, x, y)).fetchone() is not None
 
+    def coast_loaded(self, x: int, y: int) -> bool:
+        return self.db.execute("SELECT 1 FROM coast_loaded WHERE z = ? AND x = ? AND y = ?",
+                               (ZOOM, x, y)).fetchone() is not None
+
+    def complete(self, x: int, y: int) -> bool:
+        """Tuile versée en entier, côte comprise."""
+        return self.loaded(x, y) and self.coast_loaded(x, y)
+
     def counts(self) -> dict[str, int]:
-        return {t: self.db.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in ("roads", "areas", "lines", "points")}
+        return {t: self.db.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in osmdb.TABLES}
 
     def _next_id(self, table: str) -> int:
         return int(self.db.execute(f"SELECT coalesce(max(id), 0) FROM {table}").fetchone()[0]) + 1
@@ -221,10 +276,18 @@ class TileDb:
         return [*row[:-2], nodes, coords]
 
     def load(self, x: int, y: int, data: bytes) -> dict[str, int]:
-        """Verse une tuile ; rien si elle l'est déjà. Renvoie les nombres de lignes ajoutées."""
-        if self.loaded(x, y):
+        """Verse une tuile ; rien si elle l'est déjà. Renvoie les nombres de lignes ajoutées.
+
+        Les tables générales et celles de la côte ont chacune leur marque (`tiles_loaded`,
+        `coast_loaded`) : seule la partie qui manque est versée. Une base remplie par une version sans
+        la côte reçoit la côte seule ; une base dont les tables générales ont été revidées (nouvelle
+        conversion) les reçoit seules, sans doubler la côte."""
+        full = not self.loaded(x, y)
+        coast = not self.coast_loaded(x, y)
+        if not full and not coast:
             return {}
-        rows = convert_tile(x, y, mvt.decode_tile(data))
+        rows = {t: v for t, v in convert_tile(x, y, mvt.decode_tile(data)).items()
+                if (full if t not in osmdb.COAST_TABLES else coast)}
         added: dict[str, int] = {}
         bb = [math.inf, math.inf, -math.inf, -math.inf]
         self.db.execute("BEGIN")
@@ -241,7 +304,13 @@ class TileDb:
                     self.db.execute(f"INSERT INTO {table}_rt VALUES (?,?,?,?,?)", (rid, box[0], box[2], box[1], box[3]))
                     bb = [min(bb[0], box[0]), min(bb[1], box[1]), max(bb[2], box[2]), max(bb[3], box[3])]
                     rid += 1
-                added[table] = len(items)
+                if items or table not in osmdb.COAST_TABLES:     # côte : comptée seulement si présente
+                    added[table] = len(items)
+            if coast:
+                self.db.execute("INSERT INTO coast_loaded VALUES (?, ?, ?)", (ZOOM, x, y))
+            if not full:
+                self.db.execute("COMMIT")
+                return added
             # emprise : celle de la tuile (même vide), réunie à l'emprise déjà connue
             w, s = mvt.tile_to_lonlat(ZOOM, x, y + 1, 1, 0, 0)
             e, n = mvt.tile_to_lonlat(ZOOM, x + 1, y, 1, 0, 0)
@@ -283,9 +352,55 @@ def _road_tags(t: dict[str, Any]) -> tuple[dict[str, Any], str] | None:
     return tags, rc
 
 
+def _shoelace(ring: list[tuple[float, float]]) -> float:
+    return 0.5 * sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:] + ring[:1]))
+
+
+def _on_side(a: tuple[float, float], b: tuple[float, float], box: tuple[int, int, int, int]) -> bool:
+    """Le côté [a, b] longe un bord de la tuile (découpe, pas la côte)."""
+    return any(a[i] == v and b[i] == v for i, v in ((0, box[0]), (0, box[2]), (1, box[1]), (1, box[3])))
+
+
+def coast_runs(ring: list[tuple[float, float]], outer: bool, box: tuple[int, int, int, int]) -> list[list[tuple[float, float]]]:
+    """Lignes de côte d'un anneau de mer découpé à la tuile (pixels globaux, y vers le bas).
+
+    Orientation d'OSM, la mer à droite dans le repère (est, nord) : contour horaire en (est, nord),
+    donc d'aire positive en pixels (y vers le bas), trous (îles) en sens inverse. Les côtés qui
+    longent le bord de la tuile sont retirés ; un anneau sans côté au bord reste fermé (premier point
+    répété à la fin).
+    """
+    pts = [p for i, p in enumerate(ring) if i == 0 or p != ring[i - 1]]
+    if len(pts) > 1 and pts[0] == pts[-1]:
+        pts = pts[:-1]
+    if len(pts) < 3:
+        return []
+    if (_shoelace(pts) > 0) != outer:
+        pts = pts[::-1]
+    m = len(pts)
+    border = [_on_side(pts[i], pts[(i + 1) % m], box) for i in range(m)]
+    if not any(border):
+        return [pts + [pts[0]]]
+    start = (border.index(True) + 1) % m        # premier côté après un côté de bord
+    runs: list[list[tuple[float, float]]] = []
+    cur: list[tuple[float, float]] = []
+    for k in range(m):
+        i = (start + k) % m
+        if border[i]:
+            if len(cur) >= 2:
+                runs.append(cur)
+            cur = []
+            continue
+        if not cur:
+            cur = [pts[i]]
+        cur.append(pts[(i + 1) % m])
+    if len(cur) >= 2:
+        runs.append(cur)
+    return runs
+
+
 def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list[tuple[tuple, BBox]]]:
     """Lignes à insérer (sans identifiant de ligne) pour chaque table, avec leur emprise."""
-    out: dict[str, list[tuple[tuple, BBox]]] = {"roads": [], "areas": [], "lines": [], "points": []}
+    out: dict[str, list[tuple[tuple, BBox]]] = {t: [] for t in osmdb.TABLES}
 
     def lonlat(gx: float, gy: float, extent: int) -> tuple[float, float]:
         return mvt.tile_to_lonlat(ZOOM, 0, 0, extent, gx, gy)
@@ -340,16 +455,30 @@ def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list
                     if t.get("colour"):
                         tags["colour"] = str(t["colour"])
                 elif lname in ("landcover", "landuse"):
-                    kind = _LANDCOVER.get(str(t.get("subclass", ""))) or _LANDCOVER.get(str(t.get("class", "")))
-                    if kind is None:
-                        continue
-                    tags = {"natural": "wood"} if kind == "wood" else {"natural": "scrub"} if kind == "scrub" \
-                        else {"landuse": "orchard"}
+                    if lname == "landcover" and t.get("class") == "sand" and str(t.get("subclass", "")) in _BEACH:
+                        kind, tags = "beach", {"natural": _BEACH[str(t["subclass"])]}
+                    else:
+                        kind = _LANDCOVER.get(str(t.get("subclass", ""))) or _LANDCOVER.get(str(t.get("class", "")))
+                        if kind is None:
+                            continue
+                        tags = {"natural": "wood"} if kind == "wood" else {"natural": "scrub"} if kind == "scrub" \
+                            else {"landuse": "orchard"}
+                elif t.get("class") == _SEA_CLASS:
+                    for k, poly in enumerate(f.geometry):
+                        rings = [(poly["outer"], True)] + [(h, False) for h in poly["holes"]]
+                        for r, (ring, is_outer) in enumerate(rings):
+                            clipped = clip_polygon([glob(p) for p in ring], *box)
+                            for n, run in enumerate(coast_runs(clipped, is_outer, box)):
+                                coords = [lonlat(px, py, E) for px, py in run]
+                                out["coast_lines"].append(((f"v{x}_{y}_{fi}_{k}_{r}_{n}", "coastline", "{}",
+                                                      osmdb.pack_coords(coords)), osmdb.bbox_of(coords)))
+                    continue
                 else:
                     water = _WATER_AREA.get(str(t.get("class", "")))
                     if water is None or t.get("intermittent") == 1:
                         continue
-                    kind, tags = "water", {"natural": "water", "water": water}
+                    kind = osmdb.area_kind({"natural": "water", "water": water})   # river à part (lot EA3)
+                    tags = {"natural": "water", "water": water}
                 for k, poly in enumerate(f.geometry):
                     outer = [glob(p) for p in poly["outer"]]
                     holes = [[glob(p) for p in h] for h in poly["holes"]]
@@ -358,16 +487,18 @@ def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list
                         cy = sum(p[1] for p in outer) / len(outer)
                         if not (box[0] <= cx < box[2] and box[1] <= cy < box[3]):
                             continue
+                        pieces = [(outer, holes)]
                     else:
-                        outer = clip_polygon(outer, *box)
-                        holes = [h2 for h2 in (clip_polygon(h, *box) for h in holes) if h2]
-                        if not outer:
-                            continue
-                    o = [lonlat(px, py, E) for px, py in outer]
-                    hs = [[lonlat(px, py, E) for px, py in h] for h in holes]
-                    geom = {"outer": [list(p) for p in o], "holes": [[list(p) for p in h] for h in hs]}
-                    out["areas"].append(((f"v{x}_{y}_{fi}_{k}", kind, json.dumps(osmdb.useful_tags(tags), ensure_ascii=False),
-                                          json.dumps(geom)), osmdb.bbox_of(o)))
+                        # découpe au bord de la tuile en morceaux propres (lot EA3) : un polygone qui sort et
+                        # rentre donne plusieurs morceaux, une île coupée devient une échancrure
+                        pieces = RS.clip_to_rect(outer, holes, *box)
+                    for n, (po, ph) in enumerate(pieces):
+                        o = [lonlat(px, py, E) for px, py in po]
+                        hs = [[lonlat(px, py, E) for px, py in h] for h in ph]
+                        geom = {"outer": [list(p) for p in o], "holes": [[list(p) for p in h] for h in hs]}
+                        out["coast_areas" if kind in osmdb.COAST_AREA_KINDS else "areas"].append(((f"v{x}_{y}_{fi}_{k}" + (f"_{n}" if n else ""), kind,
+                                              json.dumps(osmdb.useful_tags(tags), ensure_ascii=False),
+                                              json.dumps(geom)), osmdb.bbox_of(o)))
             elif f.kind == "point" and lname in ("place", "poi", "mountain_peak"):
                 cls, sub = str(t.get("class", "")), str(t.get("subclass", ""))
                 if lname == "place":
@@ -512,6 +643,20 @@ class TileSource:
                 self.cache.mark_used(tile_key(*k))
         return have
 
+    def load_present(self, bbox: BBox) -> int:
+        """Tuiles de l'emprise déjà sur le PC versées dans la base, sans téléchargement (eau lointaine, lot EA2)."""
+        n = 0
+        for x, y in tiles_for_bbox(bbox):
+            if self.db.loaded(x, y) or not self.path(x, y).is_file():
+                continue
+            try:
+                self.db.load(x, y, self.path(x, y).read_bytes())
+                n += 1
+            except mvt.MvtError as exc:
+                self.log(f"tuile {ZOOM}/{x}/{y} illisible, supprimée : {exc}")
+                self.path(x, y).unlink(missing_ok=True)
+        return n
+
     def ensure(self, bbox: BBox, prefetch: bool = False, wait_s: float = 0.0) -> int:
         """Tuiles de l'emprise téléchargées si possible et versées dans la base ; renvoie leur nombre.
 
@@ -522,7 +667,7 @@ class TileSource:
         while True:
             n = 0
             for x, y in self.fetch(tiles_for_bbox(bbox), prefetch=prefetch):
-                if self.db.loaded(x, y):
+                if self.db.complete(x, y):
                     n += 1
                     continue
                 try:

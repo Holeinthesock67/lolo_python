@@ -1,0 +1,83 @@
+# Exemple de file par paquets (plan du 20 novembre, « paquets + matrice + cloud ») : 3 PR réunies dans un seul banc,
+# matrice selon la catégorie de la section « Recette PC » des PR, contrôles sans GPU en cloud.
+# Les branches et les têtes sont des exemples : le fil de fusion les recopie depuis ses fichiers de file PC.
+#
+# 1. Avant la nuit, en cloud ou sur le PC (rien n'est lancé) : têtes fixées et composition des paquets
+#      python3 scripts/file_bancs.py verifier scripts/file_bancs/exemple_paquet.toml
+#    REFUSÉ si deux PR d'un paquet changent WORLDGEN_VERSION, SCHEMA_VERSION ou la révision IPC (CONTRACT_REV),
+#    ou si leurs branches ne s'assemblent pas sans conflit (git merge-tree, à blanc).
+# 2. En cloud (conteneur sans GPU) : étapes `lieu = "cloud"` seulement, sans portail ni fumée du PC
+#      bash scripts/file_bancs/prepare_cloud.sh
+#      python3 scripts/file_bancs.py lancer scripts/file_bancs/exemple_paquet.toml --lieu cloud
+#    puis etat.json du dossier de sortie déposé dans le dossier du projet.
+# 3. Sur le PC : étapes du PC (GPU 8, 13 et 16 ms, planche), puis import des verdicts du cloud dans le tableau
+#      python3 scripts/file_bancs.py lancer scripts/file_bancs/exemple_paquet.toml
+#      python3 scripts/file_bancs.py importer scripts/file_bancs/exemple_paquet.toml --depuis ETAT_CLOUD.json
+# Paquet en ÉCHEC ou DÉLAI sur une étape : l'étape passe SCINDÉ et la file la rejoue tout de suite PR par PR
+# (« p1.r930 », « p1.r931 »…), fumée comprise, sur la branche seule de chaque PR ; les étapes OK du paquet restent
+# acquises pour toutes. Chaque PR garde sa planche et son « go NNN » écrit dans le fil de fusion.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/paquet-exemple"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh paquet-{etape} {dossier}"
+attente_s = 60
+
+# Paquet de rendu : un membre de rendu suffit pour les 3 qualités (en cas de doute, rendu).
+[[paquet]]
+id = "p1"
+risque = 2
+cache = "separe"                 # obligatoire si un membre change SCHEMA_VERSION ; conseillé en monde ouvert
+fumee = """python engine/tests/menu_bench.py --native --scenario sessions --voies clavier --qualite low --out {sortie}"""
+fumee_delai_min = 8
+# {qualite} vaut low, high puis medium (rendu) ou medium seul (logique) ; une étape par qualité.
+matrice = "python engine/tests/menu_bench.py --native --scenario sessions --scenario depart_monde_ouvert --qualite {qualite} --captures ecrans --out {sortie}"
+matrice_delai_min = 40
+
+[[paquet.etape]]                 # contrôle sans GPU, joué par `lancer --lieu cloud`
+id = "contacts"
+lieu = "cloud"
+commande = "python -m openride_compiler.demo_biomes --out {sortie}-mondes --demo-set && python -m openride_core.tools.contacts_replay --routes {sortie}-mondes --kmh 15,30,50 --bots 0,4 --duree 900 --json {sortie}-contacts.json"
+delai_min = 30
+
+[[paquet.etape]]                 # captures de vitrine sans mesure GPU (Xvfb, Vulkan logiciel)
+id = "vitrine"
+lieu = "cloud"
+commande = "xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus --audio-driver Dummy --script res://tests/vitrine_biomes.gd -- --out {sortie} --quality low,medium,high"
+delai_min = 30
+
+[[paquet.membre]]
+pr = 930
+branche = "claude/project-thread-exemple-a"
+tete = "0000000a"
+categorie = "rendu"              # recopiée de la section « Recette PC » de la PR (scripts/file_bancs.py categorie)
+
+[[paquet.membre]]
+pr = 931
+branche = "claude/project-thread-exemple-b"
+tete = "0000000b"
+categorie = "logique"
+
+[[paquet.membre]]
+pr = 932
+branche = "claude/project-thread-exemple-c"
+tete = "0000000c"
+categorie = "logique"
+
+# PR de logique seule : une fumée et medium.
+[[pr]]
+id = "r933"
+pr = 933
+branche = "claude/project-thread-exemple-d"
+tete = "0000000d"
+categorie = "logique"
+fumee = "python engine/tests/menu_bench.py --native --scenario sessions --voies clavier --qualite low --out {sortie}"
+matrice = "python engine/tests/menu_bench.py --native --scenario sessions --qualite {qualite} --out {sortie}"
+
+# Référence main : une seule par jour pour toute la file (étape `sur = "main"`, jouée une fois par commit de main).
+[[pr.etape]]
+id = "main-medium"
+sur = "main"
+commande = "python engine/tests/menu_bench.py --native --scenario sessions --qualite medium --out {sortie}"
+delai_min = 40

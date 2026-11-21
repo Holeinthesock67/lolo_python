@@ -23,9 +23,10 @@ const RenderDiag := preload("res://scripts/render_diag.gd")
 const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
+const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 const GroundDetails := preload("res://scripts/ground_details.gd")
+const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 const VolcanoFx := preload("res://scripts/volcano_fx.gd")
-const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
@@ -56,6 +57,8 @@ var season := "summer"               # saison du thème (`season`) tant que P18 
 var solar_hour := NAN
 var _neigh_at := -INF
 var _shapes_version := -1
+var _zones: ExclusionZones = null       # zones sans herbe ni détail de sol (_exclusions)
+var _zones_version := -2
 var _shapes: Dictionary = {"forests": [], "buildings": [], "waters": []}
 var _route = null
 
@@ -237,19 +240,20 @@ func _refresh_shapes() -> void:
 func _terrain_height(route) -> Callable:
 	if osm_streamer == null or route == null or not "world_dir" in osm_streamer or str(osm_streamer.world_dir) == "":
 		return Callable()
-	var raw := OsmStreamer.terrain_height_fn(osm_streamer.world_dir, route)
-	if route.relief_k == 1.0:
-		return raw
-	return func(x: float, z: float) -> float:
-		return route.display_y(float(raw.call(x, z)))
+	return RoadsideGround.ground_fn(str(osm_streamer.world_dir), route)
 
 
-## Bâtiments et plans d'eau : pas de touffe d'herbe ni de détail de sol dedans.
-func _exclusions() -> Array:
-	var out := []
-	for b in _shapes["buildings"]:
-		out.append(b["points"])
-	for w in _shapes["waters"]:
-		if bool(w.get("area", false)):
-			out.append(w["points"])
-	return out
+## Bâtiments et plans d'eau (mer comprise) : pas de touffe d'herbe ni de détail de sol dedans. Zones indexées
+## (exclusion_zones.gd, lot HERBE1) construites une fois par version des contours, partagées par l'herbe et
+## les détails de sol.
+func _exclusions() -> ExclusionZones:
+	if _zones_version != _shapes_version or _zones == null:
+		var out := []
+		for b in _shapes["buildings"]:
+			out.append(b)
+		for w in _shapes["waters"]:
+			if bool(w.get("area", false)):
+				out.append(w)
+		_zones = ExclusionZones.new(out)
+		_zones_version = _shapes_version
+	return _zones

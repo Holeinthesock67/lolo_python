@@ -26,6 +26,7 @@ extends RefCounted
 
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 
 const CELL_M := 100.0
 const VILLAGE_M := 60.0
@@ -130,8 +131,10 @@ static func crowd_zones(climbs: Array, crowd_all_climbs: bool = false) -> Array:
 	return out
 
 
+## `ground_at` : sol affiché (x, z) -> y (RoadsideGround.ground_fn), chemins posés sur le sol visible ; vide :
+## hauteur de la route.
 func configure(route, buildings: Array = [], water: Dictionary = {}, seed: int = 0,
-		road_width_m: float = DEFAULT_ROAD_WIDTH_M, exclude: Array = []) -> void:
+		road_width_m: float = DEFAULT_ROAD_WIDTH_M, exclude: Array = [], ground_at: Callable = Callable()) -> void:
 	people.clear()
 	states.clear()
 	_entries = []
@@ -167,7 +170,7 @@ func configure(route, buildings: Array = [], water: Dictionary = {}, seed: int =
 		for s in spots:
 			if _excluded(float(s), exclude):
 				continue
-			var p := _make_person(route, float(s), village, half, water)
+			var p := _make_person(route, float(s), village, half, water, ground_at)
 			if not p.is_empty():
 				people.append(p)
 	people.sort_custom(func(a, b): return a["s"] < b["s"])
@@ -180,7 +183,8 @@ static func _excluded(s: float, exclude: Array) -> bool:
 	return false
 
 
-func _make_person(route, s: float, village: bool, half: float, water: Dictionary) -> Dictionary:
+func _make_person(route, s: float, village: bool, half: float, water: Dictionary,
+		ground_at: Callable = Callable()) -> Dictionary:
 	var h := VegetationPlacer.hash3(_seed ^ 0x9A55, int(round(s * 10.0)), 2)
 	var role := _pick(ROLES_VILLAGE if village else ROLES_COUNTRY, _u(h))
 	var edge := lerpf(EDGE_M.x, EDGE_M.y, _u(VegetationPlacer._mix(h + 1)))
@@ -204,7 +208,9 @@ func _make_person(route, s: float, village: bool, half: float, water: Dictionary
 			var si := s + (length * float(i) / float(steps) if steps > 0 else 0.0)
 			var smp: Dictionary = route.sample(si)
 			var hd := deg_to_rad(float(smp["heading_deg"]))
-			var pt := Vector3(smp["x"], smp["y"], smp["z"]) + Vector3(cos(hd), 0.0, sin(hd)) * lateral
+			var axis := Vector3(smp["x"], smp["y"], smp["z"])
+			var right := Vector3(cos(hd), 0.0, sin(hd))
+			var pt := RoadsideGround.on_ground(ground_at, axis + right * lateral, axis, right, half)
 			if CrowdModel._in_water(pt, water):
 				dry = false
 				break
