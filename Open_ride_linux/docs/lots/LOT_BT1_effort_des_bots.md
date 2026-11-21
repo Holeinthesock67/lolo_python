@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Bots réglés sur la courbe de puissance : FTP × courbe(durée de la course) × objectif × niveau, pour tous les modes à bots, vélodrome par épreuve | Python, GDScript | T13 (#900 : échelle unique) | Moyenne | PR du 15 novembre, empilée sur #900 |
+| Bots réglés sur la courbe de puissance : FTP × courbe(durée de la course) × objectif × niveau, pour tous les modes à bots, vélodrome par épreuve | Python, GDScript | T13 (#900 : échelle unique) | Moyenne | **Livré le 16 novembre** (PR #909) |
 
 ## 1. Objectif
 
@@ -26,6 +26,8 @@ Interpolation sur le logarithme de la durée, bornée aux extrémités. Objectif
 - **Calibrage :** `bots.calibrate_bots(..., effort=)` calibre l'échelle du rouleur (#900) pour finir dans le temps du cycliste de référence à cette cible ; chaque bot garde `effort_target` (% de la FTP, durée). Ligne du journal du core : « Effort des bots (tempo) : 86 % de la FTP (216 W) sur ≈ 13 min ».
 
 ## 3. Livraison
+
+**Fusionné le 16 novembre 2026 (PR #909).** Les points « Reste » ci-dessous décrivent l'état d'avant la fusion.
 
 - Core : `bot_effort.py` ; `bots.effort_target`, `calibrate_bots(effort=)` ; `Session._bot_effort` (mode de la séance) ; réglage `bots.objective` (`config.py`, choix, clé du profil ; `settings.py` « Objectif des bots ») ; banc `bots_race --objectif` (le cycliste roule à l'effort d'un bot de son niveau).
 - Engine : ligne « Objectif des bots » sur les écrans Prêt du Dernier survivant et du Grand Prix, et dans les réglages (`settings_view_model.gd` : « tempo (80 %) »…).

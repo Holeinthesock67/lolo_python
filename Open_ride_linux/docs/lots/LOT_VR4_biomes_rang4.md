@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Trois biomes complets (`cloud_forest`, `eucalypt_woodland`, `temperate_rainforest`) : contrat, règle de pose par la table commune des biomes régionaux, thème, quatre arbres, kangourou, démonstration « Route des Trois Forêts » | Python, GDScript, JSON | U24, AT2, HP1, DB3 | Moyenne | **En PR le 19 novembre**, **version 6.0** |
+| Trois biomes complets (`cloud_forest`, `eucalypt_woodland`, `temperate_rainforest`) : contrat, règle de pose par la table commune des biomes régionaux, thème, quatre arbres, kangourou, démonstration « Route des Trois Forêts » | Python, GDScript, JSON | U24, AT2, HP1, DB3 | Moyenne | **Livré le 21 novembre** (PR #935) |
 
 ## 1. Objectif
 
@@ -50,3 +50,7 @@ Règle du propriétaire du 14 novembre (lot DB3) : chaque biome réel a sa démo
 - Sons propres (cris des cacatoès, pluie sur les feuilles) : fonds U11 existants.
 - Mousses pendantes et épiphytes : à voir après les captures.
 - Cols de recette dans le pack « Cols célèbres » (Alto de Letras, Willunga, Hurricane Ridge) : lot à part, calés sur le PC comme ceux des hauts plateaux.
+
+## 7. Livraison
+
+Fusionné le 21 novembre 2026 (PR #935 : biomes du rang 4 et démonstration « Route des Trois Forêts »). Détail des écarts et de la recette : description de la PR.
