@@ -613,7 +613,8 @@ def test_loop_blocks_must_fill_the_loop(mbw) -> None:
 
 # --- Parcours du Grand Prix des objets (lot GP13b) -------------------------------------------------------------
 
-GRAND_PRIX = ("demo-circuit", "demo-corniche", "demo-vignes")
+GRAND_PRIX = ("demo-circuit", "demo-corniche", "demo-vignes",
+              "demo-recif", "demo-volcan", "demo-biomes-nord")   # lot GPL1 : boucles restées libres, étiquette `libre`
 
 
 def _radius_min(route: dict) -> float:

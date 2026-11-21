@@ -641,9 +641,11 @@ func set_routes(raw: Array) -> void:
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	# Parcours propres aux modes (lot GP13) : la liste montre ceux du mode de l'écran Prêt, ou les parcours libres
 	var by_mode: Dictionary = CatalogModel.mode_route_ids(raw, menu.mode_routes)
-	menu.set_mode_route_ids(by_mode, route_names)   # dont les pistes, écran Prêt du vélodrome (lot VD10)
+	# Parcours de mode restés libres (étiquette `free_route_tag`, lot GPL1) : aussi dans la liste générale
+	var shared: Array = CatalogModel.tagged_route_ids(raw, menu.free_route_tag) if menu.free_route_tag != "" else []
+	menu.set_mode_route_ids(by_mode, route_names, shared)   # dont les pistes, écran Prêt du vélodrome (lot VD10)
 	_routes_mode_shown = menu.routes_mode
-	raw = CatalogModel.routes_of_mode(raw, by_mode, menu.routes_mode)
+	raw = CatalogModel.routes_of_mode(raw, by_mode, menu.routes_mode, menu.free_route_tag)
 	var tags: Array = CatalogModel.route_tags(raw)
 	if route_tag != "" and not route_tag in tags:
 		route_tag = ""

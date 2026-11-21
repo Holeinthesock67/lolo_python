@@ -175,6 +175,9 @@ var track_ids: Array = []
 ## parcours changé par le menu à envoyer au core.
 var mode_routes: Dictionary = {}
 var mode_route_ids: Dictionary = {}
+## Étiquette d'un parcours de mode resté libre (hello_ack.config.free_route_tag, lot GPL1) et ces parcours.
+var free_route_tag := ""
+var shared_route_ids: Array = []
 var route_names: Dictionary = {}
 var route_mode := ""
 var routes_mode := ""
@@ -370,13 +373,21 @@ func set_mode_routes(table) -> void:
 	_refresh_home()
 
 
-## Parcours de chaque mode (CatalogModel.mode_route_ids) et noms des parcours, à chaque liste des parcours.
-func set_mode_route_ids(by_mode: Dictionary, names = null) -> void:
+## Étiquette des parcours de mode restés libres (hello_ack.config.free_route_tag, lot GPL1) ; null : aucune.
+func set_free_route_tag(tag) -> void:
+	free_route_tag = str(tag) if tag is String else ""
+
+
+## Parcours de chaque mode (CatalogModel.mode_route_ids), noms des parcours et parcours de mode restés libres
+## (étiquette `free_route_tag`, lot GPL1), à chaque liste des parcours.
+func set_mode_route_ids(by_mode: Dictionary, names = null, shared = null) -> void:
 	mode_route_ids = by_mode.duplicate(true)
+	if shared is Array:
+		shared_route_ids = shared.duplicate()
 	track_ids = (mode_route_ids.get("track", []) as Array).duplicate()
 	if names is Dictionary:
 		route_names = names.duplicate()
-	if free_world_id != "" and route_mode_of(free_world_id) != "":   # parcours passé dans un mode
+	if free_world_id != "" and not is_free_route(free_world_id):   # parcours passé dans un mode
 		free_world_id = ""
 		free_world_name = ""
 	elif free_world_id != "" and route_names.has(free_world_id):
@@ -384,12 +395,14 @@ func set_mode_route_ids(by_mode: Dictionary, names = null) -> void:
 	_refresh_home()
 
 
-## Mode auquel appartient un parcours ("" : parcours libre).
-func route_mode_of(id: String) -> String:
+## Vrai si le parcours est dans la liste générale : d'aucun mode, ou d'un mode et resté libre (lot GPL1).
+func is_free_route(id: String) -> bool:
+	if id in shared_route_ids:
+		return true
 	for m in mode_route_ids:
 		if id in mode_route_ids[m]:
-			return str(m)
-	return ""
+			return false
+	return true
 
 
 ## Parcours changé par le menu (choix du mode, retour au parcours libre) à envoyer au core ; "" sinon. Une fois.
@@ -410,7 +423,7 @@ func _pick_route() -> void:
 			return
 		var last := str(last_mode_routes.get(route_mode, ""))
 		pick = last if last in ids else str(ids[0])
-	elif world_id != "" and route_mode_of(world_id) != "":
+	elif world_id != "" and not is_free_route(world_id):
 		pick = free_world_id
 	else:
 		return
@@ -426,7 +439,7 @@ func _needs_route() -> bool:
 		return true
 	if route_mode != "":
 		return not world_id in mode_route_ids.get(route_mode, [])
-	return route_mode_of(world_id) != ""
+	return not is_free_route(world_id)
 
 
 ## Écran Prêt de la séance préparée, ou la liste des parcours d'abord sans parcours qui convienne.
@@ -512,7 +525,7 @@ func _cycle_track_option(option_id: String) -> void:
 func set_world(id: String, name: String) -> void:
 	world_id = id
 	world_name = name if name != "" else id
-	if id != "" and route_mode_of(id) == "":   # dernier parcours libre, montré à l'accueil (lot GP13)
+	if id != "" and is_free_route(id):   # dernier parcours libre, montré à l'accueil (lot GP13)
 		free_world_id = id
 		free_world_name = world_name
 	_refresh_home()

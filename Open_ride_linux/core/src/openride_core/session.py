@@ -412,7 +412,8 @@ class CoreSession:
                           "biome": cfg.render.biome,
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances"),
                           "track": track_mod.menu_options(),
-                          "mode_routes": mode_routes_mod.hello_block()})   # lot GP13, révision 1.19
+                          "mode_routes": mode_routes_mod.hello_block(),   # lot GP13, révision 1.19
+                          "free_route_tag": mode_routes_mod.FREE_TAG})   # lot GPL1, révision 1.24
         self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
@@ -1053,12 +1054,15 @@ class CoreSession:
         self.server.hello_config["last_choices"] = choices
 
     def _remember_route(self, route_id: str, cmd_id: int) -> None:
-        """Parcours choisi au menu (lot GP13) : celui d'un mode à parcours propres (Vélodrome, Grand Prix,
-        `mode_routes.py`) est gardé pour ce mode, sans remplacer le dernier parcours libre rechargé au démarrage."""
+        """Parcours choisi au menu (lot GP13) : retenu dans chaque liste où il est. Libre (dont un parcours de mode
+        étiqueté `libre`, lot GPL1) : dernier parcours libre, rechargé au démarrage ; d'un mode à parcours propres
+        (Vélodrome, Grand Prix, `mode_routes.py`) : dernier parcours de ce mode."""
         src = getattr(self, "_world_src", None)
-        mode = mode_routes_mod.mode_of(src[2], src[0].type) if src is not None else None
-        if mode is None:
+        manifest, kind = (src[2], src[0].type) if src is not None else (None, None)
+        mode = mode_routes_mod.mode_of(manifest, kind)
+        if mode is None or mode_routes_mod.is_free(manifest, kind):
             self._remember("route_id", route_id, cmd_id)
+        if mode is None:
             return
         if cmd_id <= 0 or self.profile_ctx.id is None or (self.sim is not None and self.config_path is None):
             return
