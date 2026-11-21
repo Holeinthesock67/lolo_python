@@ -5,6 +5,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Jauge « Réserve W' » retirée du Cyber-Rogue (lot R25)
+- La 4e jauge du HUD, « Réserve W' », disparaît : elle n'agissait sur rien dans le jeu et nuisait à la lisibilité (essai du 21 novembre). Restent Ennemi, Bouclier et Adrénaline.
+
 ### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
 - En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
 - Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).
