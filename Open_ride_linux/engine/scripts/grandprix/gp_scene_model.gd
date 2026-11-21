@@ -11,7 +11,7 @@ extends RefCounted
 ##   sorte, créées une fois : aucune création en course) ; un objet garde sa place d'une trame à l'autre, un
 ##   objet sorti de la trame libère la sienne ;
 ## - `looks(fx)` : effets à dessiner sur un coureur d'après ses objets en cours (glissade, averse, super-forme,
-##   voiture d'équipe, rafales, coup de fouet), et `particles(quality, look)` : `low` sans particules (sprites
+##   rafales, coup de fouet), et `particles(quality, look)` : `low` sans particules (sprites
 ##   seulement), `medium` limité, `high` complet (plan §8.3) ;
 ## - `on_hit(msg, now_s)` : onomatopée au-dessus du coureur touché (« ZIOUF ! », « SPLASH ! », « BOING ! »),
 ##   les messages répétés trois fois par le core ne comptant qu'une fois ;
@@ -28,10 +28,12 @@ const MAX_ROWS := 2
 const MAX_OBJECTS := 12
 const POOL := 12                               # instances par sorte d'objet dessiné (trame : 12 objets au plus)
 const SHOT_KINDS := ["bottle", "musette", "homing", "storm"]   # objets posés ou lancés (`shot` du core)
-## Effet dessiné sur un coureur pour chaque objet en cours (`gp.fx`, `bots[].fx`).
+## Effet dessiné sur un coureur pour chaque objet en cours (`gp.fx`, `bots[].fx`). La voiture d'équipe n'en a
+## pas : le core l'envoie dans la liste `vehicles` (sorte `team_car`), traffic_renderer.gd la dessine (lot
+## GP-voiture-modele : un seul modèle, celui de vehicle_mesh.gd, au lieu de deux superposés).
 const FX_LOOK := {"bottle": "slip", "bottle_x3": "slip", "musette": "slip", "musette_x3": "slip", "homing": "slip",
-	"storm": "rain", "star": "halo", "team_car": "car", "headwind": "gust", "gel": "kick", "gel_x3": "kick"}
-const LOOKS := ["slip", "rain", "halo", "car", "gust", "kick"]
+	"storm": "rain", "star": "halo", "headwind": "gust", "gel": "kick", "gel_x3": "kick"}
+const LOOKS := ["slip", "rain", "halo", "gust", "kick"]
 ## Particules par effet et par préréglage (0 : sprites seulement).
 const PARTICLES := {
 	"low": {},
@@ -39,7 +41,7 @@ const PARTICLES := {
 	"high": {"rain": 140, "halo": 24},
 }
 ## Effets dessinés en `low` (sprites) ; `medium` et `high` les dessinent tous.
-const LOW_LOOKS := ["slip", "rain", "halo", "car"]
+const LOW_LOOKS := ["slip", "rain", "halo"]
 const WORDS := {"bottle": "ZIOUF !", "bottle_x3": "ZIOUF !", "musette": "ZIOUF !", "musette_x3": "ZIOUF !",
 	"homing": "ZIOUF !", "storm": "SPLASH !", "star": "BOING !"}
 const WORD_S := 1.2

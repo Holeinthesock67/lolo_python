@@ -7,9 +7,9 @@ extends Node3D
 ## - bidons posés, musettes lancées, musettes guidées (anneau de visée `hot`) et nuages d'orage : une réserve
 ##   de POOL instances par sorte, créée une fois à la construction, aucune création en course ;
 ## - effets sur les coureurs (le cycliste et les bots), une réserve par coureur : étoiles qui tournent au-dessus
-##   d'un coureur qui glisse, nuage et averse, halo de la super-forme, voiture d'équipe devant le coureur
-##   remorqué, rafales du vent contraire, traits du coup de fouet. `low` : sprites seulement, sans particules ;
-##   `medium` : averse limitée ; `high` : averse et étincelles complètes (gp_scene_model.gd PARTICLES) ;
+##   d'un coureur qui glisse, nuage et averse, halo de la super-forme, rafales du vent contraire, traits du coup
+##   de fouet (la voiture d'équipe est un véhicule de traffic_renderer.gd, sorte `team_car`). `low` : sprites
+##   seulement, sans particules ; `medium` : averse limitée ; `high` : averse et étincelles complètes (gp_scene_model.gd PARTICLES) ;
 ## - onomatopées au-dessus du coureur touché (« ZIOUF ! », « SPLASH ! », « BOING ! »), quatre au plus.
 ## Ne décide rien : main.gd appelle step() une fois par image avec la trame, la route, la place du cycliste et
 ## celle des bots (bots_view.anchor_of). Rien n'est montré hors du mode. Ombres coupées partout.
@@ -27,7 +27,6 @@ const SIGN_STAGGER_M := 0.22           # mot de la voie du centre plus haut : le
 const BOX_SPIN := 1.2                 # rad/s
 const OBJ_HEIGHT_M := {"bottle": 0.12, "musette": 0.6, "homing": 0.8, "storm": 4.5}
 const RIDER_TOP_M := 1.9              # au-dessus du casque
-const CAR_AHEAD_M := 5.0
 const WORD_RISE_M := 0.8
 const WARM_FRAMES := 3
 const WARM_DIST_M := 2.0
@@ -270,17 +269,6 @@ func _make_rig(i: int) -> Dictionary:
 	halo.add_child(sparks)
 	root.add_child(halo)
 	looks["halo"] = halo
-	# Voiture d'équipe devant le coureur remorqué : caisse blanche, vitres encre, deux vélos sur le toit
-	var car := Node3D.new()
-	_mesh(car, _box(Vector3(1.8, 0.7, 4.2)), "paper", Vector3(0.0, 0.55, 0.0))
-	_mesh(car, _box(Vector3(1.6, 0.5, 2.2)), "ink", Vector3(0.0, 1.15, 0.3))
-	for x in [-0.4, 0.4]:
-		_mesh(car, _box(Vector3(0.04, 0.55, 1.6)), "fresh", Vector3(x, 1.7, 0.3))
-	for w in [Vector3(-0.85, 0.3, -1.4), Vector3(0.85, 0.3, -1.4), Vector3(-0.85, 0.3, 1.4), Vector3(0.85, 0.3, 1.4)]:
-		var wheel := _mesh(car, _cylinder(0.3, 0.2), "ink", w)
-		wheel.rotation = Vector3(0.0, 0.0, PI / 2.0)
-	root.add_child(car)
-	looks["car"] = car
 	# Rafales du vent contraire : trois traits `draft` devant le coureur
 	var gust := Node3D.new()
 	for k in range(3):
@@ -369,8 +357,6 @@ func _step_riders(riders: Array, now_s: float) -> void:
 		if root.visible:
 			var slip: Node3D = rig["looks"]["slip"]
 			slip.rotation.y = fmod(now_s * 4.0, TAU)
-			var car: Node3D = rig["looks"]["car"]
-			car.position = Vector3(0.0, 0.0, -CAR_AHEAD_M)
 		var rain: CPUParticles3D = rig["rain"]
 		var rain_on: bool = root.visible and "rain" in wanted and Model.particles(quality, "rain") > 0
 		if rain.emitting != rain_on:
