@@ -25,6 +25,7 @@ ou porte un opérateur en suffixe (`"distance>=" = 500`, `"phase!=" = "WARMUP"`,
     python -m openride_core.tools.essai_physique liste
     python -m openride_core.tools.essai_physique voir gp-voies
     python -m openride_core.tools.essai_physique lancer gp-voies [--profil principal] [--sim] [--cible 120]
+    python -m openride_core.tools.essai_physique rejouer gp-voies ~/OpenRide/.../séance.jsonl   # banc : instants des consignes
 """
 
 from __future__ import annotations
@@ -186,6 +187,20 @@ def _pcts(texte: str) -> list[float]:
     return out
 
 
+# Événements que le jeu écrit vraiment au journal de séance, par sorte de ligne (contrôlés par les tests
+# contre le code qui les écrit) : un déclencheur hors de cette table n'arriverait jamais (essai du 21/11 :
+# « fin de l'échauffement » attendait une ligne `phase` que le journal ne recevait pas).
+EVENEMENTS = {
+    "event": {"start", "pause", "resume", "stop", "decrochage", "resume_after_crash"},
+    "gp": {"box", "use", "hit", "warn", "parry", "steal", "finish"},
+    "track": {"start", "lap", "out", "bell", "finish", "points", "lap_gained", "lap_lost", "arrival",
+              "result", "timing", "sub_start", "pacer_off", "relay", "caught"},
+    "rogue": {"phase", "boss_phase", "room_start", "room_won", "room_fled", "room_end", "defeat", "card_taken",
+              "run_end", "room_skipped", "life_used", "balance", "perfect_shift"},
+    "ftms": {"brake_loss", "power_back", "power_not_back", "status", "training_status", "resistance_weak",
+             "resistance_fallback"},
+}
+
 ECART_CONSIGNE_PCT = 10.0   # consigne du départ et effort des bots : 10 points d'écart au plus
 
 
@@ -217,6 +232,10 @@ def incoherences(f: Fiche) -> list[str]:
                 out.append("Cyber-Rogue : le jeu donne lui-même la puissance visée, pas de {cible} dans les consignes")
                 break
     for e in f.etapes:
+        for pred in (e.quand, e.attendu or {}):
+            sorte, ev = pred.get("kind"), pred.get("event")
+            if sorte in EVENEMENTS and ev is not None and ev not in EVENEMENTS[sorte]:
+                out.append(f"déclencheur {sorte}/{ev} : le jeu n'écrit pas cet événement au journal")
         for pct in _pcts(e.dire):
             if not 50 <= pct <= 150:
                 out.append(f"consigne à {pct:.0f} % de la cible (50 à 150 %)")
@@ -321,6 +340,8 @@ def moyenne_reelle(journaux: Iterable[Path], n: int = 3) -> float | None:
 class Action:
     sorte: str      # annonce | consigne | vu | rappel | saute | terrain | fin
     texte: str
+    ts_jeu: float | None = None   # heure (ts) de la ligne du jeu qui l'a déclenchée : retard mesuré au PC
+    t_jeu: float | None = None    # temps de séance à ce moment
 
 
 class Deroule:
@@ -375,7 +396,8 @@ class Deroule:
         for att in list(self.attentes):
             etape, limite, rappele = att
             if correspond(etape.attendu or {}, ligne):
-                out.append(Action("vu", "Vu, merci."))
+                ts = ligne.get("ts")
+                out.append(Action("vu", "Vu, merci.", float(ts) if isinstance(ts, (int, float)) else None, self.t))
                 self.vus += 1
                 self.attentes.remove(att)
             elif self.t >= limite:
@@ -393,7 +415,9 @@ class Deroule:
                     break                       # repris à la ligne suivante : un record vaut encore
                 self.faites.add(k)
                 self.derniere_t = self.t
-                out.append(Action("consigne", self._txt(etape.dire)))
+                ts = ligne.get("ts")
+                out.append(Action("consigne", self._txt(etape.dire),
+                                  float(ts) if isinstance(ts, (int, float)) else None, self.t))
                 if etape.attendu:
                     self.attentes.append([etape, self.t + etape.delai_s, False])
                 break                           # une seule consigne par ligne du jeu
@@ -495,6 +519,7 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
         print(f"  Bots : {fiche.objectif_bots}, réglés sur {watts('{cible:%g}' % fiche.bots_cible_pct, cible_w)} W "
               f"(niveau {niveau} %)\n")
     proc = None
+    retards: list[tuple[float, float, str]] = []
     try:
         if reglages:
             config_edit.update_layers(reglages, config_path, profil_path)
@@ -517,6 +542,8 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
             time.sleep(1.0)
         for ligne in suivre(chemin, lambda: deroule.fini or proc.poll() is not None):
             for a in deroule.lire(ligne):
+                if a.ts_jeu is not None:   # retard entre l'instant du jeu et la consigne dite
+                    retards.append((a.t_jeu or 0.0, time.time() - a.ts_jeu, a.texte))
                 sortie(a)
     finally:
         if proc is not None and proc.poll() is None:
@@ -532,6 +559,13 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
                 p.write_bytes(contenu)
     lignes = [f"[{dt.datetime.now():%Y-%m-%d %H:%M}] {fiche.id} : {deroule.i}/{len(fiche.etapes)} étapes, "
               f"{deroule.vus} vues, {deroule.sautes} jamais venues, {deroule.t:.0f} s de séance, cible {cible_w:.0f} W"]
+    for t_jeu, retard, texte in retards:
+        lignes.append(f"  t={t_jeu:5.0f} s  retard {retard:4.1f} s  {texte}")
+    if retards:
+        print(f"  Retard des consignes sur le jeu : au plus {max(r for _, r, _ in retards):.1f} s.")
+    for k, e in enumerate(fiche.etapes):
+        if k not in deroule.faites:
+            lignes.append(f"  jamais venue : {e.dire} (quand {e.quand})")
     for q in fiche.questions:
         try:
             r = input(f"  ? {q}\n    > ").strip()
@@ -542,6 +576,28 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
         fh.write("\n".join(lignes) + "\n\n")
     print(f"\n  Noté dans {essais / 'essais.txt'}.")
     return 0
+
+
+def rejouer(fiche: Fiche, journal: Path, cible_w: float = CIBLE_DEFAUT_W) -> list[str]:
+    """Rejoue un journal de séance réel dans le déroulé : instant de chaque consigne (temps de séance) et
+    étapes jamais venues ; le banc qui vérifie qu'une fiche suit vraiment le jeu."""
+    d = Deroule(fiche, cible_w)
+    out = []
+    with journal.open(encoding="utf-8") as fh:
+        for raw in fh:
+            try:
+                ligne = json.loads(raw)
+            except ValueError:
+                continue
+            for a in d.lire(ligne):
+                if a.sorte in ("consigne", "vu", "rappel", "terrain", "fin"):
+                    out.append(f"t={d.t:5.0f} s  [{a.sorte}] {a.texte}")
+            if d.fini:
+                break
+    for k, e in enumerate(fiche.etapes):
+        if k not in d.faites:
+            out.append(f"jamais venue : {e.dire} (quand {e.quand})")
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -556,6 +612,9 @@ def main(argv: list[str] | None = None) -> int:
     lc.add_argument("--sim", action="store_true", help="matériel simulé (essai à blanc, sans vélo)")
     lc.add_argument("--cible", type=float, help="cible en watts (défaut : moyenne réelle des 3 dernières séances)")
     lc.add_argument("--muet", action="store_true")
+    rj = sub.add_parser("rejouer", help="rejoue un journal de séance (.jsonl) : instant de chaque consigne")
+    rj.add_argument("id")
+    rj.add_argument("journal", type=Path)
     args = p.parse_args(argv)
     try:
         toutes = fiches()
@@ -576,6 +635,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {i}. quand {e.quand} : {e.dire}" + (f"  (attendu {e.attendu})" if e.attendu else ""))
         for q in f.questions:
             print(f"  ? {q}")
+        return 0
+    if args.cmd == "rejouer":
+        print("\n".join(rejouer(f, args.journal)))
         return 0
     return lancer(f, args.profil, args.sim, args.cible, args.muet)
 

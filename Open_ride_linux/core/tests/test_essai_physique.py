@@ -198,3 +198,65 @@ def test_run_rogue_sans_parcours_pas_de_mauvais_terrain():
 def test_fiches_livrees_coherentes():
     for f in EP.fiches().values():
         assert EP.incoherences(f) == [], f.id
+
+
+# --- synchronisation avec le jeu (essai du 21/11 : « fin de l'échauffement » jamais venue) --------------
+
+def test_phase_lines_of_the_run_reach_the_journal():
+    from openride_core.rogue.mode import journal_line
+    line = journal_line("rogue phase=ROOM step=2 t=361.0", 5.0, 361.0)
+    assert line["event"] == "phase" and line["phase"] == "ROOM" and line["step"] == 2
+    assert journal_line("rogue phase=BOSS step=9 t=900.0", 5.0, 900.0)["event"] == "boss_phase"
+
+
+def _source(rel):
+    from pathlib import Path
+    import openride_core
+    return (Path(openride_core.__file__).parent / rel).read_text(encoding="utf-8")
+
+
+def test_known_events_are_written_by_the_game():
+    import re
+    gp = set(re.findall(r'self\._log\("(\w+)"', _source("grandprix/mode.py")))
+    from pathlib import Path
+    import openride_core
+    track = set()
+    for f in (Path(openride_core.__file__).parent / "track").glob("*.py"):
+        track |= set(re.findall(r'_emit\("(\w+)"', f.read_text(encoding="utf-8")))
+    assert EP.EVENEMENTS["gp"] <= gp | {"finish"}
+    assert EP.EVENEMENTS["track"] <= track
+    rogue = _source("rogue/mode.py")
+    for ev in EP.EVENEMENTS["rogue"]:
+        assert f'"{ev}"' in rogue, ev
+
+
+def test_unknown_trigger_is_refused():
+    data = {"id": "x", "but": "essai", "questions": ["note ?"],
+            "commandes": [{"cmd": "start_run", "args": {"objective": "endurance", "duration_min": 30}},
+                          {"cmd": "start", "args": {}}],
+            "etapes": [{"quand": {"kind": "rogue", "event": "warmup_end"}, "dire": "Go."}]}
+    with pytest.raises(EP.FicheError, match="n'écrit pas"):
+        EP.lire_fiche(data)
+
+
+def test_replay_of_a_journal_gives_each_consigne_at_its_game_time(tmp_path):
+    lignes = [{"kind": "header", "version": 1, "route_id": "demo-circuit", "source": "live"},
+              {"kind": "record", "t": 0.0, "distance": 0.0, "ts": 100.0},
+              {"kind": "event", "event": "start", "ts": 101.0}]
+    lignes += [{"kind": "record", "t": float(t), "distance": 7.0 * t, "ts": 101.0 + t} for t in range(1, 60)]
+    lignes.insert(30, {"kind": "gp", "event": "box", "rider": "me", "t": 26.0, "ts": 128.0})
+    lignes += [{"kind": "gp", "event": "use", "rider": "me", "t": 61.0, "ts": 162.0}]
+    j = tmp_path / "seance.jsonl"
+    j.write_text("\n".join(json.dumps(x) for x in lignes) + "\n", encoding="utf-8")
+    out = EP.rejouer(EP.fiches()["gp-voies"], j, 120.0)
+    assert out[0].startswith("t=    0 s  [consigne] C'est parti. 120 watts")
+    assert any("Objet. Z" in x and x.startswith("t=   27") for x in out)
+    assert any("Flèche gauche" in x and x.startswith("t=   36") for x in out)   # 250 m à t=36 s
+    assert any("[vu]" in x for x in out)
+    assert any(x.startswith("jamais venue : Objet. Colle") for x in out)
+
+
+def test_consigne_carries_the_game_instant():
+    d = EP.Deroule(fiche(), 100)
+    a = d.lire({"kind": "event", "event": "start", "ts": 123.5})[0]
+    assert a.ts_jeu == 123.5
