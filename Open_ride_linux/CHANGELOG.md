@@ -5,6 +5,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Réglages sans lignes inutiles (lot NI2)
+- Une seule place par réglage : les réglages du Dernier survivant, du Grand Prix, de la Course et de la séance conseillée ne se règlent plus que sur leur propre écran, plus dans Réglages › Séance.
+- Une ligne sans effet est cachée tant que le choix dont elle dépend la rend inutile (force, direction et rafales du vent, ressenti du vent, mois, cadence de départ, abri derrière les véhicules) ; la Difficulté n'apparaît plus à la pause d'une séance ERG ; le Thème n'apparaît qu'avec un pack de thème installé.
+- « Textures du décor » retiré : la taille des textures suit la Qualité graphique ; une valeur choisie avant est remise par défaut au lancement (copie `config.toml.bak`).
+- « Pilotage du trainer », « Ressenti du vent » et « Plafond des suppléments de pente » (ancien « Plafond du vent », il borne aussi l'abri et le gravel) passent dans Réglages › Avancé.
+
 ### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
 - En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
 - Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).
