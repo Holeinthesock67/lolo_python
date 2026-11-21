@@ -19,6 +19,13 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Voitures, camions, tracteurs et cyclistes du décor circulent aussi à rebours (lot N23) ; les montées du retour ont leurs panneaux d'approche, chiffres peints, spectateurs et parapentes (lot N24) ; les arches de bonus se comptent à rebours, une fois chacune par tour (lot N25).
 - Pendant un entraînement ERG ou un test de FTP, le bout d'un parcours en ligne fait demi-tour tout seul, sans arrêt (bandeau « Bout du parcours : demi-tour, l'entraînement continue ») ; une fois l'entraînement fini, le bout suivant termine la séance (lot N26).
 
+### Menus sans éléments inutiles (lot NI4)
+- « Session simulée » quitte l'accueil : elle se trouve en bas de Réglages › Appareils (« Revenir au matériel réel » en session simulée).
+- « Saisir du QWKcode (clavier) » est retiré de la liste des entraînements : « Créer un entraînement » couvre le besoin, et un fichier `.qwk` posé dans `~/OpenRide/Workouts/` est toujours lu.
+- « Décor vivant » est retiré de Réglages › Graphisme : le décor vivant est toujours actif, la Qualité graphique règle son coût ; un « non » choisi avant est remis par défaut au lancement (copie `config.toml.bak`).
+- Nouveau réglage « Son : oui / non » en tête de Réglages › Son : coupe tout le son d'un seul choix, les volumes sont gardés.
+- Cyber-Rogue : « Perfect Shifts » devient « Changements parfaits ».
+
 ### Réglages sans lignes inutiles (lot NI2)
 - Une seule place par réglage : les réglages du Dernier survivant, du Grand Prix, de la Course et de la séance conseillée ne se règlent plus que sur leur propre écran, plus dans Réglages › Séance.
 - Une ligne sans effet est cachée tant que le choix dont elle dépend la rend inutile (force, direction et rafales du vent, ressenti du vent, mois, cadence de départ, abri derrière les véhicules) ; la Difficulté n'apparaît plus à la pause d'une séance ERG ; le Thème n'apparaît qu'avec un pack de thème installé.
