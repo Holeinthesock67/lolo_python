@@ -337,9 +337,9 @@ def fit(gather, scatter, step: float, upper, lower, fixed=None, rounds: int = RO
         h = (w[lo_sel] * v[inv[lo_sel]]).sum(1)
         left_low = int((h < lim[lo_sel] - 1e-3).sum())
     out = {"lowered": int((changed & (v < v0)).sum()), "raised": int((changed & (v > v0)).sum()), "left_low": left_low}
-    # contrôle (comme `residual`) sur les points dont les trois coins sont libres, sans relire le maillage
+    # contrôle (comme `residual`, sans relire le maillage) sur tous les points, coins figés compris : ce que
+    # `controle_sol_route` compte sur les tuiles écrites (22/11 : le journal taisait les points d'un bord figé)
     for name, sel, sign in (("over", up_sel, 1.0), ("short", lo_sel, -1.0)):
-        sel = sel[free[inv[sel]].all(1)] if len(sel) else sel
         gap = sign * ((w[sel] * v[inv[sel]]).sum(1) - lim[sel]) if len(sel) else np.empty(0)
         out[name] = int((gap > 2e-3).sum())
         out[f"{name}_max_m"] = round(float(gap.max()), 3) if len(gap) else 0.0

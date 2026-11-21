@@ -92,14 +92,12 @@ def test_ground_follows_the_engaged_route_in_a_hard_open_world(tmp_path) -> None
     assert s.length_m > 8000.0                       # impasse au bout : demi-tour compris
     cut, (upper, lower) = s._ground_points()
     assert len(upper[0]) > 10_000
-    # Toutes les tuiles réglées sur la route engagée : rien. Celles que l'engine avait quand la route a changé près
-    # d'elles (la balade revient vers le cycliste après le demi-tour) attendent qu'il s'éloigne ; leur sol de carré
-    # (dégagé un peu plus large et plus bas que la route de l'arête) reste sous la chaussée.
-    assert s.ground_stale, "le scénario doit faire revenir la route près du cycliste"
-    chk = s.ground.check(upper, lower, set(s.ground.sources) - s.ground_stale)
+    # Toutes les tuiles de la balade, réglées sur la route engagée, y compris celles que l'engine avait quand la route a
+    # changé près d'elles (la balade revient vers le cycliste après le demi-tour ; 22/11 : l'engine les refait) : rien.
+    chk = s.ground.check(upper, lower)
     assert chk["over"] == 0 and chk["short"] == 0, (chk, [m for m in logs if "sol / route" in m])
-    stale = s.ground.check(upper, lower, s.ground_stale)
-    assert stale["over_max_m"] < 0.02, stale
+    # Le journal compte comme le contrôle (bords figés compris) : rien non plus.
+    assert s.stats["ground_short"] == 0, [m for m in logs if "sol / route" in m]
     # La tuile du carré seule (réglée sur ses arêtes) laisse du sol sur la route dessinée ou des talus sans appui :
     # le test distingue bien la règle de la balade.
     raw = {k: SG._read(p) for k, p in s.ground.sources.items()}

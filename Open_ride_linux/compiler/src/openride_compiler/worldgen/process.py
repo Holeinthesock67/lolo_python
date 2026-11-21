@@ -227,12 +227,11 @@ class WorldSession:
         self._landcover_thread: threading.Thread | None = None
         self.stats = {"squares_generated": 0, "squares_cached": 0, "far_generated": 0, "downloads": 0,
                       "bad_lines": 0, "biome_tiles": 0, "sea_squares": 0,
-                      "ground_fits": 0, "ground_over": 0, "ground_short": 0, "ground_skipped": 0}
+                      "ground_fits": 0, "ground_over": 0, "ground_short": 0}
         # Sol des tuiles réglé sur la route engagée (21/11, session_ground.py) : tuiles de la séance, abscisse la
         # plus loin de la route qui touchait chaque tuile à son dernier réglage, points de la règle en cache
         self.ground: SG.SessionGround | None = None
         self.ground_touch: dict[tuple[int, int], float] = {}
-        self.ground_stale: set[tuple[int, int]] = set()   # route changée près d'elles quand l'engine les avait
         self._ground_cache: tuple[Any, Any] | None = None
         self._last_evict = -math.inf
         self.data_state = "cached"
@@ -674,13 +673,6 @@ class WorldSession:
         self._ground_cache = (sig, (cut, pts, SG.touched_tiles(pts)))
         return cut, pts
 
-    def _ground_safe(self, k: tuple[int, int]) -> bool:
-        """Tuile que l'engine n'a pas pu charger : pas encore publiée, ou à plus de `SAFE_M` du cycliste."""
-        if not self.opened:
-            return True
-        rx, rz = self._rider_xz()
-        return SG.tile_distance(k, rx - self.e0, rz + self.n0) > SG.SAFE_M
-
     def _fit_ground(self, todo: set[tuple[int, int]], route: dict[str, Any] | None = None) -> None:
         if self.ground is None or not self.legs or not todo:
             return
@@ -711,12 +703,11 @@ class WorldSession:
             for dx in (-1, 0, 1):
                 for dz in (-1, 0, 1):
                     n = (k[0] + dx, k[1] + dz)
-                    if (n not in todo and n in touched and n in self.ground.sources and self._ground_safe(n)
+                    if (n not in todo and n in touched and n in self.ground.sources
                             and (ink & box(n)).any()):
                         extra.add(n)
         todo |= extra
         res = self.ground.fit(todo, upper, lower)
-        self.ground_stale -= todo
         x, z, s = (np.asarray(cut[k], dtype=float) for k in ("x", "z", "s"))
         for k in todo:
             ix, iz = k
@@ -724,7 +715,7 @@ class WorldSession:
             near = ((x >= ix * SG.TILE_M - m) & (x <= (ix + 1) * SG.TILE_M + m)
                     & (z >= iz * SG.TILE_M - m) & (z <= (iz + 1) * SG.TILE_M + m))
             self.ground_touch[k] = float(s[near].max()) if near.any() else -math.inf
-        chk = res                 # contrôle du réglage lui-même (sommets libres), sans relire les tuiles
+        chk = res                 # contrôle du réglage lui-même (tous les points des tuiles), sans relire les tuiles
         self.stats["ground_fits"] += res["tiles"]
         self.stats["ground_over"] += chk["over"]
         self.stats["ground_short"] += chk["short"]
@@ -734,8 +725,10 @@ class WorldSession:
                      f"{sorted(todo)}")
 
     def _refit_ground(self, route: dict[str, Any], s_change: float) -> None:
-        """Route engagée changée à partir de `s_change` : tuiles qu'elle touchait ou touche après ce point,
-        réglées de nouveau si l'engine ne les a pas chargées (plus de `SAFE_M` du cycliste)."""
+        """Route engagée changée à partir de `s_change` : tuiles qu'elle touchait ou touche après ce point, réglées de
+        nouveau tout de suite, même près du cycliste (22/11) : l'engine refait une tuile proche déjà affichée dont le
+        fichier change (`world_streamer.gd`, empreinte du fichier lu). Attendre que le cycliste s'éloigne laissait le
+        sol de l'ancienne route sous la nouvelle (banc du lac d'Annecy : talus sans appui jusqu'à 3,2 m)."""
         if self.ground is None or not self.ground.sources:
             return
         cut, _ = self._ground_points(route)
@@ -748,17 +741,7 @@ class WorldSession:
             if np.any(sel & (x >= ix * SG.TILE_M - m) & (x <= (ix + 1) * SG.TILE_M + m)
                       & (z >= iz * SG.TILE_M - m) & (z <= (iz + 1) * SG.TILE_M + m)):
                 todo.add(k)
-        safe = {k for k in todo if self._ground_safe(k)}
-        self.stats["ground_skipped"] += len(todo - safe - self.ground_stale)
-        self.ground_stale |= todo - safe
-        self._fit_ground(safe, route)
-
-    def _refit_stale(self) -> None:
-        """Tuiles laissées de côté (l'engine les avait quand la route a changé près d'elles), réglées dès que le
-        cycliste s'en est assez éloigné pour que l'engine les ait libérées."""
-        ready = {k for k in self.ground_stale if self._ground_safe(k)}
-        if ready:
-            self._fit_ground(ready)
+        self._fit_ground(todo, route)
 
     # --- progression et choix -------------------------------------------------------------------
 
@@ -767,7 +750,6 @@ class WorldSession:
             return
         self.s_m = max(0.0, s_m)
         self._retry_tiles()
-        self._refit_stale()
         old = self.length_m
         if self._extend():
             self._request_squares()
@@ -1021,8 +1003,7 @@ class WorldSession:
                  f"{self.stats['squares_cached']}, tuiles lointaines générées {self.stats['far_generated']}, "
                  f"téléchargements {downloads}, lignes illisibles {self.stats['bad_lines']}, "
                  f"tuiles réglées sur la route {self.stats['ground_fits']} (sol sur la chaussée "
-                 f"{self.stats['ground_over']}, talus sans appui {self.stats['ground_short']}, "
-                 f"trop près pour être reprises {self.stats['ground_skipped']}), "
+                 f"{self.stats['ground_over']}, talus sans appui {self.stats['ground_short']}), "
                  f"mémoire max {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024:.0f} Mo")
         self.closed = True
         self.send({"type": "closed"})

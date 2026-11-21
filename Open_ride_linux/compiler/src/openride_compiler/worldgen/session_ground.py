@@ -6,15 +6,17 @@ pris aux carrefours, le départ au milieu d'une arête et les boucles de retourn
 connaît pas. La balade a donc ses propres tuiles proches : copie de la tuile du carré, puis la même règle
 (`road_ground.py`) appliquée à la route engagée telle que l'engine la dessine, avant que l'engine ne lise la tuile.
 
-- Une tuile se règle quand elle arrive (avant d'être publiée), puis de nouveau quand la route engagée change près
-  d'elle, tant qu'elle est à plus de `SAFE_M` du cycliste : l'engine ne charge que les tuiles à moins de 1,5 km de la
-  caméra et d'un point 10 s devant (`world_streamer.gd` NEAR_RADIUS_M, LOOKAHEAD_S), libère les autres et relit le
-  fichier quand une tuile revient dans ce rayon.
+- Une tuile se règle quand elle arrive (avant d'être publiée), puis de nouveau dès que la route engagée change près
+  d'elle, même si l'engine l'affiche déjà (22/11) : l'engine relit une tuile proche dont le fichier a changé et
+  remplace son maillage quand le nouveau est prêt (`world_streamer.gd`, empreinte du fichier lu). Avant, une tuile à
+  moins de 2 km du cycliste attendait qu'il s'éloigne ; il roulait dessus avec le sol de l'ancienne route (banc du lac
+  d'Annecy : talus sans appui jusqu'à 3,2 m).
 - Chaque réglage repart de la tuile du carré : un choix de carrefour qui retire une route rend aussi son sol.
 - Un sommet partagé avec une tuile voisine qui n'est pas réglée en même temps garde la valeur de la voisine (bords
   communs identiques, pas de fente) ; les autres sommets compensent.
 - Contrôle : après chaque réglage, sol au-dessus de la chaussée et pieds de talus sans appui comptés sur la route
-  engagée (rendus par `road_ground.fit`, `check` relit les tuiles écrites), dans les statistiques de la séance et le
+  engagée, sur tous les points des tuiles réglées, bords figés compris (rendus par `road_ground.fit`, `check` relit les
+  tuiles écrites, comme `controle_sol_route`), dans les statistiques de la séance et le
   journal.
 
 Repère de la séance (x vers l'est, z vers le sud, tuile (ix, iz) de [1000 ix ; 1000 (ix + 1)] × [1000 iz ; …]).
@@ -32,7 +34,6 @@ from .. import constants as C
 from .. import road_ground as RG
 
 TILE_M = 1000.0
-SAFE_M = 2000.0              # au-delà, l'engine n'a pas la tuile (1,5 km autour de la caméra et de 10 s devant)
 REACH_M = RG.FOOT_OFFSET_M + 2 * TILE_M / (C.TILE_SAMPLES - 1)   # points de la règle qui touchent une tuile
 Key = tuple[int, int]
 
