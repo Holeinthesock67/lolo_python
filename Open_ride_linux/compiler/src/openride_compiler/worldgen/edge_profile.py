@@ -10,7 +10,10 @@ fondu du terrain de tous les carrés (W7) utilisent le même, donc le terrain ne
    de chaque côté pour sortir de la rampe d'accès ;
 4. lissage Savitzky-Golay de `pipeline.py` (moyenne glissante sur 3 points sous 11 points) ;
 5. raccord aux altitudes des nœuds par une rampe linéaire sur toute l'arête ;
-6. pente par différences centrées (environ 20 m), bornée à ± 25 % ; cap lissé sur environ 30 m.
+6. garde-fou d'altitude (`altitude_guard.py`, 21 novembre 2026) : relief lu réparé (trous, pics) avant le lissage,
+   puis profil ramené sous ± 15 % de pente et sous 4 % de changement de pente par pas de 10 m, pente des bouts
+   à celle du nœud dans le sens de l'arête, altitudes des nœuds inchangées ;
+7. pente par différences centrées (environ 20 m), bornée à ± 15 % (`AG.GRADE_MAX_PCT`) ; cap lissé sur environ 30 m.
 
 Tout en numpy, sans entrée-sortie.
 """
@@ -27,9 +30,10 @@ from .. import constants as C
 from ..elevation import ElevationProvider
 from ..frame import LocalFrame
 from ..pipeline import _grade, _heading, _smooth_altitude, sample_positions
+from . import altitude_guard as AG
 from .graph import Edge
 
-EDGE_PROFILE_VERSION = 1
+EDGE_PROFILE_VERSION = 2          # 2 : garde-fou d'altitude (altitude_guard.py)
 SPAN_MARGIN_M = 10.0
 NODE_RADIUS_M = 10.0
 PART_M = 1000.0
@@ -37,7 +41,8 @@ COLUMNS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
 
 
 class NodeAltitudes:
-    """Altitude de chaque nœud : moyenne du relief au nœud et en 4 points à 10 m, gardée par identifiant.
+    """Altitude de chaque nœud : moyenne du relief au nœud et en 4 points à 10 m, gardée par identifiant ; et pente
+    du relief au nœud (gradient en m/m sur ces mêmes points, `grade`), pente visée au bout des arêtes.
 
     Deux arêtes qui se touchent lisent la même valeur au nœud commun.
     """
@@ -46,20 +51,47 @@ class NodeAltitudes:
         self.provider = provider
         self.frame = frame
         self.values: dict[int, float] = {}
+        self.gradients: dict[int, tuple[float, float]] = {}
+
+    def _read(self, node_id: int, x: float, z: float) -> None:
+        if node_id not in self.values:
+            alt, grad = node_sample((x, z), self.provider, self.frame)
+            self.values[node_id] = alt
+            self.gradients[node_id] = grad
 
     def __call__(self, node_id: int, x: float, z: float) -> float:
-        if node_id not in self.values:
-            self.values[node_id] = node_altitude((x, z), self.provider, self.frame)
+        self._read(node_id, x, z)
         return self.values[node_id]
+
+    def grade(self, node_id: int, x: float, z: float, dx: float, dz: float) -> float:
+        """Pente du relief au nœud (%) dans la direction (dx, dz)."""
+        self._read(node_id, x, z)
+        return AG.node_grade(*self.gradients[node_id], dx, dz)
+
+
+def _node_points(xz: tuple[float, float]) -> tuple[np.ndarray, np.ndarray]:
+    x, z = xz
+    r = NODE_RADIUS_M
+    return np.array([x, x + r, x - r, x, x]), np.array([z, z, z, z + r, z - r])
+
+
+def node_sample(xz: tuple[float, float], provider: ElevationProvider,
+                frame: LocalFrame) -> tuple[float, tuple[float, float]]:
+    """(altitude, gradient (gx, gz) en m/m) du relief au point : moyenne et différences centrées sur 5 points.
+    Valeurs absentes de la source remplacées par la moyenne des autres (garde-fou d'altitude)."""
+    xs, zs = _node_points(xz)
+    lat, lon = frame.to_latlon(xs, zs)
+    h = np.asarray(provider.elevations(lat, lon), dtype=float)
+    ok = np.isfinite(h) & (h >= AG.ALT_MIN_M) & (h <= AG.ALT_MAX_M)
+    if not ok.any():
+        raise ValueError("relief absent au nœud")
+    h = np.where(ok, h, float(h[ok].mean()))
+    r = NODE_RADIUS_M
+    return float(np.mean(h)), (float((h[1] - h[2]) / (2 * r)), float((h[3] - h[4]) / (2 * r)))
 
 
 def node_altitude(xz: tuple[float, float], provider: ElevationProvider, frame: LocalFrame) -> float:
-    x, z = xz
-    r = NODE_RADIUS_M
-    xs = np.array([x, x + r, x - r, x, x])
-    zs = np.array([z, z, z, z + r, z - r])
-    lat, lon = frame.to_latlon(xs, zs)
-    return float(np.mean(provider.elevations(lat, lon)))
+    return node_sample(xz, provider, frame)[0]
 
 
 @dataclass(frozen=True)
@@ -76,6 +108,7 @@ class EdgeProfile:
     clamped_points: int
     versions: dict[str, Any] = field(default_factory=dict)
     forward: bool = True
+    guard: AG.GuardStats = AG.GuardStats()     # garde-fou d'altitude : ce qu'il a corrigé
 
     @property
     def length_m(self) -> float:
@@ -110,7 +143,7 @@ def edge_profile(edge: Edge, provider: ElevationProvider, frame: LocalFrame,
     s = sample_positions(length)
     x, z = _resample(edge.points, s)
     lat, lon = frame.to_latlon(x, z)
-    alt = np.asarray(provider.elevations(lat, lon), dtype=float).copy()
+    alt, read_stats = AG.repair(np.asarray(provider.elevations(lat, lon), dtype=float))   # 6. relief lu réparé
 
     for s0, s1, _kind in edge.spans:                                    # 3. ponts et tunnels
         a, b = max(0.0, s0 - SPAN_MARGIN_M), min(length, s1 + SPAN_MARGIN_M)
@@ -128,12 +161,20 @@ def edge_profile(edge: Edge, provider: ElevationProvider, frame: LocalFrame,
     db = node_alt(edge.raw_b, xb, zb) - alt[-1]
     alt = alt + da + (db - da) * (s / length if length > 0 else 0.0)
 
-    grade = _grade(alt, s, False)                                       # 6.
-    clamped = int(np.count_nonzero(np.abs(grade) > C.GRADE_LIMIT_PCT))
-    grade = np.clip(grade, -C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT)
+    t0 = t1 = None                                                      # 6. garde-fou d'altitude
+    if len(s) >= 2:
+        t0 = node_alt.grade(edge.raw_a, xa, za, x[1] - x[0], z[1] - z[0])
+        t1 = node_alt.grade(edge.raw_b, xb, zb, x[-1] - x[-2], z[-1] - z[-2])
+    alt, guard_stats = AG.guard(alt, s, t0, t1)
+
+    grade = _grade(alt, s, False)                                       # 7.
+    clamped = int(np.count_nonzero(np.abs(grade) > AG.GRADE_MAX_PCT))
+    grade = np.clip(grade, -AG.GRADE_MAX_PCT, AG.GRADE_MAX_PCT)
     heading = _heading(x, z, False)
-    versions = {"edge_profile": EDGE_PROFILE_VERSION, "relief": getattr(provider, "name", "inconnu")}
-    return EdgeProfile(edge.id, s, x, z, alt, grade, heading, np.asarray(lat), np.asarray(lon), clamped, versions)
+    versions = {"edge_profile": EDGE_PROFILE_VERSION, "altitude_guard": AG.GUARD_VERSION,
+                "relief": getattr(provider, "name", "inconnu")}
+    return EdgeProfile(edge.id, s, x, z, alt, grade, heading, np.asarray(lat), np.asarray(lon), clamped, versions,
+                       guard=read_stats.merged(guard_stats))
 
 
 # Boucle de retournement au bout d'une impasse (14 novembre) : arc d'entrée à droite de rayon TURN_ENTRY_M,
@@ -179,11 +220,14 @@ def with_turnaround(back: EdgeProfile, prev_xz: tuple[float, float], provider: E
     s = sample_positions(float(cum[-1]))
     x, z = np.interp(s, cum, pts[:, 0]), np.interp(s, cum, pts[:, 1])
     lat, lon = frame.to_latlon(x, z)
-    alt = np.asarray(provider.elevations(lat, lon), dtype=float)
+    alt, read_stats = AG.repair(np.asarray(provider.elevations(lat, lon), dtype=float))
     alt = _smooth_altitude(alt, s) if len(s) >= C.SAVGOL_WINDOW else _moving_average_3(alt)
     end = float(back.alt_m[0])                           # rampe : entrée et sortie à l'altitude du bout de l'impasse
     alt = alt + (end - alt[0]) * (1.0 - s / s[-1]) + (end - alt[-1]) * (s / s[-1])
-    grade = np.clip(_grade(alt, s, False), -C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT)
+    # Garde-fou d'altitude : la boucle part et revient avec la pente de l'impasse à son bout (raccords sans cassure).
+    arrive = -float(back.grade_pct[0]) if len(back.s) >= 2 else None   # pente en arrivant au bout, à l'aller
+    alt, guard_stats = AG.guard(alt, s, arrive, None if arrive is None else -arrive)
+    grade = np.clip(_grade(alt, s, False), -AG.GRADE_MAX_PCT, AG.GRADE_MAX_PCT)
     heading = _heading(x, z, False)
     n = float(s[-1])
     return replace(back,
@@ -193,7 +237,8 @@ def with_turnaround(back: EdgeProfile, prev_xz: tuple[float, float], provider: E
                    heading_deg=np.concatenate([heading, back.heading_deg[1:]]),
                    lat=np.concatenate([np.asarray(lat), back.lat[1:]]),
                    lon=np.concatenate([np.asarray(lon), back.lon[1:]]),
-                   versions={**back.versions, "turnaround": 1})
+                   versions={**back.versions, "turnaround": 1},
+                   guard=back.guard.merged(read_stats.merged(guard_stats)))
 
 
 def concat(profiles: Iterable[EdgeProfile], s0: float = 0.0) -> dict[str, Any]:
@@ -218,7 +263,7 @@ def concat(profiles: Iterable[EdgeProfile], s0: float = 0.0) -> dict[str, Any]:
     out: dict[str, Any] = {"length_m": offset}
     for name in ("x", "z", "alt_m", "lat", "lon"):
         out[name] = np.interp(s, joined["s"], joined[name])
-    g = np.clip(_grade(out["alt_m"], s, False), -C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT)
+    g = np.clip(_grade(out["alt_m"], s, False), -AG.GRADE_MAX_PCT, AG.GRADE_MAX_PCT)
     out["grade_pct"] = g
     out["heading_deg"] = _heading(out["x"], out["z"], False)
     out["s"] = s + s0
