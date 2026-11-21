@@ -4,10 +4,12 @@
 
 Meilleure puissance moyenne (MMP) sur 3, 5, 8, 12 et 20 min dans les journaux `.jsonl` et les `.fit`
 des 90 derniers jours, puis modèle à deux paramètres travail = CP × t + W' par régression linéaire.
+Depuis le lot PP1, les meilleures puissances viennent de la courbe de `power_curve` (même cache par
+séance, version 2) : une fenêtre ne traverse plus une pause ni une coupure du trainer.
 L'estimation n'est acceptée que si elle est fiable (au moins 3 durées, R² ≥ 0,98, CP entre 0,8 et
 1,2 × FTP, W' entre 5 et 40 kJ) ; sinon la raison est donnée. Elle suppose des efforts maximaux : elle
 est basse si l'historique n'en contient pas. Les séances rejouées sont exclues. Rien n'est écrit en
-dehors du cache `~/.cache/openride/mmp.json` ; la configuration n'est jamais modifiée.
+dehors du cache des meilleures puissances du profil (`Profils/<id>/.cache/mmp.json`) ; la configuration n'est jamais modifiée.
 
 Clés de la sortie `--json` (stables) : directory, ftp_w, days, sessions, estimate (null ou {cp_w,
 w_prime_j, r2, durations: [{seconds, mmp_w, date}]}), reason (null ou texte), warning.
@@ -25,8 +27,8 @@ from typing import Any
 
 from .. import config as config_mod
 from .. import profiles
-from .history import MATCH_TOLERANCE_S, _discover_files, _header_of
-from .session_summary import SummaryError, load_session, running_records
+from . import power_curve
+from .history import MATCH_TOLERANCE_S
 
 DURATIONS_S = (180, 300, 480, 720, 1200)
 MIN_DURATIONS = 3
@@ -34,20 +36,13 @@ MIN_R2 = 0.98
 CP_RANGE = (0.8, 1.2)               # en fraction de la FTP
 WPRIME_RANGE_J = (5000.0, 40000.0)
 DEFAULT_DAYS = 90
-CACHE_PATH = Path.home() / ".cache" / "openride" / "mmp.json"
+CACHE_PATH = power_curve.CACHE_PATH   # cache commun avec la courbe de puissance (lot PP1, version 2)
 WARNING = ("L'estimation suppose des efforts maximaux : elle est basse si l'historique n'en contient pas.")
 
 
 def mmp(powers: list[float], durations: tuple = DURATIONS_S) -> dict[int, float]:
-    """Meilleure puissance moyenne pour chaque durée (échantillons à 1 Hz) ; absente si la série est plus courte."""
-    cums = [0.0]
-    for p in powers:
-        cums.append(cums[-1] + p)
-    out = {}
-    for d in durations:
-        if len(powers) >= d:
-            out[d] = max(cums[i + d] - cums[i] for i in range(len(powers) - d + 1)) / d
-    return out
+    """Meilleure puissance moyenne pour chaque durée sur une série continue à 1 Hz (`power_curve.best_means`)."""
+    return power_curve.best_means(powers, durations)
 
 
 def fit_cp_model(points: list[tuple[float, float]]) -> tuple[float, float, float]:
@@ -64,72 +59,19 @@ def fit_cp_model(points: list[tuple[float, float]]) -> tuple[float, float, float
     return cp, wp, (1.0 - ss_res / ss_tot) if ss_tot > 0 else 1.0
 
 
-def _load_cache(path: Path) -> dict:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(data, dict) and isinstance(data.get("entries"), dict):
-            return data["entries"]
-    except Exception:
-        pass
-    return {}
-
-
-def _save_cache(path: Path, entries: dict) -> None:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"version": 1, "entries": entries}), encoding="utf-8")
-    except Exception:
-        pass
-
-
-def _session_mmp(path: Path, entries: dict) -> tuple[dict | None, bool]:
-    """MMP d'une séance, depuis le cache si le fichier n'a pas changé ; `(entrée, cache_modifié)`."""
-    try:
-        st = path.stat()
-        key = str(path.resolve())
-    except OSError:
-        return None, False
-    cached = entries.get(key)
-    if isinstance(cached, dict) and cached.get("size") == st.st_size and cached.get("mtime_ns") == st.st_mtime_ns:
-        return cached, False
-    entry: dict[str, Any] = {"size": st.st_size, "mtime_ns": st.st_mtime_ns, "start_ts": None, "replay": False,
-                             "mmp": {}}
-    try:
-        session = load_session(path)
-        recs = running_records(session.records, session.events)
-        powers = [float(r.get("power") or 0.0) for r in recs]
-        entry["start_ts"] = float(session.records[0]["ts"])
-        entry["mmp"] = {str(d): w for d, w in mmp(powers).items()}
-    except (SummaryError, OSError, ValueError, KeyError):
-        entry["error"] = True
-    if path.suffix.lower() == ".jsonl":
-        entry["replay"] = _header_of(path).get("source") == "replay"
-    entries[key] = entry
-    return entry, True
-
-
 def estimate(directory: Path | None = None, ftp_w: float = 250.0, days: int = DEFAULT_DAYS,
              cache_path: Path | None = None, now: float | None = None) -> dict[str, Any]:
     ctx = profiles.current()   # séances et cache du profil en cours (série MJ, lot MJ1)
     act_dir = Path(directory) if directory is not None else ctx.activities_dir
     cpath = Path(cache_path) if cache_path is not None else ctx.mmp_cache
     now = time.time() if now is None else now
-    entries = _load_cache(cpath)
-    dirty = False
-    sessions = []
-    fits, jsonls = _discover_files(act_dir)
-    for p in fits + jsonls:
-        e, changed = _session_mmp(p, entries)
-        dirty = dirty or changed
-        if e is not None and e.get("start_ts") is not None:
-            sessions.append((p, e))
-    if dirty:
-        _save_cache(cpath, entries)
+    sessions = [(p, e) for p, e in power_curve.session_entries(act_dir, cpath)
+                if e.get("start_ts") is not None and not e.get("error")]
 
-    replays = [e["start_ts"] for _, e in sessions if e.get("replay")]
+    replays = [e["start_ts"] for _, e in sessions if e.get("source") == "replay"]
     kept = []
     for p, e in sessions:
-        if e.get("replay"):
+        if e.get("source") == "replay":
             continue
         if any(abs(e["start_ts"] - t) <= MATCH_TOLERANCE_S for t in replays):    # .fit d'une séance rejouée
             continue
@@ -139,8 +81,10 @@ def estimate(directory: Path | None = None, ftp_w: float = 250.0, days: int = DE
 
     best: dict[int, tuple[float, float]] = {}
     for e in kept:
-        for d_str, w in e["mmp"].items():
-            d = int(d_str)
+        for d in DURATIONS_S:
+            w = e["all"].get(str(d))
+            if w is None:
+                continue
             if d not in best or w > best[d][0]:
                 best[d] = (w, e["start_ts"])
     result: dict[str, Any] = {"directory": str(act_dir), "ftp_w": ftp_w, "days": days, "sessions": len(kept),
