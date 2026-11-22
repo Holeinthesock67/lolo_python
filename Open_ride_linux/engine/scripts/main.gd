@@ -1524,6 +1524,16 @@ func _poll_route_job() -> void:
 	_load_plan.start([
 		["vidage", _load_clear],
 		["streamer", _load_streamer.bind(job)],
+		["suite", _load_rest.bind(job)],
+	])
+
+
+## Étape « suite » du chargement : les parties légères (quelques ms chacune au banc #981), dans une seule image, chacune
+## notée dans la sonde (« chargement <partie> ») et dans la ligne « Phases du chargement ». Sous un rendu lent (Xvfb,
+## lavapipe), chaque image après le streamer prend plusieurs secondes : une étape par partie retardait le parcours d'une
+## minute dans les tests graphiques.
+func _load_rest(job: Dictionary) -> void:
+	var parts: Array = [
 		["velodrome", _load_velodrome],
 		["ciel", func(): _apply_sky_params(streamer._theme_dict)],
 		["decor", _load_decor.bind(job)],
@@ -1531,8 +1541,14 @@ func _poll_route_job() -> void:
 		["segments", _load_segments.bind(job)],
 		["menu", _load_menu],
 		["fenetre", func(): streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))],
-		["fin", _load_end.bind(job)],
-	])
+	]
+	for part in parts:
+		var t0 := Time.get_ticks_usec()
+		(part[1] as Callable).call()
+		var ms := (Time.get_ticks_usec() - t0) / 1000.0
+		PerfProbe.mark("chargement", str(part[0]), ms)
+		(_load_phases["list"] as Array).append("%s %.0f" % [part[0], ms])
+	_load_end(job)
 
 
 ## Une image : une étape du chargement, sinon une étape du préchauffage, jamais les deux (lot AC5), et aucune si

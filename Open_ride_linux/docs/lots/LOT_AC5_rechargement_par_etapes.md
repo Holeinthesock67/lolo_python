@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| À-coups du rechargement : chargement d'un parcours en dix étapes du plan unique, une par image, pas d'étape dans une image déjà chargée ; spectateurs et passants préchauffés un MultiMesh par image | GDScript | PI2, AC4 | Petite | En cours (codé le 22 novembre, banc PC à faire) |
+| À-coups du rechargement : chargement d'un parcours en trois étapes (vidage, streamer, suite), une par image, pas d'étape dans une image déjà chargée ; spectateurs et passants préchauffés un MultiMesh par image | GDScript | PI2, AC4 | Petite | En cours (codé le 22 novembre, banc PC à faire) |
 
 Suite du lot AC4 (fil global « Supprimer les à-coups récurrents de main », 22/11).
 
@@ -21,12 +21,15 @@ Suite du lot AC4 (fil global « Supprimer les à-coups récurrents de main », 2
 
 ## Correction (une seule voie)
 - `main.gd _poll_route_job` : le parcours lu par la tâche de fond est posé par le plan du chargement (`_load_plan`,
-  même classe que le préchauffage, type « chargement » dans la sonde), en dix étapes jouées une par image :
-  vidage, streamer, velodrome, ciel, decor, portiques_gp (qui lance le plan de préchauffage), segments, menu,
-  fenetre, fin. Mêmes appels qu'avant, dans le même ordre. Le décor de route est caché du vidage à l'étape decor.
+  même classe que le préchauffage, type « chargement » dans la sonde), en trois étapes jouées une par image :
+  « vidage » (monde d'avant libéré, décor de route caché), « streamer » (nouveau monde), « suite » (velodrome, ciel,
+  decor, portiques_gp qui lance le préchauffage, segments, menu, fenetre, fin : quelques ms en tout, chaque partie
+  notée « chargement <partie> »). Mêmes appels qu'avant, dans le même ordre. Une étape par partie (dix images) a été
+  essayée : sous Xvfb chaque image après le streamer prend plusieurs secondes, le parcours arrivait une minute plus
+  tard et 6 vérifications des tests graphiques échouaient (CI de la tête 069e1444).
 - `_step_loading` : une image joue une étape du chargement, sinon une étape du préchauffage, jamais les deux.
   `warmup_plan.gd may_step` : si le fil principal a déjà travaillé plus de 12 ms dans l'image (menu affiché), l'étape
-  attend l'image suivante, au plus 4 images de suite. Un chargement remplacé par une autre demande (ou une run
+  attend l'image suivante, une fois au plus. Un chargement remplacé par une autre demande (ou une run
   Cyber-Rogue) est abandonné ; le départ attend aussi la fin du chargement (`_step_start_wait`).
 - `crowd_renderer.gd warm_steps(camera)` : une étape par MultiMesh (`spectateurs 0…`, `passants 0…`), chacune ne
   montre que le sien devant la caméra ; `warm_up(camera)` garde le préchauffage de tous d'un coup (tests).

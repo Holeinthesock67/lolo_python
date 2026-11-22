@@ -23,9 +23,10 @@ const PerfProbe := preload("res://scripts/perf_probe.gd")
 ## sans bloquer le fil principal. Les étapes suivantes attendent leur tour, et le départ la fin du plan.
 const ATTENTE := "attente"
 ## Image déjà chargée (lot AC5) : au-delà de BUSY_MS de travail du fil principal avant l'étape (affichage d'un menu,
-## par exemple l'écran de fin d'une run), l'étape attend l'image suivante, au plus MAX_SKIPS images de suite.
+## par exemple l'écran de fin d'une run), l'étape attend l'image suivante, une fois au plus (MAX_SKIPS) : l'image
+## lente isolée (bilan) est évitée, sans ralentir le plan quand toutes les images sont lentes (Xvfb, low).
 const BUSY_MS := 12.0
-const MAX_SKIPS := 4
+const MAX_SKIPS := 1
 ## Type de l'étape notée dans la sonde : « préchauffage », ou « chargement » pour le plan du chargement (lot AC5).
 var kind := "préchauffage"
 var _skips := 0
