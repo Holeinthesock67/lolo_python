@@ -15,8 +15,9 @@ moins 3 m) :
 - MNT synthétique = `y_route` jusqu'à 25 m, puis passage progressif vers `y_lisse` (25 à 45 m),
   plus les collines, qui montent de 0 à leur pleine amplitude entre 45 et 445 m ;
 - fondu du format §5 (simplifié, linéaire) : `y_route − 0,05` jusqu'à 4 m, MNT au-delà de 25 m ;
-- garde-fou de la chaussée (`clear_road`, comme le compilateur) : aucun triangle du maillage proche ne
-  dépasse la route moins 5 cm, même là où la pente change.
+- règle unique sol / route (`road_ground.py`, jumelle de celle du compilateur, 21/11) : sur la route telle que
+  l'engine la dessine (Catmull-Rom), aucun triangle du maillage proche ne dépasse la chaussée moins 5 cm, et le
+  sol au pied des talus de l'engine est assez haut pour les porter.
 """
 
 from __future__ import annotations
@@ -25,6 +26,8 @@ import json
 import math
 import struct
 from pathlib import Path
+
+from . import road_ground
 
 TILE_SAMPLES = 101                  # échantillons par côté d'une tuile (format §5)
 ROAD_HALF_WIDTH_M = 3.0             # demi-largeur de chaussée
@@ -234,41 +237,17 @@ def road_samples(route: dict, half_width: float = ROAD_HALF_WIDTH_M,
 
 def clear_road(tiles: dict[tuple[int, int], list[float]], route: dict, cell: float = NEAR[1],
                sink: float = TERRAIN_BELOW_ROAD_M) -> int:
-    """Abaisse sur place, juste ce qu'il faut, les sommets des triangles (découpage de terrain_tiles.gd
-    `mesh_height_at` : diagonale de (i + 1, j) à (i, j + 1)) qui dépassent la chaussée moins `sink`, puis
-    recopie le minimum sur les bords communs des tuiles. Rend le nombre de sommets abaissés."""
-    cells = TILE_SAMPLES - 1
-    lowered: set[tuple[int, int, int]] = set()
-    for px, pz, pa in road_samples(route):
-        fx, fz = px / cell, pz / cell
-        gi, gj = math.floor(fx), math.floor(fz)
-        u, v = fx - gi, fz - gj
-        ti, tj = gi // cells, gj // cells
-        g = tiles.get((ti, tj))
-        if g is None:
-            continue
-        i, j = gi - ti * cells, gj - tj * cells
-        if u + v <= 1.0:
-            corners = ((i, j, 1.0 - u - v), (i + 1, j, u), (i, j + 1, v))
-        else:
-            corners = ((i + 1, j + 1, u + v - 1.0), (i, j + 1, 1.0 - u), (i + 1, j, 1.0 - v))
-        idx = [(cj * TILE_SAMPLES + ci, w) for ci, cj, w in corners]
-        top = pa - sink
-        hp = sum(w * g[k] for k, w in idx)
-        if hp <= top + 1e-4:
-            continue
-        # Chaque coin au-dessus de la limite descend en proportion de son dépassement (les coins déjà sous
-        # la route ne bougent pas) ; abaisser ne remonte jamais un autre point : un seul passage suffit.
-        lim = top - 1e-3
-        over = sum(w * (g[k] - lim) for k, w in idx if g[k] > top)
-        alpha = min((hp - lim) / over, 1.0) if over > 0.0 else 1.0
-        for k, w in idx:
-            if w > 0.0 and g[k] > top:
-                g[k] = g[k] - alpha * (g[k] - lim)
-                lowered.add((ti, tj, k))
-    if lowered:
-        _sync_edges(tiles)
-    return len(lowered)
+    """Sol sous la chaussée de la route de l'engine seule, sans talus (règle unique `road_ground.py`, 21/11) ; rend le
+    nombre de sommets abaissés."""
+    upper, _ = road_ground.corridor(route, sink)
+    return road_ground.fit_tiles(tiles, cell, upper, [])["lowered"]
+
+
+def fit_ground(tiles: dict[tuple[int, int], list[float]], route: dict, cell: float = NEAR[1]) -> dict:
+    """Règle unique sol / route (`road_ground.py`, 21/11) : route telle que l'engine la dessine, sol sous la chaussée
+    et les bas-côtés, pieds des talus appuyés ; bords communs des tuiles identiques."""
+    upper, lower = road_ground.corridor(route, TERRAIN_BELOW_ROAD_M)
+    return road_ground.fit_tiles(tiles, cell, upper, lower)
 
 
 def _sync_edges(tiles: dict[tuple[int, int], list[float]]) -> None:
@@ -290,14 +269,14 @@ def _sync_edges(tiles: dict[tuple[int, int], list[float]]) -> None:
 
 def build_tiles(route: dict, level: tuple[str, float, float, float],
                 terrain: SyntheticTerrain | None = None) -> dict[tuple[int, int], list[float]]:
-    """Tuiles d'un niveau, terrain proche dégagé sous la chaussée (`clear_road`). Les valeurs sont arrondies
+    """Tuiles d'un niveau, terrain proche réglé sur la route (`fit_ground`). Les valeurs sont arrondies
     en float32 avant le garde-fou, comme dans le fichier, pour que la comparaison porte sur ce qui est écrit."""
     terrain = terrain or SyntheticTerrain(route)
     n = TILE_SAMPLES * TILE_SAMPLES
     tiles = {key: list(struct.unpack(f"<{n}f", struct.pack(f"<{n}f", *terrain.tile_values(level, *key))))
              for key in terrain.tiles_for(level)}
     if level[0] == NEAR[0]:
-        clear_road(tiles, route, level[1])
+        fit_ground(tiles, route, level[1])
     return tiles
 
 

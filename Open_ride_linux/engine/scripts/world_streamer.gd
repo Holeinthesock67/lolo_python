@@ -126,6 +126,13 @@ var _instances: Dictionary = {}      # clé -> MeshInstance3D
 var _jobs: Dictionary = {}           # clé -> {task, arrays, origin, gen}
 var _ready: Array = []               # travaux terminés, à instancier : {key, arrays, origin}
 var _generation := 0
+## Monde ouvert (22/11, règle sol / route) : le générateur règle de nouveau le sol d'une tuile proche quand la route
+## engagée change près d'elle, même affichée. Empreinte (MD5) du fichier lu pour chaque tuile proche construite ;
+## à chaque révision (`swap_route`) et avant d'afficher un maillage, fichier relu : s'il a changé, la tuile est
+## refaite en tâche de fond et l'ancien maillage reste affiché jusqu'au nouveau (pas de trou).
+var _near_md5: Dictionary = {}       # clé "near:x:z" -> empreinte du fichier du maillage affiché
+var _stale_near: Dictionary = {}     # clé -> vrai : fichier réécrit, maillage à refaire
+var _live_tiles := false             # vrai dès la première révision : tuiles proches susceptibles de changer
 var _road_material: Material
 ## Lot P17 : marquages de P14 (`set_road_markings`), un matériau par tronçon qui porte des chiffres
 ## peints (`set_road_marks`), chaussée mouillée (`set_road_wetness`).
@@ -382,8 +389,27 @@ func swap_route(new_route, from_part: int) -> void:
 				_biome_tile_arrived("far", t)
 			_far_index[t] = true
 		has_terrain = not (_near_index.is_empty() and _far_index.is_empty())
+		_live_tiles = true
+		_mark_rewritten_near()
 	if osm_streamer != null:
 		osm_streamer.swap_route(new_route, from_part)
+
+
+## Tuiles proches affichées dont le fichier a changé depuis leur construction : à refaire (voir `_near_md5`).
+func _mark_rewritten_near() -> void:
+	for key in _near_md5:
+		if _instances.has(key) and _near_file_md5(key) != _near_md5[key]:
+			_stale_near[key] = true
+
+
+func _near_file_md5(key: String) -> String:
+	var parts := key.split(":")
+	return FileAccess.get_md5(TerrainTiles.tile_path(world_dir, "near", int(parts[1]), int(parts[2])))
+
+
+## Tuiles proches à refaire (fichier réécrit par le générateur), pour les tests.
+func stale_near_count() -> int:
+	return _stale_near.size()
 
 
 ## Tuile de terrain arrivée en cours de séance (monde vivant) : sa tuile de biome, liée avant elle par le
@@ -465,6 +491,8 @@ func clear() -> void:
 	_jobs.clear()
 	_ready.clear()
 	_wanted.clear()
+	_stale_near.clear()
+	_live_tiles = false
 	for key in _instances.keys():
 		_free_instance(key)
 	for key in _previews.keys():
@@ -638,7 +666,7 @@ func _start_jobs() -> void:
 		queued[r["key"]] = true
 	var todo := []
 	for key in _wanted:
-		if not _instances.has(key) and not _jobs.has(key) and not queued.has(key):
+		if (not _instances.has(key) or _stale_near.has(key)) and not _jobs.has(key) and not queued.has(key):
 			todo.append(key)
 	todo.sort_custom(func(a, b): return float(_wanted[a]["dist"]) < float(_wanted[b]["dist"]))
 	for key in todo:
@@ -647,7 +675,8 @@ func _start_jobs() -> void:
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
 			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
 			"gravel": {"mode": gravel_mode, "surfaces": _surfaces, "look": _road_look()},
-			"near_index": _near_index, "far_index": _far_index}
+			"near_index": _near_index, "far_index": _far_index, "rebuild": _instances.has(key)}
+		_stale_near.erase(key)
 		job["task"] = BgTasks.add(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
 
@@ -671,6 +700,8 @@ func _build_job(job: Dictionary) -> void:
 			job["skirt_arrays"] = [] if RoadBuilder.is_track(r) else RoadBuilder.build_skirt_arrays(job["arrays"])
 		"near", "far":
 			var t: Vector2i = spec["tile"]
+			if spec["kind"] == "near":   # avant la lecture : un fichier remplacé entre les deux sera refait
+				job["md5"] = FileAccess.get_md5(TerrainTiles.tile_path(job["world_dir"], "near", t.x, t.y))
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
 			if heights.is_empty():
 				return
@@ -746,7 +777,10 @@ func _poll_jobs(wait: bool) -> void:
 		BgTasks.wait(job["task"])
 		_jobs.erase(key)
 		if job["gen"] == _generation and _wanted.has(key) and not (job["arrays"] as Array).is_empty():
-			var ready_item := {"key": key, "arrays": job["arrays"], "origin": job["origin"], "kind": job["spec"]["kind"]}
+			var ready_item := {"key": key, "arrays": job["arrays"], "origin": job["origin"], "kind": job["spec"]["kind"],
+				"rebuild": job.get("rebuild", false)}
+			if job.has("md5"):
+				ready_item["md5"] = job["md5"]
 			if job.has("trees_data"):
 				ready_item["trees_data"] = job["trees_data"]
 			if job.has("forest_heights"):
@@ -769,8 +803,16 @@ func integrate(max_new: int) -> int:
 	var created := 0
 	while created < max_new and not _ready.is_empty():
 		var r: Dictionary = _ready.pop_front()
-		if not _wanted.has(r["key"]) or _instances.has(r["key"]):
+		if not _wanted.has(r["key"]):
 			continue
+		if _live_tiles and r.has("md5") and _near_file_md5(r["key"]) != r["md5"]:
+			if _instances.has(r["key"]):
+				_stale_near[r["key"]] = true     # lue avant la réécriture : refaite, l'ancien maillage reste
+			continue                             # sans maillage affiché : `_start_jobs` la relance
+		if _instances.has(r["key"]):
+			if not r.get("rebuild", false):
+				continue
+			_free_instance(r["key"])             # tuile refaite : l'ancien maillage laisse la place au nouveau
 		var t0 := Time.get_ticks_usec()
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
@@ -787,6 +829,8 @@ func integrate(max_new: int) -> int:
 		mi.position = r["origin"]
 		add_child(mi)
 		_instances[r["key"]] = mi
+		if r.has("md5"):
+			_near_md5[r["key"]] = r["md5"]
 		var t1 := Time.get_ticks_usec()
 		PerfProbe.mark("route" if r["kind"] == "road" else "tuile", r["key"], (t1 - t0) / 1000.0)
 		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
@@ -888,6 +932,8 @@ func wait_jobs() -> void:
 func _free_instance(key: String) -> void:
 	var mi: MeshInstance3D = _instances[key]
 	_instances.erase(key)
+	_near_md5.erase(key)
+	_stale_near.erase(key)
 	remove_child(mi)
 	if biome_textures != null and not key.begins_with("road:"):
 		biome_textures.release(mi.mesh.surface_get_material(0))

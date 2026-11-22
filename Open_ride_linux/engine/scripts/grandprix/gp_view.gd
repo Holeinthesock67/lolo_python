@@ -236,6 +236,11 @@ func update_view(view: Dictionary) -> void:
 	if not changed:
 		return
 	var it: Dictionary = view.get("item", {})
+	# Course (lot CR1) : pas de case d'objet ni de ligne d'effets
+	var items_shown := not bool(view.get("race", false))
+	_item_box.visible = items_shown
+	_item_key.visible = items_shown
+	_fx_line.visible = items_shown
 	_item_key.text = str(it.get("key", ""))
 	var fx_texts: Array = []
 	for f in view.get("fx", []):
