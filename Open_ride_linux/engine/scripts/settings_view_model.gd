@@ -59,6 +59,7 @@ const CHOICE_TEXTS := {
 	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"ride.vehicle_draft": {"on": "oui", "off": "non"},
+	"bots.elo": {"on": "oui", "off": "non"},   # lot BOT-elo : niveau automatique (Elo)
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	"gravel.mode": {"off": "coupé", "auto": "chemins réels", "compacted": "chemin compact", "gravel": "gravier",
 		"dirt": "terre"},
@@ -68,7 +69,8 @@ const CHOICE_TEXTS := {
 		"savanna": "savane", "sand_desert": "désert de sable", "rock_desert": "désert de roche", "jungle": "jungle",
 		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique",
 		"japan": "Japon", "atlantic_heath": "Atlantique et landes",
-		"high_plateau": "hauts plateaux", "reef": "fond marin"},
+		"high_plateau": "hauts plateaux", "reef": "fond marin", "cloud_forest": "forêt de nuages",
+		"eucalypt_woodland": "bush à eucalyptus", "temperate_rainforest": "forêt pluviale tempérée"},
 	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
 	"render.day_night": {"off": "coupé", "theme": "heure du thème", "real": "heure du PC", "accelerated": "une journée en une heure"},
 	"render.seasons": {"off": "coupées", "theme": "celle du thème", "date": "selon la date", "random": "au hasard",
