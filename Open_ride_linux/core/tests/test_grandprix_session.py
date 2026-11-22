@@ -133,6 +133,10 @@ def test_three_laps_four_bots_frames_hits_and_bilan(env):
     summary = s.state.summary["gp"]
     assert 1 <= summary["place"] <= 5 and summary["of"] == 5 and summary["laps"] == 3
     assert sum(summary["launched"].values()) >= 1
+    elo = s.state.summary["elo"]   # lot BOT-elo : course à classement complet, cote mise à jour
+    assert elo["mode"] == "grandprix" and elo["place"] == summary["place"] and elo["of"] == 5
+    assert (elo["after"] - 1500) * (3 - summary["place"]) >= 0   # devant le milieu : la cote monte
+    assert s.state.summary["bots_effort"]["target_w"] > 0
     hits = [m for m in sent if m.get("type") == "gp_hit"]
     hit_v = validator("gp_hit")
     for m in hits:

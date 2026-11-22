@@ -61,9 +61,10 @@
               "graphics",
               "sound",
               "wind",
-              "advanced"
+              "advanced",
+              "screen"
             ],
-            "description": "Sous-écran de « Réglages » (révision 1.5)."
+            "description": "Sous-écran de « Réglages » (révision 1.5) ; `screen` (lot NI2) : réglage de son propre écran (écran Prêt d'un mode, séance conseillée), absent de « Réglages »."
           },
           "type": {
             "enum": [
@@ -100,6 +101,20 @@
             "type": "string",
             "maxLength": 300,
             "description": "Légende facultative, montrée sur la carte de détail du réglage (lot U16)."
+          },
+          "when": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Lot NI2 (facultatif) : la ligne n'agit que si l'un des réglages `key` a une des valeurs `in` ; l'engine la cache sinon (valeur gardée).",
+            "items": {
+              "type": "object",
+              "required": ["key", "in"],
+              "properties": {
+                "key": {"type": "string", "pattern": "^[a-z_]+\\.[a-z_]+$"},
+                "in": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+              },
+              "additionalProperties": false
+            }
           },
           "applies": {
             "enum": [

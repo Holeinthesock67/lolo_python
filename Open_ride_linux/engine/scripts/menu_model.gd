@@ -98,15 +98,20 @@ const TRACK_OPTION_PREFIX := "track:"
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
 	"rogue": "Cyber-Rogue", "wtf": "Mode WTF", "survivor": "Dernier survivant", "grandprix": "Grand Prix des objets",
-	"track": "Vélodrome"}
+	"race": "Course", "track": "Vélodrome"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
 const HOME_DETAILS := {"open_world": "route créée en roulant", "survivor": "à chaque arche, le dernier sort",
-	"grandprix": "course contre les bots, objets à lancer", "track": "épreuves sur la piste, en SIM ou en ERG"}
+	"grandprix": "course contre les bots, objets à lancer", "race": "contre les bots, sans objets",
+	"track": "épreuves sur la piste, en SIM ou en ERG"}
 ## Modes à écran Prêt de réglages (Dernier survivant, lot DS7 ; Grand Prix des objets, lot GP9) : le core
 ## compose le plateau, l'écran montre « Lancer », le parcours, les réglages du mode (`mode_rows`) et, pour le
 ## Grand Prix, la ligne « Objets ».
-const SETTINGS_MODES := ["survivor", "grandprix"]
+## Course (lot CR1, demande du propriétaire du 20 novembre) : le Grand Prix sans objet, sur tous les parcours libres.
+const SETTINGS_MODES := ["survivor", "grandprix", "race"]
+## Ligne « Intensité du jour » des écrans Prêt à bots (lot R1, reprend la ligne « Bots » du lot GP-niv) : dose du
+## jour en mots (facile, moyen, dur) et watts visés par les bots ; A change la dose (menu_flow.gd).
+const INTENSITY_ID := "intensity"
 ## Ligne « Objets » de l'écran Prêt du Grand Prix (lot GP9) : ouvre l'écran des objets (menu_flow.gd).
 const GP_ITEMS_ID := "gp_items"
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer un entraînement.
@@ -166,6 +171,16 @@ var mode := "free"
 var mode_rows: Array = []
 var mode_launch := {"enabled": true, "detail": ""}
 var gp_items_label := "Objets"
+## Lot GP-niv (contrat 1.22) : effort des bots de la course en watts, réponse `bots_preview` mise en texte par
+## menu_flow.gd en {watts, cote, duration} (« ≈ 225 W », « 1540 », « ≈ 9 min ») ; {} : pas encore de watts.
+var bots_info := {}
+## Lot R1 : dose du jour en mots (« facile », « moyen », « dur », ou « récupération » / « seuil » choisis dans les
+## Réglages), posée par menu_flow.gd ; "" : pas de ligne « Intensité du jour ». `intensity_fixed` : l'épreuve du
+## vélodrome fixe la dose (décision du 15/11), ligne grisée.
+var intensity_word := ""
+var intensity_fixed := false
+## Objectif des bots de la course conseillée (lot GP-niv, `coach.route.objective`) : `start.objective` ; "" sinon.
+var coach_objective := ""
 ## Vélodrome (lot VD10) : parcours qui sont des pistes, épreuves du core (épreuve → réglage → [défaut, valeurs]),
 ## épreuve choisie et valeurs choisies par épreuve.
 var track_ids: Array = []
@@ -279,7 +294,22 @@ func _init() -> void:
 	reset()
 
 
+## Reconstruit l'accueil et l'écran Prêt. Sur l'écran Prêt, le focus reste sur le même élément quand une ligne
+## arrive ou part au-dessus de lui (ligne « Bots » reçue après l'entrée sur l'écran, lot GP-niv) : jamais sur une
+## ligne désactivée.
 func _refresh_home() -> void:
+	var ready_id := ""
+	if _screen == READY and _focus >= 0 and _focus < _screens[READY]["items"].size():
+		ready_id = _screens[READY]["items"][_focus]["id"]
+	_build_home_and_ready()
+	if ready_id != "" and _screen == READY:
+		var items := _items()
+		var i := _index_of(ready_id)
+		if i < items.size() and items[i]["id"] == ready_id:
+			_focus = _first_enabled_from(i, 1)
+
+
+func _build_home_and_ready() -> void:
 	var world := free_world_name if free_world_name != "" else "à choisir"   # dernier parcours libre (lot GP13)
 	var items := [_item("world", "Parcours : " + world)]
 	if coach_detail != "":
@@ -319,8 +349,8 @@ func _refresh_home() -> void:
 		return
 	if mode in SETTINGS_MODES:
 		_screens[READY]["items"] = [_item("start", "Lancer", bool(mode_launch.get("enabled", true)),
-			str(mode_launch.get("detail", ""))), _item("change_route", "Changer de parcours")] + mode_rows \
-			+ ([_item(GP_ITEMS_ID, gp_items_label)] if mode == "grandprix" else [])
+			str(mode_launch.get("detail", "")))] + _intensity_items() + [_item("change_route", "Changer de parcours")] \
+			+ mode_rows + ([_item(GP_ITEMS_ID, gp_items_label)] if mode == "grandprix" else [])
 		_screens[READY]["title"] = "Prêt : " + str(HOME_MODES[mode]) + ("" if world_name == "" else " — " + world_name)
 		return
 	if is_track():
@@ -328,13 +358,12 @@ func _refresh_home() -> void:
 		_screens[READY]["title"] = "Prêt : " + (world_name if world_name != "" else "vélodrome")
 		return
 	if mode == "wtf":
-		_screens[READY]["items"] = [_item("start", "Démarrer"), _item("wtf_rules", "Changer les règles"),
+		_screens[READY]["items"] = [_item("start", "Démarrer")] + _intensity_items() + [_item("wtf_rules", "Changer les règles"),
 			_item("change_route", "Changer de parcours")] + _bot_items() \
 			+ [_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")), _peloton_item()]
 		_screens[READY]["title"] = "Prêt : mode WTF" + ("" if world_name == "" else " — " + world_name)
 		return
-	_screens[READY]["items"] = [
-		_item("start", "Démarrer"),
+	_screens[READY]["items"] = [_item("start", "Démarrer")] + _intensity_items() + [
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
 		_item("change_route", "Changer de parcours"),
 	] + _bot_items() + [
@@ -483,7 +512,7 @@ func track_value(option_id: String):
 func _track_items() -> Array:
 	var name := TrackNames.event_name(track_event)
 	var erg_note := " en ERG" if mode == "erg" else ""
-	var items := [_item("start", "Lancer : " + name + erg_note),
+	var items := [_item("start", "Lancer : " + name + erg_note)] + _intensity_items() + [
 		_item(TRACK_EVENT_ID, "Épreuve : " + name)]
 	var opts: Dictionary = track_events.get(track_event, {})
 	for o in opts:
@@ -493,6 +522,22 @@ func _track_items() -> Array:
 		items.append(_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"))
 	items.append(_item("change_route", "Changer de parcours"))
 	return items
+
+
+## Écrans recomposés (ligne « Bots » de l'écran Prêt reçue du core, lot GP-niv).
+func refresh() -> void:
+	_refresh_home()
+
+
+## Ligne « Intensité du jour » (lot R1) sous « Lancer », première ligne de réglage : « Intensité : moyen » et, à
+## droite, « bots ≈ 225 W » (textes courts : rien de coupé dans les deux colonnes de la rangée ; cote et durée dans
+## la ligne d'état) ; au vélodrome, grisée, « Intensité fixée : dur » (l'épreuve fixe la dose).
+func _intensity_items() -> Array:
+	if intensity_word == "":
+		return []
+	var label := ("Intensité fixée : " if intensity_fixed else "Intensité : ") + intensity_word
+	var detail := ("bots " + str(bots_info["watts"])) if not bots_info.is_empty() else ""
+	return [_item(INTENSITY_ID, label, not intensity_fixed, detail)]
 
 
 ## A long sur « Épreuve » : épreuve suivante ; quitter la séance libre en ERG revient en SIM.
@@ -655,13 +700,17 @@ func set_mode_ready(rows: Array, launch: Dictionary, items_label := "Objets") ->
 func _clear_start() -> void:
 	start_name = ""
 	start_args = {}
+	coach_objective = ""
+	bots_info = {}
+	intensity_word = ""
+	intensity_fixed = false
 
 
 ## Arguments de `start` : séance préparée (plan_day, ftp_test) et bots choisis ({} si rien).
 func _start_args() -> Dictionary:
 	var out := start_args.duplicate()
 	if mode in SETTINGS_MODES:   # le core compose le plateau : pas d'argument `bots`
-		return {"mode": mode}
+		return {"mode": mode, "objective": coach_objective} if coach_objective != "" else {"mode": mode}
 	if is_track():   # vélodrome (lot VD10) : le core compose aussi le plateau
 		var choice := {"event": track_event}
 		for o in track_events.get(track_event, {}):
@@ -1174,7 +1223,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "track", "interrupted", "coach":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "race", "track", "interrupted", "coach":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -1220,7 +1269,7 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open_routes()
-				"rogue_change", "wtf_rules", GP_ITEMS_ID:
+				"rogue_change", "wtf_rules", GP_ITEMS_ID, INTENSITY_ID:
 					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
 					return {"action": "item", "screen": READY, "id": id}
