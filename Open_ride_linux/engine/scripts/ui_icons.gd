@@ -12,7 +12,7 @@ const ITEM_ICONS := {
 	"devices": "list", "pairing": "list", "quit": "power", "start": "play", "resume": "play",
 	"continue": "play", "records": "trophy", "end_save": "flag", "abandon": "cross", "u_turn": "u_turn", "no": "cross",
 	"yes": "check", "difficulty": "slope", "ride_mode": "bars", "target_w": "bolt", "cadence_rpm": "bike", "ghost": "ghost", "peloton": "rider",
-	"rogue": "rider", "rogue_change": "gear", "objective": "flag", "duration": "calendar", "wprime": "bolt",
+	"rogue": "rider", "rogue_change": "gear", "objective": "flag", "duration": "calendar",
 	"chassis": "bike", "launch": "play", "history": "list", "collection": "trophy", "coach": "flag",
 	"garage": "bike", "bike": "bike", "outfit": "rider", "avatar": "rider", "save": "check", "cancel": "cross",
 }

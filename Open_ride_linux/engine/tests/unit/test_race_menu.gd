@@ -91,6 +91,8 @@ func _run() -> void:
 	f.handle("PLUS_SHORT")
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_setting", "key": "race.opponents", "value": 8}, "adversaires : set_setting (%s)" % str(act))
+	_check(f.wanted_bots_preview() == {"mode": "race"}, "adversaires changés : bots_preview redemandé")
+	_check(f.wanted_bots_preview().is_empty(), "même course : pas de nouvelle demande")
 	f.menu.focus_item("start")
 	act = f.handle("A_LONG")
 	_check(act == {"action": "start", "args": {"mode": "race"}}, "start avec mode « race », sans bots (%s)" % str(act))

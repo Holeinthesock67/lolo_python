@@ -3,7 +3,7 @@
   "etapes": [
     {"ecran": "home", "delai": 15, "elements": ["rogue"]},
     {"choisir": "rogue"},
-    {"ecran": "rogue_start", "titre": "Départ Cyber-Rogue", "elements": ["objective", "duration", "wprime", "launch"],
+    {"ecran": "rogue_start", "titre": "Départ Cyber-Rogue", "elements": ["objective", "duration", "launch"],
      "contient": ["Objectif : Endurance", "Durée : 30 min"]},
     {"choisir": "objective"},
     {"ecran": "rogue_start", "contient": ["Objectif : Seuil"]},
