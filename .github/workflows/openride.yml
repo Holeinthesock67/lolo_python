@@ -33,28 +33,35 @@ defaults:
     working-directory: Open_ride_linux
 
 jobs:
-  # Lot X52 : une seule colonne sur les demandes de fusion (3.14, avec constraints.txt : pas de dérive des
-  # dépendances qui ferait échouer une PR sans rapport) ; les deux colonnes sur main, sur demande et chaque lundi.
-  # Filet de la 3.11 sur les PR : compilation de tout le code Python par Python 3.11 (syntaxe trop récente).
-  python:
-    name: python (${{ matrix.python-version }})
+  # Lot X52 : la colonne 3.14 (avec constraints.txt : pas de dérive des dépendances qui ferait échouer une PR
+  # sans rapport) sur les demandes de fusion et sur main ; la colonne 3.11 sur demande et chaque lundi seulement
+  # (audit du 22 novembre, P1 : elle doublait la file d'attente de chaque fusion). Filet de la 3.11 partout :
+  # compilation de tout le code Python par Python 3.11 (syntaxe trop récente).
+  # Audit du 22 novembre (P1) : tests du core et du compilateur répartis en 3 parties de durée voisine, sur
+  # 3 machines en parallèle (OPENRIDE_TESTS_PARTIE, scripts/isolation_tests.py, durées de scripts/durees_tests.json) ;
+  # les 3 parties jouent ensemble tous les tests. Le job « python (3.14) » réunit leurs résultats.
+  python-partie:
+    name: python ${{ matrix.python-version }} (partie ${{ matrix.partie }}/3)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ${{ fromJSON(github.event_name == 'pull_request' && '["3.14"]' || '["3.11", "3.14"]') }}
+        python-version: ${{ fromJSON((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '["3.11", "3.14"]' || '["3.14"]') }}
+        partie: [1, 2, 3]
+    env:
+      OPENRIDE_TESTS_PARTIE: ${{ matrix.partie }}/3
     steps:
       - name: Récupération du dépôt
         uses: actions/checkout@v5
 
-      - name: Python 3.11 pour la compilation (demandes de fusion)
-        if: github.event_name == 'pull_request'
+      - name: Python 3.11 pour la compilation
+        if: matrix.python-version == '3.14' && matrix.partie == 1
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
-      - name: Code compilable par Python 3.11 (demandes de fusion)
-        if: github.event_name == 'pull_request'
+      - name: Code compilable par Python 3.11
+        if: matrix.python-version == '3.14' && matrix.partie == 1
         run: python3.11 -m compileall -q core/src compiler/src scripts engine/tests
 
       - name: Installation de Python ${{ matrix.python-version }}
@@ -81,33 +88,47 @@ jobs:
       - name: Cohérence des paquets installés
         run: pip check
 
-      - name: Tests du core
+      - name: Tests du core (partie ${{ matrix.partie }}/3)
         run: cd core && pytest -q --junitxml=../junit/core.xml
 
-      - name: Tests du compilateur
+      - name: Tests du compilateur (partie ${{ matrix.partie }}/3)
         run: cd compiler && pytest -q --junitxml=../junit/compiler.xml
 
       - name: Contrôle des vecteurs de route
+        if: matrix.partie == 1
         run: python -m openride_core.tools.route_vectors --check
 
       # Lot X52 : les nombres de tests ne sont plus écrits dans la doc ; ils sont donnés ici, dans le résumé du run.
       - name: Nombre de tests (résumé du run)
-        if: matrix.python-version == '3.14'
-        run: python3 scripts/recompte_tests.py --resume "$GITHUB_STEP_SUMMARY"
+        if: matrix.python-version == '3.14' && matrix.partie == 1
+        run: env -u OPENRIDE_TESTS_PARTIE python3 scripts/recompte_tests.py --resume "$GITHUB_STEP_SUMMARY"
 
       # Lot X54 : le tableau des lots n'est plus écrit dans 00_INDEX.md ; les nombres par série sont donnés ici.
       - name: Lots par série (résumé du run)
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.14' && matrix.partie == 1
         run: python3 scripts/index_lots.py --resume "$GITHUB_STEP_SUMMARY"
 
-      # Rapports JUnit gardés (lot X3) : durée et statut de chaque test, lus par scripts/stabilite_tests.py.
+      # Rapports JUnit gardés (lot X3) : durée et statut de chaque test, lus par scripts/stabilite_tests.py
+      # et par scripts/durees_tests.py (durées qui équilibrent les parties).
       - name: Rapports JUnit
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
         with:
-          name: junit-python-${{ matrix.python-version }}
+          name: junit-python-${{ matrix.python-version }}-partie-${{ matrix.partie }}
           path: Open_ride_linux/junit/
           if-no-files-found: ignore
+
+  # Résultat unique des parties, sous le nom de l'ancien job (les règles de fusion qui l'attendent restent valables).
+  python:
+    name: python (3.14)
+    needs: python-partie
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Toutes les parties réussies
+        run: |
+          echo "Parties : ${{ needs.python-partie.result }}"
+          test "${{ needs.python-partie.result }}" = success
 
   engine:
     name: engine (Godot 4.7)
@@ -179,19 +200,6 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Banc des menus (Click simulé, clavier, souris ; une voie par scénario)
-        run: |
-          python3 engine/tests/menu_bench.py --godot "$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" \
-            --rotation --out "$RUNNER_TEMP/menu_bench"
-
-      - name: Rapport du banc des menus
-        if: failure()
-        uses: actions/upload-artifact@v6
-        with:
-          name: menu_bench
-          path: ${{ runner.temp }}/menu_bench
-          retention-days: 7
-
       - name: Banc visuel du Cyber-Rogue (run X40 rejouée dans la scène, lot X41)
         run: |
           python3 engine/tests/rogue_bench.py --godot "$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" \
@@ -211,6 +219,115 @@ jobs:
         with:
           name: junit-engine
           path: Open_ride_linux/junit/
+          if-no-files-found: ignore
+
+  # Audit du 22 novembre (P1) : le banc des menus (49 min sur une machine) passe sur 3 machines en parallèle,
+  # à côté du job engine (--partie : scénarios K, K+3…, même rotation des voies qu'en un seul passage).
+  menus:
+    name: banc des menus (partie ${{ matrix.partie }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        partie: [1, 2, 3]
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v5
+
+      - name: Installation de Python 3.14
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            Open_ride_linux/core/pyproject.toml
+            Open_ride_linux/compiler/pyproject.toml
+
+      - name: Installation du core et du compilateur
+        # Le compilateur produit les données du test des couches OSM (lot K4, make_osm_world.py).
+        run: pip install -c constraints.txt -e "core[dev]" -e compiler
+
+      - name: Cache de Godot 4.7
+        id: cache-godot
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/godot-4.7.2
+          key: godot-4.7.2-stable-linux-x86_64
+
+      - name: Téléchargement de Godot 4.7
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.cache/godot-4.7.2
+          curl -fsSL -o /tmp/Godot_v4.7.2-stable_linux.x86_64.zip \
+            https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/Godot_v4.7.2-stable_linux.x86_64.zip -d ~/.cache/godot-4.7.2
+          chmod +x ~/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
+
+      - name: Xvfb et Vulkan logiciel (Forward+ comme le jeu, rendu_jeu.py)
+        run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends xvfb xauth mesa-vulkan-drivers
+
+      - name: Banc des menus (Click simulé, clavier, souris ; une voie par scénario ; partie ${{ matrix.partie }}/3)
+        run: |
+          chmod +x ~/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
+          python3 engine/tests/menu_bench.py --godot "$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" \
+            --rotation --partie ${{ matrix.partie }}/3 --out "$RUNNER_TEMP/menu_bench"
+
+      - name: Rapport du banc des menus
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: menu_bench-partie-${{ matrix.partie }}
+          path: ${{ runner.temp }}/menu_bench
+          retention-days: 7
+
+  # Audit du 22 novembre (R13) : couverture du code mesurée une fois par semaine (run du lundi et sur demande),
+  # sans seuil bloquant : le résumé du run donne le pourcentage du core et du compilateur, le rapport HTML est joint.
+  couverture:
+    name: couverture (hebdomadaire)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v5
+
+      - name: Installation de Python 3.14
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            Open_ride_linux/core/pyproject.toml
+            Open_ride_linux/compiler/pyproject.toml
+
+      - name: Installation des paquets et de coverage
+        run: |
+          pip install -c constraints.txt -e "core[dev]" coverage
+          pip install -c constraints.txt -e "compiler[dev,worldgen]"
+
+      - name: Tests sous coverage
+        env:
+          COVERAGE_FILE: ${{ runner.temp }}/couverture/.coverage
+        run: |
+          mkdir -p "$RUNNER_TEMP/couverture"
+          (cd core && coverage run -p --source=openride_core -m pytest -q) || true
+          (cd compiler && coverage run -p --source=openride_compiler -m pytest -q) || true
+
+      - name: Rapport de couverture (résumé du run)
+        env:
+          COVERAGE_FILE: ${{ runner.temp }}/couverture/.coverage
+        run: |
+          coverage combine "$RUNNER_TEMP/couverture"
+          { echo "### Couverture du code (core et compilateur)"; echo; echo '```'; coverage report --skip-covered --sort=cover | tail -40; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          coverage html -d "$RUNNER_TEMP/couverture/html"
+
+      - name: Rapport HTML de couverture
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: couverture
+          path: ${{ runner.temp }}/couverture/html
+          retention-days: 30
           if-no-files-found: ignore
 
   # Lot X24 : audit hebdomadaire des dépendances (vulnérabilités connues, actions en retard, paquets
