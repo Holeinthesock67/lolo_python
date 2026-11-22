@@ -394,11 +394,28 @@ def run(args, out: Path, report: Report) -> None:
         bench.check(b[0], "image différente de la salle précédente", d >= ROOM_DIFF_MIN, f"écart moyen {d:.1f} niveaux sur 255")
     resync = core.messages("cmd", name="rogue_resync")
     bench.check("run", "aucune demande rogue_resync", not resync, f"{len(resync)} demande(s)")
+    loads = classic_loads_during_run(engine_log.read_text(errors="replace"))
+    bench.check("run", "monde classique gelé pendant la run (pause comprise)", loads is not None and not loads,
+                "départ ou sortie de la scène absent du journal" if loads is None
+                else (" | ".join(loads[:3]) or "aucun parcours demandé ni chargé"))
     issues = [ln for ln in engine_log.read_text(errors="replace").splitlines()
               if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
     bench.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
     r_err = rendu_jeu.check_log(engine_log.read_text(errors="replace"))
     bench.check("journal", "rendu du jeu (Forward+)", r_err is None, r_err or "Vulkan, Forward+")
+
+
+def classic_loads_during_run(log_text: str) -> list[str] | None:
+    """Parcours classiques demandés ou chargés entre le décor vidé au départ de la run et la sortie de la scène
+    du mode (lot R-gel) ; None si l'une des deux bornes manque au journal de l'engine."""
+    lines = log_text.splitlines()
+    start = next((i for i, ln in enumerate(lines) if "[test] route_world_released" in ln), None)
+    if start is None:
+        return None
+    end = next((i for i in range(start, len(lines)) if "[test] rogue_scene_left" in lines[i]), None)
+    if end is None:
+        return None
+    return [ln.strip() for ln in lines[start:end] if re.search(r"\[test\] route_(requested|loaded) ", ln)]
 
 
 def main() -> int:
