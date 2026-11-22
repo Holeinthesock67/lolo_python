@@ -66,8 +66,11 @@ def _bots(s_now: float) -> list[dict[str, Any]]:
 
 # Grand Prix des objets (lot GP8, maquettes GP6 scènes 3, 4, 6 et 7) : bots de la scène 6 (écart au cycliste en s,
 # objet tenu, effets en cours) placés à `ds` mètres du cycliste ; objets de `gp.obj` donnés en mètres devant lui.
-GP_BOTS = [("Grimpeur", 60.0, 6.4, "bell", []), ("Rouleur", 40.0, 4.3, None, []), ("Sprinteur", -6.0, -0.6, "bottle", []),
-           ("Diesel", -60.0, -6.4, None, ["musette"])]
+# Noms des rivaux (lot R4, `rivals.NAMES`) : les plus longs (16 caractères) pour éprouver les colonnes.
+GP_BOTS = [("Florent Gauthier", 60.0, 6.4, "bell", []), ("Tristan Laborde", 40.0, 4.3, None, []),
+           ("Valentin Roche", -6.0, -0.6, "bottle", []), ("Raphaël Tissot", -60.0, -6.4, None, ["musette"])]
+GP_NAMES_12 = ["Florent Gauthier", "Tristan Laborde", "Valentin Roche", "Raphaël Tissot", "Pierre Vasseur",
+               "Fabien Lacroix", "Victor Chauvin", "Zacharie Brun", "Baptiste Leroy", "Antoine Pagès", "Noé Castel"]
 GP_BASE = {"place": 3, "of": 5, "gap_s": 2.1, "held": "musette_x3", "n": 3, "roll_s": 0.0, "lane": 1, "auto": False,
            "fx": [], "warn": None, "obj": [], "boxes": [], "pick": True, "lap": [2, 3]}
 
@@ -76,7 +79,7 @@ def _gp_bots(s_now: float, count: int = 0) -> list[dict[str, Any]]:
     """Bots du Grand Prix : ceux de la scène 6, ou `count` bots en file (cas des 12 coureurs)."""
     if count:
         items = ["gel", "bottle", None, "musette", "bell", None, "homing", "star", None, "storm", "team_car"]
-        return [{"id": f"g{i}", "name": f"Coureur {i + 1}", "s": s_now + 120.0 - 30.0 * i, "v": 0.0, "kind": "constant",
+        return [{"id": f"g{i}", "name": GP_NAMES_12[i % len(GP_NAMES_12)], "s": s_now + 120.0 - 30.0 * i, "v": 0.0, "kind": "constant",
                  "gap_s": (120.0 - 30.0 * i) / 10.0, "item": items[i % len(items)], "fx": ["bottle"] if i == 9 else []}
                 for i in range(count)]
     return [{"id": f"g{i}", "name": n, "s": s_now + ds, "v": 0.0, "kind": "constant", "gap_s": gap, "item": item, "fx": fx}

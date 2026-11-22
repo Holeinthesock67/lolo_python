@@ -247,3 +247,19 @@ def test_start_objective_for_this_session_only(env):
     s2, _, errors2 = make(6850, objective="tempo")
     s2._on_command("start", {"mode": "survivor", "objective": "sprint"}, 2)
     assert errors2 and errors2[-1][0] == "bad_args" and s2.state.session_state == "READY"
+
+
+# --- rivaux reconnaissables (lot R4) -----------------------------------------------------------------------
+
+def test_rivals_keep_their_names_from_race_to_race(env):
+    make, run, tmp_path = env
+    s, _, errors = make(6830, opponents=3, spacing_km=1)
+    s._on_command("start", {"mode": "survivor"}, 2)
+    assert not errors
+    names = [b.name for b in s.bots]
+    assert not any(n.startswith(("Grimpeur", "Rouleur", "Sprinteur")) for n in names) and len(set(names)) == 3
+    book = json.loads((tmp_path / "rivaux.json").read_text("utf-8"))
+    assert {r["key"] for r in book["rivals"]} == {"climber#1", "rouleur#1", "sprinter#1"}
+    s2, _, _ = make(6840, opponents=3, spacing_km=1)
+    s2._on_command("start", {"mode": "survivor"}, 2)
+    assert [b.name for b in s2.bots] == names
