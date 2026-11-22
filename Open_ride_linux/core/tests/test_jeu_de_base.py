@@ -34,6 +34,7 @@ FINAL = {   # identifiant de fichier → nom au menu
     "demo-volcan": "Volcan en flammes",
     "demo-biomes-sud": "Route du Sud",
     "demo-biomes-nord": "Route du Grand Nord",
+    "demo-biomes-forets": "Route des Trois Forêts",
     "demo-corniche": "Boucle de la Corniche",
     "demo-vignes": "Route des Vignes",
     "velodrome-250": "Vélodrome 250 m",
