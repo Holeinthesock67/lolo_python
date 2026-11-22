@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : module pur `league.py` (calendrier de 8 manches, 11 rivaux fixes, barème, 6 meilleurs, classique, pause, trophées), saison dans `ligue.json` du profil | Python | CH0 (livré, #968) | Moyenne | En PR le 21 novembre 2026 ; core seul, sans contrat ni affichage |
+| Série CH : module pur `league.py` (calendrier de 8 manches, 11 rivaux fixes, barème, 6 meilleurs, classique, pause, trophées), saison dans `ligue.json` du profil | Python | CH0 (livré, #968), BR4 (#986, rivaux) | Moyenne | En PR le 21 novembre 2026 ; core seul, sans contrat ni affichage |
 
 Série CH (version 6.0, ligue d'hiver, demande du propriétaire du 21 novembre 2026). Plan : `docs/6.0/PLAN_SERIE_CH.md`.
 
@@ -18,7 +18,9 @@ Tenir une saison de ligue en module pur, sans séance ni affichage : ce que les 
   `grandprix`, finale `race` en tours) ; le Cyber-Rogue n'y entre pas. La saison commence le lundi de sa semaine.
 - **Rivaux** : 11 bots fixes, 3 grimpeurs, 3 rouleurs, 3 sprinteurs, 2 diesels (`FIELD`), nom fictif, équipe écrite
   et couleur ; identité `climber#1`… celle de la cote Elo (`bot_elo.bot_key`), dans l'ordre de `field_profiles`.
-  Une nouvelle saison en garde 8 et remplace 3 rivaux par d'autres du même profil.
+  Noms, équipes et couleurs viennent du groupe des rivaux du profil (`rivals.py`, lot R4, `rivaux.json`) : les
+  mêmes rivaux que dans les autres modes, aucune liste propre à la ligue (audit du 22 novembre, L4). Une nouvelle
+  saison en garde 8 et remplace 3 rivaux (`Roster.renew`, le nouveau venu garde l'identité et la cote).
 - **Points** : 25, 20, 16, 13, 11, 10, 9, 8, 7, 6, 5, 4 ; semaine non courue 0 ; total des 6 meilleures manches plus
   la classique × 1,5 ; égalité départagée par les victoires, puis la place à la finale.
 - **Une seule tentative** : le premier résultat de la manche de la semaine compte ; une manche d'une autre semaine

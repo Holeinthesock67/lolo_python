@@ -170,7 +170,7 @@ static func is_loop(routes: Array, id: String) -> bool:
 ## Texte de la ligne « Démarrer » de l'écran Prêt d'une manche.
 func ready_text() -> String:
 	var r := _round()
-	return "manche %d sur %d · %s · 11 rivaux · environ 27 min de course" % [int(r.get("index", 0)) + 1,
+	return "manche %d sur %d · environ 27 min · %s" % [int(r.get("index", 0)) + 1,
 		int(season.get("weeks", 8)) if season is Dictionary else 8, str(r.get("title", ""))]
 
 

@@ -68,7 +68,7 @@ func _run() -> void:
 
 	# Endurance : consigne en plage, alerte avant la surchauffe, bandeau pendant.
 	var o: Dictionary = g.compute(st, _rogue(), 72.0, [])
-	_check(o["fw"]["sub"] == "Garde 70–75 % FTP", "Firewall : garde 70–75 % FTP")
+	_check(o["fw"]["sub"] == "Garde 70–75 % FTP · tu es à 72 % ✔", "Firewall : garde 70–75 % FTP, dans la plage")
 	_check(o["adr_trend"] == "▲ +0,5/s", "tendance : ▲ +0,5/s")
 	o = g.compute(st, _rogue({"adrenaline_trend": {"rate_per_s": 0.5, "cause": "gain", "overheat_in_s": 2.4}}), 80.0, [])
 	_check(o["hint"] == "Trop fort : au-dessus de 75 % FTP, surchauffe dans 3 s" and o["tone"] == "warn", "alerte : surchauffe dans 3 s")
@@ -199,7 +199,7 @@ func _run() -> void:
 	var gw = GuideModel.new()
 	gw.ftp_w = 250.0
 	o = gw.compute(st, _rogue(), 72.0, [])
-	_check(o["fw"]["sub"] == "Garde 175–190 W", "Firewall : garde 175–190 W")
+	_check(o["fw"]["sub"] == "Garde 175–190 W · tu es à 180 W ✔", "Firewall : garde 175–190 W, écart en direct (R26)")
 	o = gw.compute(st, _rogue({"overheat": true, "adrenaline_trend": {"rate_per_s": -2.0, "cause": "overheat", "overheat_in_s": null}}), 85.0, [])
 	_check(o["hint"] == "SURCHAUFFE : descends sous 190 W · adrénaline −2/s, Z bloqué", "surchauffe en watts")
 	o = gw.compute(st, _rogue({"phase": "WARMUP", "target_pct": {"lo": 55, "hi": 65}, "phase_left_s": 200.0}), 58.0, [])
