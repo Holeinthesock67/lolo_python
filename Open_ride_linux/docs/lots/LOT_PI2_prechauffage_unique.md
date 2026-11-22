@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Pire image (fil global du 17 novembre, étape 3) : un seul plan de préchauffage lancé dès le chargement du parcours, une étape par image, et le départ attend la fin du plan | GDScript | PI1, Y5, Y19, Y20, Y21, AS7 | Petite | En cours (codé le 20 novembre, banc PC à faire) |
+| Pire image (fil global du 17 novembre, étape 3) : un seul plan de préchauffage lancé dès le chargement du parcours, une étape par image, et le départ attend la fin du plan | GDScript | PI1, Y5, Y19, Y20, Y21, AS7 | Petite | **Livré le 21 novembre** (PR #921) |
 
 ## 1. Objectif
 
@@ -31,3 +31,7 @@ Le propriétaire a demandé le 20 novembre que le préchauffage vienne plus tôt
 
 1. Cloud : `test_warmup_plan.gd`, les tests de l'engine et le bout en bout passent.
 2. PC, branche et main, en low, medium et high, caches de shaders froids puis chauds (`sim_bench.py --shaders froid|chaud`) : fumée demo, ERG avec demi-tour, `grand_prix`. Le gel du chargement (somme et pire image avant le départ) baisse, chaque étape « préchauffage » est une image à elle, et le délai jusqu'à `scene_ready` est donné.
+
+## 5. Livraison
+
+Fusionné le 21 novembre 2026 (PR #921 : avec PI1 : préchauffage unique dès le menu). Détail des écarts et de la recette : description de la PR.
