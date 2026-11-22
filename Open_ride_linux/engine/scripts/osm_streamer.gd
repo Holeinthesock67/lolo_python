@@ -385,6 +385,14 @@ func _build_chunk_job(job: Dictionary) -> void:
 						var ac: Dictionary = area.duplicate()
 						if ac.has("level_y"):
 							ac["level_y"] = r_disp.display_y(float(ac["level_y"]))
+						# rivière en surface (lot EA3) : altitude de chaque sommet
+						if typeof(ac.get("outer_y", null)) == TYPE_ARRAY:
+							ac["outer_y"] = _display_ys(r_disp, ac["outer_y"])
+						if typeof(ac.get("holes_y", null)) == TYPE_ARRAY:
+							var hys: Array = []
+							for hy in ac["holes_y"]:
+								hys.append(_display_ys(r_disp, hy) if typeof(hy) == TYPE_ARRAY else hy)
+							ac["holes_y"] = hys
 						scaled_areas.append(ac)
 					areas = scaled_areas
 				# Lot U9 : la mer (`sea`) a son maillage et son matériau ; les autres aires restent des plans d'eau.
@@ -540,6 +548,13 @@ static func scale_bridges(items: Array, r_disp) -> Array:
 
 
 ## Hauteur lue sur le relief exagéré quand `v_scale` ≠ 1, comme le terrain affiché (lot Q2)
+static func _display_ys(r_disp, ys: Array) -> Array:
+	var out: Array = []
+	for v in ys:
+		out.append(r_disp.display_y(float(v)) if (typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT) else v)
+	return out
+
+
 static func _displayed(fn: Callable, r_disp, v_scale: float) -> Callable:
 	if v_scale == 1.0:
 		return fn

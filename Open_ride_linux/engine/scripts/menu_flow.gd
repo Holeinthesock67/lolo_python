@@ -1988,11 +1988,24 @@ func on_contents(msg: Dictionary) -> Dictionary:
 
 func _refresh_profiles() -> void:
 	menu.set_profile(profiles.home_label(), profiles.home_title())
+	# « Qui roule ? » s'ouvre dès `hello_ack` (nombre de profils), avant la liste `profiles` : à l'arrivée
+	# de la liste, focus sur le profil en cours, pas sur « Nouveau profil » gardé par son id (banc des
+	# menus, scénario `profils`, échecs intermittents du 20 novembre).
+	var first_list := menu.current_screen() == ProfilesViewModel.SCREEN and not _has_profile_rows()
 	menu.set_screen_items(ProfilesViewModel.SCREEN, profiles.who_items(), "Qui roule ?")
+	if first_list and profiles.current_id() != "":
+		menu.focus_item("p:" + profiles.current_id())
 	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
 	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
 	menu.set_screen_items(ProfilesViewModel.RESTORE, profiles.restore_items())
 	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
+
+
+func _has_profile_rows() -> bool:
+	for it in menu.state().get("items", []):
+		if str(it.get("id", "")).begins_with("p:"):
+			return true
+	return false
 
 
 func _handle_profiles(screen: String, item_id: String) -> Dictionary:
