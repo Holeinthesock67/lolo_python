@@ -158,7 +158,13 @@
         "japan",
         "atlantic_heath",
         "high_plateau",
-        "reef"
+        "reef",
+
+        "cloud_forest",
+
+        "eucalypt_woodland",
+
+        "temperate_rainforest"
       ]
     },
     "groundLayer": {
@@ -280,7 +286,15 @@
                       "bunchgrass",
                       "kelp",
                       "coral",
-                      "sea_fan"
+                      "sea_fan",
+
+                      "wax_palm",
+
+                      "eucalyptus",
+
+                      "douglas_fir",
+
+                      "red_cedar"
                     ]
                   },
                   "weight": {

@@ -214,13 +214,24 @@ def with_turnaround(back: EdgeProfile, prev_xz: tuple[float, float], provider: E
                     frame: LocalFrame) -> EdgeProfile:
     """Profil `back` (l'arête de l'impasse parcourue en sens inverse) précédé de la boucle de retournement : la
     route engagée tourne au bout de l'impasse au lieu d'y faire demi-tour sur place. Altitude du relief sous la
-    boucle, décalée pour valoir celle du bout de l'impasse à l'entrée et à la sortie."""
-    pts = turnaround_points((float(back.x[0]), float(back.z[0])), prev_xz)
+    boucle, décalée pour valoir celle du bout de l'impasse à l'entrée et à la sortie.
+
+    Altitude lue sur l'axe de l'impasse prolongé, au droit de chaque point de la boucle (21/11) : la boucle est
+    symétrique par rapport à cet axe, ses arcs d'entrée et de sortie se côtoient à quelques mètres ; lus au point même
+    sur un dévers, ils avaient jusqu'à 5 m d'écart, deux chaussées l'une au-dessus de l'autre qu'aucun sol ne pouvait
+    porter (règle sol / route)."""
+    end_xz = (float(back.x[0]), float(back.z[0]))
+    pts = turnaround_points(end_xz, prev_xz)
     cum = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))])
     s = sample_positions(float(cum[-1]))
     x, z = np.interp(s, cum, pts[:, 0]), np.interp(s, cum, pts[:, 1])
     lat, lon = frame.to_latlon(x, z)
-    alt, read_stats = AG.repair(np.asarray(provider.elevations(lat, lon), dtype=float))
+    ax, az = end_xz[0] - prev_xz[0], end_xz[1] - prev_xz[1]
+    norm = math.hypot(ax, az) or 1.0
+    ax, az = ax / norm, az / norm
+    t = (x - end_xz[0]) * ax + (z - end_xz[1]) * az
+    alat, alon = frame.to_latlon(end_xz[0] + t * ax, end_xz[1] + t * az)
+    alt, read_stats = AG.repair(np.asarray(provider.elevations(alat, alon), dtype=float))
     alt = _smooth_altitude(alt, s) if len(s) >= C.SAVGOL_WINDOW else _moving_average_3(alt)
     end = float(back.alt_m[0])                           # rampe : entrée et sortie à l'altitude du bout de l'impasse
     alt = alt + (end - alt[0]) * (1.0 - s / s[-1]) + (end - alt[-1]) * (s / s[-1])

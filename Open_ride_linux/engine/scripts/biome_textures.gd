@@ -33,7 +33,7 @@ const GRID := 17
 ## Emplacements de sol (terrain_biomes.gdshader) : un par biome, puis un par couple (paysage, biome de base) dont
 ## le thème décrit le sol (lot U25, `landscapes.<paysage>.biomes.<biome>.ground`), au plus MAX_LANDSCAPE_SLOTS.
 const MAX_LANDSCAPE_SLOTS := 16
-const MAX_SLOTS := 20 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
+const MAX_SLOTS := 23 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
 const MAX_LAYERS := MAX_SLOTS * 3      # 3 couches par emplacement (terrain_biomes.gdshader MAX_LAYERS)
 const ROLES: Array[String] = ["grass", "rock", "snow"]
 ## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.

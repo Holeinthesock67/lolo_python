@@ -52,7 +52,7 @@ from ..terrain import blend
 from .. import river_surface as RS
 from .. import road_ground as RG
 from .. import water_terrain as WT
-from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile
+from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile, with_turnaround
 from .graph import RoadGraph
 from .osmdb import OsmDb, WATERWAY_KINDS
 from .square_coast import COAST_SQUARE_VERSION, square_coast
@@ -66,9 +66,15 @@ from .store import WorldCache
 # pente douce au lieu d'une chute de 7 m sous la chaussée) ; 9 (21/11) : garde-fou d'altitude du profil des arêtes
 # (altitude_guard.py : trous et pics du relief, pente et changement de pente bornés, pente des nœuds).
 WORLDGEN_VERSION = 9
-# Relief proche calculé avec RING_CELLS cases de plus tout autour : la règle sol / route (road_ground.fit) ne lit que
-# le relief à deux cases d'un sommet, les bords communs de deux carrés sont donc identiques.
-RING_CELLS = 3
+# Règle sol / route du carré (road_ground.fit) en SQUARE_ROUNDS paires de passes ; chaque passe ne lit que le relief à
+# deux cases d'un sommet : relief proche calculé avec RING_CELLS cases de plus tout autour, bords communs identiques.
+# Marges du carré (21/11) : la balade, rééchantillonnée tous les 10 m sur ses arêtes, s'écarte de quelques cm de la
+# route de l'arête ; le carré dégage donc un peu plus large et un peu plus bas, la séance réglant ensuite le sol sur sa
+# propre route (session_ground.py) tant que l'engine n'a pas la tuile.
+SQUARE_ROUNDS = 3
+RING_CELLS = 4 * SQUARE_ROUNDS + 1
+SQUARE_WIDTH_MARGIN_M = 0.25
+SQUARE_SINK_MARGIN_M = 0.03
 FAR_WATER_VERSION = 1         # eau des tuiles lointaines (lot EA2)
 SQUARE_M = 1000
 FAR_M = 5000
@@ -453,17 +459,50 @@ def square_relief(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProf
     upper, lower = [], []
     for k in sorted(profiles):
         e, p = graph.edges[k], profiles[k]
-        up, lo = RG.corridor(p.x, p.z, p.alt_m, p.heading_deg, s=p.s,
+        up, lo = RG.corridor_s(p.x, p.z, p.alt_m, p.heading_deg, s=p.s,
                              open_spans=[sp for sp in e.spans if sp[2] == "tunnel"], ground_spans=e.spans,
-                             half_width=half_width(e.road_class))
+                             half_width=half_width(e.road_class) + SQUARE_WIDTH_MARGIN_M,
+                             sink=C.ROAD_SINK_M + SQUARE_SINK_MARGIN_M)
+        upper.append(up)
+        lower.append(lo)
+    for up, lo in turnaround_corridors(graph, profiles, provider, frame):
         upper.append(up)
         lower.append(lo)
     s = RING_CELLS
     ground = y[s:-s, s:-s].astype("<f4")
-    RG.fit_grid(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M,
-                [np.concatenate([u[c] for u in upper]) if upper else np.empty(0) for c in range(3)],
-                [np.concatenate([lo[c] for lo in lower]) if lower else np.empty(0) for c in range(3)])
+    # abscisses des points, décalées de 1e7 m par route (arête ou boucle) : pieds de talus au bord d'une autre route
+    for n, (u, lo) in enumerate(zip(upper, lower)):
+        upper[n] = (*u[:3], u[3] + 1e7 * n)
+        lower[n] = (*lo[:3], lo[3] + 1e7 * n)
+    up_all = [np.concatenate([u[c] for u in upper]) if upper else np.empty(0) for c in range(4)]
+    lo_all = [np.concatenate([lo[c] for lo in lower]) if lower else np.empty(0) for c in range(4)]
+    RG.fit_grid(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, up_all[:3],
+                RG.drop_covered_feet(up_all, lo_all, up_all[3], lo_all[3]), rounds=SQUARE_ROUNDS)
     return ground, y[s:-s, s:-s].astype("<f4")
+
+
+def turnaround_corridors(graph: RoadGraph, profiles: dict[str, EdgeProfile], provider: ElevationProvider,
+                         frame: LocalFrame):
+    """Points de la règle sol / route des boucles de retournement (21/11) : au bout de chaque impasse du carré, la
+    balade tourne dans une boucle (`edge_profile.with_turnaround`) qu'aucune arête ne décrit. Même boucle, même
+    altitude que celle que la séance tracera, si bien que le sol du carré la porte déjà (la séance la reprend sur la
+    route qu'elle dessine, `session_ground.py`)."""
+    out = []
+    for k in sorted(profiles):
+        e, p = graph.edges[k], profiles[k]
+        if len(p.s) < 2:
+            continue
+        for node, forward in ((e.b, True), (e.a, False)):
+            n = graph.nodes.get(node)
+            if n is None or n.frontier or len(graph._adj.get(node, [])) != 1 or e.a == e.b:
+                continue
+            arrive = p if forward else p.reversed()
+            loop = with_turnaround(arrive.reversed(), (float(arrive.x[-2]), float(arrive.z[-2])), provider, frame)
+            m = int(np.searchsorted(loop.s, loop.length_m - arrive.length_m + 30.0))   # la boucle et 30 m d'arête
+            out.append(RG.corridor_s(loop.x[:m + 1], loop.z[:m + 1], loop.alt_m[:m + 1], loop.heading_deg[:m + 1],
+                                     s=loop.s[:m + 1], half_width=C.ROAD_HALF_WIDTH_M + SQUARE_WIDTH_MARGIN_M,
+                                     sink=C.ROAD_SINK_M + SQUARE_SINK_MARGIN_M))
+    return out
 
 
 def _ring_xz(frame: LocalFrame, coords, outer: bool) -> list[list[float]] | None:
