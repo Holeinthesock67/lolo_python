@@ -48,7 +48,7 @@ func _run() -> void:
 	_check(v["cadence_text"] == "88" and v["posture"] == "FLUIDE" and v["posture_token"] == "neutral", "cadence et posture")
 	_check(is_equal_approx(v["shield_frac"], 0.4) and is_equal_approx(v["adrenaline_frac"], 0.65), "arcs bouclier et adrénaline")
 	_check(is_equal_approx(v["adrenaline_z_mark"], 0.5) and v["z_ready"], "seuil de l'attaque Z")
-	_check(is_equal_approx(v["wbal_pct"], 75.0) and not v["wbal_low"], "W'bal 75 %")
+	_check(not v.has("wbal_pct") and not v.has("wbal_low"), "plus de jauge « Réserve W' » (lot R25)")
 	_check(is_equal_approx(v["enemy_pct"], 64.0) and v["has_enemy"], "PV de l'ennemi 64 %")
 	_check(not v["firewall_danger"] and v["room_text"] == "3/9" and v["gold"] == 85, "Firewall loin, salle et or")
 	_check(v["corridor"].is_empty() and v["hack"].is_empty(), "hors couloir et sans piratage")
@@ -56,13 +56,13 @@ func _run() -> void:
 	m.update(_state(3, {"w_bal_j": 4000.0, "firewall_gap_m": 12.0, "adrenaline": 30.0}, {"gear": 12}), 1.0)
 	v = m.values()
 	_check(v["gear_text"] == "12", "vitesse immédiate « 12 »")
-	_check(is_equal_approx(v["wbal_pct"], 75.0) and is_equal_approx(v["firewall_gap_m"], 120.5), "dt = 0 : valeurs lissées inchangées")
+	_check(is_equal_approx(v["firewall_gap_m"], 120.5), "dt = 0 : valeurs lissées inchangées")
 	m.update(_state(4, {"w_bal_j": 4000.0, "firewall_gap_m": 12.0, "adrenaline": 30.0}), 1.15)
 	v = m.values()
-	_check(v["wbal_pct"] < 75.0 and v["wbal_pct"] > 20.0, "lissage à mi-chemin après 0,15 s")
+	_check(v["firewall_gap_m"] < 120.5 and v["firewall_gap_m"] > 12.0, "lissage à mi-chemin après 0,15 s")
 	m.update(_state(5, {"w_bal_j": 4000.0, "firewall_gap_m": 12.0, "adrenaline": 30.0}), 1.5)
 	v = m.values()
-	_check(is_equal_approx(v["wbal_pct"], 20.0) and v["wbal_low"], "W'bal 20 % atteint en 0,3 s, rouge")
+	_check(is_equal_approx(v["firewall_gap_m"], 12.0), "écart au Firewall atteint en 0,3 s")
 	_check(v["firewall_danger"] and not v["z_ready"], "Firewall à 12 m rouge, adrénaline sous Z")
 
 	# Événements : une seule fois, même si la trame (même seq) est renvoyée.
@@ -110,7 +110,7 @@ func _run() -> void:
 	var m2 = HudModel.new()
 	m2.update(_state(1, {"shield_max": 0.0, "enemy_hp_max": 0.0, "w_prime_j": 0.0}), 0.0)
 	v = m2.values()
-	_check(v["power_text"] == "0 % FTP" and v["shield_frac"] == 0.0 and not v["has_enemy"] and v["wbal_pct"] == 0.0, "FTP inconnue, divisions par zéro évitées")
+	_check(v["power_text"] == "0 % FTP" and v["shield_frac"] == 0.0 and not v["has_enemy"], "FTP inconnue, divisions par zéro évitées")
 
 	# Lot R22 : le guide est calculé avec la trame, le couloir porte ses deux temps et son temps restant.
 	var m3 = HudModel.new()
