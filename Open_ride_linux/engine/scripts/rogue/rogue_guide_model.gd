@@ -277,7 +277,7 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 	elif target is Dictionary and phase in ["WARMUP", "COOLDOWN"]:
 		var lo := int(target.get("lo", 0))
 		var hi = target.get("hi", null)
-		var big := ("≤ %s" % watts(float(hi), ftp_w)) if lo <= 0 and hi != null else target_band(lo, hi, ftp_w)
+		var big := (("≤ %d W" % bound_w(int(hi), ftp_w, false)) if ftp_w > 0.0 else ("≤ %d %% FTP" % int(hi))) if lo <= 0 and hi != null else target_band(lo, hi, ftp_w)
 		var flag = rogue.get("in_target", null)   # lot R26 : plage jugée par le core (tolérance et marge comprises)
 		var inside: bool = bool(flag) if flag is bool else (power_pct >= float(lo) and (hi == null or power_pct <= float(hi)))
 		var sub_c := live_gap(power_pct, lo, hi, ftp_w, flag) if lo > 0 else ("✔ dans la plage" if inside else "trop haut")   # lot R28
@@ -449,12 +449,22 @@ static func watts(pct: float, ftp: float, step: int = 5) -> String:
 
 
 ## Consigne de puissance en texte : « ≥ 175 W », ou « 175–190 W » quand elle a un plafond (endurance, R23).
+## Lot R28 : bornes arrondies vers l'intérieur (bas au 5 W au-dessus, haut au 5 W en dessous) : à la puissance écrite,
+## on est dans la plage jugée.
 static func target_band(lo: int, hi: Variant, ftp: float = 0.0) -> String:
-	if hi == null or int(hi) <= lo:
-		return "≥ %s" % watts(lo, ftp) if hi == null else watts(lo, ftp)
 	if ftp <= 0.0:
+		if hi == null or int(hi) <= lo:
+			return "≥ %d %% FTP" % lo if hi == null else "%d %% FTP" % lo
 		return "%d–%d %% FTP" % [lo, int(hi)]
-	return "%s–%s" % [watts(lo, ftp).trim_suffix(" W"), watts(int(hi), ftp)]
+	if hi == null or int(hi) <= lo:
+		return "≥ %d W" % bound_w(lo, ftp, true) if hi == null else "%d W" % bound_w(lo, ftp, true)
+	return "%d–%d W" % [bound_w(lo, ftp, true), maxi(bound_w(int(hi), ftp, false), bound_w(lo, ftp, true))]
+
+
+## Borne de plage en watts, au pas de 5 W, arrondie vers l'intérieur de la plage (lot R28).
+static func bound_w(pct: int, ftp: float, low: bool) -> int:
+	var w := float(pct) * ftp / 100.0
+	return int(ceil(w / 5.0 - 1e-6)) * 5 if low else int(floor(w / 5.0 + 1e-6)) * 5
 
 
 ## Écart à la plage (lots R26 et R28) : « ✔ dans la plage », sinon « il manque 12 W » ou « 15 W de trop » au-dessus du
@@ -467,13 +477,12 @@ static func live_gap(power_pct: float, lo: int, hi: Variant, ftp: float, inside:
 	var below := power_pct < float(lo)
 	if ftp <= 0.0:
 		return "trop bas" if below else "trop haut"
-	var gap_w := 0
-	if below:
-		gap_w = int(ceil((float(lo) - power_pct) * ftp / 100.0))
-		return "il manque %d W" % maxi(gap_w, 1)
-	if hi != null and power_pct > float(hi):
-		gap_w = int(ceil((power_pct - float(hi)) * ftp / 100.0))
-		return "%d W de trop" % maxi(gap_w, 1)
+	# écart compté sur les nombres écrits à l'écran : borne de la plage et puissance en haut à gauche (lot R28)
+	var now_w := int(round(power_pct * ftp / 100.0))
+	if below and bound_w(lo, ftp, true) > now_w:
+		return "il manque %d W" % (bound_w(lo, ftp, true) - now_w)
+	if hi != null and power_pct > float(hi) and now_w > bound_w(int(hi), ftp, false):
+		return "%d W de trop" % (now_w - bound_w(int(hi), ftp, false))
 	return "presque dans la plage"   # puissance écrite dans la plage, moyenne jugée sur 8 s pas encore
 
 

@@ -199,11 +199,11 @@ func _run() -> void:
 	var gw = GuideModel.new()
 	gw.ftp_w = 250.0
 	o = gw.compute(st, _rogue(), 72.0, [])
-	_check(o["fw"]["sub"] == "Garde 175–190 W · ✔ dans la plage", "Firewall : garde 175–190 W, dans la plage (R28)")
+	_check(o["fw"]["sub"] == "Garde 175–185 W · ✔ dans la plage", "Firewall : garde 175–185 W, dans la plage (R28, bornes vers l'intérieur)")
 	o = gw.compute(st, _rogue({"overheat": true, "adrenaline_trend": {"rate_per_s": -2.0, "cause": "overheat", "overheat_in_s": null}}), 85.0, [])
 	_check(o["hint"] == "SURCHAUFFE : descends sous 190 W · adrénaline −2/s, Z bloqué", "surchauffe en watts")
 	o = gw.compute(st, _rogue({"phase": "WARMUP", "target_pct": {"lo": 55, "hi": 65}, "phase_left_s": 200.0}), 58.0, [])
-	_check(o["consigne"]["big"] == "140–165 W" and o["consigne"]["sub"] == "✔ dans la plage", "échauffement : 140–165 W, dans la plage (R28)")
+	_check(o["consigne"]["big"] == "140–160 W" and o["consigne"]["sub"] == "✔ dans la plage", "échauffement : 140–160 W, dans la plage (R28)")
 	gw.compute(st, _rogue({"z_reason": "cursed"}), 110.0, ["z_refused"])
 	_check(gw.take_toasts()[0]["sub"] == "Redescends sous 250 W pour frapper", "Maudit : sortie en watts")
 	_check(GuideModel.watts(72.0, 0.0) == "72 % FTP" and GuideModel.watts(72.0, 250.0) == "180 W", "watts, ou % sans FTP")
