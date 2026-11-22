@@ -5,6 +5,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Cyber-Rogue sans voile en high (lot R27)
+- En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
+
 ### HUD sans éléments inutiles (lot NI1)
 - Plus de ligne « ÉTAT: RUNNING | TRAINER… | ENTRÉE… » en haut de l'écran : le bandeau central ne parle que de la prochaine montée, ou d'un problème (core attendu, trainer perdu) ; sinon il disparaît.
 - La cible ERG n'est plus qu'au bandeau ERG (case « CIBLE ERG » retirée) ; la pente n'est plus affichée au vélodrome (toujours 0 %).
