@@ -1105,6 +1105,10 @@ func _flush_menu() -> void:
 	if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
 		st["card"]["profile"] = _route_profile["profile"]
 	var t0 := Time.get_ticks_usec()
+	# Photos de la séance qui vient de finir (photo_moments_model.gd) dans l'encart du résultat ; pas dans le
+	# bilan d'une séance de l'Historique. Une autre source de lignes (ligue, CH4) s'ajoute à la suite.
+	menu_view.summary.result_lines = PhotoMomentsModel.photo_lines(photo_moments.photos, photo_moments.folder) \
+		if str(st["screen"]) == "summary" else []
 	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	PerfProbe.mark("menu", "affichage " + str(st["screen"]), ms)
@@ -1804,9 +1808,11 @@ func _avatar_info() -> Dictionary:
 
 ## Photo automatique (photo_moments_model.gd) : image déjà rendue (celle du passage de la ligne pour
 ## l'arrivée, avant que le bilan ne la couvre), écrite en JPEG dans un fil de travail sous
-## ~/OpenRide/Captures/<séance>/. Jamais en mode test (bancs, CI) ni sous un menu plein écran.
+## ~/OpenRide/Captures/<séance>/. Jamais sans écran, ni en mode test (bancs, CI) sauf si `OPENRIDE_CAPTURES_DIR`
+## donne un autre dossier (captures de validation), ni sous un menu plein écran (record).
 func _take_photo(req: Dictionary) -> void:
-	if ipc.test_mode or DisplayServer.get_name() == "headless":
+	var base := OS.get_environment("OPENRIDE_CAPTURES_DIR")
+	if (ipc.test_mode and base == "") or DisplayServer.get_name() == "headless":
 		return
 	if str(req.get("kind", "")) != PhotoMomentsModel.KIND_FINISH and _full_screen_menu():
 		return
@@ -1816,7 +1822,9 @@ func _take_photo(req: Dictionary) -> void:
 	if img == null or img.is_empty():
 		return
 	var file: String = photo_moments.add_photo(req, Time.get_datetime_dict_from_system())
-	var dir := ThemeLoader._home_dir().path_join(PhotoMomentsModel.BASE_DIR).path_join(photo_moments.folder)
+	if base == "":
+		base = ThemeLoader._home_dir().path_join(PhotoMomentsModel.BASE_DIR)
+	var dir := base.path_join(photo_moments.folder)
 	WorkerThreadPool.add_task(func() -> void:
 		DirAccess.make_dir_recursive_absolute(dir)
 		var err := img.save_jpg(dir.path_join(file), 0.85)

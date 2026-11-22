@@ -97,7 +97,10 @@ func _run() -> void:
 	var main_code := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_check(main_code.contains("for req in photo_moments.on_state(state,") and main_code.contains("photo_moments.on_segment_result(msg,"),
 		"main.gd : modèle branché sur state et segment_result")
-	_check(main_code.contains("if ipc.test_mode or DisplayServer.get_name() == \"headless\":"),
+	_check(main_code.contains("if (ipc.test_mode and base == \"\") or DisplayServer.get_name() == \"headless\":"),
 		"main.gd : aucune photo en mode test ni sans écran")
 	_check(main_code.contains("WorkerThreadPool.add_task(func() -> void:\n\t\tDirAccess.make_dir_recursive_absolute(dir)"),
 		"main.gd : écriture du JPEG hors de l'image")
+	_check(main_code.contains("menu_view.summary.result_lines = PhotoMomentsModel.photo_lines(photo_moments.photos, photo_moments.folder)")
+		and main_code.contains("if str(st[\"screen\"]) == \"summary\" else []"),
+		"main.gd : ligne des photos dans l'encart du résultat, bilan de la séance seulement")
