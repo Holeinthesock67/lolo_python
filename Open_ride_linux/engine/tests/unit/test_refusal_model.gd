@@ -73,7 +73,7 @@ func _run() -> void:
 	_check(str(st["status"]).begins_with("× REFUSÉ · Départ impossible : l'entraînement choisi est illisible")
 		and st["status_error"], "séance libre : entraînement refusé expliqué sur l'écran Prêt (%s)" % str(st["status"]))
 	f.on_error("plan_invalid", "Aucune séance du plan à faire aujourd'hui.")
-	_check(str(f.state()["status"]).find("À faire : choisis « Séance libre »") > 0, "plan du jour absent : quoi faire")
+	_check(str(f.state()["status"]).find("À faire : choisis « Session libre »") > 0, "plan du jour absent : quoi faire")
 
 	# --- Appui sans effet en séance -------------------------------------------------------------------
 	var gp_empty := _st({"gp": {"held": null, "roll_s": 0.0}})

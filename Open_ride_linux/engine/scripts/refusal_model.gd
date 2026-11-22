@@ -32,8 +32,8 @@ const LAUNCH_FALLBACK_TODO := "change le réglage indiqué puis relance avec « 
 ## Refus d'un départ, par code d'erreur du contrat (§5, codes d'erreur) : [pourquoi, quoi faire]. Le texte du
 ## core précise parfois le pourquoi (`LAUNCH_PATTERNS`, essayés d'abord).
 const LAUNCH_CODES := {
-	"workout_invalid": ["l'entraînement choisi est illisible", "choisis un autre entraînement, ou « Séance libre »"],
-	"plan_invalid": ["aucune séance du plan à faire aujourd'hui", "choisis « Séance libre » ou un entraînement de la liste"],
+	"workout_invalid": ["l'entraînement choisi est illisible", "choisis un autre entraînement, ou « Session libre »"],
+	"plan_invalid": ["aucune séance du plan à faire aujourd'hui", "choisis « Session libre » ou un entraînement de la liste"],
 	"bot_invalid": ["les bots choisis ne conviennent pas", "change les lignes « Bot » de cet écran (4 bots au plus)"],
 	"run_invalid": ["objectif ou durée de run hors liste", "choisis un objectif et une durée de la liste"],
 	"item_locked": ["une pièce choisie n'est pas débloquée", "choisis une pièce que tu possèdes au Garage"],
@@ -59,7 +59,7 @@ const LAUNCH_PATTERNS := [
 		"choisis un parcours plus long, ou baisse les adversaires ou l'écart"],
 	["ftp_test", "test de FTP inconnu", "relance le test depuis « Test de FTP »"],
 	["Aucune séance du plan", "aucune séance du plan à faire aujourd'hui",
-		"choisis « Séance libre » ou un entraînement de la liste"],
+		"choisis « Session libre » ou un entraînement de la liste"],
 	["pour le fantôme", "pas encore de fantôme sur ce parcours", "roule-le une fois en entier, ou retire la ligne « Fantôme »"],
 	["Bots refusés", "les bots choisis ne conviennent pas", "change les lignes « Bot » de cet écran (4 bots au plus)"],
 	["monde ouvert", "cette course a besoin d'un parcours de la liste", "choisis un circuit ou un parcours en ligne"],
