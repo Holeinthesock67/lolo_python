@@ -22,7 +22,7 @@ watts que viseront les bots. Critères : ludique, un défi quand il le veut, pas
   facile), envoie `set_setting bots.objective` : la dose est gardée pour les séances suivantes. Récupération et
   seuil restent choisis dans « Réglages » ; ils s'affichent « récupération » et « seuil », et A passe au mot
   au-dessus (facile, dur).
-- **Où** : Dernier survivant, Grand Prix, vélodrome, session libre, ERG et mode WTF quand un **Peloton** est choisi
+- **Où** : Dernier survivant, Grand Prix, Course, vélodrome, session libre, ERG et mode WTF quand un **Peloton** est choisi
   (bots à profil calibrés sur l'effort) ; pas de ligne sans bots calibrés. La ligne « Objectif des bots » quitte
   les écrans Prêt du Dernier survivant et du Grand Prix (même réglage, en double).
 - **Vélodrome** : l'épreuve fixe la dose (décision du 15 novembre, `bot_effort.TRACK_EFFORT`) : ligne grisée,
@@ -31,8 +31,8 @@ watts que viseront les bots. Critères : ludique, un défi quand il le veut, pas
   change pour cette course seulement, le réglage commun ne bouge pas.
 - **Mots écrits** : focus sur la ligne, la ligne d'état dit « Intensité du jour : A pour facile, moyen ou dur. Les
   bots roulent à ces watts ; la course reste serrée. », puis « Course estimée à ≈ 9 min. Ta cote : 1540. »
-- **Mode Course** (#939, demande du propriétaire du 21 novembre) : la même ligne ira sur son écran Prêt, branchée
-  quand #939 sera fusionnée (`bots_preview_args`).
+- **Mode Course** (#939, demande du propriétaire du 21 novembre) : même ligne sur son écran Prêt (mode à réglages
+  comme le Grand Prix) ; « Objectif des bots » retiré de `race_keys`, tours et adversaires ajoutés à `PREVIEW_KEYS`.
 
 ## 3. Tests
 

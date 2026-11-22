@@ -16,6 +16,14 @@ def test_campagne_courte_plus_fort_monte_plus_faible_descend():
     assert strong["offset_max"] <= bot_elo.OFFSET_MAX
 
 
+@pytest.mark.slow
+def test_campagne_courte_en_course():
+    """Course (lot CR1) : la cote compte comme au Grand Prix, mode « race » au bilan."""
+    strong = ec.campaign(1.08, races=3, opponents=3, mode="race")
+    assert strong["mode"] == "race" and len(strong["lines"]) == 3 and strong["of"] == 4
+    assert strong["final"] > bot_elo.START
+
+
 def test_controles_de_la_campagne():
     def run(force, final, place=2.5, std=10.0):
         return {"force": force, "final": final, "of": 5, "tail_place": place, "tail_std": std, "offset_max": 50.0}

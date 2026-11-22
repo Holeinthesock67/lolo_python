@@ -106,12 +106,22 @@ func _sweep(g, route, end_m: float = INF) -> Dictionary:
 
 
 ## Distance au plus proche segment de toute la route (force brute).
+var _axis := PackedVector2Array()
+
+
+## Distance à la route telle que l'engine la dessine (Catmull-Rom, un point par mètre ; 21/11 : plus les segments
+## droits entre les points du parcours, qui s'en écartent dans l'épingle).
 func _road_distance(route, p: Vector3) -> float:
+	if _axis.is_empty():
+		var s := 0.0
+		while s <= route.length_m:
+			var a: Vector4 = route.sample_xyzh(s)
+			_axis.append(Vector2(a.x, a.z))
+			s += 1.0
 	var best := INF
 	var q := Vector2(p.x, p.z)
-	for i in range(route.n - 1):
-		var c := Geometry2D.get_closest_point_to_segment(q, Vector2(route.x[i], route.z[i]), Vector2(route.x[i + 1], route.z[i + 1]))
-		best = minf(best, q.distance_to(c))
+	for i in range(_axis.size() - 1):
+		best = minf(best, q.distance_to(Geometry2D.get_closest_point_to_segment(q, _axis[i], _axis[i + 1])))
 	return best
 
 

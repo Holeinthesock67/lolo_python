@@ -1,0 +1,32 @@
+{
+  "description": "Course classique contre les bots (lot CR1) : entrée « Course » de l'accueil après le Grand Prix, écran Prêt du mode sur le parcours de démo (en ligne : pas de tours, pas de ligne Objets, « 5,0 km jusqu'à l'arrivée »), adversaires portés à 11 au Click (classement complet de 12 lignes) (config.toml écrit par le core), lancement, départ du mode dans le journal du core, HUD de course (place et classement complet, sans case d'objet), fin sans enregistrement et bilan. Captures nommées cr1_accueil, cr1_pret, cr1_course et cr1_bilan pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "etapes": [
+    {"ecran": "home", "delai": 15, "elements": ["race"]},
+    {"choisir": "world"},
+    {"ecran": "routes", "elements": ["demo"]},
+    {"choisir": "demo"},
+    {"ecran": "home", "contient": ["Parcours : Col du lacet", "Course"]},
+    {"aller": "race"},
+    {"capture": "cr1_accueil"},
+    {"choisir": "race"},
+    {"ecran": "ready", "titre": "Prêt : Course — Col du lacet", "elements": ["start", "change_route", "set:race.opponents", "set:bots.level_pct"], "contient": ["5,0 km en ligne"], "absent": ["Bot 1", "Fantôme de la dernière séance", "Passer en session ERG", "Objets", "Tours de la boucle"], "delai": 5},
+    {"choisir": "set:race.opponents"},
+    {"ecran": "ready", "edition": true},
+    {"appui": ["PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT"]},
+    {"ecran": "ready", "contient": ["Adversaires — ◀ 11 ▶"]},
+    {"appui": "A_LONG"},
+    {"ecran": "ready", "edition": false},
+    {"config": {"race.opponents": 11}},
+    {"capture": "cr1_pret"},
+    {"choisir": "start"},
+    {"journal": "core", "motif": "Course : 11 adversaires", "delai": 15},
+    {"menu_cache": true},
+    {"attendre": 60},
+    {"capture": "cr1_course"},
+    {"commande": "end_session", "args": {"save": false}},
+    {"note": "lignes du bilan du mode vérifiées par test_race_menu.gd (vue du bilan, pas éléments du menu)", "ecran": "summary", "titre": "Fin de séance", "delai": 10},
+    {"capture": "cr1_bilan"},
+    {"choisir": "new_session"},
+    {"ecran": "home"}
+  ]
+}
