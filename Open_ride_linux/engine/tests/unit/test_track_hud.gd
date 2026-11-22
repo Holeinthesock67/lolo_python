@@ -119,6 +119,14 @@ func _run() -> void:
 	_check(v["banner"]["sub"] == "Épreuve terminée", "victoire : bandeau de l'épreuve terminé")
 	_check(v["list"]["rows"][0]["name"] == "Toi" and v["list"]["rows"][0]["value"] == "" and v["list"]["rows"][0]["kind"] == "me",
 		"victoire : Toi premier, plus « dernier » (%s)" % str(v["list"]["rows"][0]))
+	_check(v["laps"]["label"] == "CLASSEMENT" and v["laps"]["value"] == "1er" and v["laps"]["extra"] == "sur 3",
+		"victoire : classement figé au lieu de « encore en course » (%s)" % str(v["laps"]))
+	var fin_rows: Array = v["list"]["rows"]
+	_check(v["list"]["title"] == "CLASSEMENT FINAL" and fin_rows.size() == 3 and fin_rows[2]["pos"] == "3." and fin_rows[2]["kind"] == "ok",
+		"fin : classement final numéroté, éliminés compris (%s)" % str(v["list"]))
+	var lost := win.duplicate(true)
+	lost.merge({"ranking": ["b1", "b2", "me"], "eliminated": ["me", "b2"], "last": "b1"}, true)
+	_check(m.view(_st(lost))["laps"]["value"] == "3e", "fin : 3e sur 3")
 	var timed = Model.new()
 	var st0 := _st(win)
 	st0["t"] = 1000.0
