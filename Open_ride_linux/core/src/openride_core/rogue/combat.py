@@ -8,6 +8,8 @@ Toutes les constantes sont dans `RogueBalance`.
 
 from __future__ import annotations
 
+import math
+
 import bisect
 import random
 from dataclasses import dataclass, replace
@@ -125,6 +127,16 @@ def in_target(shown: float, target: float, ftp_w: float, was_in: bool, b: RogueB
     la consigne moins la tolérance, on n'en sort qu'à la consigne moins `target_exit_mult` fois la tolérance."""
     g = target_grace(target, ftp_w, b)
     return shown >= target - (b.target_exit_mult * g if was_in else g)
+
+
+def judged_band_pct(lo: float, hi: float | None, ftp_w: float, b: RogueBalance) -> dict:
+    """Plage affichée = plage jugée (lot R28, essai du 22 novembre : « 170–195 W » affichés, adrénaline dès 153 W).
+    `lo` et `hi` en fraction de la FTP ; la tolérance de la consigne (`target_grace`) est retirée du bas et ajoutée
+    au haut. Arrondis vers l'intérieur : à la puissance écrite, on est dans la plage. `hi` nul : « au moins `lo` »."""
+    g = target_grace(lo, ftp_w, b)
+    out_lo = max(math.ceil((lo - g) * 100 - 1e-6), 0)
+    out_hi = None if hi is None else math.floor((hi + g) * 100 + 1e-6)
+    return {"lo": out_lo, "hi": out_hi}
 
 
 def m_gear(gear: int, b: RogueBalance) -> float:

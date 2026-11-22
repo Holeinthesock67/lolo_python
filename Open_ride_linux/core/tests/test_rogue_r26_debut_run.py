@@ -69,8 +69,9 @@ def test_target_in_and_out_events_once_per_crossing():
     tgt_w = out.rogue["target_pct"]["lo"] * 2.5
     assert not out.rogue["in_target"]
     seen = []
-    for p in (tgt_w, tgt_w, tgt_w * 0.88, tgt_w * 0.80, tgt_w * 0.80, tgt_w):
+    for p in (tgt_w, tgt_w, tgt_w * 0.96, tgt_w * 0.85, tgt_w * 0.85, tgt_w):
         out = step_in_room(e, 6.0, power=p)
         seen += [ev for ev in out.rogue["events"] if ev.startswith("target_")]
-    assert seen == ["target_in", "target_out", "target_in"]   # 88 % : encore dedans (marge) ; 80 % : dehors
+    # lot R28 : `lo` est le bas de la plage jugée ; 96 % de ce bas : encore dedans (marge de sortie) ; 85 % : dehors
+    assert seen == ["target_in", "target_out", "target_in"]
     jsonschema.validate(out.rogue, ROGUE_SCHEMA)

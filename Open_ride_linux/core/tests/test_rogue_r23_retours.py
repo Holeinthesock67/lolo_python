@@ -177,7 +177,9 @@ def test_adrenaline_trend_gain_below_stopped():
 def test_endurance_overheat_countdown_then_melt_and_target_range():
     e = fight_engine(first="diesel", objective="endurance")
     out = step_in_room(e, 5.0, power=150.0)
-    assert out.rogue["target_pct"]["hi"] == round(overheat_limit(out.rogue["target_pct"]["lo"] / 100, B) * 100)
+    from openride_core.rogue.combat import judged_band_pct, target_at
+    tgt = target_at(e.room, 5.0)   # lot R28 : plage affichée = plage jugée, plafond = seuil de surchauffe + tolérance
+    assert out.rogue["target_pct"] == judged_band_pct(tgt, overheat_limit(tgt, B), 250.0, B)
     assert out.rogue["target_pct"]["lo"] <= out.rogue["target_pct"]["hi"]
     hot = 250.0 * (out.rogue["target_pct"]["hi"] / 100 + 0.1)
     out = step_in_room(e, 6.0, power=hot, n=round(2.0 / DT))

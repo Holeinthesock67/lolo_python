@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Consignes du Cyber-Rogue (lot R28)
+- La plage écrite à l'écran est celle que le jeu juge : « 155–210 W » au lieu de « 170–195 W » quand l'adrénaline chargeait déjà dès 153 W (essai du 22 novembre).
+- La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
+- L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.33 provisoire).
+
 ### HUD sans éléments inutiles (lot NI1)
 - Plus de ligne « ÉTAT: RUNNING | TRAINER… | ENTRÉE… » en haut de l'écran : le bandeau central ne parle que de la prochaine montée, ou d'un problème (core attendu, trainer perdu) ; sinon il disparaît.
 - La cible ERG n'est plus qu'au bandeau ERG (case « CIBLE ERG » retirée) ; la pente n'est plus affichée au vélodrome (toujours 0 %).

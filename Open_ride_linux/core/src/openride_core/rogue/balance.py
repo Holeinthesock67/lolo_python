@@ -78,9 +78,9 @@ class RogueBalance:
     recovery_shield: float = 50.0   # bouclier remis après une défaite
     defeat_run_gold_loss: float = 0.25   # part de l'or de la run perdue en cas de défaite
     adrenaline_max: float = 100.0   # adrénaline maximale
-    adrenaline_per_s: float = 0.5   # adrénaline gagnée par seconde quand la puissance atteint la cible
-    adrenaline_roc_mult: float = 0.7   # Roc : multiplicateur de cette recharge
-    adrenaline_veloce_mult: float = 1.5   # Véloce : multiplicateur de cette recharge
+    adrenaline_per_s: float = 1.0   # adrénaline gagnée par seconde dans la plage (lot R28 : 0,5 avant)
+    adrenaline_roc_mult: float = 1.0   # lot R28 : même recharge quelle que soit la cadence (Roc : 0,7 avant)
+    adrenaline_veloce_mult: float = 1.0   # lot R28 : même recharge quelle que soit la cadence (Véloce : 1,5 avant)
     perfect_shift_adrenaline: float = 10.0   # adrénaline gagnée par Perfect Shift réussi
     ps_window_s: float = 1.5            # fenêtre de Perfect Shift centrée sur l'arche (R0)
     overheat_frac: float = 0.75   # surchauffe (endurance) : seuil de puissance, en fraction de la FTP
