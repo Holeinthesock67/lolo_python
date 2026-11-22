@@ -42,7 +42,7 @@ ME = "me"
 # Épreuves de piste qui comptent : courses en groupe à classement individuel (les poursuites et contre-la-montre
 # se courent seul ou par équipes, l'américaine et les épreuves par équipes classent des équipes).
 TRACK_EVENTS = ("scratch", "points", "tempo", "elimination", "keirin", "omnium")
-MODES = ("grandprix", "survivor", "track")
+MODES = ("grandprix", "race", "survivor", "track")   # race : Course (lot CR1), même classement que le Grand Prix
 
 
 def bot_key(profile: str, rank: int) -> str:
