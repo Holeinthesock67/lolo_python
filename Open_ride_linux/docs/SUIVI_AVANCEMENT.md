@@ -1,5 +1,7 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
+> Depuis le 22 novembre 2026, les PR n'écrivent plus dans ce fichier : chaque lot laisse sa ligne dans `docs/changements/<LOT>.md`, recopiée ici par la passe de doc (`docs/changements/README.md`).
+
 Mise à jour : 19 novembre 2026 (relevé des statuts sur `main` après les fusions du 8 au 19 novembre : cases cochées et numéros de PR, §1 « Fusions du 13 au 19 novembre » ; aucun nombre de tests écrit, voir `scripts/recompte_tests.py`) ; précédente : 27 octobre 2026 (fusions du jour : séries O, P, Q, X, modules purs des séries T et V, contrat 1.4, W0, Y1 ; statuts remis à l'état de `main` et essais restants rassemblés au §3) ; précédente : 24 octobre (cahiers de la série N ; fusions E1, K1 à K5, K8, braquets réactifs et deux boîtiers du Click)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : constats R1, R2 et S1 corrigés.
