@@ -1314,8 +1314,9 @@ class CoreSession:
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
         input_lost = bool(clicks) and self.state.input_status != "CONNECTED"
         ts = time.time()
-        p3 = self._power_3s(m.power_w)   # lot R23 : la puissance affichée juge les consignes du mode
-        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts, power_avg_w=p3)
+        p3 = self._power_3s(m.power_w)   # champ `power_3s` de la trame (HUD classique)
+        # lot R26 : le mode juge ses consignes sur sa propre moyenne (`judged_power_s`, 8 s), envoyée et affichée
+        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts)
         for msg in out.messages:
             self.server.send_raw(msg)
         if self._rec:

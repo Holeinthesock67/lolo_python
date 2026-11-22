@@ -11,6 +11,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut) ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
 - Contrat IPC révision 1.31 : `reset_profile_stats`, `undo_profile_reset`, `profiles.resets`.
 
+### Début de run et adrénaline du Cyber-Rogue (lot R26)
+- L'échauffement charge l'adrénaline à sa consigne, comme une salle : on arrive à la première porte de quoi frapper (essai du 21 novembre : « on commence sans adrénaline, il y a tout de suite une porte à frapper » ; choix du propriétaire).
+- Consignes jugées sur la puissance moyenne des 8 dernières secondes, affichée pendant la run, à 10 % de la consigne près (au moins 5 W), avec une marge de sortie (15 % sous la consigne) : sur 3 s et à 5 W près, le bruit du trainer faisait sortir de la plage sans cesse.
+- Plage en watts et écart en direct à l'écran, son d'entrée et de sortie de la plage (événements `target_in` et `target_out`, contrat IPC révision 1.28).
+
 ### Jauge « Réserve W' » retirée du Cyber-Rogue (lot R25)
 - La 4e jauge du HUD, « Réserve W' », disparaît : elle n'agissait sur rien dans le jeu et nuisait à la lisibilité (essai du 21 novembre). Restent Ennemi, Bouclier et Adrénaline.
 - L'écran de départ du mode ne propose plus le choix « W' », qui ne réglait que cette jauge.

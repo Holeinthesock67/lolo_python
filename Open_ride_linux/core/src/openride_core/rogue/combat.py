@@ -75,6 +75,7 @@ class CombatState:
     contact_prev: bool = False
     over_s: float = 0.0
     overheat: bool = False
+    in_target: bool = False            # lot R26 : puissance jugée dans la plage de la consigne (marge de sortie)
     tunnel_s: float = 0.0              # temps cumulé dans la bande de cadence d'un tunnel
     charges: int = 0                   # charges de tunnel (Diesel)
     roc_s: float = 0.0
@@ -109,6 +110,21 @@ def overheat_limit(target: float, b: RogueBalance) -> float:
     Lot R23 : les phases 2 et 3 du boss d'endurance demandent jusqu'à 85 % ; avec un seuil fixe à 75 %, tenir la
     consigne faisait fondre l'adrénaline. Une seule règle : le plafond est toujours au-dessus de la cible."""
     return max(b.overheat_frac, target + b.overheat_margin)
+
+
+def target_grace(target: float, ftp_w: float, b: RogueBalance) -> float:
+    """Tolérance d'une consigne, en fraction de la FTP (lot R26) : `target_grace_frac` de la consigne, au moins
+    `target_grace_w`. À 5 W près, le bruit du trainer sur la moyenne jugée faisait sortir de la plage sans cesse
+    (essai du 21 novembre : « très difficile de rester dans la plage »)."""
+    ftp = max(ftp_w, 1.0)
+    return max(b.target_grace_w, b.target_grace_frac * target * ftp) / ftp
+
+
+def in_target(shown: float, target: float, ftp_w: float, was_in: bool, b: RogueBalance) -> bool:
+    """Puissance jugée à la consigne (lot R26), règle unique de l'échauffement, des salles et du boss : on y entre à
+    la consigne moins la tolérance, on n'en sort qu'à la consigne moins `target_exit_mult` fois la tolérance."""
+    g = target_grace(target, ftp_w, b)
+    return shown >= target - (b.target_exit_mult * g if was_in else g)
 
 
 def m_gear(gear: int, b: RogueBalance) -> float:
@@ -210,8 +226,8 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
     ftp = max(inp.ftp_w, 1.0)
     frac = inp.power_w / ftp                                   # brute : dégâts par seconde
     shown = (inp.power_avg_w if inp.power_avg_w is not None else inp.power_w) / ftp   # affichée : consignes
-    grace = b.target_grace_w / ftp                             # l'affichage arrondit les consignes à 5 W
     tgt = target_at(room, s)
+    grace = target_grace(tgt, ftp, b)                          # lot R26 : 10 % de la consigne, au moins 5 W
     boss = room.archetype == "boss"
 
     # piratage du Saboteur (début à la distance prévue, fin par purge ou expiration)
@@ -275,13 +291,14 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
     else:
         over_s = 0.0
 
-    # adrénaline (lot R23 : la cause et le débit sont dits à l'engine)
+    # adrénaline (lot R23 : la cause et le débit sont dits à l'engine ; lot R26 : plage avec marge de sortie)
+    at_target = in_target(shown, tgt, ftp, st.in_target, b)
     adr_rate, adr_cause = 0.0, "below"
     if overheat:
         adr_rate, adr_cause = -b.overheat_adrenaline_per_s, "overheat"
     elif inp.posture == ARRET:
         adr_cause = "stopped"
-    elif shown >= tgt - grace:
+    elif at_target:
         mult = b.adrenaline_roc_mult if inp.posture == ROC else (
             b.adrenaline_veloce_mult if inp.posture == VELOCE else 1.0)
         adr_rate, adr_cause = b.adrenaline_per_s * mult, "gain"
@@ -445,7 +462,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
 
     new = replace(
         st, t_s=t, gear=gear, prev_gear=gear, enemy_hp=hp, down_s_m=down_s, shield=min(shield, b.shield_max),
-        adrenaline=adr, perfect_shifts=ps, gold_lost=gold_lost, contact_prev=inp.contact, over_s=over_s,
+        adrenaline=adr, perfect_shifts=ps, gold_lost=gold_lost, contact_prev=inp.contact, over_s=over_s, in_target=at_target,
         overheat=overheat, tunnel_s=tunnel_s, charges=charges, roc_s=roc_s, roc_charges=roc_charges,
         hook_until_s=hook_until, grade_scale=grade_scale, hack_kind=hack_kind, forced_gear=forced, hack_t_s=hack_t,
         done_markers=frozenset(done), rock_armor=tuple(sorted(rock_armor.items())), bins=bins,
