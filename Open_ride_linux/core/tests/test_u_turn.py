@@ -97,8 +97,13 @@ def test_u_turn_at_3_km_ends_at_km_0_with_6_km(tmp_path, monkeypatch) -> None:
     s_turn = s.physics.s
     u_turn(s)
     assert s.state.dir == -1 and s.state.to_dict()["dir"] == -1
-    ride_until(s, lambda: s.state.session_state == "FINISHED")
-    assert s.physics.s <= 0.0
+    # lot RT2 : le départ du parcours, devenu l'arrivée, ne termine plus la séance : arrivée annoncée et nouveau
+    # demi-tour automatique ; « Terminer et enregistrer » la termine
+    ride_until(s, lambda: s.state.arrival is not None)
+    assert s.state.session_state == "RUNNING" and s.state.arrival["kind"] == "route"
+    assert s.physics.s == pytest.approx(0.0, abs=0.5) and s.physics.direction > 0
+    s._on_command("end_session", {"save": True}, 50)
+    assert s.state.session_state == "FINISHED"
     summary = s.state.summary
     assert summary["distance_m"] == pytest.approx(2 * s_turn, abs=15.0)
     assert "dir" not in s.state.to_dict()   # séance finie : sens du parcours
@@ -110,7 +115,8 @@ def test_u_turn_at_3_km_ends_at_km_0_with_6_km(tmp_path, monkeypatch) -> None:
     assert fit_session.total_distance == pytest.approx(6000.0, abs=30.0)
     lines = [json.loads(ln) for f in (tmp_path / "journal").glob("*.jsonl") for ln in f.read_text().splitlines()]
     turns = [ln for ln in lines if ln.get("event") == "u_turn"]
-    assert len(turns) == 1 and turns[0]["dir"] == -1 and turns[0]["s"] == pytest.approx(s_turn, abs=0.01)
+    assert len(turns) == 2 and turns[0]["dir"] == -1 and turns[0]["s"] == pytest.approx(s_turn, abs=0.01)
+    assert turns[1]["dir"] == 1   # demi-tour automatique à l'arrivée (lot RT2)
     recs = [ln for ln in lines if ln.get("kind") == "record"]
     after = [r for r in recs if "pos" in r]
     assert after and all(r["pos"] < r["distance"] for r in after)

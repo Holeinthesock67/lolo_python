@@ -54,6 +54,17 @@ const BAR_ANIM_S := 1.2
 const BAR_H := 12
 
 var model = SummaryViewModel.new()
+## Résultat commun en tête du bilan (lot RT2) : « ★ RÉSULTAT », titre, sous-titre, lignes ajoutées (encart extensible).
+const RESULT_COLORS := {"win": UiTheme.FB_GOLD, "done": UiTheme.FB_GOLD, "place": UiTheme.FB_PLACE,
+	"out": UiTheme.FB_OUT, "stop": UiTheme.FB_REFUS}
+var result_band: PanelContainer
+var result_tag: Label
+var result_title: Label
+var result_sub: Label
+var result_extra: Label
+## Lignes de l'encart du résultat données par un autre écran (ligue d'hiver, lot CH4) ; [] par défaut.
+var result_lines: Array = []
+var _result_style: StyleBoxFlat
 var ftp_band: PanelContainer
 var ftp_title: Label
 var ftp_value: Label
@@ -97,6 +108,7 @@ func _init() -> void:
 	_tile_style_compact.content_margin_top = TILE_MARGIN_COMPACT
 	_tile_style_compact.content_margin_bottom = TILE_MARGIN_COMPACT
 	add_theme_constant_override("separation", BOX_SEP)
+	_build_result_band()
 	_build_ftp_band()
 	tiles_grid = GridContainer.new()
 	tiles_grid.columns = TILE_COLUMNS
@@ -153,6 +165,51 @@ func _init() -> void:
 	extras_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	progress_box.add_child(extras_label)
 	set_process(false)
+
+
+## Bandeau du résultat (lot RT2, fin commune) : mot « ★ RÉSULTAT », titre (« VICTOIRE ! », « ARRIVÉE · 3e sur 8 »,
+## « ENTRAÎNEMENT TERMINÉ »…), sous-titre, puis les lignes de l'encart ; fond de la couleur du ton, jamais seule.
+func _build_result_band() -> void:
+	result_band = PanelContainer.new()
+	_result_style = UiTheme.band_style()
+	result_band.add_theme_stylebox_override("panel", _result_style)
+	result_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	result_band.visible = false
+	add_child(result_band)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	result_band.add_child(box)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	box.add_child(row)
+	result_tag = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.TEXT)
+	result_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(result_tag)
+	result_title = UiTheme.label(UiTheme.VALUE_SIZE, UiTheme.TEXT)
+	row.add_child(result_title)
+	result_sub = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.FB_CONSIGNE_DETAIL)
+	result_sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	result_sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	result_sub.clip_text = true
+	result_sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(result_sub)
+	result_extra = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.TEXT)
+	result_extra.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	result_extra.visible = false
+	box.add_child(result_extra)
+
+
+func _show_result(card: Dictionary) -> void:
+	result_band.visible = not card.is_empty()
+	if not result_band.visible:
+		return
+	_result_style.bg_color = RESULT_COLORS.get(str(card.get("tone", "")), UiTheme.FB_PLACE)
+	result_tag.text = str(card.get("tag", ""))
+	result_title.text = str(card.get("title", ""))
+	result_sub.text = str(card.get("sub", ""))
+	var extra: Array = card.get("extra", [])
+	result_extra.text = "\n".join(PackedStringArray(extra.map(func(x): return str(x))))
+	result_extra.visible = not extra.is_empty()
 
 
 ## Bandeau du test de FTP : « Résultat du test de FTP », nouvelle FTP en `GOLD`, ancienne FTP en `DIM`, écart
@@ -291,6 +348,9 @@ func _set_fonts(size: int) -> void:
 	for l in lines_grid.get_children():
 		l.add_theme_font_size_override("font_size", size)
 	verdict_label.add_theme_font_size_override("font_size", size)
+	result_title.add_theme_font_size_override("font_size", size + TILE_VALUE_EXTRA)
+	for l in [result_tag, result_sub, result_extra]:
+		l.add_theme_font_size_override("font_size", small)
 	for t in _tiles:
 		var row := t.get_child(0).get_child(1) as HBoxContainer
 		(row.get_child(0) as Label).add_theme_font_size_override("font_size", size + TILE_VALUE_EXTRA)
@@ -368,6 +428,9 @@ static func _row_text(row: Container) -> String:
 ## « | » entre les parties (tests graphiques).
 func text() -> String:
 	var parts: Array[String] = []
+	if result_band.visible:
+		parts.append(" ".join(PackedStringArray([result_tag.text, result_title.text, result_sub.text]
+			.filter(func(x): return x != ""))) + ((" " + result_extra.text.replace("\n", " ")) if result_extra.visible else ""))
 	if ftp_band.visible:
 		var ftp: Array[String] = []
 		for t in [ftp_value.text, ftp_before.text, ftp_delta.text, ftp_note.text]:
@@ -410,6 +473,7 @@ func chart_kind() -> String:
 ## graphique) ; names : identifiant → nom des segments (records battus).
 func update_display(summary: Dictionary, details: bool, _mode := "", ftp_w := 0.0, names := {}) -> void:
 	_ftp_w = float(ftp_w)
+	_show_result(model.result_card(summary, result_lines))
 	_show_ftp(model.ftp_result(summary))
 	var tiles: Array = model.tiles(summary)
 	for i in range(_tiles.size()):

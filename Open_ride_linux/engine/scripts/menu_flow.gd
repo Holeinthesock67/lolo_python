@@ -159,6 +159,8 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 ## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
 ## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
 const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
+## Même ligne après une arrivée (`state.arrival`, lot RT2 : parcours en ligne, Grand Prix, Course).
+const PAUSE_ARRIVAL := "Arrivée passée : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create",
 	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
@@ -272,6 +274,8 @@ var _record_bonus := false
 var pause_reason := ""
 ## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
 var workout_done := false
+## Issue de la séance connue (`state.arrival`, révision 1.32, lot RT2) : sorte, "" sans arrivée.
+var arrival_kind := ""
 ## Départ au pédalage en attente (lot O36) : objet `start_wait` de la dernière trame, {} sinon ; le menu
 ## est masqué pendant l'attente, le bandeau dit l'étape (start_wait_model.gd).
 var start_wait: Dictionary = {}
@@ -403,7 +407,8 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
-	workout_done = state.get("workout_done", null) is Dictionary
+	workout_done = state.get("workout_done", null) is Dictionary or state.get("arrival", null) is Dictionary
+	arrival_kind = str(state["arrival"].get("kind", "")) if state.get("arrival", null) is Dictionary else ""
 	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
 	_track_run(st, state)
 	if state.get("devices") is Dictionary:
@@ -2516,7 +2521,7 @@ func state() -> Dictionary:
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
 		if st["status"] == "" and workout_done:
-			st["status"] = PAUSE_WORKOUT_DONE
+			st["status"] = PAUSE_WORKOUT_DONE if arrival_kind in ["", "workout"] else PAUSE_ARRIVAL
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
 	st["collection"] = collection_view(st)

@@ -57,7 +57,9 @@ func _run() -> void:
 	_check(v["list"]["title"] == "POINTS" and rows.size() == 4, "points : liste de 4")
 	_check(rows[0]["name"] == "Bastien" and rows[0]["value"] == "14" and rows[1]["name"] == "Toi" and rows[1]["kind"] == "me",
 		"points : Toi surligné en 2e (%s)" % str(rows[1]))
-	_check(v["pursuit"].is_empty() and v["chrono"].is_empty() and v["pacer"].is_empty() and v["center"].is_empty(), "points : pas d'autre bloc")
+	_check(v["pursuit"].is_empty() and v["chrono"].is_empty() and v["pacer"].is_empty(), "points : pas d'autre bloc")
+	_check(m.consigne(_st(_points()))["action"].begins_with("Sprint") and m.consigne(_st(_points()))["detail"].begins_with("Objectif : marquer le plus de points"),
+		"points : consigne du prochain sprint (%s)" % str(m.consigne(_st(_points()))))
 
 	# Cloche du dernier tour
 	var bell := _points()
@@ -96,10 +98,70 @@ func _run() -> void:
 	_check(v["list"]["title"] == "ORDRE DE COURSE" and rows.size() == 6, "élimination : ordre de course et sortis")
 	_check(rows[3]["name"] == "Toi" and rows[3]["value"] == "dernier", "élimination : Toi dernier")
 	_check(rows[4]["kind"] == "out" and rows[4]["name"] == "Hugo" and rows[5]["name"] == "Inès", "élimination : sortis grisés, le dernier sorti en premier")
-	_check(v["center"]["title"] == "DERNIER !" and v["center"]["sub"] == "Remonte Marco avant la ligne (0,4 s)", "élimination : bandeau DERNIER (%s)" % str(v["center"]))
+	var c: Dictionary = m.consigne(_st(el))
+	_check(c["action"] == "Passe Marco avant la ligne : 0,4 s" and c["chips"] == ["pédale plus fort"]
+		and c["detail"] == "Objectif : être le dernier en course · Pourquoi : le dernier sur la ligne est éliminé",
+		"élimination : consigne commune, passer le coureur devant (%s)" % str(c))
+	_check(not v.has("center"), "plus de bandeau du milieu propre à la piste (lot RT1)")
 	el["last"] = "b3"
 	v = m.view(_st(el))
-	_check(v["center"].is_empty() and v["list"]["rows"][2]["kind"] == "danger", "élimination : un bot dernier en rouge")
+	_check(v["list"]["rows"][2]["kind"] == "danger", "élimination : un bot dernier en rouge")
+	_check(m.consigne(_st(el))["action"] == "Ne sois pas dernier sur la ligne · dans 180 m", "élimination : consigne hors danger")
+
+	# Révision 1.26 (essai du 21 novembre) : tours entre deux éliminations, écarts aux voisins, victoire
+	el.merge({"every_laps": 4, "bell": false, "ahead": {"id": "b3", "gap_s": 1.24}, "behind": {"id": "b4", "gap_s": -0.8}}, true)
+	v = m.view(_st(el))
+	_check(v["banner"]["sub"].begins_with("Le dernier sort tous les 4 tours"), "élimination : tous les 4 tours (%s)" % v["banner"]["sub"])
+	_check(v["gaps"]["ahead"]["name"] == "Marco" and v["gaps"]["ahead"]["text"] == "+1,2 s", "écart devant (%s)" % str(v["gaps"]))
+	_check(v["gaps"]["behind"]["name"] == "Hugo" and v["gaps"]["behind"]["text"] == "−0,8 s", "écart derrière")
+	el.merge({"ahead": null}, true)
+	_check(not m.view(_st(el))["gaps"].has("ahead"), "en tête : pas d'écart devant")
+	el.merge({"behind": null}, true)
+	_check(m.view(_st(el))["gaps"].is_empty(), "sans voisin : pas de bloc des écarts")
+	var win := {"event": "elimination", "t_s": 900.0, "lap": 28, "laps": 28, "laps_to_go": 1, "bell": false,
+		"ranking": ["me", "b1", "b2"], "points": null, "eliminated": ["b2", "b1"], "finished": true,
+		"to_elim_m": null, "gap_last_s": null, "last": "me", "alive": 1, "every_laps": 4, "ahead": null, "behind": null}
+	v = m.view(_st(win))
+	_check(v["banner"]["sub"] == "Épreuve terminée", "victoire : bandeau de l'épreuve terminé")
+	_check(m.consigne(_st(win)).is_empty(), "victoire : plus de consigne du mode (consigne de fin commune)")
+	_check(v["list"]["rows"][0]["name"] == "Toi" and v["list"]["rows"][0]["value"] == "" and v["list"]["rows"][0]["kind"] == "me",
+		"victoire : Toi premier, plus « dernier » (%s)" % str(v["list"]["rows"][0]))
+	# Moments communs (lot RT1) : bot éliminé, cycliste dernier, victoire, place, cycliste éliminé ; une fois chacun
+	var ws = Model.new()
+	var run := win.duplicate()
+	run.merge({"finished": false, "eliminated": ["b2"], "ranking": ["me", "b1", "b2"], "alive": 2, "last": "b1"}, true)
+	_check(ws.sounds(_st(run)) == [] and ws.moments(_st(run)).is_empty(), "épreuve en cours : sortis d'avant non annoncés")
+	var run2 := run.duplicate()
+	run2.merge({"eliminated": ["b2", "b3"], "ranking": ["me", "b1", "b3", "b2"]}, true)
+	var mo: Array = ws.moments(_st(run2))
+	_check(mo.size() == 1 and mo[0]["family"] == "bien" and mo[0]["title"] == "Marco est éliminé" and mo[0]["sub"] == "Plus que 2 en course"
+		and mo[0]["sound"] == "jingle_elim", "bot éliminé : BIEN et jingle (%s)" % str(mo))
+	var run3 := run2.duplicate()
+	run3.merge({"last": "me", "to_elim_m": 240.0}, true)
+	mo = ws.moments(_st(run3))
+	_check(mo.size() == 1 and mo[0]["family"] == "attention" and mo[0]["sub"] == "Ligne d'élimination dans 240 m",
+		"cycliste dernier : ATTENTION (%s)" % str(mo))
+	_check(ws.moments(_st(run3)).is_empty(), "ATTENTION une seule fois")
+	mo = ws.moments(_st(win))
+	_check(mo.size() == 1 and mo[0]["family"] == "resultat" and mo[0]["tone"] == "win" and mo[0]["title"] == "VICTOIRE !"
+		and mo[0]["done_k"] == "COURSE FINIE · 1er sur 3", "victoire : RÉSULTAT or (%s)" % str(mo))
+	_check(ws.moments(_st(win)).is_empty(), "victoire : une seule fois")
+	_check(ws.sounds(_st(win)) == ["track_crowd"] and ws.sounds(_st(win)) == [], "victoire : le public, une fois")
+	var third := win.duplicate()
+	third.merge({"ranking": ["b1", "b2", "me"]}, true)
+	var fm: Dictionary = Model.new().finish_moment(third)
+	_check(fm["title"] == "ARRIVÉE · 3e sur 3" and fm["tone"] == "place" and fm["done_k"] == "COURSE FINIE · 3e sur 3", "arrivée : place")
+	var outs = Model.new()
+	var me_out := run.duplicate()
+	me_out.merge({"eliminated": ["b2", "me"], "ranking": ["b1", "me", "b2"]}, true)
+	outs.moments(_st(run))
+	mo = outs.moments(_st(me_out))
+	_check(mo.size() == 1 and mo[0]["tone"] == "out" and mo[0]["title"] == "ÉLIMINÉ · 2e sur 3" and mo[0]["sound"] == "jingle_elim"
+		and mo[0]["done_action"] == "Roule au calme : la course continue sans toi", "cycliste éliminé : RÉSULTAT rouge (%s)" % str(mo))
+	var fin_out := me_out.duplicate()
+	fin_out.merge({"finished": true}, true)
+	_check(outs.moments(_st(fin_out)).is_empty() and outs.consigne(_st(me_out)).is_empty(),
+		"cycliste éliminé : pas de second résultat à la fin, plus de consigne du mode")
 
 	# Poursuite (maquette 5)
 	var pu := {"event": "pursuit", "t_s": 150.0, "lap": 9, "laps": 16, "laps_to_go": 8, "bell": false,
@@ -152,9 +214,10 @@ func _run() -> void:
 	v = m.view(_st(ma))
 	_check(v["list"]["title"] == "ÉQUIPES · POINTS" and v["list"]["rows"][1]["name"] == "Ton équipe" and v["list"]["rows"][1]["kind"] == "me",
 		"américaine : Ton équipe")
-	_check(v["center"]["title"] == "AU REPOS EN HAUT" and v["center"]["sub"].begins_with("Bastien court"), "américaine : au repos (%s)" % str(v["center"]))
+	_check(m.consigne(_st(ma))["action"] == "Au repos en haut : redescends au passage de Bastien pour le relais",
+		"américaine : au repos, consigne commune (%s)" % str(m.consigne(_st(ma))))
 	ma["racers"]["home"] = "me"
-	_check(m.view(_st(ma))["center"].is_empty(), "américaine : en course, pas de bandeau")
+	_check(m.consigne(_st(ma))["action"].begins_with("Sprint"), "américaine : en course, consigne du sprint")
 
 	# Vitesse par équipes : seuls les sortis de ton équipe sont listés
 	var ts := {"event": "team_sprint", "t_s": 30.0, "lap": 3, "laps": 3, "laps_to_go": 1, "bell": true,
@@ -180,7 +243,7 @@ func _run() -> void:
 	var om := el.duplicate(true)
 	om.merge({"event": "omnium", "sub": "elimination", "sub_index": 3, "subs": 4, "neutral": false, "last": "me", "points": [40, 36, 34, 30, 0, 0]}, true)
 	v = m.view(_st(om))
-	_check(v["banner"]["title"] == "Omnium · Élimination (3 / 4)" and v["center"]["title"] == "DERNIER !", "omnium : sous-épreuve élimination (%s)" % v["banner"]["title"])
+	_check(v["banner"]["title"] == "Omnium · Élimination (3 / 4)" and m.consigne(_st(om))["action"].begins_with("Passe"), "omnium : sous-épreuve élimination (%s)" % v["banner"]["title"])
 
 	# Tableau d'affichage de la salle
 	var board: String = m.board_text(_st(_points()))

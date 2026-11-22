@@ -336,3 +336,32 @@ static func signed_s(t: float) -> String:
 	if absf(t) < 0.05:
 		return "0 s"
 	return ("+" if t > 0.0 else "−") + fr1(absf(t)) + " s"
+
+
+## Consigne de la zone commune (lot RT1, feedback_model.gd) : {k, action, detail, chips} ; {} sans objet `gp`.
+## Sans objet : passer dans une boîte « + BONUS » (le mot écrit sur les boîtes) ; objet en réserve : Z pour le lancer.
+func consigne(state) -> Dictionary:
+	var gp = state.get("gp", null) if state is Dictionary else null
+	if not gp is Dictionary:
+		return {}
+	var lap = gp.get("lap", null)
+	var goal := "finir 1er" + ((" en %d tours" % int(_num(lap[1], 1.0))) if lap is Array and lap.size() >= 2 else "")
+	if _num(gp.get("roll_s", null), 0.0) > 0.0:
+		return {"k": "À FAIRE", "action": "Tirage de ton objet…", "detail":
+			"Objectif : %s · Pourquoi : un objet te fait gagner du temps" % goal, "chips": []}
+	var held = gp.get("held", null)
+	if held == null or not Items.known(str(held)):
+		return {"k": "À FAIRE", "action": "Passe dans une boîte « + BONUS » pour prendre un objet",
+			"detail": "Objectif : %s · Pourquoi : un objet te fait gagner du temps" % goal, "chips": ["A ← → voie"]}
+	return {"k": "À FAIRE", "action": "Lance ton objet : %s" % Items.label(str(held)),
+		"detail": "Objectif : %s · Pourquoi : il ralentit un adversaire ou te fait gagner du temps" % goal,
+		"chips": ["Z lancer"]}
+
+
+## Objectif du Grand Prix en une ligne (départ, feedback_model.gd on_state `goal`).
+func goal(state) -> String:
+	var gp = state.get("gp", null) if state is Dictionary else null
+	if not gp is Dictionary:
+		return ""
+	var lap = gp.get("lap", null)
+	return "finir 1er" + ((" en %d tours" % int(_num(lap[1], 1.0))) if lap is Array and lap.size() >= 2 else "")

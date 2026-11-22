@@ -220,7 +220,9 @@ READY = {"trainer": {"appear_at": 0.3, "connect_delay_s": 0.3},
 UNILATERAL = {**READY, "click": {"appear_at": 0.5, "connect_delay_s": 0.3, "minus": {"appear_at": 100000}}}
 APPAREILS = {"prets": READY, "unilateral": UNILATERAL}
 # Réglages de départ du banc (le scénario peut les changer) : rendu léger sous Xvfb, fenêtre et non plein écran.
-BASE_CONFIG = {"render.quality": "low", "render.display": "windowed"}
+# `depart.echauffement_min` 0 : pas d'échauffement avant les courses (lot EL1) ; le scénario `elimination` le remet
+# par son en-tête `config`.
+BASE_CONFIG = {"render.quality": "low", "render.display": "windowed", "depart.echauffement_min": 0}
 
 
 def config_matches(got: Any, want: Any, start: Any) -> bool:

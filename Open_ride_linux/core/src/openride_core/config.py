@@ -284,6 +284,9 @@ class DepartConfig:
     cadence_rpm: int = 30          # cadence à tenir pour partir (ou 40 W : la cadence du trainer arrive en retard)
     duree_s: int = 1               # secondes de pédalage cumulées, à-coups de moins de 2 s tolérés (sas du 15/11)
     attente_decor_s: int = 60      # au plus : l'engine n'a pas dit son décor prêt (ancien engine, sans engine)
+    # Échauffement sur place en ERG avant une course (Dernier survivant, Grand Prix, épreuves de piste ; demande du
+    # 21 novembre, `warmup.py`) : minutes, 0 : aucun ; Z court le passe.
+    echauffement_min: int = 10
 
 
 @dataclass
@@ -426,6 +429,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("depart", "cadence_rpm"): (10, 90),
     ("depart", "duree_s"): (0, 10),
     ("depart", "attente_decor_s"): (0, 600),
+    ("depart", "echauffement_min"): (0, 20),
     ("coach", "temps_disponible_min"): (30, 120),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
@@ -488,7 +492,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("bots", "level_pct"), ("bots", "objective"), ("bots", "elo"),
     ("gravel", "mode"),
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
-    ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
+    ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"), ("depart", "echauffement_min"),
     ("survivor", "opponents"), ("survivor", "spacing_km"), ("survivor", "spread"), ("survivor", "after_out"),
     ("coach", "objectif"), ("coach", "temps_disponible_min"),
     ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "distance_km"), ("grandprix", "chaos"),
