@@ -22,6 +22,10 @@ semaine (Dernier survivant en semaine 2).
   points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement) et
   `summary.elo` (`mode` = `league`) ; journal : `league_start`, `league_round`, `elo`.
 - **Manche arrêtée avant l'arrivée** : rien n'est compté, elle se recourt dans la semaine.
+- **Plantage du core pendant une manche** : la reprise ne restaure pas les courses ; aucun résultat n'est écrit,
+  la manche compte comme abandonnée et se recourt dans la semaine (audit du 22 novembre, L10).
+- **Horloge qui recule** : `ligue.json` garde le dernier jour vu (`last_seen`) ; la ligue ne revient jamais avant
+  lui (pile du BIOS, double amorçage ; audit L11).
 - **Refus** (`bad_args`, rien ne démarre) : sans saison ou manche déjà faite, mode qui n'est pas celui de la
   manche ou pas encore jouable, ERG ou argument `bots`, parcours en ligne pour une manche en tours, monde ouvert.
 - **Intensité du jour** : « facile » (objectif endurance ou récupération) est gardé avec le résultat.
@@ -30,7 +34,7 @@ semaine (Dernier survivant en semaine 2).
 
 - `core/tests/test_league_session.py` : saison créée et message validé par son schéma, manche courue (11 rivaux à
   leurs noms et profils, un tour en test), résultat, cote et bilan, une seule tentative, manche arrêtée non comptée,
-  refus, intensité facile.
+  refus, intensité facile, manche coupée par un plantage, horloge qui recule.
 - Contrat : `docs/contracts/ipc_v1.md` (commandes, `start.league`, journal 1.30), `league.schema.json`,
   `state.schema.json` (`summary.league`), `cmd.schema.json`.
 
