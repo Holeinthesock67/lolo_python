@@ -956,7 +956,7 @@ class CoreSession:
             self.server.send_error("bad_args", f"{name} : confirmation absente (\"confirmed\": true)")
             return
         if name == "reset_profile_stats":
-            if ctx.id is not None and not ctx.is_trial and profiles._reset_entries_of(ctx):
+            if ctx.id is not None and not ctx.is_trial and ctx.root.is_dir():
                 profile_backups.create(ctx, "remise-a-zero", self.profiles_base)   # lot SV1 : copie complète avant
             dest, moved = profiles.reset_stats(ctx, self.profiles_base)
             log.info("Statistiques du profil %s remises à zéro : %s mis de côté dans %s.", ctx.id,
@@ -994,10 +994,14 @@ class CoreSession:
         if self._last_reset_cmd == key:   # copie d'une commande déjà traitée : pas de seconde restauration
             self._send_backups(cmd_id)
             return
+        if args.get("confirmed") is not True:   # confirmation exigée par le core aussi (comme RZ1)
+            self.server.send_error("bad_args", "restore_profile_backup : confirmation absente (\"confirmed\": true)")
+            return
         ctx = self.profile_ctx
         saved = profile_backups.restore(ctx, args.get("id"), self.profiles_base)
         log.info("Profil %s restauré depuis la copie %s (état d'avant : %s).", ctx.id, args.get("id"), saved)
         self._last_reset_cmd = key
+        ctx = profiles.ProfileContext.for_id(ctx.id, self.profiles_base)   # description et dates de la copie
         self._select_profile(ctx, cmd_id, reload=True)
         self._send_profiles(cmd_id)
         self._send_backups(cmd_id)

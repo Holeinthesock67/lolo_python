@@ -170,7 +170,7 @@ def test_backups_and_restore_from_the_menu(home, monkeypatch):
     copy = pb.create(ctx, "semaine", base(home), now=T1)
     level = s.progress_svc.progression_dict()["level"]
     assert level > 1
-    s._on_command("reset_profile_stats", {}, 3)   # RZ1 : copie complète avant la remise à zéro
+    s._on_command("reset_profile_stats", {"confirmed": True}, 3)   # RZ1 : copie complète avant la remise à zéro
     rows = pb.entries(ctx, base(home))
     assert [r["reason"] for r in rows] == ["remise-a-zero", "semaine"]
     assert s.progress_svc.progression_dict()["level"] == 1
@@ -179,19 +179,22 @@ def test_backups_and_restore_from_the_menu(home, monkeypatch):
     msg = of(frames, "profile_backups")[-1]
     assert msg["profile"] == "cycliste-b" and [r["id"] for r in msg["items"]] == [r["id"] for r in rows]
     frames.clear()
-    s._on_command("restore_profile_backup", {"id": copy.name}, 5)
+    s._on_command("restore_profile_backup", {"id": copy.name}, 4)   # sans confirmation : refus
+    assert of(frames, "error")[-1]["code"] == "bad_args" and not of(frames, "hello_ack")
+    frames.clear()
+    s._on_command("restore_profile_backup", {"id": copy.name, "confirmed": True}, 5)
     assert [f["type"] for f in frames][:1] == ["hello_ack"]   # profil rechargé
     assert s.progress_svc.progression_dict()["level"] == level
     assert of(frames, "profiles") and "restauration" in [r["reason"] for r in of(frames, "profile_backups")[-1]["items"]]
-    s._on_command("restore_profile_backup", {"id": copy.name}, 5)   # copie de la même commande : rien de plus
+    s._on_command("restore_profile_backup", {"id": copy.name, "confirmed": True}, 5)   # copie de la même commande : rien de plus
     assert len([r for r in pb.entries(ctx, base(home)) if r["reason"] == "restauration"]) == 1
-    s._on_command("restore_profile_backup", {"id": "nimporte"}, 6)
+    s._on_command("restore_profile_backup", {"id": "nimporte", "confirmed": True}, 6)
     assert of(frames, "error")[-1]["code"] == "profile_invalid"
     s._on_command("select_route", {}, 7)
     s._on_command("start", {}, 8)
     s._on_command("list_profile_backups", {}, 9)   # lecture : aussi pendant une séance
     assert of(frames, "profile_backups")[-1]["request_cmd_id"] == 9
-    s._on_command("restore_profile_backup", {"id": copy.name}, 10)
+    s._on_command("restore_profile_backup", {"id": copy.name, "confirmed": True}, 10)
     assert of(frames, "error")[-1]["code"] == "busy"
 
 
