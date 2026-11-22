@@ -425,6 +425,9 @@ func _ready() -> void:
 	ipc.contents_received.connect(func(msg: Dictionary) -> void:
 		_run_menu_action(menu_flow.on_contents(msg))
 		_refresh_menu())
+	ipc.diagnostic_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_diagnostic(msg)
+		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
 	ipc.core_lost.connect(_on_core_lost)
@@ -917,6 +920,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("list_contents", {})
 		"install_content":
 			ipc.send_command("install_content", {"id": str(act["id"])})
+		"create_diagnostic":   # fichier de diagnostic (lot DG1, contrat 1.32) : carte graphique en plus
+			ipc.send_command("create_diagnostic", {"dest": str(act["dest"]),
+				"engine_version": str(act.get("engine_version", "")),
+				"gpu": RenderingServer.get_video_adapter_name()})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
 		"select_profile", "delete_profile", "restore_profile":

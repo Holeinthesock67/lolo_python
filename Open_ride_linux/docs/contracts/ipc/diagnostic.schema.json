@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideDiagnosticMessage",
+  "description": "Révision 1.32 (lot DG1) : réponse à cmd create_diagnostic. Archive .zip écrite par le core dans le dossier choisi, sans donnée privée ; rien n'est envoyé. Datagramme de 4 096 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "ok",
+    "dest"
+  ],
+  "properties": {
+    "type": {
+      "const": "diagnostic"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "Vrai si le fichier est écrit."
+    },
+    "dest": {
+      "enum": [
+        "openride",
+        "telechargements",
+        "bureau"
+      ],
+      "description": "Dossier choisi : ~/OpenRide/Diagnostics/, Téléchargements ou Bureau."
+    },
+    "path": {
+      "type": "string",
+      "description": "Si ok : chemin du fichier, le dossier personnel écrit « ~ »."
+    },
+    "size_kb": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Si ok : taille du fichier en ko."
+    },
+    "masked": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Si ok : nombre de valeurs privées masquées."
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Si pas ok : cause en français, à afficher."
+    }
+  }
+}

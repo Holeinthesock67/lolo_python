@@ -206,6 +206,10 @@ Lots entrés sur `main` sans ligne dans ce suivi, relevés d'après les PR fusio
 - [x] **Cols Khardung La et Abra Málaga** (lot HP2, fusionné le 13 novembre, #865) ; **glissières des routes japonaises** (lot JP8, #863, 13 novembre).
 - [x] **Outils de test** : banc simulé `--seasons`, `--day-night` et `--month` (#880, 14 novembre, banc rS1 ; les bancs tournent en été par défaut) ; captures de test avec le menu à jour (`garage_modif`, #910) ; e2e qui attend le départ avant le + (#914) ; gabarit `depart_monde_ouvert` du banc des menus (#920, 18 novembre) ; file des bancs du PC en étapes avec reprise (`scripts/file_bancs.py`, #924, 19 novembre ; suite #926 en revue) ; paquets, matrice rendu/logique et étapes cloud (20 novembre).
 
+### Fichier de diagnostic (lot DG1, 22 novembre)
+
+- [ ] **Réglages › Diagnostic** ([cahier](lots/LOT_DG1_fichier_diagnostic.md)) : archive `.zip` sans donnée privée écrite dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Diagnostics/`, rien n'est envoyé ; `openride-core diagnostic` ; contrat IPC révision 1.32 (en revue).
+
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
