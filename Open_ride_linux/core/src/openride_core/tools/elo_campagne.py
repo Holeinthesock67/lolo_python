@@ -1,11 +1,11 @@
 """Campagne de courses simulées pour la cote Elo (lot BOT-elo) : la cote suit-elle la force du cycliste ?
 
     python -m openride_core.tools.elo_campagne [--courses 30] [--forces 0.92,1.0,1.08] [--adversaires 4]
-        [--tours 1] [--tour-m 2000] [--ftp 250] [--json]
+        [--tours 1] [--tour-m 2000] [--ftp 250] [--mode grandprix|race] [--json]
 
 Un essai vélo de 10 min ne fait qu'une ou deux courses : il ne dit rien de la cote, qui ne bouge qu'au fil des
 courses. Ce banc joue des campagnes entières sans vélo ni engine, avec la vraie séance (`CoreSession`) : Grand
-Prix des objets sur un anneau synthétique, bots à profil, cote lue et écrite dans `elo.json` d'un dossier
+Prix des objets (ou Course, `--mode race`, lot CR1) sur un anneau synthétique, bots à profil, cote lue et écrite dans `elo.json` d'un dossier
 temporaire (rien n'est écrit dans le profil réel). Pour chaque force, le cycliste roule à puissance constante :
 force × la puissance que visent les bots à la cote de départ (1 500), 1,08 = 8 % plus fort que le peloton.
 
@@ -69,8 +69,9 @@ def _session(tmp: Path, cfg: Config, power_w: float) -> CoreSession:
 
 
 def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m: float = 2000.0,
-             ftp_w: float = 250.0) -> dict[str, Any]:
-    """Une campagne de `races` Grand Prix pour un cycliste de force `force` ; rend les lignes de cote."""
+             ftp_w: float = 250.0, mode: str = "grandprix") -> dict[str, Any]:
+    """Une campagne de `races` courses du mode `mode` (Grand Prix ou Course) pour un cycliste de force `force` ;
+    rend les lignes de cote."""
     wall = [T0_WALL]
     with tempfile.TemporaryDirectory(prefix="openride-elo-campagne-") as tmp_s, \
             mock.patch.object(fit_export, "ACTIVITIES_DIR", Path(tmp_s) / "Activities"), \
@@ -84,6 +85,7 @@ def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m:
         cfg.depart.mode = "immediat"
         cfg.rider.ftp_w = ftp_w
         cfg.grandprix.opponents, cfg.grandprix.laps = opponents, laps
+        cfg.race.opponents, cfg.race.laps = opponents, laps
         cfg.ride.vehicle_draft = "off"
         cfg.bots.elo = "on"
         target_w: float | None = None
@@ -93,9 +95,9 @@ def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m:
             s._on_command("select_route", {"route_id": "anneau"}, 1)
             if s.route is None:
                 raise CampaignError("anneau refusé par la séance")
-            s._on_command("start", {"mode": "grandprix"}, 2)
+            s._on_command("start", {"mode": mode}, 2)
             if s.grandprix is None:
-                raise CampaignError("Grand Prix refusé par la séance")
+                raise CampaignError(f"{mode} refusé par la séance")
             if target_w is None:
                 # Puissance visée par les bots à la cote de départ : la référence de la force du cycliste.
                 bots = list(s._effort_bots)
@@ -113,11 +115,13 @@ def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m:
             elo = (s.state.summary or {}).get("elo")
             if not elo:
                 raise CampaignError(f"course {n + 1} : pas de cote au bilan")
+            if elo.get("mode") != mode:
+                raise CampaignError(f"course {n + 1} : cote du mode {elo.get('mode')!r} au lieu de {mode!r}")
             lines.append({k: elo[k] for k in ("place", "of", "before", "after", "delta")})
             wall[0] += 600.0
         book = bot_elo.load(bot_elo.path_for(tmp / "profil"))
     tail = lines[-max(races // 3, 1):]
-    return {"force": force, "rider_w": round(force * (target_w or 0.0), 1), "target_w_1500": round(target_w or 0.0, 1),
+    return {"mode": mode, "force": force, "rider_w": round(force * (target_w or 0.0), 1), "target_w_1500": round(target_w or 0.0, 1),
             "races": races, "of": opponents + 1, "final": round(book.rating), "lines": lines,
             "tail_place": round(statistics.mean(r["place"] for r in tail), 2),
             "tail_std": round(statistics.pstdev([r["after"] for r in tail]), 1),
@@ -163,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tours", type=int, default=1)
     ap.add_argument("--tour-m", type=float, default=2000.0)
     ap.add_argument("--ftp", type=float, default=250.0)
+    ap.add_argument("--mode", choices=("grandprix", "race"), default="grandprix")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
     try:
@@ -175,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     t0 = time.perf_counter()
     try:
-        runs = [campaign(f, a.courses, a.adversaires, a.tours, a.tour_m, a.ftp) for f in forces]
+        runs = [campaign(f, a.courses, a.adversaires, a.tours, a.tour_m, a.ftp, a.mode) for f in forces]
     except CampaignError as e:
         print(f"échec : {e}", file=sys.stderr)
         return 2
