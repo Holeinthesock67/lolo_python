@@ -988,7 +988,7 @@ func _refresh_summary() -> void:
 	for it in summary_model.menu_screen()["items"]:
 		items.append(it)
 		if it["id"] == "details" and garage.enabled and bool(progress_view().get("garage", false)):
-			items.append({"id": "garage", "label": "Aller au Garage", "detail": "une pièce est devenue achetable"})
+			items.append({"id": "garage", "label": "Garage", "detail": "nouveau"})
 	menu.set_screen_items(SUMMARY, items)
 
 

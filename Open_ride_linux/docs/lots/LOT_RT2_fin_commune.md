@@ -30,6 +30,7 @@ seul, et un bilan qui ne disait le résultat qu'en Cyber-Rogue. Lancé par le pr
 - Engine : `feedback_model.gd` (`arrival_result`, moment de l'arrivée), `event_sounds_model.gd` (`issue_known`), `summary_view_model.gd` (`result_card`), `summary_view.gd` (bandeau du résultat, `result_lines`), `menu_flow.gd` (pause après l'arrivée), `start_screen.gd` (`set_goal`), `main.gd` (`_start_goal`).
 - Contrat : `ipc_v1.md` (champ `arrival`, `summary.gp.finished`, journal 1.32), `state.schema.json`.
 - Tests : `test_rt2_fin_commune.py` (nouveau), `test_u_turn_auto.py`, `test_u_turn.py`, `test_race_mode.py`, `test_contract_ipc.py` ; engine `test_feedback.gd`, `test_summary_view_model.gd`, `test_event_sounds_model.gd`.
+- Retours de l'essai du 22/11 (écran Fin de séance) : plus de bandeau « Niveau N ! » en haut (il masquait le titre et « Rejouer » ; le niveau reste écrit dans le bilan) ; « Rejouer » sans détail coupé et « Garage — nouveau » au lieu de « Aller au Gara… » ; ligne « Équipement : −0,0 s » cachée quand le gain est nul ; palier 4 du compactage (bandeau du résultat resserré, barre d'XP basse) pour que le bilan détaillé tienne en 720p.
 - Base : branche de RT1 (#959, empilée sur #958), `main` fusionnée dedans pour la Course (CR1, #939).
 
 ## Recette PC
