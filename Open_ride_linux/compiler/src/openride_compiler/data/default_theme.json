@@ -1541,6 +1541,255 @@
           12
         ]
       }
+    },
+    "cloud_forest": {
+      "ground": {
+        "layers": [
+          {
+            "name": "sol noir et mousses",
+            "role": "flat",
+            "color": "#36522c",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "roche moussue et ruisselante",
+            "role": "steep",
+            "color": "#4a5244",
+            "texture": null,
+            "scale_m": 12.0
+          },
+          {
+            "name": "páramo",
+            "role": "high",
+            "color": "#8a8a5a",
+            "texture": null,
+            "scale_m": 8.0
+          }
+        ],
+        "slope_threshold_deg": 32,
+        "blend_sharpness": 4.0,
+        "high_line_m": 3600
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "tree_fern",
+            "weight": 4
+          },
+          {
+            "kind": "wax_palm",
+            "weight": 2
+          },
+          {
+            "kind": "oak",
+            "weight": 2
+          },
+          {
+            "kind": "bamboo",
+            "weight": 1
+          }
+        ],
+        "max_density_per_ha": 550,
+        "treeline_m": 3500
+      },
+      "water": {
+        "color": "#2c4a3c",
+        "turbidity": 0.45
+      },
+      "sky": {
+        "fog_density": 0.003,
+        "haze": 0.6,
+        "light_tint": "#eef4f0"
+      },
+      "ambience": {
+        "volume": 0.8,
+        "birds": 0.9,
+        "insects": 0.6,
+        "layers": {
+          "jungle_chorus": 0.5,
+          "frogs": 0.4
+        }
+      },
+      "fauna": {
+        "birds": 0.9,
+        "livestock": 0.2,
+        "deer": 0.3
+      },
+      "seasons": {
+        "calendar": "wet_dry",
+        "offset_months": 0,
+        "durations_months": [
+          6,
+          6
+        ]
+      }
+    },
+    "eucalypt_woodland": {
+      "ground": {
+        "layers": [
+          {
+            "name": "herbes sèches et terre rouge",
+            "role": "flat",
+            "color": "#a07a48",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "grès rouge",
+            "role": "steep",
+            "color": "#9a5a3a",
+            "texture": null,
+            "scale_m": 12.0
+          },
+          {
+            "name": "neige",
+            "role": "high",
+            "color": "#f2f5f8",
+            "texture": null,
+            "scale_m": 8.0
+          }
+        ],
+        "slope_threshold_deg": 26,
+        "blend_sharpness": 4.0,
+        "high_line_m": 1800
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "eucalyptus",
+            "weight": 6
+          },
+          {
+            "kind": "acacia",
+            "weight": 1
+          },
+          {
+            "kind": "dwarf_shrub",
+            "weight": 2
+          }
+        ],
+        "max_density_per_ha": 140,
+        "treeline_m": 1900
+      },
+      "water": {
+        "color": "#5a5a3e",
+        "turbidity": 0.55
+      },
+      "sky": {
+        "fog_density": 0.0005,
+        "haze": 0.3,
+        "light_tint": "#fff6e6"
+      },
+      "ambience": {
+        "volume": 0.7,
+        "birds": 0.8,
+        "insects": 0.8,
+        "layers": {
+          "cicadas": 0.8
+        }
+      },
+      "fauna": {
+        "birds": 0.8,
+        "livestock": 0.3,
+        "deer": 0.8
+      },
+      "seasons": {
+        "calendar": "four",
+        "offset_months": 0,
+        "durations_months": [
+          3,
+          3,
+          3,
+          3
+        ],
+        "summer_dry": 0.6
+      }
+    },
+    "temperate_rainforest": {
+      "ground": {
+        "layers": [
+          {
+            "name": "mousse épaisse et fougères",
+            "role": "flat",
+            "color": "#3e5a2c",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "roche noire mouillée",
+            "role": "steep",
+            "color": "#4c4e4a",
+            "texture": null,
+            "scale_m": 12.0
+          },
+          {
+            "name": "neige",
+            "role": "high",
+            "color": "#f2f5f8",
+            "texture": null,
+            "scale_m": 8.0
+          }
+        ],
+        "slope_threshold_deg": 28,
+        "blend_sharpness": 4.0,
+        "high_line_m": 1700
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "douglas_fir",
+            "weight": 4
+          },
+          {
+            "kind": "red_cedar",
+            "weight": 3
+          },
+          {
+            "kind": "spruce",
+            "weight": 2
+          },
+          {
+            "kind": "bracken",
+            "weight": 2
+          }
+        ],
+        "max_density_per_ha": 500,
+        "treeline_m": 1600
+      },
+      "water": {
+        "color": "#1c3e40",
+        "turbidity": 0.3
+      },
+      "sky": {
+        "fog_density": 0.0022,
+        "haze": 0.5,
+        "light_tint": "#e8f0f2"
+      },
+      "ambience": {
+        "volume": 0.6,
+        "birds": 0.5,
+        "insects": 0.2,
+        "layers": {
+          "conifer_wind": 0.6,
+          "frogs": 0.2
+        }
+      },
+      "fauna": {
+        "birds": 0.5,
+        "livestock": 0.05,
+        "deer": 0.6
+      },
+      "seasons": {
+        "calendar": "four",
+        "offset_months": 0,
+        "durations_months": [
+          3,
+          3,
+          3,
+          3
+        ]
+      }
     }
   },
   "variants": {

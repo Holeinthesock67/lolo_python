@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Solution générale aux contacts : registre unique de la chaussée et garde finale dans le core, tous les usagers envoyés par parties (révision IPC 1.20), engine qui affiche seulement, règle commune de dépassement et de rabattement, deux vélos de front au plus | Python, GDScript | AS10 | Grande | En PR le 19 novembre, banc PC à passer |
+| Solution générale aux contacts : registre unique de la chaussée et garde finale dans le core, tous les usagers envoyés par parties (révision IPC 1.20), engine qui affiche seulement, règle commune de dépassement et de rabattement, deux vélos de front au plus | Python, GDScript | AS10 | Grande | **Livré le 19 novembre** (PR #925) |
 
 Demande du propriétaire du 17 novembre : « Il faut vraiment trouver une solution générale aux contacts. » Portée
 validée le 17 novembre (« Règle unique pour tous » : cycliste, bots, voiture d'équipe, véhicules, cyclistes du décor ;
@@ -69,3 +69,7 @@ Grand Prix à onze sur 3 parcours, 30 et 45 km/h. Tableau détaillé :
 
 Banc « contacts » low, medium et high (parcours de démo, Irohazaka, `ow_6km`, demi-tour, Grand Prix à onze),
 GPU dans les budgets (8 / 13 / 16 ms), planche avant/après validée par le propriétaire avant toute fusion.
+
+## 6. Livraison
+
+Fusionné le 19 novembre 2026 (PR #925 : une seule règle de la chaussée pour tous les usagers, révision 1.20 du contrat IPC). Détail des écarts et de la recette : description de la PR.

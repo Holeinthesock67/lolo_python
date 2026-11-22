@@ -215,6 +215,10 @@ class TrackEvent:
     def _advance(self, t0: float, t1: float) -> None:
         raise NotImplementedError
 
+    def full_ranking(self) -> list[str]:
+        """Classement complet (cote Elo, lot BOT-elo) : identifiants du premier au dernier."""
+        return self._ranking()
+
     def _ranking(self) -> list[str]:
         """Identifiants du premier au dernier (coureurs, ou équipes pour les épreuves par équipes)."""
         raise NotImplementedError

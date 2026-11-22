@@ -185,3 +185,65 @@ def test_settings_listed_and_bounds():
     assert items["survivor.opponents"]["min"] == 2 and items["survivor.opponents"]["max"] == 11   # lot DS8
     assert items["survivor.spread"]["choices"] == ["tight", "normal", "wide"]
     assert items["survivor.after_out"]["value"] == "ride"
+
+
+# --- cote Elo (lot BOT-elo) et effort des bots en watts (lot GP-niv) ---------------------------------------
+
+def test_elo_after_win_raises_the_field_and_bilan(env):
+    make, run, tmp_path = env
+    s, sent, errors = make(6800, power_w=400.0, level_pct=60)
+    s._on_command("start", {"mode": "survivor"}, 2)
+    first_levels = [b.level_pct for b in s.bots]
+    run(s, 900)
+    assert s.state.session_state == "FINISHED"
+    elo = s.state.summary["elo"]
+    assert elo["mode"] == "survivor" and elo["place"] == 1 and elo["of"] == 3
+    assert elo["before"] == 1500 and elo["after"] > 1500 and elo["delta"] > 0
+    be = s.state.summary["bots_effort"]
+    assert be["objective"] == "max" and be["target_w"] > 0 and be["duration_s"] > 0 and be["bots_avg_w"] > 0
+    validator("state").validate(s.state.to_dict())
+    book = json.loads((tmp_path / "elo.json").read_text("utf-8"))
+    assert book["races"] == 1 and book["rating"] > 1500 and set(book["offsets"]) == {"climber#1", "rouleur#1"}
+    lines = [json.loads(x) for x in next((tmp_path / "journal").glob("*.jsonl")).read_text("utf-8").splitlines()]
+    assert [ln for ln in lines if ln.get("kind") == "elo"][0]["after"] == elo["after"]
+    # Course suivante : le plateau est plus fort (+2,5 % par 100 points de la cote)
+    s2, _, errors2 = make(6810, power_w=400.0, level_pct=60)
+    s2._on_command("start", {"mode": "survivor"}, 2)
+    assert not errors2
+    assert all(b > a for a, b in zip(first_levels, [b.level_pct for b in s2.bots]))
+
+
+def test_elo_off_keeps_levels_and_writes_nothing(env):
+    make, run, tmp_path = env
+    s, sent, errors = make(6820, power_w=400.0, level_pct=60)
+    s.cfg.bots.elo = "off"
+    s._on_command("start", {"mode": "survivor"}, 2)
+    run(s, 900)
+    assert "elo" not in s.state.summary and not (tmp_path / "elo.json").exists()
+
+
+def test_bots_preview_in_watts(env):
+    make, run, tmp_path = env
+    s, sent, errors = make(6830, objective="tempo")
+    s._on_command("bots_preview", {"mode": "survivor"}, 5)
+    msg = [m for m in sent if m.get("type") == "bots_preview"][-1]
+    validator("bots_preview").validate(msg)
+    assert msg["request_cmd_id"] == 5 and msg["objective"] == "tempo"
+    assert msg["power_w"] > 0 and msg["duration_s"] > 0 and msg["elo"] == {"rating": 1500, "races": 0}
+    s._on_command("bots_preview", {"mode": "survivor", "objective": "endurance"}, 6)
+    low = [m for m in sent if m.get("type") == "bots_preview"][-1]
+    assert low["objective"] == "endurance" and low["power_w"] < msg["power_w"]
+    s._on_command("bots_preview", {"mode": "ride"}, 7)
+    assert [m for m in sent if m.get("type") == "bots_preview"][-1]["elo"] is None   # pas de classement
+    s._on_command("bots_preview", {"mode": "nage"}, 8)
+    assert errors and errors[-1][0] == "bad_args"
+
+
+def test_start_objective_for_this_session_only(env):
+    make, run, _ = env
+    s, sent, errors = make(6840, objective="tempo")
+    s._on_command("start", {"mode": "survivor", "objective": "endurance"}, 2)
+    assert not errors and s._bot_effort_now.objective == "endurance"
+    s2, _, errors2 = make(6850, objective="tempo")
+    s2._on_command("start", {"mode": "survivor", "objective": "sprint"}, 2)
+    assert errors2 and errors2[-1][0] == "bad_args" and s2.state.session_state == "READY"
