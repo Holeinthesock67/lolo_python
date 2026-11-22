@@ -1,0 +1,26 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+82.0;18;6;0;0;0;1;0;airliner_rumble=1 voice_allez=2
+101.6;18;6;0;0;1;2;0;airliner_rumble=2 voice_allez=2
+121.6;18;6;0;0;1;2;0;airliner_rumble=2 vehicle_pass=1 voice_allez=3
+141.6;18;6;0;0;1;2;0;airliner_rumble=2 crow_caw=1 vehicle_pass=1 voice_allez=3
+148.6;18;6;0;0;0;2;0;airliner_rumble=2 crow_caw=1 vehicle_pass=1 voice_allez=3
+161.6;18;6;0;0;0;2;0;airliner_rumble=2 crow_caw=1 vehicle_pass=1 voice_allez=3
+181.6;18;6;0;0;1;2;0;airliner_rumble=2 crow_caw=2 vehicle_pass=1 voice_allez=3
+201.6;18;6;0;0;1;2;0;airliner_rumble=2 crow_caw=2 vehicle_pass=1 voice_allez=3
+211.8;18;6;0;0;4;2;0;airliner_rumble=2 crow_caw=2 vehicle_pass=1 voice_allez=4
+221.6;18;6;0;0;4;2;0;airliner_rumble=2 crow_caw=2 vehicle_pass=1 voice_allez=4
+241.6;18;6;1;0;4;2;0;airliner_rumble=2 crow_caw=3 vehicle_pass=1 voice_allez=4
+261.6;18;6;0;0;6;2;0;airliner_rumble=2 crow_caw=3 vehicle_pass=2 voice_allez=5
+281.6;18;6;0;0;3;2;0;airliner_rumble=2 crow_caw=3 vehicle_pass=2 voice_allez=5
+301.6;18;6;0;0;2;2;0;airliner_rumble=2 crow_caw=3 vehicle_pass=2 voice_allez=5
+321.6;18;6;0;0;0;3;0;airliner_rumble=2 crow_caw=3 paramotor_buzz=1 vehicle_pass=2 voice_allez=5
+341.6;18;6;0;0;0;3;0;airliner_rumble=2 crow_caw=3 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=5
+361.6;18;6;0;0;0;3;0;airliner_rumble=2 crow_caw=3 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=6
+377.6;18;6;0;0;0;4;0;airliner_rumble=2 crow_caw=3 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=6
+381.6;18;6;0;0;0;4;0;airliner_rumble=2 crow_caw=3 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=6
+401.6;18;6;0;0;0;5;0;airliner_rumble=3 crow_caw=3 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=6
+421.6;18;6;0;0;0;4;0;airliner_rumble=3 crow_caw=3 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=7
+441.6;18;6;0;0;0;4;0;airliner_rumble=3 cow_moo=1 crow_caw=3 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=7
+444.2;18;6;0;0;0;4;0;airliner_rumble=3 cow_moo=1 crow_caw=3 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=7
+461.6;18;6;0;0;0;3;0;airliner_rumble=3 cow_moo=1 crow_caw=3 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=7
+481.2;18;6;0;0;0;2;0;airliner_rumble=3 cow_moo=1 crow_caw=3 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 vehicle_pass=2 voice_allez=7 voice_bonjour=1
