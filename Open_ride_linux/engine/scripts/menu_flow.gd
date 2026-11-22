@@ -1594,7 +1594,8 @@ static func mode_label(label: String, prefix: String) -> String:
 # --- effort des bots en watts sur l'écran Prêt (lot GP-niv) et cote Elo (lot BOT-elo) ----------------------
 
 const PREVIEW_KEYS := ["bots.level_pct", "bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
-	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps", "grandprix.distance_km"]
+	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps", "grandprix.distance_km",
+	"race.opponents", "race.laps"]   # race.* : Course (lot CR1), la durée suit les tours et le plateau
 
 
 ## Arguments de `bots_preview` pour l'écran Prêt affiché (Dernier survivant, Grand Prix, épreuve du vélodrome) ;
