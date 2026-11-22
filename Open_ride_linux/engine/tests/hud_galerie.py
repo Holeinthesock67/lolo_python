@@ -203,7 +203,10 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
                 gp.pop("lap")
             state |= {"gp": gp, "bots": _gp_bots(core.current_s(), cas.get("gp_count", 0)), "summary": None}
         else:
-            state["gp"] = None
+            # Hors Grand Prix, `gp` est absent de la trame (contrat, révision 1.7) : un `gp: null` laissé par le cas
+            # précédent cachait l'encart des bots (main.gd teste la présence de la clé).
+            with core.lock:
+                core.fields.pop("gp", None)
         core.set_scene(speed=7.0 if chart else 0.0, **state)
         time.sleep(cas.get("wait", vc.SETTLE_S))
         shot = s.capture(cas["name"])
