@@ -11,6 +11,8 @@ extends RefCounted
 ## - carte de détail : FTP réglée et FTP estimée avec sa confiance en mots, courbe des deux périodes (points
 ##   pleins : 6 mois ; points creux : 6 semaines), ligne de la FTP réglée, source de l'estimation et
 ##   avertissements ; tout en watts, et les mots portent l'information, jamais la couleur seule ;
+## - ligne « Ma forme » (lot FO1, objet `fitness`) : condition et fatigue du coach sur 12 semaines, en points
+##   de charge et en mots, sans watts ni FTP ; deux courbes nommées en bout de trait (plein, pointillé) ;
 ## - MONTHS « Évolution mois par mois » : FTP du mois, meilleurs 5 et 20 min libres, sur 6 mois.
 ## Rien ne s'affiche pendant une séance (le core refuse `list_power_curve` en roulant).
 
@@ -28,6 +30,7 @@ const MONTH_FULL := ["janvier", "février", "mars", "avril", "mai", "juin", "jui
 const NO_DATA := "Roule une première séance pour voir ta courbe"
 const PROFILE_ID := "profile"
 const CHALLENGE_ID := "challenge"
+const FITNESS_ID := "fitness"
 
 var loaded := false
 var data: Dictionary = {}
@@ -140,6 +143,8 @@ func items(names: Dictionary) -> Array:
 		out.append(challenge_row())
 	if not profile().is_empty():
 		out.append(profile_row())
+	if not fitness().is_empty():
+		out.append(fitness_row())
 	for p in points():
 		if p is Dictionary:
 			out.append(row(p, names))
@@ -210,6 +215,8 @@ func card(focused: String, names: Dictionary) -> Dictionary:
 		lines = profile_lines()   # « Se connaître » prend la place de la source de l'estimation
 	elif focused == CHALLENGE_ID:
 		lines = challenge_lines()
+	elif focused == FITNESS_ID:   # lot FO1 : la carte montre la courbe de forme à la place de la puissance
+		return fitness_card()
 	lines.append("● %s   ○ %s   - - FTP réglée" % [SHORT[window], SHORT["w6" if window == "m6" else "m6"]])
 	var warn = data.get("warnings", [])
 	var shown: Array = (warn if warn is Array else [])
@@ -340,3 +347,59 @@ func challenge_lines() -> Array:
 func challenge_ready_text() -> String:
 	var c := challenge()
 	return "fantôme à %d W" % int(c.get("target_w", 0))   # titre « Prêt : défi : 1 min » ; le détail reste court
+
+
+# --- « Ma forme » (lot FO1, objet `fitness` du message `power_curve`) ---------------------------------
+
+const TREND_TEXT := {"up": "en hausse", "down": "en baisse", "flat": "stable"}
+## Légende de la courbe : le mot et la forme du trait portent l'information, pas la couleur.
+const FITNESS_LEGEND := "—— Condition (42 jours)   - - Fatigue (7 jours)"
+
+
+func fitness() -> Dictionary:
+	var f = data.get("fitness")
+	return f if f is Dictionary and f.get("ctl") is Array and not (f["ctl"] as Array).is_empty() else {}
+
+
+## Ligne de la liste : « Ma forme : en forme » et la condition avec sa tendance.
+func fitness_row() -> Dictionary:
+	var f := fitness()
+	var word := str(f.get("label_text", "")).split(",")[0] if f.get("label_text") is String else "à calculer"
+	return {"id": FITNESS_ID, "label": "Ma forme : " + word,
+		"detail": "condition %d, %s" % [int(round(float(f.get("ctl_now", 0)))), TREND_TEXT.get(str(f.get("trend", "")), "stable")]}
+
+
+static func _signed(x: float) -> String:
+	var n := int(round(x))
+	return ("+%d" % n) if n > 0 else str(n)
+
+
+## Lignes de la carte « Ma forme » : chiffres de charge, tendance, fraîcheur en mots, semaines sans séance.
+func fitness_lines() -> Array:
+	var f := fitness()
+	var ctl := int(round(float(f.get("ctl_now", 0))))
+	var trend := str(f.get("trend", "flat"))
+	var weeks_up := int(f.get("weeks_up", 0))
+	var t := str(TREND_TEXT.get(trend, "stable"))
+	if trend == "up" and weeks_up >= 2:
+		t += " depuis %d semaines" % weeks_up
+	var out: Array = ["Condition %d, %s. Fatigue %d." % [ctl, t, int(round(float(f.get("atl_now", 0))))]]
+	if f.get("label_text") is String:
+		out.append("Fraîcheur %s : %s." % [_signed(float(f.get("form", 0))), str(f["label_text"])])
+	var weeks: Array = f.get("weeks", []) if f.get("weeks") is Array else []
+	var empty := weeks.filter(func(n): return int(n) == 0).size()
+	if not weeks.is_empty():
+		out.append("%d semaines sur %d avec au moins une séance." % [weeks.size() - empty, weeks.size()])
+	out.append("Points de charge des séances, sans watts : tu n'es comparé qu'à toi-même.")
+	out.append(FITNESS_LEGEND)
+	return out
+
+
+func fitness_card() -> Dictionary:
+	var f := fitness()
+	var tiles: Array = [{"label": "Condition", "value": str(int(round(float(f.get("ctl_now", 0))))), "unit": ""},
+		{"label": "Fatigue", "value": str(int(round(float(f.get("atl_now", 0))))), "unit": ""},
+		{"label": "Fraîcheur", "value": _signed(float(f.get("form", 0))), "unit": ""}]
+	return {"title": "MA FORME", "name": "12 dernières semaines", "tiles": tiles, "lines": fitness_lines(),
+		"fitness": {"ctl": f["ctl"], "atl": f.get("atl", []), "weeks": f.get("weeks", []),
+			"days": int(f.get("days", 84))}}

@@ -4,7 +4,8 @@ extends PanelContainer
 ## chiffres clés, graphique tracé par le code (profil d'altitude d'un parcours chargé, blocs d'un
 ## entraînement colorés par zone), lignes de texte. Affiche une fiche de menu_flow.card() :
 ## {title, name, tiles [{label, value, unit, gold}] (gold : valeur en or), lines, profile (HudViewModel.profile), blocks ([durée,
-## début, fin]), curve (courbe de puissance de « Ma puissance », power_view_model.gd, lot PP3)} ; les clés absentes ne
+## début, fin]), curve (courbe de puissance de « Ma puissance », power_view_model.gd, lot PP3), fitness (courbe de forme,
+## {ctl, atl, weeks, days}, lot FO1)} ; les clés absentes ne
 ## montrent rien. `body` reçoit d'autres contenus (bilan, menu_view).
 ## Couleurs et tailles du thème commun (ui_theme.gd). Pas de class_name : charger par
 ## preload("res://scripts/detail_card.gd").
@@ -87,6 +88,8 @@ func chart_kind() -> String:
 		return ""
 	if _has_curve():
 		return "curve"
+	if _has_fitness():
+		return "fitness"
 	return "profile" if _has_profile() else "blocks"
 
 
@@ -108,14 +111,19 @@ func update_display(sheet: Dictionary) -> void:
 	var lines: Array = sheet.get("lines", [])
 	lines_label.text = "\n".join(PackedStringArray(lines.map(func(l): return str(l))))
 	lines_label.visible = not lines.is_empty()
-	chart.visible = _has_profile() or not sheet.get("blocks", []).is_empty() or _has_curve()
-	chart.custom_minimum_size.y = CURVE_H if _has_curve() else UiTheme.CHART_H
+	chart.visible = _has_profile() or not sheet.get("blocks", []).is_empty() or _has_curve() or _has_fitness()
+	chart.custom_minimum_size.y = CURVE_H if (_has_curve() or _has_fitness()) else UiTheme.CHART_H
 	chart.queue_redraw()
 
 
 func _has_curve() -> bool:
 	var c = _sheet.get("curve", null)
 	return c is Dictionary and c.get("m6", []) is Array and not c.get("m6", []).is_empty()
+
+
+func _has_fitness() -> bool:
+	var f = _sheet.get("fitness", null)
+	return f is Dictionary and f.get("ctl", []) is Array and f.get("ctl", []).size() >= 2
 
 
 func _has_profile() -> bool:
@@ -167,6 +175,8 @@ func _draw_chart() -> void:
 	chart.draw_line(Vector2(0, h - 1), Vector2(w, h - 1), UiTheme.LINE, 1.0)
 	if _has_curve():
 		_draw_curve(w, h)
+	elif _has_fitness():
+		_draw_fitness(w, h)
 	elif _has_profile():
 		_draw_profile(w, h)
 	else:
@@ -244,6 +254,59 @@ func _draw_curve(w: float, h: float) -> void:
 				chart.draw_arc(pt, 4.5, 0.0, TAU, 16, UiTheme.TEXT, 1.5, true)
 		if line.size() >= 2 and strong:
 			chart.draw_polyline(line, UiTheme.FOCUS, 2.5, true)
+
+
+## Courbe de forme (lot FO1) : condition en trait plein, fatigue en pointillé, chacune nommée en bout de trait ;
+## sous l'axe, le nombre de séances de chaque semaine (« 0 » marque une semaine sans séance). Points de charge,
+## graduations sans unité ; le mot et la forme du trait portent l'information, pas la couleur.
+func _draw_fitness(w: float, h: float) -> void:
+	var f: Dictionary = _sheet["fitness"]
+	var font := ThemeDB.fallback_font
+	var ctl: Array = f.get("ctl", [])
+	var atl: Array = f.get("atl", [])
+	var top := 10.0
+	for v in ctl + atl:
+		top = maxf(top, float(v))
+	top *= 1.15
+	var plot_h := h - CURVE_BOTTOM
+	var right := w - 70.0   # place des noms en bout de trait
+	var left := 34.0
+	var y_of := func(v: float) -> float: return plot_h - v / top * (plot_h - 6.0)
+	var step := 10 if top <= 60.0 else (20 if top <= 120.0 else 50)
+	var g := step
+	while g < top:
+		var gy: float = y_of.call(float(g))
+		chart.draw_line(Vector2(left, gy), Vector2(right, gy), Color(UiTheme.LINE, 0.8), 1.0)
+		chart.draw_string(font, Vector2(0, gy + 5), str(g), HORIZONTAL_ALIGNMENT_LEFT, left - 4, 13, UiTheme.DIM)
+		g += step
+	var weeks: Array = f.get("weeks", [])
+	for i in range(weeks.size()):
+		var cx := left + (i + 0.5) / float(weeks.size()) * (right - left)
+		chart.draw_string(font, Vector2(cx - 10, h - 4), str(int(weeks[i])), HORIZONTAL_ALIGNMENT_CENTER, 20, 13,
+			UiTheme.TEXT if int(weeks[i]) == 0 else UiTheme.DIM)
+	var lines := {"Condition": ctl, "Fatigue": atl}
+	var ends: Array = []
+	for key in lines:
+		var arr: Array = lines[key]
+		if arr.size() < 2:
+			continue
+		var pts := PackedVector2Array()
+		for i in range(arr.size()):
+			pts.append(Vector2(left + i / float(arr.size() - 1) * (right - left), y_of.call(float(arr[i]))))
+		if key == "Condition":
+			chart.draw_polyline(pts, UiTheme.FOCUS, 2.5, true)
+		else:
+			for i in range(pts.size() - 1):
+				chart.draw_dashed_line(pts[i], pts[i + 1], UiTheme.TEXT, 1.5, 5.0)
+		ends.append([key, pts[pts.size() - 1].y])
+	if ends.size() == 2 and absf(ends[0][1] - ends[1][1]) < 14.0:   # noms qui se chevauchent : on les écarte
+		var mid: float = (float(ends[0][1]) + float(ends[1][1])) / 2.0
+		var up: int = 0 if float(ends[0][1]) <= float(ends[1][1]) else 1
+		ends[up][1] = mid - 7.0
+		ends[1 - up][1] = mid + 7.0
+	for e in ends:
+		chart.draw_string(font, Vector2(right + 4, clampf(e[1], 10.0, plot_h) + 5), e[0], HORIZONTAL_ALIGNMENT_LEFT,
+			w - right - 4, 13, UiTheme.TEXT)
 
 
 ## Graduations rondes (100, 200 ou 250 W d'écart) sous le haut du graphique.

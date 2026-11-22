@@ -632,6 +632,23 @@ def _curve_point(p: dict[str, Any] | None) -> dict[str, Any] | None:
             "k": sess.get("workout_id")}
 
 
+def _fitness_of(activities_dir: Path, ftp_w: float, sources, now: float) -> dict[str, Any] | None:
+    """Courbe de forme (lot FO1) : condition et fatigue du coach (`coach.fitness_series`) depuis les séances
+    comptées du profil et le cache du conseil ; None si rien n'est lisible (la courbe de puissance reste)."""
+    from datetime import date
+
+    from . import coach
+
+    try:
+        table = coach.load_table()
+        today = date.fromtimestamp(now)
+        facts = coach.collect_facts(activities_dir, ftp_w, today, table, counted_sources=tuple(sources))
+        return coach.fitness_series(facts, today, table)
+    except Exception:
+        log.exception("Courbe de forme illisible pour « Ma puissance »")
+        return None
+
+
 def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir: Path, cache_path: Path,
                               sources, profile_id: str | None = None, now: float | None = None,
                               routes: list | None = None) -> dict[str, Any]:
@@ -662,6 +679,7 @@ def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir:
     if chal is not None and chal["route_name"]:
         chal["route_name"] = str(chal["route_name"])[:40]
     msg["challenge"] = chal
+    msg["fitness"] = _fitness_of(activities_dir, ftp_w, sources, now)   # lot FO1 : « Ma forme »
     if len(json.dumps(msg, ensure_ascii=False).encode("utf-8")) > POWER_CURVE_MAX_BYTES:   # noms très longs
         for pt in msg["points"]:
             for key in ("m6", "w6"):
