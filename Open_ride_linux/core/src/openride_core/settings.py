@@ -92,6 +92,10 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("bots.objective", "Objectif des bots", "ride",   # lot BT1
             help="Part de l'effort tenable sur la durée de la course que visent les bots : Tempo, une course "
                  "qu'on peut gagner sans se mettre dans le rouge. Au vélodrome, l'objectif suit l'épreuve."),
+    Setting("bots.elo", "Niveau automatique (Elo)", "ride",   # lot BOT-elo
+            help="Oui : ta cote et celle de chaque bot changent après chaque course à classement (Grand Prix, "
+                 "Dernier survivant, piste en groupe) ; le peloton gagne 2,5 % de puissance par 100 points de "
+                 "ta cote, et le perd quand tu perds. Non : niveau des bots seul."),
     # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
     Setting("gravel.mode", "Gravel", "ride",
             help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
