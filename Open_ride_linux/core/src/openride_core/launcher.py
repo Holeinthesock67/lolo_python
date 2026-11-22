@@ -330,6 +330,21 @@ def migrate_profiles(home: Path | None = None) -> str | None:
     return None
 
 
+def migrate_settings(home: Path | None = None) -> list[str]:
+    """Réglages retirés du menu remis par défaut dans les fichiers du joueur (lot NI2, `migration_reglages.py`) ;
+    une ligne au journal par fichier changé ; une erreur d'écriture n'empêche pas de démarrer."""
+    from . import migration_reglages
+
+    try:
+        done = migration_reglages.migrate(home)
+    except OSError as exc:
+        print(f"openride : réglages retirés non migrés : {exc}", file=sys.stderr)
+        return []
+    for line in done:
+        print(f"openride : {line}", flush=True)
+    return done
+
+
 def _default_echo() -> bool:
     try:
         return sys.stdout.isatty()
@@ -1073,6 +1088,7 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
         if warning:
             print(f"openride : {warning}", file=sys.stderr)
             message(warning, True)
+        migrate_settings()
     for _ in range(config_repair.MAX_REPAIRS + 1):
         try:
             sup = build_supervisor(args)

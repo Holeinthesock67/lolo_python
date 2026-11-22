@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Bots réglés sur la courbe de puissance : FTP × courbe(durée de la course) × objectif × niveau, pour tous les modes à bots, vélodrome par épreuve | Python, GDScript | T13 (#900 : échelle unique) | Moyenne | PR du 15 novembre, empilée sur #900 |
+| Bots réglés sur la courbe de puissance : FTP × courbe(durée de la course) × objectif × niveau, pour tous les modes à bots, vélodrome par épreuve | Python, GDScript | T13 (#900 : échelle unique) | Moyenne | **Livré le 16 novembre** (PR #909) |
 
 ## 1. Objectif
 
@@ -27,6 +27,8 @@ Interpolation sur le logarithme de la durée, bornée aux extrémités. Objectif
 
 ## 3. Livraison
 
+**Fusionné le 16 novembre 2026 (PR #909).** Les points « Reste » ci-dessous décrivent l'état d'avant la fusion.
+
 - Core : `bot_effort.py` ; `bots.effort_target`, `calibrate_bots(effort=)` ; `Session._bot_effort` (mode de la séance) ; réglage `bots.objective` (`config.py`, choix, clé du profil ; `settings.py` « Objectif des bots ») ; banc `bots_race --objectif` (le cycliste roule à l'effort d'un bot de son niveau).
 - Engine : ligne « Objectif des bots » sur les écrans Prêt du Dernier survivant et du Grand Prix, et dans les réglages (`settings_view_model.gd` : « tempo (80 %) »…).
 - Tests : `core/tests/test_bot_effort.py` ; `test_survivor_menu.gd`, `test_grandprix_menu.gd`, scénarios `grand_prix` et `dernier_survivant` repris.
@@ -36,4 +38,5 @@ Interpolation sur le logarithme de la durée, bornée aux extrémités. Objectif
 
 - Banc `bots_race` sur le PC, low, medium et high, en Tempo et en À fond.
 - Essai du propriétaire : 10 min de Grand Prix en Tempo, puis 10 min en Endurance.
-- Plus tard : puissance cible et durée affichées en watts sur l'écran Prêt (« Bots : ≈ 225 W pendant ≈ 9 min ») : demande une réponse du core avant le départ ; course conseillée (CO9) dont l'objectif suit le besoin du jour ; vraie courbe du cycliste (`estimate_cp`).
+- Fait au lot GP-niv (`LOT_BOT_ELO_niveau_et_cote_des_bots.md`, 20 novembre) : watts et durée sur l'écran Prêt, objectif de la course conseillée. Reste : vraie courbe du cycliste (`estimate_cp`).
+- Note d'origine : puissance cible et durée affichées en watts sur l'écran Prêt (« Bots : ≈ 225 W pendant ≈ 9 min ») : demande une réponse du core avant le départ ; course conseillée (CO9) dont l'objectif suit le besoin du jour ; vraie courbe du cycliste (`estimate_cp`).

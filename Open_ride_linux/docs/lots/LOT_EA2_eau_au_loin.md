@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Grands lacs (plus de 1 km²) écrits avec les tuiles lointaines de 5 km du monde ouvert, sol lointain abaissé dessous (règle EA1), dessinés au-delà des carrés proches | Python, GDScript | EA1 (en PR #881), W7, W10 | Moyenne | En revue (PR à valider : essai PC, mesures low, medium, high et captures) |
+| Grands lacs (plus de 1 km²) écrits avec les tuiles lointaines de 5 km du monde ouvert, sol lointain abaissé dessous (règle EA1), dessinés au-delà des carrés proches | Python, GDScript | EA1 (en PR #881), W7, W10 | Moyenne | **Livré le 20 novembre** (PR #915) |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ Les cellules voisines d'une même ligne au même niveau forment une bande : quel
 - Suites `compiler` (pytest) et engine (`run_engine_tests.sh`).
 - Monde ouvert au-dessus d'un grand lac : scénario `engine/tests/menu_scenarios/ea2_lac_loin.json` (gabarit `depart_monde_ouvert`, recherche « Sevrier », rive ouest du lac d'Annecy, même départ que `ea1_lac` : la rive est, à 2 ou 3 km, n'est dessinée que par l'eau lointaine ; 5 minutes, une capture par minute ; Montmin ne voyait pas le lac et Talloires mène à une route sans issue), `menu_bench.py --native --scenario ea2_lac_loin --qualite low|medium|high --captures ecrans`, sur la branche puis sur celle de EA1 (#881, base de la PR) ; GPU (budgets 8, 13 et 16 ms), temps des tâches `far` et `eau_lointaine` de la sonde, temps du générateur par tuile lointaine et tuiles vectorielles téléchargées.
 - Captures validées par le propriétaire avant fusion.
+
+## 7. Livraison
+
+Fusionné le 20 novembre 2026 (PR #915 : grands lacs des tuiles lointaines du monde ouvert). Détail des écarts et de la recette : description de la PR.

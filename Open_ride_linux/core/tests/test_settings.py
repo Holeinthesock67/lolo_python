@@ -193,7 +193,7 @@ def test_gravel_setting_lot_u16(tmp_path: Path):
     g = items["gravel.mode"]
     assert (g["group"], g["value"], g["applies"]) == ("ride", "off", "next_session")
     assert g["choices"] == ["off", "auto", "compacted", "gravel", "dirt"]
-    assert "Chemins réels" in g["help"] and "plafond du vent" in g["help"]
+    assert "Chemins réels" in g["help"] and "pente ajoutée maximale" in g["help"]
     assert "help" not in items["wind.speed_kmh"]
     path = tmp_path / "config.toml"
     path.write_text(START, encoding="utf-8")
@@ -332,7 +332,7 @@ def test_bool_and_scaled_settings_in_the_menu(tmp_path: Path):
     relief = items["render.visual_grade_scale"]
     assert (relief["value"], relief["min"], relief["max"], relief["step"], relief["unit"]) == (250, 100, 300, 25, "%")
     assert relief["applies"] == "relaunch"
-    assert items["wind.feel"]["choices"] == ["grade", "ftms"] and items["wind.feel"]["group"] == "wind"
+    assert items["wind.feel"]["choices"] == ["grade", "ftms"] and items["wind.feel"]["group"] == "advanced"
     assert settings.step(cfg, "render.visual_grade_scale", 250, +1) == 275
     with pytest.raises(settings.SettingError):
         settings.check(cfg, "render.visual_grade_scale", 310)
@@ -358,6 +358,7 @@ def test_advanced_settings_and_settings_in_parts(tmp_path: Path):
     cfg = Config()
     by_key = {it["key"]: it for it in settings.current(cfg)}
     assert [k for k, it in by_key.items() if it["group"] == "advanced"] == [
+        "trainer.control", "wind.max_grade_offset_pct", "wind.feel",   # choix d'essai et plafond, lot NI2
         "open_world.network", "open_world.cache_max_gb", "render.theme_library_gb", "progression.enabled"]
     assert by_key["open_world.network"]["choices"] == ["on", "off"] and by_key["open_world.network"]["value"] == "on"
     cache = by_key["open_world.cache_max_gb"]
@@ -403,3 +404,33 @@ def test_seasons_random_and_month_lot_u13b(tmp_path: Path):
     assert (written["seasons"], written["month"]) == ("random", "february")
     s._on_command("set_setting", {"key": "render.month", "value": "13"}, 4)
     assert errors[-1][0] == "setting_invalid"
+
+
+def test_lot_ni2_one_place_per_setting_and_rule_for_useless_lines():
+    """Lot NI2 (audit des éléments inutiles du 21 novembre) : réglages des écrans de mode et du conseil dans le
+    groupe `screen` (absent de « Réglages », toujours écrits par `set_setting`) ; lignes dépendantes avec `when`
+    sur des clés et des valeurs qui existent ; choix d'essai et plafond en Avancé ; textures retirées du menu."""
+    cfg = Config()
+    items = settings.current(cfg)
+    by_key = {it["key"]: it for it in items}
+    screen = [k for k, it in by_key.items() if it["group"] == settings.SCREEN_GROUP]
+    assert screen and all(k.split(".")[0] in settings.SCREEN_SECTIONS for k in screen)
+    assert {"survivor.opponents", "grandprix.chaos", "coach.objectif"} <= set(screen)
+    assert not [k for k, it in by_key.items() if k.split(".")[0] in settings.SCREEN_SECTIONS and k not in screen]
+    assert "render.texture_level" not in by_key
+    assert by_key["wind.max_grade_offset_pct"]["label"] == "Pente ajoutée max"
+    assert {by_key[k]["group"] for k in ("trainer.control", "wind.feel", "wind.max_grade_offset_pct")} == {"advanced"}
+    whens = {k: it["when"] for k, it in by_key.items() if "when" in it}
+    assert set(whens) == {"depart.cadence_rpm", "ride.vehicle_draft", "render.month", "wind.speed_kmh",
+                          "wind.from_deg", "wind.gust_pct", "wind.feel"}
+    for key, conds in whens.items():   # une dépendance porte sur un réglage du menu et sur ses vrais choix
+        for c in conds:
+            assert c["key"] != key and set(c["in"]) <= set(by_key[c["key"]]["choices"]), (key, c)
+    assert whens["wind.gust_pct"] == [{"key": "wind.mode", "in": ["gusty"]}]
+    # Un réglage du groupe `screen` reste réglable (écran Prêt du mode)
+    settings.check(cfg, "survivor.opponents", 6)
+    validator = jsonschema.Draft202012Validator(json.loads((SCHEMAS / "settings.schema.json").read_text("utf-8")))
+    validator.validate({"type": "settings", "v": 1, "request_cmd_id": 0, "items": items})
+    # L'engine connaît le groupe `screen` (settings_view_model.gd)
+    gd = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "settings_view_model.gd").read_text(encoding="utf-8")
+    assert f'const SCREEN_GROUP := "{settings.SCREEN_GROUP}"' in gd

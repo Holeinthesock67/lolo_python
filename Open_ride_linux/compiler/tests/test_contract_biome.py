@@ -22,6 +22,7 @@ BIOMES = [
     "atlantic_heath",                         # 18e biome : lot AT1 (6.0)
     "high_plateau",                            # lot HP1 (6.0)
     "reef",                                    # lot SM1 (fond marin, démo sous-marine)
+    "cloud_forest", "eucalypt_woodland", "temperate_rainforest",   # lot V6-r4 (6.0) : biomes du rang 4
 ]
 
 
