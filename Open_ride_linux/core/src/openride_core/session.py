@@ -945,6 +945,9 @@ class CoreSession:
             self._send_profiles(cmd_id)
             return
         ctx = self.profile_ctx
+        if args.get("confirmed") is not True:   # confirmation exigée par le core aussi, pas seulement à l'écran
+            self.server.send_error("bad_args", f"{name} : confirmation absente (\"confirmed\": true)")
+            return
         if name == "reset_profile_stats":
             dest, moved = profiles.reset_stats(ctx, self.profiles_base)
             log.info("Statistiques du profil %s remises à zéro : %s mis de côté dans %s.", ctx.id,

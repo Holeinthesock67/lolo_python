@@ -111,22 +111,25 @@ def test_reset_and_undo_from_the_menu(home, monkeypatch):
     s._on_command("select_profile", {"id": "cycliste-b"}, 2)
     assert s.progress_svc.progression_dict()["level"] > 1
     frames.clear()
-    s._on_command("reset_profile_stats", {}, 3)
+    s._on_command("reset_profile_stats", {}, 2)   # sans confirmation : refus, rien ne bouge
+    assert of(frames, "error")[-1]["code"] == "bad_args" and (base(home) / "cycliste-b" / "elo.json").is_file()
+    frames.clear()
+    s._on_command("reset_profile_stats", {"confirmed": True}, 3)
     assert [f["type"] for f in frames][:1] == ["hello_ack"]   # profil rechargé
     assert s.progress_svc.progression_dict()["level"] == 1 and s.progress_svc.progression_dict()["xp"] == 0
     msg = of(frames, "profiles")[-1]
     assert msg["active"] == "cycliste-b" and len(msg["resets"]) == 1
     assert len(json.dumps(msg).encode()) < 1600
-    s._on_command("reset_profile_stats", {}, 3)   # copie de la même commande : pas de seconde remise
+    s._on_command("reset_profile_stats", {"confirmed": True}, 3)   # copie de la même commande : pas de seconde remise
     assert of(frames, "error") == [] and len(of(frames, "profiles")[-1]["resets"]) == 1
-    s._on_command("reset_profile_stats", {}, 4)   # plus rien à remettre à zéro
+    s._on_command("reset_profile_stats", {"confirmed": True}, 4)   # plus rien à remettre à zéro
     assert of(frames, "error")[-1]["code"] == "profile_invalid"
-    s._on_command("undo_profile_reset", {"id": msg["resets"][0]["id"]}, 5)
+    s._on_command("undo_profile_reset", {"id": msg["resets"][0]["id"], "confirmed": True}, 5)
     assert s.progress_svc.progression_dict()["level"] > 1
     assert of(frames, "profiles")[-1]["resets"] == []
     s._on_command("select_route", {}, 6)
     s._on_command("start", {}, 7)
-    s._on_command("reset_profile_stats", {}, 8)
+    s._on_command("reset_profile_stats", {"confirmed": True}, 8)
     assert of(frames, "error")[-1]["code"] == "busy"
 
 
