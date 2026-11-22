@@ -73,6 +73,9 @@ extends RefCounted
 ## « Niveau des bots » (tours sur un circuit, distance sur un parcours en ligne), « Objets » (une case par objet,
 ## list_mode_options et set_mode_option, grandprix/gp_items_menu_model.gd), « Lancer » avec la longueur de la
 ## course, désactivé sur un parcours en ligne trop court ; `start` part avec `mode` « grandprix » sans `bots`.
+## Course (lot CR1, contrat 1.23) : « Course » à l'accueil ouvre l'écran Prêt du mode comme le Dernier survivant,
+## sur les parcours libres : réglages `race.*` et « Niveau des bots » (tours sur une boucle ; en ligne, jusqu'à
+## l'arrivée), « Lancer » avec la longueur ; `start` part avec `mode` « race » sans `bots`.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -104,6 +107,8 @@ const SURVIVOR_PREFIX := "Survivant : "
 const GP_MIN_COURSE_M := 1000.0
 ## Grand Prix des objets (lot GP9) : préfixe des libellés du core.
 const GP_PREFIX := "Grand Prix : "
+## Course (lot CR1) : préfixe des libellés du core.
+const RACE_PREFIX := "Course : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
@@ -190,6 +195,9 @@ var difficulty_pct := 50
 ## Mode d'une session libre (lot O18, ride_mode_of()) : "sim", "erg", "cadence" ; "" hors session libre
 ## (entraînement, run) : la pause n'a alors pas les lignes du mode. Cibles en cours pour ses lignes.
 var ride_mode := ""
+## ERG en cours (`state.erg` présent : entraînement, ERG libre, ERG cadence) : la Difficulté de la pause est alors
+## sans effet et cachée (lot NI2, R4, même règle que les lignes sans effet des Réglages).
+var erg_active := false
 var erg_target_w := 0
 var cadence_target_rpm := 0
 ## Dernier objet `devices` reçu (une trame sur 30 le porte, contrat §3) : gardé jusqu'au suivant.
@@ -412,8 +420,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	if u_turn_ok != menu.u_turn_shown:   # entrée « Faire demi-tour » de la pause (lot N17)
 		menu.u_turn_shown = u_turn_ok
 		pause_changed = true
-	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm:
+	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm or (erg is Dictionary) != erg_active:
 		ride_mode = rm
+		erg_active = erg is Dictionary
 		erg_target_w = tw
 		cadence_target_rpm = cad
 		pause_changed = true
@@ -1303,9 +1312,9 @@ func _handle_event(event: String) -> Dictionary:
 		_refresh_wtf()
 		menu.push_screen(WtfRulesModel.SCREEN)
 		return {"action": "list_wtf_rules"}
-	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "survivor":
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) in ["survivor", "race"]:
 		ready_message = ""
-		menu.prepare_settings_mode("survivor")
+		menu.prepare_settings_mode(str(act["id"]))   # Course (lot CR1) : même écran Prêt, réglages `race.*`
 		_refresh_mode_ready()
 		return {"action": "select_workout", "workout_id": null}   # SIM seulement : le core refuse un entraînement ERG
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "track":
@@ -1542,6 +1551,9 @@ func _refresh_mode_ready() -> void:
 		menu.set_mode_ready(_mode_rows(grandprix_keys(route), GP_PREFIX),
 			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)),
 			int(settings.item("grandprix.distance_km").get("value", 10)), route), gp_items.ready_label())
+	elif menu.mode == "race":
+		menu.set_mode_ready(_mode_rows(race_keys(route), RACE_PREFIX),
+			race_launch(int(settings.item("race.laps").get("value", 3)), route))
 
 
 ## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
@@ -1682,6 +1694,28 @@ static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> 
 			"advice": ""}
 	return {"enabled": true, "detail": "course de %d km" % distance_km, "advice": ""}
 
+
+## Réglages de l'écran Prêt de la Course (lot CR1) : tours sur une boucle ; en ligne, la course va jusqu'à l'arrivée.
+static func race_keys(route: Dictionary) -> Array:
+	var line := not route.is_empty() and str(route.get("route_type", "")) != "loop"
+	return ["race.opponents"] + ([] if line else ["race.laps"]) + ["bots.level_pct", "bots.objective"]
+
+
+## Ligne « Lancer » de la Course (lot CR1) : {enabled, detail, advice}. Boucle : tours et longueur ; en ligne :
+## jusqu'à l'arrivée du parcours ; désactivé sous GP_MIN_COURSE_M (le core refuse aussi, `bad_args`).
+static func race_launch(laps: int, route: Dictionary) -> Dictionary:
+	var length = route.get("length_m", null)
+	if route.is_empty() or length == null:
+		return {"enabled": true, "detail": "", "advice": ""}
+	if str(route.get("route_type", "")) == "loop":
+		return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
+			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
+	if float(length) < GP_MIN_COURSE_M:
+		return {"enabled": false, "detail": "parcours trop court",
+			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours." % [
+				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
+	return {"enabled": true, "detail": "%s en ligne" % CatalogModel._format_fr_km(float(length)),
+		"advice": ""}
 
 
 ## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).
@@ -2253,10 +2287,10 @@ func _pause_value(key: String):
 	return difficulty_pct
 
 
-## Lignes modifiables de la pause : difficulté ; en session libre, mode, puis puissance cible (ERG) ou
-## cadence cible (ERG cadence). La ligne en cours de modification passe en mode édition.
+## Lignes modifiables de la pause : difficulté (hors ERG seulement, lot NI2) ; en session libre, mode, puis
+## puissance cible (ERG) ou cadence cible (ERG cadence). La ligne en cours de modification passe en mode édition.
 func _refresh_pause_rows() -> void:
-	var keys := [SettingsViewModel.PAUSE_DIFFICULTY]
+	var keys := [] if erg_active else [SettingsViewModel.PAUSE_DIFFICULTY]
 	if ride_mode != "":
 		keys.append(SettingsViewModel.PAUSE_RIDE_MODE)
 	if ride_mode == "erg":
@@ -2306,6 +2340,7 @@ func _handle_edit(event: String) -> Dictionary:
 				difficulty_pct = int(act["pct"])
 			if act.get("action", "") == "set_ride_mode":   # affiché tout de suite, la trame suivante confirme
 				ride_mode = str(act["args"]["mode"])
+				erg_active = ride_mode != "sim"
 			if act.get("action", "") == "garage_set":
 				garage.set_field(str(act["key"]), int(act["value"]))
 				_refresh_garage()
