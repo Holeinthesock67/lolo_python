@@ -32,7 +32,10 @@ const COLUMN_GAP := 24
 const TILE_GAP := 8
 ## Plus petite police des lignes du bilan quand `fit` le compacte (celle des autres lignes suit, 2 de moins).
 const MIN_FONT_SIZE := 16
-const COMPACT_LEVELS := 3
+const COMPACT_LEVELS := 4
+## Palier 4 (lot RT2) : bandeau du résultat resserré (marges de 2, titre à la taille des lignes), barre d'XP basse.
+const BAND_MARGIN_COMPACT := 2
+const BAR_H_COMPACT := 4
 const TILE_MARGIN_COMPACT := 2
 ## Chiffre d'une tuile : 6 points de plus que les lignes (28 à la taille normale, comme la carte de détail).
 const TILE_VALUE_EXTRA := UiTheme.VALUE_SIZE - FONT_SIZE
@@ -326,8 +329,16 @@ func fit(width: float, fits: Callable) -> void:
 
 
 ## Paliers après les écarts resserrés, dans l'ordre : 1 tuiles basses, 2 blocs ERG sur deux colonnes,
-## 3 graphique de puissance caché (comme l'étape « courbe du bilan » du contrat, la courbe part la première).
+## 3 graphique de puissance caché (comme l'étape « courbe du bilan » du contrat, la courbe part la première),
+## 4 bandeau du résultat resserré et barre d'XP basse (les mots restent tous affichés).
 func _set_compact(level: int) -> void:
+	var band_m := BAND_MARGIN_COMPACT if level >= 4 else 8
+	_result_style.content_margin_top = band_m
+	_result_style.content_margin_bottom = band_m
+	result_title.add_theme_font_size_override("font_size", result_tag.get_theme_font_size("font_size") + 2 if level >= 4 \
+		else result_title.get_theme_font_size("font_size"))
+	bar.custom_minimum_size.y = BAR_H_COMPACT if level >= 4 else BAR_H
+	bar.queue_redraw()
 	for t in _tiles:
 		t.add_theme_stylebox_override("panel", _tile_style_compact if level >= 1 else _tile_style)
 	blocks_box.columns = 2 if level >= 2 else 1
@@ -669,5 +680,5 @@ func _process(delta: float) -> void:
 
 func _draw_bar() -> void:
 	var w := bar.size.x
-	bar.draw_rect(Rect2(0, 0, w, BAR_H), UiTheme.LINE)
-	bar.draw_rect(Rect2(0, 0, w * _bar_pos, BAR_H), UiTheme.FOCUS)
+	bar.draw_rect(Rect2(0, 0, w, bar.custom_minimum_size.y), UiTheme.LINE)
+	bar.draw_rect(Rect2(0, 0, w * _bar_pos, bar.custom_minimum_size.y), UiTheme.FOCUS)

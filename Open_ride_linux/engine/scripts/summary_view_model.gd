@@ -589,7 +589,7 @@ func menu_screen() -> Dictionary:
 		"title": "Fin de séance",
 		"on_back": "",
 		"items": [
-			{"id": "replay", "label": "Rejouer", "enabled": true, "detail": "même parcours, même mode"},
+			{"id": "replay", "label": "Rejouer", "enabled": true, "detail": ""},
 			{"id": "new_session", "label": "Menu principal", "enabled": true, "detail": ""},
 			{"id": "details", "label": "Voir le bilan détaillé", "enabled": true, "detail": ""},
 			{"id": "quit", "label": "Quitter", "enabled": true, "detail": ""}

@@ -2032,14 +2032,11 @@ func _on_garage(items: Array) -> void:
 	_refresh_menu()
 
 
-## `xp_result` de fin de séance (lot V9) : bilan dans le résumé, bandeau « Niveau N ! » une seule fois.
-const LEVEL_UP_S := 6.0
-
-
+## `xp_result` de fin de séance (lot V9) : bilan dans le résumé.
+## Retour d'essai du 22/11 : le bandeau du haut masquait le titre et « Rejouer » ; « Niveau N ! » reste écrit en
+## vert dans le bloc « Progression » du bilan, le bandeau n'est plus affiché sur la fin de séance.
 func _on_xp_result(msg: Dictionary) -> void:
-	var text := menu_flow.on_xp_result(msg)
-	if text != "":
-		banner.show_message("level_up", text, LEVEL_UP_S)
+	menu_flow.on_xp_result(msg)
 	menu_view.summary.animate = _quality_name != "low"
 	_refresh_menu()
 
