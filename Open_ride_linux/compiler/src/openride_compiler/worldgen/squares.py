@@ -66,7 +66,8 @@ from .store import WorldCache
 # unique sol / route (road_ground.py : route de l'engine, talus appuyés). Un même numéro pour
 # deux contenus différents garderait un carré périmé en cache : à chaque fusion, garder un numéro plus grand que tous
 # ceux déjà dans main. Carrés recalculés. 6 (EA5) jamais fusionné ; 7 (20/11) : fond des lacs fondu avec la route (rive en
-# pente douce au lieu d'une chute de 7 m sous la chaussée) ; 9 réservé (garde-fou d'altitude, #961) ; 10 (22/11) :
+# pente douce au lieu d'une chute de 7 m sous la chaussée) ; 9 (21/11) : garde-fou d'altitude du profil des arêtes
+# (altitude_guard.py : trous et pics du relief, pente et changement de pente bornés, pente des nœuds) ; 10 (22/11) :
 # tunnels dessinés (lot EA5, couche `tunnels` du carré).
 WORLDGEN_VERSION = 10
 # Règle sol / route du carré (road_ground.fit) en SQUARE_ROUNDS paires de passes ; chaque passe ne lit que le relief à
