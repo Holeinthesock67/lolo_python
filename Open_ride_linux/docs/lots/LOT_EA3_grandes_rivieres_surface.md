@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Grandes rivières cartographiées en surface (`water=river`, classe `river` des tuiles vectorielles) dessinées avec un niveau qui descend le long du cours, sol abaissé dessous, ruban coupé ; parcours compilés et monde ouvert (format 1.10) | Python, GDScript | EA1 | Moyenne | En revue (PR à valider : essai PC, mesures low, medium, high et captures) |
+| Grandes rivières cartographiées en surface (`water=river`, classe `river` des tuiles vectorielles) dessinées avec un niveau qui descend le long du cours, sol abaissé dessous, ruban coupé ; parcours compilés et monde ouvert (format 1.10) | Python, GDScript | EA1 | Moyenne | **Livré le 20 novembre** (PR #917) |
 
 ## 1. Objectif
 
@@ -44,3 +44,7 @@ Coût mesuré (générateur, sans écran) : rivière sinueuse de 40 km et 40 000
 - Suites `compiler`, `core` et tests du moteur (`run_engine_tests.sh`), tests graphiques (`run_visual_tests.sh`).
 - Monde ouvert au bord d'une grande rivière : scénario `engine/tests/menu_scenarios/ea3_riviere.json` (recherche « tournon », Tournon-sur-Rhône, route en rive droite du Rhône, 5 minutes, une capture par minute ; en-têtes `reseau` et `caches_reels`), `menu_bench.py --native --scenario ea3_riviere --qualite low|medium|high --captures ecrans`. **Sur `main` d'abord, puis sur la branche** (la branche revide et reverse la base des tuiles du cache ; `main` ne lit pas la nouvelle sorte, l'ordre inverse marche aussi, mais `main` d'abord montre l'avant sans rien changer). GPU (budgets 8, 13 et 16 ms), temps par carré du générateur (journal du générateur).
 - Captures validées par le propriétaire avant fusion.
+
+## 7. Livraison
+
+Fusionné le 20 novembre 2026 (PR #917 : grandes rivières en surface, format 1.10 ; WORLDGEN_VERSION 5 à la fusion). Détail des écarts et de la recette : description de la PR.
