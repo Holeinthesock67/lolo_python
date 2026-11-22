@@ -8,7 +8,7 @@ extends Label
 ## Pas de class_name (script attaché dans main.tscn).
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
-const INFO_KEYS := ["controls", "press", "cue", "level_up", "workout_done"]
+const INFO_KEYS := ["controls", "press", "cue", "level_up", "workout_done", "bot_move"]   # bot_move : lot BA1
 
 signal changed(text: String)
 

@@ -80,6 +80,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const BotMovesModel := preload("res://scripts/bot_moves_model.gd")
 const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
@@ -289,6 +290,7 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+var bot_moves = BotMovesModel.new()   # lot BA1 : gestes des bots voisins, en mots et en son
 var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
 var _beep_until_s := -INF
 ## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
@@ -2375,6 +2377,11 @@ func _on_state_received(state: Dictionary) -> void:
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
 		_play_event(jingle)
+	var move: Dictionary = bot_moves.on_state(state, float(Time.get_ticks_msec()) / 1000.0)
+	if not move.is_empty():   # lot BA1 : « Grimpeur attaque, 40 m devant » et un son court
+		banner.show_message("bot_move", str(move["text"]), BotMovesModel.SHOW_S)
+		_play_event(str(move["jingle"]))
+		ipc.test_log("bot_move " + str(move["text"]))
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
 		_play_event(jingle)
 

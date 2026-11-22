@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Gestes des bots écrits et entendus (lot BA1)
+- Quand un bot proche attaque, suit une attaque ou lance son sprint, le bandeau l'écrit (« Grimpeur attaque, 40 m devant ») et un son court part : dans la Course, le Grand Prix, le Dernier survivant et la session libre avec un peloton.
+- Contrat IPC : champ facultatif `move` des bots (révision 1.33, numéro provisoire).
+
 ### Début de run et adrénaline du Cyber-Rogue (lot R26)
 - L'échauffement charge l'adrénaline à sa consigne, comme une salle : on arrive à la première porte de quoi frapper (essai du 21 novembre : « on commence sans adrénaline, il y a tout de suite une porte à frapper » ; choix du propriétaire).
 - Consignes jugées sur la puissance moyenne des 8 dernières secondes, affichée pendant la run, à 10 % de la consigne près (au moins 5 W), avec une marge de sortie (15 % sous la consigne) : sur 3 s et à 5 W près, le bruit du trainer faisait sortir de la plage sans cesse.
