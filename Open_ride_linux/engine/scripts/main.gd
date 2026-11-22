@@ -5,6 +5,7 @@ extends Node3D
 # Chargement explicite : sans passer par l'éditeur, Godot ne connaît pas encore les class_name.
 const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const WarmupPlan := preload("res://scripts/warmup_plan.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -130,6 +131,9 @@ var junction_view = null
 var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
+## Préchauffage unique (lot PI2) : une étape par image, dès le chargement du parcours.
+var _warmup = WarmupPlan.new()
+var _wtf_warm_queued := false
 var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
 var _quit_code := 0
 var _test_cam_last_us := 0
@@ -234,6 +238,10 @@ var _live_cue = LiveCue.new()
 ## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd), plein écran sur une couche
 ## au-dessus du HUD, qui est caché pendant un menu (lot « présentation des menus »).
 var menu_flow = MenuFlow.new()
+## Touche simulée tenue (_test_key, lot ML2) : messages de test en attente de son relâchement, durée demandée par touche.
+var _test_key_held := false
+var _test_queue: Array = []
+var _test_hold_s := {}
 ## Clavier = Click (lot O17) : touche et durée d'appui vers événement du Click.
 var key_map = KeyMap.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
@@ -566,6 +574,9 @@ func _ready() -> void:
 	ipc.coach_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_coach(msg)
 		_refresh_menu())
+	ipc.bots_preview_received.connect(func(msg: Dictionary) -> void:   # lot GP-niv : ligne « Bots » de l'écran Prêt
+		menu_flow.on_bots_preview(msg)
+		_refresh_menu())
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
@@ -671,7 +682,7 @@ func _apply_theme(name: String) -> void:
 	_theme_dict = theme_dict
 	streamer.set_theme(theme_dict, theme_res.get("theme_dir", ""))
 	_apply_sky_params(theme_dict)
-	if route != null and _route_job.is_empty():
+	if _route_loaded_id != "" and _route_job.is_empty():   # monde vidé (run Cyber-Rogue) : rechargé au retour
 		streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le thème
 	print("Thème : ", name)
 
@@ -734,7 +745,9 @@ func _on_input_event(event_name: String) -> void:
 	if not BEEPS.has(event_name):
 		return
 	print("Bip : ", event_name)
+	var t_beep := Time.get_ticks_usec()
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
+	PerfProbe.mark_since("bip", event_name, t_beep)
 	var mark := HudViewModel.dropout_mark_text(event_name, session_state, rogue_host.is_active(), menu_flow.is_visible())
 	if mark == "":
 		mark = HudViewModel.u_turn_press_text(event_name, session_state, menu_flow.is_visible())
@@ -791,7 +804,9 @@ func _menu_event(event_name: String) -> void:
 		return
 	if not menu_flow.is_visible():
 		return
+	var t0 := Time.get_ticks_usec()
 	_run_menu_action(menu_flow.handle(event_name))
+	PerfProbe.mark_since("menu", "appui " + event_name, t0)
 	_refresh_menu()
 
 
@@ -1039,7 +1054,7 @@ func _step_start_wait(delta: float) -> void:
 	# Cyber-Rogue : la scène du mode, préchauffée pendant l'attente (lot Y20), tient lieu de décor du départ.
 	var rogue_scene: bool = rogue_host.is_active()
 	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
-			0 if rogue_scene else streamer.pending_count(), delta * 1000.0):
+			_warmup.pending() + (0 if rogue_scene else streamer.pending_count()), delta * 1000.0):
 		print("Décor du départ prêt : %s (à %d ms)" % [_start_wait.route_id, Time.get_ticks_msec()])
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
@@ -1059,6 +1074,10 @@ func _refresh_menu() -> void:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
+	if shown:   # lot GP-niv : effort des bots de la course demandé au core quand la course change
+		var preview := menu_flow.wanted_bots_preview()
+		if not preview.is_empty():
+			ipc.send_command("bots_preview", preview)
 	_sync_hud(_full_screen_menu())
 	_menu_dirty = _menu_dirty or shown
 
@@ -1076,6 +1095,7 @@ func _flush_menu() -> void:
 	var t0 := Time.get_ticks_usec()
 	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	PerfProbe.mark("menu", "affichage " + str(st["screen"]), ms)
 	_menu_perf["n"] += 1
 	_menu_perf["total_ms"] += ms
 	_menu_perf["max_ms"] = maxf(_menu_perf["max_ms"], ms)
@@ -1126,6 +1146,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			return   # saisie du QWKcode (lot O21) : caractères, Entrée nouvelle ligne, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
+	if _test_hold_s.has(key.keycode):   # touche simulée (_test_key) : durée demandée, pas celle des images
+		now_s = key_map.pressed_at(key.keycode) + float(_test_hold_s[key.keycode])
 	var ev: String = key_map.release(key.keycode, now_s)
 	if ev == "":
 		return
@@ -1156,6 +1178,8 @@ func _process(delta: float) -> void:
 	if Input.mouse_mode != mouse:
 		Input.mouse_mode = mouse
 	_poll_route_job()
+	if _warmup.step() != "" and _warmup.pending() == 0:
+		print("Préchauffage fini (ms) : %s (à %d ms)" % [_warmup.summary(), Time.get_ticks_msec()])
 	_poll_live_world()
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
@@ -1436,6 +1460,7 @@ func _request_route(route_id) -> void:
 	_route_id_requested = route_id
 	if route_id == null or str(route_id) == "":
 		return
+	ipc.test_log("route_requested id=%s" % route_id)
 	var path := _route_path(str(route_id))
 	if path == "":
 		var missing := routes_dir.path_join(str(route_id) + ".world")
@@ -1457,6 +1482,33 @@ func _load_route_job(job: Dictionary) -> void:
 	job["ok"] = job["route"].load_world_dir(job["path"])      # un monde vivant (manifeste `live`) est reconnu par le manifeste
 
 
+## Phase du chargement d'un parcours (lot PI1) : durée depuis la phase précédente, étape « chargement » de la sonde
+## (cause nommée d'une saccade) et ligne « Phases du chargement » du journal de l'engine.
+func _load_phase(phases: Dictionary, name: String) -> void:
+	var now := Time.get_ticks_usec()
+	var ms := (now - int(phases["t"])) / 1000.0
+	PerfProbe.mark("chargement", name, ms)
+	(phases["list"] as Array).append("%s %.0f" % [name, ms])
+	phases["t"] = now
+
+
+## Étapes du préchauffage d'un parcours (lot PI2), jouées une par image par warmup_plan.gd : premier dessin des
+## portiques (et du portique d'élimination si le mode est préparé), des spectateurs, des passants et des
+## cyclistes du décor (lots Y21 et AS7), puis des forêts lointaines (lot Y5). Avant, toutes dans la même image.
+func _warmup_steps() -> Array:
+	var steps: Array = [["portiques", func(): segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")]]
+	if living_decor != null:
+		if living_decor.crowd_view != null:
+			steps.append(["spectateurs", func(): living_decor.crowd_view.warm_up(camera)])
+		if living_decor.passersby_view != null:
+			steps.append(["passants", func(): living_decor.passersby_view.warm_up(camera)])
+		if living_decor.cyclists_view != null and int(living_decor.living.get("cyclists", 0)) > 0:
+			steps.append(["cyclistes", func(): living_decor.cyclists_view.warm_up(camera)])
+	if streamer.forest_impostors != null:
+		steps.append(["forets", func(): streamer.forest_impostors.warm_up(camera)])
+	return steps
+
+
 func _poll_route_job() -> void:
 	if _route_job.is_empty() or not BgTasks.done(_route_job["task"]):
 		return
@@ -1468,6 +1520,7 @@ func _poll_route_job() -> void:
 	if not job["ok"]:
 		banner.show_message("route", "Parcours « %s » invalide : %s" % [job["id"], job["route"].load_error])
 		return
+	var phases := {"t": Time.get_ticks_usec(), "list": []}
 	route = job["route"]
 	_route_loaded_id = job["id"]
 	_random_season = ""   # saisons « au hasard » (lot U13b) : nouveau tirage pour ce parcours
@@ -1480,11 +1533,13 @@ func _poll_route_job() -> void:
 	bots_model.loop_length_m = follow.loop_length_m
 	follow.reset()
 	_menu_s = 0.0
+	_load_phase(phases, "debut")
 	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
 	streamer.set_world(route, job["path"])
 	if living_world != null:
 		living_world.set_route(route, float(streamer.get("_road_width_m")))
 		living_world.terrain_material = streamer.get("_terrain_material")
+	_load_phase(phases, "streamer")
 	# Piste du vélodrome (plan VD §7.2, lots VD4 et VD5) : salle couverte à la place du monde ouvert (ni ciel,
 	# météo, herbe, personnages, animaux ni engins du décor de route) ; ambiance de la salle posée par
 	# _apply_sky_params, celle d'avant rendue au parcours suivant.
@@ -1496,21 +1551,23 @@ func _poll_route_job() -> void:
 		else:
 			velodrome_hall.clear()
 			velodrome_hall.restore(world_env.environment, sun)
+	_load_phase(phases, "velodrome")
 	_apply_sky_params(streamer._theme_dict)
+	_load_phase(phases, "ciel")
 	if living_decor != null:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 		living_decor.visible = not track
 	if living_world != null:
 		living_world.visible = not track
+	_load_phase(phases, "decor")
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	gp_scene.set_route(route)
-	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
-	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
-	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
-		living_decor.warm_up(camera)
-	if streamer.forest_impostors != null:   # forêts lointaines (lot Y5) : pipeline compilé avant la première forêt
-		streamer.forest_impostors.warm_up(camera)
+	_load_phase(phases, "portiques_gp")
+	# Préchauffage unique (lot PI2) : une étape par image dès le menu, le départ attend la fin du plan.
+	_warmup.start(_warmup_steps())
+	_wtf_warm_queued = false
+	_load_phase(phases, "prechauffage_plan")
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1522,16 +1579,21 @@ func _poll_route_job() -> void:
 	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
 	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
+	_load_phase(phases, "segments")
 	_refresh_menu()
 	if route.segments_present:
 		print("Segments du parcours : %d" % route.segments.size())
+	_load_phase(phases, "menu")
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
+	_load_phase(phases, "fenetre")
 	banner.clear_message("route")
 	banner.clear_message("cue")
 	if _cues.load_for_route(job["id"]):
 		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
 	elif _cues.load_error != "":
 		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
+	_load_phase(phases, "fin")
+	print("Phases du chargement (ms) : ", ", ".join(PackedStringArray(phases["list"])))
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s) (à %d ms)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"], Time.get_ticks_msec()])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
@@ -1547,6 +1609,9 @@ func _poll_route_job() -> void:
 ## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py) ;
 ## « freeze » fige le décor (vent, nuages, herbe, personnages, animaux) à un instant donné.
 func _on_test_message(msg: Dictionary) -> void:
+	if _test_key_held:   # touche simulée tenue : ce message attend son relâchement (_test_key, lot ML2)
+		_test_queue.append(msg)
+		return
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
@@ -1585,8 +1650,10 @@ func _on_test_message(msg: Dictionary) -> void:
 
 ## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…, ou un caractère seul comme
 ## « @ », dont le code Godot est le code ASCII, lot O21) : appui, puis relâchement `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
-## Les deux événements sont traités tout de suite (flush_buffered_events) et l'attente bloque l'image en cours :
-## la durée mesurée par key_map.gd est celle demandée, même à 1 image/s sous Xvfb.
+## Lot ML2 : l'attente ne bloque plus l'image en cours (OS.delay_usec figeait le fil principal pendant tout l'appui,
+## d'où une image de 150 ms à chaque appui des bancs, rML2 du 17 novembre, absente du jeu). Les images continuent
+## pendant l'appui ; key_map.gd classe le relâchement avec la durée demandée (`_test_hold_s`), même à 1 image/s sous
+## Xvfb ; les messages de test reçus pendant l'appui attendent le relâchement (`_test_queue`), dans l'ordre.
 func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 	var code := OS.find_keycode_from_string(key_name)
 	if code == KEY_NONE and key_name.length() == 1:
@@ -1603,14 +1670,22 @@ func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 		down.unicode = (key_name.to_upper() if shift else key_name.to_lower()).unicode_at(0)
 	elif code == KEY_SPACE:
 		down.unicode = 32
+	_test_key_held = true
 	Input.parse_input_event(down)
 	Input.flush_buffered_events()
-	OS.delay_usec(maxi(hold_ms, 0) * 1000)
+	var release_us := Time.get_ticks_usec() + maxi(hold_ms, 0) * 1000
+	while Time.get_ticks_usec() < release_us:
+		await get_tree().process_frame
 	var up: InputEventKey = down.duplicate()
 	up.pressed = false
+	_test_hold_s[code] = maxi(hold_ms, 0) / 1000.0
 	Input.parse_input_event(up)
 	Input.flush_buffered_events()
+	_test_hold_s.erase(code)
 	ipc.test_log("key done=%s shift=%s hold_ms=%d" % [key_name, shift, hold_ms])
+	_test_key_held = false
+	while not _test_queue.is_empty() and not _test_key_held:   # messages arrivés pendant l'appui, dans l'ordre
+		_on_test_message(_test_queue.pop_front())
 
 
 ## Souris simulée : `kind` click (bouton gauche), right, wheel_up, wheel_down ou move ; sur la rangée de l'élément
@@ -1721,9 +1796,11 @@ func _test_screenshot(path: String, tag: String) -> void:
 	# « Taille », garage_modif de visual_check.py).
 	_flush_menu()
 	await RenderingServer.frame_post_draw
+	var shot_us := Time.get_ticks_usec()
 	var img := get_viewport().get_texture().get_image()
 	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
-	_probe.mark_capture()   # pic de la lecture et de l'écriture : hors p99 de la sonde (lot X35)
+	# Coût de la lecture et de l'écriture, retiré de l'image par la sonde (lots X35 et PI1).
+	_probe.mark_capture((Time.get_ticks_usec() - shot_us) / 1000.0)
 	var widgets := {}
 	var nodes := {
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
@@ -1994,7 +2071,7 @@ func _apply_biome(id: String) -> void:
 	if id == "auto" or BiomeIds.is_biome(id):
 		if _biome_setting != "" and id != _biome_setting and id != streamer.forced_biome:
 			streamer.forced_biome = id
-			if route != null and _route_job.is_empty():
+			if _route_loaded_id != "" and _route_job.is_empty():   # monde vidé (run Cyber-Rogue) : rechargé au retour
 				streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le biome
 			_apply_sky_params(_theme_dict)
 			print("Biome : ", id)
@@ -2158,14 +2235,17 @@ func _on_state_received(state: Dictionary) -> void:
 			start_screen.set_route(_start_route_card(state.get("route_id", null)))
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
-		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed():
-			wtf_scene.warm_up(camera)
+		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed() and not _wtf_warm_queued:
+			_wtf_warm_queued = true   # étape du préchauffage unique (lot PI2) : une image à elle, avant le départ
+			_warmup.add("wtf", func(): wtf_scene.warm_up(camera))
 	elif _was_start_waiting and str(state.get("session_state", "")) == "RUNNING":
 		start_screen.show_go()
 	else:
 		start_screen.show_wait(null, 0.0)
 		if str(state.get("session_state", "")) != "RUNNING":   # séance finie ou en pause : pas de feux sur le bilan
 			start_screen.cancel_go()
+	if not waiting:
+		_wtf_warm_queued = false
 	_was_start_waiting = waiting
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
@@ -2203,8 +2283,10 @@ func _on_state_received(state: Dictionary) -> void:
 			if ow_act["action"] == "start":
 				_run_menu_action(ow_act)
 			_refresh_menu()
-	if (route_id == null or str(route_id) == "") and menu_flow.is_visible():
-		route_id = DEMO_ROUTE_ID   # aucun parcours choisi : la démo tourne en fond des menus (lot N6)
+	# Aucun parcours choisi : la démo tourne en fond des menus (lot N6). Pendant une run Cyber-Rogue, pause
+	# comprise, le monde classique reste gelé et vide (lot R-gel) : la pause demandait la démo, construite en
+	# entier sous la scène du mode (images de 140 ms vers 104 s, passes PC r842b et r842c du 12 novembre).
+	route_id = RogueHost.classic_route_id(route_id, menu_flow.is_visible(), rogue_host.is_active(), DEMO_ROUTE_ID)
 	if route_id != _route_id_requested:
 		_request_route(route_id)
 	var running := session_state == "RUNNING"
@@ -2284,6 +2366,8 @@ func _on_state_received(state: Dictionary) -> void:
 		ipc.request_rogue_resync()
 	if rogue_host.is_active() and not rogue_before:
 		_release_route_world()
+	elif rogue_before and not rogue_host.is_active():
+		ipc.test_log("rogue_scene_left")
 	if menu_view != null:
 		_sync_hud(_full_screen_menu())   # entrée et sortie de la run dans la même trame
 

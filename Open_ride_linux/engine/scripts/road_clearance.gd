@@ -12,10 +12,17 @@ extends RefCounted
 ## contrôle des parcours de démonstration (tests/test_herbe_route.gd).
 
 const DEFAULT_CELL_M := 25.0
+## Pas des points de l'axe : celui des coupes du ruban (road_builder.gd SECTION_STEP_M). L'axe est la route telle que
+## l'engine la dessine (Catmull-Rom de route_data.gd), pas les segments droits entre les points du parcours, qui
+## s'en écartent jusqu'à 1,2 m dans un virage serré (21/11 : touffes d'herbe 18 cm à l'intérieur du ruban, banc
+## du lac d'Annecy). Même règle que le générateur (compiler road_ground.py).
+const AXIS_STEP_M := 2.0
 
 var route = null
 var cell_m := DEFAULT_CELL_M
-var _grid := {}                      # Vector2i -> PackedInt32Array (indice i du segment [i ; i + 1])
+var _grid := {}                      # Vector2i -> PackedInt32Array (indice k du segment [k ; k + 1] de l'axe)
+var _ax := PackedFloat64Array()      # points de l'axe dessiné
+var _az := PackedFloat64Array()
 
 
 func _init(route_data = null, p_cell_m: float = DEFAULT_CELL_M) -> void:
@@ -23,11 +30,16 @@ func _init(route_data = null, p_cell_m: float = DEFAULT_CELL_M) -> void:
 	route = route_data
 	if route == null or route.n < 2:
 		return
-	for i in range(route.n - 1):
-		var x0: float = minf(route.x[i], route.x[i + 1])
-		var x1: float = maxf(route.x[i], route.x[i + 1])
-		var z0: float = minf(route.z[i], route.z[i + 1])
-		var z1: float = maxf(route.z[i], route.z[i + 1])
+	var steps := maxi(int(ceil(route.length_m / AXIS_STEP_M)), 1)
+	for k in range(steps + 1):
+		var p: Vector4 = route.sample_xyzh(minf(k * AXIS_STEP_M, route.length_m))
+		_ax.append(p.x)
+		_az.append(p.z)
+	for i in range(_ax.size() - 1):
+		var x0: float = minf(_ax[i], _ax[i + 1])
+		var x1: float = maxf(_ax[i], _ax[i + 1])
+		var z0: float = minf(_az[i], _az[i + 1])
+		var z1: float = maxf(_az[i], _az[i + 1])
 		for cz in range(floori(z0 / cell_m), floori(z1 / cell_m) + 1):
 			for cx in range(floori(x0 / cell_m), floori(x1 / cell_m) + 1):
 				var c := Vector2i(cx, cz)
@@ -49,8 +61,8 @@ func distance(x: float, z: float) -> float:
 		for dx in range(-1, 2):
 			var ids: PackedInt32Array = _grid.get(c + Vector2i(dx, dz), PackedInt32Array())
 			for i in ids:
-				var a := Vector2(route.x[i], route.z[i])
-				var b := Vector2(route.x[i + 1], route.z[i + 1])
+				var a := Vector2(_ax[i], _az[i])
+				var b := Vector2(_ax[i + 1], _az[i + 1])
 				best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b)))
 	return best
 

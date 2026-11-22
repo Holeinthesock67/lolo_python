@@ -29,6 +29,9 @@ POWER_CURVE: tuple[tuple[float, float], ...] = (
 OBJECTIVES: dict[str, float] = {"recovery": 55.0, "endurance": 65.0, "tempo": 80.0, "threshold": 92.0,
                                 "max": 100.0}
 DEFAULT_OBJECTIVE = "tempo"
+# Course conseillée (lot GP-niv, CO9) : l'objectif des bots suit le besoin du jour, sans toucher au réglage commun.
+NEED_OBJECTIVE: dict[str, str] = {"light": "endurance", "intense": "threshold", "anaerobic": "max",
+                                  "recovery": "recovery"}
 ITERATIONS = 3
 
 

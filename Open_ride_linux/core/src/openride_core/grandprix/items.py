@@ -146,7 +146,7 @@ DEFAULT_ITEMS: dict[str, ItemSpec] = {s.id: s for s in (
     ItemSpec("headwind", target="ahead", form="duration", hit_fx=(EffectSpec("wind", 5.0, 6.0),)),
     ItemSpec("team_car", target="self", form="duration",
              self_fx=(EffectSpec("immune", 1.0, 6.0), EffectSpec("speed_floor", 1.5, 6.0),
-                      EffectSpec("cap", 1.5, 6.0)), escort="car_a"),
+                      EffectSpec("cap", 1.5, 6.0)), escort="team_car"),
     ItemSpec("stealth", target="self", form="duration", self_fx=(EffectSpec("breakaway", 1.0, 10.0),),
              steal_m=50.0),
 )}

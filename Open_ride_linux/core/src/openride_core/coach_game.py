@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from . import bot_effort
 from .route_stats import steady_speed
 
 CHUNK_M = 100.0
@@ -149,6 +150,7 @@ def choose(need: str, duration_s: float, reference_need_s: float | None, candida
                          "tactics": fmt.get("tactics", "none")},
                 "survivor": ({"opponents": int(fmt["opponents"]), "spacing_km": int(fmt["spacing_km"])}
                              if fmt["mode"] == "survivor" else None),
+                "objective": bot_effort.NEED_OBJECTIVE.get(need, bot_effort.DEFAULT_OBJECTIVE),   # lot GP-niv
                 "predicted_need_s": int(round(in_need)), "reference_need_s": int(round(reference)),
                 "ratio_pct": round(ratio)}
     return None

@@ -57,9 +57,9 @@ done
 
 Remarque : …
 
-## 2. Course en ligne à 4 bots (10 minutes au plus)
+## 2. Course d'un tour à 4 bots (10 minutes au plus)
 
-Parcours « Col du lacet » (`demo`), course en ligne de 5 km, 4 adversaires, chaos normal, boîtes tous les 1 500 m, niveau des bots inchangé, tous les objets. Arrête-toi à l'arrivée ou au bout de 10 minutes.
+Parcours « Route des Vignes » (Accueil › Grand Prix des objets › Changer de parcours ; boucle sinueuse de 5 km dans les vignes, lot GP13b), 1 tour, 4 adversaires, chaos normal, boîtes tous les 1 500 m, niveau des bots inchangé, tous les objets. Arrête-toi à l'arrivée ou au bout de 10 minutes.
 
 - [ ] Départ groupé : les 4 bots et toi sur la ligne ; place et écart en haut à droite (« 3e / 5 · à 6,4 s du premier »).
 - [ ] Rangées de boîtes visibles de loin, une par voie ; roulette de 2 s puis objet dans la case en haut au centre, avec l'invite « Z : Trois musettes » (nom de l'objet).
@@ -68,7 +68,7 @@ Parcours « Col du lacet » (`demo`), course en ligne de 5 km, 4 adversaires, ch
 - [ ] Avertissement « Musette guidée derrière ! » ou « Orage vers le premier » lisible, contour coloré, aucun flash plein écran.
 - [ ] **Aucun à-coup de résistance** à la réception d'un objet : tu relances avec tes watts, la pente ne bouge pas.
 - [ ] Bilan de fin : place, objets lancés, reçus, esquivés, temps gagné et perdu.
-- [ ] `gp_recette` : course « en ligne, 5,0 km » listée, aucune ligne « À-COUP ? ».
+- [ ] `gp_recette` : course « circuit, 1 tour(s) » listée, aucune ligne « À-COUP ? ».
 
 Remarque : …
 
@@ -84,7 +84,7 @@ Remarque : …
 
 ## 4. Pièges, attaques et esquive au Click puis au clavier (10 minutes au plus)
 
-Course en ligne de 5 km, 4 adversaires, **chaos fou**, boîtes tous les 1 000 m. Écran « Objets » : ne garder que **Bidon glissant, Trois bidons, Musette lancée, Trois musettes, Musette guidée** (les cinq autres cases décochées). Première moitié au Click, seconde moitié au clavier.
+Route des Vignes, 1 tour, 4 adversaires, **chaos fou**, boîtes tous les 1 000 m. Écran « Objets » : ne garder que **Bidon glissant, Trois bidons, Musette lancée, Trois musettes, Musette guidée** (les cinq autres cases décochées). Première moitié au Click, seconde moitié au clavier.
 
 - [ ] Bidon lâché derrière toi sur ta voie ; musette lancée tout droit devant ; musette guidée qui suit le coureur devant et change de voie avec lui.
 - [ ] Choix de voie : trois traits en bas du HUD (voie choisie en blanc, gris en placement automatique) et l'aide « Bidon glissant en vue : A ou ← → » dès qu'un objet est en vue sur ta voie.
@@ -98,7 +98,7 @@ Remarque : …
 
 ## 5. Pour soi, défense et objets contre la tête (deux fois 10 minutes au plus)
 
-Course en ligne de 5 km, 4 adversaires, chaos fou, boîtes tous les 1 000 m. Écran « Objets » : cocher **Coup de fouet, Trois coups de fouet, Super-forme, Sonnette, Nuage d'orage, Vent contraire**, plus **Voiture d'équipe** et **Furtif** si le lot GP4 est fusionné ; décocher les autres.
+Route des Vignes, 1 tour, 4 adversaires, chaos fou, boîtes tous les 1 000 m. Écran « Objets » : cocher **Coup de fouet, Trois coups de fouet, Super-forme, Sonnette, Nuage d'orage, Vent contraire**, plus **Voiture d'équipe** et **Furtif** si le lot GP4 est fusionné ; décocher les autres.
 
 - **5a, devant** (niveau des bots 70 %) : tu mènes ; tu reçois surtout la sonnette et les coups de fouet, et tu subis l'orage et le vent contraire des bots.
 - **5b, derrière** (niveau des bots 130 %) : tu es loin derrière ; tu reçois l'orage, le vent contraire, la super-forme et, à plus de 15 s du premier, la voiture d'équipe et le Furtif.
@@ -109,7 +109,7 @@ Course en ligne de 5 km, 4 adversaires, chaos fou, boîtes tous les 1 000 m. Éc
 - [ ] Nuage d'orage : vole vers le premier, averse de 1,5 s ; jamais tiré par les deux premiers.
 - [ ] Vent contraire : rafales vers les coureurs devant ; **aucun ressenti** sur le trainer.
 - [ ] (GP4) Voiture d'équipe : remorquage 6 s dans son abri, abri ressenti en douceur (rampes) ; Furtif : avatar semi-transparent, vol de l'objet du coureur devant à moins de 50 m.
-- [ ] `gp_recette --dernieres 6` : plus aucun objet « à voir » (tous utilisés, tous ceux qui touchent subis au moins une fois), aucune ligne « À-COUP ? », un circuit et une course en ligne, « Bilan : tous les contrôles passent ».
+- [ ] `gp_recette --dernieres 6` : plus aucun objet « à voir » (tous utilisés, tous ceux qui touchent subis au moins une fois), aucune ligne « À-COUP ? », « Bilan : tous les contrôles passent ».
 
 Remarque : …
 
