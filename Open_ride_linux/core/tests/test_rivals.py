@@ -10,13 +10,21 @@ from openride_core.physics import PhysicsParams
 
 
 def test_names_are_fictional_short_and_unique():
-    assert len(set(rivals.NAMES)) == len(rivals.NAMES) >= 44
-    assert all(0 < len(n) <= rivals.NAME_MAX for n in rivals.NAMES)
-    shorts = [rivals.Rival("climber#1", n, "Équipe Brume").short for n in rivals.NAMES]
+    assert set(rivals.NAMES) == set(PROFILES) == set(rivals.PROFILE_LABELS)
+    assert all(len(v) >= 11 for v in rivals.NAMES.values())          # un plateau de 11 bots du même profil
+    assert len(set(rivals.ALL_NAMES)) == len(rivals.ALL_NAMES)
+    assert all(0 < len(n) <= rivals.NAME_MAX for n in rivals.ALL_NAMES)
+    shorts = [rivals.Rival("climber#1", n, "Équipe Brume").short for n in rivals.ALL_NAMES]
     assert all(len(x) <= rivals.SHORT_MAX for x in shorts) and len(set(shorts)) == len(shorts)
-    assert rivals.Rival("climber#1", "Florent Gauthier", "Équipe Brume").short == "F. Gauthier"
+    assert rivals.Rival("climber#1", "Léo Lacime", "Équipe Brume").short == "L. Lacime"
     assert len({t for t, _ in rivals.TEAMS}) == len(rivals.TEAMS) == 11
-    assert set(rivals.PROFILE_LABELS) == set(PROFILES)
+
+
+def test_name_tells_the_profile():
+    ro = rivals.Roster()
+    ro.ensure([f"{p}#{i}" for p in PROFILES for i in (1, 2, 3)])
+    for k, r in ro.rivals.items():
+        assert r.name in rivals.NAMES[r.profile]
 
 
 def test_same_key_same_rival_across_races(tmp_path: Path):
@@ -63,6 +71,7 @@ def test_renew_replaces_three_and_never_brings_back(tmp_path: Path):
     after = {k: ro.get(k).name for k in keys}
     assert len(left) == 3 and sum(before[k] != after[k] for k in keys) == 3
     assert not set(after.values()) & {before[k] for k in left}
+    assert all(after[k] in rivals.NAMES[k.split("#")[0]] for k in keys)
     path = tmp_path / rivals.FILE_NAME
     rivals.save(path, ro)
     again = rivals.load(path)
@@ -71,9 +80,10 @@ def test_renew_replaces_three_and_never_brings_back(tmp_path: Path):
 
 def test_exhausted_pool_falls_back_to_profile_names():
     ro = rivals.Roster()
-    names = ro.names_for(["climber"] * 50)
-    assert names[: len(rivals.NAMES)] == [ro.get(f"climber#{i}").short for i in range(1, len(rivals.NAMES) + 1)]
-    assert names[len(rivals.NAMES)] == f"Grimpeur {len(rivals.NAMES) + 1}"
+    n = len(rivals.NAMES["climber"])
+    names = ro.names_for(["climber"] * (n + 2))
+    assert names[:n] == [ro.get(f"climber#{i}").short for i in range(1, n + 1)]
+    assert names[n] == f"Grimpeur {n + 1}"
 
 
 def test_bad_file_gives_empty_roster(tmp_path: Path):

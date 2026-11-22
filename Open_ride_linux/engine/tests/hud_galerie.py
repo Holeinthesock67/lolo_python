@@ -66,11 +66,11 @@ def _bots(s_now: float) -> list[dict[str, Any]]:
 
 # Grand Prix des objets (lot GP8, maquettes GP6 scènes 3, 4, 6 et 7) : bots de la scène 6 (écart au cycliste en s,
 # objet tenu, effets en cours) placés à `ds` mètres du cycliste ; objets de `gp.obj` donnés en mètres devant lui.
-# Noms courts des rivaux (lot BR4, `rivals.Rival.short`) : les plus longs (11 caractères) pour éprouver les colonnes.
-GP_BOTS = [("F. Gauthier", 60.0, 6.4, "bell", []), ("T. Laborde", 40.0, 4.3, None, []),
-           ("O. Lemaire", -6.0, -0.6, "bottle", []), ("Y. Mercier", -60.0, -6.4, None, ["musette"])]
-GP_NAMES_12 = ["F. Gauthier", "T. Laborde", "O. Lemaire", "Y. Mercier", "P. Vasseur",
-               "F. Lacroix", "V. Chauvin", "É. Garnier", "B. Leroy", "H. Marchal", "N. Castel"]
+# Noms courts des rivaux (lot BR4, `rivals.Rival.short`), les plus longs (11 caractères) pour éprouver les colonnes.
+GP_BOTS = [("G. Lagrimpe", 60.0, 6.4, "bell", []), ("A. Asphalte", 40.0, 4.3, None, []),
+           ("V. Vitesse", -6.0, -0.6, "bottle", []), ("G. Lentrain", -60.0, -6.4, None, ["musette"])]
+GP_NAMES_12 = ["G. Lagrimpe", "A. Asphalte", "V. Vitesse", "G. Lentrain", "A. Altitude", "H. Rouleau",
+               "K. Lafusée", "H. Tracteur", "S. Perché", "O. Lebidon", "É. Endurant"]
 GP_BASE = {"place": 3, "of": 5, "gap_s": 2.1, "held": "musette_x3", "n": 3, "roll_s": 0.0, "lane": 1, "auto": False,
            "fx": [], "warn": None, "obj": [], "boxes": [], "pick": True, "lap": [2, 3]}
 

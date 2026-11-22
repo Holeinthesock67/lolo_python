@@ -11,7 +11,8 @@ Module pur hors lecture et écriture de `<profil>/rivaux.json`. Cahier : `docs/l
   gardé dans le fichier du profil.
 - **Ligue d'hiver** (série CH) : la saison reprend ces rivaux ; `renew` en remplace 3 à chaque nouvelle saison
   (des têtes connues, un peu de neuf) et le changement vaut pour tous les modes.
-- Noms fictifs uniquement, aucun coureur réel.
+- Noms fictifs uniquement, aucun coureur réel ; le nom de famille dit le caractère (« Léo Lacime », « Gaston
+  Lentrain »), une liste par profil.
 """
 
 from __future__ import annotations
@@ -30,22 +31,27 @@ from .bot_tactics import personality_of
 FILE_NAME = "rivaux.json"
 VERSION = 1
 NAME_MAX = 16          # longueur des noms complets (fiches, écran de la ligue)
-SHORT_MAX = 11         # nom court du HUD (« F. Gauthier ») : la largeur de « Sprinteur 2 » d'avant R4
+SHORT_MAX = 11         # nom court du HUD (« L. Lacime ») : la largeur de « Sprinteur 2 » d'avant R4
 
 PROFILE_LABELS = {"climber": "Grimpeur", "rouleur": "Rouleur", "sprinter": "Sprinteur", "diesel": "Diesel"}
 PERSONALITY_LABELS = {"attacker": "attaquant", "follower": "suiveur", "opportunist": "opportuniste"}
 
-# Noms fictifs (aucun coureur réel), 16 caractères au plus. Les 24 premiers sont ceux du cahier CH1.
-NAMES = (
-    "Arno Vidal", "Bastien Morel", "Cyril Fabre", "Damien Roux", "Élio Garnier", "Fabien Lacroix", "Gaël Perrin",
-    "Hugo Marchal", "Ilan Bertin", "Jonas Delmas", "Kévin Aubry", "Loïc Ferrand", "Mathis Carrel", "Nils Pujol",
-    "Oscar Lemaire", "Pierre Vasseur", "Quentin Rey", "Rémi Joubert", "Simon Barral", "Théo Valette",
-    "Ugo Lambert", "Victor Chauvin", "Yann Mercier", "Zacharie Brun",
-    "Adrien Calvet", "Benoît Sarrat", "Clément Ollier", "Denis Faure", "Émile Tessier", "Florent Gauthier",
-    "Gilles Royer", "Henri Baudet", "Jules Peyrot", "Lucas Rivière", "Marius Bonnet", "Noé Castel",
-    "Paul Arnaud", "Raphaël Tissot", "Sacha Morin", "Tristan Laborde", "Valentin Roche", "Xavier Dumas",
-    "Antoine Pagès", "Baptiste Leroy",
-)
+# Noms fictifs (aucun coureur réel), un jeu de mots sur le caractère dans le nom de famille (choix du propriétaire
+# du 22/11 : « noms à jeu de mots ») : on devine le type d'un rival à son nom, sans rien ajouter à l'écran. Douze
+# noms par profil (11 bots au plus dans un plateau) ; nom court du HUD de 11 caractères au plus.
+NAMES: dict[str, tuple[str, ...]] = {
+    "climber": ("Léo Lacime", "Paul Ducol", "Tom Pic", "Marc Lacet", "Hugo Sommet", "Yves Rampe",
+                "Ange Altitude", "Noé Névé", "Félix Crête", "Gilles Lagrimpe", "Bruno Mont", "Simon Perché"),
+    "rouleur": ("Max Laroue", "Jean Duplat", "Rémi Relais", "Yann Bitume", "Luc Plaine", "Igor Tempo",
+                "Victor Bordure", "Hervé Rouleau", "Cyril Chrono", "Alain Asphalte", "Denis Braquet",
+                "Oscar Lebidon"),
+    "sprinter": ("Kévin Lafusée", "Sam Léclair", "Basile Flèche", "Théo Turbo", "Fred Boulet", "Zack Fulgur",
+                 "Ugo Rapido", "Enzo Bolide", "Nils Nitro", "Vincent Vitesse", "Loïc Laligne", "Dylan Démarre"),
+    "diesel": ("Gaston Lentrain", "Marcel Piston", "Henri Tracteur", "Roger Loco", "Albert Mazout",
+               "Michel Moteur", "Gérard Gasoil", "Raoul Vapeur", "Camille Cargo", "Émile Endurant",
+               "Bernard Bielle", "Thierry Tenace"),
+}
+ALL_NAMES = tuple(n for names in NAMES.values() for n in names)
 # Équipes : nom écrit et couleur du maillot (la couleur ne sert jamais seule).
 TEAMS = (
     ("Équipe Brume", "#4f7bbf"), ("Équipe Granit", "#7a7a7a"), ("Équipe Cèdre", "#2f8a4c"),
@@ -72,7 +78,7 @@ class Rival:
 
     @property
     def short(self) -> str:
-        """Nom affiché en course (bandes, listes, éliminations) : initiale du prénom et nom, « F. Gauthier »."""
+        """Nom affiché en course (bandes, listes, éliminations) : initiale du prénom et nom, « L. Lacime »."""
         first, _, last = self.name.partition(" ")
         return f"{first[0]}. {last}" if last else first
 
@@ -105,9 +111,9 @@ class Roster:
     def get(self, key: str) -> Rival | None:
         return self.rivals.get(key)
 
-    def _free_names(self) -> list[str]:
+    def _free_names(self, profile: str) -> list[str]:
         used = {r.name for r in self.rivals.values()} | set(self.retired)
-        return [n for n in NAMES if n not in used]
+        return [n for n in NAMES.get(profile, ()) if n not in used]
 
     def _team_for(self, rng: random.Random) -> str:
         """Équipe la moins remplie (tirage parmi les ex æquo) : 11 équipes, un à quatre coureurs chacune."""
@@ -119,7 +125,7 @@ class Roster:
         return rng.choice([t for t, n in count.items() if n == low])
 
     def _create(self, key: str) -> Rival | None:
-        free = self._free_names()
+        free = self._free_names(profile_of(key))
         if not free:
             return None
         rng = random.Random(self.seed * 7919 + zlib.crc32(f"{key}:{len(self.retired)}".encode()))
@@ -129,7 +135,7 @@ class Roster:
         return rival
 
     def ensure(self, keys: Iterable[str]) -> list[Rival | None]:
-        """Rivaux des identités `keys`, créés s'ils manquent (None si tous les noms sont pris)."""
+        """Rivaux des identités `keys`, créés s'ils manquent (None si tous les noms du profil sont pris)."""
         return [self.rivals.get(k) or self._create(k) for k in keys]
 
     def names_for(self, profiles: Sequence[str]) -> list[str]:
@@ -153,8 +159,10 @@ class Roster:
         leaving = rng.sample([k for k in keys if k in self.rivals], min(count, len(keys)))
         for k in leaving:
             self.retired.append(self.rivals.pop(k).name)
-            if self._create(k) is None:   # plus de nom libre : le plus ancien retraité revient
-                self.retired.pop(0)
+            if self._create(k) is None:   # plus de nom libre du profil : son plus ancien retraité revient
+                profile = profile_of(k)
+                back = next(i for i, n in enumerate(self.retired) if n in NAMES.get(profile, ()))
+                self.retired.pop(back)
                 self._create(k)
         self.changed = True
         return leaving

@@ -19,7 +19,9 @@ chaque nouvelle saison.
 
 - **Identité** : celle de la cote Elo (`bot_elo.bot_key`) : profil et rang parmi les bots du même profil du
   plateau (`climber#1`, `climber#2`…). C'est déjà ce qui porte la cote du bot ; R4 y accroche un visage.
-- **Un rival** = nom fictif (16 caractères au plus, aucun coureur réel), équipe (nom écrit **et** couleur, la
+- **Un rival** = nom fictif (16 caractères au plus, aucun coureur réel) **qui dit son caractère** (décision du
+  propriétaire du 22/11, « noms à jeu de mots ») : grimpeurs Lacime, Ducol, Lacet…, rouleurs Laroue, Duplat,
+  Relais…, sprinteurs Lafusée, Léclair, Turbo…, diesels Lentrain, Piston, Tracteur… (12 par profil), équipe (nom écrit **et** couleur, la
   couleur ne sert jamais seule), caractère (le profil : grimpeur, rouleur, sprinteur, diesel) et tempérament
   (attaquant, suiveur, opportuniste). Le tempérament est celui que les tactiques tirent déjà du nom
   (`bot_tactics.personality_of`, lot VD7) : un nom fixe donne donc un comportement fixe, sans nouvelle règle.
@@ -28,7 +30,7 @@ chaque nouvelle saison.
 - **Où** : tous les bots à profil : plateaux composés par le core (Dernier survivant, Grand Prix, Course,
   épreuves de piste) et bots à profil choisis au menu (session libre, ERG, WTF, écran de pause). Les bots à
   puissance fixe (« Bot 200 W ») et le fantôme ne changent pas. Pas d'exception par mode (principe du 27/10).
-- **Affichage** : le nom court (« F. Gauthier », 11 caractères au plus, la largeur de « Sprinteur 2 » ; le nom
+- **Affichage** : le nom court (« L. Lacime », 11 caractères au plus, la largeur de « Sprinteur 2 » ; le nom
   complet de 16 caractères était coupé dans la bande du Grand Prix en 1024 × 600) remplace « Grimpeur 2 » partout
   où le nom du bot s'affiche déjà (bandes de course,
   liste du Dernier survivant, encart des bots, éliminations, bilan). **Aucun élément nouveau à l'écran.** La fiche
@@ -36,8 +38,8 @@ chaque nouvelle saison.
   `Roster.describe`.
 - **Ligue d'hiver** : `Roster.renew(keys, 3, rng)` remplace 3 rivaux tirés au sort à chaque nouvelle saison ; le
   nouveau venu reprend l'identité, donc le profil et la cote du partant, et un rival parti ne revient pas (sauf
-  si les 44 noms sont épuisés). CH1 (#972) doit lire ses rivaux ici au lieu de les tirer lui-même.
-- **Plus de 44 rivaux d'un même profil** (impossible aujourd'hui : 11 bots au plus) : repli sur « Grimpeur 45 ».
+  si les 12 noms du profil sont épuisés). CH1 (#972) doit lire ses rivaux ici au lieu de les tirer lui-même.
+- **Plus de 12 rivaux d'un même profil** (11 bots au plus dans un plateau) : repli sur « Grimpeur 13 ».
 - **Séance simulée sans configuration** : noms donnés, rien d'écrit (même règle que la cote).
 
 ## 3. Livraison
@@ -54,10 +56,10 @@ chaque nouvelle saison.
 - Cloud : core `not slow`. Pas d'essai vélo (règle du 21/11 pour les bots).
 - PC : le nom change dans les HUD existants : catégorie « menus/HUD seuls » de la règle du 21/11 (banc medium
   seul). Captures low/medium/high de la bande du Grand Prix et de la liste du Dernier survivant avec des noms
-  longs (« F. Gauthier »), à valider par le propriétaire avant fusion.
+  longs (« L. Lacime »), à valider par le propriétaire avant fusion.
 
 ## 5. Reste
 
 - CH1 (#972) : remplacer `league._draw_rivals` et ses listes `NAMES`/`TEAMS` par `rivals.Roster` (identités
-  `league.field_keys`, `renew` à la nouvelle saison).
+  `league.field_keys`, `renew` à la nouvelle saison ; `NAMES` est maintenant une table par profil).
 - CH4 : fiches des rivaux à l'écran de la ligue (`Roster.describe` avec les cotes de `elo.json`).
