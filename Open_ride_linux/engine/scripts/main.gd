@@ -1807,7 +1807,7 @@ func _avatar_info() -> Dictionary:
 
 
 ## Photo automatique (photo_moments_model.gd) : image déjà rendue (celle du passage de la ligne pour
-## l'arrivée, avant que le bilan ne la couvre), écrite en JPEG dans un fil de travail sous
+## l'arrivée, avant que le bilan ne la couvre), écrite en JPEG en tâche de fond (bg_tasks.gd) sous
 ## ~/OpenRide/Captures/<séance>/. Jamais sans écran, ni en mode test (bancs, CI) sauf si `OPENRIDE_CAPTURES_DIR`
 ## donne un autre dossier (captures de validation), ni sous un menu plein écran (record).
 func _take_photo(req: Dictionary) -> void:
@@ -1825,11 +1825,11 @@ func _take_photo(req: Dictionary) -> void:
 	if base == "":
 		base = ThemeLoader._home_dir().path_join(PhotoMomentsModel.BASE_DIR)
 	var dir := base.path_join(photo_moments.folder)
-	WorkerThreadPool.add_task(func() -> void:
+	BgTasks.add(func() -> void:
 		DirAccess.make_dir_recursive_absolute(dir)
 		var err := img.save_jpg(dir.path_join(file), 0.85)
 		if err != OK:
-			push_warning("Photo automatique non écrite (%s) : erreur %d" % [file, err]))
+			push_warning("Photo automatique non écrite (%s) : erreur %d" % [file, err]), false, "photo automatique")
 	print("Photo automatique : %s/%s" % [photo_moments.folder, file])
 
 

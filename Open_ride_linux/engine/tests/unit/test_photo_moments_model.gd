@@ -99,7 +99,7 @@ func _run() -> void:
 		"main.gd : modèle branché sur state et segment_result")
 	_check(main_code.contains("if (ipc.test_mode and base == \"\") or DisplayServer.get_name() == \"headless\":"),
 		"main.gd : aucune photo en mode test ni sans écran")
-	_check(main_code.contains("WorkerThreadPool.add_task(func() -> void:\n\t\tDirAccess.make_dir_recursive_absolute(dir)"),
+	_check(main_code.contains("BgTasks.add(func() -> void:\n\t\tDirAccess.make_dir_recursive_absolute(dir)"),
 		"main.gd : écriture du JPEG hors de l'image")
 	_check(main_code.contains("menu_view.summary.result_lines = PhotoMomentsModel.photo_lines(photo_moments.photos, photo_moments.folder)")
 		and main_code.contains("if str(st[\"screen\"]) == \"summary\" else []"),
