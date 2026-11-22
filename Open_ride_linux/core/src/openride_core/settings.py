@@ -151,6 +151,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
     Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
+    Setting("render.auto_photos", "Photos automatiques", "graphics", applies="now",
+            help="Oui : une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus "
+                 "par séance, rangées dans ~/OpenRide/Captures/ ; le bilan dit combien et où. Elles restent sur le PC."),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
             help="Automatique : les biomes du parcours, ou de la région en monde ouvert (prairie tempérée sans "

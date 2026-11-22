@@ -87,6 +87,7 @@ class RenderConfig:
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
+    auto_photos: str = "on"   # photos automatiques à l'arrivée et aux records, dans ~/OpenRide/Captures/ : on ou off
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des biomes de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
@@ -447,6 +448,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
     ("render", "draft_gauge"): ("off", "on"),
+    ("render", "auto_photos"): ("on", "off"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("render", "day_night"): ("off", "theme", "real", "accelerated"),
