@@ -361,6 +361,8 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": ProfilesViewModel.RESTORE, "title": "Restaurer un profil supprimé",
 		"on_back": ProfilesViewModel.MANAGE_LIST, "items": []})
+	menu.add_screen({"id": ProfilesViewModel.BACKUPS, "title": "Restaurer une sauvegarde",
+		"on_back": ProfilesViewModel.MANAGE, "items": []})   # lot SV1
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -1292,6 +1294,12 @@ func _handle_event(event: String) -> Dictionary:
 			profiles.done_message = "Statistiques remises à zéro (sauvegarde faite)"
 			_refresh_profiles()
 			return act
+		"restore_profile_backup":   # confirmation acceptée (lot SV1)
+			profiles.message = "Copie du profil actuel puis restauration…"
+			profiles.done_message = "Sauvegarde restaurée (profil d'avant copié)"
+			profiles.restoring = true
+			_refresh_profiles()
+			return act
 		"undo_profile_reset":   # lot RZ1
 			profiles.message = "Annulation de la remise à zéro…"
 			profiles.done_message = "Statistiques d'avant remises en place"
@@ -2043,6 +2051,7 @@ func _refresh_profiles() -> void:
 	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
 	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
 	menu.set_screen_items(ProfilesViewModel.RESTORE, profiles.restore_items())
+	menu.set_screen_items(ProfilesViewModel.BACKUPS, profiles.backup_items())
 	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
 
 
@@ -2103,6 +2112,19 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				var u := profiles.undo_confirm()
 				menu.confirm(u["title"], {"action": "undo_profile_reset", "id": u["id"]}, u["yes"], u["no"],
 					u["yes_detail"], u["no_detail"])
+			elif item_id == ProfilesViewModel.BACKUPS_ID:   # lot SV1 : liste demandée au core
+				profiles.message = ""
+				profiles.backups_loaded = false
+				profiles.backups = []
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.BACKUPS)
+				act = {"action": "list_profile_backups"}
+		ProfilesViewModel.BACKUPS:
+			if item_id.begins_with("b:"):
+				profiles.message = ""
+				var b := profiles.backup_confirm(item_id.substr(2))
+				menu.confirm(b["title"], {"action": "restore_profile_backup", "id": b["id"]}, b["yes"], b["no"],
+					b["yes_detail"], b["no_detail"])
 	_refresh_profiles()
 	return act
 
@@ -2175,6 +2197,15 @@ func on_profiles(msg: Dictionary) -> void:
 		menu.open_screen(ProfilesViewModel.SCREEN)   # supprimé
 	elif menu.current_screen() == ProfilesViewModel.RESTORE and profiles.message.begins_with("Profil restauré"):
 		menu.handle("Y_SHORT")   # restauré : retour à « Gérer un profil », message gardé
+	_refresh_profiles()
+
+
+## `profile_backups` (lot SV1) : liste des copies ; après une restauration, retour à « Gérer », message gardé.
+func on_profile_backups(msg: Dictionary) -> void:
+	var restored: bool = profiles.take_restored()
+	profiles.on_backups(msg)
+	if restored and menu.current_screen() == ProfilesViewModel.BACKUPS:
+		menu.handle("Y_SHORT")
 	_refresh_profiles()
 
 

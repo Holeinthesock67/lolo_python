@@ -419,6 +419,9 @@ func _ready() -> void:
 	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_profiles(msg)
 		_refresh_menu())
+	ipc.profile_backups_received.connect(func(msg: Dictionary) -> void:   # lot SV1
+		menu_flow.on_profile_backups(msg)
+		_refresh_menu())
 	ipc.interrupted_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_interrupted(msg)
 		_refresh_menu())
@@ -919,9 +922,11 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
+		"list_profile_backups":   # copies du profil en cours (lot SV1)
+			ipc.send_command("list_profile_backups", {})
 		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
-		"undo_profile_reset":   # lot RZ1 : confirmation exigée aussi par le core
+		"undo_profile_reset", "restore_profile_backup":   # lots RZ1 et SV1 : confirmation exigée aussi par le core
 			ipc.send_command(name, {"id": str(act["id"]), "confirmed": true})
 		"reset_profile_stats":
 			ipc.send_command(name, {"confirmed": true})
