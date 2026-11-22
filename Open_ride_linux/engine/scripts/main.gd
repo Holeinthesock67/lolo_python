@@ -2236,6 +2236,7 @@ func _on_state_received(state: Dictionary) -> void:
 	if waiting:
 		if not _was_start_waiting:
 			start_screen.set_route(_start_route_card(state.get("route_id", null)))
+		start_screen.set_goal(_start_goal(state))   # lot RT2 : objectif écrit avant le départ
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
 		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed() and not _wtf_warm_queued:
@@ -2533,6 +2534,22 @@ func _mode_goal(state: Dictionary) -> String:
 		return survivor_hud.goal(state)
 	if state.get("gp", null) is Dictionary:
 		return gp_hud.goal(state)
+	return ""
+
+
+## Objectif sur l'écran de départ (lot RT2) : celui du mode quand sa trame est là, sinon d'après le mode choisi
+## au menu ; "" pour une séance libre.
+func _start_goal(state: Dictionary) -> String:
+	var g := _mode_goal(state)
+	if g != "":
+		return g
+	match str(menu_flow.menu.mode):
+		"survivor":
+			return "être le dernier en course"
+		"grandprix", "race":
+			return "finir 1er"
+		"erg":
+			return "aller au bout de l'entraînement"
 	return ""
 
 

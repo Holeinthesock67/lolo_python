@@ -179,6 +179,28 @@ func _init() -> void:
 	_check(bl2.size() == 1 and bl2[0]["value"] == "1488 (−12), 4e sur 5", "cote en baisse : signe moins")
 	_check(SummaryViewModel.bots_lines({}).is_empty(), "sans bots ni cote : aucune ligne")
 
+	# Résultat commun en tête du bilan (lot RT2) : mêmes mots qu'en séance, encart extensible
+	var rc: Dictionary = vm.result_card({"gp": {"place": 3, "of": 8, "finished": true}})
+	_check(rc["tag"] == "★ RÉSULTAT" and rc["title"] == "ARRIVÉE · 3e sur 8" and rc["sub"] == "Grand Prix des objets"
+		and rc["tone"] == "place" and rc["extra"] == [], "bilan GP : arrivée (%s)" % str(rc))
+	rc = vm.result_card({"gp": {"place": 1, "of": 6, "finished": true, "mode": "race"}}, ["Ligue d'hiver : +25 pts", ""])
+	_check(rc["title"] == "VICTOIRE !" and rc["sub"] == "Course · 1er sur 6" and rc["tone"] == "win"
+		and rc["extra"] == ["Ligue d'hiver : +25 pts"], "bilan Course gagnée et lignes ajoutées (%s)" % str(rc))
+	_check(vm.result_card({"gp": {"place": 2, "of": 6, "finished": false}})["title"] == "COURSE NON FINIE",
+		"bilan GP arrêté avant la ligne")
+	_check(vm.result_card({"gp": {"place": 2, "of": 6}})["title"] == "ARRIVÉE · 2e sur 6",
+		"bilan GP d'avant la révision 1.27 : fini à l'arrivée")
+	_check(vm.result_card({"survivor": {"place": 4, "of": 8}})["title"] == "ÉLIMINÉ · 4e sur 8"
+		and vm.result_card({"survivor": {"place": 1, "of": 8}})["tone"] == "win", "bilan Dernier survivant")
+	_check(vm.result_card({"track": {"event": "elimination", "place": 1, "of": 8, "finished": true}})["title"] == "VICTOIRE !"
+		and vm.result_card({"track": {"event": "scratch", "place": 2, "of": 8, "finished": false}})["title"] == "ÉPREUVE NON FINIE",
+		"bilan piste")
+	_check(vm.result_card({"arrival": {"kind": "workout"}, "blocks": [{}]})["title"] == "ENTRAÎNEMENT TERMINÉ"
+		and vm.result_card({"blocks": [{}]})["title"] == "ENTRAÎNEMENT ARRÊTÉ", "bilan ERG fini ou arrêté")
+	_check(vm.result_card({"arrival": {"kind": "route"}})["title"] == "ARRIVÉE"
+		and vm.result_card({"distance_m": 1000.0})["title"] == "SÉANCE TERMINÉE", "bilan parcours et séance libre")
+	_check(vm.result_card({"rogue": {"result": "victory"}})["title"] == "VICTOIRE !", "bilan Cyber-Rogue")
+
 	# 7. Performance : aucun nœud créé
 	var nodes_after := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	_check(nodes_after == nodes_before, "aucun nœud créé (Performance.OBJECT_NODE_COUNT constant)")
