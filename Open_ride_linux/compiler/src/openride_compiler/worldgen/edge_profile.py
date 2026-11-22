@@ -33,16 +33,17 @@ from ..pipeline import _grade, _heading, _smooth_altitude, sample_positions
 from . import altitude_guard as AG
 from .graph import Edge
 
-EDGE_PROFILE_VERSION = 2          # 2 : garde-fou d'altitude (altitude_guard.py)
+EDGE_PROFILE_VERSION = 3          # 2 : garde-fou d'altitude (altitude_guard.py) ; 3 : plan du relief aux nœuds
 SPAN_MARGIN_M = 10.0
-NODE_RADIUS_M = 10.0
+NODE_RADIUS_M = 25.0            # plan du relief au nœud (22 novembre, banc de #961 : 10 m trop bruité)
+NODE_OUTLIER_M = 1.5
 PART_M = 1000.0
 COLUMNS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
 
 
 class NodeAltitudes:
-    """Altitude de chaque nœud : moyenne du relief au nœud et en 4 points à 10 m, gardée par identifiant ; et pente
-    du relief au nœud (gradient en m/m sur ces mêmes points, `grade`), pente visée au bout des arêtes.
+    """Altitude de chaque nœud : plan du relief ajusté autour du nœud (`node_sample`), gardée par identifiant ; et
+    pente de ce plan au nœud (gradient en m/m, `grade`), pente visée au bout des arêtes.
 
     Deux arêtes qui se touchent lisent la même valeur au nœud commun.
     """
@@ -70,24 +71,43 @@ class NodeAltitudes:
 
 
 def _node_points(xz: tuple[float, float]) -> tuple[np.ndarray, np.ndarray]:
+    """Nœud et deux couronnes de 8 points (à `NODE_RADIUS_M` / 2 et `NODE_RADIUS_M`)."""
     x, z = xz
-    r = NODE_RADIUS_M
-    return np.array([x, x + r, x - r, x, x]), np.array([z, z, z, z + r, z - r])
+    ang = np.arange(8) * (np.pi / 4)
+    r = np.concatenate([[0.0], np.full(8, NODE_RADIUS_M / 2), np.full(8, NODE_RADIUS_M)])
+    a = np.concatenate([[0.0], ang, ang])
+    return x + r * np.cos(a), z + r * np.sin(a)
+
+
+def _plane(dx: np.ndarray, dz: np.ndarray, h: np.ndarray) -> np.ndarray:
+    m = np.column_stack([np.ones_like(dx), dx, dz])
+    return np.linalg.lstsq(m, h, rcond=None)[0]
 
 
 def node_sample(xz: tuple[float, float], provider: ElevationProvider,
                 frame: LocalFrame) -> tuple[float, tuple[float, float]]:
-    """(altitude, gradient (gx, gz) en m/m) du relief au point : moyenne et différences centrées sur 5 points.
-    Valeurs absentes de la source remplacées par la moyenne des autres (garde-fou d'altitude)."""
+    """(altitude, gradient (gx, gz) en m/m) du relief au point : plan ajusté sur 17 points jusqu'à `NODE_RADIUS_M`,
+    les points à plus de `NODE_OUTLIER_M` du plan (toit, haie, arbre du modèle de surface) écartés une fois.
+
+    Deux nœuds proches (arête de 10 m) lisent presque les mêmes points : leurs altitudes et leurs pentes s'accordent,
+    et la corde de l'arête courte suit la pente des arêtes voisines (constat du banc de #961, 22 novembre : 5 points
+    à 10 m donnaient +6,5 % à un nœud et −12,8 % au suivant, 10 m plus loin).
+    Valeurs absentes de la source écartées (garde-fou d'altitude)."""
     xs, zs = _node_points(xz)
     lat, lon = frame.to_latlon(xs, zs)
     h = np.asarray(provider.elevations(lat, lon), dtype=float)
     ok = np.isfinite(h) & (h >= AG.ALT_MIN_M) & (h <= AG.ALT_MAX_M)
     if not ok.any():
         raise ValueError("relief absent au nœud")
-    h = np.where(ok, h, float(h[ok].mean()))
-    r = NODE_RADIUS_M
-    return float(np.mean(h)), (float((h[1] - h[2]) / (2 * r)), float((h[3] - h[4]) / (2 * r)))
+    dx, dz = xs - xz[0], zs - xz[1]
+    if np.count_nonzero(ok) < 6:
+        return float(h[ok].mean()), (0.0, 0.0)
+    c = _plane(dx[ok], dz[ok], h[ok])
+    res = np.abs(h - (c[0] + c[1] * dx + c[2] * dz))
+    keep = ok & (res <= max(NODE_OUTLIER_M, 2.0 * float(np.median(res[ok]))))
+    if 6 <= np.count_nonzero(keep) < np.count_nonzero(ok):
+        c = _plane(dx[keep], dz[keep], h[keep])
+    return float(c[0]), (float(c[1]), float(c[2]))
 
 
 def node_altitude(xz: tuple[float, float], provider: ElevationProvider, frame: LocalFrame) -> float:

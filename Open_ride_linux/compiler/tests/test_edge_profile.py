@@ -39,7 +39,7 @@ def test_inclined_plane_gives_constant_grade() -> None:
     assert p.s[0] == 0 and p.s[-1] == pytest.approx(1000.0) and np.allclose(np.diff(p.s)[:-1], 10.0)
     assert np.allclose(p.grade_pct[2:-2], 5.0, atol=0.05)
     assert np.allclose(p.heading_deg, 90.0, atol=1e-6) and p.clamped_points == 0
-    assert p.versions == {"edge_profile": 2, "altitude_guard": 1, "relief": "synthetic"}
+    assert p.versions == {"edge_profile": 3, "altitude_guard": 1, "relief": "synthetic"}
 
 
 def test_bridge_over_valley_stays_straight() -> None:

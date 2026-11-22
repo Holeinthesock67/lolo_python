@@ -114,6 +114,48 @@ def test_consecutive_edges_meet_without_kink() -> None:
     assert p1.guard.moved > 0 and p1.versions["altitude_guard"] == AG.GUARD_VERSION
 
 
+def _chain_edge(eid: str, x0: float, x1: float, a: int, b: int) -> Edge:
+    xs = np.linspace(x0, x1, max(2, int(abs(x1 - x0) // 40) + 2))
+    return Edge(eid, a, b, a, b, [(float(v), 0.0) for v in xs], abs(x1 - x0), "t", 0, [], None, [a, b])
+
+
+@pytest.mark.parametrize("center,height,width", [(108.0, 5.0, 8.0), (118.0, 3.0, 5.0), (122.0, 5.0, 8.0)])
+def test_short_edge_between_close_nodes_has_no_grave_kink(center, height, width) -> None:
+    """Constat du banc de #961 (22 novembre, s = 5 350 m) : arête de 9,9 m entre deux nœuds, trop courte pour être
+    façonnée ; une haie ou un arbre du modèle de surface près du premier nœud donnait +6,5 % au nœud, −10,5 % sur la
+    corde et −12,8 % au nœud suivant (cassure de 17 %). Le plan du relief ajusté aux nœuds accorde les deux nœuds."""
+    lat, lon = FRAME.to_latlon(np.array([0.0]), np.array([0.0]))
+
+    def relief(x, z):
+        x, z = np.asarray(x, dtype=float), np.asarray(z, dtype=float)
+        return 450.0 + 0.03 * x + hump(x, center, height, width) * np.exp(-0.5 * (z / width) ** 2)
+
+    prov = SyntheticProvider(float(lat[0]), float(lon[0]), relief)
+    na = EP.NodeAltitudes(prov, prov.frame)
+    parts = [EP.edge_profile(_chain_edge("1:0", 0.0, 116.6, 1, 2), prov, prov.frame, na),
+             EP.edge_profile(_chain_edge("2:0", 116.6, 126.5, 2, 3), prov, prov.frame, na),
+             EP.edge_profile(_chain_edge("3:0", 126.5, 600.0, 3, 4), prov, prov.frame, na)]
+    joined = EP.concat(parts)
+    alt, s = np.asarray(joined["alt_m"], dtype=float), np.asarray(joined["s"], dtype=float)
+    g = 100.0 * np.diff(alt) / np.diff(s)
+    assert float(np.max(np.abs(np.diff(g)))) <= 2.0 * AG.CURVE_MAX_PCT       # aucun défaut grave du contrôle du PC
+    assert float(np.max(np.abs(g))) <= AG.GRADE_MAX_PCT
+
+
+def test_node_plane_ignores_surface_outliers() -> None:
+    """Plan du relief au nœud : un toit de 6 m sur le nœud ne le soulève pas, la pente du fond est gardée."""
+    lat, lon = FRAME.to_latlon(np.array([0.0]), np.array([0.0]))
+
+    def relief(x, z):
+        x, z = np.asarray(x, dtype=float), np.asarray(z, dtype=float)
+        return 300.0 + 0.05 * x + np.where(x * x + z * z < 16.0, 6.0, 0.0)
+
+    prov = SyntheticProvider(float(lat[0]), float(lon[0]), relief)
+    alt, (gx, gz) = EP.node_sample((0.0, 0.0), prov, prov.frame)
+    assert alt == pytest.approx(300.0, abs=0.05)
+    assert gx == pytest.approx(0.05, abs=1e-3) and gz == pytest.approx(0.0, abs=1e-3)
+
+
 # --- contrôle bloquant : la route engagée du monde ouvert ----------------------------------------------------------
 
 class SurfaceRelief(SyntheticProvider):
