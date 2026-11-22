@@ -957,6 +957,7 @@ class CoreSession:
             log.info("Remise à zéro annulée pour %s : %s remis%s.", ctx.id, ", ".join(back) or "rien",
                      f" ; statistiques d'aujourd'hui mises de côté dans {saved}" if saved else "")
         self._last_reset_cmd = key
+        ctx = profiles.ProfileContext.for_id(ctx.id, self.profiles_base)   # nouvelle date de départ des statistiques
         self._select_profile(ctx, cmd_id, reload=True)
         self._send_profiles(cmd_id)
 

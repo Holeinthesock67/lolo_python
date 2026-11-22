@@ -237,16 +237,16 @@ static func reset_when(r: Dictionary) -> String:
 ## (la boîte de confirmation coupe les libellés longs : banc des menus du 22 novembre).
 func reset_confirm() -> Dictionary:
 	var name := str(_find(manage_id).get("name", manage_id))
-	return {"title": ("Remettre à zéro les statistiques de « %s » ? Séances, records, Elo, niveau et pièces "
-		+ "repartent de zéro. FTP et réglages gardés. Sauvegarde faite avant.") % name,
+	return {"title": ("Remettre à zéro les statistiques de « %s » ? Niveau, pièces, cartes et records repartent "
+		+ "de zéro. Séances, FTP, réglages et cote Elo gardés. Sauvegarde faite avant.") % name,
 		"yes": "Oui, remettre à zéro", "yes_detail": "", "no": "Non, garder mes statistiques", "no_detail": ""}
 
 
 ## Confirmation de l'annulation de la dernière remise à zéro (lot RZ1).
 func undo_confirm() -> Dictionary:
 	var r: Dictionary = resets[0] if not resets.is_empty() else {}
-	return {"title": ("Annuler la remise à zéro du %s ? Les statistiques d'avant reviennent ; les séances "
-		+ "courues depuis sont mises de côté.") % reset_when(r), "id": str(r.get("id", "")),
+	return {"title": ("Annuler la remise à zéro du %s ? Les statistiques d'avant reviennent ; "
+		+ "les séances courues depuis comptent aussi.") % reset_when(r), "id": str(r.get("id", "")),
 		"yes": "Oui, annuler la remise", "yes_detail": "", "no": "Non, garder la remise", "no_detail": ""}
 
 

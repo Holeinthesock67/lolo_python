@@ -6,9 +6,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ## Non publié
 
 ### Remettre à zéro les statistiques d'un profil (lot RZ1)
-- « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : séances, records, courbe de puissance, cote Elo, niveau, pièces, équipement acheté et cartes repartent de zéro (avant une saison de la ligue, par exemple). Nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
+- « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : niveau, expérience, pièces, défis, cartes, records, équipement acheté et cotes des bots repartent de zéro (avant une saison de la ligue, par exemple). Séances et FIT (historique du coach), cote Elo du cycliste, nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
 - Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant.
-- Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut) ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
+- Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut), exigée aussi par le core ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
 - Contrat IPC révision 1.31 : `reset_profile_stats`, `undo_profile_reset`, `profiles.resets`.
 
 ### Début de run et adrénaline du Cyber-Rogue (lot R26)

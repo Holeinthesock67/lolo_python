@@ -342,7 +342,7 @@ def _profil_reset(args: argparse.Namespace) -> int:
     ctx = profiles.current()
     try:
         if args.action == "remises":
-            rows = profiles.reset_entries(ctx)
+            rows = profiles.reset_entries(ctx, all_kinds=True)
             if args.json:
                 print(json.dumps({"profil": ctx.id, "remises": rows}, ensure_ascii=False, indent=2))
             for r in [] if args.json else rows:

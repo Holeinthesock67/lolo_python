@@ -207,7 +207,7 @@ func _test_reset_stats(f) -> void:
 	var st: Dictionary = f.state()
 	_check(f.menu.current_screen() == MenuModel.CONFIRM and st["focus"] == 0, "remise à zéro : confirmation, « Non » d'abord")
 	_check(st["title"].begins_with("Remettre à zéro les statistiques de « ") and st["title"].contains("Sauvegarde faite avant")
-		and st["title"].contains("FTP et réglages gardés"), "question écrite : %s" % st["title"])
+		and st["title"].contains("FTP, réglages et cote Elo gardés"), "question écrite : %s" % st["title"])
 	_check(st["items"][0]["label"] == "Non, garder mes statistiques" and st["items"][1]["label"] == "Oui, remettre à zéro",
 		"boutons qui disent ce qu'ils font")
 	f.handle("PLUS_SHORT")
