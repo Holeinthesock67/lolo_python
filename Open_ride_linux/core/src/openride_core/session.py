@@ -37,7 +37,7 @@ from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from . import mode_routes as mode_routes_mod
-from . import bot_effort, bot_elo, config_edit, league, last_choices, latency_log, local_weather, seance_file
+from . import bot_effort, bot_elo, config_edit, league, last_choices, latency_log, local_weather, rivals, seance_file
 from . import route_stats as route_stats_mod
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
@@ -1301,8 +1301,9 @@ class CoreSession:
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
         input_lost = bool(clicks) and self.state.input_status != "CONNECTED"
         ts = time.time()
-        p3 = self._power_3s(m.power_w)   # lot R23 : la puissance affichée juge les consignes du mode
-        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts, power_avg_w=p3)
+        p3 = self._power_3s(m.power_w)   # champ `power_3s` de la trame (HUD classique)
+        # lot R26 : le mode juge ses consignes sur sa propre moyenne (`judged_power_s`, 8 s), envoyée et affichée
+        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts)
         for msg in out.messages:
             self.server.send_raw(msg)
         if self._rec:
@@ -1360,7 +1361,7 @@ class CoreSession:
         try:
             bots = bots_from_menu(args["bots"], PhysicsParams.from_config(self.cfg), self.cfg.rider.ftp_w,
                                   self.state.route_id, self.journal_dir, s=self.physics.s,
-                                  bike_mass_kg=self.cfg.bike.mass_kg)
+                                  bike_mass_kg=self.cfg.bike.mass_kg, names=self._rival_names)
         except BotError as exc:
             self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
             return False
@@ -1384,7 +1385,8 @@ class CoreSession:
         try:
             wanted = bots_from_menu(items, PhysicsParams.from_config(self.cfg), self.cfg.rider.ftp_w,
                                     self.state.route_id, self.journal_dir, s=self.physics.s,
-                                    bike_mass_kg=self.cfg.bike.mass_kg, taken_ids=self._bot_ids_seen)
+                                    bike_mass_kg=self.cfg.bike.mass_kg, taken_ids=self._bot_ids_seen,
+                                    names=self._rival_names)
         except BotError as exc:
             self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
             return
@@ -2753,12 +2755,12 @@ class CoreSession:
     def _profile_field(self, opponents: int, spread: str, mode: str) -> list[Any]:
         """Plateau composé par le core (Dernier survivant, Grand Prix : `mode`) : profils tournants, niveaux étalés
         autour du réglage « Niveau des bots » (`survivor.plan_field`), puis cote Elo (`_elo_levels`)."""
-        from .bots import ProfileBot, profile_bot_names
+        from .bots import ProfileBot
 
         plan = survivor_mod.plan_field(opponents, float(self.cfg.bots.level_pct), spread,
                                        CONFIG_BOUNDS[("bots", "level_pct")])
         plan = self._elo_levels(plan, mode)
-        names = profile_bot_names([p for p, _ in plan])
+        names = self._rival_names([p for p, _ in plan])
         params = PhysicsParams.from_config(self.cfg)
         return [ProfileBot(p, bot_id=f"bot{i + 1}", name=n, params=params, bike_mass_kg=self.cfg.bike.mass_kg,
                            s=self.physics.s, level_pct=lv)
@@ -3001,9 +3003,11 @@ class CoreSession:
             if season is not None and not season.closed:
                 self.server.send_error("bad_args", "Ligue d'hiver : une saison est déjà en cours.")
                 return
-            season = league.new_season(self._league_today(), previous=season)
+            roster = rivals.load(self._rivals_path())   # mêmes rivaux que les autres modes (lot R4)
+            season = league.new_season(self._league_today(), previous=season, roster=roster)
             try:
                 league.save(self._league_path(), season)
+                rivals.save(self._rivals_path(), roster)
             except OSError as exc:
                 self.server.send_error("bad_args", f"Ligue d'hiver : saison non enregistrée ({exc}).")
                 return
@@ -3054,7 +3058,7 @@ class CoreSession:
         params = PhysicsParams.from_config(self.cfg)
         log.info("Ligue d'hiver : manche %d/%d (%s), %d tours, cote %.0f.", index + 1, league.WEEKS, rnd.title,
                  laps, book.rating)
-        return [ProfileBot(r.profile, bot_id=f"bot{i + 1}", name=r.name, params=params,
+        return [ProfileBot(r.profile, bot_id=f"bot{i + 1}", name=r.short, params=params,   # nom court du HUD (R4)
                            bike_mass_kg=self.cfg.bike.mass_kg, s=self.physics.s,
                            level_pct=round(min(max(base * factors[r.key], lo), hi), 1))
                 for i, r in enumerate(season.rivals)]
@@ -3095,6 +3099,26 @@ class CoreSession:
                             "easy": run["easy"]})
             self._rec.game({"kind": "elo", **elo})
         return line, {k: elo[k] for k in ("mode", "place", "of", "before", "after", "delta")}
+
+    # --- rivaux reconnaissables (lot R4) -------------------------------------------------------
+
+    def _rivals_path(self) -> Path:
+        """`rivaux.json` à côté des records du profil, comme `elo.json`."""
+        return self.records_path.with_name(rivals.FILE_NAME)
+
+    def _rival_names(self, profiles: list[str]) -> list[str]:
+        """Noms des bots à profil d'un plateau (dans l'ordre du plateau) : les rivaux du profil, sous l'identité
+        de leur cote (`bot_elo.plan_keys`). Un rival nouveau est gardé dans `rivaux.json`, sauf pour un essai
+        simulé sans configuration (même règle que la cote)."""
+        path = self._rivals_path()
+        roster = rivals.load(path)
+        names = roster.names_for(profiles)
+        if roster.changed and not (self.sim is not None and self.config_path is None):
+            try:
+                rivals.save(path, roster)
+            except OSError as exc:
+                log.warning("Rivaux non enregistrés : %s", exc)
+        return names
 
     # --- cote Elo des bots (lot BOT-elo) -------------------------------------------------------
 
@@ -3173,7 +3197,7 @@ class CoreSession:
     def _track_field(self, args: dict) -> bool:
         """Épreuve et plateau d'après `start.track` (`event` et réglages, `track.check`) ; faux (rien ne
         démarre, `bad_args`) hors d'un vélodrome, avec des bots imposés, ou avec l'ERG hors de la séance libre."""
-        from .bots import ProfileBot, profile_bot_names
+        from .bots import ProfileBot
 
         choice = args.get("track")
         if self._track is None:
@@ -3200,7 +3224,7 @@ class CoreSession:
         plan = survivor_mod.plan_field(n, float(self.cfg.bots.level_pct), "normal",
                                        CONFIG_BOUNDS[("bots", "level_pct")]) if n else []
         plan = self._elo_levels(plan, "track", event)
-        names = profile_bot_names([p for p, _ in plan])
+        names = self._rival_names([p for p, _ in plan])
         params = PhysicsParams.from_config(self.cfg)
         self._set_bots([ProfileBot(p, bot_id=f"bot{i + 1}", name=nm, params=params,
                                    bike_mass_kg=self.cfg.bike.mass_kg, s=self.physics.s, level_pct=lv)

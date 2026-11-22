@@ -40,6 +40,8 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
+from . import rivals as rivals_mod
+
 FILE_NAME = "ligue.json"
 VERSION = 1
 ME = "me"                       # le cycliste (même identité que `bot_elo.ME`)
@@ -93,20 +95,6 @@ AFFINITY: dict[str, dict[str, float]] = {
 }
 PROFILE_LABELS = {"climber": "Grimpeur", "rouleur": "Rouleur", "sprinter": "Sprinteur", "diesel": "Diesel"}
 
-# Noms fictifs (aucun coureur réel) et équipes : nom écrit et couleur du maillot.
-NAMES = (
-    "Arno Vidal", "Bastien Morel", "Cyril Fabre", "Damien Roux", "Élio Garnier", "Fabien Lacroix", "Gaël Perrin",
-    "Hugo Marchal", "Ilan Bertin", "Jonas Delmas", "Kévin Aubry", "Loïc Ferrand", "Mathis Carrel", "Nils Pujol",
-    "Oscar Lemaire", "Pierre Vasseur", "Quentin Rey", "Rémi Joubert", "Simon Barral", "Théo Valette",
-    "Ugo Lambert", "Victor Chauvin", "Yann Mercier", "Zacharie Brun",
-)
-TEAMS = (
-    ("Équipe Brume", "#4f7bbf"), ("Équipe Granit", "#7a7a7a"), ("Équipe Cèdre", "#2f8a4c"),
-    ("Équipe Braise", "#c4472d"), ("Équipe Glacier", "#7fc4d9"), ("Équipe Ocre", "#c48a2d"),
-    ("Équipe Lavande", "#8a6fbf"), ("Équipe Ardoise", "#3d4a5c"), ("Équipe Coquelicot", "#d93a4a"),
-    ("Équipe Prairie", "#8ab83d"), ("Équipe Sable", "#d9c48a"),
-)
-
 TROPHIES = {1: ("or", "Trophée d'or"), 2: ("argent", "Trophée d'argent"), 3: ("bronze", "Trophée de bronze")}
 REGULARITY = ("regularite", "Trophée de régularité")
 ROUND_SOURCES = ("joueur", "simule")
@@ -143,6 +131,12 @@ class Rival:
     name: str
     team: str
     color: str
+
+    @property
+    def short(self) -> str:
+        """Nom court de la course (HUD), comme `rivals.Rival.short` : « L. Lacime »."""
+        first, _, last = self.name.partition(" ")
+        return f"{first[0]}. {last}" if last else first
 
     def to_dict(self) -> dict[str, Any]:
         return {"key": self.key, "profile": self.profile, "name": self.name, "team": self.team, "color": self.color}
@@ -444,36 +438,34 @@ def _result_from(season: Season, r: Any) -> RoundResult:
 
 # --- création et simulation -----------------------------------------------------------------------
 
-def _draw_rivals(rng: random.Random, keys: Sequence[str], used_names: Iterable[str] = (),
-                 used_teams: Iterable[str] = ()) -> list[Rival]:
-    names = [n for n in NAMES if n not in set(used_names)]
-    teams = [t for t in TEAMS if t[0] not in set(used_teams)]
-    rng.shuffle(names)
-    rng.shuffle(teams)
-    out = []
-    for key, name, (team, color) in zip(keys, names, teams):
-        out.append(Rival(key, key.split("#")[0], name, team, color))
-    return out
+def _roster_of(season: Season) -> rivals_mod.Roster:
+    """Groupe des rivaux rebâti d'une saison (fichier des rivaux absent : tests, profil d'avant R4)."""
+    return rivals_mod.Roster(season.seed, {r.key: rivals_mod.Rival(r.key, r.name, r.team) for r in season.rivals})
 
 
-def new_season(today: date, seed: int | None = None, previous: Season | None = None) -> Season:
-    """Nouvelle saison commençant le lundi de cette semaine. Après `previous`, garde 8 rivaux et en remplace 3
-    (un grimpeur, un rouleur, un sprinteur ou un diesel chacun, profils tirés au sort, composition gardée)."""
+def new_season(today: date, seed: int | None = None, previous: Season | None = None,
+               roster: rivals_mod.Roster | None = None) -> Season:
+    """Nouvelle saison commençant le lundi de cette semaine. Rivaux pris du groupe des rivaux du profil
+    (`rivals.py`, lot R4 : mêmes noms, équipes et caractères dans tous les modes), créés s'ils manquent. Après
+    `previous`, 3 rivaux sont remplacés (`Roster.renew` : le nouveau venu garde l'identité, donc le profil et la
+    cote). `roster` est modifié en place (à enregistrer par l'appelant) ; None : groupe de la saison précédente, ou
+    groupe neuf tiré de `seed`."""
     if seed is None:
         seed = random.SystemRandom().randrange(1 << 31)
     rng = random.Random(seed)
     keys = field_keys()
+    if roster is None:
+        roster = _roster_of(previous) if previous is not None else rivals_mod.Roster(seed)
     if previous is None:
-        rivals = _draw_rivals(rng, keys)
+        roster.ensure(keys)
         number = 1
     else:
-        leaving = set(rng.sample(keys, len(keys) - KEEP_RIVALS))
-        kept = [r for r in previous.rivals if r.key not in leaving]
-        fresh = _draw_rivals(rng, [k for k in keys if k in leaving],
-                             used_names=[r.name for r in previous.rivals], used_teams=[r.team for r in kept])
-        by_key = {r.key: r for r in kept + fresh}
-        rivals = [by_key[k] for k in keys]
+        roster.renew(keys, len(keys) - KEEP_RIVALS, rng)
         number = previous.number + 1
+    found = roster.ensure(keys)
+    if any(r is None for r in found):
+        raise LeagueError("plus de nom libre pour un rival")
+    rivals = [Rival(r.key, r.profile, r.name, r.team, r.color) for r in found if r is not None]
     return Season(number, seed, monday(today), rivals)
 
 

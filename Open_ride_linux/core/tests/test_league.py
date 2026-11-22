@@ -307,3 +307,18 @@ def test_seen_day_never_goes_back():
     old = s.to_dict()
     old.pop("last_seen")
     assert league.Season.from_dict(old).last_seen is None   # fichier d'avant : lu sans le champ
+
+def test_rivals_come_from_the_shared_roster():
+    """Mêmes rivaux partout (lot R4, audit L4) : noms et équipes de la ligue pris du groupe des rivaux du profil."""
+    from openride_core import rivals
+
+    roster = rivals.Roster(5)
+    s = league.new_season(date(2026, 11, 28), seed=9, roster=roster)
+    for r in s.rivals:
+        shared = roster.get(r.key)
+        assert shared is not None and (r.name, r.team, r.color) == (shared.name, shared.team, shared.color)
+        assert r.name in rivals.NAMES[r.profile] and r.short == shared.short
+    nxt = league.new_season(date(2027, 1, 18), seed=10, previous=s, roster=roster)
+    changed = [a.key for a, b in zip(s.rivals, nxt.rivals) if a.name != b.name]
+    assert len(changed) == 11 - league.KEEP_RIVALS
+    assert all(roster.get(r.key).name == r.name for r in nxt.rivals)

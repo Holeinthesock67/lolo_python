@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from openride_core import bot_elo, league
+from openride_core import bot_elo, league, rivals
 from openride_core.bots import ProfileBot
 
 from test_grandprix_session import env, validator  # noqa: F401  (fixture partagée)
@@ -48,7 +48,9 @@ def test_round_raced_recorded_once_with_bilan(env, short_round):
     assert not errors and s.state.session_state == "RUNNING"
     assert len(s.bots) == 11 and all(isinstance(b, ProfileBot) for b in s.bots)
     season = league.load(tmp_path / "ligue.json")
-    assert [b.name for b in s.bots] == [r.name for r in season.rivals]
+    assert [b.name for b in s.bots] == [r.short for r in season.rivals]
+    roster = rivals.load(tmp_path / rivals.FILE_NAME)   # mêmes rivaux que les autres modes (lot R4)
+    assert all(roster.get(r.key).name == r.name for r in season.rivals)
     assert [b.profile for b in s.bots] == league.field_profiles(season)
     assert s.grandprix.mode == "race" and s.grandprix.lap_m == pytest.approx(1500.0)
     assert s.grandprix.length_m == pytest.approx(1500.0)
