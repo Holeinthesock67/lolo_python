@@ -11,7 +11,7 @@ const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 
 const MAX_TRIANGLES := 2000
-const WHEELS := {"car_a": 4, "car_b": 4, "van": 4, "truck": 6, "bus": 4, "moto": 2, "tractor": 4, "tractor_field": 4}
+const WHEELS := {"car_a": 4, "car_b": 4, "van": 4, "truck": 6, "bus": 4, "moto": 2, "tractor": 4, "tractor_field": 4, "team_car": 4}
 
 var _failures := 0
 var _checked := 0

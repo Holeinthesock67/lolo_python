@@ -23,7 +23,7 @@ Choix du propriétaire du 20 novembre (fil du garde-fou de la chaussée, #936) :
 
 - **Format** 1.11 (ajout compatible, `docs/contracts/world_format_v1.md` §8 octies, schéma `tunnels.schema.json`, entrée `layers.tunnels`).
 - **Compilateur** : couche `tunnels` de `--layers` (couche OSM, même requête des voies que les ponts et la surface) ; `add-layer tunnels` (et `add-layer bridges`) refait route, fiche et terrain en gardant les portions de l'autre couche ; `add-layer terrain` et `add-layer water` relisent les deux ; `verify` contrôle la couche (axe sur la route, compte).
-- **Monde ouvert** : `squares.square_tunnels`, `tunnels.json` du carré, lié en `tunnels/tile_<ix>_<iz>.json` dans la séance ; `WORLDGEN_VERSION` 6 (carrés du cache refaits à la séance suivante).
+- **Monde ouvert** : `squares.square_tunnels`, `tunnels.json` du carré, lié en `tunnels/tile_<ix>_<iz>.json` dans la séance ; `WORLDGEN_VERSION` 10 (carrés du cache refaits à la séance suivante).
 - **Engine** : `osm_layers.gd` lit et valide la couche ; `osm_streamer.gd` en fait deux nœuds par tronçon (`osm_tunnels_<k>`, `osm_tunnel_lamps_<k>`, étape `osm_tunnels` des mesures de tâches), relief exagéré appliqué, et enregistre la découpe du tronçon.
 
 ## 4. Hors périmètre
@@ -34,11 +34,11 @@ Choix du propriétaire du 20 novembre (fil du garde-fou de la chaussée, #936) :
 
 ## 5. Tests
 
-`compiler/tests/test_tunnels.py` : balise, réunion des portions, axe du tube, `build` sous une colline de 40 m (portion trouvée, tunnel perpendiculaire ignoré, profil droit, colline gardée, chaussée dégagée à ciel ouvert, `verify` et schémas), sans la couche le garde-fou d'avant, ponts et tunnels ensemble, `add-layer tunnels` identique à `build` et `add-layer terrain` qui garde la colline ; monde ouvert : tunnel dans le carré de son milieu, colline gardée, `WORLDGEN_VERSION` 6. `engine/tests/unit/test_tunnel_mesh.gd` : gabarit de la route libre, clé de voûte, portails et approches aux deux bouts, normales et sens des faces, lampes, volume de découpe, registre (tronçons les plus proches, boîte, mise à jour), lecture de la couche, coordonnées du monde vivant, triangles par mètre. `engine/tests/render/test_tunnel_render.gd` (Forward+) : entrée du tunnel ouverte, flanc et colline gardés, sans tunnel enregistré le flanc ferme l'entrée.
+`compiler/tests/test_tunnels.py` : balise, réunion des portions, axe du tube, `build` sous une colline de 40 m (portion trouvée, tunnel perpendiculaire ignoré, profil droit, colline gardée, chaussée dégagée à ciel ouvert, `verify` et schémas), sans la couche le garde-fou d'avant, ponts et tunnels ensemble, `add-layer tunnels` identique à `build` et `add-layer terrain` qui garde la colline ; monde ouvert : tunnel dans le carré de son milieu, colline gardée, `WORLDGEN_VERSION` 10. `engine/tests/unit/test_tunnel_mesh.gd` : gabarit de la route libre, clé de voûte, portails et approches aux deux bouts, normales et sens des faces, lampes, volume de découpe, registre (tronçons les plus proches, boîte, mise à jour), lecture de la couche, coordonnées du monde vivant, triangles par mètre. `engine/tests/render/test_tunnel_render.gd` (Forward+) : entrée du tunnel ouverte, flanc et colline gardés, sans tunnel enregistré le flanc ferme l'entrée.
 
 ## 6. Recette sur le PC
 
 - Suites `compiler`, `run_engine_tests.sh` et tests graphiques.
-- Monde ouvert : scénario `ea5_tunnel` du banc des menus (départ de Sevrier, cache séparé), low, medium et high, branche et `main` : GPU (budgets 8, 13 et 16 ms), temps par carré du générateur (carrés refaits : `WORLDGEN_VERSION` 6), captures de l'approche, de l'intérieur et de la sortie.
+- Monde ouvert : scénario `ea5_tunnel` du banc des menus (départ de Sevrier, cache séparé), low, medium et high, branche et `main` : GPU (budgets 8, 13 et 16 ms), temps par carré du générateur (carrés refaits : `WORLDGEN_VERSION` 10), captures de l'approche, de l'intérieur et de la sortie.
 - Parcours compilé avec un tunnel (facultatif) : `add-layer <nom>.world tunnels`, `sim_bench.py --world <dossier> --at-m <portail − 300>`.
 - Captures validées par le propriétaire avant fusion.

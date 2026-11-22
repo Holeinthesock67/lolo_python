@@ -68,7 +68,7 @@ from . import segments_layer as SEG
 from . import route_stats as RS
 from .route_stats import (SORT_KEYS, LibraryError, compute_stats, duration_at, load_library, query,
                           sidecar_path, stats_usable)
-from .terrain import build_terrain, load_terrain_tiles, replace_terrain_dir, terrain_manifest, write_terrain
+from .terrain import NEAR, build_terrain, fit_route_ground, load_terrain_tiles, replace_terrain_dir, terrain_manifest, write_terrain
 from .water_terrain import chunk_areas, read_world_areas, sink_route_tiles
 from .theme import check_theme
 from .verify import verify_world, world_info
@@ -469,6 +469,8 @@ def _sink_under_water(tiles, route: dict, areas, spans=None, frame: LocalFrame |
     n = sink_route_tiles(tiles, route, areas, spans, height)
     if n:
         print(f"terrain : {n} échantillon(s) abaissé(s) sous les plans d'eau", file=sys.stderr)
+        if tiles.get("near"):   # la règle sol / route a le dernier mot, eau comprise (road_ground.py)
+            fit_route_ground(tiles["near"], route, NEAR, spans)
     return n
 
 

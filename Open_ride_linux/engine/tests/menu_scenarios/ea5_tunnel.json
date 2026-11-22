@@ -1,5 +1,5 @@
 {
-  "description": "Lot EA5, recette sur le PC : monde ouvert lancé depuis Sevrier (rive ouest du lac d'Annecy, tunnel sous la colline relevé au banc #936, réseau), 5 minutes de balade avec une capture toutes les 30 s : approche du portail, intérieur (voûte, lampes), sortie, colline gardée au-dessus, pas d'herbe sur la route à l'entrée. Le premier carrefour décide si la route passe le tunnel : à juger sur les captures. À lancer en low, medium et high, en cache séparé, sur la branche puis sur main (les carrés du cache se refont d'eux-mêmes : WORLDGEN_VERSION 6).",
+  "description": "Lot EA5, recette sur le PC : monde ouvert lancé depuis Sevrier (rive ouest du lac d'Annecy, tunnel sous la colline relevé au banc #936, réseau), 5 minutes de balade avec une capture toutes les 30 s : approche du portail, intérieur (voûte, lampes), sortie, colline gardée au-dessus, pas d'herbe sur la route à l'entrée. Le premier carrefour décide si la route passe le tunnel : à juger sur les captures. À lancer en low, medium et high, en cache séparé, sur la branche puis sur main (les carrés du cache se refont d'eux-mêmes : WORLDGEN_VERSION 10).",
   "voies": [
     "clavier"
   ],

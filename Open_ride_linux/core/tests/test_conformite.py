@@ -161,7 +161,7 @@ def test_c5_hello_ack_reflects_config(tmp_path, monkeypatch):
     assert ack["config"].pop("mode_routes") == {"track": "velodrome", "grandprix": "grandprix"}   # lot GP13, 1.19
     assert ack["config"] == {"ftp_w": 280.0, "hr_max_bpm": 185, "gears_total": 22, "theme": "default", "chart": "reduced",
                              "difficulty_pct": 50, "gravel": "off", "biome": "auto",   # lot U16
-                             "modes": ["ride", "erg", "open_world", "rogue", "wtf", "survivor", "track", "grandprix"],   # modes : révision 1.3, monde ouvert 1.5, Cyber-Rogue 1.4, WTF et survivant 1.5, piste et Grand Prix 1.7 (Grand Prix annoncé au lot GP9)
+                             "modes": ["ride", "erg", "open_world", "rogue", "wtf", "survivor", "track", "grandprix", "race"],   # modes : Course 1.23 (lot CR1), révision 1.3, monde ouvert 1.5, Cyber-Rogue 1.4, WTF et survivant 1.5, piste et Grand Prix 1.7 (Grand Prix annoncé au lot GP9)
                              "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")}
 
 
