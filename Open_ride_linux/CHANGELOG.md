@@ -6,7 +6,7 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ## Non publié
 
 ### Photos automatiques de la séance
-- Une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus par séance, rangées dans `~/OpenRide/Captures/<date>_<heure>/` (JPEG, écrites hors de l'image) ; elles restent sur le PC. Réglages › Graphisme › « Photos automatiques » (oui par défaut). Jamais en Cyber-Rogue ni pendant les bancs.
+- Une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus par séance, rangées dans `~/OpenRide/Captures/<date>_<heure>/` (JPEG, écrites hors de l'image) ; elles restent sur le PC. Le bilan dit combien de photos ont été prises et dans quel dossier. Réglages › Graphisme › « Photos automatiques » (oui par défaut). Jamais en Cyber-Rogue ni pendant les bancs.
 
 ### Début de run et adrénaline du Cyber-Rogue (lot R26)
 - L'échauffement charge l'adrénaline à sa consigne, comme une salle : on arrive à la première porte de quoi frapper (essai du 21 novembre : « on commence sans adrénaline, il y a tout de suite une porte à frapper » ; choix du propriétaire).

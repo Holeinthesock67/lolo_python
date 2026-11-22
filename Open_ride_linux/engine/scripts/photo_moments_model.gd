@@ -126,8 +126,9 @@ static func slugify(text: String) -> String:
 	return out.trim_suffix("-").left(40).trim_suffix("-")
 
 
-## Lignes du bilan, en mots : [] sans photo, sinon
-## « Photos de la séance : 2 (arrivée, record « Côte du village ») dans ~/OpenRide/Captures/2026-11-28_1012 ».
+## Lignes du bilan, en mots : [] sans photo, sinon deux lignes courtes (une ligne longue rapetissait l'encart
+## du résultat en high) : « Photos de la séance : 2 (record « Côte du village », arrivée) » et
+## « Dossier : ~/OpenRide/Captures/2026-11-28_1012 ».
 static func photo_lines(list: Array, dir: String) -> Array:
 	if list.is_empty() or dir == "":
 		return []
@@ -136,4 +137,4 @@ static func photo_lines(list: Array, dir: String) -> Array:
 		labels.append(str(p.get("label", "")))
 	var what := ", ".join(labels)
 	var head := "Photo de la séance" if list.size() == 1 else "Photos de la séance : %d" % list.size()
-	return ["%s (%s) dans ~/%s/%s" % [head, what, BASE_DIR, dir]]
+	return ["%s (%s)" % [head, what], "Dossier : ~/%s/%s" % [BASE_DIR, dir]]

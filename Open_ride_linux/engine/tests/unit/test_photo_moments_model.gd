@@ -64,10 +64,10 @@ func _run() -> void:
 	_check(m.on_state(_st("FINISHED"), 40.0).is_empty(), "arrivée : une seule photo")
 	_check(m.photos.size() == 3 and m.photos[2]["file"] == "3_arrivee.jpg", "trois photos, la dernière « 3_arrivee.jpg »")
 	var lines: Array = Model.photo_lines(m.photos, m.folder)
-	_check(lines == ["Photos de la séance : 3 (record « Côte du village », record de sprint, arrivée) dans ~/OpenRide/Captures/2026-11-28_1012"],
+	_check(lines == ["Photos de la séance : 3 (record « Côte du village », record de sprint, arrivée)", "Dossier : ~/OpenRide/Captures/2026-11-28_1012"],
 		"ligne du bilan en mots (%s)" % str(lines))
 	_check(Model.photo_lines([], "") == [], "sans photo : aucune ligne")
-	_check(Model.photo_lines([{"label": "arrivée"}], "d") == ["Photo de la séance (arrivée) dans ~/OpenRide/Captures/d"],
+	_check(Model.photo_lines([{"label": "arrivée"}], "d") == ["Photo de la séance (arrivée)", "Dossier : ~/OpenRide/Captures/d"],
 		"une photo : singulier")
 	# Séance suivante : série remise à zéro, la ligne du bilan reste jusque-là
 	m.on_state(_st("IDLE"), 50.0)
