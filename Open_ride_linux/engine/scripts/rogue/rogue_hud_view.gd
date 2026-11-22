@@ -3,7 +3,7 @@ extends Node3D
 ## Vue du HUD du Cyber-Rogue. Lot R11 : hologramme au-dessus de la roue ; lot R22 (lisibilité, maquettes validées
 ## le 12 novembre) : tout passe en surimpression à l'écran, hors du centre.
 ## - en haut à gauche, l'état : phase ou salle, distance ou compte à rebours, jauges (ennemi, bouclier,
-##   adrénaline avec son seuil de 50, réserve W'), vitesse engagée, % de FTP, cadence, posture, étapes à venir ;
+##   adrénaline avec son seuil de 50 ; jauge « Réserve W' » retirée au lot R25 : sans effet sur le jeu, elle nuisait à la lisibilité), vitesse engagée, % de FTP, cadence, posture, étapes à venir ;
 ## - en haut à droite, le Firewall en secondes (vert, orange, rouge) ou la consigne de puissance ;
 ## - en bas, la consigne du moment et les boutons utiles ;
 ## - au centre haut, les retours des appuis (Z refusé et sa raison, verdict des arches), quelques secondes ;
@@ -275,7 +275,7 @@ func _build_panel() -> void:
 	countdown_sub = _lbl(17, UiTheme.DIM)
 	countdown_sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	countdown_row.add_child(countdown_sub)
-	for spec in [["enemy", "Ennemi"], ["shield", "Bouclier"], ["adrenaline", "Adrénaline"], ["wbal", "Réserve W'"]]:
+	for spec in [["enemy", "Ennemi"], ["shield", "Bouclier"], ["adrenaline", "Adrénaline"]]:
 		var r := HBoxContainer.new()
 		r.add_theme_constant_override("separation", 8)
 		box.add_child(r)
@@ -509,8 +509,6 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	var charging := fight or phase == "WARMUP"   # lot R26 : l'échauffement charge l'adrénaline
 	_bar("adrenaline", charging, float(values.get("adrenaline_frac", 0.0)), "gold", str(values.get("adrenaline_text", "")),
 		float(values.get("adrenaline_z_mark", 0.5)), false)
-	_bar("wbal", phase != "CORRIDOR", float(values.get("wbal_pct", 0.0)) / 100.0, "energy",
-		"%d %%" % int(roundf(float(values.get("wbal_pct", 0.0)))), -1.0, bool(values.get("wbal_low", false)))
 	holo.text = "Vitesse %s   %s   %s rpm   %s" % [values.get("gear_text", ""), values.get("power_text", ""),
 		values.get("cadence_text", ""), values.get("posture_text", "")]
 	holo.modulate = Palette.color(str(values.get("posture_token", "neutral")), adapted)

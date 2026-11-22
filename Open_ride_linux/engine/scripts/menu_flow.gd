@@ -195,6 +195,9 @@ var difficulty_pct := 50
 ## Mode d'une session libre (lot O18, ride_mode_of()) : "sim", "erg", "cadence" ; "" hors session libre
 ## (entraînement, run) : la pause n'a alors pas les lignes du mode. Cibles en cours pour ses lignes.
 var ride_mode := ""
+## ERG en cours (`state.erg` présent : entraînement, ERG libre, ERG cadence) : la Difficulté de la pause est alors
+## sans effet et cachée (lot NI2, R4, même règle que les lignes sans effet des Réglages).
+var erg_active := false
 var erg_target_w := 0
 var cadence_target_rpm := 0
 ## Dernier objet `devices` reçu (une trame sur 30 le porte, contrat §3) : gardé jusqu'au suivant.
@@ -417,8 +420,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	if u_turn_ok != menu.u_turn_shown:   # entrée « Faire demi-tour » de la pause (lot N17)
 		menu.u_turn_shown = u_turn_ok
 		pause_changed = true
-	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm:
+	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm or (erg is Dictionary) != erg_active:
 		ride_mode = rm
+		erg_active = erg is Dictionary
 		erg_target_w = tw
 		cadence_target_rpm = cad
 		pause_changed = true
@@ -2283,10 +2287,10 @@ func _pause_value(key: String):
 	return difficulty_pct
 
 
-## Lignes modifiables de la pause : difficulté ; en session libre, mode, puis puissance cible (ERG) ou
-## cadence cible (ERG cadence). La ligne en cours de modification passe en mode édition.
+## Lignes modifiables de la pause : difficulté (hors ERG seulement, lot NI2) ; en session libre, mode, puis
+## puissance cible (ERG) ou cadence cible (ERG cadence). La ligne en cours de modification passe en mode édition.
 func _refresh_pause_rows() -> void:
-	var keys := [SettingsViewModel.PAUSE_DIFFICULTY]
+	var keys := [] if erg_active else [SettingsViewModel.PAUSE_DIFFICULTY]
 	if ride_mode != "":
 		keys.append(SettingsViewModel.PAUSE_RIDE_MODE)
 	if ride_mode == "erg":
@@ -2336,6 +2340,7 @@ func _handle_edit(event: String) -> Dictionary:
 				difficulty_pct = int(act["pct"])
 			if act.get("action", "") == "set_ride_mode":   # affiché tout de suite, la trame suivante confirme
 				ride_mode = str(act["args"]["mode"])
+				erg_active = ride_mode != "sim"
 			if act.get("action", "") == "garage_set":
 				garage.set_field(str(act["key"]), int(act["value"]))
 				_refresh_garage()
