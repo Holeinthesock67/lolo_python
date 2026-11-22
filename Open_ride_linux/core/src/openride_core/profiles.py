@@ -461,6 +461,109 @@ def restore(entry: Any, base: Path | None = None) -> ProfileContext:
     return ProfileContext.for_id(profile_id, base)
 
 
+# --- remise à zéro des statistiques d'un profil de joueur (lot RZ1) ---------------------------
+
+RESETS_DIRNAME = ".remises_a_zero"   # dans `Profils/` : statistiques mises de côté, une remise par dossier
+RESETS_SHOWN = 3                     # remises proposées à l'annulation (message `profiles`)
+RESET_MANIFEST = "remise.toml"       # description de la remise, dans son dossier
+RESET_KEPT_COPY = "_gardes"          # copie des fichiers gardés au moment de la remise (lecture seule)
+# Gardés : description et réglages du joueur (nom, FTP, poids, FC max), surcharge de la progression, verrou,
+# derniers choix du menu et plan actif. Tout le reste du dossier est le « profil sportif » (choix du
+# propriétaire du 22 novembre : séances et journaux, records, courbe de puissance et caches, cote Elo,
+# profil V4 (équipement acheté, vies), cartes vues, conseil du jour, ligue) : niveau, expérience et pièces
+# sont recalculés des séances et repartent donc de zéro avec elles.
+KEPT_ON_RESET = (FILE_NAME, "progression.toml", LOCK_NAME, "derniers_choix.json", "plan_state.toml")
+
+
+def _reset_entries_of(ctx: ProfileContext) -> list[Path]:
+    if not ctx.root.is_dir():
+        return []
+    return [e for e in sorted(ctx.root.iterdir()) if e.name not in KEPT_ON_RESET and not e.name.endswith(".tmp")]
+
+
+def reset_stats(ctx: ProfileContext, base: Path | None = None, now: datetime | None = None) -> tuple[Path, list[str]]:
+    """Remet à zéro les statistiques du profil de joueur `ctx` : tout ce qui n'est pas dans `KEPT_ON_RESET`
+    est DÉPLACÉ (rien n'est effacé) dans `Profils/.remises_a_zero/<id>_AAAAMMJJ-HHMMSS/`, avec une copie
+    des fichiers gardés (`_gardes/`) et `remise.toml`. Refusé pour le profil d'essai (il se vide), hors
+    profil, et sans rien à remettre à zéro. Le verrou du profil doit être tenu par l'appelant.
+    Renvoie le dossier de la sauvegarde et les noms déplacés."""
+    if ctx.id is None:
+        raise ProfileContextError("remise à zéro impossible sans profil de joueur")
+    if ctx.is_trial:
+        raise ProfileContextError("le profil d'essai ne se remet pas à zéro : il se vide")
+    base = base if base is not None else ctx.root.parent
+    entries = _reset_entries_of(ctx)
+    if not entries:
+        raise ProfileContextError(f"rien à remettre à zéro dans « {ctx.name or ctx.id} » (aucune statistique)")
+    when = now or datetime.now()
+    dest = base / RESETS_DIRNAME / f"{ctx.id}_{when:%Y%m%d-%H%M%S}"
+    if dest.exists():
+        raise ProfileContextError("une remise à zéro vient d'être faite : réessayer dans une seconde")
+    keep = dest / RESET_KEPT_COPY
+    keep.mkdir(parents=True)
+    for name in KEPT_ON_RESET:
+        src = ctx.root / name
+        if name != LOCK_NAME and src.is_file():
+            shutil.copy2(src, keep / name)
+    moved = [e.name for e in entries]
+    manifest = ("# Remise à zéro des statistiques (OpenRide, lot RZ1). Annulable depuis « Gérer un profil ».\n"
+                "[remise]\n"
+                f"profil = {_toml_str(ctx.id)}\n"
+                f"nom = {_toml_str(ctx.name)}\n"
+                f"faite = {_toml_str(when.isoformat(timespec='seconds'))}\n"
+                f"deplaces = [{', '.join(_toml_str(n) for n in moved)}]\n")
+    (dest / RESET_MANIFEST).write_text(manifest, encoding="utf-8")
+    for e in entries:
+        os.replace(e, dest / e.name)
+    return dest, moved
+
+
+def reset_entries(ctx: ProfileContext, base: Path | None = None) -> list[dict[str, str]]:
+    """Remises à zéro du profil `ctx`, les plus récentes d'abord : `{id, date, time}` (`id` = dossier de la
+    sauvegarde, `date` AAAA-MM-JJ, `time` HH:MM)."""
+    if ctx.id is None:
+        return []
+    folder = (base if base is not None else ctx.root.parent) / RESETS_DIRNAME
+    out: list[dict[str, str]] = []
+    if not folder.is_dir():
+        return out
+    for d in sorted(folder.iterdir(), key=lambda p: p.name.rsplit("_", 1)[-1], reverse=True):
+        m = _TRASH_RE.match(d.name)
+        if not m or m["id"] != ctx.id or not d.is_dir():
+            continue
+        s = m["stamp"]
+        out.append({"id": d.name, "date": f"{s[:4]}-{s[4:6]}-{s[6:8]}", "time": f"{s[9:11]}:{s[11:13]}"})
+    return out
+
+
+def undo_reset(ctx: ProfileContext, entry: Any, base: Path | None = None,
+               now: datetime | None = None) -> tuple[list[str], Path | None]:
+    """Annule une remise à zéro du profil `ctx` : les statistiques d'aujourd'hui (séances courues depuis la
+    remise) sont d'abord mises de côté à leur tour (nouvelle sauvegarde, annulable), puis celles de la remise
+    `entry` reviennent. Les fichiers gardés (réglages, FTP…) ne changent pas. Le verrou doit être tenu.
+    Renvoie les noms remis et la sauvegarde des statistiques d'aujourd'hui (None s'il n'y en avait pas)."""
+    if ctx.id is None or ctx.is_trial:
+        raise ProfileContextError("annulation possible seulement sur un profil de joueur")
+    base = base if base is not None else ctx.root.parent
+    m = _TRASH_RE.match(entry) if isinstance(entry, str) else None
+    src = base / RESETS_DIRNAME / entry if m and m["id"] == ctx.id else None
+    if src is None or not src.is_dir():
+        raise ProfileContextError(f"remise à zéro introuvable pour « {ctx.name or ctx.id} » : « {entry} »")
+    saved: Path | None = None
+    if _reset_entries_of(ctx):
+        when = now or datetime.now()
+        if f"{ctx.id}_{when:%Y%m%d-%H%M%S}" == src.name:
+            raise ProfileContextError("une remise à zéro vient d'être faite : réessayer dans une seconde")
+        saved, _ = reset_stats(ctx, base, when)
+    back = [e for e in sorted(src.iterdir()) if e.name not in (RESET_MANIFEST, RESET_KEPT_COPY)]
+    for e in back:
+        if e.name in KEPT_ON_RESET:   # jamais un fichier gardé (sauvegarde écrite à la main)
+            continue
+        os.replace(e, ctx.root / e.name)
+    shutil.rmtree(src)   # ne reste que remise.toml et la copie des fichiers gardés
+    return [e.name for e in back if e.name not in KEPT_ON_RESET], saved
+
+
 def _existing(profile_id: Any, existing: list[ProfileContext]) -> ProfileContext:
     for c in existing:
         if c.id == profile_id:

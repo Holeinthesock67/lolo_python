@@ -1,0 +1,121 @@
+{
+  "description": "Profils (lot RZ1) : « Gérer : <profil en cours> » remet les statistiques à zéro après confirmation aux boutons écrits (« Non » par défaut), sauvegarde datée faite avant, puis annule la remise à zéro.",
+  "fichiers": {
+    "OpenRide/Profils/.migration": "fini\n",
+    "OpenRide/Profils/cycliste-a/profil.toml": "[profil]\nid = \"cycliste-a\"\nnom = \"Cycliste A\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n",
+    "OpenRide/Profils/cycliste-a/records.json": "{}",
+    "OpenRide/Profils/cycliste-b/profil.toml": "[profil]\nid = \"cycliste-b\"\nnom = \"Cycliste B\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n"
+  },
+  "etapes": [
+    {
+      "ecran": "profiles",
+      "titre": "Qui roule ?",
+      "delai": 20
+    },
+    {
+      "choisir": "p:cycliste-a"
+    },
+    {
+      "ecran": "home",
+      "titre": "OpenRide — Cycliste A",
+      "delai": 10
+    },
+    {
+      "choisir": "profile"
+    },
+    {
+      "ecran": "profiles",
+      "delai": 10
+    },
+    {
+      "choisir": "manage"
+    },
+    {
+      "ecran": "profile_manage_list"
+    },
+    {
+      "choisir": "p:cycliste-a"
+    },
+    {
+      "ecran": "profile_manage",
+      "contient": [
+        "Remettre à zéro mes statistiques — sauvegarde faite avant, annulable"
+      ],
+      "absent": [
+        "Annuler la remise à zéro"
+      ]
+    },
+    {
+      "capture": "gerer_profil_remise"
+    },
+    {
+      "choisir": "reset_stats"
+    },
+    {
+      "ecran": "confirm",
+      "focus": "no",
+      "titre": "Remettre à zéro les statistiques de « Cycliste A » ?",
+      "contient": [
+        "Non, garder mes statistiques",
+        "Oui, remettre à zéro"
+      ]
+    },
+    {
+      "capture": "remise_confirmation"
+    },
+    {
+      "choisir": "yes"
+    },
+    {
+      "ecran": "profile_manage",
+      "contient": [
+        "Statistiques remises à zéro (sauvegarde faite)",
+        "Annuler la remise à zéro"
+      ],
+      "delai": 10
+    },
+    {
+      "fichier": "OpenRide/Profils/.remises_a_zero/cycliste-a_*/records.json"
+    },
+    {
+      "fichier": "OpenRide/Profils/cycliste-a/records.json",
+      "existe": false
+    },
+    {
+      "fichier": "OpenRide/Profils/cycliste-a/profil.toml"
+    },
+    {
+      "capture": "remise_faite"
+    },
+    {
+      "choisir": "undo_reset"
+    },
+    {
+      "ecran": "confirm",
+      "focus": "no",
+      "contient": [
+        "Non, garder la remise à zéro",
+        "Oui, remettre mes statistiques d'avant"
+      ]
+    },
+    {
+      "capture": "annulation_confirmation"
+    },
+    {
+      "choisir": "yes"
+    },
+    {
+      "ecran": "profile_manage",
+      "contient": [
+        "Statistiques d'avant remises en place"
+      ],
+      "absent": [
+        "Annuler la remise à zéro"
+      ],
+      "delai": 10
+    },
+    {
+      "fichier": "OpenRide/Profils/cycliste-a/records.json"
+    }
+  ]
+}

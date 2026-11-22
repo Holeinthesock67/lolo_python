@@ -13,6 +13,9 @@ extends RefCounted
 ##   profil en cours et le dernier profil joueur ne se suppriment pas).
 ## - « Gérer un profil » finit par « Vider le profil d'essai » (confirmation, `clear_trial_profile`) et
 ##   « Restaurer un profil supprimé » (RESTORE : profils de la corbeille, `restore_profile`), lot O33.
+## - « Gérer : <profil en cours> » (lot RZ1, révision 1.31) : « Remettre à zéro mes statistiques »
+##   (confirmation aux boutons écrits, « Non » par défaut, `reset_profile_stats`) et « Annuler la remise à zéro »
+##   (dernière remise de `profiles.resets`, `undo_profile_reset`) ; la sauvegarde est faite par le core avant tout.
 ## - Profil d'essai : titre « OpenRide — PROFIL D'ESSAI » et bandeau « ESSAI » au HUD (`is_trial()`).
 ##
 ## Le core contrôle les noms (`name_invalid`) ; le modèle n'empêche que ce que la grille ne sait pas écrire.
@@ -25,6 +28,8 @@ const RESTORE := "profile_restore"
 const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE, RESTORE]
 const CLEAR_TRIAL_ID := "clear_trial"
 const RESTORE_ID := "restore"
+const RESET_ID := "reset_stats"     # lot RZ1
+const UNDO_RESET_ID := "undo_reset"
 const MAX_PROFILES := 8
 const NAME_MAX := 16
 const TextEntry := preload("res://scripts/text_entry.gd")
@@ -38,6 +43,8 @@ var items: Array = []
 var active := ""
 ## Corbeille (`profiles.trash`, lot O33) : {id, name, deleted}, les plus récents d'abord.
 var trash: Array = []
+## Remises à zéro du profil en cours (`profiles.resets`, lot RZ1) : {id, date, time}, les plus récentes d'abord.
+var resets: Array = []
 ## Message affiché à la réponse `profiles` de la demande en cours (vider, restaurer) ; "" : aucune.
 var done_message := ""
 ## `hello_ack.config.profile` : {id, name, type, count} ({} : core sans profils, rien n'est affiché).
@@ -114,6 +121,8 @@ func on_profiles(msg: Dictionary) -> void:
 	active = str(msg.get("active", "")) if msg.get("active") != null else ""
 	var t = msg.get("trash", [])
 	trash = t if t is Array else []
+	var r = msg.get("resets", [])
+	resets = r if r is Array else []
 	if message == "Enregistrement…":
 		message = ""
 	if done_message != "":
@@ -164,7 +173,7 @@ func who_items() -> Array:
 		out.append({"id": "new", "label": "Nouveau profil", "enabled": true, "detail": ""})
 	if _players().size() > 0:
 		out.append({"id": "manage", "label": "Gérer un profil", "enabled": true,
-			"detail": "renommer, supprimer, restaurer, vider l'essai"})
+			"detail": "renommer, supprimer, remettre à zéro, restaurer"})
 	return out
 
 
@@ -206,8 +215,38 @@ func manage_items() -> Array:
 	var it := _find(manage_id)
 	var can_delete := manage_id != current_id() and _players().size() > 1
 	var why := "profil en cours" if manage_id == current_id() else ("dernier profil" if not can_delete else "")
-	return [{"id": "rename", "label": "Renommer", "enabled": true, "detail": str(it.get("name", ""))},
+	var out := [{"id": "rename", "label": "Renommer", "enabled": true, "detail": str(it.get("name", ""))},
 		{"id": "delete", "label": "Supprimer", "enabled": can_delete, "detail": why}]
+	var own := manage_id == current_id()
+	out.append({"id": RESET_ID, "label": "Remettre à zéro mes statistiques", "enabled": own,
+		"detail": "sauvegarde faite avant, annulable" if own else "choisir ce profil d'abord"})
+	if own and not resets.is_empty():
+		out.append({"id": UNDO_RESET_ID, "label": "Annuler la remise à zéro", "enabled": true,
+			"detail": "remise du " + reset_when(resets[0])})
+	return out
+
+
+## « 28/11 à 09:30 » d'une remise à zéro {id, date, time}.
+static func reset_when(r: Dictionary) -> String:
+	var d := str(r.get("date", ""))
+	var day := (d.substr(8, 2) + "/" + d.substr(5, 2)) if d.length() == 10 else d
+	return day + " à " + str(r.get("time", ""))
+
+
+## Confirmation de la remise à zéro (lot RZ1) : question, boutons écrits et ce qu'ils font.
+func reset_confirm() -> Dictionary:
+	var name := str(_find(manage_id).get("name", manage_id))
+	return {"title": "Remettre à zéro les statistiques de « %s » ?" % name,
+		"yes": "Oui, remettre à zéro", "yes_detail": "séances, records, puissance, Elo, niveau, pièces ; sauvegarde avant",
+		"no": "Non, garder mes statistiques", "no_detail": "FTP, poids et réglages gardés dans tous les cas"}
+
+
+## Confirmation de l'annulation de la dernière remise à zéro (lot RZ1).
+func undo_confirm() -> Dictionary:
+	var r: Dictionary = resets[0] if not resets.is_empty() else {}
+	return {"title": "Annuler la remise à zéro du %s ?" % reset_when(r), "id": str(r.get("id", "")),
+		"yes": "Oui, remettre mes statistiques d'avant", "yes_detail": "les séances courues depuis sont mises de côté",
+		"no": "Non, garder la remise à zéro", "no_detail": ""}
 
 
 func manage_title() -> String:

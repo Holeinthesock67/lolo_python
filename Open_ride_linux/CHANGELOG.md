@@ -5,6 +5,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Remettre à zéro les statistiques d'un profil (lot RZ1)
+- « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : séances, records, courbe de puissance, cote Elo, niveau, pièces, équipement acheté et cartes repartent de zéro (avant une saison de la ligue, par exemple). Nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
+- Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant.
+- Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut) ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
+- Contrat IPC révision 1.31 : `reset_profile_stats`, `undo_profile_reset`, `profiles.resets`.
+
 ### Jauge « Réserve W' » retirée du Cyber-Rogue (lot R25)
 - La 4e jauge du HUD, « Réserve W' », disparaît : elle n'agissait sur rien dans le jeu et nuisait à la lisibilité (essai du 21 novembre). Restent Ennemi, Bouclier et Adrénaline.
 - L'écran de départ du mode ne propose plus le choix « W' », qui ne réglait que cette jauge.
