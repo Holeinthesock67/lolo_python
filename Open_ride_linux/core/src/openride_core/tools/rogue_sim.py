@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import random
 import sys
 from collections import deque
@@ -25,7 +24,6 @@ from dataclasses import dataclass, fields, replace
 from pathlib import Path
 
 from ..physics import PhysicsParams, RiderPhysics
-from ..rogue import cards as cardlib
 from ..rogue.balance import DEFAULT_BALANCE, BalanceError, RogueBalance, balance_hash, load_balance
 from ..rogue.combat import _window, target_at
 from ..rogue.rooms import OBJECTIVES, RoomRider

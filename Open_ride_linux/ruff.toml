@@ -1,0 +1,14 @@
+# Analyse statique en CI (audit du 22 novembre, R1 et R8) : erreurs de Python seulement,
+# pas de style. `ruff check` depuis Open_ride_linux/ (quelques secondes).
+target-version = "py311"
+extend-exclude = [".venv", "**/.venv"]
+
+[lint]
+# F : Pyflakes (imports et variables inutiles, noms inconnus, clés en double) ;
+# E9 : erreurs de syntaxe ; B006 et B008 : valeurs par défaut modifiables ou calculées à l'import.
+select = ["F", "E9", "B006", "B008"]
+
+[lint.per-file-ignores]
+# Les tests importent les fixtures d'autres modules de test : pytest les lit par leur nom,
+# Pyflakes les croit inutiles (F401) ou redéfinies par l'argument du test (F811).
+"**/tests/**" = ["F401", "F811"]

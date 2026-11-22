@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-from .base import TrackError
 from .mass import PointsRace
 
 SPRINT_EVERY = 10

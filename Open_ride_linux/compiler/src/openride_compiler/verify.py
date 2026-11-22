@@ -395,7 +395,6 @@ def _check_coast(world: Path, layers: dict, route: dict | None, problems: list[s
         m = CHUNK_RE.fullmatch(chunk_file.name)
         if not m:
             continue
-        k = int(m.group(1))
         data = _load(chunk_file, problems)
         if data is None:
             continue

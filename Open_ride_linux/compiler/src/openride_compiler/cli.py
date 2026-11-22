@@ -72,7 +72,6 @@ from .water_terrain import chunk_areas, read_world_areas, sink_route_tiles
 from .theme import check_theme
 from .verify import verify_world, world_info
 from .worldgen import measure, region, store, vector_tiles
-from .worldgen import measure, region, store
 from .writer import (biome_manifest, build_manifest, normalize_name, replace_biome_dir, replace_manifest,
                      sha256_of, shares_text, write_biome, write_world)
 

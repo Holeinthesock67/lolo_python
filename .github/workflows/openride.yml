@@ -33,6 +33,26 @@ defaults:
     working-directory: Open_ride_linux
 
 jobs:
+  # Audit du 22 novembre (R1) : analyse statique des erreurs de Python (imports et variables inutiles,
+  # noms inconnus, clés en double), règles dans Open_ride_linux/ruff.toml. Quelques secondes, en parallèle.
+  analyse:
+    name: analyse statique (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v5
+
+      - name: Installation de Python 3.14
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Installation de ruff
+        run: pip install -c constraints.txt ruff
+
+      - name: ruff check
+        run: ruff check --output-format github .
+
   # Lot X52 : une seule colonne sur les demandes de fusion (3.14, avec constraints.txt : pas de dérive des
   # dépendances qui ferait échouer une PR sans rapport) ; les deux colonnes sur main, sur demande et chaque lundi.
   # Filet de la 3.11 sur les PR : compilation de tout le code Python par Python 3.11 (syntaxe trop récente).

@@ -129,12 +129,11 @@ def test_skipped_room_costs_ten_gold():
     e = RunEngine(sc, RIDER, 20000.0, 250.0, B)
     e.t_total += 900.0                                   # joueur très en retard dès la première salle
     r = SlowRider(e, 1.0)
-    prev_gold, delta = 0, None
+    _prev_gold, delta = 0, None
     while not r.outs or "room_skipped" not in r.outs[-1].rogue["events"]:
         before = (e.gold, e.perfect_shifts)
         r.run(r.t + 0.1)
         if "room_skipped" in r.outs[-1].rogue["events"]:
-            won = e.rooms_won + e.rooms_fled
             room_gold = B.win_gold + B.win_gold_per_ps * (e.perfect_shifts - before[1]) if e.rooms_won else B.flee_gold
             delta = (before[0], e.gold, room_gold, e.rooms_skipped)
         if r.t > 3000:

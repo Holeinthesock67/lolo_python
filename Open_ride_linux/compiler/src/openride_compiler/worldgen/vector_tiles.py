@@ -35,7 +35,6 @@ import json
 import math
 import sqlite3
 import time
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Callable, Iterable

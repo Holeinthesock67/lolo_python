@@ -475,7 +475,7 @@ def build_collection_message(request_cmd_id: int, profile_ctx: Any,
                              table_path: Path | None = None,
                              now: float | None = None) -> dict[str, Any]:
     """Réponse à `list_collection` : cartes du catalogue, cartes gagnées, avancement des autres."""
-    from .collection import announcement, card_line, evaluate, load_catalogue, load_seen, new_cards, seen_path
+    from .collection import card_line, evaluate, load_catalogue, load_seen, new_cards, seen_path
     from .config import WORKOUTS_DIR
     from .garage import workout_duration_finder
     from .garage import CACHE_NAME
