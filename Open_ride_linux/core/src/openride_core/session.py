@@ -4785,6 +4785,7 @@ class CoreSession:
                          " CPU %.1f %%", r["step_p50_ms"], r["step_p99_ms"], r["step_max_ms"],
                          r["lag_p99_ms"], r["lag_max_ms"], r["cpu_pct"])
                 log.info(jitter_line(physics, state))
+                log.info(self.server.tx_line())   # pertes de trames state (essai du 22 novembre)
                 physics_all.merge(physics)
                 state_all.merge(state)
                 physics.clear()

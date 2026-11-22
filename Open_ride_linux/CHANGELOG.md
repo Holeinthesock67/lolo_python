@@ -5,6 +5,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Gels du monde ouvert : mesure des trames perdues (lot GL1)
+- Le journal dit maintenant, chaque minute, combien de trames de position le core a envoyées et combien le jeu en a reçues, avec les erreurs d'envoi ; un gel de plus de 2 s est noté avec la cause probable (`log_report --gigue`).
+
 ### HUD sans éléments inutiles (lot NI1)
 - Plus de ligne « ÉTAT: RUNNING | TRAINER… | ENTRÉE… » en haut de l'écran : le bandeau central ne parle que de la prochaine montée, ou d'un problème (core attendu, trainer perdu) ; sinon il disparaît.
 - La cible ERG n'est plus qu'au bandeau ERG (case « CIBLE ERG » retirée) ; la pente n'est plus affichée au vélodrome (toujours 0 %).
