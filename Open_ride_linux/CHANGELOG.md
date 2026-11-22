@@ -13,6 +13,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ### À-coups de main (lot AC4)
 - Plus d'image figée d'une demi-seconde à une seconde au chargement d'un parcours (départ du Cyber-Rogue, Grand Prix) : les cyclistes du décor se préparent sans bloquer l'affichage (lot AC4).
 
+### À-coups du rechargement d'un parcours (lot AC5)
+- Changer de parcours au menu, ou revenir au monde classique après une run Cyber-Rogue, ne fige plus une image de 180 à 220 ms : le chargement se fait en dix petites étapes, une par image, et jamais dans l'image qui affiche déjà un écran lourd (bilan de fin de run).
+- Les spectateurs et les passants se préparent un groupe à la fois, au lieu de tous dans la même image (133 ms en medium).
+
 ### Trois nouveaux biomes : forêt de nuages, bush à eucalyptus, forêt pluviale tempérée (lot V6-r4)
 - Forêt de nuages des Andes, d'Amérique centrale et d'Afrique de l'Est : fougères arborescentes, palmiers à cire, brouillard épais, perroquets et singes.
 - Bush à eucalyptus d'Australie : eucalyptus clairsemés, terre rouge, herbes sèches, kangourous, maisons à toit de tôle.

@@ -22,6 +22,13 @@ const PerfProbe := preload("res://scripts/perf_probe.gd")
 ## fils de fond, par exemple) : tant qu'il renvoie faux, elle reste en tête du plan et repasse à l'image suivante,
 ## sans bloquer le fil principal. Les étapes suivantes attendent leur tour, et le départ la fin du plan.
 const ATTENTE := "attente"
+## Image déjà chargée (lot AC5) : au-delà de BUSY_MS de travail du fil principal avant l'étape (affichage d'un menu,
+## par exemple l'écran de fin d'une run), l'étape attend l'image suivante, au plus MAX_SKIPS images de suite.
+const BUSY_MS := 12.0
+const MAX_SKIPS := 4
+## Type de l'étape notée dans la sonde : « préchauffage », ou « chargement » pour le plan du chargement (lot AC5).
+var kind := "préchauffage"
+var _skips := 0
 var _steps: Array = []
 ## Étapes jouées depuis le dernier `start` : [nom, ms].
 var done: Array = []
@@ -31,6 +38,7 @@ var done: Array = []
 func start(steps: Array) -> void:
 	_steps = steps.duplicate()
 	done.clear()
+	_skips = 0
 
 
 ## Étape ajoutée à la fin du plan en cours (mode choisi après le chargement, par exemple).
@@ -41,6 +49,18 @@ func add(step_name: String, call: Callable) -> void:
 ## Étape d'attente ajoutée à la fin du plan : `ready` renvoie vrai quand c'est prêt (voir ATTENTE).
 func add_wait(step_name: String, ready: Callable) -> void:
 	_steps.append([step_name, ready, ATTENTE])
+
+
+## Une image dont le fil principal a déjà travaillé `busy_ms` : vrai si une étape peut y être jouée (BUSY_MS),
+## sinon l'étape est remise à l'image suivante, sauf après MAX_SKIPS remises de suite (le plan avance toujours).
+func may_step(busy_ms: float) -> bool:
+	if _steps.is_empty():
+		return false
+	if busy_ms > BUSY_MS and _skips < MAX_SKIPS:
+		_skips += 1
+		return false
+	_skips = 0
+	return true
 
 
 ## Étapes encore à jouer.
@@ -58,7 +78,7 @@ func step() -> String:
 		var t0 := Time.get_ticks_usec()
 		var ready = call.call()
 		var ms := (Time.get_ticks_usec() - t0) / 1000.0
-		PerfProbe.mark("préchauffage", str(st[0]), ms)
+		PerfProbe.mark(kind, str(st[0]), ms)
 		if st.size() > 2 and str(st[2]) == ATTENTE and not bool(ready):
 			_steps.push_front(st)   # pas encore prêt : la même étape à l'image suivante
 			return str(st[0])
