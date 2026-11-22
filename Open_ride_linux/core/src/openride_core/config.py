@@ -213,6 +213,9 @@ class BotsConfig:
     # (recovery 55 %, endurance 65 %, tempo 80 %, threshold 92 %, max 100 % : bot_effort.OBJECTIVES) ; au
     # vélodrome, l'objectif suit l'épreuve
     objective: str = "tempo"
+    # cote Elo (lot BOT-elo) : on, le niveau des bots des plateaux composés par le core (Grand Prix, Dernier
+    # survivant, piste en groupe) suit la cote du cycliste et celle de chaque bot, mises à jour après chaque course
+    elo: str = "on"
 
 
 @dataclass
@@ -468,6 +471,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("coach", "objectif"): ("endurance", "courses", "grimpeur"),
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
     ("bots", "objective"): ("recovery", "endurance", "tempo", "threshold", "max"),   # bot_effort.OBJECTIVES
+    ("bots", "elo"): ("on", "off"),   # lot BOT-elo
 }
 
 
@@ -479,7 +483,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("trainer", "difficulty_pct"),
     ("gearing", "start_gear"),
     ("powerups", "mode"),
-    ("bots", "level_pct"), ("bots", "objective"),
+    ("bots", "level_pct"), ("bots", "objective"), ("bots", "elo"),
     ("gravel", "mode"),
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),

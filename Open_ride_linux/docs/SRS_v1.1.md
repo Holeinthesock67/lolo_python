@@ -458,6 +458,7 @@ mode = "classiques"          # "off", "classiques" (défaut) ou "tactiques" (sé
 [bots]
 level_pct = 100              # niveau des bots à profil, 50 à 150 % de la FTP par pas de 5 ; réglable dans le menu (lot T13)
 objective = "tempo"          # objectif (lot BT1) : "recovery" 55 %, "endurance" 65 %, "tempo" 80 %, "threshold" 92 % ou "max" 100 % de l'effort tenable sur la durée de la course ; au vélodrome, l'objectif suit l'épreuve ; réglable dans le menu
+elo = "on"                   # cote Elo (lot BOT-elo) : "on" (défaut), le niveau des bots des courses à classement (Grand Prix, Dernier survivant, piste en groupe) suit ta cote et celle de chaque bot, mises à jour après chaque course ; "off" ; réglable dans le menu
 [ride]
 auto_draft = "on"            # placement dans la roue (lot AS2) : "on" (rangé derrière le coureur devant, sorti pour doubler) ou "off" (1,2 m de l'axe) ; réglable dans le menu
 vehicle_draft = "on"         # abri derrière un véhicule lent (lot AS6) : "on" ou "off" ; l'aspiration d'un véhicule qui double reste ; réglable dans le menu

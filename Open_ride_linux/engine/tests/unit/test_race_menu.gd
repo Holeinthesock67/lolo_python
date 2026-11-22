@@ -76,6 +76,13 @@ func _run() -> void:
 	_check(_ids(f) == ["start", "change_route", "set:race.opponents", "set:bots.level_pct", "set:bots.objective"],
 		"en ligne : pas de tours, pas de ligne Objets (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["detail"] == "25,0 km en ligne", "Lancer : jusqu'à l'arrivée (%s)" % _item(f, "start")["detail"])
+	# Cote Elo et effort des bots en watts (contrat 1.22) : même ligne « Bots » que le Grand Prix
+	_check(f.wanted_bots_preview() == {"mode": "race"}, "écran Prêt : bots_preview demandé (%s)" % str(f.wanted_bots_preview()))
+	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 9, "mode": "race", "objective": "tempo",
+		"ftp_pct": 90.0, "power_w": 225, "duration_s": 2400, "elo": {"rating": 1520, "races": 2}})
+	_check(_ids(f)[1] == "bots_info" and _item(f, "bots_info")["label"] == "Bots : ≈ 225 W, ≈ 40 min"
+		and _item(f, "bots_info")["detail"] == "cote 1520", "ligne « Bots » : watts, durée et cote (%s)" % str(_item(f, "bots_info")))
+	f.menu.bots_info = {}
 	_check(_item(f, "set:race.opponents")["label"] == "Adversaires" and _item(f, "set:race.opponents")["detail"] == "7",
 		"réglage : libellé court et valeur")
 	f.menu.focus_item("set:race.opponents")

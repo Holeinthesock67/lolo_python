@@ -280,6 +280,12 @@ var history = HistoryViewModel.new()
 var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
 var coach = CoachViewModel.new()
+## Effort des bots en watts sur l'écran Prêt (lot GP-niv, contrat 1.22) : clé de la dernière demande `bots_preview`
+## (mode, parcours, réglages), texte de sa réponse, et une seule nouvelle demande quand le core n'avait pas encore
+## le parcours (réponse sans watts).
+var _preview_key := ""
+var _preview_row := {}
+var _preview_retried := ""
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
 var contents = ContentsViewModel.new()
 
@@ -1585,6 +1591,77 @@ static func mode_label(label: String, prefix: String) -> String:
 	return short.left(1).to_upper() + short.substr(1) if short != "" else label
 
 
+# --- effort des bots en watts sur l'écran Prêt (lot GP-niv) et cote Elo (lot BOT-elo) ----------------------
+
+const PREVIEW_KEYS := ["bots.level_pct", "bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
+	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps", "grandprix.distance_km"]
+
+
+## Arguments de `bots_preview` pour l'écran Prêt affiché (Dernier survivant, Grand Prix, épreuve du vélodrome) ;
+## {} ailleurs (aucune ligne « Bots »).
+func bots_preview_args() -> Dictionary:
+	if not is_visible() or menu.current_screen() != MenuModel.READY:
+		return {}
+	if menu.mode in MenuModel.SETTINGS_MODES:
+		return menu._start_args()
+	if menu.is_track():
+		return menu._start_args()
+	return {}
+
+
+## Demande `bots_preview` à envoyer (main.gd), {} si rien n'a changé depuis la dernière : mode, parcours et
+## réglages de la course. Remet aussi le texte connu quand l'écran l'a perdu (nouvel écran Prêt, même course).
+func wanted_bots_preview() -> Dictionary:
+	var args := bots_preview_args()
+	if args.is_empty():
+		return {}
+	var vals: Array = []
+	for k in PREVIEW_KEYS:
+		vals.append(settings.item(k).get("value", null))
+	var key := JSON.stringify([args, menu.world_id, vals])
+	if key == _preview_key:
+		if menu.bots_info.is_empty() and not _preview_row.is_empty():
+			menu.bots_info = _preview_row
+			menu.refresh()
+		return {}
+	_preview_key = key
+	_preview_row = {}
+	return args
+
+
+## Réponse `bots_preview` du core : ligne « Bots » de l'écran Prêt ; sans watts (parcours pas encore chargé
+## par le core), une seule nouvelle demande pour cette course.
+func on_bots_preview(msg: Dictionary) -> void:
+	_preview_row = bots_info_row(msg)
+	if _preview_row.is_empty() and _preview_retried != _preview_key:
+		_preview_retried = _preview_key
+		_preview_key = ""   # redemandé au prochain rafraîchissement
+	if bots_preview_args().is_empty() or _preview_row.is_empty():
+		return   # sans watts : la ligne déjà affichée reste (pas de ligne qui disparaît sous le focus)
+	menu.bots_info = _preview_row
+	menu.refresh()
+
+
+## Ligne « Bots » : {label « Bots : ≈ 225 W, ≈ 9 min », detail « cote 1540 »} (règle du 14/11 : des watts, pas
+## des % ; l'objectif est sur sa propre ligne) ; detail "" sans cote ; {} sans watts.
+static func bots_info_row(msg: Dictionary) -> Dictionary:
+	if msg.get("power_w") == null:
+		return {}
+	var label := "Bots : ≈ %d W" % int(msg["power_w"])
+	if msg.get("duration_s") != null:
+		label += ", ≈ " + duration_text(float(msg["duration_s"]))
+	var detail := ("cote %d" % int(msg["elo"].get("rating", 1500))) if msg.get("elo") is Dictionary else ""
+	return {"label": label, "detail": detail}
+
+
+## « 9 min », « 1 h 05 » (durée estimée de la course).
+static func duration_text(seconds: float) -> String:
+	var m := int(round(seconds / 60.0))
+	if m < 60:
+		return "%d min" % maxi(m, 1)
+	return "%d h %02d" % [m / 60, m % 60]
+
+
 ## Réglages de l'écran Prêt du Grand Prix, dans l'ordre du plan (§4.4) : tours sur un circuit, distance sur un
 ## parcours en ligne, les deux tant que le parcours est inconnu.
 static func grandprix_keys(route: Dictionary) -> Array:
@@ -2481,8 +2558,12 @@ func _launch_coach_race() -> Dictionary:
 				settings.item(pair[0])["value"] = pair[1]   # affiché tout de suite, le core confirme ensuite
 			list.append({"action": "set_setting", "key": pair[0], "value": pair[1]})
 		menu.prepare_settings_mode("survivor")
+		menu.coach_objective = str(r.get("objective", ""))   # lot GP-niv : objectif des bots selon le besoin
 		_refresh_mode_ready()
 	else:
-		menu.prepare_coach_race("course conseillée", {"bots": coach.race_bots(MenuModel.PELOTON_PROFILES)}
-			if not coach.race_bots(MenuModel.PELOTON_PROFILES).is_empty() else {}, coach.race_ready_text())
+		var args := {"bots": coach.race_bots(MenuModel.PELOTON_PROFILES)} \
+			if not coach.race_bots(MenuModel.PELOTON_PROFILES).is_empty() else {}
+		if str(r.get("objective", "")) != "" and args.has("bots"):
+			args["objective"] = str(r["objective"])   # lot GP-niv : objectif des bots selon le besoin du jour
+		menu.prepare_coach_race("course conseillée", args, coach.race_ready_text())
 	return {"action": "sequence", "list": list}

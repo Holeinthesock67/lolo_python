@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Biome `reef` (fond marin), ambiance sous l'eau, laminaires, coraux, gorgones, poissons, tortues, raies, boucle de 8 km « Récif des tortues » | Python, GDScript, JSON | O37, O38, U10, U12, HP1 | Moyenne | Fait (fusionné le 14 novembre, #878 ; relu par le lot NT1) |
+| Biome `reef` (fond marin), ambiance sous l'eau, laminaires, coraux, gorgones, poissons, tortues, raies, boucle de 8 km « Récif des tortues » | Python, GDScript, JSON | O37, O38, U10, U12, HP1 | Moyenne | **Livré le 14 novembre** (PR #878, relu par le lot NT1) |
 
 ## 1. Objectif
 
@@ -28,3 +28,7 @@ Le brouillard proche cache le lointain. Les ajouts sont l'émission des caustiqu
 
 - Pas d'épave dans ce lot : faite au lot SM2 (`LOT_SM2_epave_recif.md`).
 - La route reste une route revêtue (la physique ne change pas) ; les laminaires, coraux et gorgones sont mélangés dans toutes les zones (le biome n'a qu'une liste d'espèces).
+
+## 5. Livraison
+
+Fusionné le 14 novembre 2026 (PR #878). Détail des écarts et de la recette : description de la PR.

@@ -105,6 +105,8 @@ class ConstantPowerBot:
         self.wheel: tuple[float, float] | None = None   # roue suivie : écart (m) et vitesse du coureur devant
         self.push = 0.0                        # poussée du coureur qui suit de près
         self.power_factor = 1.0                # mamie à l'attaque du mode WTF (lot WTF2)
+        self.work_j = 0.0                      # travail et temps roulé (lot GP-niv, bilan)
+        self.ride_s = 0.0
         self.shelters = True                   # faux pendant le Furtif du Grand Prix (lot GP4) : n'abrite personne
         # Écart à l'axe (lot AS2), posé par draft.update_lanes ; départage stable des bots partis côte à côte
         self.lane = Lane(BOT_LANE_M, BOT_LANE_M, rank=1 + zlib.crc32(self.id.encode()) % 65536)
@@ -136,12 +138,19 @@ class ConstantPowerBot:
 
         power = self._blocked_power(self.power_w * self.power_factor, grade, alt)
         self.physics.step(power, grade, alt, dt, alpha_draft=self.draft)
+        self.work_j += power * dt   # lot GP-niv : puissance moyenne du bot au bilan (`avg_power_w`)
+        self.ride_s += dt
         if self.lane.blocked is not None and self.lane.blocked[0] <= BRAKE_GAP_M:
             self.physics.v = min(self.physics.v, self.lane.blocked[1])   # freine : roue contre roue, pas plus vite
         if route is not None and not route.is_loop and self.physics.s >= route.length_m:
             self.physics.s = route.length_m
             self.physics.v = 0.0
         self.t += dt
+
+    @property
+    def avg_power_w(self) -> float | None:
+        """Puissance moyenne depuis le départ (None avant le premier pas roulé), lot GP-niv."""
+        return self.work_j / self.ride_s if self.ride_s > 0 else None
 
     def to_dict(self) -> dict[str, Any]:
         return {

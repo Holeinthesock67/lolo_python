@@ -107,6 +107,16 @@ func _run() -> void:
 		"parcours ouvert trop court : Lancer désactivé, détail court qui tient à droite de Lancer")
 	_check(f.state()["status"].begins_with("Lancer grisé : 4 arches × 3 km = 12 km, parcours de 5,0 km.") and f.state()["status_error"],
 		"ligne d'état : pourquoi Lancer est grisé et quoi changer (%s)" % f.state()["status"])
+	# Lot GP-niv : la ligne « Bots » (désactivée) arrive au-dessus du focus : le focus reste sur son élément
+	f.menu.focus_item("change_route")
+	var before := str(f.state()["items"][f.state()["focus"]]["id"])
+	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 9, "mode": "survivor", "objective": "tempo",
+		"ftp_pct": 80.0, "power_w": 200, "duration_s": 600, "elo": {"rating": 1500, "races": 0}})
+	var after := str(f.state()["items"][f.state()["focus"]]["id"])
+	_check("bots_info" in _ids(f) and after == before and after != "bots_info",
+		"ligne Bots reçue sous Lancer grisé : focus gardé sur « %s » (%s)" % [before, after])
+	f.handle("PLUS_SHORT")
+	_check(str(f.state()["items"][f.state()["focus"]]["id"]) != "bots_info", "flèches : la ligne Bots est sautée")
 	f.menu.focus_item("set:survivor.opponents")
 	_check(f.state()["status"].contains("A maintenu, puis − / +"), "focus sur un réglage : aide des touches avec l'explication")
 	f.menu.set_world("boucle", "Boucle")

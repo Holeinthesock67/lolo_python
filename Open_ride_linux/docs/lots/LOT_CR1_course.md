@@ -49,6 +49,8 @@ Pas de deuxième arbitre, pas d'exception :
 
 - Captures de l'accueil, de l'écran Prêt, du HUD en course et du bilan, à valider par le propriétaire ; banc
   low/medium/high (`sim_bench --mode race`) par la file du PC.
-- Coordination : le fil « niveau des bots et Elo » (révision 1.22) compte la Course dans la cote Elo (course à
-  classement complet) et lui donne la cible des bots en watts de l'écran Prêt (`bots_preview`).
+- Cote Elo et effort des bots en watts (révision 1.22, branchés à la fusion de main, 22 novembre) : la Course
+  compte dans la cote comme le Grand Prix (`bot_elo.MODES`, classement de `_elo_order`, plateau par
+  `_elo_levels(plan, "race")`), `bots_preview` accepte `race` (ligne « Bots : ≈ X W » de l'écran Prêt), ligne
+  « Cote » au bilan ; banc `elo_campagne --mode race`.
 - Plus tard : porteurs des maillots dans le classement du HUD (aujourd'hui au bilan et au journal seulement).
