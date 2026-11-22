@@ -48,7 +48,7 @@ func _run() -> void:
 	_check(f.menu.focus_item("rogue"), "entrée active")
 	f.handle("A_LONG")
 	_check(f.state()["screen"] == "rogue_start", "écran de départ")
-	_check(_ids(f) == ["objective", "duration", "wprime", "launch"], "objectif, durée, W' et Lancer")
+	_check(_ids(f) == ["objective", "duration", "launch"], "objectif, durée et Lancer (W' retiré, lot R25)")
 	f.handle("A_LONG")   # objectif suivant
 	_check(f.rogue.objective() == "threshold", "A long fait défiler l'objectif")
 	f.menu.focus_item("duration")
@@ -74,7 +74,7 @@ func _run() -> void:
 	f.on_state({"session_state": "READY", "mode": "ROGUE"})
 	_check(f.state()["screen"] == "ready" and f.state()["title"] == "Prêt : Cyber-Rogue", "READY : écran Prêt du Cyber-Rogue")
 	_check(_ids(f) == ["start", "rogue_change"], "Démarrer ou changer les choix")
-	_check(f.state()["items"][0]["detail"] == "Seuil · 45 min · W' 20,0 kJ (estimé 18,4 kJ)", "rappel des choix")
+	_check(f.state()["items"][0]["detail"] == "Seuil · 45 min", "rappel des choix")
 	act = f.handle("A_LONG")
 	_check(act.get("action") == "start", "Démarrer envoie start")
 	f.menu.focus_item("rogue_change")
@@ -102,7 +102,7 @@ func _run() -> void:
 	_check(act.get("action") == "start_run" and f.state()["screen"] == "rogue_loading", "deuxième lancement sans avertissement")
 	f.on_error("run_invalid", "objectif inconnu")
 	_check(f.state()["screen"] == "rogue_start", "erreur : retour à l'écran de départ")
-	_check(f.state()["items"][3]["detail"].begins_with("Échec"), "message d'échec affiché")
+	_check(f.state()["items"][2]["detail"].begins_with("Échec"), "message d'échec affiché")
 
 	# Pause et abandon
 	f.on_state({"session_state": "RUNNING", "mode": "ROGUE"})
