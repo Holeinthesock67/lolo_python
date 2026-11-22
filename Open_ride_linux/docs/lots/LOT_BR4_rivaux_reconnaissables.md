@@ -28,7 +28,9 @@ chaque nouvelle saison.
 - **Où** : tous les bots à profil : plateaux composés par le core (Dernier survivant, Grand Prix, Course,
   épreuves de piste) et bots à profil choisis au menu (session libre, ERG, WTF, écran de pause). Les bots à
   puissance fixe (« Bot 200 W ») et le fantôme ne changent pas. Pas d'exception par mode (principe du 27/10).
-- **Affichage** : le nom remplace « Grimpeur 2 » partout où le nom du bot s'affiche déjà (bandes de course,
+- **Affichage** : le nom court (« F. Gauthier », 11 caractères au plus, la largeur de « Sprinteur 2 » ; le nom
+  complet de 16 caractères était coupé dans la bande du Grand Prix en 1024 × 600) remplace « Grimpeur 2 » partout
+  où le nom du bot s'affiche déjà (bandes de course,
   liste du Dernier survivant, encart des bots, éliminations, bilan). **Aucun élément nouveau à l'écran.** La fiche
   écrite d'un rival (nom, « Grimpeur, attaquant », équipe, cote) est prête pour l'écran de la ligue (CH4) :
   `Roster.describe`.
@@ -40,7 +42,7 @@ chaque nouvelle saison.
 
 ## 3. Livraison
 
-- Core : `rivals.py` (module pur hors `rivaux.json`) : `Roster.names_for`, `ensure`, `renew`, `describe`,
+- Core : `rivals.py` (module pur hors `rivaux.json`) : `Rival.short`, `Roster.names_for`, `ensure`, `renew`, `describe`,
   `load`, `save` ; `CoreSession._rival_names` (plateaux composés `_profile_field`, `_track_field`, bots du menu
   `_start_bots`, `set_bots`) ; `bots.bots_from_menu(names=…)`.
 - Contrat IPC inchangé : seul le texte du champ `name` des bots change.
@@ -52,7 +54,7 @@ chaque nouvelle saison.
 - Cloud : core `not slow`. Pas d'essai vélo (règle du 21/11 pour les bots).
 - PC : le nom change dans les HUD existants : catégorie « menus/HUD seuls » de la règle du 21/11 (banc medium
   seul). Captures low/medium/high de la bande du Grand Prix et de la liste du Dernier survivant avec des noms
-  longs (« Florent Gauthier »), à valider par le propriétaire avant fusion.
+  longs (« F. Gauthier »), à valider par le propriétaire avant fusion.
 
 ## 5. Reste
 

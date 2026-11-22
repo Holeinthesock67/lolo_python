@@ -29,7 +29,8 @@ from .bot_tactics import personality_of
 
 FILE_NAME = "rivaux.json"
 VERSION = 1
-NAME_MAX = 16          # longueur des noms au HUD (`bots.Bot.name`)
+NAME_MAX = 16          # longueur des noms complets (fiches, écran de la ligue)
+SHORT_MAX = 11         # nom court du HUD (« F. Gauthier ») : la largeur de « Sprinteur 2 » d'avant R4
 
 PROFILE_LABELS = {"climber": "Grimpeur", "rouleur": "Rouleur", "sprinter": "Sprinteur", "diesel": "Diesel"}
 PERSONALITY_LABELS = {"attacker": "attaquant", "follower": "suiveur", "opportunist": "opportuniste"}
@@ -68,6 +69,12 @@ class Rival:
     @property
     def profile(self) -> str:
         return profile_of(self.key)
+
+    @property
+    def short(self) -> str:
+        """Nom affiché en course (bandes, listes, éliminations) : initiale du prénom et nom, « F. Gauthier »."""
+        first, _, last = self.name.partition(" ")
+        return f"{first[0]}. {last}" if last else first
 
     @property
     def color(self) -> str:
@@ -126,13 +133,13 @@ class Roster:
         return [self.rivals.get(k) or self._create(k) for k in keys]
 
     def names_for(self, profiles: Sequence[str]) -> list[str]:
-        """Noms des bots d'un plateau (profils dans l'ordre du plateau) ; sans nom libre, nom de profil
+        """Noms courts des bots d'un plateau (profils dans l'ordre du plateau) ; sans nom libre, nom de profil
         numéroté comme avant R4 (« Grimpeur 5 »)."""
         keys = plan_keys(profiles)
         out = []
         for k, r in zip(keys, self.ensure(keys)):
             if r is not None:
-                out.append(r.name[:NAME_MAX])
+                out.append(r.short)
             else:
                 p, n = k.split("#", 1)
                 base = PROFILE_LABELS.get(p, p)
@@ -159,7 +166,7 @@ class Roster:
             r = self.rivals.get(k)
             if r is None:
                 continue
-            line = {"key": k, "name": r.name, "profile": r.profile, "style": r.style(), "team": r.team,
+            line = {"key": k, "name": r.name, "short": r.short, "profile": r.profile, "style": r.style(), "team": r.team,
                     "color": r.color}
             if ratings is not None and k in ratings:
                 line["rating"] = int(round(ratings[k]))

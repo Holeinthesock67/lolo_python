@@ -12,6 +12,9 @@ from openride_core.physics import PhysicsParams
 def test_names_are_fictional_short_and_unique():
     assert len(set(rivals.NAMES)) == len(rivals.NAMES) >= 44
     assert all(0 < len(n) <= rivals.NAME_MAX for n in rivals.NAMES)
+    shorts = [rivals.Rival("climber#1", n, "Équipe Brume").short for n in rivals.NAMES]
+    assert all(len(x) <= rivals.SHORT_MAX for x in shorts) and len(set(shorts)) == len(shorts)
+    assert rivals.Rival("climber#1", "Florent Gauthier", "Équipe Brume").short == "F. Gauthier"
     assert len({t for t, _ in rivals.TEAMS}) == len(rivals.TEAMS) == 11
     assert set(rivals.PROFILE_LABELS) == set(PROFILES)
 
@@ -41,7 +44,7 @@ def test_style_team_and_personality_follow_the_name():
     assert r.personality == bot_tactics.personality_of(r.name)
     assert r.color.startswith("#") and r.team.startswith("Équipe ")
     d = ro.describe(["climber#1", "nobody#1"], ratings={"climber#1": 1532.4})
-    assert len(d) == 1 and d[0]["rating"] == 1532 and d[0]["name"] == r.name
+    assert len(d) == 1 and d[0]["rating"] == 1532 and d[0]["name"] == r.name and d[0]["short"] == r.short
 
 
 def test_teams_are_spread():
@@ -69,7 +72,7 @@ def test_renew_replaces_three_and_never_brings_back(tmp_path: Path):
 def test_exhausted_pool_falls_back_to_profile_names():
     ro = rivals.Roster()
     names = ro.names_for(["climber"] * 50)
-    assert names[: len(rivals.NAMES)] == [ro.get(f"climber#{i}").name for i in range(1, len(rivals.NAMES) + 1)]
+    assert names[: len(rivals.NAMES)] == [ro.get(f"climber#{i}").short for i in range(1, len(rivals.NAMES) + 1)]
     assert names[len(rivals.NAMES)] == f"Grimpeur {len(rivals.NAMES) + 1}"
 
 
@@ -86,4 +89,4 @@ def test_menu_bots_take_rival_names(tmp_path: Path):
     items = [{"kind": "profile", "profile": "climber"}, {"kind": "constant", "power_w": 200},
              {"kind": "profile", "profile": "climber"}]
     bots = bots_from_menu(items, PhysicsParams(), 250.0, None, tmp_path, names=ro.names_for)
-    assert [b.name for b in bots] == [ro.get("climber#1").name, "Bot 200 W", ro.get("climber#2").name]
+    assert [b.name for b in bots] == [ro.get("climber#1").short, "Bot 200 W", ro.get("climber#2").short]
