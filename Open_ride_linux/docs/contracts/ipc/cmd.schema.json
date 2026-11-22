@@ -78,6 +78,8 @@
         "restore_profile",
         "reset_profile_stats",
         "undo_profile_reset",
+        "list_profile_backups",
+        "restore_profile_backup",
         "recover_session",
         "scene_ready",
         "list_history",

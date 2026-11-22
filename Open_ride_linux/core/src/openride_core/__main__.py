@@ -66,6 +66,9 @@ Sous-commandes disponibles à ce stade :
     openride-core profil remise-a-zero | remises | annuler-remise SAUVEGARDE
                                       statistiques du profil en cours remises à zéro
                                       (sauvegarde horodatée), listées, annulées (lot RZ1)
+    openride-core profil sauvegarde [--tous] [--raison R] | sauvegardes [--json] | restaurer COPIE
+                                      copies complètes du profil en cours (ou de tous les profils de
+                                      joueur), liste, restauration (lot SV1, ~/OpenRide/Sauvegardes/profils/)
     openride-core profil essai [--vider] [--json] [--config FICHIER]
                                       profil d'essai (séances simulées comptées) : dossier,
                                       progression ; --vider efface ses séances (série MJ, lot MJ2)
@@ -303,7 +306,8 @@ def cmd_plan(args: argparse.Namespace) -> int:
 
 
 PROFIL_ARGS = {"essai": 0, "list": 0, "create": 1, "rename": 2, "delete": 1,
-               "remise-a-zero": 0, "remises": 0, "annuler-remise": 1}   # lot RZ1
+               "remise-a-zero": 0, "remises": 0, "annuler-remise": 1,   # lot RZ1
+               "sauvegarde": 0, "sauvegardes": 0, "restaurer": 1}       # lot SV1
 
 
 def cmd_profil(args: argparse.Namespace) -> int:
@@ -314,10 +318,13 @@ def cmd_profil(args: argparse.Namespace) -> int:
 
     if len(args.valeurs) != PROFIL_ARGS[args.action]:
         print("openride-core profil : usage : profil essai [--vider] | list [--json] | create NOM | "
-              "rename ID NOM | delete ID | remise-a-zero | remises | annuler-remise SAUVEGARDE", file=sys.stderr)
+              "rename ID NOM | delete ID | remise-a-zero | remises | annuler-remise SAUVEGARDE | "
+              "sauvegarde [--tous] [--raison R] | sauvegardes | restaurer COPIE", file=sys.stderr)
         return 2
     if args.action in ("remise-a-zero", "remises", "annuler-remise"):
         return _profil_reset(args)
+    if args.action in ("sauvegarde", "sauvegardes", "restaurer"):
+        return _profil_backup(args)
     if args.action != "essai":
         return _profil_players(args)
     ctx = profiles.ProfileContext.for_id(profiles.TRIAL_ID)
@@ -363,6 +370,54 @@ def _profil_reset(args: argparse.Namespace) -> int:
                 print(f"Remise à zéro annulée pour « {ctx.name} » : {', '.join(back) or 'rien'} remis en place.")
                 if saved is not None:
                     print(f"Séances courues depuis la remise mises de côté : {saved}")
+    except profiles.ProfileContextError as exc:
+        print(f"openride-core profil {args.action} : {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+BACKUP_REASON_WORDS = {"semaine": "copie de la semaine", "mise-a-jour": "avant la mise à jour",
+                       "remise-a-zero": "avant la remise à zéro", "restauration": "avant une restauration"}
+
+
+def _profil_backup(args: argparse.Namespace) -> int:
+    """`profil sauvegarde [--tous] [--raison R] | sauvegardes [--json] | restaurer COPIE` (lot SV1) : copie
+    complète du profil en cours (`--tous` : de chaque profil de joueur, `scripts/update.sh`), liste des copies,
+    restauration (état actuel copié avant). Code 1 si une copie échoue : la mise à jour est alors refusée."""
+    from . import profile_backups, profiles
+
+    try:
+        if args.action == "sauvegarde":
+            if args.tous:
+                targets = [c for c in profiles.list_contexts() if not c.is_trial]
+            else:
+                ctx = profiles.current()
+                if ctx.id is None:
+                    raise profiles.ProfileContextError("aucun profil de joueur : --profil ID ou --tous")
+                targets = [ctx]
+            for c in targets:
+                dest = profile_backups.create(c, args.raison)
+                print(f"Copie du profil « {c.name or c.id} » : {dest}")
+            if not targets:
+                print("Aucun profil de joueur à copier.")
+            return 0
+        ctx = profiles.current()
+        if args.action == "sauvegardes":
+            rows = profile_backups.entries(ctx)
+            if args.json:
+                print(json.dumps({"profil": ctx.id, "copies": rows}, ensure_ascii=False, indent=2))
+                return 0
+            for r in rows:
+                print(f"{r['id']}  {BACKUP_REASON_WORDS[r['reason']]}, {r['date']} à {r['time']} "
+                      f"({r['sessions']} séances)")
+            if not rows:
+                print(f"Aucune copie pour le profil « {ctx.label} ».")
+            return 0
+        if ctx.id is None:
+            raise profiles.ProfileContextError("aucun profil de joueur : --profil ID")
+        with profiles.ProfileLock(ctx):   # pas pendant une séance de ce profil
+            saved = profile_backups.restore(ctx, args.valeurs[0])
+        print(f"Profil « {ctx.name} » restauré depuis {args.valeurs[0]}. État d'avant copié dans {saved}.")
     except profiles.ProfileContextError as exc:
         print(f"openride-core profil {args.action} : {exc}", file=sys.stderr)
         return 1
@@ -626,13 +681,16 @@ def build_parser() -> argparse.ArgumentParser:
     prf = sub.add_parser("profil", help="profils de joueurs : liste, création, renommage, corbeille ; "
                                         "profil d'essai (série MJ)")
     prf.add_argument("action", choices=["essai", "list", "create", "rename", "delete", "remise-a-zero", "remises",
-                                        "annuler-remise"])
+                                        "annuler-remise", "sauvegarde", "sauvegardes", "restaurer"])
     prf.add_argument("valeurs", nargs="*", metavar="ARG",
                      help="create NOM ; rename ID NOM ; delete ID ; annuler-remise SAUVEGARDE (lot RZ1 : "
                           "remise-a-zero met de côté les statistiques du profil en cours, sauvegarde horodatée)")
     prf.add_argument("--vider", action="store_true",
                      help="efface séances, records, plan et équipement du profil d'essai (garde profil.toml)")
     prf.add_argument("--json", action="store_true", help="sortie JSON (progression)")
+    prf.add_argument("--tous", action="store_true", help="sauvegarde : chaque profil de joueur (lot SV1)")
+    prf.add_argument("--raison", default="semaine", choices=["semaine", "mise-a-jour", "remise-a-zero"],
+                     help="sauvegarde : raison de la copie, qui fixe sa rotation (lot SV1, défaut : semaine)")
     prf.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     for cmd in sub.choices.values():   # profil de joueur, sur toutes les sous-commandes (série MJ, lot MJ1)
         cmd.add_argument("--profil", metavar="ID",
