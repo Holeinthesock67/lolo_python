@@ -113,6 +113,7 @@ const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
+const LeagueViewModel := preload("res://scripts/league_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 
 const SUMMARY := "summary"
@@ -283,6 +284,8 @@ var history = HistoryViewModel.new()
 var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
 var coach = CoachViewModel.new()
+## Ligue d'hiver (série CH, lot CH4a) : saison du core, ligne de l'accueil, écran de la ligue, écran Prêt.
+var league = LeagueViewModel.new()
 ## Effort des bots en watts sur l'écran Prêt (lot GP-niv, contrat 1.22) : clé de la dernière demande `bots_preview`
 ## (mode, parcours, réglages), texte de sa réponse, et une seule nouvelle demande quand le core n'avait pas encore
 ## le parcours (réponse sans watts).
@@ -339,6 +342,8 @@ func _init() -> void:
 			[CoachViewModel.OTHER, "Autre séance", CoachViewModel.SCREEN]]:
 		menu.add_screen({"id": screen[0], "title": screen[1], "on_back": screen[2], "items": []})
 	_refresh_coach()
+	menu.add_screen({"id": LeagueViewModel.SCREEN, "title": "Ligue d'hiver", "on_back": MenuModel.HOME, "items": []})
+	_refresh_league()
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
@@ -610,11 +615,14 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in CoachViewModel.SCREENS and code == "bad_args":
 		coach.message = "Échec : " + text
 		return
+	if menu.current_screen() == LeagueViewModel.SCREEN and code == "bad_args":
+		league.message = "Échec : " + text
+		return
 	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
 		contents.on_error(code, text)
 		_refresh_contents()
 		return
-	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode in MenuModel.SETTINGS_MODES or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
+	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league" or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
@@ -777,6 +785,8 @@ func card(st: Dictionary) -> Dictionary:
 		return {"title": "Bilan de la séance"}
 	if screen in CoachViewModel.SCREENS:
 		return _coach_card(screen, focused)
+	if screen == LeagueViewModel.SCREEN:
+		return league.sheet(_ftp_w())
 	if screen == RECORDS:
 		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
 	if screen == RECORD_TABLE:
@@ -1254,7 +1264,7 @@ func handle(event: String) -> Dictionary:
 	if pick != "":   # parcours du mode, ou retour au parcours libre (lot GP13) : envoyé au core
 		var route_act := {"action": "select_route", "route_id": pick}
 		act = route_act if act.is_empty() else {"action": "sequence", "list": [act, route_act]}
-	if menu.mode in MenuModel.SETTINGS_MODES:
+	if menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league":
 		_refresh_mode_ready()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
 	return act
 
@@ -1385,6 +1395,11 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_collection()
 			menu.push_screen(CollectionViewModel.SCREEN)
 			return {"action": "list_collection"}
+		if str(act["id"]) == "league":   # classement relu à chaque ouverture (une manche vient peut-être de finir)
+			league.message = ""
+			_refresh_league()
+			menu.push_screen(LeagueViewModel.SCREEN)
+			return {"action": "league_status"}
 		if str(act["id"]) == "coach":   # conseil recalculé à chaque ouverture (une séance vient peut-être de finir)
 			var request: Dictionary = coach.request()
 			_refresh_coach()
@@ -1403,6 +1418,8 @@ func _handle_event(event: String) -> Dictionary:
 		return _handle_collection(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in CoachViewModel.SCREENS:
 		return _handle_coach(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in LeagueViewModel.SCREENS:
+		return _handle_league(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
 		if str(act["id"]) == MenuModel.ADD_ROUTE_ID:
 			return _open_route_import()
@@ -1554,6 +1571,8 @@ func _refresh_mode_ready() -> void:
 	elif menu.mode == "race":
 		menu.set_mode_ready(_mode_rows(race_keys(route), RACE_PREFIX),
 			race_launch(int(settings.item("race.laps").get("value", 3)), route))
+	elif menu.mode == "league":
+		menu.set_league_ready(league.ready(route))
 
 
 ## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
@@ -2412,6 +2431,9 @@ func state() -> Dictionary:
 		var on_album: bool = st["screen"] == CollectionViewModel.SCREEN   # l'album : total et nouvelles
 		st["status"] = collection.album_status() if on_album else collection.message
 		st["status_error"] = not on_album and collection.message.begins_with("Échec")
+	elif st["screen"] == LeagueViewModel.SCREEN:
+		st["status"] = league.message
+		st["status_error"] = league.message.begins_with("Échec")
 	elif st["screen"] in CoachViewModel.SCREENS:
 		st["status"] = coach.status(str(st["screen"]))
 		st["status_error"] = coach.message.begins_with("Échec")
@@ -2572,4 +2594,37 @@ func _launch_coach_race() -> Dictionary:
 		if str(r.get("objective", "")) != "" and args.has("bots"):
 			args["objective"] = str(r["objective"])   # lot GP-niv : objectif des bots selon le besoin du jour
 		menu.prepare_coach_race("course conseillée", args, coach.race_ready_text())
+	return {"action": "sequence", "list": list}
+
+
+# --- Ligue d'hiver (série CH, lot CH4a) -------------------------------------------------------------------------
+
+## Message `league` du core (réponse à league_status et league_new) : accueil, écran de la ligue et écran Prêt.
+func on_league(msg: Dictionary) -> void:
+	league.on_league(msg)
+	_refresh_league()
+	if menu.mode == "league":
+		_refresh_mode_ready()
+
+
+func _refresh_league() -> void:
+	menu.set_league_home(league.loaded, league.home_detail())
+	menu.set_screen_items(LeagueViewModel.SCREEN, league.items(), league.title())
+
+
+## Écran de la ligue : « Courir la manche » ouvre l'écran Prêt sur une boucle (LeagueViewModel.pick_loop ; circuit du
+## Grand Prix : liste du Grand Prix derrière « Changer de parcours ») ; « Commencer la saison » demande `league_new`.
+func _handle_league(id: String) -> Dictionary:
+	if id == LeagueViewModel.NEW_ID:
+		league.message = "Création de la saison…"
+		return {"action": "league_new"}
+	if id != LeagueViewModel.RUN_ID:
+		return {}
+	var rid: String = LeagueViewModel.pick_loop(routes_raw, menu.world_id, menu.route_mode_of)
+	ready_message = ""
+	var list: Array = [{"action": "select_workout", "workout_id": null}]
+	if rid != "" and rid != menu.world_id:
+		menu.set_world(rid, str(_route_entry(rid).get("name", rid)))
+		list.push_front({"action": "select_route", "route_id": rid})
+	menu.prepare_league(league.ready(_route_entry(menu.world_id)), menu.route_mode_of(menu.world_id))
 	return {"action": "sequence", "list": list}

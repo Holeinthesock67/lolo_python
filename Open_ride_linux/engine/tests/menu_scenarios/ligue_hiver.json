@@ -1,0 +1,33 @@
+{
+  "description": "Ligue d'hiver (série CH, lot CH4a, maquettes CH0 01 à 03) : profil neuf, ligne « Ligue d'hiver » de l'accueil (réponse à league_status), écran de la ligue sans saison, « Commencer la saison 1 » (league_new, ligue.json écrit par le core), classement des 12 avec « Toi » encadré, « Courir la manche 1 » : écran Prêt sur la boucle d'essai du Grand Prix (aucun parcours libre n'est une boucle), départ de la manche dans le journal du core, course jusqu'à l'arrivée et encart du bilan, puis l'écran de la ligue avec la manche faite. FTP fictive 250 W. Captures ch4_accueil, ch4_ligue_vide, ch4_ligue, ch4_pret, ch4_course, ch4_bilan et ch4_ligue_apres pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "voies": ["click"],
+  "config": {"rider.ftp_w": 250},
+  "grand_prix_parcours": true,
+  "etapes": [
+    {"ecran": "home", "delai": 15, "elements": ["league"], "contient": ["Ligue d'hiver — 8 semaines contre 11 rivaux"]},
+    {"aller": "league"},
+    {"capture": "ch4_accueil"},
+    {"choisir": "league"},
+    {"ecran": "league", "elements": ["league_new"], "contient": ["Commencer la saison 1", "Une saison de 8 semaines"], "delai": 10},
+    {"capture": "ch4_ligue_vide"},
+    {"choisir": "league_new"},
+    {"ecran": "league", "elements": ["league_run"], "contient": ["Courir la manche 1 : Course en tours", "Classement général"], "delai": 10},
+    {"fichier": "OpenRide/**/ligue.json", "existe": true},
+    {"capture": "ch4_ligue"},
+    {"choisir": "league_run"},
+    {"ecran": "ready", "titre": "Prêt : Ligue d'hiver — Boucle (essai)", "elements": ["start", "change_route"], "contient": ["manche 1 sur 8"], "delai": 10},
+    {"capture": "ch4_pret"},
+    {"choisir": "start"},
+    {"journal": "core", "motif": "Ligue d'hiver : manche 1/8", "delai": 15},
+    {"attendre": 30},
+    {"capture": "ch4_course"},
+    {"ecran": "summary", "delai": 900},
+    {"attendre": 3},
+    {"capture": "ch4_bilan"},
+    {"choisir": "new_session"},
+    {"ecran": "home", "delai": 10},
+    {"choisir": "league"},
+    {"ecran": "league", "contient": ["faite"], "delai": 10},
+    {"capture": "ch4_ligue_apres"}
+  ]
+}
