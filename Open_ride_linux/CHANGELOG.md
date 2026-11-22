@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Début de run et adrénaline du Cyber-Rogue (lot R26)
+- L'échauffement charge l'adrénaline à sa consigne, comme une salle : on arrive à la première porte de quoi frapper (essai du 21 novembre : « on commence sans adrénaline, il y a tout de suite une porte à frapper » ; choix du propriétaire).
+- Consignes jugées sur la puissance moyenne des 8 dernières secondes, affichée pendant la run, à 10 % de la consigne près (au moins 5 W), avec une marge de sortie (15 % sous la consigne) : sur 3 s et à 5 W près, le bruit du trainer faisait sortir de la plage sans cesse.
+- Plage en watts et écart en direct à l'écran, son d'entrée et de sortie de la plage (événements `target_in` et `target_out`, contrat IPC révision 1.28).
+
 ### À-coups de main (lot AC4)
 - Plus d'image figée d'une demi-seconde à une seconde au chargement d'un parcours (départ du Cyber-Rogue, Grand Prix) : les cyclistes du décor se préparent sans bloquer l'affichage (lot AC4).
 
