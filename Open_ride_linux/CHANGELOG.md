@@ -10,6 +10,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
 - L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.33 provisoire).
 
+### Cyber-Rogue sans voile en high (lot R27)
+- En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
+
 ### HUD sans éléments inutiles (lot NI1)
 - Plus de ligne « ÉTAT: RUNNING | TRAINER… | ENTRÉE… » en haut de l'écran : le bandeau central ne parle que de la prochaine montée, ou d'un problème (core attendu, trainer perdu) ; sinon il disparaît.
 - La cible ERG n'est plus qu'au bandeau ERG (case « CIBLE ERG » retirée) ; la pente n'est plus affichée au vélodrome (toujours 0 %).
