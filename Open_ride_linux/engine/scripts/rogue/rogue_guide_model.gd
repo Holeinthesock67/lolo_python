@@ -472,13 +472,16 @@ static func bound_w(pct: int, ftp: float, low: bool) -> int:
 ## `rogue.in_target` (révision 1.28) ; null : comparaison simple. `lo` et `hi` : la plage jugée (`target_pct`, R28).
 static func live_gap(power_pct: float, lo: int, hi: Variant, ftp: float, inside: Variant) -> String:
 	var ok: bool = bool(inside) if inside is bool else (power_pct >= float(lo) and (hi == null or power_pct <= float(hi)))
-	if ok:
-		return "✔ dans la plage"
 	var below := power_pct < float(lo)
-	if ftp <= 0.0:
-		return "trop bas" if below else "trop haut"
 	# écart compté sur les nombres écrits à l'écran : borne de la plage et puissance en haut à gauche (lot R28)
 	var now_w := int(round(power_pct * ftp / 100.0))
+	if ok:
+		# lot R28 : on entre à la consigne écrite ; la tolérance ne sert qu'à la sortie, et elle se dit en mots
+		if below and ftp > 0.0 and bound_w(lo, ftp, true) > now_w:
+			return "✔ marge : remonte de %d W" % (bound_w(lo, ftp, true) - now_w)
+		return "✔ dans la plage"
+	if ftp <= 0.0:
+		return "trop bas" if below else "trop haut"
 	if below and bound_w(lo, ftp, true) > now_w:
 		return "il manque %d W" % (bound_w(lo, ftp, true) - now_w)
 	if hi != null and power_pct > float(hi) and now_w > bound_w(int(hi), ftp, false):

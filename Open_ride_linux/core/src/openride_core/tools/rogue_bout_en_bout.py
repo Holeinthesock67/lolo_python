@@ -204,9 +204,9 @@ def bot_step(s: CoreSession, bot: Bot, driver: MockDriver, pressed: dict, extra_
     rg = s.rogue
     power, cadence, buttons, _ = bot.decide()
     if extra_frac:
-        from ..rogue.combat import overheat_limit, target_at
+        from ..rogue.combat import overheat_limit, win_target
         e = rg.engine
-        tgt = target_at(e.room, max(s.physics.s, 0.0))
+        tgt = win_target(e.room, max(s.physics.s, 0.0), e._eff_balance())
         power = (overheat_limit(tgt, e._eff_balance()) + extra_frac) * s.cfg.rider.ftp_w
     for _ in range(round(abs(bot.gear - rg.gear))):   # braquet voulu : appuis courts sur + ou −
         s._handle_input(GEAR_PRESS[1 if bot.gear > rg.gear else -1])

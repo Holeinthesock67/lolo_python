@@ -6,7 +6,7 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ## Non publié
 
 ### Consignes du Cyber-Rogue (lot R28)
-- La plage écrite à l'écran est celle que le jeu juge : « 155–210 W » au lieu de « 170–195 W » quand l'adrénaline chargeait déjà dès 153 W (essai du 22 novembre).
+- La consigne écrite est la vraie : la puissance qui bat l'ennemi à temps (au boss du seuil, 11,8 % de plus qu'avant), et l'adrénaline monte dès qu'on l'atteint (« affiche une vraie consigne », choix du propriétaire). La marge de 10 % ne sert plus qu'à rester dans la plage, et elle est écrite : « ✔ marge : remonte de 8 W ».
 - La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
 - L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.33 provisoire).
 

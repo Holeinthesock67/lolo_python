@@ -781,7 +781,7 @@ class RunEngine:
     def _target_pct(self, inp) -> dict | None:
         """Plage de puissance en % de FTP : `{lo, hi}` (`hi` nul : « au moins `lo` »). Lot R28 : c'est la plage jugée,
         tolérance comprise (`judged_band_pct`), la même que celle qui remplit l'adrénaline et déclenche la surchauffe."""
-        from .combat import judged_band_pct, overheat_limit, target_at
+        from .combat import judged_band_pct, overheat_limit, win_target
         b = self.b
         if self.phase == WARMUP:
             u = min(self.t_phase / max(self._step.nominal_s, 1e-9), 1.0)
@@ -791,7 +791,7 @@ class RunEngine:
             return {"lo": 0, "hi": round(b.cooldown_frac * 100)}
         if self.phase in (ROOM, BOSS) and self.room is not None:
             # lot R23 : en endurance, le plafond est le seuil de surchauffe (au-delà, l'adrénaline fond)
-            tgt = target_at(self.room, max(inp.s_m, 0.0))
+            tgt = win_target(self.room, max(inp.s_m, 0.0), self._eff_balance())   # lot R28 : la consigne qui gagne
             hi = overheat_limit(tgt, self._eff_balance()) if self.cur_spec.objective == "endurance" else None
             return judged_band_pct(tgt, hi, inp.ftp_w, self._eff_balance())
         return None

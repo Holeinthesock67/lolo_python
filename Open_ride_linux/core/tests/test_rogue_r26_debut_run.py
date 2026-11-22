@@ -24,11 +24,11 @@ def test_grace_is_ten_percent_of_target_at_least_5_w():
 
 
 def test_in_target_has_an_exit_margin():
-    tgt = 0.8                                     # 200 W pour 250 W de FTP : entrée à 180 W, sortie sous 170 W
-    assert not in_target(175 / 250, tgt, 250.0, False, B)
-    assert in_target(181 / 250, tgt, 250.0, False, B)
-    assert in_target(171 / 250, tgt, 250.0, True, B)
-    assert not in_target(169 / 250, tgt, 250.0, True, B)
+    tgt = 0.8                                     # 200 W pour 250 W de FTP : entrée à 200 W (lot R28), sortie sous 180 W
+    assert not in_target(195 / 250, tgt, 250.0, False, B)
+    assert in_target(200 / 250, tgt, 250.0, False, B)
+    assert in_target(181 / 250, tgt, 250.0, True, B)
+    assert not in_target(179 / 250, tgt, 250.0, True, B)
 
 
 def test_judged_power_is_the_8_s_mean():
@@ -72,6 +72,6 @@ def test_target_in_and_out_events_once_per_crossing():
     for p in (tgt_w, tgt_w, tgt_w * 0.96, tgt_w * 0.85, tgt_w * 0.85, tgt_w):
         out = step_in_room(e, 6.0, power=p)
         seen += [ev for ev in out.rogue["events"] if ev.startswith("target_")]
-    # lot R28 : `lo` est le bas de la plage jugée ; 96 % de ce bas : encore dedans (marge de sortie) ; 85 % : dehors
+    # lot R28 : `lo` est la consigne écrite, où l'on entre ; 96 % : encore dedans (marge de sortie) ; 85 % : dehors
     assert seen == ["target_in", "target_out", "target_in"]
     jsonschema.validate(out.rogue, ROGUE_SCHEMA)

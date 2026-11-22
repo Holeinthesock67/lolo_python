@@ -186,7 +186,7 @@ func _run() -> void:
 func _check_r26() -> void:
 	_check(GuideModel.live_gap(80.0, 80, null, 250.0, true) == "✔ dans la plage", "dans la plage : ✔")
 	_check(GuideModel.live_gap(70.0, 80, null, 250.0, false) == "il manque 25 W", "sous la plage : watts qui manquent (R28)")
-	_check(GuideModel.live_gap(78.0, 80, null, 250.0, true) == "✔ dans la plage", "marge de sortie du core : encore dans la plage")
+	_check(GuideModel.live_gap(78.0, 80, null, 250.0, true) == "✔ marge : remonte de 5 W", "marge de sortie du core : encore dans la plage, dit en mots (R28)")
 	_check(GuideModel.live_gap(90.0, 70, 80, 250.0, false) == "25 W de trop", "au-dessus du plafond : watts de trop (R28)")
 	# lot R28 : écart compté sur les nombres écrits (205 W en bas de plage, 187 W en haut à gauche) ; bornes vers l'intérieur
 	_check(GuideModel.live_gap(74.8, 82, null, 250.0, false) == "il manque 18 W", "écart = borne écrite − puissance écrite (R28)")
