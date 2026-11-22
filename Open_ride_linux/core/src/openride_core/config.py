@@ -248,6 +248,14 @@ class GrandPrixConfig:
 
 
 @dataclass
+class RaceConfig:
+    """Mode « Course » (course classique contre les bots, lot CR1) : le Grand Prix sans objet, sur tous les
+    parcours libres. En ligne, la course va jusqu'à l'arrivée du parcours ; sur une boucle, `laps` tours."""
+    opponents: int = 7             # adversaires (2 à 11, peloton du lot PL1)
+    laps: int = 3                  # boucle : nombre de tours (1 à 10)
+
+
+@dataclass
 class AudioConfig:
     """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
     suite par l'engine sur ses bus audio (audio_mix.gd)."""
@@ -317,6 +325,7 @@ class Config:
     ride: RideConfig = field(default_factory=RideConfig)
     survivor: SurvivorConfig = field(default_factory=SurvivorConfig)
     grandprix: GrandPrixConfig = field(default_factory=GrandPrixConfig)
+    race: RaceConfig = field(default_factory=RaceConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     depart: DepartConfig = field(default_factory=DepartConfig)
     coach: CoachConfig = field(default_factory=CoachConfig)
@@ -405,6 +414,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("grandprix", "laps"): (1, 5),
     ("grandprix", "distance_km"): (5, 30),
     ("grandprix", "box_every_m"): (500, 3000),
+    ("race", "opponents"): (2, 11),             # lot CR1 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
+    ("race", "laps"): (1, 10),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
@@ -480,6 +491,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("coach", "objectif"), ("coach", "temps_disponible_min"),
     ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "distance_km"), ("grandprix", "chaos"),
     ("grandprix", "box_every_m"),
+    ("race", "opponents"), ("race", "laps"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),

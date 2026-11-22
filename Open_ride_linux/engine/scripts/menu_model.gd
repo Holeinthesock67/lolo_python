@@ -98,15 +98,17 @@ const TRACK_OPTION_PREFIX := "track:"
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
 	"rogue": "Cyber-Rogue", "wtf": "Mode WTF", "survivor": "Dernier survivant", "grandprix": "Grand Prix des objets",
-	"track": "Vélodrome"}
+	"race": "Course", "track": "Vélodrome"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
 const HOME_DETAILS := {"open_world": "route créée en roulant", "survivor": "à chaque arche, le dernier sort",
-	"grandprix": "course contre les bots, objets à lancer", "track": "épreuves sur la piste, en SIM ou en ERG"}
+	"grandprix": "course contre les bots, objets à lancer", "race": "contre les bots, sans objets",
+	"track": "épreuves sur la piste, en SIM ou en ERG"}
 ## Modes à écran Prêt de réglages (Dernier survivant, lot DS7 ; Grand Prix des objets, lot GP9) : le core
 ## compose le plateau, l'écran montre « Lancer », le parcours, les réglages du mode (`mode_rows`) et, pour le
 ## Grand Prix, la ligne « Objets ».
-const SETTINGS_MODES := ["survivor", "grandprix"]
+## Course (lot CR1, demande du propriétaire du 20 novembre) : le Grand Prix sans objet, sur tous les parcours libres.
+const SETTINGS_MODES := ["survivor", "grandprix", "race"]
 const BOTS_INFO_ID := "bots_info"   # ligne « Bots » des écrans Prêt (lot GP-niv)
 ## Ligne « Objets » de l'écran Prêt du Grand Prix (lot GP9) : ouvre l'écran des objets (menu_flow.gd).
 const GP_ITEMS_ID := "gp_items"
@@ -1197,7 +1199,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "track", "interrupted", "coach":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "race", "track", "interrupted", "coach":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
