@@ -54,7 +54,7 @@
     {
       "ecran": "confirm",
       "focus": "no",
-      "titre": "Remettre à zéro les statistiques de « Cycliste A » ?",
+      "titre": "Remettre à zéro les statistiques de « Cycliste A » ? Séances, records, Elo, niveau et pièces repartent de zéro. FTP et réglages gardés. Sauvegarde faite avant.",
       "contient": [
         "Non, garder mes statistiques",
         "Oui, remettre à zéro"
@@ -94,8 +94,8 @@
       "ecran": "confirm",
       "focus": "no",
       "contient": [
-        "Non, garder la remise à zéro",
-        "Oui, remettre mes statistiques d'avant"
+        "Non, garder la remise",
+        "Oui, annuler la remise"
       ]
     },
     {

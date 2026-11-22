@@ -233,20 +233,21 @@ static func reset_when(r: Dictionary) -> String:
 	return day + " à " + str(r.get("time", ""))
 
 
-## Confirmation de la remise à zéro (lot RZ1) : question, boutons écrits et ce qu'ils font.
+## Confirmation de la remise à zéro (lot RZ1) : question qui dit ce qui part et ce qui reste, boutons écrits courts
+## (la boîte de confirmation coupe les libellés longs : banc des menus du 22 novembre).
 func reset_confirm() -> Dictionary:
 	var name := str(_find(manage_id).get("name", manage_id))
-	return {"title": "Remettre à zéro les statistiques de « %s » ?" % name,
-		"yes": "Oui, remettre à zéro", "yes_detail": "séances, records, puissance, Elo, niveau, pièces ; sauvegarde avant",
-		"no": "Non, garder mes statistiques", "no_detail": "FTP, poids et réglages gardés dans tous les cas"}
+	return {"title": ("Remettre à zéro les statistiques de « %s » ? Séances, records, Elo, niveau et pièces "
+		+ "repartent de zéro. FTP et réglages gardés. Sauvegarde faite avant.") % name,
+		"yes": "Oui, remettre à zéro", "yes_detail": "", "no": "Non, garder mes statistiques", "no_detail": ""}
 
 
 ## Confirmation de l'annulation de la dernière remise à zéro (lot RZ1).
 func undo_confirm() -> Dictionary:
 	var r: Dictionary = resets[0] if not resets.is_empty() else {}
-	return {"title": "Annuler la remise à zéro du %s ?" % reset_when(r), "id": str(r.get("id", "")),
-		"yes": "Oui, remettre mes statistiques d'avant", "yes_detail": "les séances courues depuis sont mises de côté",
-		"no": "Non, garder la remise à zéro", "no_detail": ""}
+	return {"title": ("Annuler la remise à zéro du %s ? Les statistiques d'avant reviennent ; les séances "
+		+ "courues depuis sont mises de côté.") % reset_when(r), "id": str(r.get("id", "")),
+		"yes": "Oui, annuler la remise", "yes_detail": "", "no": "Non, garder la remise", "no_detail": ""}
 
 
 func manage_title() -> String:
