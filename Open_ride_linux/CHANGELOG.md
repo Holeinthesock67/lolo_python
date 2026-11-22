@@ -5,6 +5,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Un seul réglage de difficulté des bots (lot NI3)
+- La ligne « Intensité » des écrans Prêt (facile, moyen, dur, avec les watts des bots) est la seule à régler leur force ; la cote Elo fait le reste.
+- « Niveau des bots » est retiré des Réglages et des écrans Prêt du Dernier survivant, du Grand Prix et de la Course ; une valeur déjà choisie est mise en commentaire au lancement (niveau remis à 100 %).
+- « Objectif des bots » n’est plus dans Réglages › Séance : il se choisit sur la ligne « Intensité ». « Niveau automatique (Elo) » devient « Bots selon ta cote » (le libellé était coupé).
+- Les lignes « Bot 1 » à « Bot 4 » (19 choix) quittent l'écran Prêt et la pause ; « Peloton » et « Fantôme » restent.
+
 ### Monde classique gelé pendant une run Cyber-Rogue (lot R24)
 - La pause d'une run ne recharge plus le parcours de démo sous la scène du mode : en mode Cyber-Rogue la trame n'a pas de parcours, et l'écran de pause, qui est un menu, demandait la démo des menus, construite en entier (tuiles, arbres, bâtiments, horizon) pendant la run (images de 140 ms vers 104 s, passes PC du 12 novembre).
 - Un thème ou un biome changés pendant la run ne reconstruisent plus le décor vidé ; il est rechargé au retour.

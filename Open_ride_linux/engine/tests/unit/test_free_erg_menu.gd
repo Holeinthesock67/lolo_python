@@ -71,7 +71,7 @@ func _test_ride_mode_of() -> void:
 
 func _test_pause_rows_and_commands() -> void:
 	var f = _paused(null)
-	_check(_ids(f) == ["resume", "end_save", "abandon", "difficulty", "ride_mode", "bot1", "ghost", "peloton"],
+	_check(_ids(f) == ["resume", "end_save", "abandon", "difficulty", "ride_mode", "ghost", "peloton"],
 		"pause d'une session libre : ligne du mode (%s)" % str(_ids(f)))
 	_check(_row(f, "ride_mode")["label"] == "Mode" and _row(f, "ride_mode")["detail"] == "SIM", "mode affiché : SIM")
 	_focus(f, "ride_mode")
@@ -81,7 +81,7 @@ func _test_pause_rows_and_commands() -> void:
 	var act: Dictionary = f.handle("A_LONG")
 	_check(act == {"action": "set_ride_mode", "args": {"mode": "erg"}}, "A long : set_ride_mode erg (%s)" % str(act))
 	f.on_state({"session_state": "PAUSED", "mode": "ERG", "erg": FREE, "difficulty_pct": 50})
-	_check(_ids(f) == ["resume", "end_save", "abandon", "ride_mode", "target_w", "bot1", "ghost", "peloton"],
+	_check(_ids(f) == ["resume", "end_save", "abandon", "ride_mode", "target_w", "ghost", "peloton"],
 		"ERG : ligne de la puissance cible, sans la Difficulté sans effet (lot NI2) (%s)" % str(_ids(f)))
 	_check(_row(f, "target_w")["detail"] == "204 W" and _row(f, "ride_mode")["detail"] == "ERG",
 		"puissance cible affichée (%s)" % _row(f, "target_w")["detail"])
@@ -112,7 +112,7 @@ func _test_pause_rows_and_commands() -> void:
 		and not _row(f, "ride_mode")["editing"], "Y annule le changement de mode")
 	# Entraînement : pas de ligne de mode.
 	var g = _paused(WORKOUT, "ERG")
-	_check(_ids(g) == ["resume", "end_save", "abandon", "bot1", "ghost", "peloton"],
+	_check(_ids(g) == ["resume", "end_save", "abandon", "ghost", "peloton"],
 		"entraînement : pas de bascule, pas de Difficulté en ERG (lot NI2) (%s)" % str(_ids(g)))
 	# Retour en SIM choisi à la pause : la Difficulté revient tout de suite, avant la trame suivante.
 	var h = _paused(FREE, "ERG")

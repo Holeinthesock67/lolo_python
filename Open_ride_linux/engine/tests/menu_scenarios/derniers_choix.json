@@ -1,5 +1,5 @@
 {
-  "description": "Derniers choix (lot O32) : parcours et bot de la dernière séance repris au lancement suivant, pour le profil en cours.",
+  "description": "Derniers choix (lot O32) : parcours et peloton de la dernière séance repris au lancement suivant, pour le profil en cours.",
   "fichiers": {
     "OpenRide/Profils/.migration": "fini\n",
     "OpenRide/Profils/cycliste-a/profil.toml": "[profil]\nid = \"cycliste-a\"\nnom = \"Cycliste A\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 200\n"
@@ -9,10 +9,9 @@
     {"choisir": "world"},
     {"choisir": "demo"},
     {"choisir": "ride"},
-    {"ecran": "ready", "contient": ["Bot 1 : aucun"]},
-    {"choisir": "bot1"},
-    {"choisir": "bot1"},
-    {"ecran": "ready", "contient": ["Bot 1 : 250 W"]},
+    {"ecran": "ready", "contient": ["Peloton : aucun"], "absent": ["Bot 1"]},
+    {"choisir": "peloton"},
+    {"ecran": "ready", "contient": ["Peloton : 4 bots"]},
     {"choisir": "start"},
     {"journal": "core", "motif": "-> RUNNING", "delai": 20},
     {"commande": "end_session", "args": {"save": false}},
@@ -22,7 +21,7 @@
     {"ecran": "home", "contient": ["Parcours : Col du lacet"], "delai": 20},
     {"capture": "accueil_dernier_parcours"},
     {"choisir": "ride"},
-    {"ecran": "ready", "titre": "Prêt : session libre — Col du lacet", "contient": ["Bot 1 : 250 W"]},
+    {"ecran": "ready", "titre": "Prêt : session libre — Col du lacet", "contient": ["Peloton : 4 bots"]},
     {"capture": "pret_dernier_bot"}
   ]
 }

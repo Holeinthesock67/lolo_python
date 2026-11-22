@@ -38,7 +38,6 @@ func _item(f, id: String) -> Dictionary:
 const SETTINGS := {"type": "settings", "v": 1, "items": [
 	{"key": "survivor.opponents", "label": "Survivant : adversaires", "type": "int", "value": 4, "min": 2, "max": 11, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "survivor.spacing_km", "label": "Survivant : écart des arches", "type": "int", "value": 2, "min": 1, "max": 3, "step": 1, "unit": "km", "group": "ride", "applies": "next_session"},
-	{"key": "bots.level_pct", "label": "Niveau des bots", "type": "int", "value": 100, "min": 50, "max": 150, "step": 5, "unit": "%", "group": "ride", "applies": "next_session"},
 	{"key": "bots.objective", "label": "Objectif des bots", "type": "choice", "value": "tempo", "choices": ["recovery", "endurance", "tempo", "threshold", "max"], "group": "ride", "applies": "next_session"},
 	{"key": "survivor.spread", "label": "Survivant : écart de niveau", "type": "choice", "value": "normal", "choices": ["tight", "normal", "wide"], "group": "ride", "applies": "next_session"},
 	{"key": "survivor.after_out", "label": "Survivant : si éliminé", "type": "choice", "value": "ride", "choices": ["ride", "end"], "group": "ride", "applies": "next_session"}]}
@@ -71,7 +70,7 @@ func _run() -> void:
 	act = f.handle("A_LONG")
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
 	_check(str(f.state()["title"]).begins_with("Prêt : Dernier survivant"), "titre du mode")
-	_check(_ids(f) == ["start", "change_route", "set:survivor.opponents", "set:survivor.spacing_km", "set:bots.level_pct",
+	_check(_ids(f) == ["start", "change_route", "set:survivor.opponents", "set:survivor.spacing_km",
 		"set:survivor.spread", "set:survivor.after_out"], "Lancer, parcours, puis les quatre réglages (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "4 arches sur 8 km" and _item(f, "start")["enabled"],
 		"Lancer : longueur de course")

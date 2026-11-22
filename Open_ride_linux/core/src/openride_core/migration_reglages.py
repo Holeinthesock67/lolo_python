@@ -23,6 +23,8 @@ from .config_repair import key_lines
 RETIRED: tuple[tuple[str, str, str], ...] = (
     # R5 : « Textures du décor » ; « auto » suit la Qualité graphique (basses et moyennes avaient la même taille)
     ("render", "texture_level", "réglage retiré du menu (lot NI2), suit la Qualité graphique"),
+    # Lot NI3 : « Niveau des bots » ; la dose se choisit avec l'Intensité du jour, la cote Elo règle le reste
+    ("bots", "level_pct", "réglage retiré du menu (lot NI3), la dose se choisit avec l'Intensité du jour"),
 )
 
 

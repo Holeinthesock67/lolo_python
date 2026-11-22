@@ -46,7 +46,6 @@
         "change_route",
         "set:grandprix.opponents",
         "set:grandprix.distance_km",
-        "set:bots.level_pct",
         "set:grandprix.chaos",
         "set:grandprix.box_every_m",
         "gp_items"
@@ -56,6 +55,7 @@
         "Objets : tous"
       ],
       "absent": [
+        "Niveau des bots",
         "Bot 1",
         "Fantôme de la dernière séance",
         "Passer en session ERG",
@@ -172,7 +172,6 @@
         "change_route",
         "set:grandprix.opponents",
         "set:grandprix.laps",
-        "set:bots.level_pct",
         "set:grandprix.chaos",
         "set:grandprix.box_every_m",
         "gp_items"
