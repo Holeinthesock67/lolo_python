@@ -369,3 +369,11 @@ def test_launch_writes_the_overrides_then_puts_everything_back(tmp_path, monkeyp
     assert seen["seance"]["commandes"][1]["args"]["bots"][0]["power_w"] == 120
     assert (tmp_path / "powerups.toml").read_text(encoding="utf-8") == "[feather]\nfactor = 0.9\n"
     assert not [q for q in tmp_path.rglob("*.toml") if q.name in ("config.toml", "profil.toml")]
+
+
+def test_guided_trials_run_in_high_unless_the_fiche_says_otherwise():
+    assert ("render", "quality", "high") in EP.reglages_essai(fiche())
+    basse = fiche(config={"render": {"quality": "low"}})
+    assert [v for s, k, v in EP.reglages_essai(basse) if (s, k) == ("render", "quality")] == ["low"]
+    from openride_core import config
+    assert EP.QUALITE_ESSAI in config.CHOICES[("render", "quality")]

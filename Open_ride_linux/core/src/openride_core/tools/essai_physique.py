@@ -249,6 +249,7 @@ def evenements_piste(epreuve: str) -> set[str]:
 
 SURCHARGES_PERMISES = ("powerups.toml",)   # fichiers de ~/OpenRide qu'un essai peut surcharger (remis après)
 ECHAUFFEMENT_ESSAI_MAX_MIN = 3             # échauffement de course (#958) permis dans un essai
+QUALITE_ESSAI = "high"                     # qualité graphique des essais guidés (22/11), remise après la séance
 
 ECART_CONSIGNE_PCT = 10.0   # consigne du départ et effort des bots : 10 points d'écart au plus
 
@@ -593,6 +594,14 @@ def journal_neuf(dossier: Path, depuis: float) -> Path | None:
     return max(neufs, key=lambda p: p.stat().st_mtime) if neufs else None
 
 
+def reglages_essai(fiche: Fiche) -> list[tuple[str, str, Any]]:
+    """Réglages posés pour la séance : ceux de la fiche, et la qualité des essais (high) si elle n'en dit rien."""
+    reglages = list(fiche.config)
+    if not any((sec, k) == ("render", "quality") for sec, k, _ in reglages):
+        reglages.append(("render", "quality", QUALITE_ESSAI))
+    return reglages
+
+
 def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool = False) -> int:
     from .. import config_edit
     from .. import config as config_mod
@@ -613,7 +622,7 @@ def lancer(fiche: Fiche, profil: str, sim: bool, cible: float | None, muet: bool
     fichiers = [config_mod.OPENRIDE_HOME / nom for nom in fiche.surcharges]
     sauvegardes = {p: (p.read_bytes() if p.exists() else None) for p in (config_path, profil_path, *fichiers)}
     deroule = Deroule(fiche, cible_w)
-    reglages = list(fiche.config)
+    reglages = reglages_essai(fiche)
     if fiche.a_des_bots and fiche.bots_cible_pct is not None:
         ftp_w = float(config_mod.load(config_path, profil_path if profil_path.exists() else None).rider.ftp_w)
         niveau = niveau_bots(fiche, cible_w, ftp_w)

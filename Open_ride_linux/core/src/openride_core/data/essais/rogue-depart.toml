@@ -12,6 +12,7 @@ commandes = [
 questions = [
   "Cyber-Rogue : savoir quoi faire à tout moment, sur 5 ?",
   "Z et ses refus expliqués, avec un son ? (oui/non + remarque)",
+  "En high : brouillard et halo du Cyber-Rogue réussis, sur 5 ? (ciel gris, halo trop large ?)",
 ]
 
 [rogue_balance]
@@ -26,7 +27,7 @@ dire = "Échauffement court, une minute. Suis la puissance affichée par le jeu.
 
 [[etapes]]
 quand = { kind = "rogue", event = "room_start" }
-dire = "Première salle. Z quand l'anneau est plein."
+dire = "Première salle. Z quand l'anneau est plein. Regarde aussi le brouillard au loin et le halo des portes."
 
 [[etapes]]
 quand = { kind = "rogue", event = "room_won" }
