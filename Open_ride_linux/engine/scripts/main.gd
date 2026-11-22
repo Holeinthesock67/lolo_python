@@ -682,7 +682,7 @@ func _apply_theme(name: String) -> void:
 	_theme_dict = theme_dict
 	streamer.set_theme(theme_dict, theme_res.get("theme_dir", ""))
 	_apply_sky_params(theme_dict)
-	if route != null and _route_job.is_empty():
+	if _route_loaded_id != "" and _route_job.is_empty():   # monde vidé (run Cyber-Rogue) : rechargé au retour
 		streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le thème
 	print("Thème : ", name)
 
@@ -1459,6 +1459,7 @@ func _request_route(route_id) -> void:
 	_route_id_requested = route_id
 	if route_id == null or str(route_id) == "":
 		return
+	ipc.test_log("route_requested id=%s" % route_id)
 	var path := _route_path(str(route_id))
 	if path == "":
 		var missing := routes_dir.path_join(str(route_id) + ".world")
@@ -2069,7 +2070,7 @@ func _apply_biome(id: String) -> void:
 	if id == "auto" or BiomeIds.is_biome(id):
 		if _biome_setting != "" and id != _biome_setting and id != streamer.forced_biome:
 			streamer.forced_biome = id
-			if route != null and _route_job.is_empty():
+			if _route_loaded_id != "" and _route_job.is_empty():   # monde vidé (run Cyber-Rogue) : rechargé au retour
 				streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le biome
 			_apply_sky_params(_theme_dict)
 			print("Biome : ", id)
@@ -2281,8 +2282,10 @@ func _on_state_received(state: Dictionary) -> void:
 			if ow_act["action"] == "start":
 				_run_menu_action(ow_act)
 			_refresh_menu()
-	if (route_id == null or str(route_id) == "") and menu_flow.is_visible():
-		route_id = DEMO_ROUTE_ID   # aucun parcours choisi : la démo tourne en fond des menus (lot N6)
+	# Aucun parcours choisi : la démo tourne en fond des menus (lot N6). Pendant une run Cyber-Rogue, pause
+	# comprise, le monde classique reste gelé et vide (lot R-gel) : la pause demandait la démo, construite en
+	# entier sous la scène du mode (images de 140 ms vers 104 s, passes PC r842b et r842c du 12 novembre).
+	route_id = RogueHost.classic_route_id(route_id, menu_flow.is_visible(), rogue_host.is_active(), DEMO_ROUTE_ID)
 	if route_id != _route_id_requested:
 		_request_route(route_id)
 	var running := session_state == "RUNNING"
@@ -2362,6 +2365,8 @@ func _on_state_received(state: Dictionary) -> void:
 		ipc.request_rogue_resync()
 	if rogue_host.is_active() and not rogue_before:
 		_release_route_world()
+	elif rogue_before and not rogue_host.is_active():
+		ipc.test_log("rogue_scene_left")
 	if menu_view != null:
 		_sync_hud(_full_screen_menu())   # entrée et sortie de la run dans la même trame
 

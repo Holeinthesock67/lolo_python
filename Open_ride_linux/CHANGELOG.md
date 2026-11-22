@@ -10,6 +10,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Consignes jugées sur la puissance moyenne des 8 dernières secondes, affichée pendant la run, à 10 % de la consigne près (au moins 5 W), avec une marge de sortie (15 % sous la consigne) : sur 3 s et à 5 W près, le bruit du trainer faisait sortir de la plage sans cesse.
 - Plage en watts et écart en direct à l'écran, son d'entrée et de sortie de la plage (événements `target_in` et `target_out`, contrat IPC révision 1.28).
 
+### Monde classique gelé pendant une run Cyber-Rogue (lot R24)
+- La pause d'une run ne recharge plus le parcours de démo sous la scène du mode : en mode Cyber-Rogue la trame n'a pas de parcours, et l'écran de pause, qui est un menu, demandait la démo des menus, construite en entier (tuiles, arbres, bâtiments, horizon) pendant la run (images de 140 ms vers 104 s, passes PC du 12 novembre).
+- Un thème ou un biome changés pendant la run ne reconstruisent plus le décor vidé ; il est rechargé au retour.
+- Banc du Cyber-Rogue : nouvelle vérification « monde classique gelé pendant la run (pause comprise) ».
+
 ### Trois nouveaux biomes : forêt de nuages, bush à eucalyptus, forêt pluviale tempérée (lot V6-r4)
 - Forêt de nuages des Andes, d'Amérique centrale et d'Afrique de l'Est : fougères arborescentes, palmiers à cire, brouillard épais, perroquets et singes.
 - Bush à eucalyptus d'Australie : eucalyptus clairsemés, terre rouge, herbes sèches, kangourous, maisons à toit de tôle.
