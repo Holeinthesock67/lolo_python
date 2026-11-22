@@ -16,7 +16,7 @@ extends RefCounted
 ## - Moment de fin unique (choix du propriétaire, 21 novembre 10h37) : une fois l'issue connue, la consigne devient
 ##   « COURSE FINIE · 1er sur 8 / Roule au calme autant que tu veux / Y puis A maintenu = bilan » jusqu'à la fin de
 ##   la séance ; plus jamais une course qui a l'air de durer.
-## - Fin commune (lot RT2, révision 1.27) : `state.arrival` (bout d'un parcours en ligne, arrivée du Grand Prix ou
+## - Fin commune (lot RT2, révision 1.32) : `state.arrival` (bout d'un parcours en ligne, arrivée du Grand Prix ou
 ##   de la Course, entraînement fini) donne le même RÉSULTAT et la même consigne de fin, si aucun mode ne l'a déjà
 ##   annoncé ; le bilan reprend les mêmes mots (`arrival_result`, summary_view_model.gd `result_card`).
 ## Le Click perdu ne s'affiche pas (choix du propriétaire, 21 novembre 11h05 : journal technique seulement).
@@ -191,7 +191,7 @@ static func race_result(place: int, of: int) -> Array:
 	return ["ARRIVÉE · %s sur %d" % [place_text(place), of], "place"]
 
 
-## Titres de l'issue de la séance (`state.arrival` et `summary.arrival`, révision 1.27, lot RT2), mêmes mots en
+## Titres de l'issue de la séance (`state.arrival` et `summary.arrival`, révision 1.32, lot RT2), mêmes mots en
 ## séance et au bilan : {tone, title, sub, done_k, done_action?} ; {} pour un entraînement fini (annoncé par
 ## `workout_done`) ou une sorte inconnue.
 static func arrival_result(arr: Dictionary) -> Dictionary:

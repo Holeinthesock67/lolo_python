@@ -1,4 +1,4 @@
-"""Lot RT2 : fin de séance commune (révision IPC 1.27).
+"""Lot RT2 : fin de séance commune (révision IPC 1.32).
 
 Choix du propriétaire du 21 novembre (10 h 37, audit des retours) : « après la fin, on continue à rouler, A maintenu
 = bilan », dans tous les modes. L'arrivée d'un parcours en ligne, du Grand Prix et de la Course ne termine plus la

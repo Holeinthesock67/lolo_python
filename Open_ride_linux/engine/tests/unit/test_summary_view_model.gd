@@ -189,7 +189,7 @@ func _init() -> void:
 	_check(vm.result_card({"gp": {"place": 2, "of": 6, "finished": false}})["title"] == "COURSE NON FINIE",
 		"bilan GP arrêté avant la ligne")
 	_check(vm.result_card({"gp": {"place": 2, "of": 6}})["title"] == "ARRIVÉE · 2e sur 6",
-		"bilan GP d'avant la révision 1.27 : fini à l'arrivée")
+		"bilan GP d'avant la révision 1.32 : fini à l'arrivée")
 	_check(vm.result_card({"survivor": {"place": 4, "of": 8}})["title"] == "ÉLIMINÉ · 4e sur 8"
 		and vm.result_card({"survivor": {"place": 1, "of": 8}})["tone"] == "win", "bilan Dernier survivant")
 	_check(vm.result_card({"track": {"event": "elimination", "place": 1, "of": 8, "finished": true}})["title"] == "VICTOIRE !"

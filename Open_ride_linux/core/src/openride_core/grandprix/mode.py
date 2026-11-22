@@ -578,7 +578,7 @@ class GrandPrixMode:
         out = {"place": self.place(rid), "of": len(self.racers), "launched": dict(sorted(r.launched.items())),
                "received": dict(sorted(r.received.items())), "dodged": r.dodged,
                "gained_s": dict(sorted(r.gained_s.items())), "lost_s": dict(sorted(r.lost_s.items())),
-               "finished": r.finished is not None}   # révision 1.27 (lot RT2) : ligne passée, place définitive
+               "finished": r.finished is not None}   # révision 1.32 (lot RT2) : ligne passée, place définitive
         if self.lap_m:
             out["laps"] = max(int(round(self.length_m / self.lap_m)), 1)
         else:

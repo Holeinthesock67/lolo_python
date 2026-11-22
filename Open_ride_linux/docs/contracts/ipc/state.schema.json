@@ -850,7 +850,7 @@
             },
             "finished": {
               "type": "boolean",
-              "description": "Révision 1.27 (lot RT2) : ligne d'arrivée passée par le cycliste (place définitive)."
+              "description": "Révision 1.32 (lot RT2) : ligne d'arrivée passée par le cycliste (place définitive)."
             }
           }
         },
@@ -1117,7 +1117,7 @@
         },
         "arrival": {
           "type": "object",
-          "description": "Facultatif, révision 1.27 (lot RT2) : `state.arrival` à la fin de la séance (titre commun du bilan) ; absent si la séance s'est arrêtée avant.",
+          "description": "Facultatif, révision 1.32 (lot RT2) : `state.arrival` à la fin de la séance (titre commun du bilan) ; absent si la séance s'est arrêtée avant.",
           "required": [
             "kind",
             "place",
@@ -1972,7 +1972,9 @@
               "z_refused",
               "shift_missed",
               "z_ok",
-              "card_on"
+              "card_on",
+              "target_in",
+              "target_out"
             ]
           }
         },
@@ -2146,6 +2148,15 @@
           "maxLength": 24,
           "description": "Facultatif, révision 1.17 (lot R23) : carte du deck qui vient de se déclencher dans cette trame (événement card_on : overdrive, heal, cursed, springboard, polarity, condition de puissance ou de cadence atteinte), sinon null."
         },
+        "power_judged_w": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Facultatif, révision 1.28 (lot R26) : puissance jugée par le mode (moyenne des judged_power_s dernières secondes, 8 s), sur laquelle se jugent consignes, surchauffe et cartes ; l'engine l'affiche à la place de power_3s pendant la run."
+        },
+        "in_target": {
+          "type": "boolean",
+          "description": "Facultatif, révision 1.28 (lot R26) : puissance jugée dans la plage de la consigne (échauffement, salle, boss), avec la marge de sortie ; false ailleurs."
+        },
         "adrenaline_trend": {
           "type": "object",
           "required": [
@@ -2153,7 +2164,7 @@
             "cause",
             "overheat_in_s"
           ],
-          "description": "Facultatif, révision 1.17 (lot R23) : débit continu de l'adrénaline par seconde (hors gains ponctuels), sa cause et les secondes avant la surchauffe.",
+          "description": "Facultatif, révision 1.17 (lot R23) : débit continu de l'adrénaline par seconde (hors gains ponctuels), sa cause et les secondes avant la surchauffe ; révision 1.28 (lot R26) : aussi à l'échauffement, qui charge l'adrénaline.",
           "properties": {
             "rate_per_s": {
               "type": "number"
@@ -2999,7 +3010,7 @@
     },
     "arrival": {
       "type": "object",
-      "description": "Facultatif, révision 1.27 (lot RT2, fin de séance commune, choix du propriétaire du 21 novembre) : issue de la séance connue, la séance continue au calme jusqu'à « Terminer et enregistrer » ; posé une fois, présent en RUNNING et en PAUSED jusqu'à la fin de la séance, absent sinon.",
+      "description": "Facultatif, révision 1.32 (lot RT2, fin de séance commune, choix du propriétaire du 21 novembre) : issue de la séance connue, la séance continue au calme jusqu'à « Terminer et enregistrer » ; posé une fois, présent en RUNNING et en PAUSED jusqu'à la fin de la séance, absent sinon.",
       "required": [
         "kind",
         "place",

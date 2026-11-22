@@ -180,7 +180,7 @@ func on_state(state: Dictionary) -> Array:
 	return out
 
 
-## Issue de la séance déjà annoncée par le RÉSULTAT commun (lot RT2) : arrivée (`arrival`, révision 1.27),
+## Issue de la séance déjà annoncée par le RÉSULTAT commun (lot RT2) : arrivée (`arrival`, révision 1.32),
 ## entraînement fini, épreuve de piste finie ou cycliste sorti, Dernier survivant gagné ou cycliste éliminé.
 static func issue_known(state: Dictionary) -> bool:
 	if state.get("arrival", null) is Dictionary or state.get("workout_done", null) is Dictionary:

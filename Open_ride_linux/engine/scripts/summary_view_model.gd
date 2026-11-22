@@ -421,7 +421,7 @@ func _result_head(summary: Dictionary) -> Dictionary:
 	var gp = summary.get("gp", null)
 	if gp is Dictionary:
 		var name := "Course" if str(gp.get("mode", "")) == "race" else "Grand Prix des objets"
-		if gp.get("finished", true) == false:   # absent : bilan d'avant la révision 1.27, fini à l'arrivée
+		if gp.get("finished", true) == false:   # absent : bilan d'avant la révision 1.32, fini à l'arrivée
 			return {"title": "COURSE NON FINIE", "sub": name, "tone": "stop"}
 		return _place_head(gp.get("place", null), gp.get("of", null), name, "ARRIVÉE")
 	if arr is Dictionary and str(arr.get("kind", "")) == "workout":
