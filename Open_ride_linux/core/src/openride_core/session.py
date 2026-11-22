@@ -37,7 +37,7 @@ from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from . import mode_routes as mode_routes_mod
-from . import bot_effort, bot_elo, config_edit, last_choices, latency_log, local_weather, seance_file
+from . import bot_effort, bot_elo, config_edit, last_choices, latency_log, local_weather, privacy_zone, seance_file
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -2582,7 +2582,7 @@ class CoreSession:
                 rogue_summary = self.rogue.summary()
                 rec.game(self.rogue.run_line(time.time()))
                 self.progress_svc.use_lives(self.rogue.engine.lives_used)   # vies rattrapant une défaite (R9)
-            fit_path, s, fit_error = rec.finish(save, ts=ts)
+            fit_path, s, fit_error = rec.finish(save, ts=ts, private_start_m=privacy_zone.radius_m(self.cfg))
             records, events = rec.records, rec.events
             records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
             if fit_error and save:
@@ -2620,7 +2620,8 @@ class CoreSession:
         ow = self.openworld
         if ow is not None and save and ow.route is not None and ow.route.ready:
             try:   # lot W14 : la route parcourue devient un parcours de la bibliothèque
-                save_ride(ow.route, self.physics.s, ow.id, self.gpx_dir or GPX_DIR)
+                save_ride(ow.route, self.physics.s, ow.id, self.gpx_dir or GPX_DIR,
+                          private_start_m=privacy_zone.radius_m(self.cfg))
             except (OSError, WorldError) as exc:
                 log.warning("Balade du monde ouvert non enregistrée : %s", exc)
         self._close_open_world()
