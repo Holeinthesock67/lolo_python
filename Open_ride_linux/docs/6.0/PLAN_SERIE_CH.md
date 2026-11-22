@@ -1,7 +1,7 @@
 # Série CH – Ligue d'hiver (mode championnat)
 
-Cahier du mode, lot CH0 (21 novembre 2026). Rien n'est codé : ce document et les maquettes doivent être validés
-par le propriétaire avant le premier lot de code (CH1).
+Cahier du mode, lot CH0 (21 novembre 2026, fusionné avec la PR #968). Code en PR au 22 novembre : CH1 cœur de la
+saison (#972), CH2 dureté (#987), CH3a manche de la semaine (#989) ; CH4 (écrans) et CH5 restent à coder.
 
 Maquettes : `menus/ch0-ligue-hiver/` des fichiers du projet (hors dépôt), planche `planche_1280x720.png`.
 FTP fictive de 250 W sur toutes les maquettes.
