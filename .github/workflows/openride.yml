@@ -124,6 +124,10 @@ jobs:
     needs: python-partie
     if: ${{ always() }}
     runs-on: ubuntu-latest
+    # Pas de copie du dépôt dans ce job : le dossier par défaut Open_ride_linux/ n'existe pas.
+    defaults:
+      run:
+        working-directory: /
     steps:
       - name: Toutes les parties réussies
         run: |
