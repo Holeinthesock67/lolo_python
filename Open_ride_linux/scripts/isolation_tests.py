@@ -250,7 +250,8 @@ def brancher_pytest() -> dict:
                 pytest.fail(message_garde(releves), pytrace=False)
 
     def pytest_collection_modifyitems(session, config, items) -> None:
-        partie = lire_partie(os.environ.get(VARIABLE_PARTIE))
+        # Lue puis retirée : un pytest lancé par un test (garde-fou, recompte) voit toute sa petite suite.
+        partie = lire_partie(os.environ.pop(VARIABLE_PARTIE, None))
         if partie is None:
             return
         k, n = partie

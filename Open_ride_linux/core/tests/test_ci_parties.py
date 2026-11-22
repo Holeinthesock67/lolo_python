@@ -67,6 +67,22 @@ def test_parties_de_la_suite_couvrent_tout(tmp_path) -> None:
     assert len(vus) == len(set(vus)) == sum(range(1, 8))
 
 
+def test_pytest_lance_par_un_test_non_decoupe(tmp_path) -> None:
+    """Un pytest lancé depuis un test d'une partie collecte toute sa suite (régression CI du 22/11)."""
+    suite = tmp_path / "suite"
+    suite.mkdir()
+    (suite / "conftest.py").write_text(
+        f"import sys\nsys.path.insert(0, {str(PROJET / 'scripts')!r})\n"
+        "from isolation_tests import brancher_pytest\nglobals().update(brancher_pytest())\n", encoding="utf-8")
+    (suite / "test_enfant.py").write_text(
+        "import os\ndef test_variable_retiree():\n    assert 'OPENRIDE_TESTS_PARTIE' not in os.environ\n",
+        encoding="utf-8")
+    env = {**os.environ, "OPENRIDE_TESTS_PARTIE": "1/1", isolation_tests.VARIABLE_VERROU: "1"}
+    res = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(suite)],
+                         capture_output=True, text=True, env=env, cwd=suite)
+    assert res.returncode == 0 and "1 passed" in res.stdout, res.stdout + res.stderr
+
+
 def test_durees_lues_dans_un_rapport_junit(tmp_path) -> None:
     rapport = tmp_path / "core.xml"
     rapport.write_text('<testsuites><testsuite><testcase classname="tests.test_a" name="t1" time="1.5"/>'
