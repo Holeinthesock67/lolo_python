@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Jauge « Réserve W' » retirée du Cyber-Rogue (lot R25)
+- La 4e jauge du HUD, « Réserve W' », disparaît : elle n'agissait sur rien dans le jeu et nuisait à la lisibilité (essai du 21 novembre). Restent Ennemi, Bouclier et Adrénaline.
+- L'écran de départ du mode ne propose plus le choix « W' », qui ne réglait que cette jauge.
+
 ### Monde classique gelé pendant une run Cyber-Rogue (lot R24)
 - La pause d'une run ne recharge plus le parcours de démo sous la scène du mode : en mode Cyber-Rogue la trame n'a pas de parcours, et l'écran de pause, qui est un menu, demandait la démo des menus, construite en entier (tuiles, arbres, bâtiments, horizon) pendant la run (images de 140 ms vers 104 s, passes PC du 12 novembre).
 - Un thème ou un biome changés pendant la run ne reconstruisent plus le décor vidé ; il est rechargé au retour.
