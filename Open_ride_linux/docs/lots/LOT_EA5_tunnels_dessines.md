@@ -40,5 +40,6 @@ Choix du propriétaire du 20 novembre (fil du garde-fou de la chaussée, #936) :
 
 - Suites `compiler`, `run_engine_tests.sh` et tests graphiques.
 - Monde ouvert : scénario `ea5_tunnel` du banc des menus (départ de Sevrier, cache séparé), low, medium et high, branche et `main` : GPU (budgets 8, 13 et 16 ms), temps par carré du générateur (carrés refaits : `WORLDGEN_VERSION` 10), captures de l'approche, de l'intérieur et de la sortie.
-- Parcours compilé avec un tunnel (facultatif) : `add-layer <nom>.world tunnels`, `sim_bench.py --world <dossier> --at-m <portail − 300>`.
+- **Captures sûres d'un tunnel (22/11)** : la balade de Sevrier ne passe pas forcément le tunnel (le premier carrefour décide ; banc du 22/11 sans tunnel). Monde d'essai sans réseau `engine/tests/make_tunnel_world.py` (tunnel de 300 m sous une crête de 45 m, km 1,35 à 1,65, parcours compilé, aucun cache du monde ouvert) : `sim_bench.py --world tunnel --at-m 1150,1320,1500,1630 --quality low|medium|high`, plus `--camera follow_far --at-m 1800` pour la crête gardée au-dessus de la sortie. Test `compiler/tests/test_make_tunnel_world.py`.
+- Parcours compilé réel avec un tunnel (facultatif) : `add-layer <nom>.world tunnels`, `sim_bench.py --world <dossier> --at-m <portail − 300>`.
 - Captures validées par le propriétaire avant fusion.
