@@ -95,7 +95,7 @@ class GaugeBar extends Control:
 
 var preset := "low"
 var adapted := false
-var holo: Label                     # ligne de route : vitesse, % FTP, cadence, posture (nom gardé du lot R11)
+var holo: Label                     # ligne de route : % FTP, cadence, posture (vitesse au pavé VITESSE, lot NI1 ; nom gardé du lot R11)
 var gauges: Label                   # étapes à venir (nom gardé du lot R11)
 var banner: Label
 var phase_label: Label              # titre du panneau : phase ou salle
@@ -509,8 +509,8 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	var charging := fight or phase == "WARMUP"   # lot R26 : l'échauffement charge l'adrénaline
 	_bar("adrenaline", charging, float(values.get("adrenaline_frac", 0.0)), "gold", str(values.get("adrenaline_text", "")),
 		float(values.get("adrenaline_z_mark", 0.5)), false)
-	holo.text = "Vitesse %s   %s   %s rpm   %s" % [values.get("gear_text", ""), values.get("power_text", ""),
-		values.get("cadence_text", ""), values.get("posture_text", "")]
+	holo.text = "%s   %s rpm   %s" % [values.get("power_text", ""), values.get("cadence_text", ""),   # vitesse : pavé VITESSE seul (lot NI1)
+		values.get("posture_text", "")]
 	holo.modulate = Palette.color(str(values.get("posture_token", "neutral")), adapted)
 	var trend := str(g.get("adr_trend", ""))
 	adr_trend_label.text = trend
