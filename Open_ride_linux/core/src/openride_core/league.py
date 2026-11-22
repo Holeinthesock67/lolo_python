@@ -173,8 +173,16 @@ class Season:
     classic: RoundResult | None = None
     pauses: list[list[date | None]] = field(default_factory=list)   # [début, fin] ; fin None : en pause
     closed: str | None = None                                       # None, « fin » ou « pause »
+    last_seen: date | None = None                                   # dernier jour vu (horloge qui recule)
 
     # --- calendrier -------------------------------------------------------------------------------
+
+    def seen(self, today: date) -> date:
+        """Jour de la ligue : `today`, jamais avant le dernier jour vu (horloge du PC qui recule : pile du BIOS,
+        double amorçage) ; le dernier jour vu avance avec lui. Rend le jour à utiliser."""
+        if self.last_seen is None or today > self.last_seen:
+            self.last_seen = today
+        return self.last_seen
 
     def paused_weeks(self, today: date) -> int:
         """Semaines gelées par les pauses (lundis franchis pendant chaque pause), jusqu'à aujourd'hui."""
@@ -390,7 +398,7 @@ class Season:
                 "classic_day": self.classic_day.isoformat() if self.classic_day else None,
                 "classic": self.classic.to_dict() if self.classic else None,
                 "pauses": [[a.isoformat() if a else None, b.isoformat() if b else None] for a, b in self.pauses],
-                "closed": self.closed}
+                "closed": self.closed, "last_seen": self.last_seen.isoformat() if self.last_seen else None}
 
     @classmethod
     def from_dict(cls, data: Any) -> "Season":
@@ -419,6 +427,8 @@ class Season:
             if closed not in (None, "fin", "pause"):
                 raise LeagueError(f"fin de saison inconnue : {closed!r}")
             s.closed = closed
+            if data.get("last_seen"):
+                s.last_seen = date.fromisoformat(data["last_seen"])
             return s
         except (KeyError, TypeError, ValueError) as e:   # LeagueError est un ValueError
             raise LeagueError(f"saison illisible : {e}") from e

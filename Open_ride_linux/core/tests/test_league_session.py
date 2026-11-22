@@ -115,3 +115,35 @@ def test_easy_intensity_marked(env, short_round):
     run(s, 900)
     assert s.state.summary["league"]["easy"] is True
     assert league.load(tmp_path / "ligue.json").results[0].easy is True
+
+
+def test_round_cut_by_core_crash_stays_open(env, short_round):
+    """Plantage du core pendant la manche (audit L10) : la reprise ne restaure pas les courses, aucun résultat n'est
+    écrit ; la manche compte comme abandonnée et se recourt dans la semaine."""
+    make, run, _, tmp_path = env
+    s, _, _ = make(7180)
+    s._on_command("league_new", {}, 2)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    run(s, 20)   # le core « tombe » ici : ni fin de séance, ni arrivée
+    assert league.load(tmp_path / "ligue.json").results == {}
+    s2, sent2, errors2 = make(7190)
+    s2._on_command("league_status", {}, 2)
+    assert _status(sent2)["season"]["round"]["playable"]
+    s2._on_command("start", {"mode": "race", "league": True}, 3)
+    assert not errors2 and s2.state.session_state == "RUNNING"
+
+
+def test_clock_going_back_keeps_last_seen_day(env):
+    """Horloge du PC qui recule (audit L11) : la ligue garde le dernier jour vu et ne revient pas en arrière."""
+    from datetime import date, timedelta
+
+    make, _, _, tmp_path = env
+    s, sent, _ = make(7200)
+    s._on_command("league_new", {}, 2)
+    season = league.load(tmp_path / "ligue.json")
+    ahead = date.today() + timedelta(days=8)   # jour vu plus tard que l'horloge actuelle
+    season.last_seen = ahead
+    league.save(tmp_path / "ligue.json", season)
+    s._on_command("league_status", {}, 3)
+    assert _status(sent)["season"]["week"] == season.week_index(ahead) + 1 >= 2
+    assert league.load(tmp_path / "ligue.json").last_seen == ahead

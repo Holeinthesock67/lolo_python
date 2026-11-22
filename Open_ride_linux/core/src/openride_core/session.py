@@ -403,6 +403,7 @@ class CoreSession:
         self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
         self._elo_race: tuple[str, dict[str, str]] | None = None   # (mode, id du bot -> identité Elo), lot BOT-elo
         self._league_run: dict[str, Any] | None = None   # manche de la ligue d'hiver en cours (lot CH3)
+        self._league_seen: date | None = None   # dernier jour vu par la saison (horloge qui recule, CH3)
         self._start_objective: str | None = None   # `start.objective` (course conseillée, lot GP-niv)
         self._effort_bots: list[Any] = []   # bots calibrés au départ, même retirés depuis (bilan, lot GP-niv)
         self._preview_prof: tuple[int, Any] | None = None   # relevé du parcours de `bots_preview` (id du parcours)
@@ -2967,14 +2968,20 @@ class CoreSession:
         return self.records_path.with_name(league.FILE_NAME)
 
     def _league_today(self) -> date:
-        return datetime.fromtimestamp(time.time()).date()
+        """Jour de la ligue : celui de l'horloge, jamais avant le dernier jour vu par la saison (`Season.seen`)."""
+        today = datetime.fromtimestamp(time.time()).date()
+        seen = self._league_seen
+        return seen if seen is not None and seen > today else today
 
     def _league_load(self) -> "league.Season | None":
         """Saison du profil, mise à jour au jour (semaines passées simulées pour les rivaux) et réécrite si besoin."""
         season = league.load(self._league_path())
         if season is None:
             return None
-        if season.advance(self._league_today(), ratings=self._league_ratings_now(season)) or season.closed:
+        before = season.last_seen
+        self._league_seen = season.seen(datetime.fromtimestamp(time.time()).date())
+        if season.advance(self._league_today(), ratings=self._league_ratings_now(season)) or season.closed \
+                or season.last_seen != before:
             try:
                 league.save(self._league_path(), season)
             except OSError as exc:

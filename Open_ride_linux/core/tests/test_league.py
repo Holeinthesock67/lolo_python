@@ -295,3 +295,15 @@ def test_simulated_seasons_rider_fair_share():
         if s.trophy() is None:
             assert s.place_of() > 3 and s.rider_rounds() < 6
     assert 0.04 < wins / races < 0.14
+
+
+def test_seen_day_never_goes_back():
+    from datetime import date
+
+    s = league.new_season(date(2026, 11, 28), seed=3)
+    assert s.seen(date(2026, 12, 2)) == date(2026, 12, 2)
+    assert s.seen(date(2026, 11, 30)) == date(2026, 12, 2)   # horloge reculée : le jour vu est gardé
+    assert league.Season.from_dict(s.to_dict()).last_seen == date(2026, 12, 2)
+    old = s.to_dict()
+    old.pop("last_seen")
+    assert league.Season.from_dict(old).last_seen is None   # fichier d'avant : lu sans le champ
