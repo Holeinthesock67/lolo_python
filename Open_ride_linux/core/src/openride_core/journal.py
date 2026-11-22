@@ -117,7 +117,8 @@ OPTIONAL_RECORD_KEYS = ("head_mps", "cross_mps", "wind_grade_pct", "draft", "dra
 
 
 # Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
-GAME_KINDS = ("powerup", "segment", "jersey", "rogue", "rogue_run", "rogue_snapshot",   # R8 : run Cyber-Rogue
+GAME_KINDS = ("mode_error",   # filet de la boucle : erreur d'un mode, séance terminée (audit du 22 novembre, R3)
+              "powerup", "segment", "jersey", "rogue", "rogue_run", "rogue_snapshot",   # R8 : run Cyber-Rogue
               "wtf_start", "wtf", "wtf_summary",   # lot WTF2 : mode « What the fuck »
               "survivor_start", "survivor", "survivor_summary",   # lot DS2 : Dernier survivant
               "gp_start", "gp", "gp_summary",   # lot GP2 : Grand Prix des objets
