@@ -129,13 +129,19 @@ def test_near_mesh_stays_under_road_where_grade_changes():
     kink = [(x, z, a) for x, z, a in samples if 1555.0 < x < 1575.0 and -615.0 < z < -600.0]
     assert kink and max(_mesh_height(raw, x, z) - a for x, z, a in kink) > 0.0   # défaut d'avant le garde-fou
     tiles = build_tiles(route, NEAR)
-    worst = max(_mesh_height(tiles, x, z) - a for x, z, a in samples)
-    assert worst <= -TERRAIN_BELOW_ROAD_M + 1e-3
+    # 21/11 : la chaussée contrôlée est celle que l'engine dessine (Catmull-Rom, bas-côtés compris, road_ground.py)
+    from openride_core import road_ground
+    upper, lower = road_ground.corridor(route)
+    worst = max(_mesh_height(tiles, x, z) - lim for x, z, lim in upper)
+    assert worst <= 1e-3
+    short = max(lim - _mesh_height(tiles, x, z) for x, z, lim in lower)
+    assert short <= 1e-3                                   # talus de l'engine appuyés sur le sol
 
 
 def test_clear_road_lowers_only_what_is_needed():
-    """Sur la démonstration, le garde-fou ne touche que les sommets des triangles qui dépassent (environ 650 sur
-    plus de 130 000), de 13 cm au plus."""
+    """Sur la démonstration, le garde-fou ne touche que les sommets des triangles qui dépassent (environ 1 200 sur
+    plus de 130 000 depuis le 21/11 : chaussée de l'engine et bas-côtés, qui s'écarte des segments droits dans les
+    lacets), de 60 cm au plus."""
     from openride_core.demo_world import DEMO_LENGTH_M
     from openride_core.synthetic_terrain import clear_road
 
@@ -146,6 +152,6 @@ def test_clear_road_lowers_only_what_is_needed():
               for k in terrain.tiles_for(NEAR)}
     after = {k: list(v) for k, v in before.items()}
     lowered = clear_road(after, route)
-    assert 0 < lowered < 1000
+    assert 0 < lowered < 2000
     drops = [b - a for k in before for b, a in zip(before[k], after[k])]
-    assert min(drops) >= 0.0 and max(drops) < 0.2
+    assert min(drops) >= 0.0 and max(drops) < 0.6
