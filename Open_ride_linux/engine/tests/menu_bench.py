@@ -32,7 +32,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
   `contient` et `absent` : textes cherchés dans la ligne d'état, les éléments « libellé — détail », les pastilles
   des appareils et la carte de détail ; `focus`, `elements`, `statut`, `edition`), `menu_cache`, `config` ({clé: valeur} de
   config.toml, `null` : absente), `journal` (`core` ou `engine`) + `motif`, `fichier` (chemin ou motif
-  glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente » ;
+  glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente », et "≠départ" « présente et différente de la valeur du lancement »
+  (qualité changée au menu quand `--qualite` impose celle du départ) ;
 - autres : `commande` (+ `args`), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
   route, `delai` 900 s par défaut), `capture` (nom), `relancer` (core et engine arrêtés proprement puis relancés sur le
   même HOME : persistance des réglages) ;
@@ -221,6 +222,16 @@ UNILATERAL = {**READY, "click": {"appear_at": 0.5, "connect_delay_s": 0.3, "minu
 APPAREILS = {"prets": READY, "unilateral": UNILATERAL}
 # Réglages de départ du banc (le scénario peut les changer) : rendu léger sous Xvfb, fenêtre et non plein écran.
 BASE_CONFIG = {"render.quality": "low", "render.display": "windowed"}
+
+
+def config_matches(got: Any, want: Any, start: Any) -> bool:
+    """Valeur lue dans config.toml pour une étape `config` : "*" présente, "≠départ" présente et différente de la
+    valeur écrite au lancement (`start`), sinon égale à `want`."""
+    if want == "*":
+        return got is not None
+    if want == "≠départ":
+        return got is not None and got != start
+    return got == want
 
 STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris", "element", "point", "click",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
@@ -694,8 +705,8 @@ class Run:
                 data = tomllib.loads(self.config.read_text(encoding="utf-8"))
             except (OSError, tomllib.TOMLDecodeError) as exc:
                 data = {"_erreur": str(exc)}
-            bad = {k: config_get(data, k) for k, v in want.items()
-                   if (config_get(data, k) is None if v == "*" else config_get(data, k) != v)}
+            bad = {k: config_get(data, k) for k, v in want.items() if not config_matches(config_get(data, k), v,
+                                                                                      self.start_config.get(k))}
             if not bad or now() >= deadline:
                 break
             time.sleep(0.2)
@@ -816,10 +827,12 @@ class Run:
             copy_render_caches(self.args.caches_rendu, self.home)
         self.state_port, self.cmd_port = free_udp_ports(2)
         self.config = self.tmp / "config.toml"
+        # Valeurs écrites au lancement, gardées pour la valeur « ≠départ » des étapes `config` (--qualite change
+        # la qualité de départ : un scénario qui la change au menu ne peut pas viser une valeur fixe, 22 novembre).
+        self.start_config = {**BASE_CONFIG, **self.real_caches_config(), **doc.get("config", {}),
+                             **({"render.quality": self.args.qualite} if self.args.qualite else {})}
         self.config.write_text(f"[ipc]\nport_state = {self.state_port}\nport_commands = {self.cmd_port}\n"
-                               + config_text({**BASE_CONFIG, **self.real_caches_config(), **doc.get("config", {}),
-                                             **({"render.quality": self.args.qualite} if self.args.qualite else {})}),
-                               encoding="utf-8")
+                               + config_text(self.start_config), encoding="utf-8")
         self.control = self.tmp / "click.jsonl"
         scen = {**APPAREILS[doc.get("appareils", "prets")], "control_file": str(self.control)}
         (self.tmp / "scenario.json").write_text(json.dumps(scen), encoding="utf-8")

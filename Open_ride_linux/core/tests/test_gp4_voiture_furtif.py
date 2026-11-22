@@ -23,14 +23,14 @@ from test_grandprix_session import DT, STATE_LIMIT_BYTES, T0_WALL, env, validato
 # --- règles du mode (module pur) -----------------------------------------------------------------
 
 def test_team_car_escort_lasts_its_six_seconds():
-    assert DEFAULT_ITEMS["team_car"].escort == "car_a" and "car_a" in traffic.KINDS
+    assert DEFAULT_ITEMS["team_car"].escort == "team_car" and "team_car" in traffic.KINDS
     assert all(not s.escort for k, s in DEFAULT_ITEMS.items() if k != "team_car")   # donnée, pas de branche
     sim = Sim({ME: 250.0, "b": 250.0})
     assert sim.mode.escorts() == []
     sim.give("b", "team_car")
     assert sim.mode.use("b")
     sim.run(1.0)
-    assert sim.mode.escorts() == [("b", "car_a")]
+    assert sim.mode.escorts() == [("b", "team_car")]
     assert sim.phys["b"].v == pytest.approx(1.5 * V_EQ, rel=1e-6)
     sim.run(5.1)
     assert sim.mode.escorts() == []
@@ -112,7 +112,7 @@ def test_team_car_drawn_and_felt_as_shelter_only(env, monkeypatch):
     # de l'effet
     assert vehicles and 6.0 / DT - 50 <= len(vehicles) <= 6.0 / DT + 3
     car = vehicles[0][0]
-    assert (car["id"], car["kind"], car["dir"]) == ("tc0", "car_a", 1)
+    assert (car["id"], car["kind"], car["dir"]) == ("tc0", "team_car", 1)
     state_v = validator("state")
     d = frame(s)
     d["vehicles"] = vehicles[0]

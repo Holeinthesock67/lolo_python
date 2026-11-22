@@ -116,7 +116,7 @@ def test_sim_control_still_sends_the_grade():
 def test_pilotage_is_a_menu_setting():
     from openride_core import settings
     item = next(it for it in settings.current(config.Config()) if it["key"] == "trainer.control")
-    assert item["label"] == "Pilotage du trainer" and item["group"] == "ride"
+    assert item["label"] == "Pilotage du trainer" and item["group"] == "advanced"   # lot NI2
     assert item["value"] == "sim" and item["choices"] == ["sim", "resistance"]
     assert settings.get("trainer.control").scope == "machine"
 

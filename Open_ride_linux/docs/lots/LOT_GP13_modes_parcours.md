@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : parcours propres à un mode (Vélodrome, Grand Prix), règle unique, accueil et listes | Python, GDScript | GP9, VD10, O32, O38 | Moyenne | GP13a **livré le 16 novembre** (PR #904, avec GP14) ; GP13b fait le 19 novembre (PR en revue, bancs et captures à valider) |
+| Série GP : parcours propres à un mode (Vélodrome, Grand Prix), règle unique, accueil et listes | Python, GDScript | GP9, VD10, O32, O38 | Moyenne | **Livré le 21 novembre** (GP13a : PR #904, 16 novembre ; GP13b : PR #932, 21 novembre) |
 
 Série GP (mode « Grand Prix des objets ») et série VD (vélodrome). Plan validé par le propriétaire le 15 novembre 2026 : `PLAN_PARCOURS_GRAND_PRIX.md` (dossier du projet, v2).
 
@@ -42,6 +42,8 @@ Un mode peut avoir ses propres parcours, reconnus à une étiquette de leur fich
 - GP13b : bancs et captures (section 6).
 
 ## 6. Livraison GP13b (19 novembre 2026)
+
+**Fusionné le 21 novembre 2026 (PR #932 (GP13b)).** Les points « Reste » ci-dessous décrivent l'état d'avant la fusion.
 
 Deux parcours propres au Grand Prix, écrits par le générateur des démonstrations (`openride_compiler.demo_biomes`, entrées de `DEMO_SET` du jeu de base, étiquette `grandprix` de `DEMO_LIBRARY`) et installés avec les contenus de départ, comme le Circuit des Prés :
 

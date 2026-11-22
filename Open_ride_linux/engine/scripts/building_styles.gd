@@ -154,6 +154,9 @@ const BIOME_STYLES := {
 	"sand_desert": "pise", "rock_desert": "pise", "jungle": "paillote", "wetland": "chaumiere",
 	"coast": "ardoise", "volcanic": "basalte", "japan": "kawara", "atlantic_heath": "pierre_seche",
 	"high_plateau": "altiplano", "reef": "ardoise",   # lot SM1 : le parcours sous-marin n'a pas de maison
+	# Lot V6-r4 : maisons coloniales à tuiles rondes des Andes, maisons de planches à toit de tôle du bush,
+	# maisons à bardeaux de cèdre de la côte Pacifique
+	"cloud_forest": "tuile_ronde", "eucalypt_woodland": "bois_peint", "temperate_rainforest": "bois",
 }
 
 ## Teintes propres aux matières (l'enduit et les tuiles prennent celles du thème)

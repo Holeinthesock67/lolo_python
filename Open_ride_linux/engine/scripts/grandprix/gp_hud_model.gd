@@ -75,8 +75,16 @@ func view(state, now_s: float) -> Dictionary:
 		return {"visible": false}
 	remember_bots(state.get("bots", null))
 	var strip := strip_rows(gp, state.get("bots", null), _num(state.get("s", null), NAN), _num(state.get("v", null), 0.0))
+	if is_race(gp):   # Course (lot CR1) : place et classement complet, sans case d'objet, voies ni menace
+		return {"visible": true, "race": true, "item": {}, "fx": [], "place": place_view(gp, strip), "strip": strip,
+			"lanes": {}, "warn": {}}
 	return {"visible": true, "item": item_view(gp, now_s), "fx": fx_view(gp), "place": place_view(gp, strip),
 		"strip": strip, "lanes": lanes_view(gp, _num(state.get("s", null), NAN)), "warn": warn_view(gp)}
+
+
+## Course classique contre les bots (lot CR1, contrat 1.23) : objet `gp` avec `mode` = « race », sans objet.
+static func is_race(gp) -> bool:
+	return gp is Dictionary and str(gp.get("mode", "")) == "race"
 
 
 ## Case d'objet : {kind, rolling, n (charges affichées, 0 : pas de badge), key, empty}.
@@ -293,12 +301,23 @@ func hit_view(gp: Dictionary) -> Dictionary:
 	return {}
 
 
-## Lignes du bilan (`summary.gp`, maquette 7), au format de summary_view_model.gd : [{label, value, unit}].
+## Lignes du bilan (`summary.gp`, maquette 7 ; Course, lot CR1 : place et format seulement), au format de summary_view_model.gd : [{label, value, unit}].
 ## Place ; objets lancés, reçus et esquivés ; temps gagné ou perdu par objet (les MAX_ITEM_LINES plus forts) ;
 ## bilan des objets ; rappel que puissance et vitesse réelles sont au journal et au FIT.
 static func summary_lines(gp: Dictionary) -> Array:
 	var place := int(_num(gp.get("place", null), 0.0))
 	var of := int(_num(gp.get("of", null), 0.0))
+	if is_race(gp):   # Course (lot CR1) : place et format, sans ligne d'objets ; records et maillots comptent
+		var fmt := ""
+		if _is_num(gp.get("laps", null)):
+			fmt = "%d tour%s" % [int(gp["laps"]), "s" if int(gp["laps"]) > 1 else ""]
+		elif _is_num(gp.get("distance_km", null)):
+			fmt = "%s km" % fr1(float(gp["distance_km"]))
+		var res: Array = [{"label": "Course", "value": ("%s sur %d" % [place_text(place), of]) if place >= 1
+			else "course non finie", "unit": ""}]
+		if fmt != "":
+			res.append({"label": "Format", "value": fmt, "unit": ""})
+		return res
 	var out: Array = [{"label": "Grand Prix des objets",
 		"value": ("%s sur %d" % [place_text(place), of]) if place >= 1 else "course non finie", "unit": ""}]
 	var launched := _counts(gp.get("launched", null))

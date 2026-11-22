@@ -17,7 +17,8 @@ Méthode, point par point de la grille 17 × 17 de chaque tuile (cases de 62,5 m
    prairie → prairie ou steppe, sol nu → désert de sable ou de roche, neige → `polar` ou `alpine`, etc. ; eau
    et bâti ne votent pas. Dans un paysage volcanique connu (`data/volcanic_areas.toml`), le sol nu et le
    sable OSM (`natural=sand` : cendres, lapilli) donnent `volcanic`. Dans un rectangle d'un biome régional
-   (`data/biome_zones.toml`, lot AT2 : Atlantique et landes), sous un climat de Köppen de sa liste, les classes de
+   (`data/biome_zones.toml`, lot AT2 : Atlantique et landes, Japon, puis forêt de nuages, forêt pluviale tempérée
+   et bush à eucalyptus du lot V6-r4), sous un climat de Köppen de sa liste, les classes de
    sa liste donnent ce biome (classe propre au compilateur, 203 pour `atlantic_heath`).
 3. **Bruit de bord déterministe** (hachage des indices globaux du point, donc de `ix`, `iz`) puis **flou de
    2 cases** (noyau binomial 5 × 5) : pas de frontière droite. Un point sans vote reçoit le biome de prairie
@@ -51,11 +52,12 @@ from . import koppen
 BIOME_VERSION = "1.0"
 # Identifiants du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, 6.0) et `atlantic_heath`
 # (lot AT1, 6.0) et `high_plateau` (lot HP1, 6.0) (Format .world v1 §8 quater), puis `reef` (fond marin, lot SM1) :
-# jamais voté ici (aucune donnée réelle ne le donne), seul le générateur des démos l'emploie.
+# jamais voté ici (aucune donnée réelle ne le donne), seul le générateur des démos l'emploie ; puis les trois biomes
+# régionaux du rang 4 (lot V6-r4, 6.0) : `cloud_forest`, `eucalypt_woodland`, `temperate_rainforest`.
 BIOMES = ("temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
           "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
           "wetland", "coast", "volcanic", "japan", "atlantic_heath",
-          "high_plateau", "reef")
+          "high_plateau", "reef", "cloud_forest", "eucalypt_woodland", "temperate_rainforest")
 INDEX = {b: k for k, b in enumerate(BIOMES)}
 NB = len(BIOMES)
 DEFAULT_BIOME = "temperate_grassland"

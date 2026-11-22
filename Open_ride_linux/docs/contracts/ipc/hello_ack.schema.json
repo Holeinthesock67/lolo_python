@@ -123,7 +123,7 @@
             "maxLength": 16
           },
           "uniqueItems": true,
-          "maxItems": 8
+          "maxItems": 12
         },
         "rogue": {
           "type": "object",

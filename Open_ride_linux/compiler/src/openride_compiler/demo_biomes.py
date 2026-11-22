@@ -53,8 +53,12 @@ Boucle de la Corniche et Route des Vignes (lot GP13b, parcours propres au Grand 
 rocheuse, aires `sea` jusqu'à 1 600 m) ; `--vignes`, boucle sinueuse de 5 km dans les vignes (biome `farmland`,
 lacets `wiggles` de la boucle, relief `vignes_relief`). Routes revêtues, sans épingle (rayon d'au moins 25 m).
 
-Jeu de base (lots O37, O38, DB1, DB2, DJ1, DB3 et GP13b) : les parcours de `DEMO_SET` marqués pour le jeu de base (le tour des
-nouveaux paysages, la route des Érables, le circuit, le récif, le volcan, la Route du Sud et la Route du Grand Nord) portent au menu un nom de parcours (`name` du manifeste) et
+Route des Trois Forêts (lot V6-r4) : `--forets`, trois blocs de 2 km sur la route ouverte, en montée, du bush à
+eucalyptus à la forêt de nuages par la forêt pluviale tempérée (biomes du rang 4 de l'étude 6.0).
+
+Jeu de base (lots O37, O38, DB1, DB2, DJ1, DB3, GP13b et V6-r4) : les parcours de `DEMO_SET` marqués pour le jeu de base (le tour des
+nouveaux paysages, la route des Érables, le circuit, le récif, le volcan, la Route du Sud, la Route du Grand Nord et la
+Route des Trois Forêts) portent au menu un nom de parcours (`name` du manifeste) et
 leurs lieux des noms inventés (`PLACE_NAMES`) ; l'identifiant de fichier ne change pas. Le tour des six paysages, la
 route de la côte et la montée alpine sont sortis du jeu de base par le lot DB1 (décision du propriétaire du
 12 novembre) : ils ne s'installent plus sur un jeu neuf, restent installés chez un joueur qui les a, et servent aux
@@ -136,6 +140,7 @@ DEMO_SET = (("demo-biomes-paysages", "Tour des nouveaux paysages", "paysages", F
             ("demo-volcan", "Volcan en flammes", "volcan", False, False, True),
             ("demo-biomes-sud", "Route du Sud", "sud", False, False, True),
             ("demo-biomes-nord", "Route du Grand Nord", "nord", False, False, True),
+            ("demo-biomes-forets", "Route des Trois Forêts", "forets", False, False, True),
             ("demo-corniche", "Boucle de la Corniche", "corniche", False, True, True),
             ("demo-vignes", "Route des Vignes", "vignes", False, False, True))
 # Tour des nouveaux paysages (lot DB1) : par bloc de 2 km, (biome, paysage du lot U25, sol, toits) ; le paysage,
@@ -167,8 +172,14 @@ NORD = (("boreal_forest", None, None, None),
         ("polar", None, None, None),
         ("tundra", None, None, None),
         ("boreal_forest", None, None, None))
+# Route des Trois Forêts (lot V6-r4 : les biomes du rang 4 de l'étude 6.0 ont leur démonstration, règle du
+# propriétaire du 14 novembre) : du bush à eucalyptus, sec et bas, à la forêt pluviale tempérée, puis la montée finit
+# dans le brouillard de la forêt de nuages ; l'humidité et l'altitude montent d'un bloc au suivant.
+FORETS = (("eucalypt_woodland", None, None, None),
+          ("temperate_rainforest", None, None, None),
+          ("cloud_forest", None, None, None))
 # Parcours en blocs de 2 km : table des blocs de chacun (biome, paysage, sol, toits).
-BLOCK_TOURS = {"paysages": PAYSAGES, "sud": SUD, "nord": NORD}
+BLOCK_TOURS = {"paysages": PAYSAGES, "sud": SUD, "nord": NORD, "forets": FORETS}
 NORD_M = BLOCK_M * len(NORD)
 NORD_LOBES = ((2, 0.16, 0.3), (3, 0.06, 1.1))
 NORD_CLIMB_M = 120.0         # du départ (taïga) à la banquise ; pente au plus ~6 %, ondulations comprises 8 %
@@ -236,6 +247,8 @@ DEMO_LIBRARY = {
                                        "jungle."},
     "demo-biomes-nord": {"description": "Boucle de 10 km de la taïga à la banquise par la toundra, et retour.",
                          "tags": ["grandprix", "libre"]},
+    "demo-biomes-forets": {"description": "6 km de montée du bush à eucalyptus à la forêt de nuages, par la forêt "
+                                          "pluviale tempérée."},
     # Lot GP13b : les deux parcours propres au Grand Prix des objets, avec le Circuit des Prés.
     "demo-corniche": {"description": "Boucle de 2,5 km au-dessus de la mer, entre maquis, pins et falaises.",
                       "tags": ["grandprix"]},
@@ -315,6 +328,13 @@ PLACE_NAMES = {
     "toundra": ("Refuge du Caribou", "Refuge des Lichens"),
     "banquise": ("Station de la Banquise",),
     "banquise_vue": ("Belvédère des Glaces",),
+    # Route des Trois Forêts (lot V6-r4) : un bloc par biome.
+    "bush": ("Ferme des Kangourous",),
+    "bush_vue": ("Belvédère des Gommiers",),
+    "cedres": ("Cabanes des Grands Cèdres",),
+    "cascade": ("Cascade des Mousses",),
+    "finca": ("Finca des Palmiers",),
+    "nuages": ("Col des Nuages",),
     # Boucle de la Corniche et Route des Vignes (lot GP13b).
     "corniche": ("Village des Câpriers",),
     "corniche_vue": ("Belvédère de la Corniche",),
@@ -339,6 +359,8 @@ RECETTE_PLACE_NAMES = {"port": "Port Fictif", "pointe": "Pointe Fictive", "mas":
                        "chenal": "Étang Fictif", "trappeurs": "Hameau Fictif",
                        "lac_nord": "Étang Fictif", "toundra": "Hameau Fictif", "banquise": "Hameau Fictif",
                        "banquise_vue": "Belvédère Fictif",
+                       "bush": "Hameau Fictif", "bush_vue": "Belvédère Fictif", "cedres": "Hameau Fictif",
+                       "cascade": "Étang Fictif", "finca": "Village Fictif", "nuages": "Col Fictif",
                        "corniche": "Village Fictif", "corniche_vue": "Belvédère Fictif", "pinede": "Pointe Fictive",
                        "vignes": "Village Fictif", "domaine": "Hameau Fictif", "vignes_vue": "Belvédère Fictif"}
 
@@ -366,6 +388,10 @@ GRADE = {
     "boreal_forest": lambda u: 2.0 + 1.5 * math.sin(u / 250.0),
     "tundra": lambda u: 1.5 + 1.0 * math.sin(u / 300.0),
     "polar": lambda u: 1.0 + 1.0 * math.sin(u / 330.0),
+    # Lot V6-r4 : collines du bush en faux plat, montée sous les grands conifères, montée plus raide dans les nuages.
+    "eucalypt_woodland": lambda u: 1.5 + 1.5 * math.sin(u / 260.0),
+    "temperate_rainforest": lambda u: 4.0 + 1.5 * math.sin(u / 220.0),
+    "cloud_forest": lambda u: 5.5 + 1.5 * math.sin(u / 240.0),
 }
 # Relief de part et d'autre de la route : (pente des flancs, pente au-delà de 160 m, amplitude des collines).
 FAR_RISE_M = 800.0   # longueur de la pente lointaine : palier à far_slope × 800 m (360 m en montagne)
@@ -390,6 +416,9 @@ SIDES = {
     "boreal_forest": (0.06, 0.05, 25.0),
     "tundra": (0.03, 0.03, 15.0),
     "polar": (0.02, 0.03, 30.0),
+    "eucalypt_woodland": (0.04, 0.04, 25.0),
+    "temperate_rainforest": (0.14, 0.20, 50.0),
+    "cloud_forest": (0.20, 0.35, 70.0),      # versants raides des Andes
 }
 
 
@@ -1073,6 +1102,49 @@ def _polar(op, rng, s0, s1, plan, i):
     op.node(*op.point(s0 + BLOCK_M / 2.0, 25.0), {"tourism": "viewpoint", "name": plan.place("banquise_vue", i)})
 
 
+# --- Route des Trois Forêts (lot V6-r4) : arbres, faune et sons du biome ; les éléments OSM posent les zones,
+# les maisons, l'eau et les lieux nommés ---
+
+def _eucalypt(op, rng, s0, s1, plan, i):
+    """Bush à eucalyptus : forêt claire des deux côtés (eucalyptus, acacias, kangourous du biome), une ferme aux
+    toits de tôle et ses enclos, belvédère sur les collines."""
+    _veg(op, s0 + 50.0, s1 - 50.0, -1, 20.0, 300.0, {"natural": "wood"})
+    _veg(op, s0 + 50.0, s0 + 700.0, 1, 20.0, 300.0, {"natural": "wood"})
+    _veg(op, s0 + 1200.0, s1 - 50.0, 1, 20.0, 300.0, {"natural": "wood"})
+    _veg(op, s0 + 750.0, s0 + 1150.0, 1, 60.0, 260.0, {"natural": "grassland"})
+    for s in (s0 + 850.0, s0 + 900.0, s0 + 1000.0):
+        op.building(s, 27.0, {"building": "house", "building:levels": "1", "building:colour": "#e8dcc4"}, 11.0, 9.0)
+    op.node(*op.point(s0 + 920.0, 34.0), {"place": "hamlet", "name": plan.place("bush", i)})
+    op.node(*op.point(s0 + 1700.0, -25.0), {"tourism": "viewpoint", "name": plan.place("bush_vue", i)})
+
+
+def _rainforest(op, rng, s0, s1, plan, i):
+    """Forêt pluviale tempérée : grands douglas et thuyas des deux côtés, un torrent et sa cascade, cabanes de
+    bardeaux de cèdre."""
+    _veg(op, s0 + 50.0, s1 - 50.0, 1, 18.0, 300.0, {"landuse": "forest"})
+    _veg(op, s0 + 50.0, s0 + 900.0, -1, 18.0, 300.0, {"landuse": "forest"})
+    _veg(op, s0 + 1250.0, s1 - 50.0, -1, 18.0, 300.0, {"landuse": "forest"})
+    mid = s0 + 1100.0
+    op.way([op.point(mid, d) for d in range(-250, 251, 25)], {"waterway": "stream"}, close=False)
+    op.counts["water_lines"] += 1
+    _pond(op, mid, -110.0, plan.place("cascade", i))
+    for s in (s0 + 450.0, s0 + 500.0):
+        op.building(s, -26.0, {"building": "hut", "building:levels": "1", "building:colour": "#6e4630"}, 9.0, 7.0)
+    op.node(*op.point(s0 + 480.0, -34.0), {"place": "hamlet", "name": plan.place("cedres", i)})
+
+
+def _cloud_forest(op, rng, s0, s1, plan, i):
+    """Forêt de nuages : fougères arborescentes et palmiers à cire des deux côtés, une finca aux tuiles rondes et ses
+    caféiers, le col dans le brouillard à l'arrivée."""
+    _veg(op, s0 + 50.0, s1 - 50.0, -1, 18.0, 300.0, {"landuse": "forest"})
+    _veg(op, s0 + 50.0, s0 + 500.0, 1, 18.0, 300.0, {"landuse": "forest"})
+    _veg(op, s0 + 1000.0, s1 - 50.0, 1, 18.0, 300.0, {"landuse": "forest"})
+    _veg(op, s0 + 550.0, s0 + 950.0, 1, 60.0, 220.0, {"landuse": "orchard"})
+    _houses(op, rng, s0 + 600.0, s0 + 900.0, (1,), ["#f2ede2", "#e6dccb", "#2f6b8a"], plan.place("finca", i),
+            gap=(24.0, 32.0), church=False)
+    op.node(*op.point(s1 - 150.0, -25.0), {"tourism": "viewpoint", "name": plan.place("nuages", i)})
+
+
 def _recif(op, rng, plan):
     """Récif (lot SM1) : lagon de sable clair au départ, forêt de laminaires, herbiers clairsemés et sable,
     jardin de corail des deux côtés, tombant plus profond (au sud-est, côté extérieur), retour par une forêt ;
@@ -1119,7 +1191,9 @@ BLOCKS = {"coast": _coast, "mediterranean": _mediterranean, "temperate_grassland
           "ile_volcanique": _volcanic_island, "canyon": _canyon, "high_plateau": _plateau,
           # lot DB3 : les neuf biomes qui n'avaient pas de démonstration (le méditerranéen garde le sien)
           "steppe": _steppe, "sand_desert": _sand_desert, "savanna": _savanna, "jungle": _jungle,
-          "wetland": _wetland, "boreal_forest": _boreal, "tundra": _tundra, "polar": _polar}
+          "wetland": _wetland, "boreal_forest": _boreal, "tundra": _tundra, "polar": _polar,
+          # lot V6-r4 : les trois biomes du rang 4
+          "eucalypt_woodland": _eucalypt, "temperate_rainforest": _rainforest, "cloud_forest": _cloud_forest}
 
 
 # Boucles (lots O38, SM1, DB2 et DB3) : longueur, lobes du rayon (`fake_osm.LoopRoad`), biome (`None` : un bloc de 2 km
@@ -1450,6 +1524,8 @@ def main(argv: list[str] | None = None) -> int:
                       help="la Route du Sud (lot DB3) : six blocs de 2 km, du méditerranéen aux zones humides")
     what.add_argument("--nord", action="store_true",
                       help="la Route du Grand Nord (lot DB3) : boucle de 10 km, taïga, toundra et banquise")
+    what.add_argument("--forets", action="store_true",
+                      help="la Route des Trois Forêts (lot V6-r4) : bush à eucalyptus, forêt pluviale, forêt de nuages")
     what.add_argument("--corniche", action="store_true",
                       help="la Boucle de la Corniche (lot GP13b, Grand Prix) : boucle de 2,5 km au-dessus de la mer")
     what.add_argument("--vignes", action="store_true",
@@ -1470,7 +1546,7 @@ def main(argv: list[str] | None = None) -> int:
             which = ("tour" if args.tour else "circuit" if args.circuit else "recif" if args.recif
                      else "volcan" if args.volcan else "paysages" if args.paysages else "sud" if args.sud
                      else "nord" if args.nord else "corniche" if args.corniche else "vignes" if args.vignes
-                     else args.biome)
+                     else "forets" if args.forets else args.biome)
             loop = which if which in LOOPS else None
             biomes, variants = tour_blocks(which)
             name = args.name or ("biomes-tour" if args.tour

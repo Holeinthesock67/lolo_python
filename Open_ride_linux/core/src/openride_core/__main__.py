@@ -474,9 +474,10 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
     run.add_argument("--ftp-test", choices=["ramp"],
                      help="avec --autostart : séance de test de FTP (rampe par paliers)")
-    run.add_argument("--mode", choices=["ride", "wtf", "survivor", "grandprix"],
+    run.add_argument("--mode", choices=["ride", "wtf", "survivor", "grandprix", "race"],
                      help="avec --autostart : mode de la séance (argument `mode` de start ; bancs du PC, "
-                          "ex. survivor pour le Dernier survivant, grandprix pour le Grand Prix des objets)")
+                          "ex. survivor pour le Dernier survivant, grandprix pour le Grand Prix des objets, "
+                          "race pour la course classique contre les bots)")
     run.add_argument("--seance", type=Path, metavar="FICHIER",
                      help="avec --autostart : séance verrouillée (lot EP1), fichier JSON de commandes du menu "
                           "jouées au lancement (parcours, bots, mode, épreuve, run Cyber-Rogue) ; exclut "

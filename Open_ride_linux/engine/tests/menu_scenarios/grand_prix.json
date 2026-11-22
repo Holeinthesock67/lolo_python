@@ -23,7 +23,6 @@
         "set:grandprix.opponents",
         "set:grandprix.laps",
         "set:bots.level_pct",
-        "set:bots.objective",
         "set:grandprix.chaos",
         "set:grandprix.box_every_m",
         "gp_items",
