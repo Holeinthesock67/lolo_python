@@ -58,6 +58,8 @@ const GO_SIZE := 132
 const GO_FLASH_S := 0.2
 
 var _wait = null          # objet start_wait de la dernière trame, null hors attente
+var _phase := ""          # étape de l'attente en cours, et depuis quand (aide du lot RT4)
+var _phase_since_s := 0.0
 var _cadence := 0.0
 var _cadence_shown := 0.0
 var _go_left_s := 0.0
@@ -99,6 +101,7 @@ func set_route(card: Dictionary) -> void:
 func show_wait(wait, cadence_rpm: float) -> void:
 	if wait == null and _wait != null:
 		_wait = null
+		_phase = ""
 		visible = _go_left_s > 0.0
 		queue_redraw()
 		return
@@ -106,6 +109,10 @@ func show_wait(wait, cadence_rpm: float) -> void:
 		_cadence_shown = cadence_rpm
 	_wait = wait
 	_cadence = cadence_rpm
+	var phase := str(wait.get("phase", "")) if wait is Dictionary else ""
+	if phase != _phase:
+		_phase = phase
+		_phase_since_s = Time.get_ticks_msec() / 1000.0
 	if wait != null:
 		_go_left_s = 0.0
 		visible = true
@@ -153,7 +160,12 @@ func test_info() -> Dictionary:
 	return {"visible": visible, "lights": StartWaitModel.lights(_wait), "go": _go_left_s > 0.0,
 		"text": StartWaitModel.text(_wait), "steps": StartWaitModel.steps(_wait),
 		"route": str(_route.get("name", "")), "route_line": str(_route.get("line", "")), "animated": _animated(),
-		"warmup": StartWaitModel.warmup_view(_wait)}
+		"warmup": StartWaitModel.warmup_view(_wait), "hint": _hint()}
+
+
+## Aide d'une attente qui dure (lot RT4) : trainer muet, décor long à charger.
+func _hint() -> String:
+	return StartWaitModel.hint(_wait, Time.get_ticks_msec() / 1000.0 - _phase_since_s)
 
 
 func _draw() -> void:
@@ -175,6 +187,9 @@ func _draw() -> void:
 			var text := StartWaitModel.text(_wait)
 			var cut := text.find("  (")
 			_centered(_font, text if cut < 0 else text.substr(0, cut), 500.0, TEXT_SIZE, UiTheme.TEXT)
+			var help := _hint()
+			if help != "":
+				_centered(_font, help, 532.0, SMALL_SIZE, UiTheme.WARN)
 		else:
 			_draw_warmup(wv)
 		_draw_route_card()

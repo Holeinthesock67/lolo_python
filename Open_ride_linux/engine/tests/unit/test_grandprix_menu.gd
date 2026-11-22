@@ -140,7 +140,8 @@ func _run() -> void:
 	act = f.handle("A_LONG")
 	_check(act == {"action": "start", "args": {"mode": "grandprix"}}, "start avec mode « grandprix », sans bots")
 	f.on_error("bad_args", "Grand Prix : parcours trop court")
-	_check(str(f.state()["status"]).begins_with("Échec : Grand Prix"), "refus du core sur la ligne d'état")
+	_check(str(f.state()["status"]) == "× REFUSÉ · Départ impossible : le parcours est trop court pour cette course\nÀ faire : choisis un parcours plus long, ou baisse les adversaires ou l'écart"
+		and f.state()["status_error"], "refus du core expliqué : pourquoi et quoi faire (lot RT4, %s)" % str(f.state()["status"]))
 
 	# Parcours en ligne plus court que la distance : la course suit le parcours (lot GP14) ; circuit : tours
 	f.menu.set_world("court", "Courte")
