@@ -291,6 +291,47 @@
             }
           }
         },
+        "bridges": {
+          "type": "object",
+          "description": "Facultative, format 1.9 (lot EA4) : dossier bridges/, ponts dessinés (tablier, garde-corps, piles, §8 septies).",
+          "required": [
+            "present"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "piers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "spans": {
+              "type": "array",
+              "description": "Portions en pont [s0_m, s1_m] du parcours (profil en ligne droite, pas de fondu du terrain).",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              }
+            },
+            "osm_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
         "biome": {
           "type": "object",
           "description": "Facultative, format 1.6 (lot U1) : dossiers biome/near et biome/far, poids de biome par tuile de terrain (§8 quater).",
@@ -325,7 +366,13 @@
                 "japan",
                 "atlantic_heath",
                 "high_plateau",
-                "reef"
+                "reef",
+
+                "cloud_forest",
+
+                "eucalypt_woodland",
+
+                "temperate_rainforest"
               ]
             },
             "forced": {
@@ -354,7 +401,13 @@
                     "japan",
                     "atlantic_heath",
                     "high_plateau",
-                    "reef"
+                    "reef",
+
+                    "cloud_forest",
+
+                    "eucalypt_woodland",
+
+                    "temperate_rainforest"
                   ]
                 }
               ]
@@ -388,7 +441,13 @@
                   "japan",
                   "atlantic_heath",
                   "high_plateau",
-                  "reef"
+                  "reef",
+
+                  "cloud_forest",
+
+                  "eucalypt_woodland",
+
+                  "temperate_rainforest"
                 ]
               },
               "additionalProperties": {

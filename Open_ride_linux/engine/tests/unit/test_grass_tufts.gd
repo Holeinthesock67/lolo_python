@@ -11,6 +11,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const WindModel := preload("res://scripts/wind_model.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 
 var _failures := 0
 var _checked := 0
@@ -145,7 +146,7 @@ func _test_determinism_and_exclusions() -> void:
 	var pond := PackedVector2Array([Vector2(480, 450), Vector2(494, 450), Vector2(494, 550), Vector2(480, 550)])
 	var e = GrassTufts.new()
 	root.add_child(e)
-	e.exclusions = [house, pond]
+	e.exclusions = ExclusionZones.new([house, pond])
 	e.configure(4000, route, 6.0, 7)
 	_settle(e, 500.0)
 	var inside := 0
@@ -534,6 +535,59 @@ func _test_snow() -> void:
 	g.free()
 
 
+## Lot HERBE1 (19/11) : la mer du monde ouvert (#907, côte détaillée, milliers de sommets) et beaucoup de
+## bâtiments. Avant : chaque place testait tous les contours (plus d'une milliseconde par place sur le PC), le temps
+## n'était vérifié que toutes les BATCH places : 8 à 11 ms d'herbe par image dans le cloud (20 à 35 ms sur le PC)
+## et la fenêtre jamais remplie en medium et high. Pire image et fenêtre remplie, dans les trois qualités.
+func _test_fill_with_sea() -> void:
+	var route = _route()
+	var sea := sea_shape()
+	var shapes := [sea]
+	for i in range(1500):
+		var cx := 300.0 + (i % 30) * 15.0
+		var cz := float(i / 30) * 40.0
+		if absf(cx - 500.0) < 12.0:
+			continue
+		shapes.append(PackedVector2Array([Vector2(cx, cz), Vector2(cx + 8, cz), Vector2(cx + 8, cz + 10), Vector2(cx, cz + 10)]))
+	var zones := ExclusionZones.new(shapes)
+	var limit_ms := GrassTufts.URGENT_FRAME_US / 1000.0 + 4.0
+	for preset in ["low", "medium", "high"]:
+		var lv := QualityPresets.living(preset)
+		var g = GrassTufts.new()
+		root.add_child(g)
+		g.configure(lv["grass_tufts"], route, 6.0, 0, lv["grass_tufts_wide"])
+		g.exclusions = zones
+		var worst := 0.0
+		for i in range(600):   # 10 s à 60 images/s, à 15 m/s
+			var t := Time.get_ticks_usec()
+			g.update(100.0 + i * 0.25)
+			worst = maxf(worst, (Time.get_ticks_usec() - t) / 1000.0)
+		var in_sea := 0
+		for p in g.get_positions():
+			if p.x > sea_coast_x(p.z) + 0.05:   # côte exacte (is_point_in_polygon se trompe parfois sur un si grand contour)
+				in_sea += 1
+		_check(worst <= limit_ms, "mer de %d sommets, %s : pire image d'herbe %.1f ms (au plus %.1f)" % [sea.size(), preset, worst, limit_ms])
+		_check(g.pending_count() <= 1, "mer, %s : fenêtre remplie (%d tronçon(s) en attente, %d touffes)" % [preset, g.pending_count(), g.get_visible_count()])
+		_check(in_sea == 0, "mer, %s : aucune touffe dans la mer" % preset)
+		g.free()
+
+
+static func sea_coast_x(z: float) -> float:
+	return 540.0 + 6.0 * sin(z * 0.37) + 2.0 * sin(z * 2.1)
+
+
+## Mer à 40 m à droite de la route (x = 500), côte découpée tous les 25 cm sur 2,2 km (8 800 sommets).
+static func sea_shape() -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var z := -100.0
+	while z <= 2100.0:
+		pts.append(Vector2(sea_coast_x(z), z))
+		z += 0.25
+	pts.append(Vector2(1600.0, 2100.0))
+	pts.append(Vector2(1600.0, -100.0))
+	return pts
+
+
 func _init() -> void:
 	_test_blades_and_tints()
 	_test_far_lod()
@@ -544,6 +598,7 @@ func _init() -> void:
 	_test_cost()
 	_test_fill_without_terrain()
 	_test_fill_priority_slow_terrain()
+	_test_fill_with_sea()
 	_test_desert()
 	_test_snow()
 	_test_window_backwards()

@@ -177,7 +177,28 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 		out.append_array(GpHudModel.summary_lines(summary["gp"]))
 	if summary.get("track") is Dictionary:   # Épreuves de piste (lot VD9) : place, temps, tours, record
 		out.append_array(TrackHudModel.summary_lines(summary["track"]))
+	out.append_array(bots_lines(summary))
 
+	return out
+
+
+## Lignes « Bots » (lot GP-niv : cible visée et moyenne réelle des bots, face à ta puissance moyenne) et « Cote »
+## (lot BOT-elo : cote après la course et son écart, place) ; [] sans ces champs (contrat 1.22).
+static func bots_lines(summary: Dictionary) -> Array:
+	var out: Array = []
+	var be = summary.get("bots_effort")
+	if be is Dictionary and be.get("target_w") != null:
+		var text := "%s W visés" % _format_fr_round(be["target_w"])   # court : la colonne du bilan coupe à ~30 signes
+		if be.get("bots_avg_w") != null:
+			text += ", %s roulés" % _format_fr_round(be["bots_avg_w"])
+		out.append({"label": "Bots", "value": text, "unit": ""})
+	var elo = summary.get("elo")
+	if elo is Dictionary and elo.get("after") != null:
+		var d := int(elo.get("delta", 0))
+		var place := int(elo.get("place", 0))
+		out.append({"label": "Cote", "value": "%s (%s%d), %s sur %d" % [_format_fr_round(elo["after"]),
+			"+" if d >= 0 else "−", absi(d), "1er" if place == 1 else "%de" % place, int(elo.get("of", 0))],
+			"unit": ""})
 	return out
 
 
@@ -255,6 +276,7 @@ func mode_lines(summary: Dictionary) -> Array:
 		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
 	if summary.get("gp") is Dictionary:
 		out.append_array(GpHudModel.summary_lines(summary["gp"]))
+	out.append_array(bots_lines(summary))   # lots GP-niv et BOT-elo
 	return out
 
 

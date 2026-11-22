@@ -149,16 +149,29 @@ func configure(route_data, climbs: Array, pois: Array, cyclist_budget: int, rng_
 	road_width_m = p_road_width_m
 	half_width_at = p_half_width_at
 	traffic = traffic_model
+	extend_route(route_data, climbs, pois)
+	reset()
+
+
+## Route prolongée du monde ouvert (même début, abscisses gardées) : nouvelle route, montées et villages, sans
+## retirer les groupes en cours. À rebours (lot N23), le parcours retourné s'allonge par son début : les groupes
+## gardent leur place sur la route (u = L - s décalé de l'allongement).
+func extend_route(route_data, climbs: Array, pois: Array) -> void:
+	var grown := 0.0 if base_route == null or route_data == null else float(route_data.length_m) - float(base_route.length_m)
+	base_route = route_data
+	route = route_data if direction > 0 or route_data == null else RouteMirror.new(route_data)
+	if direction < 0:
+		for g in groups:
+			g["s"] = float(g["s"]) + grown
 	_villages.clear()
 	for p in pois:
 		if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "village":
 			_villages.append(Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0))))
-	_climbs.clear()
+	_base_climbs.clear()
 	for c in climbs:
 		if typeof(c) == TYPE_DICTIONARY:
-			_climbs.append(Vector2(float(c.get("start_s", 0.0)), float(c.get("summit_s", c.get("end_s", 0.0)))))
-	_base_climbs = _climbs.duplicate()
-	reset()
+			_base_climbs.append(Vector2(float(c.get("start_s", 0.0)), float(c.get("summit_s", c.get("end_s", 0.0)))))
+	_climbs = _base_climbs.duplicate() if direction > 0 else _back_climbs.duplicate()   # retour : set_back_climbs
 
 
 ## Lot N24 : montées du retour (climb_detector.gd `detect_back`, repère du parcours, pied au-dessus du sommet), gardées

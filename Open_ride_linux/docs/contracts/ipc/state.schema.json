@@ -1027,6 +1027,82 @@
               "description": "Place du résultat dans sa table (1 : record), null hors des 10 meilleurs ou sans chrono."
             }
           }
+        },
+        "elo": {
+          "type": "object",
+          "description": "Facultatif, révision 1.22 (lot BOT-elo) : cote Elo du cycliste mise à jour par cette course (Grand Prix, Dernier survivant, épreuve de piste en groupe, réglage `bots.elo` = on) ; absent si la course ne compte pas (arrêtée avant l'arrivée, séance non gardée).",
+          "required": [
+            "mode",
+            "place",
+            "of",
+            "before",
+            "after",
+            "delta"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "place": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "before": {
+              "type": "integer"
+            },
+            "after": {
+              "type": "integer"
+            },
+            "delta": {
+              "type": "integer"
+            }
+          }
+        },
+        "bots_effort": {
+          "type": "object",
+          "description": "Facultatif, révision 1.22 (lot GP-niv) : effort visé par les bots à profil de la séance (moyenne des bots) et leur puissance moyenne réelle, face à `avg_power_w` du cycliste.",
+          "required": [
+            "objective",
+            "ftp_pct",
+            "target_w",
+            "duration_s",
+            "bots_avg_w"
+          ],
+          "properties": {
+            "objective": {
+              "type": "string",
+              "enum": [
+                "recovery",
+                "endurance",
+                "tempo",
+                "threshold",
+                "max"
+              ]
+            },
+            "ftp_pct": {
+              "type": "number",
+              "minimum": 0
+            },
+            "target_w": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_s": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bots_avg_w": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          }
         }
       },
       "required": [
@@ -1378,7 +1454,8 @@
               "truck",
               "bus",
               "moto",
-              "tractor"
+              "tractor",
+              "team_car"
             ]
           },
           "color": {

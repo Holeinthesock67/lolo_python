@@ -52,6 +52,12 @@ const INFO := {
 	"kelp": {"height": 9.0, "deciduous": false, "sway": 4.0},
 	"coral": {"height": 1.4, "deciduous": false, "lod0_m": 150.0, "sway": 0.0},
 	"sea_fan": {"height": 2.0, "deciduous": false, "lod0_m": 150.0, "sway": 0.6},
+	# Lot V6-r4 : palmier à cire de la forêt de nuages, eucalyptus du bush, douglas et thuya géant de la forêt
+	# pluviale tempérée ; grands arbres toujours verts, modèle lointain par case comme les autres arbres
+	"wax_palm": {"height": 28.0, "deciduous": false},
+	"eucalyptus": {"height": 22.0, "deciduous": false},
+	"douglas_fir": {"height": 34.0, "deciduous": false},
+	"red_cedar": {"height": 26.0, "deciduous": false},
 }
 
 ## Matière de chaque face, portée par l'alpha de la couleur du sommet (code / 16) et dessinée par
@@ -109,6 +115,10 @@ const CROWNS := {
 	"kelp": {"w": 2.6, "col": Color(0.46, 0.40, 0.14, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"coral": {"w": 2.0, "col": Color(0.92, 0.90, 0.86, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"sea_fan": {"w": 2.0, "col": Color(0.92, 0.90, 0.88, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"wax_palm": {"w": 6.0, "col": Color(0.24, 0.40, 0.18, MAT_FRONDS / 16.0), "shape": "round", "cy": 27.0, "ry": 1.6, "trunk_w": 0.4},
+	"eucalyptus": {"w": 9.0, "col": Color(0.40, 0.48, 0.36, MAT_LEAVES / 16.0), "shape": "round", "cy": 16.5, "ry": 4.5, "trunk_w": 0.5},
+	"douglas_fir": {"w": 6.4, "col": Color(0.10, 0.23, 0.13, MAT_NEEDLES / 16.0), "shape": "cone", "cy": 10.0, "ry": 0.0, "trunk_w": 0.8},
+	"red_cedar": {"w": 7.4, "col": Color(0.20, 0.33, 0.15, MAT_NEEDLES / 16.0), "shape": "cone", "cy": 3.0, "ry": 0.0, "trunk_w": 0.8},
 }
 
 ## Couleur `rgb` avec la matière `code` dans l'alpha.
@@ -607,6 +617,44 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 					var foot: Vector3 = c + Vector3(cos(a) * 0.1, 0.3, sin(a) * 0.1)
 					_limb(st, c + Vector3(cos(a) * 0.04, 0.0, sin(a) * 0.04), foot, 0.025, 0.02, stem, 3)
 					_frond(st, foot, a, 0.8 + 0.1 * (i % 3), 0.7, 0.3, 0.42, frond)
+		"wax_palm":
+			# Palmier à cire (lot V6-r4) : stipe très haut, mince et presque blanc (cire), couronne de dix palmes
+			# arquées tout en haut, au-dessus de la canopée de la forêt de nuages
+			var wax := mat(Color(0.82, 0.80, 0.74), MAT_PALM_TRUNK)
+			_limb(st, Vector3.ZERO, Vector3(0.3, 14.0, 0), 0.24, 0.2, wax)
+			_limb(st, Vector3(0.3, 14.0, 0), Vector3(0.5, 27.0, 0.1), 0.2, 0.16, wax)
+			_limb(st, Vector3(0.5, 26.4, 0.1), Vector3(0.5, 27.6, 0.1), 0.24, 0.18, mat(Color(0.30, 0.42, 0.22), MAT_STEM))
+			for i in range(10):
+				_frond(st, Vector3(0.5, 27.4, 0.1), TAU * i / 10.0 + 0.2, 3.4, 0.9, 1.9, 1.0, mat(Color(0.24, 0.40, 0.18), MAT_FRONDS))
+		"eucalyptus":
+			# Eucalyptus (lot V6-r4) : fût clair qui pèle, haut et un peu tordu, branches maîtresses montantes et
+			# feuillage gris-vert en touffes claires, sans houppier plein (la lumière passe, forêt claire)
+			var gum := mat(Color(0.80, 0.76, 0.68), MAT_BARK_SMOOTH)
+			var leaves := mat(Color(0.40, 0.48, 0.36), MAT_LEAVES)
+			_limb(st, Vector3.ZERO, Vector3(0.4, 9.0, 0.1), 0.42, 0.3, gum)
+			_limb(st, Vector3(0.4, 8.6, 0.1), Vector3(-0.6, 16.0, 0.5), 0.26, 0.14, gum, 4)
+			_limb(st, Vector3(0.4, 8.6, 0.1), Vector3(2.6, 15.0, -0.6), 0.24, 0.12, gum, 4)
+			_limb(st, Vector3(0.4, 8.6, 0.1), Vector3(0.6, 18.0, -0.4), 0.22, 0.12, gum, 4)
+			_blob(st, Vector3(-1.2, 17.0, 0.8), Vector3(2.8, 2.2, 2.6), leaves)
+			_blob(st, Vector3(3.0, 15.6, -0.9), Vector3(2.4, 1.9, 2.4), shade(leaves, 1.06))
+			_blob(st, Vector3(0.8, 19.6, -0.4), Vector3(2.4, 2.2, 2.2), shade(leaves, 1.1))
+		"douglas_fir":
+			# Douglas (lot V6-r4) : très grand conifère, long fût nu à l'écorce épaisse brun-rouge, houppier en flèche
+			# en quatre étages sombres
+			_limb(st, Vector3.ZERO, Vector3(0, 12.0, 0), 0.6, 0.42, BARK)
+			_cone(st, 10.0, 18.0, 3.2, mat(Color(0.09, 0.22, 0.12), MAT_NEEDLES))
+			_cone(st, 15.0, 24.0, 2.7, mat(Color(0.10, 0.23, 0.13), MAT_NEEDLES))
+			_cone(st, 21.0, 29.5, 2.0, mat(Color(0.11, 0.25, 0.13), MAT_NEEDLES))
+			_cone(st, 27.0, 34.0, 1.2, mat(Color(0.12, 0.26, 0.14), MAT_NEEDLES))
+		"red_cedar":
+			# Thuya géant (lot V6-r4) : pied évasé à l'écorce rousse fibreuse, feuillage vert-jaune en écailles qui
+			# retombe jusqu'au sol, cinq étages larges et une flèche souple
+			_limb(st, Vector3.ZERO, Vector3(0, 4.0, 0), 0.75, 0.45, BARK_RED)
+			_cone(st, 3.0, 9.0, 3.7, mat(Color(0.19, 0.31, 0.14), MAT_NEEDLES))
+			_cone(st, 7.0, 13.5, 3.2, mat(Color(0.20, 0.33, 0.15), MAT_NEEDLES))
+			_cone(st, 11.5, 18.0, 2.6, mat(Color(0.21, 0.35, 0.15), MAT_NEEDLES))
+			_cone(st, 16.0, 22.5, 1.9, mat(Color(0.22, 0.36, 0.16), MAT_NEEDLES))
+			_cone(st, 20.5, 26.0, 1.0, mat(Color(0.23, 0.38, 0.17), MAT_NEEDLES))
 		_:
 			return false
 	return true

@@ -231,6 +231,19 @@ Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1 ──► Y13 ;  Y1, X
 
 **Recette.** Le propriétaire (ou Claude) relit la demande, relance les tests, vérifie les critères et fait les essais réels. Un critère non tenu renvoie le lot.
 
+**Section « Recette PC » et catégorie (décision du propriétaire du 20 novembre, file PC par paquets).** Toute PR qui passe par la file du PC a, dans sa description et dans son cahier, une section `## Recette PC` dont la première ligne donne sa catégorie :
+- `Catégorie : rendu` : la PR touche l'image (shaders, modèles, décor, biomes, terrain, eau, végétation, caméra, HUD dessiné) ; banc en low, high et medium (règle des trois qualités, budgets GPU 8, 13 et 16 ms) ;
+- `Catégorie : logique` : la PR ne change rien à l'image (menu, gel du jeu, liste des parcours, réglages, IPC sans rendu, core, outils) ; une fumée et medium seulement.
+En cas de doute, ou sans ligne lisible, la PR est classée rendu. La section liste ensuite les contrôles sans GPU à faire en cloud (vitrine sans affichage, contrôle du sol sous la route, contacts, scénarios), la mesure GPU et la planche à faire sur le PC, et dit si la PR change `WORLDGEN_VERSION`, `SCHEMA_VERSION` ou la révision IPC (deux PR qui en changent une même ne vont jamais dans le même paquet). `python3 scripts/file_bancs.py categorie CORPS.md` lit la catégorie comme le fera la file. Exemple :
+
+```
+## Recette PC
+Catégorie : logique
+- Cloud : menu_bench --scenario sessions (sans GPU)
+- PC : fumée + medium ; planche du menu
+- Versions : aucune (WORLDGEN_VERSION, SCHEMA_VERSION et révision IPC inchangés)
+```
+
 ## 4. Modèle de message pour confier un lot
 
 ```text
@@ -252,3 +265,23 @@ Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issu
 4. Le propriétaire fusionne ; l'IA ne fusionne pas.
 
 Un nouveau lot reçoit son issue au moment où son cahier est ajouté à `docs/lots/`.
+
+## 6. Séries en cours (21 novembre)
+
+État au 21 novembre 2026 (`main` b2097136). Ce tableau ne liste que les séries encore ouvertes ; le statut de chaque lot reste dans son cahier (§1). Les numéros de révision IPC sont ceux du §6.1 de la [spécification générale](../SPECIFICATION_GENERALE.md#61-révisions-du-contrat-ipc) : chaque PR prend la première révision libre à sa fusion. Règle du propriétaire du 21 novembre : un lot n'est lancé qu'une fois fusionnées les PR dont il dépend, et l'installeur J9 vient en tout dernier.
+
+| Série | Sujet | En PR | Pas encore codés | Abandonnés |
+| --- | --- | --- | --- | --- |
+| RT | Retours et consignes communs à tous les modes | RT1 (#959) | RT2 (fin de course commune, après #958 et #959), RT4 (refus expliqués, après #959 et #960) | RT3 (bots lisibles, 21 novembre ; la révision IPC 1.27 est libérée) |
+| NI | Éléments inutiles retirés des menus, réglages et HUD | NI1 (#963), NI2 (#962) | NI3 (un seul réglage de difficulté des bots, après #941, #966 et #962), NI4 (menus, après #962 et #963) | — |
+| R (bots) | Effort, intensité, réserve et gestes des bots | Effort en watts et cote Elo (#941, IPC 1.22), R1 intensité du jour (#966), RW réserve des bots (#967), R5 gestes de base (#969) | R4 (rivaux reconnaissables, après #941 et #966) | R2 (plafond des jours faciles), R3 (fondu dans RT3, abandonné avec lui) |
+| R (Cyber-Rogue) | Suite du mode Cyber-Rogue | R24 (#933), R25 (#956), R26 (#960, IPC 1.28), R27 (#965) | — | — |
+| Modes | Course classique, Grand Prix, élimination | Mode « Course » CR1 (#939, IPC 1.23), GPL1 (#942, IPC 1.24), GPO1 (#957, IPC 1.25), EL1 (#958, IPC 1.26), GPH1 (#952), fin de séance commune (#944) | — | — |
+| PP | Courbe de puissance par profil | — | PP1 à PP8 (PP3 : écran « Ma puissance », IPC 1.29 réservée) | — |
+| CH | Ligue d'hiver (mode championnat), plan [PLAN_SERIE_CH.md](../6.0/PLAN_SERIE_CH.md) | — | CH1 à CH5 (CH3 : IPC 1.30 réservée) | — |
+| AC | À-coups de l'image | AC1 et AC2 (#953), AC3b (#964) | — | — |
+| EA | Eau du monde ouvert, plan [PLAN_SERIE_EA.md](../6.0/PLAN_SERIE_EA.md) | EA5 tunnels (#940) | — | — (EA1 à EA4 livrés) |
+| Monde ouvert et sol | Sol, relief et décor | Règle unique sol / route (#946), garde-fou d'altitude (#961), décor du monde ouvert (#947), démonstrations longues DL1 (#945), Tour du lac d'Annecy AN1 (#943) | — | — |
+| J9 | Installeur AppImage, notice et bilan final | — | J9a, J9b, J9c ([LOT_J9_installeur_fichier_unique.md](LOT_J9_installeur_fichier_unique.md)), puis le bilan | — |
+
+Autres PR ouvertes hors séries : éoliennes EO1 (#951), toits des bâtiments (#954), essais physiques (#955), paysages U25-p2 (#931).

@@ -10,12 +10,20 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Un thème ou un biome changés pendant la run ne reconstruisent plus le décor vidé ; il est rechargé au retour.
 - Banc du Cyber-Rogue : nouvelle vérification « monde classique gelé pendant la run (pause comprise) ».
 
+### Trois nouveaux biomes : forêt de nuages, bush à eucalyptus, forêt pluviale tempérée (lot V6-r4)
+- Forêt de nuages des Andes, d'Amérique centrale et d'Afrique de l'Est : fougères arborescentes, palmiers à cire, brouillard épais, perroquets et singes.
+- Bush à eucalyptus d'Australie : eucalyptus clairsemés, terre rouge, herbes sèches, kangourous, maisons à toit de tôle.
+- Forêt pluviale tempérée de la côte Pacifique, du Chili, de Nouvelle-Zélande et de Tasmanie : douglas et thuyas géants, mousses, brume.
+- Posés tout seuls sur les vraies routes de ces régions (parcours compilés et monde ouvert), et au choix dans « Biome du décor ».
+- Nouveau parcours de démonstration « Route des Trois Forêts » (6 km, du bush à la forêt de nuages).
+
 ### Monde ouvert : arrivée, montées, portiques et départ direct (lots W18 à W22)
 - En Destination et en Boucle, la séance se termine d'elle-même à l'arrivée (cible atteinte, ou retour au départ) : bilan et balade enregistrée comme avec « Terminer et enregistrer » ; en Balade, pas d'arrivée (lot W19).
 - Montées et sprints repérés en roulant, environ 2 km à l'avance : annoncés et chronométrés au HUD comme sur un parcours, records gardés d'une balade à l'autre sous le même nom (`segments_monde_ouvert.json` du profil, lot W20).
 - Portiques et lignes au départ et à l'arrivée de ces montées et sprints ; arches de bonus tous les 5 km pendant toute la balade, et plus seulement sur les 3 premiers kilomètres (lot W21).
 - Dès que le monde est préchargé, la balade part au pédalage, sans repasser par l'accueil ni l'écran Prêt (lot W18).
 - Plus d'à-coups des arbres à l'entrée d'une tuile proche (lot W22).
+- Banc des menus : la touche simulée ne fige plus l'engine pendant l'appui ; options `--caches-rendu` (départ à chaud, comme le jeu) et `--sonde`, scénario `liste_parcours` (lot ML2).
 - Au bout d'une impasse, la route fait une boucle de retournement d'environ 130 m au lieu de revenir sur place (lot N26).
 
 ### Demi-tour complet (lots N22 à N26)
@@ -23,7 +31,8 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Voitures, camions, tracteurs et cyclistes du décor circulent aussi à rebours (lot N23) ; les montées du retour ont leurs panneaux d'approche, chiffres peints, spectateurs et parapentes (lot N24) ; les arches de bonus se comptent à rebours, une fois chacune par tour (lot N25).
 - Pendant un entraînement ERG ou un test de FTP, le bout d'un parcours en ligne fait demi-tour tout seul, sans arrêt (bandeau « Bout du parcours : demi-tour, l'entraînement continue ») ; une fois l'entraînement fini, le bout suivant termine la séance (lot N26).
 
-### Grand Prix des objets : voiture d'équipe, Furtif et recette (lots GP4, GP11)
+### Grand Prix des objets : voiture d'équipe, Furtif, recette et parcours (lots GP4, GP11, GP13b)
+- Deux nouveaux parcours du Grand Prix, installés avec les contenus de départ : la « Boucle de la Corniche », 2,5 km au-dessus de la mer entre maquis, pins et falaises, et la « Route des Vignes », une boucle sinueuse et vallonnée de 5 km dans les vignes, entre villages et domaines. Comme le Circuit des Prés, ils se choisissent par « Changer de parcours » dans l'écran Prêt du Grand Prix, sont revêtus de bout en bout et sans épingle (lot GP13b).
 - Objets « Voiture d'équipe » (remorquage dans l'abri d'un véhicule) et « Furtif » (échappée et vol d'objet) (lot GP4) ; la voiture ne passe plus sous un coureur plus lent et ne touche plus les usagers de la route (correctifs du 16 et du 17 novembre).
 - Recette du Grand Prix en étapes de 10 min et outil de bilan des courses : `python -m openride_core.tools.gp_recette [--dernieres N] [--json]` (lot GP11).
 
@@ -48,9 +57,22 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Banc des menus : un seul départ du monde ouvert, l'étape gabarit `depart_monde_ouvert`, que tous les scénarios du monde ouvert utilisent ; un départ recopié est refusé.
 - `scripts/file_bancs.py` : file des bancs du PC écrite en TOML, en étapes courtes avec reprise (une étape réussie n'est pas rejouée sur la même tête), fumées d'abord, cache séparé pour une PR qui change le format du cache.
 - e2e : le + attend le départ (braquet 12 → 12 intermittent) ; captures de test avec le menu à jour.
+- File des bancs : environnement des étapes comme `job.sh`, verdict À-COUPS non bloquant, bancs groupés par paquets avec une matrice rendu/logique, étapes cloud jamais scindées, cache séparé sans les balades ni les carrés du joueur.
+- Banc simulé : plus de faux échec « fin de séance » quand le parcours finit avant la durée ; sonde de la pire image qui mesure le vrai temps de l'image (lot PI1).
 
 ### Contrat IPC
-- Révisions 1.17 (retours du Cyber-Rogue, R23), 1.18 (liste `riders`, AS10) et 1.19 (parcours propres à un mode et boîtes prises, GP13 et GP14) ; le core annonce `rev` « 1.19 ». La 1.20 est prévue pour le lot AS11 (en revue).
+- Révisions 1.17 (retours du Cyber-Rogue, R23), 1.18 (liste `riders`, AS10), 1.19 (parcours propres à un mode et boîtes prises, GP13 et GP14), 1.20 (une seule règle de la chaussée pour tous les usagers, `road_part`, AS11) et 1.21 (sorte `team_car` de la voiture d'équipe, GP15) ; le core annonce `rev` « 1.21 ».
+
+### Eau, mer et sol du monde ouvert (lots EA1 à EA4, W23, HERBE1)
+- Un lac a le même niveau sur toute sa surface et le sol est abaissé sous l'eau (lot EA1) ; les grands lacs se voient de loin en monde ouvert (lot EA2) ; les grandes rivières sont dessinées en surface avec un niveau qui descend le long du cours (lot EA3) ; les ponts ont un tablier, des garde-corps et des piles (lot EA4).
+- Mer, côte et plages en monde ouvert, comme sur les parcours compilés (lot W23).
+- Plus d'à-coups de l'herbe près de la mer et des villes (lot HERBE1) ; bornes, panneaux et décor du bord de route posés sur le sol, et décor qui suit la route prolongée ; sol jamais au-dessus de la route en monde ouvert (garde-fou borné, contrôle `scripts/controle_sol_route.py`).
+
+### Grand Prix, départ et menus (lots GP15, PI2)
+- Voiture d'équipe refaite en un seul modèle : un break blanc, galerie et trois vélos sur le toit (lot GP15, contrat IPC révision 1.21).
+- Sas de départ : 1 s de pédalage suffit, à la cadence ou aux watts.
+- Décor préchauffé une seule fois dès le menu, au lieu d'un gel en fin de chargement (lot PI2).
+- « Qui roule ? » : le profil en cours a le focus à l'arrivée de la liste.
 
 ### Aussi sur `main` depuis la 2.0.0, sans note détaillée ici
 Voir les cahiers de `docs/lots/` (ligne de statut et section « Livraison ») : jour et nuit, saisons, saisons par biome et mois au menu (P7, P18, P19, U13, U13b) ; lumières de nuit (P35) ; biomes au compilateur, variantes régionales, climat de Köppen, sons d'ambiance, constructions et faune par biome (U2, U4, U24, U11, U23) ; biomes Japon, Atlantique et hauts plateaux, cols Khardung La et Abra Málaga, glissières japonaises (JP1 à JP8, AT1, AT2, HP2) ; bonus tactiques (TT1 à TT8, contrat 1.13) ; Grand Prix des objets au menu, objets, HUD et bilan (GP2, GP3, GP5, GP7, GP8, GP9) ; vélodrome couvert (VD1 à VD7, VD9, VD10) ; peloton de 11 bots (PL1) ; tactique des bots à profil (Y10) ; séance conseillée (CO1, CO3 à CO6, CO8, CO9) ; collection de cartes (BC1 à BC6) ; fin et lisibilité du Cyber-Rogue (R21, R22) ; demi-tour depuis la pause et Y maintenu, bots changés en pause, bilan en tuiles (N17, N18, N20, N21, contrat 1.9 à 1.11) ; paquets installables hors du dépôt (J4) ; vent de la météo du jour et roue lenticulaire (P33, P34) ; fermeture de Godot (X58).
