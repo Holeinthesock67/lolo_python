@@ -69,14 +69,18 @@ class LoopRoad(Road):
     """Boucle fermée parcourue dans le sens horaire (vue du ciel, nord en haut) : l'intérieur est à droite.
 
     Courbe étoilée autour de l'origine, de rayon modulé `radius · (1 + Σ a·cos(k·t + φ))` pour (k, a, φ) de
-    `lobes`, remise à la longueur `length_m` ; départ au nord du centre. Abscisse curviligne exacte par
-    ré-échantillonnage tous les `STEP` m, recherche du point le plus proche par arbre k-d (scipy)."""
+    `lobes`, remise à la longueur `length_m` ; départ au nord du centre. `wiggles` (lot GP13b) : lacets le long de
+    la boucle, (n, amplitude en m, φ) : la courbe s'écarte de `amplitude · sin(2π n u + φ)` le long de sa normale
+    (u de 0 à 1 sur le tour, n vagues entières : la boucle reste fermée), puis est remise à la longueur. Abscisse
+    curviligne exacte par ré-échantillonnage tous les `STEP` m, recherche du point le plus proche par arbre k-d
+    (scipy)."""
 
     loop = True
     STEP = 2.0
     INSIDE = 1           # côté de l'intérieur de la boucle (droite du sens de marche)
 
-    def __init__(self, length_m: float, lobes: tuple[tuple[int, float, float], ...] = ()) -> None:
+    def __init__(self, length_m: float, lobes: tuple[tuple[int, float, float], ...] = (),
+                 wiggles: tuple[tuple[int, float, float], ...] = ()) -> None:
         import numpy as np   # importés à l'usage : le core lit `demo_biomes` dans un fil (liste des contenus)
         from scipy.spatial import cKDTree
 
@@ -85,6 +89,14 @@ class LoopRoad(Road):
         x, z = r * np.sin(t), -r * np.cos(t)
         seg = np.hypot(np.diff(x), np.diff(z))
         scale = length_m / float(seg.sum())
+        if wiggles:
+            u = np.concatenate(([0.0], np.cumsum(seg))) / float(seg.sum())
+            tx, tz = np.gradient(x), np.gradient(z)
+            tn = np.hypot(tx, tz)
+            off = sum(a * np.sin(2.0 * np.pi * n * u + phi) for n, a, phi in wiggles) / scale
+            x, z = x - tz / tn * off, z + tx / tn * off      # vers la droite du sens de marche
+            seg = np.hypot(np.diff(x), np.diff(z))
+            scale = length_m / float(seg.sum())
         cum = np.concatenate(([0.0], np.cumsum(seg))) * scale
         self.length_m = float(length_m)
         n = int(round(self.length_m / self.STEP))

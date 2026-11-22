@@ -213,6 +213,9 @@ class BotsConfig:
     # (recovery 55 %, endurance 65 %, tempo 80 %, threshold 92 %, max 100 % : bot_effort.OBJECTIVES) ; au
     # vélodrome, l'objectif suit l'épreuve
     objective: str = "tempo"
+    # cote Elo (lot BOT-elo) : on, le niveau des bots des plateaux composés par le core (Grand Prix, Dernier
+    # survivant, piste en groupe) suit la cote du cycliste et celle de chaque bot, mises à jour après chaque course
+    elo: str = "on"
 
 
 @dataclass
@@ -242,6 +245,14 @@ class GrandPrixConfig:
     chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
     box_every_m: int = 500         # écart des rangées de boîtes (500 à 3000 m, pas de 500 m ; 500 par défaut depuis le
                                    # lot GP14, essai du 15 novembre : « pas assez d'objets »)
+
+
+@dataclass
+class RaceConfig:
+    """Mode « Course » (course classique contre les bots, lot CR1) : le Grand Prix sans objet, sur tous les
+    parcours libres. En ligne, la course va jusqu'à l'arrivée du parcours ; sur une boucle, `laps` tours."""
+    opponents: int = 7             # adversaires (2 à 11, peloton du lot PL1)
+    laps: int = 3                  # boucle : nombre de tours (1 à 10)
 
 
 @dataclass
@@ -317,6 +328,7 @@ class Config:
     ride: RideConfig = field(default_factory=RideConfig)
     survivor: SurvivorConfig = field(default_factory=SurvivorConfig)
     grandprix: GrandPrixConfig = field(default_factory=GrandPrixConfig)
+    race: RaceConfig = field(default_factory=RaceConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     depart: DepartConfig = field(default_factory=DepartConfig)
     coach: CoachConfig = field(default_factory=CoachConfig)
@@ -405,6 +417,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("grandprix", "laps"): (1, 5),
     ("grandprix", "distance_km"): (5, 30),
     ("grandprix", "box_every_m"): (500, 3000),
+    ("race", "opponents"): (2, 11),             # lot CR1 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
+    ("race", "laps"): (1, 10),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
@@ -423,11 +437,12 @@ ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
 ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 
 # Valeurs permises des champs textuels à choix fermé.
-# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) `high_plateau` (lot HP1) et `reef` (fond marin, lot SM1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
+# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) `high_plateau` (lot HP1) `reef` (fond marin, lot SM1) et les trois biomes du rang 4 (lot V6-r4) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
 BIOMES: tuple[str, ...] = (
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
     "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau", "reef",
+    "cloud_forest", "eucalypt_woodland", "temperate_rainforest",   # lot V6-r4 (6.0)
 )
 
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
@@ -460,6 +475,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("coach", "objectif"): ("endurance", "courses", "grimpeur"),
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
     ("bots", "objective"): ("recovery", "endurance", "tempo", "threshold", "max"),   # bot_effort.OBJECTIVES
+    ("bots", "elo"): ("on", "off"),   # lot BOT-elo
 }
 
 
@@ -471,7 +487,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("trainer", "difficulty_pct"),
     ("gearing", "start_gear"),
     ("powerups", "mode"),
-    ("bots", "level_pct"), ("bots", "objective"),
+    ("bots", "level_pct"), ("bots", "objective"), ("bots", "elo"),
     ("gravel", "mode"),
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"), ("depart", "echauffement_min"),
@@ -479,6 +495,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("coach", "objectif"), ("coach", "temps_disponible_min"),
     ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "distance_km"), ("grandprix", "chaos"),
     ("grandprix", "box_every_m"),
+    ("race", "opponents"), ("race", "laps"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),
@@ -521,6 +538,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gearing", "step_pct"): "boîte de vitesses virtuelle",
     ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
+    ("render", "texture_level"): "niveau des textures imposé pour les bancs, retiré du menu au lot NI2 (auto suit la qualité)",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
     ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",

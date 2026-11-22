@@ -30,6 +30,19 @@ func is_active() -> bool:
 	return scene != null
 
 
+## Parcours du monde classique à charger pour la trame (lot R-gel). `route_id` : celui de la trame ; sans
+## parcours, la démo tourne en fond des menus (lot N6). Pendant une run (`run_active`, scène du mode
+## présente), pause comprise, aucun : le décor vidé au départ (#897) reste vide jusqu'à la sortie de la scène,
+## puis le parcours du menu est rechargé. La pause demandait la démo, construite en entier sous la scène du
+## mode : images de 140 ms vers 104 s aux passes PC r842b et r842c (12 novembre).
+static func classic_route_id(route_id, menu_shown: bool, run_active: bool, demo_id: String):
+	if run_active:
+		return null
+	if (route_id == null or str(route_id) == "") and menu_shown:
+		return demo_id
+	return route_id
+
+
 ## Pour les tests (lot X41) : {} hors du mode, sinon ce que la scène affiche et les demandes `rogue_resync`.
 func test_info() -> Dictionary:
 	if scene == null:

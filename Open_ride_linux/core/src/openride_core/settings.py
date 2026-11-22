@@ -11,13 +11,15 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
      "max": 600, "step": 5, "unit": "W", "applies": "next_session"}
 
 `group` range le réglage dans un sous-écran de « Réglages » (`GROUPS` : cycliste, séance, graphisme,
-son, vent, avancé) ; l'engine donne les titres. `help` (facultatif) : légende d'un réglage dont les choix ne
+son, vent, avancé) ; l'engine donne les titres. Lot NI2 (audit des éléments inutiles du 21 novembre) : `screen`
+pour un réglage de son propre écran (une seule place par réglage), et `when` pour une ligne qui dépend d'un
+autre choix (règle commune : l'engine la cache quand elle est sans effet). `help` (facultatif) : légende d'un réglage dont les choix ne
 se comprennent pas seuls, montrée par l'engine sur la carte de détail (lot U16). Le message est envoyé en parties comme `routes` (lot O27).
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer), `now` (qualité, niveau des textures, thème, biome, mode d'affichage, courbes, images/s,
+la séance suivante, sans relancer), `now` (qualité, thème, biome, mode d'affichage, courbes, images/s,
 jauge d'abri et volumes : l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le niveau des
-textures, le thème, le biome, le gravel et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief :
+textures (retiré du menu au lot NI2, toujours lu dans le fichier), le thème, le biome, le gravel et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief :
 passés par le lanceur à l'engine ;
 progression : lue au démarrage du core ; pris au prochain lancement, l'engine propose de relancer, lot O26).
 
@@ -67,10 +69,22 @@ class Setting:
         return self.key.split(".", 1)[1]
 
     @property
+    def menu_group(self) -> str:
+        """Groupe envoyé à l'engine : `screen` pour un réglage qui a son propre écran (lot NI2), sinon `group`."""
+        return SCREEN_GROUP if self.section in SCREEN_SECTIONS else self.group
+
+    @property
     def scope(self) -> str:
         """« profil » (suit le joueur) ou « machine » ; tiré de `config.PROFILE_KEYS`."""
         return "profil" if config_mod.is_profile_key(self.section, self.name) else "machine"
 
+
+# Lot NI2 (audit des éléments inutiles du 21/11, R1 : une seule place par réglage) : les réglages d'un mode ou
+# d'un écran qui a les siens (écran Prêt du Dernier survivant, du Grand Prix et de la Course, écran de la séance
+# conseillée) vont dans le groupe `screen`, que l'écran « Réglages » ne montre pas ; ils restent dans la liste
+# `settings` pour ces écrans et pour `set_setting`.
+SCREEN_GROUP = "screen"
+SCREEN_SECTIONS = ("survivor", "grandprix", "race", "coach")
 
 SETTINGS: tuple[Setting, ...] = (
     # Cycliste
@@ -92,14 +106,19 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("bots.objective", "Objectif des bots", "ride",   # lot BT1
             help="Part de l'effort tenable sur la durée de la course que visent les bots : Tempo, une course "
                  "qu'on peut gagner sans se mettre dans le rouge. Au vélodrome, l'objectif suit l'épreuve."),
+    Setting("bots.elo", "Niveau automatique (Elo)", "ride",   # lot BOT-elo
+            help="Oui : ta cote et celle de chaque bot changent après chaque course à classement (Grand Prix, "
+                 "Dernier survivant, piste en groupe) ; le peloton gagne 2,5 % de puissance par 100 points de "
+                 "ta cote, et le perd quand tu perds. Non : niveau des bots seul."),
     # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
     Setting("gravel.mode", "Gravel", "ride",
             help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
                  "Chemin compact, gravier ou terre : toute la route. Roulement 2 à 3 fois plus dur, "
-                 "sous le plafond du vent."),
+                 "dans la limite de la pente ajoutée maximale."),
     # Pilotage du trainer hors ERG (lots RC1-RC3, choix du propriétaire du 1er novembre) : résistance calculée
-    # par le core (défaut, aucun lâcher après le sprint aux essais 7rc2) ou SIM du trainer
-    Setting("trainer.control", "Pilotage du trainer", "ride"),
+    # par le core (aucun lâcher après le sprint aux essais 7rc2) ou SIM du trainer ; choix d'essai rangé en
+    # Avancé au lot NI2 (R7)
+    Setting("trainer.control", "Pilotage du trainer", "advanced"),
     Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
     Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
     Setting("depart.echauffement_min", "Échauffement avant une course", "ride", 5, "min",   # demande du 21/11
@@ -118,6 +137,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("grandprix.distance_km", "Grand Prix : distance en ligne", "ride", 1, "km"),
     Setting("grandprix.chaos", "Grand Prix : chaos", "ride"),
     Setting("grandprix.box_every_m", "Grand Prix : écart des boîtes", "ride", 500, "m"),
+    # Course classique contre les bots (lot CR1) : écran du mode à l'accueil
+    Setting("race.opponents", "Course : adversaires", "ride"),
+    Setting("race.laps", "Course : tours de la boucle", "ride"),
     # Séance conseillée (série CO, lot CO3) : aussi réglés depuis l'écran du conseil (lot CO5)
     Setting("coach.objectif", "Conseil : objectif", "ride",
             help="Endurance : surtout de l'aérobie léger. Courses : plus d'intensité. Grimpeur : plus "
@@ -125,7 +147,8 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
-    Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
+    # « Textures du décor » (lot P20) retiré du menu au lot NI2 (R5) : « auto » suit la Qualité graphique ;
+    # une valeur choisie avant est remise à « auto » par `migration_reglages.py`.
     Setting("render.theme", "Thème", "graphics", applies="now"),
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
@@ -163,8 +186,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h"),
     Setting("wind.from_deg", "Direction du vent", "wind", 45, "°"),
     Setting("wind.gust_pct", "Rafales", "wind", 10, "%"),
-    Setting("wind.max_grade_offset_pct", "Plafond du vent", "wind", 1, "pts de pente"),
-    Setting("wind.feel", "Ressenti du vent", "wind"),   # lot O26
+    # Lot NI2 (R8, R9) : choix d'essai et plafond commun (vent, abri, gravel) rangés en Avancé
+    Setting("wind.max_grade_offset_pct", "Pente ajoutée max", "advanced", 1, "pts",
+            help="Points de pente au plus ajoutés à la pente du parcours, pour tout ce qui s'y ajoute : vent, "
+                 "abri derrière un coureur ou un véhicule, et roulement du gravel."),
+    Setting("wind.feel", "Ressenti du vent", "advanced"),   # lot O26
     # Avancé (lot O27) : monde ouvert hors ligne, plafonds de disque, progression du Garage
     Setting("open_world.network", "Télécharger les cartes", "advanced"),
     Setting("open_world.cache_max_gb", "Cache du monde", "advanced", 1, "Go"),
@@ -172,8 +198,24 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("progression.enabled", "Progression et Garage", "advanced", applies="relaunch"),
 )
 BOOL_CHOICES = ("on", "off")
-# Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément).
-GROUPS = ("rider", "ride", "graphics", "sound", "wind", "advanced")
+# Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément), puis `screen`
+# (réglages de leur propre écran, lot NI2). `SETTINGS` est rangé par groupe dans cet ordre, l'ordre d'écriture
+# gardé dans un groupe : un réglage changé de groupe (lot NI2) reste écrit près de ses voisins.
+GROUPS = ("rider", "ride", "graphics", "sound", "wind", "advanced", SCREEN_GROUP)
+SETTINGS = tuple(sorted(SETTINGS, key=lambda s: GROUPS.index(s.menu_group)))
+# Règle commune des lignes sans effet (lot NI2, R3) : clé → ((clé dont elle dépend, valeurs du menu), …). La ligne
+# n'agit que si l'une de ces clés a une de ses valeurs ; l'engine la cache sinon, sa valeur gardée (champ `when`).
+# Une seule table pour tous les réglages : un réglage qui dépend d'un autre choix s'ajoute ici, sans exception.
+_WIND_SET = ("wind.mode", ("fixed", "gusty"))   # force et direction : vent constant ou en rafales seulement
+WHEN: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
+    "depart.cadence_rpm": (("depart.mode", ("pedalage",)),),
+    "ride.vehicle_draft": (("render.living", ("on",)),),   # pas de circulation sans décor vivant (contrat, `vehicles`)
+    "render.month": (("render.seasons", ("date",)), ("render.day_night", ("theme", "real", "accelerated"))),
+    "wind.speed_kmh": (_WIND_SET,),
+    "wind.from_deg": (_WIND_SET,),
+    "wind.gust_pct": (("wind.mode", ("gusty",)),),
+    "wind.feel": (("wind.mode", ("fixed", "gusty", "theme", "local")),),
+}
 KEYS = tuple(s.key for s in SETTINGS)
 
 
@@ -236,10 +278,12 @@ def _to_file(s: Setting, value: Any) -> Any:
 def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for s in SETTINGS:
-        item: dict[str, Any] = {"key": s.key, "label": s.label, "group": s.group, "value": _value(cfg, s),
+        item: dict[str, Any] = {"key": s.key, "label": s.label, "group": s.menu_group, "value": _value(cfg, s),
                                 "applies": s.applies}
         if s.help:
             item["help"] = s.help
+        if s.key in WHEN:
+            item["when"] = [{"key": k, "in": list(v)} for k, v in WHEN[s.key]]
         if s.key == "wind.mode" and cfg.wind.mode == "local":   # état de la dernière lecture (lot P33)
             from . import local_weather
 

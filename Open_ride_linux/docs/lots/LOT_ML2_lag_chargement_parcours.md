@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Lag restant de la liste des parcours (banc rML2) : mesure à chaud des caches de rendu, touche simulée sans blocage, longue liste et sonde au banc des menus | GDScript, Python | ML1, W22 (livrés) | Petite | En revue |
+| Lag restant de la liste des parcours (banc rML2) : mesure à chaud des caches de rendu, touche simulée sans blocage, longue liste et sonde au banc des menus | GDScript, Python | ML1, W22 (livrés) | Petite | **Livré le 20 novembre** (PR #934) |
 
 ## 1. Objectif
 
@@ -78,3 +78,7 @@ done
 Attendu : plus d'image de 140-150 ms à chaque pas de la liste (saccades « inconnue » alignées sur les appuis) ; à
 chaud (`chaud-*`), plus de silence de 15 s au démarrage. Donner aussi les images de plus
 de 50 et 100 ms et leur instant. Budgets GPU 8, 13 et 16 ms inchangés.
+
+## 7. Livraison
+
+Fusionné le 20 novembre 2026 (PR #934 : touche simulée sans blocage, caches de rendu et sonde au banc des menus). Détail des écarts et de la recette : description de la PR.
