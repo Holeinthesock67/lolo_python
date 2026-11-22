@@ -253,6 +253,34 @@ static func load_chunk_live(world_dir: String, layer: String, k: int, route) -> 
 	return res
 
 
+## Ponts qui portent la route du tronçon k (22 novembre 2026, sol au relief ×2,5) : talus de la route retirés sur
+## leur tablier (road_builder.gd), contrôle de l'appui sauté (test_herbe_route.gd). Parcours compilé : fichiers des
+## tronçons k − 1 à k + 1 (un pont à cheval sur deux tronçons est rangé dans l'un des deux) ; monde vivant : tous les
+## carrés que touche la boîte du tronçon élargie de BRIDGE_MARGIN_M, même ceux déjà confiés à un tronçon plus bas
+## (`chunk_tiles` les retire, ici il faut tous les ponts proches). Coordonnées absolues ; liste vide sans couche.
+const BRIDGE_MARGIN_M := 50.0
+
+
+static func route_bridges(world_dir: String, route, k: int) -> Array:
+	var items := []
+	if route == null or route.n < 2:
+		return items
+	var files := []
+	if route.live:
+		for t in _tiles_of_rect(chunk_bounds(route, k, BRIDGE_MARGIN_M)):
+			files.append([tile_path(world_dir, "bridges", t.x, t.y), Vector2(t.x * TILE_M, t.y * TILE_M)])
+	else:
+		for kk in [k - 1, k, k + 1]:
+			if kk >= 0:
+				files.append([chunk_path(world_dir, "bridges", kk), Vector2.ZERO])
+	for f in files:
+		if FileAccess.file_exists(f[0]):
+			var one := _load_file(f[0], "bridges", f[1])
+			if one["ok"]:
+				items.append_array(one["items"])
+	return items
+
+
 ## Couches à plusieurs listes : leurs listes, dans l'ordre de `items`.
 const _LISTS := {"water": ["lines", "areas"], "coast": ["lines", "beaches"]}
 

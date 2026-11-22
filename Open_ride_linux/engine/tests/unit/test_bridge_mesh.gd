@@ -140,6 +140,43 @@ func _test_layer_reading() -> void:
 		"monde vivant : axe et piles ramenés au repère de la séance, altitudes gardées")
 
 
+## Route vivante réduite (`chunk_bounds` : n, ds_m, x, z) : 200 m vers le nord depuis (2 000, −1 000).
+class FakeLiveRoute:
+	var live := true
+	var n := 21
+	var ds_m := 10.0
+	var x := PackedFloat64Array()
+	var z := PackedFloat64Array()
+
+	func _init() -> void:
+		for i in range(n):
+			x.append(2000.0)
+			z.append(-1000.0 - 10.0 * i)
+
+
+## Ponts de la route d'un tronçon (22 novembre 2026, talus retirés sur un tablier) : monde vivant, tous les carrés
+## autour du tronçon ; parcours compilé, tronçons voisins compris.
+func _test_route_bridges() -> void:
+	var dir := OS.get_temp_dir().path_join("openride_pont_sol_%d" % Time.get_ticks_usec())
+	DirAccess.make_dir_recursive_absolute(dir.path_join("bridges"))
+	var f := FileAccess.open(dir.path_join("bridges/tile_2_-1.json"), FileAccess.WRITE)
+	f.store_string(JSON.stringify({"version": "1.0", "bridges": [_bridge()]}))
+	f.close()
+	var live := OsmLayers.route_bridges(dir, FakeLiveRoute.new(), 0)
+	_check(live.size() == 1 and is_equal_approx(float(live[0]["points"][2][1]), -1020.0),
+		"monde vivant : pont du carré lu en coordonnées de la séance (%d)" % live.size())
+	_check(absf(BridgeMesh.deck_axis_alt(live, 2001.0, -1050.0) - 100.0) < 1e-3
+		and is_nan(BridgeMesh.deck_axis_alt(live, 2004.0, -1050.0)) and is_nan(BridgeMesh.deck_axis_alt(live, 2000.0, -1130.0)),
+		"axe du tablier : à 1 m de l'axe oui ; à 4 m (demi-largeur 3 m) ou après le bout non")
+	f = FileAccess.open(dir.path_join("bridges/chunk_1.json"), FileAccess.WRITE)
+	f.store_string(JSON.stringify({"version": "1.0", "bridges": [_bridge()]}))
+	f.close()
+	var compiled := FakeLiveRoute.new()
+	compiled.live = false
+	_check(OsmLayers.route_bridges(dir, compiled, 0).size() == 1 and OsmLayers.route_bridges(dir, compiled, 3).is_empty(),
+		"parcours compilé : pont du tronçon voisin lu, rien au loin")
+
+
 class FakeRoute:
 	func display_y(y: float) -> float:
 		return 2.0 * y
@@ -171,6 +208,7 @@ func _init() -> void:
 	_test_piers_and_invalid()
 	_test_layer_reading()
 	_test_relief_scale()
+	_test_route_bridges()
 	_test_performance()
 	print("test_bridge_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

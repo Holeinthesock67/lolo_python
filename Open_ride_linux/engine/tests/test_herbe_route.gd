@@ -24,7 +24,9 @@ extends SceneTree
 ##   ne lévite pas (constat du 4 novembre 2026 sur la démonstration sans terrain) : là où le sol est à plus de
 ##   FLOAT_TOL_M sous la chaussée, les pieds des deux talus (road_builder.gd, SKIRT_DROP_M plus bas, SKIRT_OUT_M
 ##   plus loin que le bas-côté) doivent être enterrés, sinon on voit sous la route. Les remblais plus hauts que
-##   FLOAT_TOL_M sont comptés et le plus haut est affiché.
+##   FLOAT_TOL_M sont comptés et le plus haut est affiché. Sur un pont (couche `bridges`, bridge_mesh.gd
+##   `deck_axis_alt`), la route n'a pas de talus : le tablier la porte, l'appui n'est pas demandé (22 novembre 2026 :
+##   pont de 30 m sur un ruisseau au banc ea1_lac, 2,2 m sous la route, en échec au relief ×2,5).
 ##   Le sol sous la route ne dépend pas du préréglage (low, medium et high ont les mêmes tuiles proches) : un
 ##   passage par parcours et par relief suffit pour les trois.
 ## Code de sortie 1 si un contrôle échoue ; les pires points sont listés (s, x, z) pour aller les voir.
@@ -48,6 +50,8 @@ const StreetLights := preload("res://scripts/street_lights.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
+const BridgeMesh := preload("res://scripts/bridge_mesh.gd")
+const OsmLayers := preload("res://scripts/osm_layers.gd")
 
 const ROAD_HALF_M := RoadBuilder.ROAD_WIDTH_M * 0.5
 ## Écart minimal au bord de la chaussée (m) : touffe (rayon et brins penchés), tronc d'arbre.
@@ -121,7 +125,10 @@ func _run(wd: String, k: float, theme: Dictionary) -> void:
 	var bounds := _route_bounds(route)
 	var corridor := ROAD_HALF_M + maxf(TUFT_CLEAR_M, TREE_CLEAR_M) + 2.0
 	var road := VegetationPlacer._road_buckets(route, bounds, corridor)
-	_check_terrain(tag, route, ground_at)
+	var bridges := []
+	for kk in range(RoadBuilder.chunk_count(route)):
+		bridges.append_array(OsmLayers.route_bridges(wd, route, kk))
+	_check_terrain(tag, route, ground_at, bridges)
 	_check_roadside(tag, wd, route, ground_at, road)
 	if k != 1.0:
 		return   # placement du décor : mêmes x et z au relief de séance, seule la pente change (contrôlé à ×k)
@@ -180,12 +187,13 @@ static func _ground_fn(wd: String, route) -> Callable:
 
 ## Sol affiché en travers de la chaussée : ni au-dessus de la route (route enfoncée), ni trop dessous sans que
 ## les talus touchent le sol (route qui lévite).
-func _check_terrain(tag: String, route, ground_at: Callable) -> void:
+func _check_terrain(tag: String, route, ground_at: Callable, bridges: Array = []) -> void:
 	var above := []
 	var floating := []
 	var worst_up := -INF
 	var worst_down := INF
 	var banks := 0
+	var decks := 0   # coupes sur remblai portées par un pont
 	var n := 0
 	var foot_off := ROAD_HALF_M + RoadBuilder.SHOULDER_WIDTH_M + RoadBuilder.SKIRT_OUT_M
 	var foot_drop := RoadBuilder.SHOULDER_DROP_M + RoadBuilder.SKIRT_DROP_M
@@ -211,7 +219,9 @@ func _check_terrain(tag: String, route, ground_at: Callable) -> void:
 				low = d
 				low_txt = "s = %.0f m, x = %.1f, z = %.1f : %.2f m" % [s, x, z, d]
 			off += ACROSS_STEP_M
-		if low < -FLOAT_TOL_M:
+		if low < -FLOAT_TOL_M and _on_deck(bridges, route, smp):
+			decks += 1
+		elif low < -FLOAT_TOL_M:
 			banks += 1
 			var buried := true
 			for side in [-1.0, 1.0]:
@@ -223,8 +233,17 @@ func _check_terrain(tag: String, route, ground_at: Callable) -> void:
 		s += SECTION_STEP_M
 	_check(above.is_empty(), "%s : sol au moins %.0f cm sous la chaussée (%d points, au plus %+.2f m, %d trop haut)%s" % [
 		tag, TERRAIN_SINK_MIN_M * 100.0, n, worst_up, above.size(), "" if above.is_empty() else " — " + _worst(above)])
-	_check(floating.is_empty(), "%s : route posée sur le sol ou sur ses talus (sol au plus %.2f m sous la route ; %d coupes sur remblai de plus de %.1f m, %d sans appui)%s" % [
-		tag, -worst_down, banks, FLOAT_TOL_M, floating.size(), "" if floating.is_empty() else " — " + _worst(floating)])
+	_check(floating.is_empty(), "%s : route posée sur le sol ou sur ses talus (sol au plus %.2f m sous la route ; %d coupes sur remblai de plus de %.1f m, %d sans appui ; %d sur un pont)%s" % [
+		tag, -worst_down, banks, FLOAT_TOL_M, floating.size(), decks, "" if floating.is_empty() else " — " + _worst(floating)])
+
+
+## Coupe posée sur un pont : axe sur un tablier, à la hauteur de la route (même règle que les talus retirés de
+## road_builder.gd).
+static func _on_deck(bridges: Array, route, smp: Dictionary) -> bool:
+	if bridges.is_empty():
+		return false
+	var a := BridgeMesh.deck_axis_alt(bridges, float(smp["x"]), float(smp["z"]))
+	return not is_nan(a) and absf(float(route.display_y(a)) - float(smp["y"])) <= BridgeMesh.ON_DECK_Y_TOL_M
 
 
 ## Sol visible en (x, z) : sol affiché, ou chaussée, bas-côté et talus là où ils sont au-dessus. La coupe de
