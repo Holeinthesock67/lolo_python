@@ -66,8 +66,10 @@ static func on_hit(msg: Dictionary) -> String:
 
 
 ## Son d'un message `gp_event` (révision 1.25) : roulette pour une boîte, son de l'objet utilisé ; "" pour le cycliste,
-## dont les sons viennent déjà de la trame (`on_state`).
+## dont les sons viennent déjà de la trame (`on_state`) ; parade : le « ding » de la sonnette pour tous.
 static func on_event(msg: Dictionary) -> String:
+	if str(msg.get("kind", "")) == "parry":   # parade (lot GPO1) : le « ding » de la sonnette, cycliste compris
+		return "gp_sonnette"
 	if str(msg.get("rider", "")) == ME:
 		return ""
 	if str(msg.get("kind", "")) == "box":

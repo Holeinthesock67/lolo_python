@@ -382,10 +382,15 @@ class GrandPrixMode:
             for o in list(self.objects):
                 if abs(o.s - r.s) <= spec.clear_m and o.target in (None, r.id):
                     self.objects.remove(o)
+                    if o.owner and o.owner != r.id:   # objet d'un autre détruit par l'onde : parade visible (GPO1)
+                        self._log("parry", r.id, item=o.kind, by=o.owner, how="bell")
+                        self._event("parry", r, o.kind, o.owner)
             gone = [b for b in self.bursts if b.target == r.id]
             for b in gone:
                 self.bursts.remove(b)
                 r.dodged += 1
+                self._log("parry", r.id, item=b.item, by=b.by, how="bell")
+                self._event("parry", r, b.item, b.by)
             for o in self._racing():
                 if o is not r and abs(o.s - r.s) <= spec.radius_m:
                     self._hit(o, spec, spec.hit_fx, r.id, now)
@@ -431,10 +436,13 @@ class GrandPrixMode:
         self._log("hit", target.id, item=spec.id, by=by, loss_s=round(loss, 1))
         return True
 
-    def _event(self, kind: str, r: Racer, item: str) -> None:
-        """Message `gp_event` (révision 1.25, lot GPO1) : boîte prise ou objet utilisé par un coureur, cycliste
-        comme bot, pour que l'engine montre la même pastille et le même son pour tous ; répété comme `gp_hit`."""
+    def _event(self, kind: str, r: Racer, item: str, by: str | None = None) -> None:
+        """Message `gp_event` (révision 1.25, lot GPO1) : boîte prise, objet utilisé ou objet paré (`parry` : `r` a
+        arrêté l'objet `item` lancé ou posé par `by`) par un coureur, cycliste comme bot, pour que l'engine montre le
+        même mot et le même son pour tous ; répété comme `gp_hit`."""
         msg = {"type": "gp_event", "v": 1, "kind": kind, "item": item, "rider": r.id}
+        if by:
+            msg["by"] = by
         self._pending.append(_Pending(msg, self.t, RESULT_REPEAT))
 
     def _credit(self, r: Racer, item: str, fx: tuple[EffectSpec, ...]) -> None:
@@ -461,8 +469,12 @@ class GrandPrixMode:
                 if target.charges <= 0:
                     target.held, target.charges = None, 0
                 target.dodged += 1
-                self._log("parry", target.id, item=spec.id, by=c.obj.owner)
+                self._log("parry", target.id, item=spec.id, by=c.obj.owner, how="shield")
+                self._event("parry", target, spec.id, c.obj.owner)
                 continue
+            if is_immune(target.fx):   # objet lancé ou posé arrêté par l'invincibilité : parade visible (lot GPO1)
+                self._log("parry", target.id, item=spec.id, by=c.obj.owner, how="immune")
+                self._event("parry", target, spec.id, c.obj.owner)
             self._hit(target, spec, spec.hit_fx, c.obj.owner or "", now)
 
     def _step_bursts(self, now: float) -> None:

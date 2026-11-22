@@ -14,7 +14,7 @@ Le coup de fouet et toutes les glissades (bidon, musettes, musette guidée, sonn
 ## 2. Règle unique
 
 - **Tout effet dure.** Plus d'impulsion : un bonus pour soi est un plancher de vitesse (`speed_floor`), un coup reçu un plafond (`cap`), chacun avec sa durée. Effets `kick` et `slip` retirés de la table commune (`powerups.py`) ; leurs clés dans `grandprix.toml` sont ignorées sans refuser le fichier (`items.RETIRED_KEYS`).
-- **Table de réglage centrale** en tête de `grandprix/items.py` : `SHORT_S` = 5 s (objets courants, tous les coups reçus), `LONG_S` = 12 s (super-forme, voiture d'équipe, Furtif), `WIND_S` = 10 s (vent contraire), `KICK` 1,3, `SLIP` 0,7, `STORM` 0,5, `TOW` 1,5, `WIND_MPS` 6.
+- **Table de réglage centrale** en tête de `grandprix/items.py` : `SHORT_S` = 5 s (objets courants, tous les coups reçus), `LONG_S` = 12 s (super-forme, voiture d'équipe, Furtif), `WIND_S` = 10 s (vent contraire), `KICK` 1,3, `SLIP` 0,6 (0,7 jusqu'à l'essai du 22 novembre), `STORM` 0,5, `TOW` 1,5, `WIND_MPS` 6.
 - **Pas d'acharnement** : pause entre deux coups reçus = durée d'un coup (`mode.HIT_GRACE_S = SHORT_S`, 2 s avant).
 - Un même effet du même objet reçu à nouveau est relancé, pas cumulé.
 - **Boîtes de famille par voie** : gauche « s'aider » (objets pour soi et sonnette), centre tout le tirage, droite « attaquer » (attaques, pièges, objets contre la tête). Le tirage selon le retard reste, limité à la famille de la voie ; une boîte donne toujours un objet (famille sans objet tirable : tout le tirage). Signe écrit au-dessus de chaque boîte (les couleurs seules ne se lisaient pas, retour du propriétaire du 21 novembre) : « + BONUS », « ? SURPRISE », « ! ATTAQUE » ; la couleur renforce seulement : jaune (famille « pour soi » des maquettes GP6), blanche, rouge (famille « attaque »). Mêmes mots dans l'aide du mode (lot de #952).
@@ -26,7 +26,7 @@ Le coup de fouet et toutes les glissades (bidon, musettes, musette guidée, sonn
 | Objet | Avant | Après | Gain ou perte, plat / 6 % / −4 % (avant) |
 | --- | --- | --- | --- |
 | Coup de fouet | v × 1,3 d'un coup | v ≥ 130 % pendant 5 s | +5,4 / +3,4 / +4,9 s (+3,9) |
-| Glissade (bidon, musettes, guidée, sonnette, frôlement, éclaboussure) | v × 0,7 d'un coup | v ≤ 70 % pendant 5 s | −5,3 / −3,0 / −5,2 s (−3,9) |
+| Glissade (bidon, musettes, guidée, sonnette, frôlement, éclaboussure) | v × 0,7 d'un coup | v ≤ 60 % pendant 5 s | −7,0 / −3,9 / −6,9 s (−3,9) |
 | Nuage d'orage | v ≤ 50 % pendant 1,5 s, éclaboussure 10 m | v ≤ 50 % pendant 5 s, éclaboussure 15 m | −8,7 / −4,7 / −8,7 s (−6,9) |
 | Super-forme | v ≥ 120 %, 8 s | v ≥ 130 %, 12 s | +7,5 / +5,5 / +7,0 s (+4,2) |
 | Vent contraire | 5 m/s, 6 s | 6 m/s, 10 s | −4,2 / −2,2 / −3,7 s (−2,1) |
@@ -35,6 +35,15 @@ Le coup de fouet et toutes les glissades (bidon, musettes, musette guidée, sonn
 | Portées | musette 400 m, guidée 200 m, sonnette 5 m / 15 m | 500 m, 300 m, 8 m / 25 m | — |
 
 Banc simulé (`tools/grandprix_sim`, 200 courses par configuration) : `docs/4.0/RAPPORT_EQUILIBRAGE_GPO1.md`, cibles du lot GP5 toutes tenues. Un premier essai à 8 m/s × 12 s de vent dépassait 35 % du temps à 11 bots (37 %) : d'où 6 m/s × 10 s.
+
+## 3 bis. Après l'essai vélo du 22 novembre
+
+L'essai tournait sur main (sans ce lot) ; le propriétaire a trouvé l'impact des objets toujours trop faible et n'a rien vu quand sa musette guidée a été arrêtée deux fois (onde d'une sonnette sonnée 0,02 s après le lancer, puis bidon gardé en réserve par le bot visé). Ajouts, une règle pour tous les coureurs :
+
+- **Toute parade se voit** : objet gardé en réserve, onde de la sonnette, invincibilité. `gp_event` de type `parry` (avec `by`, le lanceur), « PARÉ ! » au-dessus du coureur qui pare, « ding » de la sonnette, ligne `parry` du journal avec `how` (`shield`, `bell`, `immune`).
+- **Temps perdu écrit avec le coup** : « ZIOUF ! −7 s » (le `loss_s` de `gp_hit`, déjà envoyé, n'était pas affiché).
+- **Bots humains** : sonnette après un temps de réaction tiré entre 0,6 et 1,5 s (`brain.REACT_S`) ; esquive des objets sur la voie 0,18 / 0,30 / 0,45 selon le chaos (0,30 / 0,50 / 0,75 avant).
+- **Glissade plus forte** : vitesse au plus 60 % pendant 5 s (−7,0 s sur le plat) ; onde de la sonnette ramenée à 15 m.
 
 ## 4. Livraison (21 novembre 2026)
 

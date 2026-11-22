@@ -151,10 +151,10 @@ def test_same_seed_same_decisions():
 # --- esquive ----------------------------------------------------------------------------------
 
 def test_dodge_chance_by_chaos_and_level():
-    assert [dodge_chance(c, 100.0) for c in ("soft", "normal", "wild")] == [0.30, 0.50, 0.75]
-    assert dodge_chance("normal", 50.0) == pytest.approx(0.40)
-    assert dodge_chance("normal", 150.0) == pytest.approx(0.60)
-    assert dodge_chance("wild", 200.0) == pytest.approx(0.85)       # niveau borné à 150 %
+    assert [dodge_chance(c, 100.0) for c in ("soft", "normal", "wild")] == [0.18, 0.30, 0.45]   # lot GPO1
+    assert dodge_chance("normal", 50.0) == pytest.approx(0.20)
+    assert dodge_chance("normal", 150.0) == pytest.approx(0.40)
+    assert dodge_chance("wild", 200.0) == pytest.approx(0.55)       # niveau borné à 150 %
 
 
 def dodge_race(seed: int, chaos: str, level: float) -> tuple[int, int, int]:
@@ -286,3 +286,17 @@ def test_bots_pick_the_lane_of_the_family_they_need():
         mode.brain.step(mode, 1.1)
         assert mode.racers["far"].lane_to == before
     assert picks["lead"] == {"attack", "any"} and picks["far"] == {"help", "any"}
+
+
+def test_bell_waits_a_human_reaction_time():
+    """Lot GPO1 (essai du 22 novembre) : une musette guidée n'est plus effacée 0,02 s après le lancer."""
+    from openride_core.grandprix.brain import REACT_S
+    mode = race({ME: (20.0, 1), "b": (50.0, 1)})
+    holding(mode, "b", "bell")
+    mode.brain.minds["b"].ready_at = 0.0
+    mode.racers[ME].held, mode.racers[ME].charges = "homing", 1
+    assert mode.use(ME)
+    mode.brain.step(mode, 0.02)
+    assert mode.racers["b"].held == "bell"                          # pas encore de réaction
+    mode.brain.step(mode, 0.02 + REACT_S[1] + 0.01)
+    assert mode.racers["b"].held is None                            # sonnée après le temps de réaction

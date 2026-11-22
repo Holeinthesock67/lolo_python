@@ -46,6 +46,7 @@ const WORDS := {"bottle": "ZIOUF !", "bottle_x3": "ZIOUF !", "musette": "ZIOUF !
 	"homing": "ZIOUF !", "storm": "SPLASH !", "star": "BOING !"}
 const WORD_S := 1.2
 const BOX_WORD := "HOP !"
+const PARRY_WORD := "PARÉ !"
 ## Boîtes de famille par voie (core grandprix/items.py BOX_LANES, révision 1.25) : gauche « s'aider » (objets pour
 ## soi, sonnette), centre tout le tirage, droite « attaquer » (attaques, pièges, contre la tête).
 const BOX_LANES := ["help", "any", "attack"]
@@ -181,8 +182,16 @@ func on_hit(msg: Dictionary, now_s: float) -> bool:
 		return false
 	var word := str(WORDS.get(str(msg.get("item", "")), ""))
 	if word != "" and str(msg.get("target", "")) != "":
-		_push_word(word, str(msg["target"]), Items.WARM, now_s)
+		_push_word(hit_text(word, msg.get("loss_s", 0.0)), str(msg["target"]), Items.WARM, now_s)
 	return true
+
+
+## Mot d'un coup reçu avec le temps perdu (lot GPO1, essai du 22 novembre : « ZIOUF ! −5 s »).
+static func hit_text(word: String, loss_s) -> String:
+	var loss := float(loss_s) if (loss_s is float or loss_s is int) else 0.0
+	if loss < 0.5:
+		return word
+	return "%s −%d s" % [word, int(round(loss))]
 
 
 ## Message `gp_event` (révision 1.25) : mot au-dessus du coureur, la même règle pour le cycliste et les bots ;
@@ -195,7 +204,11 @@ func on_event(msg: Dictionary, now_s: float) -> bool:
 	var rider := str(msg.get("rider", ""))
 	if rider == "" or not Items.known(item):
 		return true
-	var text := BOX_WORD if str(msg.get("kind", "")) == "box" else Items.label(item)
+	var kind := str(msg.get("kind", ""))
+	if kind == "parry":   # objet d'un autre arrêté : même mot pour tous, couleur de la défense (lot GPO1)
+		_push_word(PARRY_WORD, rider, Items.FRESH, now_s)
+		return true
+	var text := BOX_WORD if kind == "box" else Items.label(item)
 	_push_word(text, rider, Items.color(item), now_s)
 	return true
 

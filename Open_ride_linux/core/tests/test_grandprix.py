@@ -30,9 +30,9 @@ V_EQ = steady_speed(250.0, 0.0, P)
 
 PLAN_GAINS = {      # objet : (plat, 6 %, −4 %) ; valeurs du lot GPO1 (tout effet dure)
     "gel": (5.4, 3.4, 4.9),
-    "bottle": (-5.3, -3.0, -5.2),
-    "musette": (-5.3, -3.0, -5.2),
-    "homing": (-5.3, -3.0, -5.2),
+    "bottle": (-7.0, -3.9, -6.9),      # glissade à 60 % pendant 5 s (essai du 22 novembre)
+    "musette": (-7.0, -3.9, -6.9),
+    "homing": (-7.0, -3.9, -6.9),
     "storm": (-8.7, -4.7, -8.7),
     "star": (7.5, 5.5, 7.0),
     "headwind": (-4.2, -2.2, -3.7),
@@ -300,7 +300,7 @@ def test_bottle_slips_follower_on_same_lane_only():
     assert msgs[0] == {"type": "gp_event", "v": 1, "kind": "use", "item": "bottle", "rider": "lead"}   # lot GPO1
     msgs = msgs[1:]
     assert msgs and msgs[0]["type"] == "gp_hit" and msgs[0]["target"] == ME and msgs[0]["by"] == "lead"
-    assert msgs[0]["loss_s"] == pytest.approx(5.3, rel=0.10)            # perte estimée, en secondes
+    assert msgs[0]["loss_s"] == pytest.approx(7.0, rel=0.10)            # perte estimée, en secondes
     assert len(sim.mode.due_results(sim.t + 11)) == 2 and len(sim.mode.due_results(sim.t + 12)) == 2
     assert sim.mode.due_results(sim.t + 13) == []                         # répété 3 fois
     assert sim.mode.summary()["lost_s"]["bottle"] > 0
@@ -362,6 +362,27 @@ def test_storm_hits_leader_and_splash_and_one_in_flight():
     assert sim.mode.racers["near"].received == {"storm": 1}       # à 8 m du premier : glissade
     assert sim.mode.racers["mid"].received == {}                    # à 16 m : rien (éclaboussure 15 m)
     assert not sim.mode._storm_flying()
+
+
+def test_parries_are_announced_for_everyone():
+    """Lot GPO1 : réserve qui pare, onde de la sonnette, invincibilité : `gp_event` « parry » avec le lanceur."""
+    sim = Sim({"a": 250.0, ME: 250.0}, gap_m=30.0)
+    sim.run(0.5)
+    sim.give(ME, "homing")
+    sim.give("a", "bottle")
+    assert sim.mode.use(ME)
+    sim.run(5.0)
+    ev = [m for m in sim.mode.due_results(sim.t + 10) if m["type"] == "gp_event" and m["kind"] == "parry"]
+    assert ev == [{"type": "gp_event", "v": 1, "kind": "parry", "item": "homing", "rider": "a", "by": ME}]
+    sim2 = Sim({"a": 250.0, ME: 250.0}, gap_m=10.0)
+    sim2.run(0.5)
+    sim2.give(ME, "musette")
+    assert sim2.mode.use(ME)
+    sim2.give("a", "bell")
+    assert sim2.mode.use("a")
+    ev = [m for m in sim2.mode.due_results(sim2.t + 10) if m["type"] == "gp_event" and m["kind"] == "parry"]
+    assert ev and ev[0]["rider"] == "a" and ev[0]["by"] == ME
+    assert any(ln["event"] == "parry" and ln.get("how") == "bell" for ln in sim2.mode.take_journal())
 
 
 def test_bell_chases_storm_and_clears_objects():

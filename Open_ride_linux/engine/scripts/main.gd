@@ -1113,6 +1113,10 @@ func _play_event(jingle: String) -> void:
 func _play_gp_bot_sound(jingle: String, rider: String) -> void:
 	if jingle.is_empty() or sound_player == null:
 		return
+	if rider == GpSoundModel.ME:   # parade du cycliste : son plein
+		_play_event(jingle)
+		gp_sounds.me_played(Time.get_ticks_msec() / 1000.0)
+		return
 	var at = bots_view.anchor_of(rider)
 	if not at is Vector3:
 		return

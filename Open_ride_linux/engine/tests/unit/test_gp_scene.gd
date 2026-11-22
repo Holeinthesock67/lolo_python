@@ -70,6 +70,13 @@ func _run() -> void:
 		and ev_words[1]["target"] == "me", "gp_event : HOP ! puis nom de l'objet, couleur de sa famille")
 	_check(ev_model.on_event({"type": "gp_event", "kind": "use", "item": "zzz", "rider": "b1"}, 11.05)
 		and ev_model.words(11.1).size() == 2, "gp_event : objet inconnu sans mot")
+	# Parade (lot GPO1) : « PARÉ ! » au-dessus du coureur qui arrête l'objet, ding de la sonnette pour tous
+	var pm = Model.new()
+	_check(pm.on_event({"type": "gp_event", "kind": "parry", "item": "homing", "rider": "b1", "by": "me"}, 30.0)
+		and pm.words(30.1)[0]["text"] == Model.PARRY_WORD and pm.words(30.1)[0]["target"] == "b1", "parade : PARÉ ! au-dessus du bot")
+	_check(Sounds.on_event({"kind": "parry", "item": "homing", "rider": "me"}) == "gp_sonnette", "parade : son pour tous")
+	# Temps perdu écrit avec le coup reçu
+	_check(Model.hit_text("ZIOUF !", 5.3) == "ZIOUF ! −5 s" and Model.hit_text("ZIOUF !", 0.2) == "ZIOUF !", "coup reçu : temps perdu affiché")
 	# Sons des bots : mêmes sons, proches seulement, espacés, après ceux du cycliste
 	_check(Sounds.on_event({"kind": "box", "item": "gel", "rider": "b1"}) == "gp_roulette"
 		and Sounds.on_event({"kind": "use", "item": "bell", "rider": "b1"}) == "gp_sonnette"
@@ -128,11 +135,11 @@ func _run() -> void:
 	var hit := {"item": "bottle", "by": "bot2", "target": "me", "loss_s": 1.8}
 	_check(m.on_hit(hit, 10.0) and not m.on_hit(hit, 11.0) and not m.on_hit(hit, 12.0), "gp_hit répété : une fois")
 	var w: Array = m.words(10.5)
-	_check(w.size() == 1 and w[0]["text"] == "ZIOUF !" and w[0]["target"] == "me", "glissade : « ZIOUF ! »")
+	_check(w.size() == 1 and w[0]["text"] == "ZIOUF ! −2 s" and w[0]["target"] == "me", "glissade : « ZIOUF ! −2 s » (temps perdu)")
 	_check(m.words(10.0 + Model.WORD_S + 0.1).is_empty(), "onomatopée effacée")
 	_check(m.on_hit(hit, 20.0), "même coup plus tard : nouveau")
 	m.on_hit({"item": "storm", "by": "bot1", "target": "bot3", "loss_s": 2.0}, 20.1)
-	_check(m.words(20.2).back()["text"] == "SPLASH !", "orage : « SPLASH ! »")
+	_check(m.words(20.2).back()["text"] == "SPLASH ! −2 s", "orage : « SPLASH ! »")
 
 	# Sons
 	var s = Sounds.new()

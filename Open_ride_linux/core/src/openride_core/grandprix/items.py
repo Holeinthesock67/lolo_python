@@ -150,7 +150,7 @@ SHORT_S = 5.0          # coup de fouet, glissade, averse
 LONG_S = 12.0          # super-forme, voiture d'équipe, Furtif
 WIND_S = 10.0          # vent contraire (12 s dépassait 35 % du temps à 11 bots, banc GP5 du 21/11)
 KICK = 1.3             # coup de fouet et super-forme : vitesse au moins + 30 %
-SLIP = 0.7             # glissade : vitesse au plus 70 %
+SLIP = 0.6             # glissade : vitesse au plus 60 % (0,7 avant l'essai du 22 novembre, jugé trop faible)
 STORM = 0.5            # averse du nuage d'orage : vitesse au plus 50 %
 TOW = 1.5              # voiture d'équipe : vitesse tenue à 150 %
 WIND_MPS = 6.0         # vent contraire virtuel
@@ -173,7 +173,7 @@ DEFAULT_ITEMS: dict[str, ItemSpec] = {s.id: s for s in (
              speed_rel_mps=30.0, ttl_s=120.0, splash_m=15.0, splash_fx=SLIP_FX, warn_s=1.0),
     ItemSpec("star", target="self", form="duration", hit_fx=SLIP_FX, radius_m=1.5,
              self_fx=(EffectSpec("immune", 1.0, LONG_S), EffectSpec("speed_floor", KICK, LONG_S))),
-    ItemSpec("bell", target="near", form="instant", hit_fx=SLIP_FX, radius_m=8.0, clear_m=25.0),
+    ItemSpec("bell", target="near", form="instant", hit_fx=SLIP_FX, radius_m=8.0, clear_m=15.0),
     ItemSpec("headwind", target="ahead", form="duration", hit_fx=(EffectSpec("wind", WIND_MPS, WIND_S),)),
     ItemSpec("team_car", target="self", form="duration",
              self_fx=(EffectSpec("immune", 1.0, LONG_S), EffectSpec("speed_floor", TOW, LONG_S),
