@@ -272,6 +272,41 @@ def with_turnaround(back: EdgeProfile, prev_xz: tuple[float, float], provider: E
                    guard=back.guard.merged(read_stats.merged(guard_stats)))
 
 
+LINK_MIN_M = 0.5      # écart entre deux arêtes qui se suivent au-delà duquel un raccord est posé
+
+
+def with_link(prev: EdgeProfile, nxt: EdgeProfile) -> EdgeProfile:
+    """Profil `nxt` précédé d'un raccord droit depuis le bout de `prev`, quand `nxt` ne part pas où `prev` finit.
+
+    Constat du banc de #961 (22 novembre, s = 5 350 m) : une arête de moins de `graph.MERGE_M` entre deux carrefours
+    est fondue dans un seul nœud de choix (`graph._cluster`) et n'est jamais parcourue ; la route sautait alors d'un
+    bout à l'autre (9,9 m de géométrie dans un pas de 10 m, s trop court) et l'altitude changeait d'un nœud à
+    l'autre sans distance : cassure de 17 %, puis de 8,2 % une fois les nœuds accordés. Même chose à l'entrée et à
+    la sortie d'un rond-point. Le raccord a sa vraie longueur ; l'altitude part du bout de `prev` avec sa pente
+    d'arrivée et rejoint `nxt` sous le garde-fou (pente et changement de pente bornés), le bout de `nxt` inchangé.
+    """
+    sx, sz = float(prev.x[-1]), float(prev.z[-1])
+    gap = math.hypot(float(nxt.x[0]) - sx, float(nxt.z[0]) - sz)
+    if gap < LINK_MIN_M:
+        return nxt
+    raw_s = np.concatenate([[0.0], nxt.s + gap])
+    s = sample_positions(float(raw_s[-1]))
+    cols = {}
+    for name in ("x", "z", "alt_m", "lat", "lon"):
+        cols[name] = np.interp(s, raw_s, np.concatenate([[float(getattr(prev, name)[-1])], getattr(nxt, name)]))
+    arrive = None
+    if len(prev.s) >= 2:
+        arrive = 100.0 * float(prev.alt_m[-1] - prev.alt_m[-2]) / max(float(prev.s[-1] - prev.s[-2]), 1e-6)
+    leave = None
+    if len(nxt.s) >= 2:
+        leave = 100.0 * float(nxt.alt_m[-1] - nxt.alt_m[-2]) / max(float(nxt.s[-1] - nxt.s[-2]), 1e-6)
+    alt, guard_stats = AG.guard(cols["alt_m"], s, arrive, leave)
+    grade = np.clip(_grade(alt, s, False), -AG.GRADE_MAX_PCT, AG.GRADE_MAX_PCT)
+    return replace(nxt, s=s, x=cols["x"], z=cols["z"], alt_m=alt, grade_pct=grade,
+                   heading_deg=_heading(cols["x"], cols["z"], False), lat=cols["lat"], lon=cols["lon"],
+                   versions={**nxt.versions, "link": 1}, guard=nxt.guard.merged(guard_stats))
+
+
 def concat(profiles: Iterable[EdgeProfile], s0: float = 0.0) -> dict[str, Any]:
     """Profils mis bout à bout, rééchantillonnés au pas de 10 m, en colonnes du format `route.json`.
 

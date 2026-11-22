@@ -16,7 +16,7 @@ from openride_compiler.worldgen import altitude_guard as AG
 from openride_compiler.worldgen import edge_profile as EP
 from openride_compiler.worldgen.graph import Edge
 
-from test_worldgen_process import E_REF, N_REF, FRAME, impasse_db, line_db, open_msg, session  # noqa: E402
+from test_worldgen_process import E_REF, N_REF, FRAME, impasse_db, line_db, lonlat, open_msg, session  # noqa: E402
 
 S = np.arange(0.0, 301.0, 10.0)
 
@@ -198,6 +198,54 @@ def test_open_world_route_has_no_altitude_defect(tmp_path, kind) -> None:
     assert np.isfinite(alt).all() and float(alt.min()) > 0.0
 
 
+def short_link_db(path):
+    """Route est-ouest avec, à 2 km, deux carrefours à 10 m l'un de l'autre (une branche au nord au premier, une au
+    sud au second) : l'arête de 10 m entre eux est fondue dans un seul nœud de choix (`graph.MERGE_M`)."""
+    from openride_compiler.worldgen.osmdb import OsmDbWriter
+    w = OsmDbWriter(path, "test", "test/raccord")
+    a, b = E_REF + 2000, E_REF + 2010
+    west = [1000 + k for k in range(30)] + [5000]
+    w.add_road(1, {"highway": "tertiary"}, west, [lonlat(E_REF - 1000 + 100 * k, N_REF) for k in range(31)])
+    w.add_road(2, {"highway": "tertiary"}, [5000, 5001], [lonlat(a, N_REF), lonlat(b, N_REF)])
+    w.add_road(3, {"highway": "tertiary"}, [5001] + [2000 + k for k in range(40)],
+               [lonlat(b + 100 * k, N_REF) for k in range(41)])
+    w.add_road(4, {"highway": "residential"}, [5000, 3000], [lonlat(a, N_REF), lonlat(a, N_REF + 300)])
+    w.add_road(5, {"highway": "residential"}, [5001, 3001], [lonlat(b, N_REF), lonlat(b, N_REF - 300)])
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    return path
+
+
+def test_merged_short_edge_is_ridden_not_jumped(tmp_path) -> None:
+    """Constat du banc de #961 (22 novembre, s = 5 350 m, cassure de −8,2 %) : l'arête courte fondue dans un nœud
+    de choix n'était pas parcourue, la route sautait d'un carrefour à l'autre (15 m de géométrie dans un pas de 10 m)
+    et l'altitude changeait sans distance. Un raccord droit à sa vraie longueur la remplace."""
+
+    class Step(SyntheticProvider):            # 1,2 m de dénivelé entre les deux carrefours (haie, talus)
+        def __init__(self) -> None:
+            lat, lon = FRAME.to_latlon(np.array([float(E_REF)]), np.array([-float(N_REF)]))
+            super().__init__(float(lat[0]), float(lon[0]), self.height)
+
+        @staticmethod
+        def height(x, z):
+            x = np.asarray(x, dtype=float)
+            return 450.0 + 0.02 * x - 0.6 * (1.0 + np.tanh((x - 2005.0) / 4.0)) + 0 * np.asarray(z)
+
+    s, _rec = session(tmp_path, short_link_db(tmp_path / "raccord.sqlite"), provider=Step())
+    s.handle(open_msg(E_REF + 100, N_REF, 90.0))
+    for k in range(1, 17):
+        s.handle({"type": "progress", "s_m": 250.0 * k, "v_mps": 8})
+        if s.has_work():
+            s.work()
+    route = s._route_columns()
+    x, z = np.asarray(route["x"], dtype=float), np.asarray(route["z"], dtype=float)
+    alt, rs = np.asarray(route["alt_m"], dtype=float), np.asarray(route["s"], dtype=float)
+    assert float(x.max()) > 2500.0                                        # le carrefour double est passé
+    step = np.hypot(np.diff(x), np.diff(z))
+    assert float(np.max(step - np.diff(rs))) < 0.05, "la route saute d'un carrefour à l'autre"   # corde ≤ arc
+    defects = AG.check(alt, rs)
+    assert not defects, defects[:10]
+
+
 def test_check_catches_the_defects_without_guard(tmp_path, monkeypatch) -> None:
     """Le contrôle bloquant voit bien les défauts : sans garde-fou, le même monde échoue."""
     monkeypatch.setattr(AG, "guard", lambda alt, s, *_a: (np.asarray(alt, dtype=float), AG.GuardStats()))
@@ -221,13 +269,15 @@ def _script():
     return mod
 
 
-def _write_session(folder, alt: np.ndarray) -> None:
+def _write_session(folder, alt: np.ndarray, x: np.ndarray | None = None) -> None:
     import json
     (folder / "route").mkdir(parents=True)
     n = len(alt)
+    x = 10.0 * np.arange(n) if x is None else x
     for k, lo in enumerate(range(0, n - 1, 100)):
         hi = min(lo + 100, n - 1)
-        part = {"s0_m": 10.0 * lo, "ds_m": 10.0, "length_m": 10.0 * (hi - lo), "alt_m": [round(float(v), 2) for v in alt[lo:hi + 1]]}
+        part = {"s0_m": 10.0 * lo, "ds_m": 10.0, "length_m": 10.0 * (hi - lo), "alt_m": [round(float(v), 2) for v in alt[lo:hi + 1]],
+                "x": [round(float(v), 2) for v in x[lo:hi + 1]], "z": [0.0] * (hi + 1 - lo)}
         (folder / "route" / f"part_{k}.json").write_text(json.dumps(part), encoding="utf-8")
 
 
@@ -243,3 +293,7 @@ def test_pc_script_flags_the_bench_ramp_and_passes_a_clean_ride(tmp_path) -> Non
     resume = (tmp_path / "ko" / "resume.txt").read_text(encoding="utf-8")
     assert "[GRAVE] s = 1200 m : cassure +21" in resume
     assert mod.main(["--out", str(tmp_path / "rien"), "--seances", str(tmp_path / "vide")]) == 2
+    jump = 10.0 * np.arange(len(s)) + np.where(s >= 1500.0, 9.9, 0.0)    # arête courte sautée (banc de #961)
+    _write_session(tmp_path / "seances" / "ow-20261121-000200.world", clean, jump)
+    assert mod.main(["--out", str(tmp_path / "saut"), str(tmp_path / "seances" / "ow-20261121-000200.world")]) == 1
+    assert "[GRAVE] s = 1490 m : saut +9.9 m" in (tmp_path / "saut" / "resume.txt").read_text(encoding="utf-8")

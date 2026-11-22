@@ -8,7 +8,8 @@ balades `ow-*.world`) et liste :
 
 - les **défauts graves** : pente au-delà de ± 15 % sur un pas de 10 m, changement de pente de plus de
   `GRAVE_CURVE_PCT` (2 × 4 %) d'un pas au suivant (le constat du banc `ea1_lac` : 0 → 21 % en 10 m), altitude
-  absente ;
+  absente ; **saut** de la route (plus de `JUMP_TOL_M` de géométrie de plus que le pas en s : arête courte fondue
+  dans un carrefour et sautée, constat du banc de #961 du 22 novembre) ;
 - les **écarts** à la règle stricte (changement de pente de 4 % à 8 %) : attendus seulement dans les carrefours où
   la route tourne sur un flanc (deux arêtes de directions différentes), comptés pour information.
 
@@ -35,13 +36,22 @@ from openride_compiler.worldgen import altitude_guard as AG  # noqa: E402
 
 GRAVE_CURVE_PCT = 2.0 * AG.CURVE_MAX_PCT
 WORST_SHOWN = 8
+JUMP_TOL_M = 0.5
 
 
 def route_profile(world: Path) -> tuple[np.ndarray, np.ndarray]:
     """(s, alt) de la route engagée, parties mises bout à bout (bord commun non doublé)."""
+    s, alt, _x, _z = route_columns(world)
+    return s, alt
+
+
+def route_columns(world: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """(s, alt, x, z) de la route engagée (x, z en NaN si une partie ne les donne pas)."""
     parts = sorted((world / "route").glob("part_*.json"), key=lambda p: int(p.stem.split("_")[1]))
     s_all: list[float] = []
     a_all: list[float] = []
+    x_all: list[float] = []
+    z_all: list[float] = []
     for p in parts:
         d = json.loads(p.read_text(encoding="utf-8"))
         alt = [float("nan") if v is None else float(v) for v in d["alt_m"]]
@@ -51,7 +61,17 @@ def route_profile(world: Path) -> tuple[np.ndarray, np.ndarray]:
         start = 1 if s_all and abs(s[0] - s_all[-1]) < 1e-6 else 0
         s_all += s[start:]
         a_all += alt[start:]
-    return np.asarray(s_all), np.asarray(a_all)
+        x_all += [float(v) for v in d.get("x", [float("nan")] * n)][start:]
+        z_all += [float(v) for v in d.get("z", [float("nan")] * n)][start:]
+    return np.asarray(s_all), np.asarray(a_all), np.asarray(x_all), np.asarray(z_all)
+
+
+def jumps(s: np.ndarray, x: np.ndarray, z: np.ndarray) -> list:
+    """Sauts de la route : pas dont la géométrie dépasse l'avancée en s (une corde est toujours plus courte)."""
+    if len(s) < 2:
+        return []
+    extra = np.hypot(np.diff(x), np.diff(z)) - np.diff(s)
+    return [(float(s[k]), "saut", float(extra[k])) for k in np.flatnonzero(extra > JUMP_TOL_M)]
 
 
 def classify(s: np.ndarray, alt: np.ndarray) -> tuple[list, list]:
@@ -88,15 +108,17 @@ def main(argv: list[str] | None = None) -> int:
              f"(grave au-delà de {GRAVE_CURVE_PCT:.0f} %)"]
     graves = 0
     for w in worlds:
-        s, alt = route_profile(w)
+        s, alt, x, z = route_columns(w)
         grave, minor = classify(s, alt)
+        grave += jumps(s, x, z)
         graves += len(grave)
         g = 100.0 * np.diff(alt) / np.maximum(np.diff(s), 1e-6)
         worst = float(np.nanmax(np.abs(np.diff(g)))) if len(g) > 1 else 0.0
         lines.append(f"{w.name} : {s[-1] / 1000:.1f} km, {len(grave)} défaut(s) grave(s), {len(minor)} écart(s), "
                      f"pire changement de pente {worst:.1f} % en 10 m")
         for d in sorted(grave, key=lambda d: -abs(d[2]) if np.isfinite(d[2]) else 0)[:WORST_SHOWN]:
-            lines.append(f"  [GRAVE] s = {d[0]:.0f} m : {d[1]} {d[2]:+.1f} %")
+            unit = "m" if d[1] == "saut" else "%"
+            lines.append(f"  [GRAVE] s = {d[0]:.0f} m : {d[1]} {d[2]:+.1f} {unit}")
         for d in sorted(minor, key=lambda d: -abs(d[2]))[:3]:
             lines.append(f"  [écart] s = {d[0]:.0f} m : {d[1]} {d[2]:+.1f} %")
     lines.append(f"résultat : {len(worlds)} balade(s), {graves} défaut(s) grave(s)")

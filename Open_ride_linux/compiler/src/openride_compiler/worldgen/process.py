@@ -52,7 +52,7 @@ from ..elevation import COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationP
 from ..errors import CompileError
 from ..pipeline import sample_positions
 from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts, turnaround_points,
-                           with_turnaround)
+                           with_link, with_turnaround)
 from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
@@ -519,6 +519,8 @@ class WorldSession:
             lat, lon = self.frame.to_latlon(np.array([far[0]]), np.array([far[1]]))
             if relief_has(self.provider, float(lat[0]), float(lon[0])):   # hors ligne au bord du relief : sur place
                 p = with_turnaround(p, prev, self.provider, self.frame)
+        if self.legs:          # arête courte fondue dans un nœud, rond-point : raccord au lieu d'un saut
+            p = with_link(self.legs[-1].profile, p)
         self.legs.append(Leg(edge_id, forward, to_node, p, self.length_m))
 
     def _extend(self) -> bool:
