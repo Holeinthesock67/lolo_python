@@ -534,6 +534,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gearing", "step_pct"): "boîte de vitesses virtuelle",
     ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
+    ("render", "texture_level"): "niveau des textures imposé pour les bancs, retiré du menu au lot NI2 (auto suit la qualité)",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
     ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",
