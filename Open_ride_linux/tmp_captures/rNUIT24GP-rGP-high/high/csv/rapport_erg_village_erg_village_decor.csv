@@ -1,0 +1,32 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+10.7;23;0;0;0;0;4;0;
+25.7;23;0;0;0;0;4;0;
+40.7;23;0;0;0;0;4;0;voice_bonjour=1
+55.7;23;0;0;0;0;4;0;voice_bonjour=1
+70.7;23;0;0;0;0;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+77.0;23;0;0;0;0;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+80.0;23;0;0;0;1;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+85.7;23;0;0;0;1;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+100.7;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+115.7;23;0;0;0;3;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+130.7;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+142.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+145.7;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+160.7;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+175.7;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+190.7;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+202.0;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+205.7;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+220.7;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+235.7;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+242.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+250.7;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+252.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+262.0;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+265.7;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+280.7;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+295.7;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+310.7;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+325.7;23;0;0;0;1;7;0;airliner_rumble=2 paramotor_buzz=1 voice_allez=3 voice_bonjour=1
+340.7;23;0;0;0;1;7;0;airliner_rumble=2 paramotor_buzz=1 voice_allez=3 voice_bonjour=1
+346.2;23;0;0;0;1;7;0;airliner_rumble=2 paramotor_buzz=1 voice_allez=3 voice_bonjour=1
