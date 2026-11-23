@@ -142,6 +142,11 @@ def test_three_laps_four_bots_frames_hits_and_bilan(env):
     for m in hits:
         hit_v.validate(m)
     assert len(hits) % 3 == 0 and hits                   # chaque coup envoyé 3 fois
+    events = [m for m in sent if m.get("type") == "gp_event"]   # révision 1.25 (lot GPO1), bots compris
+    ev_v = validator("gp_event")
+    for m in events:
+        ev_v.validate(m)
+    assert {m["kind"] for m in events} == {"box", "use"} and any(m["rider"] != ME for m in events)
     # Puissance mesurée intacte au journal et au FIT
     journal = next((tmp_path / "journal").glob("*.jsonl"))
     lines = [json.loads(x) for x in journal.read_text("utf-8").splitlines()]
@@ -399,12 +404,12 @@ def test_mode_options_and_wtf_alias(env):
     assert msg["mode"] == "grandprix" and [o["id"] for o in msg["options"]] == list(ITEM_IDS)
     assert all(o["on"] for o in msg["options"])
     path = tmp_path / "grandprix.toml"
-    path.write_text("# mes valeurs\n[gel]\nkick = 1.25\n", encoding="utf-8")
+    path.write_text("# mes valeurs\n[gel]\nspeed_floor = 1.25\n", encoding="utf-8")
     s._on_command("set_mode_option", {"mode": "grandprix", "id": "storm", "on": False}, 3)
     msg = sent[-1]
     assert msg["type"] == "mode_options" and not next(o for o in msg["options"] if o["id"] == "storm")["on"]
     text = path.read_text("utf-8")
-    assert "# mes valeurs" in text and tomllib.loads(text) == {"gel": {"kick": 1.25}, "items": {"storm": False}}
+    assert "# mes valeurs" in text and tomllib.loads(text) == {"gel": {"speed_floor": 1.25}, "items": {"storm": False}}
     s._on_command("start", {"mode": "grandprix"}, 4)
     assert "storm" not in s.grandprix.enabled
     s._on_command("set_mode_option", {"mode": "grandprix", "id": "storm", "on": True}, 5)

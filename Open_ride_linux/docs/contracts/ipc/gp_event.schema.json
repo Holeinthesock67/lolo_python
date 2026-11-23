@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideGpEventMessage",
+  "description": "Révision 1.25 (lot GPO1) : un coureur du Grand Prix (cycliste ou bot) prend une boîte (`box`, objet tiré) ou utilise un objet (`use`), ou arrête un objet lancé ou posé par un autre (`parry` : objet gardé en réserve, onde de la sonnette, invincibilité ; `by` = lanceur) ; répété 3 fois à une seconde d'intervalle comme `gp_hit`, l'engine ignore les doublons ; 4 096 octets au plus (contrat §2).",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "kind",
+    "item",
+    "rider"
+  ],
+  "properties": {
+    "type": {
+      "const": "gp_event"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "box",
+        "use",
+        "parry"
+      ]
+    },
+    "item": {
+      "type": "string",
+      "enum": [
+        "gel",
+        "gel_x3",
+        "bottle",
+        "bottle_x3",
+        "musette",
+        "musette_x3",
+        "homing",
+        "storm",
+        "star",
+        "bell",
+        "headwind",
+        "team_car",
+        "stealth"
+      ]
+    },
+    "rider": {
+      "type": "string",
+      "maxLength": 8,
+      "description": "« me » pour le cycliste, sinon l'id du bot."
+    },
+    "by": {
+      "type": "string",
+      "maxLength": 8,
+      "description": "`parry` seulement : lanceur de l'objet paré (« me » ou id du bot)."
+    }
+  },
+  "additionalProperties": false
+}
