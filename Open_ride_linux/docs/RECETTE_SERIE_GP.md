@@ -87,7 +87,8 @@ Remarque : …
 Route des Vignes, 1 tour, 4 adversaires, **chaos fou**, boîtes tous les 1 000 m. Écran « Objets » : ne garder que **Bidon glissant, Trois bidons, Musette lancée, Trois musettes, Musette guidée** (les cinq autres cases décochées). Première moitié au Click, seconde moitié au clavier.
 
 - [ ] Bidon lâché derrière toi sur ta voie ; musette lancée tout droit devant ; musette guidée qui suit le coureur devant et change de voie avec lui.
-- [ ] Choix de voie : trois traits en bas du HUD (voie choisie en blanc, gris en placement automatique) et l'aide « Bidon glissant en vue : A ou ← → » dès qu'un objet est en vue sur ta voie.
+- [ ] Choix de voie : trois traits en bas du HUD (voie choisie en blanc, gris en placement automatique) et l'aide qui dit à quoi sert la voie (lot GPH1) : « Boîte sur ta voie : passe dessus pour un objet », « Boîte prise sur ta voie : A ou ← → pour en changer », « Bidon glissant devant sur ta voie : A ou ← → pour l'éviter ».
+- [ ] Écran Prêt : « Comment ça marche ? » montre le résumé du mode dans la carte, puis l'écran « Aide Grand Prix » (cinq sujets) ; Y revient à l'écran Prêt (lot GPH1).
 - [ ] **Click** : A court change de voie quand un objet est en vue, sinon change de vue ; flèches gauche et droite : voie à gauche, à droite ; A long : retour au placement automatique.
 - [ ] **Clavier** : mêmes touches (A, flèches, Z) avec le même effet.
 - [ ] Au moins une esquive réussie au Click et une au clavier (le bidon ou la musette passe sur la voie d'à côté, pas de glissade) ; bidon ou musette tenus en réserve qui parent une musette guidée.
