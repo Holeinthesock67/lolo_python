@@ -34,7 +34,7 @@ Demande du propriétaire du 13 novembre (« fais des lots pour compléter les in
 1. `pytest` passe dans `core/` et `compiler/`.
 2. Générateur réel sur une grille de routes : pas d'arrivée en balade ; destination au milieu d'une route à 250 m des carrefours : arrivée à moins de 15 m de la cible ; boucle de 8 km : arrivée à moins de 15 m du départ.
 3. Séance avec la doublure : la boucle de 2 km se termine à 2 km et enregistre la balade ; la destination se termine au point annoncé ; la balade n'a jamais d'arrivée ; après une relance du générateur, la destination garde son arrivée.
-4. Recette PC (avec W16) : une boucle de 10 km près de Sarre-Union se termine au départ, avec le bilan.
+4. Recette PC (avec W16) : une boucle de 10 km près de Sevrier se termine au départ, avec le bilan.
 
 ## 7. Hors périmètre
 

@@ -56,6 +56,7 @@ LOW_CADENCE_RPM = 50.0
 LOW_CADENCE_S = 5.0
 LOW_POWER_FRAC = 0.80
 LOW_POWER_S = 10.0
+RESUME_GRACE_S = 10.0         # après une pause : cadence et puissance non jugées le temps de repartir (RC13)
 
 # Résultat.
 MIN_RAMP_STEPS_S = 240        # moins de 4 min de paliers : test trop court
@@ -128,6 +129,14 @@ def planned_duration_s(kind: str, ftp_w: float = DEFAULT_PLAN_FTP_W) -> float:
     return planned_workout(kind, ftp_w).duration_s
 
 
+def min_valid_duration_s(kind: str) -> float:
+    """Durée la plus courte d'un test roulé jusqu'à un résultat valable : échauffement puis `MIN_RAMP_STEPS_S`
+    de paliers (en dessous, « test trop court »). Seuil « fait » d'une journée de test d'un plan (revue RC13)."""
+    full = workout_for(kind, DEFAULT_PLAN_FTP_W)
+    warmup = sum(b.duration_s for b in full.blocks if b.type == "warmup")
+    return warmup + MIN_RAMP_STEPS_S
+
+
 def effort_blocks(workout: Workout) -> set[int]:
     """Numéros de blocs (à partir de 1, comme `block` du journal) des paliers de la rampe."""
     return {i + 1 for i, b in enumerate(workout.blocks) if b.type == "steady"}
@@ -154,14 +163,26 @@ class RampWatch:
         self._seconds: deque[float] = deque()   # 60 dernières secondes
         self._window_sum = 0.0        # somme des 60 dernières secondes
         self.best_minute_w: float | None = None
+        self._grace_s = 0.0           # délai de grâce restant après une reprise (revue RC13, C1-04)
+
+    def pause(self) -> None:
+        """Séance mise en pause : compteurs de fin remis à zéro, délai de grâce armé pour la reprise."""
+        self._low_cadence_s = self._low_power_s = 0.0
+        self._grace_s = RESUME_GRACE_S
 
     def active(self, erg: ErgController) -> bool:
         return self.reason is None and not erg.finished and erg.index in self.steps
 
     def update(self, dt: float, power_w: float, cadence_rpm: float, erg: ErgController) -> str | None:
-        if not self.active(erg) or erg.paused:
+        if not self.active(erg):
+            return None
+        if erg.paused:
+            self.pause()
             return None
         self._add_power(dt, power_w)
+        if self._grace_s > 0.0:   # on repart de l'arrêt : la cadence du trainer arrive en retard
+            self._grace_s = max(0.0, self._grace_s - dt)
+            return None
         self._low_cadence_s = self._low_cadence_s + dt if cadence_rpm < LOW_CADENCE_RPM else 0.0
         target = erg.target_w
         self._low_power_s = self._low_power_s + dt if target and power_w < LOW_POWER_FRAC * target else 0.0

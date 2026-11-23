@@ -43,7 +43,7 @@ Aucune modification. Les identifiants (`owc…`, `ows…`, 13 caractères) et le
 2. Après un parcours chargé, le monde ouvert démarre sans segment.
 3. Une montée trouvée en roulant est chronométrée : `segment_result` envoyé, record rangé sous `ow`.
 4. Deuxième balade sur la même route : mêmes identifiants, et le passage de la balade d'avant est classé.
-5. Recette PC (avec W16) : une balade d'une heure près de Sarre-Union. Le HUD annonce les montées, le résultat s'affiche au sommet, et la même montée refaite le lendemain montre l'ancien record.
+5. Recette PC (avec W16) : une balade d'une heure près de Sevrier. Le HUD annonce les montées, le résultat s'affiche au sommet, et la même montée refaite le lendemain montre l'ancien record.
 
 ## 5. Hors périmètre (lot suivant, W21)
 

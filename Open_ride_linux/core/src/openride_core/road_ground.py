@@ -62,7 +62,7 @@ def drop_covered_feet(upper: list, lower: list, upper_s: list, lower_s: list) ->
         pos = 0 if n == 0 or upper_s[n] != upper_s[n - 1] else pos + 1
         sub.append(edge[n] or pos % 2 == 0)
     out = []
-    for (fx, fz, fl), fs in zip(lower, lower_s):
+    for (fx, fz, fl), fs in zip(lower, lower_s, strict=True):
         gi, gj = math.floor(fx / cell), math.floor(fz / cell)
         covered = False
         for di in (-1, 0, 1):
@@ -146,7 +146,7 @@ def fit_tiles(tiles: dict[tuple[int, int], list[float]], cell: float, upper: lis
             vals = [get(gi, gj) for gi, gj, _ in cs]
             if any(x is None or not math.isfinite(x) for x in vals):
                 continue
-            for (gi, gj, _), x in zip(cs, vals):
+            for (gi, gj, _), x in zip(cs, vals, strict=True):
                 v[(gi, gj)] = x
             pts.append((kind, [(gi, gj) for gi, gj, _ in cs], [w for _, _, w in cs], lim,
                         [math.hypot(px - gi * cell, pz - gj * cell) for gi, gj, _ in cs]))
@@ -161,29 +161,29 @@ def fit_tiles(tiles: dict[tuple[int, int], list[float]], cell: float, upper: lis
         for k, ks, ws, lim, ds in pts:
             if k != kind:
                 continue
-            for c, d in zip(ks, ds):
+            for c, d in zip(ks, ds, strict=True):
                 if c not in near or d < near[c][0]:
                     near[c] = (d, lim)
         for k, ks, ws, lim, ds in pts:
             if k != kind:
                 continue
             vk = [v[c] for c in ks]
-            h = sum(w * x for w, x in zip(ws, vk))
+            h = sum(w * x for w, x in zip(ws, vk, strict=True))
             if sign * (h - lim) <= -1e-4:
                 continue
             tgt = lim - sign * 1e-3
             stop = [near[c][1] - sign * 1e-3 for c in ks]
             for _ in range(PROJECT_STEPS):
-                rest = sum(w * x for w, x in zip(ws, vk)) - tgt
-                wrong = [w if w > 0 and sign * (x - s) > 0 else 0.0 for w, x, s in zip(ws, vk, stop)]
+                rest = sum(w * x for w, x in zip(ws, vk, strict=True)) - tgt
+                wrong = [w if w > 0 and sign * (x - s) > 0 else 0.0 for w, x, s in zip(ws, vk, stop, strict=True)]
                 n1 = sum(w * w for w in wrong)
                 if sign * rest <= 0 or n1 <= 0:
                     break
                 vk = [x - sign * min(sign * rest / n1 * w, sign * (x - s)) if w > 0 else x
-                      for w, x, s in zip(wrong, vk, stop)]
-            rest = sum(w * x for w, x in zip(ws, vk)) - tgt
+                      for w, x, s in zip(wrong, vk, stop, strict=True)]
+            rest = sum(w * x for w, x in zip(ws, vk, strict=True)) - tgt
             n2 = sum(w * w for w in ws)
-            for c, w, x in zip(ks, ws, vk):
+            for c, w, x in zip(ks, ws, vk, strict=True):
                 if w <= 0:
                     continue
                 y = x - (rest / n2 * w if sign * rest > 0 and n2 > 0 else 0.0)
@@ -207,6 +207,6 @@ def fit_tiles(tiles: dict[tuple[int, int], list[float]], cell: float, upper: lis
                 g[lj * TILE_SAMPLES + li] = y
     left_low = 0
     for k, ks, ws, lim, _ in pts:
-        if k == "lo" and sum(w * v[c] for c, w in zip(ks, ws)) < lim - 1e-3:
+        if k == "lo" and sum(w * v[c] for c, w in zip(ks, ws, strict=True)) < lim - 1e-3:
             left_low += 1
     return {"lowered": lowered, "raised": raised, "left_low": left_low}
