@@ -591,6 +591,7 @@ class Bench:
                 data = json.loads(got[1].group(1))
                 info.update(ok=bool(data.get("ok")), fps=data.get("fps"), meshes=data.get("meshes"),
                             quality=data.get("quality"),
+                            session_state=str(data.get("session_state", "")),   # lot NI1 : plus de ligne d'état à l'écran
                             draw_calls=data.get("draw_calls"),
                             decor={k: int(data.get("decor", {}).get(k, 0)) for k in DECOR_KINDS},
                             sounds=dict(data.get("decor", {}).get("sounds", {})),
@@ -855,13 +856,11 @@ class Bench:
                         f"down {downs[0]['ts'] - t0 - t:+.1f} s{back}" if downs else "aucune ligne down")
             if act == "silence" and float(ev.get("seconds", 0)) >= 6:
                 end = t + float(ev["seconds"])
-                seen = [s for s in self.shots if t + 5 <= s["t"] <= end + 1
-                        and "PAUSED" in s.get("widgets", {}).get("status", "")]
-                r.check(bool(seen), f"trainer muet à {t:.0f} s : pause visible à l'écran",
-                        f"{seen[0]['file']} : « {seen[0]['widgets']['status']} »" if seen
-                        else "aucune capture ne montre PAUSED")
+                seen = [s for s in self.shots if t + 5 <= s["t"] <= end + 1 and s.get("session_state") == "PAUSED"]
+                r.check(bool(seen), f"trainer muet à {t:.0f} s : séance en pause dans l'engine",
+                        f"{seen[0]['file']} : PAUSED" if seen else "aucune capture en PAUSED")
                 after = [s for s in self.shots if end + 4 <= s["t"] <= end + 25]
-                running = [s for s in after if "RUNNING" in s.get("widgets", {}).get("status", "")]
+                running = [s for s in after if s.get("session_state") == "RUNNING"]
                 if after:
                     r.check(bool(running), f"reprise après le silence de {t:.0f} s",
                             f"{running[0]['file']} : RUNNING" if running else "toujours en pause à l'écran")
@@ -1083,7 +1082,7 @@ def write_html(b: Bench) -> None:
     for s in b.shots:
         w = s.get("widgets", {})
         txt = " · ".join(f"{k} : {v}" for k, v in w.items() if v and k in
-                         ("power", "speed", "grade", "hr", "status", "banner", "erg_title", "erg_target"))
+                         ("power", "speed", "grade", "hr", "notice", "banner", "erg_title", "erg_target"))
         shots.append(f'<figure><a href="{s["file"]}"><img src="{s["file"]}" loading="lazy" alt="{html.escape(s["tag"])}"></a>'
                      f'<figcaption><b>{s["t"]:.0f} s · {html.escape(s["tag"])}</b> · {s.get("fps", "?")} img/s'
                      f' · {s.get("meshes", "?")} maillages · {s.get("draw_calls", "?")} appels de dessin'
