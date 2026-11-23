@@ -39,7 +39,7 @@ import math
 import zlib
 from pathlib import Path
 from collections.abc import Iterable
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 from dataclasses import dataclass
 
@@ -105,6 +105,8 @@ class ConstantPowerBot:
         self.wheel: tuple[float, float] | None = None   # roue suivie : écart (m) et vitesse du coureur devant
         self.push = 0.0                        # poussée du coureur qui suit de près
         self.power_factor = 1.0                # mamie à l'attaque du mode WTF (lot WTF2)
+        self.work_j = 0.0                      # travail et temps roulé (lot GP-niv, bilan)
+        self.ride_s = 0.0
         self.shelters = True                   # faux pendant le Furtif du Grand Prix (lot GP4) : n'abrite personne
         # Écart à l'axe (lot AS2), posé par draft.update_lanes ; départage stable des bots partis côte à côte
         self.lane = Lane(BOT_LANE_M, BOT_LANE_M, rank=1 + zlib.crc32(self.id.encode()) % 65536)
@@ -136,12 +138,19 @@ class ConstantPowerBot:
 
         power = self._blocked_power(self.power_w * self.power_factor, grade, alt)
         self.physics.step(power, grade, alt, dt, alpha_draft=self.draft)
+        self.work_j += power * dt   # lot GP-niv : puissance moyenne du bot au bilan (`avg_power_w`)
+        self.ride_s += dt
         if self.lane.blocked is not None and self.lane.blocked[0] <= BRAKE_GAP_M:
             self.physics.v = min(self.physics.v, self.lane.blocked[1])   # freine : roue contre roue, pas plus vite
         if route is not None and not route.is_loop and self.physics.s >= route.length_m:
             self.physics.s = route.length_m
             self.physics.v = 0.0
         self.t += dt
+
+    @property
+    def avg_power_w(self) -> float | None:
+        """Puissance moyenne depuis le départ (None avant le premier pas roulé), lot GP-niv."""
+        return self.work_j / self.ride_s if self.ride_s > 0 else None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -825,13 +834,17 @@ def last_ride(route_id: str | None, directory: Path) -> Path | None:
 
 def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
                    journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
-                   taken_ids: Iterable[str] = ()) -> list[Any]:
+                   taken_ids: Iterable[str] = (),
+                   names: Callable[[list[str]], list[str]] | None = None) -> list[Any]:
     """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
     ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus `MAX_CONSTANT_BOTS` bots
     de ces deux genres en tout, 11 depuis le lot PL1 ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
     `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
 
     `taken_ids` (lot N18, `set_bots`) : ids déjà pris dans la séance, sautés (`bot1`, `bot2`… sinon).
+
+    `names` (lot R4) : noms des bots à profil d'après leurs profils dans l'ordre de la liste (les rivaux du
+    profil, `CoreSession._rival_names`) ; « Grimpeur », « Grimpeur 2 »… sans lui (`profile_bot_names`).
 
     Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
     """
@@ -851,7 +864,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
     constant = 0
     ghost = False
     profiles = [it.get("profile") for it in items if isinstance(it, dict) and it.get("kind") == "profile"]
-    names = iter(profile_bot_names([p for p in profiles if isinstance(p, str)]))
+    names = iter((names or profile_bot_names)([p for p in profiles if isinstance(p, str) and p in PROFILES]))
     for it in items:
         kind = it.get("kind") if isinstance(it, dict) else None
         if kind == "constant":

@@ -46,6 +46,9 @@ FRAME_BEHIND_M, FRAME_AHEAD_M, FRAME_OBJECTS = 100.0, 400.0, 12
 # Rangées de boîtes de la trame (lot GP14) : celle que l'on vient de passer reste 30 m (vue de derrière), deux au plus
 BOXES_BEHIND_M, FRAME_BOX_ROWS = 30.0, 2
 RESULT_REPEAT = 3
+# Modes servis par cette course (lot CR1) : « grandprix » (avec objets) et « race » (course classique, sans objet,
+# même arrivée, mêmes places et écarts) ; `state.gp.mode` et `summary.gp.mode` valent « race » pour la seconde
+MODES = ("grandprix", "race")
 V_FLOOR = 1.0                        # m/s : vitesse plancher des écarts en temps
 LOSS_DT_S = 0.1                      # pas de l'estimation du temps perdu (`loss_s`)
 
@@ -136,12 +139,17 @@ class GrandPrixMode:
                  table: ItemTable = DEFAULT_TABLE, chaos: str = "normal", box_every_km: float = 1.5,
                  enabled: Iterable[str] | None = None, seed: int | None = None,
                  params: PhysicsParams | None = None, origin_m: float = 0.0,
-                 bots: Iterable[str] | None = None, levels: Mapping[str, float] | None = None) -> None:
+                 bots: Iterable[str] | None = None, levels: Mapping[str, float] | None = None,
+                 mode: str = "grandprix") -> None:
+        if mode not in MODES:
+            raise GrandPrixError(f"mode : {mode!r} refusé ({', '.join(MODES)})")
+        self.mode = mode
         if chaos not in CHAOS:
             raise GrandPrixError(f"chaos : {chaos!r} refusé ({', '.join(CHAOS)})")
         if box_every_km not in BOX_EVERY_KM:
             raise GrandPrixError(f"écart des boîtes : {box_every_km!r} refusé")
-        chosen = set(table.enabled if enabled is None else enabled)
+        # Course classique (mode « race », lot CR1) : la même course sans aucun objet
+        chosen = set() if mode == "race" else set(table.enabled if enabled is None else enabled)
         self.enabled = tuple(i for i in ITEM_IDS if i in chosen)
         unknown = chosen - set(ITEM_IDS)
         if unknown:
@@ -153,7 +161,9 @@ class GrandPrixMode:
         self.lap_m = lap_m
         self.origin_m = float(origin_m)   # abscisse du départ : la course va de origin_m à origin_m + length_m
         # fréquence des objets × chaos : rangées plus serrées en « fou », plus espacées en « doux »
-        self.boxes = BoxRows([self.origin_m + x for x in row_positions(self.length_m, box_every_km * 1000.0 / k, lap_m)])
+        # sans objet joué, pas de boîte sur la route (course classique, ou tous les objets coupés)
+        self.boxes = BoxRows([self.origin_m + x for x in row_positions(self.length_m, box_every_km * 1000.0 / k, lap_m)]
+                             if self.enabled else [])
         self.objects = RouteObjects()
         self.params = params or PhysicsParams()
         self.rng = random.Random(seed)
@@ -204,6 +214,19 @@ class GrandPrixMode:
         if r is lead:
             return 0.0
         return max(lead.s - r.s, 0.0) / max(r.v, V_FLOOR)
+
+    def gap_ahead_s(self, rid: str) -> float:
+        """Écart affiché (`state.gp.gap_s`, contrat §4) : avec le coureur de devant, avec le second en tête
+        (lot CR1 : le HUD nommait le coureur de devant mais donnait le retard sur le premier)."""
+        order = self.order()
+        i = [r.id for r in order].index(rid)
+        if i == 0:
+            if len(order) < 2:
+                return 0.0
+            back = order[1]
+            return max(order[0].s - back.s, 0.0) / max(back.v, V_FLOOR)
+        r = order[i]
+        return max(order[i - 1].s - r.s, 0.0) / max(r.v, V_FLOOR)
 
     def _racing(self) -> list[Racer]:
         return [r for r in self.racers.values() if r.finished is None]
@@ -497,7 +520,7 @@ class GrandPrixMode:
             s, kind = min(threats, key=lambda x: abs(x[0] - r.s))
             warn = [self.table.items[kind].shot_kind, round(abs(r.s - s), 1)]
         out = {
-            "place": self.place(rid), "of": len(self.racers), "gap_s": round(self.gap_s(rid), 1),
+            "place": self.place(rid), "of": len(self.racers), "gap_s": round(self.gap_ahead_s(rid), 1),
             "held": r.held, "n": r.charges, "roll_s": round(max(r.roll_until - now, 0.0), 1) if r.roll else 0.0,
             "lane": r.lane if r.lane_to is None else r.lane_to, "auto": r.auto,
             "fx": self._fx_items(r, now),
@@ -507,6 +530,8 @@ class GrandPrixMode:
             "boxes": [round(self.boxes.rows[i]) for i in rows],   # rangées fixes : au mètre
             "pick": self.lane_choice_shown(rid),   # lot GP2 : A court change de voie (sinon vue suivante)
         }
+        if self.mode != "grandprix":
+            out["mode"] = self.mode
         gone = self.boxes.gone(rows, now)   # lot GP14 : boîtes prises, absentes jusqu'à leur retour
         if gone:
             out["boxes_gone"] = gone
@@ -557,4 +582,6 @@ class GrandPrixMode:
             out["laps"] = max(int(round(self.length_m / self.lap_m)), 1)
         else:
             out["distance_km"] = round(self.length_m / 1000.0, 1)
+        if self.mode != "grandprix":
+            out["mode"] = self.mode
         return out

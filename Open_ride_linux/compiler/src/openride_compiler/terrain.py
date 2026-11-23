@@ -116,6 +116,42 @@ class RouteAxis:
         return np.hypot(px - cx, pz - cz), self.alt[a] + t * (self.alt[b] - self.alt[a])
 
 
+class PiecesAxis:
+    """Axe de la route hors ponts (lot EA4) : plusieurs morceaux de `RouteAxis`, distance au plus proche.
+
+    Sous un pont, le relief n'est pas fondu avec la route (même règle que `axis_pieces` du monde ouvert)."""
+
+    def __init__(self, x, z, alt, keep: np.ndarray) -> None:
+        x, z, alt = (np.asarray(v, dtype=float) for v in (x, z, alt))
+        self.pieces: list[RouteAxis] = []
+        start = None
+        for i, k in enumerate(np.append(np.asarray(keep, dtype=bool), False)):
+            if k and start is None:
+                start = i
+            elif not k and start is not None:
+                self.pieces.append(RouteAxis(x[start:i], z[start:i], alt[start:i]))
+                start = None
+
+    def nearest(self, px: np.ndarray, pz: np.ndarray, max_dist: float) -> tuple[np.ndarray, np.ndarray]:
+        px = np.asarray(px, dtype=float).ravel()
+        dist = np.full(px.shape, np.inf)
+        y = np.full(px.shape, np.nan)
+        for axis in self.pieces:
+            d, yy = axis.nearest(px, pz, max_dist)
+            better = d < dist
+            dist[better] = d[better]
+            y[better] = yy[better]
+        return dist, y
+
+
+def route_axis(route: dict, spans=None):
+    """Axe de fondu de la route : entier, ou hors des portions en pont `spans` (lot EA4)."""
+    if not spans:
+        return RouteAxis(route["x"], route["z"], route["alt_m"])
+    from .bridges import outside_spans, route_s
+    return PiecesAxis(route["x"], route["z"], route["alt_m"], outside_spans(route_s(route), spans))
+
+
 # --- tuiles -----------------------------------------------------------------------------------
 
 def select_tiles(x, z, level: Level) -> list[tuple[int, int]]:
@@ -149,6 +185,14 @@ def tile_coords(ix: int, iz: int, level: Level) -> tuple[np.ndarray, np.ndarray]
     return gx, gz
 
 
+def blend_weight(d_edge: np.ndarray) -> np.ndarray:
+    """Poids du MNT dans le fondu route / MNT à la distance `d_edge` du bord de la chaussée : 0 en deçà de
+    BLEND_INNER_M (sol à la route), 1 au-delà de BLEND_OUTER_M (MNT seul) ; 1 aussi sans route proche (inf, NaN)."""
+    d = np.asarray(d_edge, dtype=float)
+    t = np.clip((np.where(np.isfinite(d), d, C.BLEND_OUTER_M) - C.BLEND_INNER_M) / (C.BLEND_OUTER_M - C.BLEND_INNER_M), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
 def blend(y_mnt: np.ndarray, dist_axis: np.ndarray, y_route: np.ndarray,
           half_width: float = C.ROAD_HALF_WIDTH_M) -> np.ndarray:
     """Fondu route / MNT. Sans MNT (NaN) près de la route, l'altitude de la route est gardée."""
@@ -157,8 +201,7 @@ def blend(y_mnt: np.ndarray, dist_axis: np.ndarray, y_route: np.ndarray,
     near = np.isfinite(dist_axis) & (d < C.BLEND_OUTER_M)
     if not near.any():
         return y
-    t = np.clip((d[near] - C.BLEND_INNER_M) / (C.BLEND_OUTER_M - C.BLEND_INNER_M), 0.0, 1.0)
-    w = t * t * (3.0 - 2.0 * t)
+    w = blend_weight(d[near])
     road = y_route[near] - C.ROAD_SINK_M
     mnt = y[near]
     y[near] = np.where(np.isfinite(mnt), (1.0 - w) * road + w * mnt, road)
@@ -172,11 +215,11 @@ def curvature_drop(route_tree: cKDTree, gx: np.ndarray, gz: np.ndarray) -> np.nd
 
 
 def build_level(route: dict, frame: LocalFrame, provider: ElevationProvider, level: Level,
-                log: Log = stderr_log) -> dict[tuple[int, int], np.ndarray]:
-    """Grilles float32 (101 × 101) de toutes les tuiles d'un niveau."""
+                log: Log = stderr_log, spans=None) -> dict[tuple[int, int], np.ndarray]:
+    """Grilles float32 (101 × 101) de toutes les tuiles d'un niveau ; pas de fondu sous les ponts `spans`."""
     x, z = np.asarray(route["x"], float), np.asarray(route["z"], float)
     keys = select_tiles(x, z, level)
-    axis = RouteAxis(x, z, route["alt_m"]) if level.blend else None
+    axis = route_axis(route, spans) if level.blend else None
     route_tree = cKDTree(np.column_stack((x, z))) if level.curvature else None
     log(f"terrain {level.name} : {len(keys)} tuile(s) de {level.tile_m} m, maille {level.cell_m} m")
     out: dict[tuple[int, int], np.ndarray] = {}
@@ -196,10 +239,30 @@ def build_level(route: dict, frame: LocalFrame, provider: ElevationProvider, lev
         for k, key in enumerate(batch):
             out[key] = y32[k]
     if level.blend:
-        lowered = clear_road(out, x, z, route["alt_m"], level)
-        if lowered:
-            log(f"terrain {level.name} : {lowered} sommet(s) abaissé(s) sous la chaussée (épingles, croisements)")
+        res = fit_route_ground(out, route, level, spans)
+        if res["lowered"] or res["raised"]:
+            log(f"terrain {level.name} : sol réglé sur la route de l'engine ({res['lowered']} sommet(s) abaissé(s) "
+                f"sous la chaussée, {res['raised']} remonté(s) sous les talus)")
     return out
+
+
+def fit_route_ground(tiles: dict[tuple[int, int], np.ndarray], route: dict, level: Level = None, spans=None) -> dict:
+    """Règle unique sol / route (`road_ground.py`) sur les tuiles d'un niveau d'un parcours compilé : route telle que
+    l'engine la dessine, sol sous la chaussée, pieds des talus appuyés hors ponts `spans`. Rend le bilan de `fit`."""
+    from . import road_ground as RG
+    from .bridges import route_s
+
+    level = level or NEAR
+    x, z = np.asarray(route["x"], float), np.asarray(route["z"], float)
+    head = route.get("heading_deg")
+    if head is None:
+        from .pipeline import _heading
+        head = _heading(x, z, False)
+    s = route_s(route) if "n" in route and "ds_m" in route else None
+    ground = [(sp[0], sp[1]) for sp in (spans or [])]
+    upper, lower = RG.corridor_s(x, z, route["alt_m"], head, s=s, ground_spans=ground,
+                                 loop=route.get("type") == "loop")
+    return RG.fit_tiles(tiles, level.tile_m, upper[:3], RG.drop_covered_feet(upper, lower, upper[3], lower[3]))
 
 
 # --- garde-fou de la chaussée -----------------------------------------------------------------
@@ -255,69 +318,39 @@ def _triangles(px, pz, level: Level):
 
 
 def terrain_excess(tiles: dict[tuple[int, int], np.ndarray], x, z, alt, level: Level = None,
-                   sink: float = C.ROAD_SINK_M) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Dépassement (m) du maillage `tiles` au-dessus de la chaussée moins `sink`, aux points de
-    `road_samples` couverts par une tuile sans NaN : (excès, x, z). Positif : terrain trop haut."""
-    level = level or NEAR
-    px, pz, pa = road_samples(x, z, alt)
-    if len(px) == 0:
-        return np.empty(0), px, pz
-    ti, tj, i, j, corners, w = _triangles(px, pz, level)
-    h = np.full(len(px), np.nan)
-    for key in set(zip(ti.tolist(), tj.tolist())):
-        g = tiles.get(key)
-        if g is None:
-            continue
-        sel = np.flatnonzero((ti == key[0]) & (tj == key[1]))
-        acc = np.zeros(len(sel))
-        for c in range(3):
-            acc += w[sel, c] * g[j[sel] + corners[sel, 2 * c + 1], i[sel] + corners[sel, 2 * c]]
-        h[sel] = acc
-    ok = np.isfinite(h)
-    return (h - (pa - sink))[ok], px[ok], pz[ok]
+                   sink: float = C.ROAD_SINK_M,
+                   half_width: float = C.ROAD_HALF_WIDTH_M, heading_deg=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Dépassement (m) du maillage `tiles` au-dessus de la chaussée et des bas-côtés de la route telle que l'engine la
+    dessine (`road_ground.corridor`), là où une tuile couvre le point : (excès, x, z). Positif : terrain trop haut."""
+    from . import road_ground as RG
+    from .pipeline import _heading
 
+    level = level or NEAR
+    x, z = np.asarray(x, float), np.asarray(z, float)
+    if len(x) < 2:
+        e = np.empty(0)
+        return e, e, e
+    head = _heading(x, z, False) if heading_deg is None else heading_deg
+    (px, pz, lim), _ = RG.corridor(x, z, alt, head, half_width=half_width, sink=sink)
+    gather, _, step = RG.tiles_access(tiles, level.tile_m)
+    h = RG.heights(gather, step, px, pz)
+    ok = np.isfinite(h)
+    return (h - lim)[ok], px[ok], pz[ok]
 
 def clear_road(tiles: dict[tuple[int, int], np.ndarray], x, z, alt, level: Level = None,
                sink: float = C.ROAD_SINK_M) -> int:
-    """Abaisse (sur place), juste ce qu'il faut, les sommets des triangles qui dépassent la chaussée moins `sink`, puis
-    recopie le minimum sur les bords communs des tuiles (bords toujours identiques). Rend le nombre
-    de sommets abaissés. Abaisser ne remonte jamais un autre point : un seul passage suffit."""
+    """Sol sous la chaussée d'une route (x, z, alt) seule, sans talus : règle de `road_ground.py` (route de l'engine).
+    Rend le nombre de sommets abaissés."""
+    from . import road_ground as RG
+    from .pipeline import _heading
+
     level = level or NEAR
-    px, pz, pa = road_samples(x, z, alt)
-    if len(px) == 0:
+    x, z = np.asarray(x, float), np.asarray(z, float)
+    if len(x) < 2:
         return 0
-    ti, tj, i, j, corners, w = _triangles(px, pz, level)
-    limit = pa - sink
-    lowered: set[tuple[int, int, int, int]] = set()
-    for key in set(zip(ti.tolist(), tj.tolist())):
-        g = tiles.get(key)
-        if g is None:
-            continue
-        sel = np.flatnonzero((ti == key[0]) & (tj == key[1]))
-        h = np.zeros(len(sel))
-        for c in range(3):
-            h += w[sel, c] * g[j[sel] + corners[sel, 2 * c + 1], i[sel] + corners[sel, 2 * c]]
-        bad = sel[np.isfinite(h) & (h > limit[sel] + 1e-4)]
-        for p in bad.tolist():
-            # Abaissement juste suffisant : chaque coin au-dessus de la limite descend en proportion de
-            # son dépassement (les coins déjà sous la route ne bougent pas), recalculé avec les
-            # sommets déjà abaissés par les points précédents.
-            vs = [(j[p] + corners[p, 2 * c + 1], i[p] + corners[p, 2 * c], w[p, c]) for c in range(3)]
-            hp = sum(wc * float(g[vj, vi]) for vj, vi, wc in vs)
-            top = float(limit[p])
-            lim = top - 1e-3
-            if not np.isfinite(hp) or hp <= top + 1e-4:
-                continue
-            over = sum(wc * (float(g[vj, vi]) - lim) for vj, vi, wc in vs if float(g[vj, vi]) > top)
-            alpha = min((hp - lim) / over, 1.0) if over > 0 else 1.0
-            for vj, vi, wc in vs:
-                gv = float(g[vj, vi])
-                if wc > 0 and gv > top:
-                    g[vj, vi] = np.float32(gv - alpha * (gv - lim))
-                    lowered.add((key[0], key[1], int(vi), int(vj)))
-    if lowered:
-        _sync_edges(tiles)
-    return len(lowered)
+    upper, _ = RG.corridor(x, z, alt, _heading(x, z, False), sink=sink)
+    e = np.empty(0)
+    return RG.fit_tiles(tiles, level.tile_m, upper, (e, e, e))["lowered"]
 
 
 def _sync_edges(tiles: dict[tuple[int, int], np.ndarray]) -> None:
@@ -338,10 +371,11 @@ def _sync_edges(tiles: dict[tuple[int, int], np.ndarray]) -> None:
 
 
 def build_terrain(route: dict, frame: LocalFrame, provider: ElevationProvider,
-                  log: Log = stderr_log, horizon: bool = True) -> dict[str, dict[tuple[int, int], np.ndarray]]:
-    """Niveaux proche et lointain, plus l'horizon (lot JP4) sauf `horizon=False` (`--no-horizon`)."""
+                  log: Log = stderr_log, horizon: bool = True, spans=None) -> dict[str, dict[tuple[int, int], np.ndarray]]:
+    """Niveaux proche et lointain, plus l'horizon (lot JP4) sauf `horizon=False` (`--no-horizon`) ;
+    `spans` : portions en pont, sans fondu de la route (lot EA4)."""
     levels = ALL_LEVELS if horizon else LEVELS
-    return {level.name: build_level(route, frame, provider, level, log) for level in levels}
+    return {level.name: build_level(route, frame, provider, level, log, spans) for level in levels}
 
 
 def terrain_manifest(tiles: dict[str, dict[tuple[int, int], np.ndarray]],
@@ -371,6 +405,25 @@ def write_terrain(folder: Path, tiles: dict[str, dict[tuple[int, int], np.ndarra
 
 def read_tile(path: Path) -> np.ndarray:
     return np.frombuffer(Path(path).read_bytes(), dtype="<f4").reshape(N, N)
+
+
+def load_terrain_tiles(world: Path) -> dict[str, dict[tuple[int, int], np.ndarray]]:
+    """Tuiles de tous les niveaux d'un `.world` (copies modifiables), pour les réécrire (lot EA1)."""
+    out: dict[str, dict[tuple[int, int], np.ndarray]] = {}
+    for level in ALL_LEVELS:
+        d = Path(world) / "terrain" / level.name
+        if not d.is_dir():
+            continue
+        grids = {}
+        for p in sorted(d.glob("tile_*.f32")):
+            parts = p.stem.split("_")
+            try:
+                grids[(int(parts[1]), int(parts[2]))] = read_tile(p).copy()
+            except (ValueError, IndexError, OSError):
+                continue
+        if grids:
+            out[level.name] = grids
+    return out
 
 
 def replace_terrain_dir(world: Path, tiles: dict[str, dict[tuple[int, int], np.ndarray]]) -> None:

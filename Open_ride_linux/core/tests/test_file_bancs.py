@@ -78,6 +78,10 @@ def test_classer_separe_contacts_environnement_et_echec():
     assert fb.classer(0, "")[0] == fb.OK
     assert fb.classer(1, "[ÉCHEC] décor : aucun contact sur la route : 3")[0] == fb.CONTACTS
     v, d = fb.classer(1, "[ÉCHEC] décor : aucun contact sur la route : 3\n[ÉCHEC] pire image : 140 ms")
+    assert v == fb.ACOUPS and "1 à-coup(s) connu(s), 1 contact(s)" in d
+    assert fb.classer(1, "[ÉCHEC] images lentes : 8 par minute")[0] == fb.ACOUPS
+    assert fb.ACOUPS in fb.ACQUIS
+    v, d = fb.classer(1, "[ÉCHEC] pire image : 140 ms\n[ÉCHEC] pont : tablier absent")
     assert v == fb.ECHEC and "2 échec(s)" in d
     assert fb.classer(1, "CompileError: x.sqlite : schéma 2 au lieu de 1, refaire `region-add`")[0] == fb.ENV
     assert fb.classer(2, "Godot introuvable : /x")[0] == fb.ENV
@@ -220,6 +224,43 @@ def test_cache_separe_amorce_et_variable(tmp_path, depot, monkeypatch):
     racine = tmp_path / "sortie" / "caches" / "mer"
     assert (racine / "monde" / "brut" / "a.txt").read_text(encoding="utf-8") == "reel"
     assert str(racine) in (tmp_path / "sortie" / "mer" / "low" / "journal.txt").read_text(encoding="utf-8")
+
+
+def test_cache_separe_sans_les_balades_ni_les_carres_du_user(tmp_path, depot, monkeypatch):
+    """Signalement du 21 novembre : le cache « séparé » contenait 107 balades du user et d'autres zones UTM."""
+    _, clone = depot
+    reel = tmp_path / "home" / "OpenRide" / "Cache" / "monde"
+    for rel in ("brut/osm/fr.sqlite", "seances/ow-1/route.json", "genere/32T/1_2/meta.json", "mesures/m/x.json"):
+        (reel / rel).parent.mkdir(parents=True, exist_ok=True)
+        (reel / rel).write_text("x", encoding="utf-8")
+    con = sqlite3.connect(reel / "index.sqlite")
+    con.executescript("CREATE TABLE entries (key TEXT PRIMARY KEY, kind TEXT, path TEXT, bytes INTEGER, "
+                      "last_used REAL, pinned INTEGER, prefetch INTEGER, region TEXT, versions TEXT);"
+                      "CREATE TABLE regions (region TEXT PRIMARY KEY, pinned INTEGER, name TEXT, bbox TEXT);"
+                      "INSERT INTO entries VALUES ('osm:fr','osm','brut/osm/fr.sqlite',1,0,1,0,'fr','{}');"
+                      "INSERT INTO entries VALUES ('square:32T/1_2','square','genere/32T/1_2',1,0,0,0,NULL,'{}');"
+                      "INSERT INTO regions VALUES ('fr',1,'France','[]');")
+    con.commit()
+    con.close()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    f = fb.lire_file(_file(tmp_path, clone, f'[[pr]]\nid = "ow"\nbranche = "br"\ncache = "separe"\n'
+                                           f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n'))
+    # Ancien amorçage (copie complète, 19 novembre) : refait.
+    ancien = tmp_path / "sortie" / "caches" / "ow" / "monde" / "seances" / "ow-1"
+    ancien.mkdir(parents=True)
+    journal = []
+    monde = fb.cache_separe(f, f.prs[0], journal.append) / "monde"
+    assert "refait" in journal[0]
+    assert (monde / "brut" / "osm" / "fr.sqlite").is_file()
+    for absent in ("seances", "genere", "mesures"):
+        assert not (monde / absent).exists()
+    con = sqlite3.connect(monde / "index.sqlite")
+    assert con.execute("SELECT key FROM entries").fetchall() == [("osm:fr",)]
+    assert con.execute("SELECT name FROM regions").fetchall() == [("France",)]
+    con.close()
+    journal.clear()
+    assert fb.cache_separe(f, f.prs[0], journal.append) / "monde" == monde and journal == []   # amorcé une fois
+    assert (reel / "seances" / "ow-1" / "route.json").is_file()                              # cache réel intact
 
 
 def _base(path: Path, schema: str):
@@ -380,3 +421,232 @@ def test_environnement_des_etapes_comme_job_sh(tmp_path, depot):
     assert lignes[0].split(os.pathsep)[:2] == [str(projet / "core" / "src"), str(projet / "compiler" / "src")]
     assert lignes[1] == str(venv.parent) and lignes[2] == str(venv) and lignes[3] == "C"
     assert (projet / "core" / ".venv").resolve() == venv.parent.resolve()
+
+
+def test_assemblage_en_conflit_resolu_par_strategie(tmp_path, depot):
+    origine, clone = depot
+    _branche(origine, "b2", {"x.txt": "b2"})                 # même fichier que br : conflit
+    _git(clone, "fetch", "-q", "origin")
+    cmd = f"{PY} -c \"import pathlib; print(pathlib.Path('x.txt').read_text())\""
+    etape = f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(cmd)}\n'
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "ow"\nbranche = "br"\nassemblage = ["b2"]\n{etape}')
+    fb.main(["lancer", str(f), "--sans-reseau"])
+    assert _etat(tmp_path)["prs"]["ow"]["low"]["verdict"] != fb.OK
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "ow"\nbranche = "br"\nassemblage = ["b2"]\n'
+                               f'assemblage_strategie = "ours"\n{etape}')
+    assert fb.main(["relancer", str(f), "--sans-reseau"]) == 0
+    assert _etat(tmp_path)["prs"]["ow"]["low"]["verdict"] == fb.OK
+    assert "branche" in (tmp_path / "sortie" / "ow" / "low" / "journal.txt").read_text(encoding="utf-8")
+
+
+def test_strategie_inconnue_refusee(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, '[[pr]]\nid = "p"\nbranche = "br"\nassemblage_strategie = "octopus"\n'
+                               f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n')
+    with pytest.raises(fb.FileInvalide):
+        fb.lire_file(f)
+
+
+# --- paquets, matrice rendu/logique, étapes cloud (plan du 20 novembre) -----------------------------------------
+
+def _tete(clone, branche):
+    return subprocess.run(["git", "-C", str(clone), "rev-parse", f"origin/{branche}"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def _paquet(clone, branches, corps="", pid="p1"):
+    membres = "".join(f'[[paquet.membre]]\npr = {900 + i}\nbranche = "{b}"\ntete = "{_tete(clone, b)[:8]}"\n'
+                      for i, b in enumerate(branches))
+    return f'[[paquet]]\nid = "{pid}"\n{corps}\n{membres}'
+
+
+def test_paquet_un_seul_banc_sur_les_branches_assemblees(tmp_path, depot):
+    origine, clone = depot
+    for b in ("pa", "pb", "pc"):
+        _branche(origine, b, {f"{b}.txt": b})
+    _git(clone, "fetch", "-q", "origin")
+    lire = f"{PY} -c \"import pathlib; print(sorted(p.name for p in pathlib.Path('.').glob('p?.txt')))\" && "
+    f = _file(tmp_path, clone, _paquet(clone, ["pa", "pb", "pc"],
+              f'fumee = {json.dumps(_cmd(0))}\nmatrice = {json.dumps(lire + _cmd(0) + " {qualite}")}'))
+    journal = []
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=journal.append)
+    assert r.lancer() == 0
+    lancees = [l.split()[1] for l in journal if l.startswith("→")]
+    assert lancees == ["p1/fumee", "p1/low", "p1/high", "p1/medium"]   # rendu par défaut : 3 qualités, risque d'abord
+    assert "['pa.txt', 'pb.txt', 'pc.txt']" in (tmp_path / "sortie" / "p1" / "low" / "journal.txt").read_text()
+    assert "p1 (#900 + #901 + #902)" in (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+
+
+def test_paquet_en_echec_separe_pr_par_pr_seulement_les_etapes_en_echec(tmp_path, depot):
+    origine, clone = depot
+    for b in ("pa", "pb", "pc"):
+        _branche(origine, b, {f"{b}.txt": b})
+    _git(clone, "fetch", "-q", "origin")
+    # high échoue dès que pc.txt est là : la PR fautive est pc.
+    high = (f"{PY} -c \"import pathlib,sys; print('[ÉCHEC] pont : tablier absent' if pathlib.Path('pc.txt').exists() "
+            f"else 'ok'); sys.exit(1 if pathlib.Path('pc.txt').exists() else 0)\"")
+    corps = (f'fumee = {json.dumps(_cmd(0))}\n[[paquet.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n'
+             f'[[paquet.etape]]\nid = "high"\ncommande = {json.dumps(high)}\n')
+    f = _file(tmp_path, clone, _paquet(clone, ["pa", "pb", "pc"], corps))
+    journal = []
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=journal.append)
+    assert r.lancer() == 1
+    etat = _etat(tmp_path)["prs"]
+    assert etat["p1"]["low"]["verdict"] == fb.OK
+    assert etat["p1"]["high"]["verdict"] == fb.SCINDE and etat["p1"]["high"]["avant"] == fb.ECHEC
+    assert etat["p1.r900"]["high"]["verdict"] == fb.OK and etat["p1.r901"]["high"]["verdict"] == fb.OK
+    assert etat["p1.r902"]["high"]["verdict"] == fb.ECHEC
+    assert "low" not in etat["p1.r902"]                     # seules les étapes en échec sont rejouées
+    lancees = [l.split()[1] for l in journal if l.startswith("→")]
+    assert lancees[-6:] == ["p1.r900/fumee", "p1.r901/fumee", "p1.r902/fumee",
+                            "p1.r900/high", "p1.r901/high", "p1.r902/high"]
+    # Reprise : rien de rejoué en paquet, la PR séparée en échec seule l'est.
+    journal.clear()
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=journal.append)
+    assert r.lancer() == 1
+    assert [l.split()[1] for l in journal if l.startswith("→")] == ["p1.r902/high"]
+    assert fb.main(["etat", str(f)]) == 0
+    md = (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+    assert "#902 p1.r902" in md and fb.SCINDE in md
+    assert fb.main(["relancer", str(f), "--sans-reseau", "--pr", "p1.r902"]) == 1
+
+
+def test_paquet_refuse_si_deux_pr_changent_la_meme_version(tmp_path, depot):
+    origine, clone = depot
+    ipc = "core/src/openride_core/ipc_server.py"
+    osm = "compiler/src/openride_compiler/worldgen/osmdb.py"
+    _branche(origine, "socle", {ipc: 'CONTRACT_REV = "1.21"\n', osm: "SCHEMA_VERSION = 1\n"})
+    _git(origine, "checkout", "-q", "main")
+    _git(origine, "merge", "-q", "--ff-only", "socle")
+    _branche(origine, "ipc1", {ipc: 'CONTRACT_REV = "1.22"\n', "a.txt": "a"})
+    _branche(origine, "ipc2", {ipc: 'CONTRACT_REV = "1.22"  # autre\n', "b.txt": "b"})
+    _branche(origine, "schema", {osm: "SCHEMA_VERSION = 2\n"})
+    _git(clone, "fetch", "-q", "origin")
+    etape = f'fumee = {json.dumps(_cmd(0))}\n[[paquet.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n'
+    f = _file(tmp_path, clone, _paquet(clone, ["ipc1", "ipc2"], etape))
+    assert fb.main(["verifier", str(f), "--sans-reseau"]) == 1
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 1
+    v = _etat(tmp_path)["prs"]["p1"]
+    assert v["fumee"]["verdict"] == fb.REFUSE and "révision IPC changé par 2 PR" in v["fumee"]["detail"]
+    assert _passages(tmp_path, "p1", "fumee") == 0          # rien n'est lancé
+    assert v["low"]["verdict"] == fb.BLOQUE
+    # Une seule PR change la révision IPC, une autre le schéma : paquet accepté (cache séparé pour le schéma).
+    (tmp_path / "b").mkdir()
+    f = _file(tmp_path / "b", clone, _paquet(clone, ["ipc1", "schema"], 'cache = "separe"\n' + etape))
+    shas = [_tete(clone, b) for b in ("ipc1", "schema")]
+    pr = fb.lire_file(f).prs[0]
+    refus, avis = fb.verifier_paquet(clone, pr, shas, _tete(clone, "main"))
+    assert refus == [] and avis == []
+    # Branche partie avant une montée de main : pas comptée comme un changement de version.
+    assert fb.versions_changees(clone, _tete(clone, "br"), _tete(clone, "main")) == {}
+
+
+def test_paquet_assemblage_en_conflit_refuse_a_blanc(tmp_path, depot):
+    origine, clone = depot
+    _branche(origine, "c1", {"x.txt": "c1"})
+    _branche(origine, "c2", {"x.txt": "c2"})
+    _git(clone, "fetch", "-q", "origin")
+    f = _file(tmp_path, clone, _paquet(clone, ["c1", "c2"], f'fumee = {json.dumps(_cmd(0))}'))
+    pr = fb.lire_file(f).prs[0]
+    refus, avis = fb.verifier_paquet(clone, pr, [_tete(clone, "c1"), _tete(clone, "c2")], _tete(clone, "main"))
+    assert refus and "conflit avec r901" in refus[0]
+    assert avis and "x.txt" in avis[0]
+
+
+def test_matrice_selon_la_categorie_et_composition_du_paquet(tmp_path, depot):
+    _, clone = depot
+    cmd = json.dumps(_cmd(0) + " {qualite}")
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "menu"\nbranche = "br"\ncategorie = "logique"\n'
+                               f'fumee = {json.dumps(_cmd(0))}\nmatrice = {cmd}\n')
+    pr = fb.lire_file(f).prs[0]
+    assert [e.id for e in pr.etapes] == ["fumee", "medium"] and pr.etapes[1].commande.endswith(" medium")
+    for corps in (f'categorie = "logique"\nmatrice = {cmd}\n',            # logique sans fumée
+                  'categorie = "autre"\nfumee = "x"\n',
+                  'fumee = "x"\nmatrice = "sans qualite"\n'):
+        with pytest.raises(fb.FileInvalide):
+            fb.lire_file(_file(tmp_path, clone, f'[[pr]]\nid = "p"\nbranche = "br"\n{corps}'))
+    t = _tete(clone, "br")[:8]
+    un = f'[[paquet.membre]]\npr = 1\nbranche = "br"\ntete = "{t}"\ncategorie = "logique"\n'
+    deux = f'[[paquet.membre]]\npr = 2\nbranche = "main"\ntete = "{_tete(clone, "main")[:8]}"\n'
+    base = f'[[paquet]]\nid = "q"\nfumee = "x"\nmatrice = {cmd}\n'
+    with pytest.raises(fb.FileInvalide):
+        fb.lire_file(_file(tmp_path, clone, base + un))                       # un seul membre
+    with pytest.raises(fb.FileInvalide):
+        fb.lire_file(_file(tmp_path, clone, base + un.replace(f'tete = "{t}"\n', "") + deux))   # tête non fixée
+    q = fb.lire_file(_file(tmp_path, clone, base + un + deux)).prs[0]
+    assert q.categorie == fb.RENDU and [e.id for e in q.etapes] == ["fumee", "low", "high", "medium"]
+    q = fb.lire_file(_file(tmp_path, clone, base + un + deux + 'categorie = "logique"\n')).prs[0]
+    assert q.categorie == fb.LOGIQUE and [e.id for e in q.etapes] == ["fumee", "medium"]
+
+
+def test_categorie_lue_dans_la_section_recette_pc(tmp_path, capsys):
+    assert fb.categorie_recette("## Résumé\nCatégorie : logique\n")[0] == fb.RENDU        # hors section
+    assert fb.categorie_recette("## Recette PC\n\n- **Catégorie** : logique\n\n## Suite\n")[0] == fb.LOGIQUE
+    assert fb.categorie_recette("## 5. Recette PC\nCatégorie : Rendu (biomes)\n")[0] == fb.RENDU
+    assert fb.categorie_recette("## Recette PC\nrien\n## Autre\nCatégorie : logique")[0] == fb.RENDU
+    corps = tmp_path / "corps.md"
+    corps.write_text("## Recette PC\nCatégorie : logique\n", encoding="utf-8")
+    assert fb.main(["categorie", str(corps)]) == 0
+    assert capsys.readouterr().out.startswith("logique")
+
+
+def test_etapes_cloud_hors_du_pc_puis_importees(tmp_path, depot):
+    _, clone = depot
+    corps = (f'[[pr]]\nid = "p"\nbranche = "br"\nfumee = {json.dumps(_cmd(0))}\n'
+             f'[[pr.etape]]\nid = "sol"\nlieu = "cloud"\ncommande = {json.dumps(_cmd(0))}\n'
+             f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n')
+    portail = f'avant_etape = "{PY} -c \\"import sys; sys.exit(1)\\""\n'   # fenêtre du user : jamais ouverte
+    cloud = tmp_path / "cloud"
+    cloud.mkdir()
+    fc = _file(cloud, clone, corps)
+    fc.write_text(fc.read_text(encoding="utf-8").replace("[file]\n", "[file]\n" + portail), encoding="utf-8")
+    assert fb.main(["lancer", str(fc), "--sans-reseau", "--lieu", "cloud"]) == 0   # sans portail, sans fumée du PC
+    assert _passages(cloud, "p", "sol") == 1 and _passages(cloud, "p", "fumee") == 0
+    f = _file(tmp_path, clone, corps)
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 0
+    assert _passages(tmp_path, "p", "sol") == 0 and _passages(tmp_path, "p", "low") == 1
+    assert "À FAIRE (cloud)" in (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+    assert fb.main(["importer", str(f), "--depuis", str(cloud / "sortie" / "etat.json")]) == 0
+    assert _etat(tmp_path)["prs"]["p"]["sol"]["verdict"] == fb.OK
+    assert fb.main(["importer", str(f)]) == 2
+
+
+def test_godot_du_conteneur_cloud_pose_pour_les_etapes(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("GODOT", raising=False)
+    env = tmp_path / ".cache" / "godot-4.7.2" / "env"
+    env.parent.mkdir(parents=True)
+    env.write_text("GODOT=/opt/godot\n", encoding="utf-8")
+    assert fb.environnement_etape(tmp_path, tmp_path / "projet")["GODOT"] == "/opt/godot"
+    monkeypatch.setenv("GODOT", "/pc/godot")                 # celui du PC reste prioritaire
+    assert fb.environnement_etape(tmp_path, tmp_path / "projet")["GODOT"] == "/pc/godot"
+
+
+def test_exemple_paquet_se_lit():
+    f = fb.lire_file(ROOT / "scripts" / "file_bancs" / "exemple_paquet.toml")
+    p1 = next(p for p in f.prs if p.id == "p1")
+    assert p1.est_paquet and p1.categorie == fb.RENDU and len(p1.membres) == 3
+    assert [e.id for e in p1.etapes if e.lieu == "cloud"] == ["contacts", "vitrine"]
+    assert next(p for p in f.prs if p.id == "r933").categorie == fb.LOGIQUE
+
+
+def test_delais_de_capture_du_cloud_ignores_seulement_en_cloud():
+    lent = "[ÉCHEC] 9/10 images enregistrées après le chargement, 2 redemandée(s), réponse en 1.49 s : captures de l'engine"
+    assert fb.classer(1, lent)[0] == fb.ECHEC                      # sur le PC : un vrai échec
+    v, d = fb.classer(1, lent + "\n" + lent, "cloud")
+    assert v == fb.OK and "2 délai(s)" in d
+    v, d = fb.classer(1, lent + "\n[ÉCHEC] pont : tablier absent", "cloud")
+    assert v == fb.ECHEC and "pont" in d and "1 échec(s)" in d
+
+
+def test_etape_cloud_dun_paquet_jamais_separee(tmp_path, depot):
+    origine, clone = depot
+    for b in ("pa", "pb"):
+        _branche(origine, b, {f"{b}.txt": b})
+    _git(clone, "fetch", "-q", "origin")
+    corps = (f'[[paquet.etape]]\nid = "cap"\nlieu = "cloud"\n'
+             f'commande = {json.dumps(_cmd(1, "[ÉCHEC] décor : herbe absente"))}\n')
+    f = _file(tmp_path, clone, _paquet(clone, ["pa", "pb"], corps))
+    assert fb.main(["lancer", str(f), "--sans-reseau", "--lieu", "cloud"]) == 1
+    etat = _etat(tmp_path)["prs"]
+    assert etat["p1"]["cap"]["verdict"] == fb.ECHEC and not any(k.startswith("p1.") for k in etat)

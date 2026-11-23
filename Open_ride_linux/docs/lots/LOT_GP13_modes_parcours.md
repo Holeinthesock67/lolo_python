@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : parcours propres à un mode (Vélodrome, Grand Prix), règle unique, accueil et listes | Python, GDScript | GP9, VD10, O32, O38 | Moyenne | GP13a **livré le 16 novembre** (PR #904, avec GP14) ; GP13b à venir (lot gelé du 19 novembre) |
+| Série GP : parcours propres à un mode (Vélodrome, Grand Prix), règle unique, accueil et listes | Python, GDScript | GP9, VD10, O32, O38 | Moyenne | **Livré le 21 novembre** (GP13a : PR #904, 16 novembre ; GP13b : PR #932, 21 novembre) |
 
 Série GP (mode « Grand Prix des objets ») et série VD (vélodrome). Plan validé par le propriétaire le 15 novembre 2026 : `PLAN_PARCOURS_GRAND_PRIX.md` (dossier du projet, v2).
 
@@ -39,5 +39,38 @@ Un mode peut avoir ses propres parcours, reconnus à une étiquette de leur fich
 ## 5. Reste
 
 - Banc PC : `menu_bench` `grand_prix` et `velodrome` en `low`, `medium` et `high` (captures de l'accueil et des écrans Prêt à valider par le propriétaire) ; captures GP14 : coup reçu (bandeau et contour) et panneaux du km 1 du Col du lacet, vus 15 m avant (`--at-m 485,985` : « Sommet dans 1 km » à 500 m, « Sommet dans 500 m » à 1 000 m, à gauche).
-- GP13b : Boucle de la Corniche (boucle de 2,5 km, méditerranéen) et Route des Vignes (6 km en ligne, vallonnée), routes revêtues sans épingle et test des routes larges ; bancs `grand_prix` et `grand_prix_onze`.
-- Recette GP11 (#845) : étape 2 sur la Route des Vignes après GP13b.
+- GP13b : bancs et captures (section 6).
+
+## 6. Livraison GP13b (19 novembre 2026)
+
+**Fusionné le 21 novembre 2026 (PR #932 (GP13b)).** Les points « Reste » ci-dessous décrivent l'état d'avant la fusion.
+
+Deux parcours propres au Grand Prix, écrits par le générateur des démonstrations (`openride_compiler.demo_biomes`, entrées de `DEMO_SET` du jeu de base, étiquette `grandprix` de `DEMO_LIBRARY`) et installés avec les contenus de départ, comme le Circuit des Prés :
+
+| Identifiant | Nom au menu | Forme | Biome | Pente | Rayon minimal |
+| --- | --- | --- | --- | --- | --- |
+| `demo-corniche` | Boucle de la Corniche | boucle de 2,5 km | méditerranéen | −5,7 à +5,1 %, 37 m de montée par tour | 240 m |
+| `demo-vignes` | Route des Vignes | boucle sinueuse de 5 km | cultures (rangs de vigne du thème) | −5,7 à +5,5 %, 64 m de montée par tour | 70 m |
+
+- **Corniche** (`--corniche`) : relief `corniche_relief` qui monte de la mer (à l'est) vers les collines de l'intérieur ; sur le tronçon `sea` de la boucle (950 m du côté est), la mer est à gauche, en contrebas d'une falaise d'une trentaine de mètres, avec une côte rocheuse sans plage et des aires `sea` jusqu'à 1 600 m de la route (au-delà du trou de 1 500 m de l'anneau d'horizon de l'engine : pas de fond marin à sec). Mécanisme général : une boucle de `LOOPS` peut avoir un tronçon `sea` (`Plan.sea_stretches`, `Plan.sea_weight`, `write_sea`), comme la côte de la route ouverte. Décor : village des Câpriers au départ, maquis et pinède à l'intérieur, belvédère sur la mer, pointe des Pins, oliviers.
+- **Vignes** (`--vignes`) : d'abord prévue en ligne (6 km), passée en boucle après la remarque du propriétaire du 19 novembre (« une ligne droite de seulement 6 km » ne convient pas au Grand Prix). Boucle de 5 km du biome `farmland` (dont l'essence principale est le rang de vigne), avec des lacets : `fake_osm.LoopRoad` prend des `wiggles` (vagues entières le long de la normale, la boucle reste fermée), ici une dizaine de virages par tour (rayon minimal 70 m). Coteaux de `vignes_relief`, sans les flancs de `SIDES` (qui marquaient des plis entre les lacets). Décor `_vignes` : vignes des deux côtés, village au départ, hameau, clos, trois domaines, bosquets, trois belvédères.
+- **Règle des routes du Grand Prix** (§2.1 du plan) : `test_grand_prix_routes_are_wide_paved_and_without_hairpin` vérifie, pour chaque parcours étiqueté `grandprix` du jeu de base (Circuit des Prés compris), une route revêtue de bout en bout, une chaussée de 6 m et un rayon de virage d'au moins 25 m.
+- Liste du jeu de base (`test_jeu_de_base.py`), captures (`captures_demo.py`), scénario de menus `parcours_demo` (« Changer de parcours » du Grand Prix : les trois parcours, écran Prêt de chacun), recette GP11 étape 2 sur la Route des Vignes, guide d'utilisation.
+- Ni IPC, ni engine, ni format de parcours changés.
+
+Reste, sur le PC (fil de fusion) :
+
+```bash
+cd /home/utilisateur/Games/lolo_python/Open_ride_linux
+python3 engine/tests/captures_demo.py lancer --out ~/OpenRide/captures/gp13b --qualites low,medium,high --parcours demo-corniche,demo-vignes --native
+for q in low medium high; do
+  for p in demo-corniche demo-vignes; do
+    for sc in grand_prix grand_prix_onze; do
+      python3 engine/tests/sim_bench.py --scenario $sc --world ~/OpenRide/captures/gp13b/routes/$p.world \
+        --quality $q --native --probe --out ~/OpenRide/sim_bench/gp13b_${p}_${sc}_$q
+    done
+  done
+done
+```
+
+`captures_demo.py` passe aussi le scénario de menus `parcours_demo` (écrans Prêt des trois parcours du Grand Prix). Budgets GPU : 8 / 13 / 16 ms (low, medium, high). Captures validées par le propriétaire avant la fusion.

@@ -621,6 +621,54 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
 
 
+def _check_bridges(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
+    """Couche bridges (format 1.9, §8 septies, lot EA4) : ponts par tronçon, axe sur la route du parcours."""
+    b_layer = layers.get("bridges") if isinstance(layers, dict) else None
+    if not isinstance(b_layer, dict) or not b_layer.get("present"):
+        return
+    folder = world / "bridges"
+    count = 0
+    for chunk_file in sorted(folder.glob("chunk_*.json")) if folder.is_dir() else []:
+        if not CHUNK_RE.fullmatch(chunk_file.name):
+            continue
+        data = _load(chunk_file, problems)
+        if data is None:
+            continue
+        if not str(data.get("version", "")).startswith("1."):
+            problems.append(f"bridges/{chunk_file.name} : version inattendue {data.get('version')!r}")
+        items = data.get("bridges")
+        if not isinstance(items, list):
+            problems.append(f"bridges/{chunk_file.name} : « bridges » n'est pas une liste")
+            continue
+        for item in items:
+            label = f"bridges/{chunk_file.name} ({item.get('id', '?') if isinstance(item, dict) else '?'})"
+            if not isinstance(item, dict):
+                problems.append(f"{label} : pont non objet")
+                continue
+            count += 1
+            if not isinstance(item.get("id"), str) or not item.get("id"):
+                problems.append(f"{label} : id invalide")
+            if item.get("kind") != "bridge":
+                problems.append(f"{label} : kind inconnu {item.get('kind')!r}")
+            if not (_is_number(item.get("half_width_m")) and float(item["half_width_m"]) > 0):
+                problems.append(f"{label} : half_width_m invalide")
+            pts, piers = item.get("points"), item.get("piers")
+            if not (isinstance(pts, list) and len(pts) >= 2
+                    and all(isinstance(p, list) and len(p) == 3 and all(_is_number(v) for v in p) for p in pts)):
+                problems.append(f"{label} : axe [x, z, y] invalide")
+                continue
+            if not (isinstance(piers, list)
+                    and all(isinstance(p, list) and len(p) == 4 and all(_is_number(v) for v in p) for p in piers)):
+                problems.append(f"{label} : piles [x, z, y_tablier, y_pied] invalides")
+            if route is not None:
+                axis = RouteAxis(route["x"], route["z"], route["alt_m"])
+                gap, _ = axis.nearest(np.array([p[0] for p in pts], float), np.array([p[1] for p in pts], float), 50.0)
+                if not np.all(np.isfinite(gap) & (gap < 1.0)):
+                    problems.append(f"{label} : axe du tablier hors de la route du parcours")
+    if isinstance(b_layer.get("count"), int) and b_layer["count"] != count:
+        problems.append(f"bridges : {count} pont(s) dans les fichiers, {b_layer['count']} au manifeste")
+
+
 def _check_roads(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
     """Couche roads (format 1.5, §8 ter) : routes voisines découpées par tronçon, hors de la route du parcours."""
     r_layer = layers.get("roads") if isinstance(layers, dict) else None
@@ -761,6 +809,7 @@ def verify_world(world: Path) -> list[str]:
     _check_water(world, layers, route, problems)
     _check_coast(world, layers, route, problems)
     _check_roads(world, layers, route, problems)
+    _check_bridges(world, layers, route, problems)
     _check_segments(world, layers, route, problems)
     return problems
 

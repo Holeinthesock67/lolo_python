@@ -145,6 +145,7 @@ Séance complète sur Bluetooth simulé dans la vraie scène, captures réguliè
 | `dernier_survivant_onze` | Dernier survivant à 11 adversaires (lot DS8) sur `demo_long` (12 km) : départ groupé des 12 coureurs, pire cas GPU en low, medium et high ; course complète à 11 du core dans `core/tests/test_survivor_courses.py` |
 | `grand_prix` | Grand Prix des objets (GP7, GP8) : 4 bots, chaos fou, captures avant chaque rangée de boîtes et après chaque Z ; banc GPU en low, medium et high |
 | `grand_prix_onze` | Grand Prix des objets à 11 adversaires (lot GP10) : départ groupé des 12 coureurs, pire cas GPU en low, medium et high ; course complète à 11 du core dans `core/tests/test_grandprix_session.py` |
+| `course_onze` | Course classique contre les bots à 11 adversaires (lot CR1) : départ groupé des 12 coureurs, classement complet au HUD, pire cas GPU en low, medium et high ; courses complètes du core dans `core/tests/test_race_mode.py` |
 
 Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot ni exception du core, journal et FIT écrits, fin de séance, vrai HOME inchangé, qualité appliquée égale à la demande.
 
@@ -223,6 +224,7 @@ Rien de ce tableau n'est sur `main`. À la fusion, chaque PR met à jour le cata
 - **Budgets de temps des tests :** `engine/tests/perf_budgets.json` (budget du PC, seuil de la CI), remplaçables par machine dans `~/OpenRide/perf_budgets.json`.
 - **Comparer avant et après :** `vitrine_compare.py AVANT APRES` pour les vitrines (captures, comptes et planche), `compare_captures.py AVANT APRES --out ECARTS` pour les captures du banc ; pour les chiffres, `fps.csv` et `sonde.csv` des deux bancs.
 - Toujours vérifier la ligne de qualité appliquée (§3.7) : avant la PR #481, les bancs medium et high mesuraient du `low`.
+- **Matrice de la file du PC (20 novembre) :** une PR de rendu passe low, high et medium ; une PR de logique, une fumée et medium (ligne « Catégorie » de sa section « Recette PC », `docs/lots/00_INDEX.md` §3 ; en cas de doute, rendu). Les PR sans conflit de version passent par paquets de 2 à 4 ; captures sans mesure GPU et contrôles sans GPU en cloud (`scripts/file_bancs.py --lieu cloud`). Une seule référence main par jour.
 
 ## 8. Écrire un test
 

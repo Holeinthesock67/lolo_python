@@ -60,7 +60,7 @@ def test_manifest_terrain_block(world):
     assert t["near_cell_m"] == 10 and t["far_cell_m"] == 50
     assert len(t["tiles"]["near"]) > 0 and len(t["tiles"]["far"]) > 0
     assert manifest["route"]["alt_source"] == "synthetic"
-    assert manifest["format_version"] == "1.8"
+    assert manifest["format_version"] == "1.10"
 
 
 # Critère 2 : tuile proche ------------------------------------------------------------------
@@ -151,7 +151,9 @@ def test_blend_in_tiles(world):
         near = d <= 4.0
         diff = g[near] - (y_route[near] - 0.05)
         assert np.all(diff < 0.01) and np.all(diff > -0.5)
-        assert diff.size == 0 or np.median(diff) > -0.05
+        # route de l'engine (Catmull-Rom) et non plus segments droits (21/11, road_ground.py) : dans les virages, les
+        # sommets du bord suivent la chaussée dessinée, quelques centimètres sous l'axe en segments droits
+        assert diff.size == 0 or np.median(diff) > -0.10
         ring = (d >= 27.0) & (d <= 33.0)
         assert np.all(np.abs(g[ring] - mnt[ring]) < 0.01)
         on_road += int(near.sum())
@@ -366,7 +368,7 @@ def test_build_terrain_direct():
                              horizon=False)) == {"near", "far"}
     g = tiles["near"][(0, 0)]
     assert g.dtype == np.dtype("<f4") and g.shape == (101, 101)
-    assert g[0, 0] == pytest.approx(4.95)            # sur l'axe : route − 5 cm
+    assert g[0, 0] == pytest.approx(4.95, abs=2e-3)   # sur l'axe : route − 5 cm (1 mm de marge de la règle)
     assert g[100, 100] == pytest.approx(7.0)         # loin de la route : MNT
 
 
@@ -405,7 +407,7 @@ def test_hairpin_terrain_never_above_road(monkeypatch):
     route = _hairpin()
     frame = LocalFrame.at(*ORIGIN)
     prov = SyntheticProvider(*ORIGIN, _flank)
-    monkeypatch.setattr(terrain, "clear_road", lambda *a, **k: 0)
+    monkeypatch.setattr(terrain, "fit_route_ground", lambda *a, **k: {"lowered": 0, "raised": 0, "left_low": 0})
     raw = terrain.build_level(route, frame, prov, NEAR, log=lambda m: None)
     before, _, _ = terrain.terrain_excess(raw, route["x"], route["z"], route["alt_m"])
     assert before.max() > 0.5                              # le défaut existe bien sans garde-fou

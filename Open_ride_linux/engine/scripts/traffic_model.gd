@@ -75,7 +75,8 @@ const NEAR_M := 150.0                       # lot AS6 : véhicules calculés par
 const CORE_SHIFT_MAX_M := 50.0               # écart cycliste affiché / cycliste du core au-delà duquel (saut, boucle) on ne recale pas
 const CORE_MARGIN_M := 10.0                 # un véhicule qui vient de sortir de la liste n'est pas retiré
 ## Sortes (Lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd (rétroviseurs compris), part des
-## tirages et plage de vitesse.
+## tirages et plage de vitesse. `team_car` (voiture d'équipe du Grand Prix, lot GP-voiture-modele) : part nulle,
+## jamais tirée dans la circulation, seulement envoyée par le core devant un coureur remorqué.
 const KINDS := {
 	"car_a": {"half_width": 1.03, "length": 4.6, "share": 0.3, "kmh": Vector2(50.0, 70.0)},
 	"car_b": {"half_width": 1.0, "length": 4.1, "share": 0.25, "kmh": Vector2(50.0, 70.0)},
@@ -84,6 +85,7 @@ const KINDS := {
 	"bus": {"half_width": 1.44, "length": 12.2, "share": 0.04, "kmh": Vector2(45.0, 60.0)},
 	"moto": {"half_width": 0.41, "length": 2.1, "share": 0.07, "kmh": Vector2(55.0, 80.0)},
 	"tractor": {"half_width": 1.07, "length": 3.8, "share": 0.15, "kmh": Vector2(20.0, 30.0)},
+	"team_car": {"half_width": 1.04, "length": 4.8, "share": 0.0, "kmh": Vector2(50.0, 70.0)},
 }
 const COLORS := 8
 const HEADLIGHT_FOG := 0.3
@@ -115,20 +117,31 @@ var _cycle_seen := {}              # identifiants reçus depuis la dernière par
 
 ## `theme` fusionné (theme_loader.gd), `pois` les points d'intérêt (seuls les `village` comptent).
 func configure(route_data, theme: Dictionary, pois: Array, vehicle_budget: int, rng_seed: int = 0) -> void:
-	route = route_data
-	base_route = route_data
 	direction = 1
 	budget = maxi(0, vehicle_budget)
 	seed = rng_seed
-	_villages.clear()
-	for p in pois:
-		if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "village":
-			_villages.append(Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0))))
+	extend_route(route_data, pois)
 	var terrain = theme.get("terrain", {})
 	_snow_line_m = DEFAULT_SNOW_LINE_M
 	if typeof(terrain) == TYPE_DICTIONARY and (typeof(terrain.get("snow_line_m")) == TYPE_INT or typeof(terrain.get("snow_line_m")) == TYPE_FLOAT):
 		_snow_line_m = float(terrain["snow_line_m"])
 	reset()
+
+
+## Route prolongée du monde ouvert (même début, abscisses gardées) : nouvelle route et villages, sans retirer
+## les véhicules en cours. À rebours (lot N23), le parcours retourné s'allonge par son début : les véhicules
+## gardent leur place sur la route (u = L - s décalé de l'allongement).
+func extend_route(route_data, pois: Array) -> void:
+	var grown := 0.0 if base_route == null or route_data == null else float(route_data.length_m) - float(base_route.length_m)
+	base_route = route_data
+	route = route_data if direction > 0 or route_data == null else RouteMirror.new(route_data)
+	if direction < 0:
+		for v in vehicles:
+			v["s"] = float(v["s"]) + grown
+	_villages.clear()
+	for p in pois:
+		if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "village":
+			_villages.append(Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0))))
 
 
 ## Abscisse du parcours `s` dans le repère du modèle (u = L - s à rebours, lot N23) ; réciproque.
@@ -225,14 +238,20 @@ func slot_event(k: int) -> Dictionary:
 	}
 
 
-## Sorte tirée d'après `u` (0 à 1) et les parts de KINDS, dans l'ordre de la table.
+## Sorte tirée d'après `u` (0 à 1) et les parts de KINDS, dans l'ordre de la table ; au-delà de la somme des
+## parts (arrondis), la dernière sorte tirable (part non nulle).
 static func pick_kind(u: float) -> String:
 	var acc := 0.0
+	var last := ""
 	for k in KINDS:
-		acc += float(KINDS[k]["share"])
+		var share := float(KINDS[k]["share"])
+		if share <= 0.0:
+			continue
+		last = k
+		acc += share
 		if u < acc:
 			return k
-	return KINDS.keys()[KINDS.size() - 1]
+	return last
 
 
 ## Phares allumés (Lot P25) : brume (`fog_boost`) ou pluie de weather_model.gd, ou soleil bas du thème.

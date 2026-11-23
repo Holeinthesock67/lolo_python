@@ -37,7 +37,7 @@ const GRID := 17
 ## le thème décrit le sol ou l'eau (lot U25, `landscapes.<paysage>.biomes.<biome>.ground` ou `.water`), au plus
 ## MAX_LANDSCAPE_SLOTS.
 const MAX_LANDSCAPE_SLOTS := 16
-const MAX_SLOTS := 20 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
+const MAX_SLOTS := 23 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
 const MAX_LAYERS := MAX_SLOTS * 3      # 3 couches par emplacement (terrain_biomes.gdshader MAX_LAYERS)
 const ROLES: Array[String] = ["grass", "rock", "snow"]
 ## Couleurs des strates (lot U25-p2) : au plus STRATA_COLORS_PER_SLOT par emplacement, MAX_STRATA_COLORS en tout
