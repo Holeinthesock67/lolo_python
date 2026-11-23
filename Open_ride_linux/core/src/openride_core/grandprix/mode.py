@@ -460,7 +460,7 @@ class GrandPrixMode:
         return True
 
     def _event(self, kind: str, r: Racer, item: str, by: str | None = None) -> None:
-        """Message `gp_event` (révision 1.25, lot GPO1) : boîte prise, objet utilisé ou objet paré (`parry` : `r` a
+        """Message `gp_event` (révision 1.31, lot GPO1) : boîte prise, objet utilisé ou objet paré (`parry` : `r` a
         arrêté l'objet `item` lancé ou posé par `by`) par un coureur, cycliste comme bot, pour que l'engine montre le
         même mot et le même son pour tous ; répété comme `gp_hit`."""
         msg = {"type": "gp_event", "v": 1, "kind": kind, "item": item, "rider": r.id}

@@ -52,7 +52,7 @@ func _run() -> void:
 	_check(taken.size() == 3 and taken.filter(func(b): return b["row"] == 0).size() == 2
 		and taken.filter(func(b): return b["row"] == 1).size() == 1, "boîtes prises : pas posées jusqu'à leur retour (lot GP14)")
 
-	# Boîtes de famille par voie (lot GPO1, révision 1.25) : gauche s'aider, centre tout, droite attaquer
+	# Boîtes de famille par voie (lot GPO1, révision 1.31) : gauche s'aider, centre tout, droite attaquer
 	_check(bx[0]["lane"] == 0 and bx[2]["lane"] == 2, "boîtes : voie donnée")
 	_check(Model.box_color(0) == Items.SPARK and Model.box_color(1) == Color(1, 1, 1) and Model.box_color(2) == Items.HOT
 		and Model.box_color(7) == Color(1, 1, 1), "boîtes : couleur de la famille de la voie")

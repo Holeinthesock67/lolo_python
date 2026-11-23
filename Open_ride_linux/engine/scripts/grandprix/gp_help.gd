@@ -6,7 +6,8 @@ extends RefCounted
 ## l'écran « Aide Grand Prix » : un sujet par ligne, son explication dans la carte de détail, comme l'aide des
 ## parcours (route_help.gd) et du sous-menu ERG (workout_help.gd). Textes alignés sur le core
 ## (grandprix/mode.py : trois voies, boîte prise seulement réserve vide, reformée en 2 s, changement de voie en
-## 0,6 s, placement automatique repris après 20 s sans objet en vue ; session.py : en voie choisie, le cycliste
+## 0,6 s, placement automatique repris après 20 s sans objet en vue ; grandprix/items.py, lot GPO1 : durées 5 s
+## et 12 s, boîtes de famille par voie ; session.py : en voie choisie, le cycliste
 ## ne se range plus dans la roue) et sur docs/GUIDE_UTILISATION.md (Grand Prix des objets).
 ## Pas de class_name : preload("res://scripts/grandprix/gp_help.gd").
 
@@ -19,20 +20,23 @@ const SUMMARY := "summary"
 const TOPICS := [
 	[SUMMARY, "Le Grand Prix en bref", [
 		"Une course en tours contre les bots, sur une boucle à trois voies. Le premier à l'arrivée gagne.",
-		"Passe sur une boîte pour gagner un objet, puis Z pour l'utiliser.",
+		"Passe sur une boîte pour gagner un objet, puis Z pour l'utiliser. Chaque effet dure 5 s, ou 12 s pour les plus forts.",
+		"Boîte de gauche « + BONUS » : pour toi. Centre « ? SURPRISE » : tout. Droite « ! ATTAQUE » : contre les autres.",
 		"Change de voie pour prendre une boîte encore là ou éviter un objet : A ou ← →.",
 		"Les objets ne changent que la vitesse à l'écran, jamais la résistance du vélo ni tes watts.",
 	]],
 	["boxes", "Boîtes et objets", [
 		"Une rangée de trois boîtes, une par voie, tous les 500 m (réglage « Écart des boîtes »).",
 		"Tu prends la boîte de ta voie, seulement si ta réserve est vide : utilise d'abord ton objet (Z).",
+		"Chaque boîte porte son signe écrit : à gauche « + BONUS » (objets pour toi et sonnette), au centre « ? SURPRISE » (tout le tirage), à droite « ! ATTAQUE » (attaques et pièges).",
 		"Une boîte prise par un bot disparaît 2 s : passe par une autre voie.",
 		"Plus tu es loin du premier, plus l'objet tiré est fort.",
 		"Bidon : lâché derrière toi sur ta voie. Musette : lancée tout droit devant sur ta voie. Musette guidée : suit le coureur juste devant, même s'il change de voie.",
 	]],
 	["lanes", "À quoi servent les voies", [
 		"Trois voies : gauche, centre, droite. Les trois traits en bas de l'écran montrent la tienne.",
-		"Elles servent à prendre une boîte encore là, à éviter un bidon ou une musette sur ta voie, et à viser : ta musette part sur ta voie.",
+		"Elles servent à choisir ta boîte (+ BONUS, ? SURPRISE ou ! ATTAQUE), à prendre une boîte encore là, à éviter un bidon ou une musette sur ta voie, et à viser : ta musette part sur ta voie.",
+		"Choisis ta voie avant la rangée de boîtes : les bots le font aussi.",
 		"Trait gris : placement automatique, tu te ranges dans la roue du coureur devant pour l'abri.",
 		"Trait blanc : voie choisie par toi. Tu ne te ranges plus dans la roue : tu peux perdre l'abri.",
 		"Après 20 s sans boîte ni objet en vue, le placement automatique revient tout seul.",
@@ -47,8 +51,10 @@ const TOPICS := [
 	["hits", "Coups reçus et défense", [
 		"Touché : le bandeau du bas le dit, avec l'objet et le temps restant ; le bord de l'écran prend sa couleur.",
 		"Une musette guidée derrière toi : le bandeau prévient. Un bidon ou une musette en réserve la pare tout seul.",
-		"Après un coup reçu, 2 s sans nouveau coup.",
-		"La super-forme te rend invincible 8 s ; la sonnette détruit bidons et musettes autour de toi.",
+		"Un coup te ralentit 5 s ; au-dessus du coureur touché s'écrit le temps perdu (« ZIOUF ! −7 s »).",
+		"Après un coup reçu, 5 s sans nouveau coup.",
+		"La super-forme te rend invincible 12 s ; la sonnette détruit bidons et musettes à 15 m autour de toi.",
+		"Un objet arrêté (réserve, sonnette, super-forme) fait écrire « PARÉ ! » au-dessus de celui qui l'arrête, bots compris.",
 	]],
 ]
 

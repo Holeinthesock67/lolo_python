@@ -19,7 +19,7 @@ Le coup de fouet et toutes les glissades (bidon, musettes, musette guidée, sonn
 - Un même effet du même objet reçu à nouveau est relancé, pas cumulé.
 - **Boîtes de famille par voie** : gauche « s'aider » (objets pour soi et sonnette), centre tout le tirage, droite « attaquer » (attaques, pièges, objets contre la tête). Le tirage selon le retard reste, limité à la famille de la voie ; une boîte donne toujours un objet (famille sans objet tirable : tout le tirage). Signe écrit au-dessus de chaque boîte (les couleurs seules ne se lisaient pas, retour du propriétaire du 21 novembre) : « + BONUS », « ? SURPRISE », « ! ATTAQUE » ; la couleur renforce seulement : jaune (famille « pour soi » des maquettes GP6), blanche, rouge (famille « attaque »). Mêmes mots dans l'aide du mode (lot de #952).
 - **Bots** : à moins de 150 m d'une rangée, sans objet ni roulette, un bot prend la voie « attaquer » s'il est en tête ou à moins de 5 s, « s'aider » sinon, ou reste au centre une fois sur trois ; une décision par rangée, jamais vers une voie où un objet l'attend à moins de 40 m.
-- **Même retour pour tous les coureurs** : message `gp_event` (révision 1.25) à chaque boîte prise et chaque objet utilisé ; l'engine écrit au-dessus du coureur « HOP ! » ou le nom de l'objet, dans la couleur de sa famille (Label3D déjà en place, 6 au plus) ; les dessins d'effets passent pour tous puisque tout effet dure ; les sons d'objet et de coup reçu sont joués aussi pour un bot à moins de 30 m, 9 dB plus bas, au plus un toutes les 0,5 s et jamais dans les 0,8 s après un son du cycliste.
+- **Même retour pour tous les coureurs** : message `gp_event` (révision 1.31) à chaque boîte prise et chaque objet utilisé ; l'engine écrit au-dessus du coureur « HOP ! » ou le nom de l'objet, dans la couleur de sa famille (Label3D déjà en place, 6 au plus) ; les dessins d'effets passent pour tous puisque tout effet dure ; les sons d'objet et de coup reçu sont joués aussi pour un bot à moins de 30 m, 9 dB plus bas, au plus un toutes les 0,5 s et jamais dans les 0,8 s après un son du cycliste.
 
 ## 3. Valeurs
 
@@ -48,7 +48,7 @@ L'essai tournait sur main (sans ce lot) ; le propriétaire a trouvé l'impact de
 ## 4. Livraison (21 novembre 2026)
 
 - Core : `powerups.py`, `grandprix/effects.py`, `items.py` (table de réglage, `BOX_LANES`, `lane_items`), `draw.py` (`only`), `mode.py` (`gp_event`, tirage par voie, pause = `SHORT_S`), `brain.py` (voie des boîtes).
-- Contrat : révision 1.25, message `gp_event` (`docs/contracts/ipc/gp_event.schema.json`), boîtes de famille par voie ; rev annoncée inchangée jusqu'à l'ordre de fusion des révisions 1.21 à 1.24.
+- Contrat : révision 1.31, message `gp_event` (`docs/contracts/ipc/gp_event.schema.json`), boîtes de famille par voie ; numéro pris à la fusion au-dessus de `main` (provisionnel 1.31, `CONTRACT_REV` « 1.31 » ; 1.25 non utilisée), renuméroté si une autre révision fusionne avant.
 - Engine : `gp_scene_model.gd` (`on_event`, `box_color`, couleur des mots), `gp_scene.gd` (teinte des boîtes du MultiMesh, mots colorés), `gp_sound_model.gd` (`on_event`, `bot_hit`, `bot_sound`), `sound_player.gd` (`play_event(jingle, volume_db)`), `ipc_client.gd` (`gp_event_received`), `main.gd` (branchement).
 - Tests : `test_grandprix.py` (tout effet dure, valeurs, boîtes par voie, `gp_event`), `test_grandprix_bots.py` (voie des boîtes), `test_grandprix_session.py` (`gp_event` validé par son schéma), `test_tt2_modele_bonus.py`, `engine/tests/unit/test_gp_scene.gd`.
 

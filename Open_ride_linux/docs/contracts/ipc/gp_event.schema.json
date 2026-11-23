@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideGpEventMessage",
-  "description": "Révision 1.25 (lot GPO1) : un coureur du Grand Prix (cycliste ou bot) prend une boîte (`box`, objet tiré) ou utilise un objet (`use`), ou arrête un objet lancé ou posé par un autre (`parry` : objet gardé en réserve, onde de la sonnette, invincibilité ; `by` = lanceur) ; répété 3 fois à une seconde d'intervalle comme `gp_hit`, l'engine ignore les doublons ; 4 096 octets au plus (contrat §2).",
+  "description": "Révision 1.31 (lot GPO1) : un coureur du Grand Prix (cycliste ou bot) prend une boîte (`box`, objet tiré) ou utilise un objet (`use`), ou arrête un objet lancé ou posé par un autre (`parry` : objet gardé en réserve, onde de la sonnette, invincibilité ; `by` = lanceur) ; répété 3 fois à une seconde d'intervalle comme `gp_hit`, l'engine ignore les doublons ; 4 096 octets au plus (contrat §2).",
   "type": "object",
   "required": [
     "type",

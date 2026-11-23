@@ -15,7 +15,7 @@ extends RefCounted
 ##   seulement), `medium` limité, `high` complet (plan §8.3) ;
 ## - `on_hit(msg, now_s)` : onomatopée au-dessus du coureur touché (« ZIOUF ! », « SPLASH ! », « BOING ! »),
 ##   les messages répétés trois fois par le core ne comptant qu'une fois ;
-## - `on_event(msg, now_s)` (révision 1.25, lot GPO1) : mot au-dessus de tout coureur, cycliste comme bot, qui
+## - `on_event(msg, now_s)` (révision 1.31, lot GPO1) : mot au-dessus de tout coureur, cycliste comme bot, qui
 ##   prend une boîte (« HOP ! ») ou utilise un objet (son nom), dans la couleur de la famille de l'objet ;
 ## - `box_color(lane)` : couleur des boîtes de chaque voie (famille d'objets de la voie, lot GPO1).
 ## Pas de class_name : preload("res://scripts/grandprix/gp_scene_model.gd").
@@ -47,7 +47,7 @@ const WORDS := {"bottle": "ZIOUF !", "bottle_x3": "ZIOUF !", "musette": "ZIOUF !
 const WORD_S := 1.2
 const BOX_WORD := "HOP !"
 const PARRY_WORD := "PARÉ !"
-## Boîtes de famille par voie (core grandprix/items.py BOX_LANES, révision 1.25) : gauche « s'aider » (objets pour
+## Boîtes de famille par voie (core grandprix/items.py BOX_LANES, révision 1.31) : gauche « s'aider » (objets pour
 ## soi, sonnette), centre tout le tirage, droite « attaquer » (attaques, pièges, contre la tête).
 const BOX_LANES := ["help", "any", "attack"]
 const BOX_COLOR := {"help": Items.SPARK, "any": Color(1.0, 1.0, 1.0), "attack": Items.HOT}
@@ -194,7 +194,7 @@ static func hit_text(word: String, loss_s) -> String:
 	return "%s −%d s" % [word, int(round(loss))]
 
 
-## Message `gp_event` (révision 1.25) : mot au-dessus du coureur, la même règle pour le cycliste et les bots ;
+## Message `gp_event` (révision 1.31) : mot au-dessus du coureur, la même règle pour le cycliste et les bots ;
 ## vrai si le message est nouveau (le core le répète trois fois).
 func on_event(msg: Dictionary, now_s: float) -> bool:
 	var key := "ev|%s|%s|%s" % [msg.get("kind", ""), msg.get("item", ""), msg.get("rider", "")]

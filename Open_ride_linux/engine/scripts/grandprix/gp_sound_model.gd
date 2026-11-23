@@ -7,7 +7,7 @@ extends RefCounted
 ## - `gp_lancer` : objet utilisé par le cycliste (une charge de moins, ou réserve vidée), sauf la sonnette
 ##   (`gp_sonnette`) et la voiture d'équipe (`gp_klaxon`) ;
 ## - `gp_glissade` : cycliste touché par un bidon ou une musette ; `gp_averse` : par le nuage d'orage.
-## Révision 1.25 (lot GPO1) : mêmes sons pour les bots (`bot_sound`), à moins de BOT_SOUND_M du cycliste, plus bas
+## Révision 1.31 (lot GPO1) : mêmes sons pour les bots (`bot_sound`), à moins de BOT_SOUND_M du cycliste, plus bas
 ## (BOT_DB), au plus un toutes les BOT_GAP_S et jamais juste après un son du cycliste (le sien passe d'abord).
 ## Ne décide rien : le core arbitre tout. Pas de class_name : preload("res://scripts/grandprix/gp_sound_model.gd").
 
@@ -65,7 +65,7 @@ static func on_hit(msg: Dictionary) -> String:
 	return str(HIT_SOUND.get(str(msg.get("item", "")), ""))
 
 
-## Son d'un message `gp_event` (révision 1.25) : roulette pour une boîte, son de l'objet utilisé ; "" pour le cycliste,
+## Son d'un message `gp_event` (révision 1.31) : roulette pour une boîte, son de l'objet utilisé ; "" pour le cycliste,
 ## dont les sons viennent déjà de la trame (`on_state`) ; parade : le « ding » de la sonnette pour tous.
 static func on_event(msg: Dictionary) -> String:
 	if str(msg.get("kind", "")) == "parry":   # parade (lot GPO1) : le « ding » de la sonnette, cycliste compris

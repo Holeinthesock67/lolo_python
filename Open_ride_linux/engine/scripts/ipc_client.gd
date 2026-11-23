@@ -60,7 +60,7 @@ signal elimination_received(msg: Dictionary)
 ## Grand Prix des objets (révision 1.7, lot GP2) : un coureur touché par un objet, répété 3 fois par le core
 ## (doublons écartés par grandprix/gp_scene_model.gd).
 signal gp_hit_received(msg: Dictionary)
-signal gp_event_received(msg: Dictionary)   # révision 1.25 (lot GPO1)
+signal gp_event_received(msg: Dictionary)   # révision 1.31 (lot GPO1)
 ## Garage (lots V3/V7, contrat 1.4) : `garage_received` une fois toutes les parties arrivées (éléments
 ## réunis) ; `progression_received` après chaque succès du Garage.
 signal garage_received(items: Array)
