@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import sys
 from datetime import date, datetime
@@ -39,6 +40,8 @@ from typing import Any
 from .. import profiles
 from ..journal import read_journal
 from .session_summary import SummaryError, _hms, compute_summary, load_session
+
+log = logging.getLogger("history")
 
 CACHE_PATH = Path.home() / ".cache" / "openride" / "history.json"
 MATCH_TOLERANCE_S = 60.0
@@ -55,8 +58,8 @@ def _route_from_path(path: Path, fmt: str) -> str:
                     if isinstance(rid, str) and rid.strip():
                         return rid.strip()
                     break
-        except Exception:
-            pass
+        except Exception as exc:
+            log.debug("route illisible dans %s : %s", path, exc)
     m = _STAMP_ROUTE_RE.match(path.stem)
     return m.group(1) if m else path.stem
 
@@ -66,8 +69,10 @@ def _load_cache(cache_path: Path) -> dict[str, dict[str, Any]]:
         data = json.loads(cache_path.read_text(encoding="utf-8"))
         if isinstance(data, dict) and isinstance(data.get("entries"), dict):
             return data["entries"]
-    except Exception:
+    except FileNotFoundError:
         pass
+    except Exception as exc:
+        log.debug("cache d'historique illisible (%s) : %s", cache_path, exc)
     return {}
 
 
@@ -76,8 +81,8 @@ def _save_cache(cache_path: Path, entries: dict[str, dict[str, Any]]) -> None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         payload = json.dumps({"version": 1, "entries": entries}, ensure_ascii=False)
         cache_path.write_text(payload, encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        log.debug("cache d'historique non écrit (%s) : %s", cache_path, exc)
 
 
 def _header_of(path: Path) -> dict[str, Any]:
@@ -87,8 +92,8 @@ def _header_of(path: Path) -> dict[str, Any]:
             if isinstance(line, dict) and line.get("kind") == "header":
                 return line
             break
-    except Exception:
-        pass
+    except Exception as exc:
+        log.debug("en-tête illisible dans %s : %s", path, exc)
     return {}
 
 
