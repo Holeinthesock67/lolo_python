@@ -31,6 +31,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
+const BridgeMesh := preload("res://scripts/bridge_mesh.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
@@ -697,7 +698,11 @@ func _build_job(job: Dictionary) -> void:
 				height_at = _display_height_fn(job["world_dir"], r)
 			job["arrays"] = RoadBuilder.build_chunk_arrays(r, k_road, float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)),
 				job.get("gravel", {}), height_at)
-			job["skirt_arrays"] = [] if RoadBuilder.is_track(r) else RoadBuilder.build_skirt_arrays(job["arrays"])
+			var on_deck := PackedByteArray()   # pas de talus sur un pont (22 novembre 2026)
+			if not RoadBuilder.is_track(r) and k_road >= 0 and k_road < RoadBuilder.chunk_count(r):
+				on_deck = BridgeMesh.cuts_on_deck(job["arrays"], OsmLayers.route_bridges(job["world_dir"], r, k_road), r,
+					RoadBuilder.VERTS_PER_SECTION)
+			job["skirt_arrays"] = [] if RoadBuilder.is_track(r) else RoadBuilder.build_skirt_arrays(job["arrays"], on_deck)
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			if spec["kind"] == "near":   # avant la lecture : un fichier remplacé entre les deux sera refait

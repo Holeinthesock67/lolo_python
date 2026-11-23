@@ -297,6 +297,13 @@ if python3 "$ENGINE_DIR/tests/make_sim_world.py" --live --out "$HERBE_DIR" >/dev
 else
   echo "monde ouvert simulé non produit (compilateur installé ?) : contrôle incomplet, compté en échec"
 fi
+# Monde d'essai des ponts (lot EA4) : route sur un pont de 20 m au-dessus d'une ravine et un de 400 m au-dessus d'une
+# vallée ; le tablier porte la route, pas de talus ni d'appui demandé (22 novembre 2026, banc ea1_lac au relief ×2,5).
+if python3 "$ENGINE_DIR/tests/make_bridge_world.py" --out "$HERBE_DIR" >/dev/null 2>&1; then
+  HERBE_WORLDS+=("$HERBE_DIR/pont-essai.world")
+else
+  echo "monde d'essai des ponts non produit (compilateur installé ?) : contrôle incomplet, compté en échec"
+fi
 HERBE_OUT="$(timeout -k 5 600 "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_herbe_route.gd -- "${HERBE_WORLDS[@]}" 2>&1)"
 herbe_rc=$?
 echo "$HERBE_OUT" | grep -v "^Godot Engine" || true
