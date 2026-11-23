@@ -1,7 +1,7 @@
 """Campagne de courses simulées pour la cote Elo (lot BOT-elo) : la cote suit-elle la force du cycliste ?
 
     python -m openride_core.tools.elo_campagne [--courses 30] [--forces 0.92,1.0,1.08] [--adversaires 4]
-        [--tours 1] [--tour-m 2000] [--ftp 250] [--mode grandprix|race] [--json]
+        [--tours 1] [--tour-m 2000] [--ftp 250] [--mode grandprix|race] [--courbe] [--json]
 
 Un essai vélo de 10 min ne fait qu'une ou deux courses : il ne dit rien de la cote, qui ne bouge qu'au fil des
 courses. Ce banc joue des campagnes entières sans vélo ni engine, avec la vraie séance (`CoreSession`) : Grand
@@ -15,6 +15,9 @@ Contrôles (code 1 si l'un échoue, code 2 pour un appel invalide) :
 - sur le dernier tiers de la campagne, la place moyenne revient vers le milieu du peloton (juste part, entre
   la 2e et l'avant-dernière place) et la cote est stable (écart type sous 60 points) ;
 - les écarts propres des bots restent dans leurs bornes (± 100 points).
+
+`--courbe` (série PP, lot PP6) : les bots visent la courbe d'un cycliste fictif (`FICTIVE_CURVE`, puncheur à
+FTP 250 W) au lieu de la courbe type ; la cote doit converger de la même façon.
 """
 
 from __future__ import annotations
@@ -36,6 +39,10 @@ from ..input_providers import NullProvider
 from ..mock_driver import MockDriver
 from ..session import CoreSession
 from .route_vectors import _route
+
+# Courbe fictive d'un puncheur, en % de sa FTP (lot PP6) : plus fort que la courbe type sur 1 à 5 min, un peu
+# moins sur l'heure ; aucune donnée réelle.
+FICTIVE_CURVE: tuple[tuple[float, float], ...] = ((60.0, 172.0), (300.0, 126.0), (1200.0, 103.0), (3600.0, 96.0))
 
 DT = 0.05                      # pas de la séance : la cote ne dépend que du classement
 MAX_RACE_S = 3 * 3600.0
@@ -69,7 +76,8 @@ def _session(tmp: Path, cfg: Config, power_w: float) -> CoreSession:
 
 
 def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m: float = 2000.0,
-             ftp_w: float = 250.0, mode: str = "grandprix") -> dict[str, Any]:
+             ftp_w: float = 250.0, mode: str = "grandprix",
+             curve: tuple[tuple[float, float], ...] | None = None) -> dict[str, Any]:
     """Une campagne de `races` courses du mode `mode` (Grand Prix ou Course) pour un cycliste de force `force` ;
     rend les lignes de cote."""
     wall = [T0_WALL]
@@ -92,6 +100,7 @@ def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m:
         lines: list[dict] = []
         for n in range(races):
             s = _session(tmp, cfg, power_w=ftp_w)
+            s._rider_curve = curve
             s._on_command("select_route", {"route_id": "anneau"}, 1)
             if s.route is None:
                 raise CampaignError("anneau refusé par la séance")
@@ -168,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tour-m", type=float, default=2000.0)
     ap.add_argument("--ftp", type=float, default=250.0)
     ap.add_argument("--mode", choices=("grandprix", "race"), default="grandprix")
+    ap.add_argument("--courbe", action="store_true", help="bots calés sur une courbe de cycliste fictive (lot PP6)")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
     try:
@@ -180,7 +190,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     t0 = time.perf_counter()
     try:
-        runs = [campaign(f, a.courses, a.adversaires, a.tours, a.tour_m, a.ftp, a.mode) for f in forces]
+        runs = [campaign(f, a.courses, a.adversaires, a.tours, a.tour_m, a.ftp, a.mode,
+                         FICTIVE_CURVE if a.courbe else None) for f in forces]
     except CampaignError as e:
         print(f"échec : {e}", file=sys.stderr)
         return 2

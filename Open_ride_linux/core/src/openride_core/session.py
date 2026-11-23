@@ -401,6 +401,9 @@ class CoreSession:
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
         self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
+        # Courbe du cycliste en % de sa FTP (lot PP6), calculée hors de la boucle au lancement, au changement de
+        # profil et après chaque séance ; None : courbe type des bots.
+        self._rider_curve: tuple[tuple[float, float], ...] | None = None
         self._elo_race: tuple[str, dict[str, str]] | None = None   # (mode, id du bot -> identité Elo), lot BOT-elo
         self._league_run: dict[str, Any] | None = None   # manche de la ligue d'hiver en cours (lot CH3)
         self._league_seen: date | None = None   # dernier jour vu par la saison (horloge qui recule, CH3)
@@ -1006,6 +1009,7 @@ class CoreSession:
                                         chart=cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
         self._publish_progression()
         self.w_prime_estimate_j = None
+        self._rider_curve = None
         self._publish_rogue()
         self._note_profile()
         log.info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root, " — PROFIL D'ESSAI" if ctx.is_trial else "")
@@ -1014,6 +1018,7 @@ class CoreSession:
         try:
             asyncio.get_running_loop()
             self._spawn(self._publish_w_prime_estimate())   # W' du nouveau profil, au hello_ack suivant
+            self._spawn(self._refresh_rider_curve())       # courbe du nouveau profil pour les bots (lot PP6)
         except RuntimeError:
             pass
 
@@ -1276,6 +1281,25 @@ class CoreSession:
         """W' estimé depuis les séances passées (FIT et journaux), `None` si l'historique ne suffit pas (lot R16)."""
         return estimate_w_prime(self.journal_dir, self.cfg.rider.ftp_w, self.mmp_cache_path)
 
+    def _compute_rider_curve(self) -> tuple[tuple[float, float], ...] | None:
+        from .ipc_lists import rider_curve
+
+        ctx = self.profile_ctx
+        return rider_curve(self.journal_dir.parent, self._curve_cache(ctx), ctx.counted_sources,
+                           float(self.cfg.rider.ftp_w))
+
+    async def _refresh_rider_curve(self) -> None:
+        """Courbe du cycliste pour l'effort des bots (série PP, lot PP6), hors de la boucle à 50 Hz ; une courbe
+        illisible laisse la courbe type."""
+        try:
+            curve = await asyncio.to_thread(self._compute_rider_curve)
+        except Exception:
+            log.exception("Courbe du cycliste illisible : les bots gardent la courbe type")
+            curve = None
+        self._rider_curve = curve
+        if curve:
+            log.info("Courbe du cycliste pour les bots : %s.", ", ".join(f"{d:.0f} s {p:.0f} %" for d, p in curve))
+
     async def _publish_w_prime_estimate(self) -> None:
         """Calcul hors de la boucle à 50 Hz ; publié dans `hello_ack` dès qu'il est prêt."""
         est = await asyncio.to_thread(self._estimate_w_prime)
@@ -1434,7 +1458,8 @@ class CoreSession:
         if eff is None or not targets:
             return
         ftp = self.cfg.rider.ftp_w
-        log.info("Effort des bots (%s) : %s.", eff.objective, ", ".join(
+        log.info("Effort des bots (%s, %s) : %s.", eff.objective,
+                 "courbe du cycliste" if eff.curve else "courbe type", ", ".join(
             f"{pct:.0f} % de la FTP ({ftp * pct / 100.0:.0f} W) sur ≈ {dur / 60.0:.0f} min" for pct, dur in targets))
 
     def _journal_bots(self, reason: str) -> None:
@@ -1443,8 +1468,12 @@ class CoreSession:
             return
         from .bots import bot_line
 
-        self._rec.bots({"ts": round(time.time(), 3), "t": round(self._t_session, 2), "reason": reason,
-                        "bots": [bot_line(b) for b in self.bots]})
+        line = {"ts": round(time.time(), 3), "t": round(self._t_session, 2), "reason": reason,
+                "bots": [bot_line(b) for b in self.bots]}
+        eff = self._bot_effort_now
+        if reason == "start" and eff is not None and eff.curve:
+            line["curve"] = [[d, p] for d, p in eff.curve]   # courbe du cycliste visée (lot PP6), pour rejouer
+        self._rec.bots(line)
         log.info("Bots (%s) : %s.", reason, ", ".join(b.name for b in self.bots) or "aucun")
 
     def _set_bots(self, bots: list[Any]) -> None:
@@ -1716,6 +1745,7 @@ class CoreSession:
             self._attach_power_report(await asyncio.to_thread(self._power_report, journal_path))
         except Exception:
             log.exception("Erreur lors du calcul des records de puissance du bilan")
+        await self._refresh_rider_curve()   # la séance finie compte pour la course suivante (lot PP6)
 
     def _setting_file(self, key: str) -> Path:
         """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),
@@ -3742,14 +3772,15 @@ class CoreSession:
         if game_mode == "track" and track_choice is not None:
             event, settings = track_choice
             lap = self._track.length_m if self._track is not None else track_mod.LAP_M
-            return bot_effort.track_effort(event, settings, lap)
+            return replace(bot_effort.track_effort(event, settings, lap), curve=self._rider_curve)
         course_m = None
         if game_mode in ("grandprix", "race"):
             try:
                 course_m = self._grandprix_course(game_mode)[0]
             except GrandPrixError:
                 course_m = None
-        return bot_effort.Effort(objective or self._start_objective or self.cfg.bots.objective, course_m)
+        return bot_effort.Effort(objective or self._start_objective or self.cfg.bots.objective, course_m,
+                                 curve=self._rider_curve)
 
     def _new_race(self, classic: bool = True, tactics: str | None = None, game_mode: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
@@ -4936,6 +4967,7 @@ class CoreSession:
         # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
         # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
+        self._spawn(self._refresh_rider_curve())   # courbe du cycliste pour les bots (lot PP6)
         self._resumed_journal = resume
         self._publish_interrupted()   # lot O34 : dans le premier hello_ack
         self.server.start()

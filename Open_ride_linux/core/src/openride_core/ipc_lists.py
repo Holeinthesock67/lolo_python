@@ -581,6 +581,24 @@ def record_collection_seen(profile_ctx: Any, keys: list[str],
     return current
 
 
+def rider_curve(activities_dir: Path, cache_path: Path, sources: Any, ftp_w: float,
+                now: float | None = None) -> tuple[tuple[float, float], ...] | None:
+    """Courbe du cycliste en % de sa FTP pour l'effort des bots (série PP, lot PP6) : meilleur effort par durée,
+    libre ou ERG, des 6 semaines, sinon des 6 mois (`bot_effort.personal_curve`)."""
+    import time as _time
+
+    from . import bot_effort
+    from .tools import power_curve as pc
+
+    now = _time.time() if now is None else now
+    kept = pc.kept_sessions(pc.session_entries(activities_dir, cache_path), tuple(sources))
+    if not kept:
+        return None
+    m6 = pc.window_curve(kept, pc.WINDOWS["months6"], now)
+    w6 = pc.window_curve(kept, pc.WINDOWS["weeks6"], now)
+    return bot_effort.personal_curve(w6["points"], m6["points"], ftp_w)
+
+
 def compute_summary_power(journal_path: Path, ftp_w: float, activities_dir: Path, cache_path: Path,
                           sources: Any) -> dict[str, Any] | None:
     """Records de puissance et signal « FTP à revoir » du bilan (série PP, lot PP4) : `tools.power_records`."""
