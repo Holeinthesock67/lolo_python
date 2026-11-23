@@ -9,6 +9,7 @@ extends SceneTree
 const HudView := preload("res://scripts/hud_view.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
+const MenuFlow := preload("res://scripts/menu_flow.gd")
 
 var _failures := 0
 var _checked := 0
@@ -81,16 +82,49 @@ func _test_labels_and_values() -> void:
 	_check(hud.distance_val.text == "—", "distance vide = —")
 	_check(hud.time_val.text == "—", "temps vide = —")
 
-	# Épreuve de piste (lot VD9) : ni ligne d'état ni profil d'altitude ; la séance libre en ERG garde le bandeau
+	# Épreuve de piste (lot VD9) : ni bandeau central ni profil d'altitude ; lot NI1 : ni PENTE (toujours 0 %)
 	var on_track := state_ref.duplicate()
 	on_track["track"] = {"event": "points"}
 	hud.update_display(on_track, {}, route, 500.0)
-	_check(not hud.panel_center.visible and not hud.profile_panel.visible, "piste : ligne d'état et profil cachés")
+	_check(not hud.panel_center.visible and not hud.profile_panel.visible, "piste : bandeau central et profil cachés")
+	_check(not hud.grade_val.get_parent().visible, "piste : PENTE cachée (lot NI1)")
 	on_track["erg"] = {"target_w": 200.0}
 	hud.update_display(on_track, {}, route, 500.0)
-	_check(hud.panel_center.visible, "piste en ERG : bandeau ERG gardé")
+	_check(not hud.panel_center.visible, "piste en ERG : le bandeau ERG (erg_view.gd) porte la cible, pas le bandeau central")
 	hud.update_display(state_ref, {}, route, 500.0)
-	_check(hud.panel_center.visible and hud.profile_panel.visible, "hors piste : ligne d'état et profil revenus")
+	_check(hud.panel_center.visible and hud.profile_panel.visible and hud.grade_val.get_parent().visible,
+		"hors piste : montée annoncée, profil et PENTE revenus")
+	# Séance libre au vélodrome (pas d'épreuve) : même règle, la piste est plate.
+	route.venue = {"kind": "velodrome"}
+	hud.update_display(state_ref, {}, route, 500.0)
+	_check(not hud.grade_val.get_parent().visible and not hud.profile_panel.visible,
+		"vélodrome sans épreuve : PENTE et profil cachés (lot NI1)")
+	route.venue = {}
+
+	# Lot NI1 : plus de ligne « ÉTAT: … | TRAINER: … | ENTRÉE: … », plus de case CIBLE ERG ni de ligne ERG ; une
+	# ligne ne parle que d'un problème, et le bandeau central se cache quand il n'a rien à dire.
+	_check(not ("target_val" in hud) and not ("erg_label" in hud) and not ("status_label" in hud),
+		"ni case CIBLE ERG, ni ligne ERG, ni ligne d'état")
+	var hud0 = HudView.new()
+	root.add_child(hud0)
+	_check(hud0.notice_label.text == HudViewModel.NOTICE_WAITING_CORE and hud0.panel_center.visible,
+		"avant la première trame : « %s »" % hud0.notice_label.text)
+	hud0.queue_free()
+	var flat := state_ref.duplicate()
+	flat["trainer_status"] = "CONNECTED"
+	flat["input_status"] = "LOST"
+	hud.update_display(flat, {}, null, 0.0)
+	_check(not hud.notice_label.visible and not hud.panel_center.visible,
+		"séance normale sans montée, Click perdu compris : bandeau central caché")
+	flat["trainer_status"] = "RECONNECTING"
+	hud.update_display(flat, {}, null, 0.0)
+	_check(hud.notice_label.visible and hud.notice_label.text == HudViewModel.NOTICE_TRAINER_LOST and hud.panel_center.visible,
+		"trainer perdu : « %s »" % hud.notice_label.text)
+	_check(HudViewModel.NOTICE_TRAINER_LOST == MenuFlow.PAUSE_REASONS["trainer_lost"], "même texte que la raison de pause")
+	var erg_state := state_ref.duplicate()
+	erg_state["erg"] = {"target_w": 230.0}
+	hud.update_display(erg_state, {"visible": true, "target_text": "230 W"}, route, 500.0)
+	_check(not hud.gear_val.get_parent().visible and hud.power_val.text == "245", "ERG : puissance seule à gauche, pas de cible en double")
 
 	hud.queue_free()
 
