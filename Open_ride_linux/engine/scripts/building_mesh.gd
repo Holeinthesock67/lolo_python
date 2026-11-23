@@ -50,6 +50,9 @@ const STILT_UV_LIFT_M := 0.6
 ## dessiné par le shader (v < PLINTH_H, aucune ouverture sous v = 0). Tolérance : GROUND_TOL_M.
 const FLOOR_LIFT_MAX_M := 4.0
 const GROUND_TOL_M := 0.05
+## Toit fermé : tolérance (m) du choix des pans les plus bas où le haut d'un mur est coupé (pignons, croupes),
+## au-dessus de l'erreur d'arrondi des plans en flottants 32 bits, même à quelques kilomètres de l'origine.
+const ROOF_SEAM_EPS_M := 0.01
 
 
 ## FNV-1a 32 bits sur les octets UTF-8 : hachage déterministe indépendant de la plateforme.
@@ -486,13 +489,16 @@ static func _append_wall_ring(ring: PackedVector2Array, base_y: float, wall_base
 				var g0 := _plane_at(planes[a], p0) - _plane_at(planes[b], p0)
 				var g1 := _plane_at(planes[a], p1) - _plane_at(planes[b], p1)
 				if (g0 < 0.0 and g1 > 0.0) or (g0 > 0.0 and g1 < 0.0):
-					# Seulement si ces deux plans y sont les plus bas (sinon le haut du mur reste droit)
+					# Seulement si ces deux plans y sont les plus bas (sinon le haut du mur reste droit). Tolérance
+					# ROOF_SEAM_EPS_M : les plans sont rangés en Vector3 (flottants 32 bits, coordonnées du monde) ;
+					# avec 1e-6, la coupe du faîtage se perdait au hasard et le pignon restait plat sous le toit
+					# (toit ouvert, retour d'essai du 21/11). Une coupe en trop ne change rien (haut du mur = toit).
 					var t := g0 / (g0 - g1)
 					var q := p0.lerp(p1, t)
 					var lowest := INF
 					for pl in planes:
 						lowest = minf(lowest, _plane_at(pl, q))
-					if _plane_at(planes[a], q) <= lowest + 1e-6:
+					if _plane_at(planes[a], q) <= lowest + ROOF_SEAM_EPS_M:
 						cuts.append(t)
 		if cuts.size() > 2:
 			cuts.sort()

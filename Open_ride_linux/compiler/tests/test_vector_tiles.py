@@ -200,3 +200,44 @@ def test_session_without_region_uses_vector_tiles(tmp_path) -> None:
     assert c.get(vt.tile_key(TX, TY)) is not None
     with pytest.raises(CompileError):
         vt.TileSource(cache(tmp_path / "b"), FakeNet(), network=False).template()
+
+
+def test_road_with_many_pieces_keeps_every_piece(tmp_path) -> None:
+    """Une route de `transportation` faite de 20 morceaux (lignes fusionnées par OpenMapTiles) : avant le 21/11, le
+    rang du morceau tenait sur 4 bits, les morceaux 0 et 16, 1 et 17… avaient le même identifiant et le graphe n'en
+    gardait qu'un, différent selon l'emprise (carrés du monde ouvert et balade sur des réseaux différents, banc du lac
+    d'Annecy). Chaque morceau a maintenant son identifiant, et deux emprises donnent les mêmes arêtes."""
+    paths = [([(200 + 180 * k, 300), (200 + 180 * k, 3800)], False) for k in range(20)]
+    data = encode_tile({"transportation": [{"id": 1, "type": 2, "tags": {"class": "minor"}, "paths": paths}]})
+    db = vt.TileDb(tmp_path / "t.sqlite")
+    assert db.load(TX, TY, data)["roads"] == 20
+    db.close()
+    with OsmDb(tmp_path / "t.sqlite") as r:
+        roads = r.roads_in(tile_bbox(TX, TY))
+        assert len({v.osm_id for v in roads}) == 20
+        w, s, e, n = tile_bbox(TX, TY)
+        west = RoadGraph.build(r, (w, s, w + (e - w) * 0.3, n), zone_frame("31T"))
+        east = RoadGraph.build(r, (w + (e - w) * 0.6, s, e, n), zone_frame("31T"))
+        whole = RoadGraph.build(r, (w, s, e, n), zone_frame("31T"))
+    assert len(whole.edges) == 20
+    for part in (west, east):
+        assert part.edges and all(whole.edges[k].osm_nodes == ed.osm_nodes for k, ed in part.edges.items())
+    assert not set(west.edges) & set(east.edges)
+
+
+def test_way_id_out_of_range_is_an_error() -> None:
+    assert vt.way_id(TX, TY, 5, 4095) != vt.way_id(TX, TY, 5, 4094)
+    with pytest.raises(ValueError):
+        vt.way_id(TX, TY, 5, 4096)
+
+
+def test_graph_refuses_two_ways_under_one_id(tmp_path) -> None:
+    """Contrôle bloquant : deux voies différentes sous le même identifiant ne passent plus en silence."""
+    from openride_compiler.worldgen.osmdb import Road
+    g = RoadGraph(zone_frame("31T"))
+    a = Road(1, 7, "residential", "m", None, False, False, 0, 0, None, None, [1, 2], [(LON, LAT), (LON + 1e-3, LAT)])
+    b = Road(2, 7, "residential", "m", None, False, False, 0, 0, None, None, [3, 4], [(LON, LAT + 1e-3), (LON + 1e-3, LAT + 1e-3)])
+    g._add_ways([a])
+    g._add_ways([a])
+    with pytest.raises(CompileError):
+        g._add_ways([b])

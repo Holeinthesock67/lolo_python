@@ -34,6 +34,8 @@ signal route_import_status_received(msg: Dictionary)
 signal plans_received(msg: Dictionary)
 ## Historique (lot O28, contrat 1.5) : réponse à list_history et bilan d'une séance (history_session).
 signal history_received(msg: Dictionary)
+## Effort des bots en watts avant le départ (lot GP-niv, contrat 1.22) : réponse à bots_preview.
+signal bots_preview_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
 ## Collection de cartes (série BC, lot BC5, contrat 1.6) : réponse à list_collection.
 signal collection_received(msg: Dictionary)
@@ -330,6 +332,8 @@ func _poll_incoming() -> void:
 				plans_received.emit(json_obj)
 			"history":
 				history_received.emit(json_obj)
+			"bots_preview":
+				bots_preview_received.emit(json_obj)
 			"history_session":
 				history_session_received.emit(json_obj)
 			"collection":

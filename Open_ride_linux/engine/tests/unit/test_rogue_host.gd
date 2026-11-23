@@ -150,7 +150,7 @@ func _run() -> void:
 	# préchauffage (2 novembre) : la synthèse ne bloque pas l'image du départ, les flux arrivent ensuite
 	_check(sc.audio.threaded and not sc.audio.streams_ready(), "sons : synthèse en tâche de fond, pas sur l'image du départ")
 	sc.audio.finish_now()
-	_check(sc.audio.streams_ready() and sc.audio.streams.size() == 29, "sons : 29 flux installés à la fin de la synthèse")
+	_check(sc.audio.streams_ready() and sc.audio.streams.size() == 31, "sons : 31 flux installés à la fin de la synthèse")
 	_check(sc.audio.music_players.values().all(func(mp): return mp.stream != null),
 			"musique : les couches ont leur flux à la fin de la synthèse")
 	# sortie
@@ -163,5 +163,17 @@ func _run() -> void:
 	_check(host.store.rooms.is_empty(), "salles oubliées à la sortie")
 	main.queue_free()
 	await process_frame
+	_check_classic_route()
 	print("test_rogue_host : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+## Lot R-gel : monde classique gelé pendant la run, pause comprise ; démo des menus hors run seulement.
+func _check_classic_route() -> void:
+	_check(Host.classic_route_id(null, true, false, "demo") == "demo", "menu sans parcours : démo en fond")
+	_check(Host.classic_route_id("", true, false, "demo") == "demo", "parcours vide au menu : démo en fond")
+	_check(Host.classic_route_id(null, false, false, "demo") == null, "séance sans parcours hors menu : rien")
+	_check(Host.classic_route_id("alpe", true, false, "demo") == "alpe", "parcours choisi : gardé")
+	_check(Host.classic_route_id(null, true, true, "demo") == null, "pause d'une run Cyber-Rogue : pas de démo chargée")
+	_check(Host.classic_route_id(null, false, true, "demo") == null, "run Cyber-Rogue : aucun parcours classique")
+	_check(Host.classic_route_id("alpe", true, true, "demo") == null, "run Cyber-Rogue : parcours de la trame ignoré")

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites | Python + GDScript | U19, O25 | Moyenne | Fait (fusionné le 11 novembre, #811 ; relu par le lot NT1) |
+| Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites | Python + GDScript | U19, O25 | Moyenne | **Livré le 11 novembre** (PR #811, relu par le lot NT1) |
 
 Demande du propriétaire du 5 novembre 2026 (9 h 28 et 9 h 30) : garder à la fin les mondes demo déjà créés dans le jeu de base, les nettoyer des artefacts de test et leur donner un nom de parcours explicite ; **à faire avant l'installeur** (lot J9). Cahier rédigé le 8 novembre (la demande n'était notée que dans la feuille de route).
 
@@ -50,3 +50,7 @@ Que les parcours livrés avec le jeu ressemblent à des parcours, pas à des ban
 **Affichage.** Seuls des textes changent (nom au menu et sur la carte du départ, nom du sommet) : aucun coût GPU à mesurer en `low`, `medium` et `high`, mais les captures de chaque parcours sont à valider par le propriétaire avant la fusion (critère 3).
 
 Tout lot qui change l'affichage est mesuré en `low`, `medium` et `high` (budgets GPU : 8, 13 et 16 ms depuis le 8 novembre) et ses captures sont validées par le propriétaire avant la fusion.
+
+## 7. Livraison
+
+Fusionné le 11 novembre 2026 (PR #811). Détail des écarts et de la recette : description de la PR.
