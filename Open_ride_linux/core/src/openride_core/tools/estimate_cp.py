@@ -25,7 +25,7 @@ from typing import Any
 
 from .. import config as config_mod
 from .. import profiles
-from .history import MATCH_TOLERANCE_S, _discover_files, _header_of
+from .history import MATCH_TOLERANCE_S, _discover_files, _header_of, counts
 from .session_summary import SummaryError, load_session, running_records
 
 DURATIONS_S = (180, 300, 480, 720, 1200)
@@ -90,10 +90,11 @@ def _session_mmp(path: Path, entries: dict) -> tuple[dict | None, bool]:
     except OSError:
         return None, False
     cached = entries.get(key)
-    if isinstance(cached, dict) and cached.get("size") == st.st_size and cached.get("mtime_ns") == st.st_mtime_ns:
+    if (isinstance(cached, dict) and cached.get("size") == st.st_size and cached.get("mtime_ns") == st.st_mtime_ns
+            and "source" in cached):
         return cached, False
     entry: dict[str, Any] = {"size": st.st_size, "mtime_ns": st.st_mtime_ns, "start_ts": None, "replay": False,
-                             "mmp": {}}
+                             "source": None, "mmp": {}}
     try:
         session = load_session(path)
         recs = running_records(session.records, session.events)
@@ -103,7 +104,9 @@ def _session_mmp(path: Path, entries: dict) -> tuple[dict | None, bool]:
     except (SummaryError, OSError, ValueError, KeyError):
         entry["error"] = True
     if path.suffix.lower() == ".jsonl":
-        entry["replay"] = _header_of(path).get("source") == "replay"
+        src = _header_of(path).get("source")
+        entry["source"] = src if isinstance(src, str) and src else "live"
+        entry["replay"] = entry["source"] == "replay"
     entries[key] = entry
     return entry, True
 
@@ -126,12 +129,15 @@ def estimate(directory: Path | None = None, ftp_w: float = 250.0, days: int = DE
     if dirty:
         _save_cache(cpath, entries)
 
-    replays = [e["start_ts"] for _, e in sessions if e.get("replay")]
+    # Séances qui ne comptent pas pour le profil (rejeu, simulée sur un profil de joueur : C6-01), et le
+    # .fit écrit depuis chacune, reconnu à l'heure de début de son journal.
+    counted = ctx.counted_sources
+    refused = [e["start_ts"] for _, e in sessions if e.get("source") is not None and not counts(e["source"], counted)]
     kept = []
     for p, e in sessions:
-        if e.get("replay"):
+        if e.get("source") is not None and not counts(e["source"], counted):
             continue
-        if any(abs(e["start_ts"] - t) <= MATCH_TOLERANCE_S for t in replays):    # .fit d'une séance rejouée
+        if any(abs(e["start_ts"] - t) <= MATCH_TOLERANCE_S for t in refused):
             continue
         if now - e["start_ts"] > days * 86400.0:
             continue

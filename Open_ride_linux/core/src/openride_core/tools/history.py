@@ -114,6 +114,7 @@ def _summarize_file(
         and cached.get("ftp_w") == ftp_key
         and isinstance(cached.get("summary"), dict)
         and "workout" in cached["summary"]
+        and "source" in cached["summary"]
     ):
         return cached["summary"], None, False
 
@@ -133,12 +134,15 @@ def _summarize_file(
             "tss": round(float(s["tss"]), 1),
             "workout": None,
             "plan": None,
+            "source": None,   # source du journal (`live`, `simulated`, `replay`) ; None pour un .fit
         }
         if fmt == "jsonl":
             head = _header_of(path)
             wid, plan = head.get("workout_id"), head.get("plan")
             summary["workout"] = wid if isinstance(wid, str) and wid else None
             summary["plan"] = plan if isinstance(plan, dict) else None
+            src = head.get("source")
+            summary["source"] = src if isinstance(src, str) and src else "live"
     except (SummaryError, Exception) as exc:
         return None, str(exc), False
 
@@ -149,6 +153,18 @@ def _summarize_file(
         "summary": summary,
     }
     return summary, None, True
+
+
+def counts(source: str | None, counted: tuple[str, ...] | list[str]) -> bool:
+    """La séance de cette source compte-t-elle pour le profil (revue de code C6-01) ?
+
+    Même règle que le coach (`coach.py`) : un rejeu ne compte jamais ; une séance réelle (`live`, ou
+    journal d'avant le champ `source`) compte toujours ; une séance simulée seulement si le profil la
+    compte (`seances_comptees` : le profil d'essai, pas un profil de joueur).
+    """
+    if source == "replay":
+        return False
+    return source in (None, "", "live") or source in counted
 
 
 def _discover_files(directory: Path) -> tuple[list[Path], list[Path]]:
@@ -249,10 +265,13 @@ def compute_history(
 
     valid_sessions: list[dict[str, Any]] = []
     fit_starts = [s["start_ts"] for _, s in fit_valid]
+    counted = ctx.counted_sources
 
     for p, s in fit_valid:
         dt = datetime.fromtimestamp(s["start_ts"])
         twin = next((js for _, js in jsonl_valid if abs(js["start_ts"] - s["start_ts"]) <= MATCH_TOLERANCE_S), {})
+        if not counts(twin.get("source"), counted):
+            continue   # FIT d'une séance simulée ou rejouée, d'après son journal (C6-01)
         valid_sessions.append({
             "source": str(p),
             "filename": p.name,
@@ -277,6 +296,8 @@ def compute_history(
     for p, s in jsonl_valid:
         if any(abs(s["start_ts"] - fs) <= MATCH_TOLERANCE_S for fs in fit_starts):
             continue
+        if not counts(s.get("source"), counted):
+            continue   # séance simulée hors du profil d'essai, ou rejouée (C6-01)
         dt = datetime.fromtimestamp(s["start_ts"])
         valid_sessions.append({
             "source": str(p),
