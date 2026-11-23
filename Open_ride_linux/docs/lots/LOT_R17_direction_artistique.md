@@ -69,7 +69,7 @@ Les cinq couleurs de pente de R10 (bleu, cyan, jaune, orange, magenta) restent c
 | --- | --- | --- | --- | --- | --- |
 | `low` | 3 niveaux, intensité 0,8 | 0,05 | Linéaire, 400 m | 25 % | Non |
 | `medium` | 5 niveaux, intensité 1,0 | 0,10 | Linéaire, 600 m | 60 % | Non |
-| `high` | 7 niveaux, intensité 1,1 | 0,15 | Exponentielle, 900 m | 100 % | Légère, seulement pendant les effets de glitch |
+| `high` | 5 niveaux, intensité 1,0 (lot R27) | 0,10 (lot R27) | Linéaire, 900 m (lot R27) | 100 % | Légère, seulement pendant les effets de glitch |
 
 - Horizon : un soleil couchant en bandes horizontales (`gold` vers `danger`, disque découpé par des lignes), des montagnes en fil de fer (`grid`), le tout sur un ciel `night` sans texture. Couper le soleil en `low` si le budget n'est pas tenu.
 - Pas de lumière dynamique hors du joueur : tout l'éclairage vient des matériaux émissifs et du glow.

@@ -305,6 +305,17 @@
         "ratio_pct": {
           "type": "integer",
           "minimum": 0
+        },
+        "objective": {
+          "type": "string",
+          "enum": [
+            "recovery",
+            "endurance",
+            "tempo",
+            "threshold",
+            "max"
+          ],
+          "description": "Facultatif, révision 1.22 (lot GP-niv) : objectif des bots de la course conseillée, tiré du besoin du jour (léger : endurance, intense : threshold, anaérobie : max, récupération : recovery) ; l'engine le passe dans `start.objective`."
         }
       }
     },

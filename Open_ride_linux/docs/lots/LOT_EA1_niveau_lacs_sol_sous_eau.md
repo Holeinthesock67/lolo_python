@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Niveau d'un plan d'eau pris dans le MNT du lac (même niveau pour tous ses morceaux), sol abaissé sous l'eau, parcours compilés et monde ouvert | Python | I4, W7, U3 (livrés) | Petite | En revue (PR à valider : essai PC, mesures low, medium, high et captures) |
+| Niveau d'un plan d'eau pris dans le MNT du lac (même niveau pour tous ses morceaux), sol abaissé sous l'eau, parcours compilés et monde ouvert | Python | I4, W7, U3 (livrés) | Petite | **Livré le 20 novembre** (PR #881) |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ Demande du propriétaire du 14 novembre (série EA, `docs/6.0/PLAN_SERIE_EA.md`)
 - Monde ouvert au bord d'un lac : scénario `engine/tests/menu_scenarios/ea1_lac.json` (gabarit `depart_monde_ouvert`, recherche « sevrier », rive ouest du lac d'Annecy, route de rive à double sens ; Talloires menait à une route sans issue, 17 novembre ; 5 minutes, une capture par minute ; en-têtes `reseau` et `caches_reels` du banc des menus, repris du lot W17), `menu_bench.py --native --scenario ea1_lac --qualite low|medium|high --captures ecrans`, sur la branche puis sur `main` ; GPU (budgets 8, 13 et 16 ms) et temps par carré du générateur.
 - Parcours compilé : Irohazaka du pack « Cols célèbres » (arrivée au lac Chūzenji, exutoire des chutes de Kegon) compilé avec `--layers route,terrain,biome,water`, `sim_bench.py --world <dossier> --at-m …` sur les derniers 600 m, low, medium et high, branche et `main`.
 - Captures validées par le propriétaire avant fusion.
+
+## 7. Livraison
+
+Fusionné le 20 novembre 2026 (PR #881 : niveau commun des lacs et sol abaissé sous l'eau). Détail des écarts et de la recette : description de la PR.

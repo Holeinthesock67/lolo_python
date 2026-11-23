@@ -180,6 +180,16 @@ func _init() -> void:
 	_check(vm.ftp_result({"ftp_test": {"ftp_w": 240, "previous_ftp_w": 243, "warnings": ["paused"], "reliable": false}})["delta"]
 		== "−3 W", "FTP : baisse écrite avec le signe moins")
 
+	# Lots GP-niv et BOT-elo : bots visés et roulés, cote après la course (contrat 1.22)
+	var bl: Array = SummaryViewModel.bots_lines({"bots_effort": {"objective": "tempo", "ftp_pct": 88.0, "target_w": 220,
+		"duration_s": 900, "bots_avg_w": 214}, "elo": {"mode": "grandprix", "place": 1, "of": 5, "before": 1500,
+		"after": 1520, "delta": 20}})
+	_check(bl.size() == 2 and bl[0]["value"] == "220 W visés, 214 roulés", "ligne Bots (%s)" % str(bl))
+	_check(bl[1]["label"] == "Cote" and bl[1]["value"] == "1520 (+20), 1er sur 5", "ligne Cote (%s)" % str(bl))
+	var bl2: Array = SummaryViewModel.bots_lines({"elo": {"place": 4, "of": 5, "after": 1488, "delta": -12}})
+	_check(bl2.size() == 1 and bl2[0]["value"] == "1488 (−12), 4e sur 5", "cote en baisse : signe moins")
+	_check(SummaryViewModel.bots_lines({}).is_empty(), "sans bots ni cote : aucune ligne")
+
 	# 7. Performance : aucun nœud créé
 	var nodes_after := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	_check(nodes_after == nodes_before, "aucun nœud créé (Performance.OBJECT_NODE_COUNT constant)")
