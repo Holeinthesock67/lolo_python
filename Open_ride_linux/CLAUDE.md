@@ -178,6 +178,7 @@ openride-core settings [--json]        # réglages du menu (FTP, poids, difficul
 openride-core ftp-test [--accept] [--history]   # résultat du dernier test de FTP, enregistrement de la FTP (lot O10)
 openride-core profil essai [--vider]   # profil d'essai : séances simulées comptées, remise à zéro (série MJ, lot MJ2) ; --profil ID sur toute sous-commande
 openride-ble-diag scan | trainer --name HomeTrainer --duration 30 | click --duration 60
+openride-ble-diag spindown --duration 90   # sonde d'étalonnage FTMS (Spin Down Control 0x13, lot ET1, tools/spindown.py) ; rapport sans nom ni adresse
 ```
 
 Dépendances : versions de référence validées en 3.14 dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"`), à mettre à jour après une montée de version testée.

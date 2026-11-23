@@ -395,8 +395,16 @@ class SimTrainer(SimDevice):
                  response: str = "instant", brake_delay_s: float | None = None,
                  brake_tau_up_s: float | None = None, brake_tau_down_s: float | None = None,
                  flywheel_kg_m2: float | None = None, notify_jitter_s: float | None = None,
-                 rider_max_w: float | None = None, calibration: str | None = None, **kw: Any) -> None:
+                 rider_max_w: float | None = None, calibration: str | None = None,
+                 spin_down: str | None = None, spin_down_stop_s: float = 1.0, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
+        # Étalonnage (Spin Down Control 0x13, lot ET1) : None = opcode inconnu (0x02, comportement par défaut) ;
+        # « ok » ou « error » : bit 15 annoncé, réponse avec les vitesses cibles, puis états 0x14 « demandé »,
+        # « arrêtez de pédaler » après `spin_down_stop_s` s et le résultat le double plus tard ; « refuse » : bit
+        # annoncé mais commande refusée (0x04), le cas des trainers qui l'annoncent sans le faire.
+        self.spin_down = spin_down
+        self.spin_down_stop_s = float(spin_down_stop_s)
+        self._reply_extra = b""
         self.ibd_hz = ibd_hz
         self.rider = rider or SimRider()   # cycliste virtuel (lot X27, section `rider` du scénario)
         # Réponse (lot X6) : « instant » (premier ordre de `erg_tau_s`) ou « realiste » (TrainerResponse).
@@ -470,7 +478,7 @@ class SimTrainer(SimDevice):
 
     def read(self, uuid: str) -> bytes:
         if uuid == ftms.FEATURE:
-            return struct.pack("<II", FEATURE_MACHINE, FEATURE_TARGET)
+            return struct.pack("<II", FEATURE_MACHINE, FEATURE_TARGET | ((1 << 15) if self.spin_down else 0))
         if uuid == ftms.SUPPORTED_POWER_RANGE:
             return struct.pack("<hhH", *self.power_range)
         if uuid == ftms.SUPPORTED_RESISTANCE_RANGE:
@@ -508,7 +516,8 @@ class SimTrainer(SimDevice):
         if silent:
             return
         self._busy = True
-        reply = bytes([ftms.OP_RESPONSE, op & 0xFF, result])
+        reply = bytes([ftms.OP_RESPONSE, op & 0xFF, result]) + self._reply_extra
+        self._reply_extra = b""
         asyncio.get_running_loop().call_later(self.cp_latency_s, self._respond, reply)
 
     def _respond(self, reply: bytes) -> None:
@@ -561,12 +570,29 @@ class SimTrainer(SimDevice):
             self.resistance_level = min(max(raw, lo), hi) / 10.0
             self._status(bytes([0x07]) + data[1:])
             return ok
+        if op == ftms.OP_SPIN_DOWN_CONTROL and self.spin_down:
+            return self._spin_down(data)
         if op in (ftms.OP_SET_TARGET_POWER, ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_RESISTANCE):
             return 0x03   # paramètre invalide (trame trop courte)
         return 0x02       # opcode non pris en charge
 
     def _status(self, payload: bytes) -> None:
         self.notify(ftms.MACHINE_STATUS, payload)
+
+    def _spin_down(self, data: bytes) -> int:
+        """Spin Down Control simulé (lot ET1) : vitesses cibles 30 à 35 km/h, puis états 0x14 datés."""
+        if self.spin_down == "refuse" or len(data) < 2:
+            return 0x04 if self.spin_down == "refuse" else 0x03
+        if data[1] != ftms.SPIN_DOWN_START:
+            return 0x01   # « ignorer » : rien à faire
+        self._reply_extra = struct.pack("<HH", 3000, 3500)
+        loop = asyncio.get_running_loop()
+        final = 0x02 if self.spin_down == "ok" else 0x03
+        delay = self.cp_latency_s + 0.01
+        loop.call_later(delay, self._status, bytes([0x14, 0x01]))
+        loop.call_later(delay + self.spin_down_stop_s, self._status, bytes([0x14, 0x04]))
+        loop.call_later(delay + 2 * self.spin_down_stop_s, self._status, bytes([0x14, final]))
+        return 0x01
 
     def lose_control(self) -> None:
         """Une autre application (ou l'interface du trainer) prend le contrôle."""
