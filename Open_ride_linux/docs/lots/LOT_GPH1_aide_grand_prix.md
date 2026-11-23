@@ -19,7 +19,7 @@ Demande du propriétaire (21 novembre 2026, 10 h 10) : « À quoi sert le change
 - **Écran Prêt** : dernière ligne « Comment ça marche ? » (`MenuModel.GP_HELP_ID`), comme l'aide des parcours et du sous-menu ERG ; focus dessus : la carte de droite montre le résumé (« Le Grand Prix en bref ») à la place de la fiche du parcours ; A maintenu ouvre l'écran « Aide Grand Prix ».
 - **Écran « Aide Grand Prix »** (`engine/scripts/grandprix/gp_help.gd`, même forme que `route_help.gd`) : Le Grand Prix en bref, Boîtes et objets, À quoi servent les voies, Boutons, Coups reçus et défense ; un sujet par ligne, son texte dans la carte ; Y revient à l'écran Prêt.
 - **HUD** (`gp_hud_model.gd`, `lanes_view`) : la ligne d'aide sous les trois traits dit ce qui est en vue et à quoi sert la voie, dans cet ordre : « Bidon glissant devant sur ta voie : A ou ← → pour l'éviter », « Musette derrière sur ta voie : A ou ← → pour l'éviter », « Boîte devant, réserve pleine : Z d'abord pour en prendre une », « Boîte sur ta voie : passe dessus pour un objet », « Boîte prise sur ta voie : A ou ← → pour en changer » ; sinon « A ou ← → : changer de voie », et sans choix affiché « ← → : changer de voie » (placement automatique) ou « ← → : changer de voie · A maintenu : placement auto » (voie choisie). Rien de nouveau à l'écran : la même ligne, avec un sens. Lue dans la trame `gp` existante (`obj`, `boxes`, `boxes_gone`, `held`, `roll_s`) : aucun changement du core ni du contrat IPC.
-- **Documents** : guide d'utilisation (Grand Prix des objets), recette de la série GP.
+- **Documents** : guide d'utilisation (Grand Prix des objets), recette de la série GP, note `docs/changements/GPH1.md`.
 
 ## 3. Tests
 

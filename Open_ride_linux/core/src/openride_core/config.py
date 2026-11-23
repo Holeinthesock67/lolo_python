@@ -578,14 +578,12 @@ DEV_KEYS: dict[tuple[str, str], str] = {
 # Clés retirées du jeu : encore lues sans avertissement de faute de frappe dans un config.toml d'avant, puis ignorées.
 RETIRED_KEYS: dict[tuple[str, str], str] = {
     ("render", "draft_gauge"): "jauge d'abri au-dessus des bots, retirée le 21/11/2026 (lot NI1)",
+    ("grandprix", "distance_km"): "le Grand Prix se court sur une boucle seulement (lot GPL1)",
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {}   # vide depuis le lot GP9 (réglages du Grand Prix)
-# Réglages retirés, encore écrits dans le `config.toml` ou le `profil.toml` d'un joueur : ignorés sans alerte
-# de faute de frappe (journal en information seulement), jamais réécrits.
-RETIRED_KEYS: dict[tuple[str, str], str] = {
-    ("grandprix", "distance_km"): "le Grand Prix se court sur une boucle seulement (lot GPL1)",
-}
+# Réglages retirés (RETIRED_KEYS ci-dessus), encore écrits dans le `config.toml` ou le `profil.toml` d'un joueur :
+# ignorés sans alerte de faute de frappe (journal en information seulement), jamais réécrits.
 
 
 def _retired(source: str, section: str, key: str) -> bool:
