@@ -72,7 +72,7 @@ func _run() -> void:
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
 	_check(str(f.state()["title"]).begins_with("Prêt : Dernier survivant"), "titre du mode")
 	_check(_ids(f) == ["start", "change_route", "set:survivor.opponents", "set:survivor.spacing_km", "set:bots.level_pct",
-		"set:bots.objective", "set:survivor.spread", "set:survivor.after_out"], "Lancer, parcours, puis les cinq réglages (%s)" % str(_ids(f)))
+		"set:survivor.spread", "set:survivor.after_out"], "Lancer, parcours, puis les quatre réglages (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "4 arches sur 8 km" and _item(f, "start")["enabled"],
 		"Lancer : longueur de course")
 	_check(_item(f, "set:survivor.opponents")["label"] == "Adversaires" and _item(f, "set:survivor.opponents")["detail"] == "4",
@@ -107,6 +107,16 @@ func _run() -> void:
 		"parcours ouvert trop court : Lancer désactivé, détail court qui tient à droite de Lancer")
 	_check(f.state()["status"].begins_with("Lancer grisé : 4 arches × 3 km = 12 km, parcours de 5,0 km.") and f.state()["status_error"],
 		"ligne d'état : pourquoi Lancer est grisé et quoi changer (%s)" % f.state()["status"])
+	# Lot GP-niv : la ligne « Bots » (désactivée) arrive au-dessus du focus : le focus reste sur son élément
+	f.menu.focus_item("change_route")
+	var before := str(f.state()["items"][f.state()["focus"]]["id"])
+	f.wanted_bots_preview()
+	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 9, "mode": "survivor", "objective": "tempo",
+		"ftp_pct": 80.0, "power_w": 200, "duration_s": 600, "elo": {"rating": 1500, "races": 0}})
+	var after := str(f.state()["items"][f.state()["focus"]]["id"])
+	_check("intensity" in _ids(f) and after == before and after != "intensity",
+		"ligne « Intensité du jour » arrivée sous Lancer grisé : focus gardé sur « %s » (%s)" % [before, after])
+	_check(_ids(f).find("intensity") == 1, "lot R1 : première ligne de réglage, sous Lancer")
 	f.menu.focus_item("set:survivor.opponents")
 	_check(f.state()["status"].contains("A maintenu, puis − / +"), "focus sur un réglage : aide des touches avec l'explication")
 	f.menu.set_world("boucle", "Boucle")

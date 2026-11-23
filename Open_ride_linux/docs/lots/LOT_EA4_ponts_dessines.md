@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Ponts dessinés (tablier, garde-corps, piles sous un grand pont), profil en ligne droite et terrain non fondu sous le pont, parcours compilés et monde ouvert | Python, GDScript | EA1, W4, W7, U20 (livrés ou en revue) | Moyenne | En revue (PR à valider : essai PC, mesures low, medium, high et captures) |
+| Ponts dessinés (tablier, garde-corps, piles sous un grand pont), profil en ligne droite et terrain non fondu sous le pont, parcours compilés et monde ouvert | Python, GDScript | EA1, W4, W7, U20 (livrés ou en revue) | Moyenne | **Livré le 20 novembre** (PR #916) |
 
 ## 1. Objectif
 
@@ -39,3 +39,7 @@ Demande du propriétaire du 14 novembre (série EA, `docs/6.0/PLAN_SERIE_EA.md`)
 - Parcours compilé avec ponts : un parcours du PC qui passe un pont, recompilé avec `--layers route,terrain,biome,water,bridges` (ou `add-layer <nom>.world bridges`), `sim_bench.py --world <dossier> --at-m <début du pont − 300>` en low, medium et high, branche et `main` : GPU (budgets 8, 13 et 16 ms), captures du pont vu de la route et de la vallée.
 - Monde ouvert : départ près d'un grand pont (banc des menus, scénario `ea4_pont`), low, medium et high, temps par carré du générateur (carrés refaits : `WORLDGEN_VERSION` 3).
 - Captures validées par le propriétaire avant fusion.
+
+## 7. Livraison
+
+Fusionné le 20 novembre 2026 (PR #916 : ponts dessinés (tablier, garde-corps, piles)). Détail des écarts et de la recette : description de la PR.

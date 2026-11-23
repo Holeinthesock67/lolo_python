@@ -86,7 +86,6 @@ class RenderConfig:
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
-    draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des biomes de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
@@ -213,6 +212,9 @@ class BotsConfig:
     # (recovery 55 %, endurance 65 %, tempo 80 %, threshold 92 %, max 100 % : bot_effort.OBJECTIVES) ; au
     # vélodrome, l'objectif suit l'épreuve
     objective: str = "tempo"
+    # cote Elo (lot BOT-elo) : on, le niveau des bots des plateaux composés par le core (Grand Prix, Dernier
+    # survivant, piste en groupe) suit la cote du cycliste et celle de chaque bot, mises à jour après chaque course
+    elo: str = "on"
 
 
 @dataclass
@@ -242,6 +244,14 @@ class GrandPrixConfig:
     chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
     box_every_m: int = 500         # écart des rangées de boîtes (500 à 3000 m, pas de 500 m ; 500 par défaut depuis le
                                    # lot GP14, essai du 15 novembre : « pas assez d'objets »)
+
+
+@dataclass
+class RaceConfig:
+    """Mode « Course » (course classique contre les bots, lot CR1) : le Grand Prix sans objet, sur tous les
+    parcours libres. En ligne, la course va jusqu'à l'arrivée du parcours ; sur une boucle, `laps` tours."""
+    opponents: int = 7             # adversaires (2 à 11, peloton du lot PL1)
+    laps: int = 3                  # boucle : nombre de tours (1 à 10)
 
 
 @dataclass
@@ -314,6 +324,7 @@ class Config:
     ride: RideConfig = field(default_factory=RideConfig)
     survivor: SurvivorConfig = field(default_factory=SurvivorConfig)
     grandprix: GrandPrixConfig = field(default_factory=GrandPrixConfig)
+    race: RaceConfig = field(default_factory=RaceConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     depart: DepartConfig = field(default_factory=DepartConfig)
     coach: CoachConfig = field(default_factory=CoachConfig)
@@ -402,6 +413,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("grandprix", "laps"): (1, 5),
     ("grandprix", "distance_km"): (5, 30),
     ("grandprix", "box_every_m"): (500, 3000),
+    ("race", "opponents"): (2, 11),             # lot CR1 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
+    ("race", "laps"): (1, 10),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
@@ -432,7 +445,6 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "texture_level"): ("auto", "low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
-    ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("render", "day_night"): ("off", "theme", "real", "accelerated"),
@@ -457,6 +469,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("coach", "objectif"): ("endurance", "courses", "grimpeur"),
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
     ("bots", "objective"): ("recovery", "endurance", "tempo", "threshold", "max"),   # bot_effort.OBJECTIVES
+    ("bots", "elo"): ("on", "off"),   # lot BOT-elo
 }
 
 
@@ -468,7 +481,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("trainer", "difficulty_pct"),
     ("gearing", "start_gear"),
     ("powerups", "mode"),
-    ("bots", "level_pct"), ("bots", "objective"),
+    ("bots", "level_pct"), ("bots", "objective"), ("bots", "elo"),
     ("gravel", "mode"),
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
@@ -476,6 +489,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("coach", "objectif"), ("coach", "temps_disponible_min"),
     ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "distance_km"), ("grandprix", "chaos"),
     ("grandprix", "box_every_m"),
+    ("race", "opponents"), ("race", "laps"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),
@@ -518,6 +532,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gearing", "step_pct"): "boîte de vitesses virtuelle",
     ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
+    ("render", "texture_level"): "niveau des textures imposé pour les bancs, retiré du menu au lot NI2 (auto suit la qualité)",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
     ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",
@@ -561,6 +576,10 @@ DEV_KEYS: dict[tuple[str, str], str] = {
     ("wind", "seed"): "graine des rafales",
     ("log", "latence"): "journal de latence du Click",
     ("ride", "traffic_bench_s"): "passages forcés de véhicules proches pour sim_bench (lot AS6)",
+}
+# Clés retirées du jeu : encore lues sans avertissement de faute de frappe dans un config.toml d'avant, puis ignorées.
+RETIRED_KEYS: dict[tuple[str, str], str] = {
+    ("render", "draft_gauge"): "jauge d'abri au-dessus des bots, retirée le 21/11/2026 (lot NI1)",
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {}   # vide depuis le lot GP9 (réglages du Grand Prix)
@@ -618,7 +637,10 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
     for key in data:
         if key not in known:
             name = f"[{section}] {key}" if section else f"[{key}]"
-            log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
+            if (section, key) in RETIRED_KEYS:
+                log.info("%s : %s ignoré (%s)", source, name, RETIRED_KEYS[(section, key)])
+            else:
+                log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
     if section == "drivers" and isinstance(data.get("click_reset_locked"), bool):
         # Booléen d'avant le lot K9 : true = "reset", false = "off" (même effet qu'avant).
         data = {**data, "click_reset_locked": "reset" if data["click_reset_locked"] else "off"}
