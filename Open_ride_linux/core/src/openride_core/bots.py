@@ -39,7 +39,7 @@ import math
 import zlib
 from pathlib import Path
 from collections.abc import Iterable
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 from dataclasses import dataclass
 
@@ -834,13 +834,17 @@ def last_ride(route_id: str | None, directory: Path) -> Path | None:
 
 def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
                    journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
-                   taken_ids: Iterable[str] = ()) -> list[Any]:
+                   taken_ids: Iterable[str] = (),
+                   names: Callable[[list[str]], list[str]] | None = None) -> list[Any]:
     """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
     ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus `MAX_CONSTANT_BOTS` bots
     de ces deux genres en tout, 11 depuis le lot PL1 ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
     `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
 
     `taken_ids` (lot N18, `set_bots`) : ids déjà pris dans la séance, sautés (`bot1`, `bot2`… sinon).
+
+    `names` (lot R4) : noms des bots à profil d'après leurs profils dans l'ordre de la liste (les rivaux du
+    profil, `CoreSession._rival_names`) ; « Grimpeur », « Grimpeur 2 »… sans lui (`profile_bot_names`).
 
     Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
     """
@@ -860,7 +864,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
     constant = 0
     ghost = False
     profiles = [it.get("profile") for it in items if isinstance(it, dict) and it.get("kind") == "profile"]
-    names = iter(profile_bot_names([p for p in profiles if isinstance(p, str)]))
+    names = iter((names or profile_bot_names)([p for p in profiles if isinstance(p, str) and p in PROFILES]))
     for it in items:
         kind = it.get("kind") if isinstance(it, dict) else None
         if kind == "constant":
