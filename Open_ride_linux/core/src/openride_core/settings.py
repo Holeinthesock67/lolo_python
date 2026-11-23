@@ -121,6 +121,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("trainer.control", "Pilotage du trainer", "advanced"),
     Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
     Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
+    Setting("depart.echauffement_min", "Échauffement avant une course", "ride", 5, "min",   # demande du 21/11
+            help="Avant le Dernier survivant, le Grand Prix et les épreuves du vélodrome : échauffement sur place "
+                 "en ERG, en watts, montée douce puis deux accélérations. Z le passe ; 0 : aucun."),
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
     Setting("ride.vehicle_draft", "Abri derrière les véhicules", "ride"),   # lot AS6
     # Dernier survivant (série DS, lot DS2) ; écran du mode au lot DS7

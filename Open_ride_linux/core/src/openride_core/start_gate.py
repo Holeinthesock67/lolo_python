@@ -8,7 +8,9 @@ l'ordre, chacune vérifiée à chaque pas de la boucle :
    cours, contrat IPC révision 1.5) ; au plus `attente_decor_s` secondes, pour un engine qui ne
    l'envoie pas (ancien engine, séance sans engine) ;
 2. `trainer` : le trainer donne des mesures ;
-3. `pedalage` : `duree_s` secondes de pédalage cumulées à au moins `cadence_rpm` tr/min ou
+3. `echauffement` (course seulement, `warmup.py`) : échauffement sur place en ERG, jusqu'au bout ou à Z ;
+   gardé si le trainer décroche un moment (l'étape retombe, l'échauffement reprend où il en était) ;
+4. `pedalage` : `duree_s` secondes de pédalage cumulées à au moins `cadence_rpm` tr/min ou
    `POWER_W` W (la cadence du trainer arrive en retard, la puissance tout de suite) ; un à-coup sous le seuil de moins de
    `TOLERANCE_S` secondes ne remet pas le compte à zéro, au-delà il redescend aussi vite qu'il monte.
 
@@ -19,8 +21,9 @@ retombe, le compte du pédalage repart de zéro. Le mode `immediat` ouvre le dé
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
-PHASES = ("decor", "trainer", "pedalage")
+PHASES = ("decor", "trainer", "echauffement", "pedalage")
 POWER_W = 40.0        # pédalage reconnu à la puissance, même quand la cadence est encore basse
 TOLERANCE_S = 2.0     # à-coup toléré sous le seuil sans perdre le compte
 
@@ -31,6 +34,7 @@ class StartGate:
     duree_s: float = 1.0
     attente_decor_s: float = 60.0
     immediate: bool = False
+    warmup: Any = None       # `warmup.Warmup` d'une course, None sinon
 
     def __post_init__(self) -> None:
         self.waited_s = 0.0      # depuis la commande start
@@ -42,6 +46,11 @@ class StartGate:
     @property
     def open(self) -> bool:
         return self.phase == "open"
+
+    @property
+    def warming(self) -> bool:
+        """Échauffement prévu et pas encore fini (ni passé)."""
+        return self.warmup is not None and not self.warmup.done
 
     def pedalling(self, cadence_rpm: float | None, power_w: float | None) -> bool:
         # La cadence du trainer arrive plusieurs secondes après les premiers coups de pédale, la puissance
@@ -63,6 +72,11 @@ class StartGate:
         if not trainer_connected:
             self._reset("trainer")
             return False
+        if self.warming:
+            self.phase = "echauffement"
+            self.warmup.step(dt)
+            if not self.warmup.done:
+                return False
         self.phase = "pedalage"
         if self.pedalling(cadence_rpm, power_w):
             self._below_s = 0.0
@@ -82,6 +96,9 @@ class StartGate:
 
     def to_dict(self) -> dict:
         """Objet `start_wait` de la trame `state` (révision 1.5, lot O36)."""
-        return {"phase": self.phase, "cadence_rpm": int(round(self.cadence_rpm)),
-                "hold_s": round(self.duree_s, 1), "held_s": round(min(self.held_s, self.duree_s), 1),
-                "waited_s": round(self.waited_s, 1)}
+        out = {"phase": self.phase, "cadence_rpm": int(round(self.cadence_rpm)),
+               "hold_s": round(self.duree_s, 1), "held_s": round(min(self.held_s, self.duree_s), 1),
+               "waited_s": round(self.waited_s, 1)}
+        if self.warmup is not None:   # révision 1.32 : échauffement d'une course (`warmup.py`)
+            out["warmup"] = self.warmup.to_dict()
+        return out

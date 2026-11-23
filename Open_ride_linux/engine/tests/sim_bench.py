@@ -453,8 +453,10 @@ class Bench:
                                         getattr(a, "month", None)))
         if self.difficulty is not None:
             cfg_lines.append(f"[trainer]\ndifficulty_pct = {float(self.difficulty)}\n")
-        if self.config:
-            cfg_lines.append(toml_text(self.config))
+        # Échauffement avant une course (lot EL1) : un banc mesure la course, pas les 10 min d'échauffement ;
+        # `bench.config` {"depart": {"echauffement_min": N}} le remet.
+        conf = {**self.config, "depart": {"echauffement_min": 0, **self.config.get("depart", {})}}
+        cfg_lines.append(toml_text(conf))
         cfg = tmp / "config.toml"
         cfg.write_text("\n".join(cfg_lines), encoding="utf-8")
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(cfg), "--trainer", "sim",

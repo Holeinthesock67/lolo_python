@@ -101,6 +101,47 @@ func _run() -> void:
 	v = m.view(_st(el))
 	_check(v["center"].is_empty() and v["list"]["rows"][2]["kind"] == "danger", "élimination : un bot dernier en rouge")
 
+	# Révision 1.32 (essai du 21 novembre) : tours entre deux éliminations, écarts aux voisins, victoire
+	el.merge({"every_laps": 4, "bell": false, "ahead": {"id": "b3", "gap_s": 1.24}, "behind": {"id": "b4", "gap_s": -0.8}}, true)
+	v = m.view(_st(el))
+	_check(v["banner"]["sub"].begins_with("Le dernier sort tous les 4 tours"), "élimination : tous les 4 tours (%s)" % v["banner"]["sub"])
+	_check(v["gaps"]["ahead"]["name"] == "Marco" and v["gaps"]["ahead"]["text"] == "+1,2 s", "écart devant (%s)" % str(v["gaps"]))
+	_check(v["gaps"]["behind"]["name"] == "Hugo" and v["gaps"]["behind"]["text"] == "−0,8 s", "écart derrière")
+	el.merge({"ahead": null}, true)
+	_check(not m.view(_st(el))["gaps"].has("ahead"), "en tête : pas d'écart devant")
+	el.merge({"behind": null}, true)
+	_check(m.view(_st(el))["gaps"].is_empty(), "sans voisin : pas de bloc des écarts")
+	var win := {"event": "elimination", "t_s": 900.0, "lap": 28, "laps": 28, "laps_to_go": 1, "bell": false,
+		"ranking": ["me", "b1", "b2"], "points": null, "eliminated": ["b2", "b1"], "finished": true,
+		"to_elim_m": null, "gap_last_s": null, "last": "me", "alive": 1, "every_laps": 4, "ahead": null, "behind": null}
+	v = m.view(_st(win))
+	_check(v["center"]["title"] == "VICTOIRE !" and v["center"]["color"] == Model.GOLD_BG, "victoire : bandeau doré (%s)" % str(v["center"]))
+	_check(v["banner"]["sub"] == "Épreuve terminée", "victoire : bandeau de l'épreuve terminé")
+	_check(v["list"]["rows"][0]["name"] == "Toi" and v["list"]["rows"][0]["value"] == "" and v["list"]["rows"][0]["kind"] == "me",
+		"victoire : Toi premier, plus « dernier » (%s)" % str(v["list"]["rows"][0]))
+	var timed = Model.new()
+	var st0 := _st(win)
+	st0["t"] = 1000.0
+	_check(timed.view(st0)["center"]["title"] == "VICTOIRE !", "victoire : bandeau au premier instant")
+	st0["t"] = 1005.5
+	_check(not timed.view(st0)["center"].is_empty(), "victoire : encore là à 5,5 s")
+	st0["t"] = 1006.5
+	_check(timed.view(st0)["center"].is_empty(), "victoire : bandeau parti après 6 s, on continue à rouler")
+	var ws = Model.new()
+	var run := win.duplicate()
+	run.merge({"finished": false, "eliminated": ["b2"], "ranking": ["me", "b1", "b2"], "alive": 2}, true)
+	_check(ws.sounds(_st(run)) == [], "épreuve en cours : pas de son")
+	_check(ws.sounds(_st(win)) == ["jingle_winner", "track_crowd"], "victoire : arpège et public (%s)" % str(ws.sounds(_st(win))))
+	_check(ws.sounds(_st(win)) == [], "victoire : une seule fois")
+	var third := win.duplicate()
+	third.merge({"ranking": ["b1", "b2", "me"]}, true)
+	_check(Model.new().finish_center(third)["title"] == "ARRIVÉE · 3e sur 3", "arrivée : place")
+	var outs = Model.new()
+	var me_out := run.duplicate()
+	me_out.merge({"eliminated": ["b2", "me"]}, true)
+	outs.sounds(_st(run))
+	_check(outs.sounds(_st(me_out)) == ["jingle_elim"], "cycliste éliminé : deux notes")
+
 	# Poursuite (maquette 5)
 	var pu := {"event": "pursuit", "t_s": 150.0, "lap": 9, "laps": 16, "laps_to_go": 8, "bell": false,
 		"ranking": ["me", "b1"], "points": null, "eliminated": [], "finished": false,

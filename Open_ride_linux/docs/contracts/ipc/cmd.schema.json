@@ -31,6 +31,7 @@
         "resume",
         "end_session",
         "skip_block",
+        "skip_warmup",
         "input_event",
         "list_routes",
         "list_workouts",
