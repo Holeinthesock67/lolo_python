@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Essai d'endurance : séance de 2 h puis saison de la ligue d'hiver (8 semaines simulées, horloge du core décalée) dans le même core et le même engine, mémoire, GPU, à-coups et fichiers jugés par des seuils chiffrés | Python (outil de test) | X13, X16, CH3 (#989) | Petite | En PR le 22 novembre 2026 ; essai sur le PC après la fusion de la ligue |
+| Essai d'endurance : séance de 2 h puis saison de la ligue d'hiver (8 semaines simulées, horloge du core décalée) dans le même core et le même engine, mémoire, GPU, à-coups et fichiers jugés par des seuils chiffrés | Python (outil de test) | X13, X16, CH3 (#989) | Petite | En PR le 23 novembre 2026 ; essai sur le PC la nuit, via la file du PC (semaine du 30 novembre) |
 
 Demande : audit de cohérence du 22 novembre (`statut/AUDIT_COHERENCE_QUALITE_2026-11-22.md`, lot majeur validé par
 le propriétaire). L'essai d'une heure du lot X16 n'a jamais été fait sur le PC ; avant la livraison (J9), un essai
@@ -40,3 +40,9 @@ Catégorie : logique
 - Versions : aucune (WORLDGEN_VERSION, SCHEMA_VERSION et révision IPC inchangés)
 
 ## Livraison
+- 22 novembre, cloud, core seul, branche de CH3 (#989, fusionnée depuis) avec ce lot, `essai_endurance.py --court
+  --sans-engine` (séance de 6 min, manches de 90 s, anneau de 1,5 km) : 25 vérifications sur 25 sans échec. Saison
+  créée (11 rivaux), manches 1, 5 et 8 (Course) courues et enregistrées « joueur », les 5 autres (modes pas encore
+  branchés, CH3b) simulées pour les rivaux, saison close le lundi 18 janvier 2027 simulé ; 4 FIT. Mémoire du core au
+  plus 63 Mo ; journaux de séance 1,4 Mo/h, FIT 96 Ko/h, `ligue.json` 4,6 Ko, `elo.json` 0,7 Ko, profil + 0,4 Mo en
+  15 min. Pente de la mémoire du core non jugée (moins de 20 min mesurées) : l'essai de nuit sur le PC la juge.
