@@ -477,7 +477,8 @@ func is_free_route(id: String) -> bool:
 	return true
 
 
-## Mode auquel appartient un parcours ("" : parcours libre, y compris un parcours de mode resté libre, lot GPL1).
+## Mode d'un parcours de mode (ligue d'hiver, lot CH3), "" pour un parcours de la liste générale : libre, ou d'un
+## mode et resté libre (étiquette `free_route_tag`, lot GPL1), même règle que is_free_route().
 func route_mode_of(id: String) -> String:
 	if is_free_route(id):
 		return ""
