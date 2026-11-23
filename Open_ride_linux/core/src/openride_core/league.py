@@ -167,8 +167,16 @@ class Season:
     classic: RoundResult | None = None
     pauses: list[list[date | None]] = field(default_factory=list)   # [début, fin] ; fin None : en pause
     closed: str | None = None                                       # None, « fin » ou « pause »
+    last_seen: date | None = None                                   # dernier jour vu (horloge qui recule)
 
     # --- calendrier -------------------------------------------------------------------------------
+
+    def seen(self, today: date) -> date:
+        """Jour de la ligue : `today`, jamais avant le dernier jour vu (horloge du PC qui recule : pile du BIOS,
+        double amorçage) ; le dernier jour vu avance avec lui. Rend le jour à utiliser."""
+        if self.last_seen is None or today > self.last_seen:
+            self.last_seen = today
+        return self.last_seen
 
     def paused_weeks(self, today: date) -> int:
         """Semaines gelées par les pauses (lundis franchis pendant chaque pause), jusqu'à aujourd'hui."""
@@ -384,7 +392,7 @@ class Season:
                 "classic_day": self.classic_day.isoformat() if self.classic_day else None,
                 "classic": self.classic.to_dict() if self.classic else None,
                 "pauses": [[a.isoformat() if a else None, b.isoformat() if b else None] for a, b in self.pauses],
-                "closed": self.closed}
+                "closed": self.closed, "last_seen": self.last_seen.isoformat() if self.last_seen else None}
 
     @classmethod
     def from_dict(cls, data: Any) -> "Season":
@@ -413,6 +421,8 @@ class Season:
             if closed not in (None, "fin", "pause"):
                 raise LeagueError(f"fin de saison inconnue : {closed!r}")
             s.closed = closed
+            if data.get("last_seen"):
+                s.last_seen = date.fromisoformat(data["last_seen"])
             return s
         except (KeyError, TypeError, ValueError) as e:   # LeagueError est un ValueError
             raise LeagueError(f"saison illisible : {e}") from e
@@ -623,3 +633,84 @@ def rider_update(book: Any, places: Mapping[str, int], ratings: Mapping[str, flo
         line["ts"] = round(ts, 3)
     book.history = (book.history + [line])[-bot_elo.HISTORY_MAX:]
     return line
+
+
+# --- manche lancée par la séance (lot CH3) --------------------------------------------------------
+
+PLAYABLE_MODES = ("race",)      # modes déjà branchés (CH3a : la Course) ; les autres manches attendent CH3b
+RACE_TARGET_S = 27 * 60.0       # course de 25 à 30 min (manche de 45 min tout compris, plan §3.1)
+RACE_LAPS = (1, 10)             # bornes de `race.laps`
+EASY_OBJECTIVES = ("recovery", "endurance")   # intensité « facile » de R1 : mention au classement de la manche
+
+
+def laps_for(lap_m: float, speed_ms: float, target_s: float | None = None) -> int:
+    """Tours d'une manche sur une boucle de `lap_m` pour environ `target_s` (défaut `RACE_TARGET_S`) à `speed_ms`."""
+    target_s = RACE_TARGET_S if target_s is None else target_s
+    if lap_m <= 0 or speed_ms <= 0:
+        return RACE_LAPS[0]
+    return int(min(max(round(target_s * speed_ms / lap_m), RACE_LAPS[0]), RACE_LAPS[1]))
+
+
+def places_from_order(order: Sequence[Sequence[str]]) -> dict[str, int]:
+    """Places depuis un classement en groupes (égalités : même place, la suivante sautée)."""
+    out: dict[str, int] = {}
+    n = 1
+    for group in order:
+        for rid in group:
+            out[rid] = n
+        n += len(group)
+    return out
+
+
+def standings_rows(season: Season, rows: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Lignes du classement pour l'écran : place, nom, caractère écrit, équipe, points, manches courues, `me`."""
+    out = []
+    for r in rows if rows is not None else season.standings():
+        riv = season.rival(r["id"])
+        out.append({"place": r["place"], "id": r["id"], "name": r["name"],
+                    "style": PROFILE_LABELS.get(riv.profile, riv.profile) if riv else None,
+                    "team": riv.team if riv else None, "color": riv.color if riv else None,
+                    "points": round(float(r["points"]), 1), "ran": r["ran"], "wins": r["wins"], "me": r["id"] == ME})
+    return out
+
+
+def status(season: Season | None, today: date, request_cmd_id: int = 0) -> dict[str, Any]:
+    """Message `league` (révision 1.30) : saison en cours ou None, manche de la semaine, classement."""
+    head = {"type": "league", "v": 1, "request_cmd_id": int(request_cmd_id)}
+    if season is None:
+        return {**head, "season": None}
+    i = min(season.week_index(today), WEEKS - 1)
+    rnd = ROUNDS[i]
+    current = season.current_round(today)
+    trophy = season.trophy()
+    return {**head, "season": {
+        "number": season.number, "start": season.start.isoformat(), "end": season.end_day(today).isoformat(),
+        "weeks": WEEKS, "week": i + 1, "paused": season.paused, "closed": season.closed,
+        "home_line": season.home_line(today),
+        "round": {"index": i, "mode": rnd.mode, "event": rnd.event, "title": rnd.title, "short": rnd.short,
+                  "decides": rnd.decides, "terrain": rnd.terrain, "done": i in season.results,
+                  "open": current is not None, "playable": current is not None and rnd.mode in PLAYABLE_MODES},
+        "classic_day": season.classic_day.isoformat() if season.classic_day else None,
+        "trophy": {"id": trophy[0], "label": trophy[1]} if trophy else None,
+        "standings": standings_rows(season)}}
+
+
+def round_summary(season: Season, index: int, before: list[dict[str, Any]], easy: bool) -> dict[str, Any]:
+    """Encart « Ligue d'hiver » du bilan (maquette 03) : place et points de la manche, place au général avant et
+    après, mouvement écrit, cinq lignes autour du cycliste."""
+    res = season.results[index]
+    after = season.standings()
+    was = next(r["place"] for r in before if r["id"] == ME)
+    now = next(r["place"] for r in after if r["id"] == ME)
+    gained = was - now
+    if gained > 0:
+        moved = f"gagne {gained} place" + ("s" if gained > 1 else "")
+    elif gained < 0:
+        moved = f"perd {-gained} place" + ("s" if gained < -1 else "")
+    else:
+        moved = "garde sa place"
+    k = next(n for n, r in enumerate(after) if r["id"] == ME)
+    lo = max(0, min(k - 2, len(after) - 5))
+    return {"round": index + 1, "of_rounds": WEEKS, "title": ROUNDS[index].title, "place": res.places[ME],
+            "of": len(res.places), "points": points_for(res.places[ME]), "general_before": was,
+            "general_after": now, "moved": moved, "easy": easy, "rows": standings_rows(season, after[lo:lo + 5])}
