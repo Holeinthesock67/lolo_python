@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Ligne « Intensité du jour : facile / moyen / dur » avec les watts des bots, première ligne des écrans Prêt à bots | GDScript | GP-niv et BOT-elo (#941) | Petite | PR du 21 novembre |
+| Ligne « Intensité du jour : facile / moyen / dur » avec les watts des bots, première ligne des écrans Prêt à bots | GDScript | GP-niv et BOT-elo (#941) | Petite | **Livré le 22 novembre** (PR #982) |
 
 ## 1. Objectif
 
