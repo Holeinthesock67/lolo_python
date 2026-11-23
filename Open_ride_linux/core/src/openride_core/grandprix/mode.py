@@ -169,6 +169,7 @@ class GrandPrixMode:
         self.clock = 0.0
         self.t = 0.0
         self.grace_until = 0.0
+        self._touched: dict[tuple[str, str], float] = {}   # (lanceur, frôlé) → fin de l'effet (revue C4-06)
         self.was_paused = False
         self.bursts: list[_Burst] = []
         self.arrivals = 0
@@ -342,6 +343,12 @@ class GrandPrixMode:
             return False
         item = r.held
         spec = self.table.items[item]
+        if spec.target == "leader" and self._nobody_ahead(r):
+            # revue de code C4-08 : en tête, le nuage d'orage n'a pas de cible ; Z le dissipe (objet perdu, réserve
+            # vidée, ligne `discard` au journal) au lieu de ne rien faire et de bloquer la réserve et les boîtes
+            r.held, r.charges, r.last_use = None, 0, now
+            self._log("discard", rid, item=item)
+            return True
         if not self._fire(r, spec, now):
             return False
         r.last_use = now
@@ -354,6 +361,11 @@ class GrandPrixMode:
         if spec.steal_m:
             self._steal(r, spec.steal_m)
         return True
+
+    def _nobody_ahead(self, r: Racer) -> bool:
+        """Vrai si `r` mène : aucun coureur encore en course devant lui (cible du nuage d'orage)."""
+        lead = self._leader(but=r)
+        return lead is None or lead.s <= r.s
 
     def _fire(self, r: Racer, spec: ItemSpec, now: float) -> bool:
         if spec.target == "self":
@@ -496,8 +508,15 @@ class GrandPrixMode:
                     continue
                 for o in self._racing():
                     if o is not r and o.lane == r.lane and abs(o.s - r.s) <= spec.radius_m:
+                        # revue de code C4-06 : un seul jugement par coureur frôlé et par effet (coup ou esquive) ;
+                        # avant, chaque pas au contact comptait une esquive de plus au bilan (74 pour 1 coup)
+                        key = (r.id, o.id)
+                        if self._touched.get(key, -1e9) >= a.until_t:
+                            continue
+                        self._touched[key] = a.until_t
                         self._hit(o, spec, spec.hit_fx, r.id, now)
                 break
+        self._touched = {k: until for k, until in self._touched.items() if until > now}
 
     # --- sorties --------------------------------------------------------------------------------
 
