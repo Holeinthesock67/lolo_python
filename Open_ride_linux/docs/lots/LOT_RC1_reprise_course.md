@@ -40,10 +40,8 @@ ce lot : le Grand Prix et la Course sont la même course (`GrandPrixMode`).
 
 ## 3. Limites connues (lots suivants)
 
-- RC3 : jeu entier arrêté (PC, coupure de courant) : au lancement suivant, bouton « Reprendre la course » dans la
-  fenêtre de la séance interrompue (lot O34), moins de 2 h après l'arrêt ; ajout à l'IPC et captures.
+- RC3 (`LOT_RC3_reprendre_au_lancement.md`, même PR) : jeu entier arrêté, « Reprendre la course » à l'accueil.
 - Hors lot : épreuves de piste, mode WTF, monde ouvert, Cyber-Rogue (toujours par `pickle`, constat R5).
-- L'écran de pause ne dit pas encore en mots que la course a été reprise (RC3).
 
 ## Recette PC
 Catégorie : logique

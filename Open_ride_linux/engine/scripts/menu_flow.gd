@@ -157,6 +157,10 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
 	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
+## Lot RC3 : pause d'une course reprise après un plantage (même raison `core_restarted`, course en cours).
+const PAUSE_RACE_RESTORED := "OpenRide a redémarré : course retrouvée, tout le monde repart arrêté"
+## Noms des courses reprises (`race.mode` d'une séance interrompue, lot RC3).
+const RACE_MODE_NAMES := {"race": "Course", "grandprix": "Grand Prix", "survivor": "Dernier survivant"}
 ## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
 ## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
 const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
@@ -271,6 +275,8 @@ var _record_segment := ""
 var _record_bonus := false
 ## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
 var pause_reason := ""
+## Lot RC3 : course en cours (objet `gp` ou `survivor` de la trame), pour la ligne d'état d'une pause `core_restarted`.
+var race_active := false
 ## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
 var workout_done := false
 ## Départ au pédalage en attente (lot O36) : objet `start_wait` de la dernière trame, {} sinon ; le menu
@@ -408,6 +414,13 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	race_active = state.get("gp") is Dictionary or state.get("survivor") is Dictionary
+	if race_active and str(state.get("session_state", "")) in ["PAUSED", "RUNNING"] \
+			and not menu.mode in MenuModel.SETTINGS_MODES and menu.mode != "league":
+		# Lot RC3 : course reprise depuis l'accueil (séance interrompue) : la pause est celle d'une course à plateau
+		# composé par le core (pas de lignes de bots modifiables, `set_bots` refusé)
+		menu.mode = "survivor" if state.get("survivor") is Dictionary \
+			else ("race" if str(state["gp"].get("mode", "")) == "race" else "grandprix")
 	workout_done = state.get("workout_done", null) is Dictionary
 	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
 	_track_run(st, state)
@@ -1874,6 +1887,8 @@ func on_interrupted(msg: Dictionary) -> void:
 	interrupted = rest.duplicate() if rest is Array else []
 	interrupted_message = "Séance enregistrée dans tes séances" if bool(msg.get("saved", false)) \
 		else "Séance non enregistrée"
+	if bool(msg.get("resumed", false)):   # lot RC3 : la séance repart en pause, l'écran de pause suit la trame
+		interrupted_message = "Séance reprise"
 	_refresh_interrupted()
 	if interrupted.is_empty() and menu.current_screen() in [INTERRUPTED, MenuModel.CONFIRM]:
 		menu.open_screen(MenuModel.HOME)
@@ -1885,12 +1900,45 @@ func _refresh_interrupted() -> void:
 		menu.set_interrupted("", "")
 		menu.set_screen_items(INTERRUPTED, [{"id": "none", "label": "Aucune séance à rattraper", "enabled": false}])
 		return
-	var detail := interrupted_detail(interrupted[0], route_names)
+	var item: Dictionary = interrupted[0]
+	var detail := interrupted_detail(item, route_names)
 	var more := interrupted.size() - 1
-	menu.set_interrupted("Séance interrompue à enregistrer" + ("" if more == 0 else " (+%d)" % more), detail)
-	menu.set_screen_items(INTERRUPTED, [
-		{"id": "save", "label": "Enregistrer la séance", "detail": detail},
-		{"id": "discard", "label": "Ne pas l'enregistrer"}])
+	var race = item.get("race", null)
+	var is_race: bool = race is Dictionary
+	var resumable := bool(item.get("resumable", false))
+	var title := "Séance interrompue à enregistrer"
+	if resumable:   # lot RC3 : moins de 2 h après l'arrêt, même version du jeu
+		title = "Course interrompue à reprendre" if is_race else "Séance interrompue à reprendre"
+	menu.set_interrupted(title + ("" if more == 0 else " (+%d)" % more),
+		interrupted_race_detail(race) if is_race else detail)
+	var rows: Array = []
+	if resumable:
+		rows.append({"id": "resume", "label": "Reprendre la course" if is_race else "Reprendre la séance",
+			"detail": interrupted_race_detail(race) if is_race else detail})
+	rows.append({"id": "save", "label": "Enregistrer sans finir" if is_race else "Enregistrer la séance",
+		"detail": detail})
+	rows.append({"id": "discard", "label": "Ne pas l'enregistrer"})
+	menu.set_screen_items(INTERRUPTED, rows)
+
+
+## « Course · tour 3 sur 6 · tu étais 4e sur 12 » de `race` {mode, place, of, lap, alive, league} (lot RC3).
+static func interrupted_race_detail(race: Dictionary) -> String:
+	var mode := str(race.get("mode", ""))
+	var name := str(RACE_MODE_NAMES.get(mode, "Course"))
+	if bool(race.get("league", false)):
+		name += " de la ligue"
+	var parts: Array = [name]
+	var lap = race.get("lap", null)
+	if lap is Array and lap.size() == 2:
+		parts.append("tour %d sur %d" % [int(lap[0]), int(lap[1])])
+	var place = race.get("place", null)
+	var of = race.get("of", null)
+	if (place is int or place is float) and (of is int or of is float):
+		var p := int(place)
+		parts.append("tu étais %s sur %d" % ["1er" if p == 1 else "%de" % p, int(of)])
+	elif mode == "survivor" and (race.get("alive", null) is int or race.get("alive", null) is float):
+		parts.append("%d coureurs encore en course" % int(race["alive"]))
+	return " · ".join(parts)
 
 
 ## « 30/10 à 18:05 · Vosges · 12,3 km · 32 min » d'un élément {start, route_id, distance_m, duration_s}.
@@ -1912,6 +1960,9 @@ func _handle_interrupted(item_id: String) -> Dictionary:
 		return {}
 	var sid := str(interrupted[0].get("id", ""))
 	interrupted_message = ""
+	if item_id == "resume":   # lot RC3
+		interrupted_message = "Reprise…"
+		return {"action": "recover_session", "id": sid, "resume": true}
 	if item_id == "save":
 		interrupted_message = "Enregistrement…"
 		return {"action": "recover_session", "id": sid, "save": true}
@@ -2537,6 +2588,8 @@ func state() -> Dictionary:
 		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
+		if pause_reason == "core_restarted" and race_active:
+			st["status"] = PAUSE_RACE_RESTORED
 		if st["status"] == "" and workout_done:
 			st["status"] = PAUSE_WORKOUT_DONE
 	st["card"] = card(st)

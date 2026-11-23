@@ -180,3 +180,66 @@ def test_league_round_not_resumed_stays_open(env, short_round, monkeypatch):
     assert s2._league_run is None and s2.grandprix is None
     s2._on_command("end_session", {"save": True}, 4)
     assert league.load(tmp_path / "ligue.json").results == {}
+
+
+# --- lancement suivant : « Reprendre la course » (lot RC3) -------------------------------------------------
+
+def _interrupted(s):
+    s._publish_interrupted()
+    return s.server.hello_config.get("interrupted", [])
+
+
+def test_interrupted_race_offered_with_place_and_resumed_from_menu(env):
+    make, run, _, tmp_path = env
+    s, _, _ = make(7550)
+    s._on_command("start", {"mode": "race"}, 2)
+    run(s, 60)
+    place = s.grandprix.place("me")
+    s2, sent2, errors2 = make(7560)   # le jeu entier a été fermé : nouveau lancement, menu
+    items = _interrupted(s2)
+    assert len(items) == 1 and items[0]["resumable"] is True
+    race = items[0]["race"]
+    assert race["mode"] == "race" and race["of"] == len(s.bots) + 1 and abs(race["place"] - place) <= 1
+    assert race["lap"] is not None and race["league"] is False
+    validator("interrupted").validate({"type": "interrupted", "v": 1, "request_cmd_id": 0, "id": "x", "saved": False,
+                                       "fit_path": None, "items": items})   # forme des éléments, `race` compris
+    s2._on_command("recover_session", {"id": items[0]["id"], "resume": True}, 5)
+    assert not errors2
+    assert s2.state.session_state == "PAUSED" and s2.state.pause_reason == "core_restarted"
+    assert s2.grandprix is not None and len(s2.bots) == len(s.bots)
+    msg = [m for m in sent2 if m.get("type") == "interrupted"][-1]
+    validator("interrupted").validate(msg)
+    assert msg["resumed"] is True and msg["items"] == []
+    s2._on_command("resume", {}, 6)
+    run(s2, 900)
+    assert s2.state.session_state == "FINISHED"
+
+
+def test_interrupted_too_old_or_other_version_not_resumable(env, monkeypatch):
+    from openride_core.resume import RESUME_WINDOW_S, interrupted_sessions
+
+    make, run, _, tmp_path = env
+    s, _, _ = make(7570)
+    s._on_command("start", {"mode": "race"}, 2)
+    run(s, 30)
+    import time
+    later = time.time() + RESUME_WINDOW_S + 60
+    old = interrupted_sessions(tmp_path / "journal", now=later)
+    assert old[0]["resumable"] is False and old[0]["race"]["mode"] == "race"
+    s2, _, errors2 = make(7580)
+    monkeypatch.setattr("openride_core.__version__", "99.0.0")
+    items = _interrupted(s2)
+    assert items[0]["resumable"] is False
+    s2._on_command("recover_session", {"id": items[0]["id"], "resume": True}, 3)
+    assert errors2 and "ne peut plus être reprise" in errors2[-1][1]
+    assert s2.state.session_state in ("IDLE", "READY")
+
+
+def test_race_cut_before_snapshot_not_resumable(env):
+    make, run, _, tmp_path = env
+    s, _, _ = make(7590)
+    s._on_command("start", {"mode": "race"}, 2)
+    run(s, 3)
+    s2, _, _ = make(7600)
+    items = _interrupted(s2)
+    assert items[0]["resumable"] is False and "race" not in items[0]

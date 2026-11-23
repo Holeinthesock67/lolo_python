@@ -1046,10 +1046,13 @@ class CoreSession:
         if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
             self.server.send_error("busy", "Séance interrompue : à traiter hors séance.")
             return
-        known = [it["id"] for it in self.server.hello_config.get("interrupted", [])]
-        sid, save = args.get("id"), args.get("save")
-        if sid not in known or not isinstance(save, bool):
-            self.server.send_error("bad_args", "recover_session : 'id' d'une séance proposée et 'save' booléen")
+        offered = {it["id"]: it for it in self.server.hello_config.get("interrupted", [])}
+        sid, save, resume = args.get("id"), args.get("save"), args.get("resume") is True
+        if sid not in offered or not (isinstance(save, bool) or resume):
+            self.server.send_error("bad_args", "recover_session : 'id' d'une séance proposée et 'save' booléen ou 'resume'")
+            return
+        if resume:
+            self._resume_interrupted(sid, offered[sid], cmd_id)
             return
         try:
             fit = close_interrupted(self.journal_dir / sid, save)
@@ -1065,6 +1068,29 @@ class CoreSession:
         self.server.send_raw({"type": "interrupted", "v": 1, "request_cmd_id": cmd_id, "id": sid, "saved": fit is not None,
                               "fit_path": str(fit) if fit else None,
                               "items": self.server.hello_config.get("interrupted", [])})
+
+    def _resume_interrupted(self, sid: str, item: dict, cmd_id: int) -> None:
+        """`recover_session` avec `resume` (lot RC3) : reprend la séance (la course entière, lot RC1) comme après un
+        plantage du core, en `PAUSED` / `core_restarted` ; réponse `interrupted` avec `resumed`."""
+        if not item.get("resumable"):
+            self.server.send_error("bad_args", "Cette séance ne peut plus être reprise : enregistre-la ou laisse-la.")
+            return
+        path = self.journal_dir / sid
+        try:
+            self.resume_session(path)
+        except ResumeError as exc:
+            log.error("Séance interrompue %s non reprise : %s", sid, exc)
+            self._rec = None
+            self._set_state("IDLE")
+            self.server.send_error("bad_args", f"Séance non reprise : {exc}")
+            return
+        self._resumed_journal = path
+        log.info("Séance interrompue %s reprise depuis le menu.", sid)
+        self._publish_interrupted()
+        self.server.send_raw({"type": "interrupted", "v": 1, "request_cmd_id": cmd_id, "id": sid, "saved": False,
+                              "fit_path": None, "resumed": True,
+                              "items": self.server.hello_config.get("interrupted", [])})
+
     # --- derniers choix du menu, par profil (lot O32) ---------------------------------------------
 
     def _publish_last_choices(self) -> None:
@@ -4736,8 +4762,11 @@ class CoreSession:
             "bots": [race_resume.bot_state(b) for b in self.bots]}
         if gp is not None:
             line["gp"] = race_resume.gp_state(gp)
+            frame = gp.frame(GP_ME)   # lot RC3 : place et tour écrits au menu du lancement suivant
+            line.update({"place": frame["place"], "of": frame["of"], "lap": frame.get("lap")})
         if sv is not None:
             line["survivor"] = race_resume.survivor_state(sv)
+            line.update({"alive": len(sv.alive), "of": len(sv.racers), "place": sv.racers[SURVIVOR_ME].place})
             line["survivor_out"] = {k: round(v, 2) for k, v in self._survivor_out.items()}
         if self.race is not None:
             line["standings"] = race_resume.standings_state(self.race.standings)

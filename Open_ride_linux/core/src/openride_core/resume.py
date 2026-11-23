@@ -131,6 +131,7 @@ def load_resume_state(path: Path) -> ResumeState:
 
 INTERRUPTED_SCAN = 10   # journaux les plus récents examinés au démarrage (lecture complète de chacun)
 INTERRUPTED_MAX = 3     # séances proposées au plus
+RESUME_WINDOW_S = 2 * 3600.0   # lot RC3 : « Reprendre » proposé moins de 2 h après la dernière ligne du journal
 
 
 def _summary_of(lines: list[dict]):
@@ -144,11 +145,34 @@ def _summary_of(lines: list[dict]):
     return records, summarize(records, [*events, stop])
 
 
-def interrupted_sessions(journal_dir: Path, skip: Path | None = None) -> list[dict]:
+def _resume_offer(lines: list[dict], last_ts: float, now: float, version: str) -> tuple[bool, dict | None]:
+    """Lot RC3 : (reprise possible, course du journal). Possible moins de `RESUME_WINDOW_S` après la dernière ligne ;
+    une course seulement avec un instantané de ce format et de cette version du jeu (`race_resume.check`)."""
+    from . import race_resume
+
+    snap = next((ln for ln in reversed(lines) if ln.get("kind") == "race_snapshot"), None)
+    started = any(ln.get("kind") in ("gp_start", "survivor_start") for ln in lines)
+    recent = -60.0 <= now - last_ts <= RESUME_WINDOW_S   # horloge un peu en retard sur la ligne : tolérée
+    if snap is None:
+        return recent and not started, None
+    race = {"mode": snap.get("mode"), "place": snap.get("place"), "of": snap.get("of"), "lap": snap.get("lap"),
+            "alive": snap.get("alive"), "league": bool(snap.get("league"))}
+    try:
+        race_resume.check(snap, version)
+    except race_resume.SnapshotError:
+        return False, race
+    return recent, race
+
+
+def interrupted_sessions(journal_dir: Path, skip: Path | None = None, now: float | None = None) -> list[dict]:
     """Séances commencées que rien n'a terminées (arrêt brutal du PC ou du core), sans FIT, les plus
-    récentes d'abord : `{id, start, route_id, distance_m, duration_s}` (`id` = nom du journal).
-    `skip` : journal repris par la séance en cours (`--resume`), jamais proposé."""
+    récentes d'abord : `{id, start, route_id, distance_m, duration_s, resumable}` (`id` = nom du journal) et `race`
+    pour une course (lot RC3 : mode, place, tours, ligue). `skip` : journal repris par la séance en cours
+    (`--resume`), jamais proposé."""
+    import time
     from datetime import datetime
+
+    from . import __version__
 
     from .fit_export import default_fit_path
 
@@ -172,9 +196,15 @@ def interrupted_sessions(journal_dir: Path, skip: Path | None = None) -> list[di
         if summary is None or default_fit_path(records[0]["ts"], header.get("route_id")).exists():
             continue   # rien d'enregistré, ou déjà rattrapée par `recover` (lanceur, lot N8)
         last = records[-1]   # temps chronométré et distance du dernier relevé (comme la reprise, lot N8)
-        found.append({"id": path.name, "start": datetime.fromtimestamp(summary.start_ts).strftime("%Y-%m-%dT%H:%M"),
-                      "route_id": header.get("route_id"), "distance_m": round(float(last.get("distance") or 0.0)),
-                      "duration_s": round(float(last.get("t") or 0.0))})
+        item = {"id": path.name, "start": datetime.fromtimestamp(summary.start_ts).strftime("%Y-%m-%dT%H:%M"),
+                "route_id": header.get("route_id"), "distance_m": round(float(last.get("distance") or 0.0)),
+                "duration_s": round(float(last.get("t") or 0.0))}
+        resumable, race = _resume_offer(lines, max(float(ln.get("ts") or 0.0) for ln in lines if "ts" in ln),
+                                        time.time() if now is None else now, __version__)
+        item["resumable"] = resumable
+        if race is not None:
+            item["race"] = race
+        found.append(item)
         if len(found) >= INTERRUPTED_MAX:
             break
     return found
