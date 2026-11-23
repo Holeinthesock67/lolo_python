@@ -462,8 +462,9 @@ class Supervisor:
         if self.alert is not None:
             try:
                 self.alert(f"{msg}\n\nJournal : {self.log_path}")
-            except Exception:   # une fenêtre impossible ne doit rien bloquer
-                pass
+            except Exception as exc:   # une fenêtre impossible ne doit rien bloquer
+                self._write_log(
+                    f"{log_timestamp()} WARNING [openride] fenêtre d'alerte impossible : {exc}\n".encode())
 
     def _log_text(self, new_only: bool = False) -> str:
         try:
@@ -914,8 +915,10 @@ def record_theme_use(themes_dir: Path, theme: str, when: datetime | None = None)
     if not isinstance(uses, dict):
         uses = {}
     uses[theme] = (when or datetime.now()).isoformat(timespec="seconds")
+    tmp = path.with_name(path.name + ".tmp")   # même dossier : remplacement atomique
     try:
-        path.write_text(json.dumps(uses, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        tmp.write_text(json.dumps(uses, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
     except OSError:
         pass
 
