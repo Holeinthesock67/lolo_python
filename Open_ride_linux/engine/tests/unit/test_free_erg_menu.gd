@@ -81,8 +81,8 @@ func _test_pause_rows_and_commands() -> void:
 	var act: Dictionary = f.handle("A_LONG")
 	_check(act == {"action": "set_ride_mode", "args": {"mode": "erg"}}, "A long : set_ride_mode erg (%s)" % str(act))
 	f.on_state({"session_state": "PAUSED", "mode": "ERG", "erg": FREE, "difficulty_pct": 50})
-	_check(_ids(f) == ["resume", "end_save", "abandon", "difficulty", "ride_mode", "target_w", "bot1", "ghost", "peloton"],
-		"ERG : ligne de la puissance cible (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["resume", "end_save", "abandon", "ride_mode", "target_w", "bot1", "ghost", "peloton"],
+		"ERG : ligne de la puissance cible, sans la Difficulté sans effet (lot NI2) (%s)" % str(_ids(f)))
 	_check(_row(f, "target_w")["detail"] == "204 W" and _row(f, "ride_mode")["detail"] == "ERG",
 		"puissance cible affichée (%s)" % _row(f, "target_w")["detail"])
 	_focus(f, "target_w")
@@ -112,7 +112,18 @@ func _test_pause_rows_and_commands() -> void:
 		and not _row(f, "ride_mode")["editing"], "Y annule le changement de mode")
 	# Entraînement : pas de ligne de mode.
 	var g = _paused(WORKOUT, "ERG")
-	_check(_ids(g) == ["resume", "end_save", "abandon", "difficulty", "bot1", "ghost", "peloton"], "entraînement : pas de bascule (%s)" % str(_ids(g)))
+	_check(_ids(g) == ["resume", "end_save", "abandon", "bot1", "ghost", "peloton"],
+		"entraînement : pas de bascule, pas de Difficulté en ERG (lot NI2) (%s)" % str(_ids(g)))
+	# Retour en SIM choisi à la pause : la Difficulté revient tout de suite, avant la trame suivante.
+	var h = _paused(FREE, "ERG")
+	_check(not _ids(h).has("difficulty"), "ERG libre : pas de Difficulté")
+	_focus(h, "ride_mode")
+	h.handle("A_LONG")
+	h.handle("PLUS_SHORT")
+	h.handle("PLUS_SHORT")   # ERG → ERG cadence → SIM
+	act = h.handle("A_LONG")
+	_check(act == {"action": "set_ride_mode", "args": {"mode": "sim"}} and _ids(h).has("difficulty"),
+		"SIM choisi : Difficulté de retour (%s)" % str(_ids(h)))
 	_check(SettingsViewModel.pause_item("pause.inconnu", 1).is_empty(), "clé de pause inconnue : rien")
 
 
@@ -133,8 +144,8 @@ func _test_banner() -> void:
 	_check(ev["next_text"] == "Trop lent : la puissance baisse", "zone mise à jour d'une trame à l'autre")
 	_check(ErgView.is_free(CADENCE) and not ErgView.is_free(WORKOUT), "pas de blocs en session libre")
 	var hud: Dictionary = HudViewModel.session_lines({"mode": "ERG", "erg": CADENCE, "power": 210}, ev)
-	_check(hud["erg"] == "ERG: ERG cadence 90 tr/min (81–99)  |  Trop lent : la puissance baisse",
-		"ligne ERG du HUD sans temps restant (%s)" % hud["erg"])
+	_check(not hud.has("erg") and not hud["gear_shown"],
+		"ERG libre : pas de ligne ERG au HUD (bandeau seul, lot NI1), braquet caché")
 	_check("cadence cible ± 2 %" in HudViewModel.controls_text(true, "cadence")
 		and "Z = bloc suivant" not in HudViewModel.controls_text(true, "free")
 		and "Z = bloc suivant" in HudViewModel.controls_text(true), "rappel des commandes selon le mode")

@@ -73,6 +73,9 @@ extends RefCounted
 ## « Niveau des bots » (tours sur un circuit, distance sur un parcours en ligne), « Objets » (une case par objet,
 ## list_mode_options et set_mode_option, grandprix/gp_items_menu_model.gd), « Lancer » avec la longueur de la
 ## course, désactivé sur un parcours en ligne trop court ; `start` part avec `mode` « grandprix » sans `bots`.
+## Course (lot CR1, contrat 1.23) : « Course » à l'accueil ouvre l'écran Prêt du mode comme le Dernier survivant,
+## sur les parcours libres : réglages `race.*` et « Niveau des bots » (tours sur une boucle ; en ligne, jusqu'à
+## l'arrivée), « Lancer » avec la longueur ; `start` part avec `mode` « race » sans `bots`.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -97,13 +100,15 @@ const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et surviv
 const SURVIVOR_SPACING_KM := [1, 3]
 ## Aide des touches sur une ligne de réglage de l'écran Prêt d'un mode (essai du 4 novembre).
 const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
-const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "bots.objective", "survivor.spread",
+const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread",
 	"survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
 ## Course en ligne la plus courte du Grand Prix (lot GP14, `grandprix.boxes.MIN_COURSE_M` du core).
 const GP_MIN_COURSE_M := 1000.0
 ## Grand Prix des objets (lot GP9) : préfixe des libellés du core.
 const GP_PREFIX := "Grand Prix : "
+## Course (lot CR1) : préfixe des libellés du core.
+const RACE_PREFIX := "Course : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 const PowerViewModel := preload("res://scripts/power_view_model.gd")
@@ -191,6 +196,9 @@ var difficulty_pct := 50
 ## Mode d'une session libre (lot O18, ride_mode_of()) : "sim", "erg", "cadence" ; "" hors session libre
 ## (entraînement, run) : la pause n'a alors pas les lignes du mode. Cibles en cours pour ses lignes.
 var ride_mode := ""
+## ERG en cours (`state.erg` présent : entraînement, ERG libre, ERG cadence) : la Difficulté de la pause est alors
+## sans effet et cachée (lot NI2, R4, même règle que les lignes sans effet des Réglages).
+var erg_active := false
 var erg_target_w := 0
 var cadence_target_rpm := 0
 ## Dernier objet `devices` reçu (une trame sur 30 le porte, contrat §3) : gardé jusqu'au suivant.
@@ -280,6 +288,13 @@ var _power_pending := false
 var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
 var coach = CoachViewModel.new()
+## Effort des bots en watts sur l'écran Prêt (lot GP-niv, contrat 1.22) : clé de la dernière demande `bots_preview`
+## (mode, parcours, réglages), texte de sa réponse, et une seule nouvelle demande quand le core n'avait pas encore
+## le parcours (réponse sans watts).
+var _preview_key := ""
+var _preview_row := {}
+var _preview_retried := ""
+var _preview_objective := ""   # objectif de la dernière réponse `bots_preview` (vélodrome : celui de l'épreuve)
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
 var contents = ContentsViewModel.new()
 
@@ -414,8 +429,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	if u_turn_ok != menu.u_turn_shown:   # entrée « Faire demi-tour » de la pause (lot N17)
 		menu.u_turn_shown = u_turn_ok
 		pause_changed = true
-	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm:
+	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm or (erg is Dictionary) != erg_active:
 		ride_mode = rm
+		erg_active = erg is Dictionary
 		erg_target_w = tw
 		cadence_target_rpm = cad
 		pause_changed = true
@@ -1317,9 +1333,9 @@ func _handle_event(event: String) -> Dictionary:
 		_refresh_wtf()
 		menu.push_screen(WtfRulesModel.SCREEN)
 		return {"action": "list_wtf_rules"}
-	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "survivor":
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) in ["survivor", "race"]:
 		ready_message = ""
-		menu.prepare_settings_mode("survivor")
+		menu.prepare_settings_mode(str(act["id"]))   # Course (lot CR1) : même écran Prêt, réglages `race.*`
 		_refresh_mode_ready()
 		return {"action": "select_workout", "workout_id": null}   # SIM seulement : le core refuse un entraînement ERG
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "track":
@@ -1341,6 +1357,8 @@ func _handle_event(event: String) -> Dictionary:
 		var gp_act: Dictionary = gp_items.handle(str(act["id"]))
 		_refresh_gp_items()
 		return gp_act
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == MenuModel.INTENSITY_ID:
+		return _cycle_intensity()
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]).begins_with("set:"):
 		if settings.begin(str(act["id"]).substr(4)):
 			_refresh_edit()
@@ -1558,6 +1576,9 @@ func _refresh_mode_ready() -> void:
 		menu.set_mode_ready(_mode_rows(grandprix_keys(route), GP_PREFIX),
 			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)),
 			int(settings.item("grandprix.distance_km").get("value", 10)), route), gp_items.ready_label())
+	elif menu.mode == "race":
+		menu.set_mode_ready(_mode_rows(race_keys(route), RACE_PREFIX),
+			race_launch(int(settings.item("race.laps").get("value", 3)), route))
 
 
 ## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
@@ -1599,13 +1620,164 @@ static func mode_label(label: String, prefix: String) -> String:
 	return short.left(1).to_upper() + short.substr(1) if short != "" else label
 
 
+# --- effort des bots en watts sur l'écran Prêt (lot GP-niv) et cote Elo (lot BOT-elo) ----------------------
+
+const PREVIEW_KEYS := ["bots.level_pct", "bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
+	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps", "grandprix.distance_km",
+	"race.opponents", "race.laps"]   # race.* : Course (lot CR1), la durée suit les tours et le plateau
+
+
+## Arguments de `bots_preview` pour l'écran Prêt affiché (Dernier survivant, Grand Prix, épreuve du vélodrome,
+## et, lot R1, session libre, ERG et mode WTF avec un peloton) ; {} ailleurs (pas de ligne « Intensité du jour »).
+func bots_preview_args() -> Dictionary:
+	if not is_visible() or menu.current_screen() != MenuModel.READY:
+		return {}
+	if menu.mode in MenuModel.SETTINGS_MODES:
+		return menu._start_args()
+	if menu.is_track():
+		return menu._start_args()
+	if menu.mode in ["free", "erg", "wtf"] and menu.peloton_size() > 0:   # peloton : bots calibrés sur l'effort
+		return {"mode": "wtf" if menu.mode == "wtf" else "ride"}
+	return {}
+
+
+## Demande `bots_preview` à envoyer (main.gd), {} si rien n'a changé depuis la dernière : mode, parcours et
+## réglages de la course. Remet aussi le texte connu quand l'écran l'a perdu (nouvel écran Prêt, même course), et
+## tient à jour la ligne « Intensité du jour » (lot R1).
+func wanted_bots_preview() -> Dictionary:
+	var args := bots_preview_args()
+	_sync_intensity(not args.is_empty())
+	if args.is_empty():
+		return {}
+	var vals: Array = []
+	for k in PREVIEW_KEYS:
+		vals.append(settings.item(k).get("value", null))
+	var key := JSON.stringify([args, menu.world_id, vals])
+	if key == _preview_key:
+		if menu.bots_info.is_empty() and not _preview_row.is_empty():
+			menu.bots_info = _preview_row
+			menu.refresh()
+		return {}
+	_preview_key = key
+	_preview_row = {}
+	return args
+
+
+## Réponse `bots_preview` du core : watts de la ligne « Intensité du jour » ; sans watts (parcours pas encore
+## chargé par le core), une seule nouvelle demande pour cette course.
+func on_bots_preview(msg: Dictionary) -> void:
+	_preview_row = bots_info_row(msg)
+	_preview_objective = str(msg.get("objective", ""))
+	if _preview_row.is_empty() and _preview_retried != _preview_key:
+		_preview_retried = _preview_key
+		_preview_key = ""   # redemandé au prochain rafraîchissement
+	if bots_preview_args().is_empty():
+		return
+	_sync_intensity(true)
+	if _preview_row.is_empty():
+		return   # sans watts : les watts déjà affichés restent
+	menu.bots_info = _preview_row
+	menu.refresh()
+
+
+## Watts de la ligne « Intensité du jour » : {watts « ≈ 225 W », cote « 1540 » ("" sans cote), duration « ≈ 9 min »
+## ("" sans durée)} (règle du 14/11 : des watts, pas des %) ; cote et durée vont dans la ligne d'état ; {} sans watts.
+static func bots_info_row(msg: Dictionary) -> Dictionary:
+	if msg.get("power_w") == null:
+		return {}
+	return {"watts": "≈ %d W" % int(msg["power_w"]),
+		"cote": ("%d" % int(msg["elo"].get("rating", 1500))) if msg.get("elo") is Dictionary else "",
+		"duration": ("≈ " + duration_text(float(msg["duration_s"]))) if msg.get("duration_s") != null else ""}
+
+
+# --- intensité du jour (lot R1) : la dose en mots, réglage commun `bots.objective` ---------------------------
+
+## Mots de l'intensité du jour (`bot_effort.OBJECTIVES`) : trois mots au choix sur l'écran Prêt ; récupération et
+## seuil restent dans « Réglages › Bots » et s'affichent tels quels.
+const INTENSITY_WORDS := {"recovery": "récupération", "endurance": "facile", "tempo": "moyen",
+	"threshold": "seuil", "max": "dur"}
+const INTENSITY_ORDER := ["recovery", "endurance", "tempo", "threshold", "max"]
+const INTENSITY_CYCLE := ["endurance", "tempo", "max"]
+const INTENSITY_HELP := "Intensité du jour : A pour facile, moyen ou dur. Les bots roulent à ces watts ; la course reste serrée."
+
+
+## Ligne d'état sur « Intensité du jour » : l'aide, puis la durée estimée de la course et ta cote quand le core
+## les a données (« Course estimée à ≈ 9 min. Ta cote : 1540. »).
+func intensity_help() -> String:
+	var parts: Array = []
+	var d := str(menu.bots_info.get("duration", ""))
+	var c := str(menu.bots_info.get("cote", ""))
+	if d != "":
+		parts.append("Course estimée à " + d + ".")
+	if c != "":
+		parts.append("Ta cote : " + c + ".")
+	return INTENSITY_HELP + ("" if parts.is_empty() else "\n" + " ".join(parts))
+
+
+## Objectif suivant au cycle facile → moyen → dur → facile ; depuis récupération ou seuil, le mot suivant au-dessus.
+static func next_intensity(objective: String) -> String:
+	var at := INTENSITY_ORDER.find(objective)
+	for o in INTENSITY_CYCLE:
+		if INTENSITY_ORDER.find(o) > at:
+			return o
+	return INTENSITY_CYCLE[0]
+
+
+## Objectif des bots de l'écran Prêt : épreuve du vélodrome (réponse du core), course conseillée, sinon réglage commun.
+func _current_objective() -> String:
+	if menu.is_track():
+		return _preview_objective
+	if menu.coach_objective != "":
+		return menu.coach_objective
+	return str(settings.item("bots.objective").get("value", "tempo"))
+
+
+## Ligne « Intensité du jour » tenue à jour (mot, grisée au vélodrome) ; les watts d'une autre dose s'effacent
+## jusqu'à la réponse `bots_preview` suivante.
+func _sync_intensity(shown: bool) -> void:
+	var obj := _current_objective() if shown else ""
+	var word := str(INTENSITY_WORDS.get(obj, ""))
+	var fixed := shown and menu.is_track()
+	if word == menu.intensity_word and fixed == menu.intensity_fixed:
+		return
+	if menu.intensity_word != "" and word != "" and not fixed:
+		menu.bots_info = {}
+	menu.intensity_word = word
+	menu.intensity_fixed = fixed
+	menu.refresh()
+
+
+## A sur « Intensité du jour » : dose suivante, gardée dans le réglage commun (`set_setting bots.objective`) ; pour la
+## course conseillée, seulement pour cette course (`start.objective`).
+func _cycle_intensity() -> Dictionary:
+	var next := next_intensity(_current_objective())
+	if menu.coach_objective != "":
+		menu.coach_objective = next
+		_sync_intensity(true)
+		return {}
+	var it := settings.item("bots.objective")
+	if it.is_empty():
+		return {}
+	it["value"] = next   # affiché tout de suite, le core confirme ensuite
+	_sync_intensity(true)
+	return {"action": "set_setting", "key": "bots.objective", "value": next}
+
+
+## « 9 min », « 1 h 05 » (durée estimée de la course).
+static func duration_text(seconds: float) -> String:
+	var m := int(round(seconds / 60.0))
+	if m < 60:
+		return "%d min" % maxi(m, 1)
+	return "%d h %02d" % [m / 60, m % 60]
+
+
 ## Réglages de l'écran Prêt du Grand Prix, dans l'ordre du plan (§4.4) : tours sur un circuit, distance sur un
 ## parcours en ligne, les deux tant que le parcours est inconnu.
 static func grandprix_keys(route: Dictionary) -> Array:
 	var loop := str(route.get("route_type", "")) == "loop"
 	var course: Array = ["grandprix.laps"] if loop else (["grandprix.distance_km"] if not route.is_empty()
 		else ["grandprix.laps", "grandprix.distance_km"])
-	return ["grandprix.opponents"] + course + ["bots.level_pct", "bots.objective", "grandprix.chaos", "grandprix.box_every_m"]
+	return ["grandprix.opponents"] + course + ["bots.level_pct", "grandprix.chaos", "grandprix.box_every_m"]
 
 
 ## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Circuit : tours et longueur de la course ; en
@@ -1627,6 +1799,28 @@ static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> 
 			"advice": ""}
 	return {"enabled": true, "detail": "course de %d km" % distance_km, "advice": ""}
 
+
+## Réglages de l'écran Prêt de la Course (lot CR1) : tours sur une boucle ; en ligne, la course va jusqu'à l'arrivée.
+static func race_keys(route: Dictionary) -> Array:
+	var line := not route.is_empty() and str(route.get("route_type", "")) != "loop"
+	return ["race.opponents"] + ([] if line else ["race.laps"]) + ["bots.level_pct"]   # objectif : ligne « Intensité » (R1)
+
+
+## Ligne « Lancer » de la Course (lot CR1) : {enabled, detail, advice}. Boucle : tours et longueur ; en ligne :
+## jusqu'à l'arrivée du parcours ; désactivé sous GP_MIN_COURSE_M (le core refuse aussi, `bad_args`).
+static func race_launch(laps: int, route: Dictionary) -> Dictionary:
+	var length = route.get("length_m", null)
+	if route.is_empty() or length == null:
+		return {"enabled": true, "detail": "", "advice": ""}
+	if str(route.get("route_type", "")) == "loop":
+		return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
+			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
+	if float(length) < GP_MIN_COURSE_M:
+		return {"enabled": false, "detail": "parcours trop court",
+			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours." % [
+				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
+	return {"enabled": true, "detail": "%s en ligne" % CatalogModel._format_fr_km(float(length)),
+		"advice": ""}
 
 
 ## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).
@@ -2250,10 +2444,10 @@ func _pause_value(key: String):
 	return difficulty_pct
 
 
-## Lignes modifiables de la pause : difficulté ; en session libre, mode, puis puissance cible (ERG) ou
-## cadence cible (ERG cadence). La ligne en cours de modification passe en mode édition.
+## Lignes modifiables de la pause : difficulté (hors ERG seulement, lot NI2) ; en session libre, mode, puis
+## puissance cible (ERG) ou cadence cible (ERG cadence). La ligne en cours de modification passe en mode édition.
 func _refresh_pause_rows() -> void:
-	var keys := [SettingsViewModel.PAUSE_DIFFICULTY]
+	var keys := [] if erg_active else [SettingsViewModel.PAUSE_DIFFICULTY]
 	if ride_mode != "":
 		keys.append(SettingsViewModel.PAUSE_RIDE_MODE)
 	if ride_mode == "erg":
@@ -2303,6 +2497,7 @@ func _handle_edit(event: String) -> Dictionary:
 				difficulty_pct = int(act["pct"])
 			if act.get("action", "") == "set_ride_mode":   # affiché tout de suite, la trame suivante confirme
 				ride_mode = str(act["args"]["mode"])
+				erg_active = ride_mode != "sim"
 			if act.get("action", "") == "garage_set":
 				garage.set_field(str(act["key"]), int(act["value"]))
 				_refresh_garage()
@@ -2362,6 +2557,11 @@ func state() -> Dictionary:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
 		if menu.mode in MenuModel.SETTINGS_MODES and ready_message == "":
 			_mode_status(st)
+		var ready_items: Array = st.get("items", [])
+		var ready_focus := int(st.get("focus", -1))
+		if ready_message == "" and not bool(st.get("status_error", false)) and ready_focus >= 0 \
+				and ready_focus < ready_items.size() and str(ready_items[ready_focus].get("id", "")) == MenuModel.INTENSITY_ID:
+			st["status"] = intensity_help()   # lot R1 : quoi faire sur la ligne, en mots
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
 	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:
@@ -2528,8 +2728,12 @@ func _launch_coach_race() -> Dictionary:
 				settings.item(pair[0])["value"] = pair[1]   # affiché tout de suite, le core confirme ensuite
 			list.append({"action": "set_setting", "key": pair[0], "value": pair[1]})
 		menu.prepare_settings_mode("survivor")
+		menu.coach_objective = str(r.get("objective", ""))   # lot GP-niv : objectif des bots selon le besoin
 		_refresh_mode_ready()
 	else:
-		menu.prepare_coach_race("course conseillée", {"bots": coach.race_bots(MenuModel.PELOTON_PROFILES)}
-			if not coach.race_bots(MenuModel.PELOTON_PROFILES).is_empty() else {}, coach.race_ready_text())
+		var args := {"bots": coach.race_bots(MenuModel.PELOTON_PROFILES)} \
+			if not coach.race_bots(MenuModel.PELOTON_PROFILES).is_empty() else {}
+		if str(r.get("objective", "")) != "" and args.has("bots"):
+			args["objective"] = str(r["objective"])   # lot GP-niv : objectif des bots selon le besoin du jour
+		menu.prepare_coach_race("course conseillée", args, coach.race_ready_text())
 	return {"action": "sequence", "list": list}

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Pire image (fil global du 17 novembre) : la sonde mesure la vraie durée d'une image au lieu du delta borné de Godot, compte les pipelines compilés et le temps des scripts, et nomme les causes « shaders » et « scripts » | GDScript, Python | X13, X15, Y2 | Petite | En cours (étape 1 : mesure) |
+| Pire image (fil global du 17 novembre) : la sonde mesure la vraie durée d'une image au lieu du delta borné de Godot, compte les pipelines compilés et le temps des scripts, et nomme les causes « shaders » et « scripts » | GDScript, Python | X13, X15, Y2 | Petite | **Livré le 21 novembre** (PR #921) |
 
 ## 1. Objectif
 
@@ -54,3 +54,7 @@ Scénarios passés : ERG 15 min sur la démo (sans demi-tour), `grand_prix`, dem
 - Si ce sont les shaders : un seul préchauffage au chargement, où chaque module déclare ses matériaux et maillages, et qui remplace les préchauffages au cas par cas (Y19, Y20, cyclistes, forêts lointaines, panneaux). On y ajoute le cache des pipelines sur disque.
 - Si ce sont les scripts : les étapes qui manquent (demi-tour, objets du GP) sont notées, puis passent par une seule file limitée par image.
 - Arbres d'une tuile (DB1) : la même file limitée par image que les autres intégrations du streaming.
+
+## 7. Livraison
+
+Fusionné le 21 novembre 2026 (PR #921 : avec PI2 : pire image, vraie mesure). Détail des écarts et de la recette : description de la PR.
