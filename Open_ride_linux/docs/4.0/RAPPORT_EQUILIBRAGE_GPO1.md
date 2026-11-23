@@ -77,3 +77,15 @@ Produit par `python -m openride_core.tools.grandprix_sim` : 200 courses par conf
 - OK : 11 bots, chaos wild, niveau 100 % : 8.0 % de victoires (part juste, cible 4.2 à 12.5 %)
 - OK : 11 bots, chaos wild, niveau 100 % : objet le plus lourd star, 20.0 % du temps gagné ou perdu (au plus 35 %)
 - OK : 11 bots, chaos wild, niveau 90 % : objet le plus lourd star, 19.4 % du temps gagné ou perdu (au plus 35 %)
+
+## Cote Elo au Grand Prix (23 novembre, CI de la chaîne GP)
+
+Campagne `python -m openride_core.tools.elo_campagne --courses 20 --forces 0.92,1.0,1.08 --adversaires 3` (anneau de 2 km, 4 coureurs), le cycliste jouant ses objets comme un bot :
+
+| Force | main (avant GPO1) | GPO1 |
+| --- | --- | --- |
+| 0,92 | 1 337 | 1 383 |
+| 1,00 | 1 484 | 1 460 |
+| 1,08 | 1 593 | 1 532 |
+
+La cote suit toujours l'ordre des forces, mais deux fois moins vite : un coup coûte environ 7 s, autant que 8 % de puissance sur 2 km. C'est l'effet voulu d'objets plus forts (plus de chance en course), qui touche aussi les manches de la ligue courues au Grand Prix. Le banc demande donc 25 points au lieu de 40 au Grand Prix (`MIN_DELTA_BY_MODE`), et le test court joue 12 courses au lieu de 4.
