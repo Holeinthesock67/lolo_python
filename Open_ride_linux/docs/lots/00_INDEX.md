@@ -266,22 +266,23 @@ Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issu
 
 Un nouveau lot reçoit son issue au moment où son cahier est ajouté à `docs/lots/`.
 
-## 6. Séries en cours (21 novembre)
+## 6. Séries en cours (22 novembre)
 
-État au 21 novembre 2026 (`main` b2097136). Ce tableau ne liste que les séries encore ouvertes ; le statut de chaque lot reste dans son cahier (§1). Les numéros de révision IPC sont ceux du §6.1 de la [spécification générale](../SPECIFICATION_GENERALE.md#61-révisions-du-contrat-ipc) : chaque PR prend la première révision libre à sa fusion. Règle du propriétaire du 21 novembre : un lot n'est lancé qu'une fois fusionnées les PR dont il dépend, et l'installeur J9 vient en tout dernier.
+État au 22 novembre 2026 (`main` 4386eef5). Ce tableau ne liste que les séries encore ouvertes ; le statut de chaque lot reste dans son cahier (§1). Révisions IPC : une PR prend la révision qui suit celle de `main` **au moment de sa fusion** (règle du 22 novembre, §6.1 de la [spécification générale](../SPECIFICATION_GENERALE.md#61-révisions-du-contrat-ipc) et §8 d'`ipc_v1.md`) ; le numéro noté ci-dessous est celui écrit dans la branche. Règle du propriétaire du 21 novembre : un lot n'est lancé qu'une fois fusionnées les PR dont il dépend, et l'installeur J9 vient en tout dernier.
 
-| Série | Sujet | En PR | Pas encore codés | Abandonnés |
-| --- | --- | --- | --- | --- |
-| RT | Retours et consignes communs à tous les modes | RT1 (#959) | RT2 (fin de course commune, après #958 et #959), RT4 (refus expliqués, après #959 et #960) | RT3 (bots lisibles, 21 novembre ; la révision IPC 1.27 est libérée) |
-| NI | Éléments inutiles retirés des menus, réglages et HUD | NI1 (#963), NI2 (#962) | NI3 (un seul réglage de difficulté des bots, après #941, #966 et #962), NI4 (menus, après #962 et #963) | — |
-| R (bots) | Effort, intensité, réserve et gestes des bots | Effort en watts et cote Elo (#941, IPC 1.22), R1 intensité du jour (#966), RW réserve des bots (#967), R5 gestes de base (#969) | R4 (rivaux reconnaissables, après #941 et #966) | R2 (plafond des jours faciles), R3 (fondu dans RT3, abandonné avec lui) |
-| R (Cyber-Rogue) | Suite du mode Cyber-Rogue | R24 (#933), R25 (#956), R26 (#960, IPC 1.28), R27 (#965) | — | — |
-| Modes | Course classique, Grand Prix, élimination | Mode « Course » CR1 (#939, IPC 1.23), GPL1 (#942, IPC 1.24), GPO1 (#957, IPC 1.25), EL1 (#958, IPC 1.26), GPH1 (#952), fin de séance commune (#944) | — | — |
-| PP | Courbe de puissance par profil | — | PP1 à PP8 (PP3 : écran « Ma puissance », IPC 1.29 réservée) | — |
-| CH | Ligue d'hiver (mode championnat), plan [PLAN_SERIE_CH.md](../6.0/PLAN_SERIE_CH.md) | — | CH1 à CH5 (CH3 : IPC 1.30 réservée) | — |
-| AC | À-coups de l'image | AC1 et AC2 (#953), AC3b (#964) | — | — |
-| EA | Eau du monde ouvert, plan [PLAN_SERIE_EA.md](../6.0/PLAN_SERIE_EA.md) | EA5 tunnels (#940) | — | — (EA1 à EA4 livrés) |
-| Monde ouvert et sol | Sol, relief et décor | Règle unique sol / route (#946), garde-fou d'altitude (#961), décor du monde ouvert (#947), démonstrations longues DL1 (#945), Tour du lac d'Annecy AN1 (#943) | — | — |
-| J9 | Installeur AppImage, notice et bilan final | — | J9a, J9b, J9c ([LOT_J9_installeur_fichier_unique.md](LOT_J9_installeur_fichier_unique.md)), puis le bilan | — |
+| Série | Sujet | En PR | Pas encore codés | Livrés depuis le 21 novembre | Abandonnés |
+| --- | --- | --- | --- | --- | --- |
+| RT | Retours et consignes communs à tous les modes | RT1 (#959), RT4 refus expliqués (#990, sur #959) | RT2 (fin de course commune, après #958 et #959) | — | RT3 (bots lisibles, 21 novembre) |
+| NI | Éléments inutiles retirés des menus, réglages et HUD | NI1 (#963), NI3 un seul réglage de difficulté (#988), NI4 menus (#974) | — | NI2 (#962) | — |
+| R (bots) | Effort, intensité, réserve et gestes des bots | RW réserve des bots (#967), R5 gestes de base (#969), R4 rivaux reconnaissables (#986) | — | Effort en watts et cote Elo (#941, IPC 1.22), R1 intensité du jour (#982) | R2 (plafond des jours faciles), R3 (fondu dans RT3) |
+| R (Cyber-Rogue) | Suite du mode Cyber-Rogue | R27 sans voile en high (#965) | — | R24 (#933), R25 (#956), R26 (#960, IPC 1.28) | — |
+| Modes | Course classique, Grand Prix, élimination | GPL1 (#942, écrit 1.24), GPO1 (#957, écrit 1.25), EL1 (#958, écrit 1.26), GPH1 (#952), fin de séance commune (#944) | — | Mode « Course » CR1 (#939, IPC 1.23) | — |
+| PP | Courbe de puissance par profil | Pile PP1 (#971) → PP2 (#973) → PP3 (#975, IPC 1.29) → PP4 (#976) → PP5 (#977) → PP7 (#978) → PP8 (#979) → PP7b (#980) | PP6 | — | — |
+| CH | Ligue d'hiver (mode championnat), plan [PLAN_SERIE_CH.md](../6.0/PLAN_SERIE_CH.md) | Pile CH1 (#972) → CH2 (#987) → CH3a (#989, IPC 1.30) | CH4 (écrans), CH5 | CH0, cahier (#968) | — |
+| RZ | Remise à zéro des statistiques d'un profil | RZ1 (#991, IPC 1.31) | — | — | — |
+| AC | À-coups de l'image | AC1 et AC2 (#953), AC3b (#964), AC4 (#981), AC5 (#985) | — | — | — |
+| EA | Eau du monde ouvert, plan [PLAN_SERIE_EA.md](../6.0/PLAN_SERIE_EA.md) | EA5 tunnels (#940) | — | — (EA1 à EA4 livrés) | — |
+| Monde ouvert et sol | Sol, relief et décor | Garde-fou d'altitude (#961), ponts au relief ×2,5 (#984), décor du monde ouvert (#947), démonstrations longues DL1 (#945), Tour du lac d'Annecy AN1 (#943) | — | Règle unique sol / route (#946) | — |
+| J9 | Installeur AppImage, notice et bilan final | — | J9a, J9b, J9c ([LOT_J9_installeur_fichier_unique.md](LOT_J9_installeur_fichier_unique.md)), puis le bilan | — | — |
 
-Autres PR ouvertes hors séries : éoliennes EO1 (#951), toits des bâtiments (#954), essais physiques (#955), paysages U25-p2 (#931).
+Autres PR ouvertes hors séries : essais physiques (#955), paysages U25-p2 (#931). Livrées hors séries depuis le 21 novembre : éoliennes EO1 (#951), toits des bâtiments (#954).
