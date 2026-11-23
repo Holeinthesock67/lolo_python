@@ -121,9 +121,38 @@ func sheet(ftp_w: float) -> Dictionary:
 		"table": table_rows(season.get("standings", []), ftp_w, int(season.get("weeks", 8))), "lines": lines}
 
 
-## Ligne « Démarrer » de l'écran Prêt d'une manche sur `route` (entrée de la liste des parcours) : {enabled,
-## detail} ; grisée et expliquée sur un parcours qui n'est pas une boucle, une manche courue ou pas jouable.
-func ready(route: Dictionary) -> Dictionary:
+## Mode de course de la manche de la semaine (`start.mode`, lot CH4c) : race, survivor, grandprix ou track.
+func round_mode() -> String:
+	return str(_round().get("mode", "race"))
+
+
+## Terrain voulu par la manche (`round.terrain` du core) : boucle, arrivee_cote, grandprix ou piste.
+func terrain() -> String:
+	return str(_round().get("terrain", "boucle"))
+
+
+## Raison écrite pour laquelle `route` ne convient pas au terrain de la manche ("" : il convient) ; `rmode` : mode du
+## parcours ("track" pour un vélodrome, "" libre).
+func route_problem(route: Dictionary, rmode := "") -> String:
+	var loop := str(route.get("route_type", "")) == "loop"
+	match terrain():
+		"piste":
+			return "" if rmode == "track" else "choisis le vélodrome (« Changer de parcours »)"
+		"arrivee_cote":
+			if rmode == "track" or loop:
+				return "choisis un parcours en ligne (« Changer de parcours »)"
+		"grandprix":
+			if rmode == "track":
+				return "choisis un parcours sur route (« Changer de parcours »)"
+		_:
+			if rmode == "track" or not loop:
+				return "choisis une boucle (« Changer de parcours »)"
+	return ""
+
+
+## Ligne « Démarrer » de l'écran Prêt d'une manche sur `route` (entrée de la liste des parcours, `rmode` : son mode) :
+## {enabled, detail} ; grisée et expliquée sur un parcours qui ne va pas au terrain, une manche courue ou pas jouable.
+func ready(route: Dictionary, rmode := "") -> Dictionary:
 	var r := _round()
 	if season == null or r.is_empty():
 		return {"enabled": false, "detail": "pas de saison en cours"}
@@ -131,8 +160,9 @@ func ready(route: Dictionary) -> Dictionary:
 		return {"enabled": false, "detail": "manche déjà courue cette semaine"}
 	if not bool(r.get("playable", false)):
 		return {"enabled": false, "detail": "pas encore jouable dans cette version"}
-	if str(route.get("route_type", "")) != "loop":
-		return {"enabled": false, "detail": "choisis une boucle (« Changer de parcours »)"}
+	var why := route_problem(route, rmode)
+	if why != "":
+		return {"enabled": false, "detail": why}
 	return {"enabled": true, "detail": ready_text()}
 
 
@@ -158,6 +188,30 @@ static func pick_loop(routes: Array, current: String, mode_of: Callable) -> Stri
 			if id != "" and str(mode_of.call(id)) == m and is_loop(routes, id):
 				return id
 	return ""
+
+
+## Parcours où courir la manche selon son terrain (lot CH4c) : `current` s'il convient, sinon le premier qui
+## convient, parcours libres d'abord, puis ceux du Grand Prix, puis les vélodromes (Grand Prix : boucles d'abord) ;
+## "" : aucun.
+func pick_route(routes: Array, current: String, mode_of: Callable) -> String:
+	if _fits(routes, current, mode_of):
+		return current
+	# Grand Prix : une boucle d'abord (tours de la ligue, environ 27 min), un parcours en ligne sinon.
+	for loop_only in ([true, false] if terrain() == "grandprix" else [false]):
+		for m in ["", "grandprix", "track"]:
+			for r in routes:
+				var id := str(r.get("id", "")) if r is Dictionary else ""
+				if id != "" and str(mode_of.call(id)) == m and _fits(routes, id, mode_of) \
+						and (not loop_only or str(r.get("route_type", "")) == "loop"):
+					return id
+	return ""
+
+
+func _fits(routes: Array, id: String, mode_of: Callable) -> bool:
+	for r in routes:
+		if r is Dictionary and str(r.get("id", "")) == id and id != "":
+			return str(r.get("status", "ready")) == "ready" and route_problem(r, str(mode_of.call(id))) == ""
+	return false
 
 
 static func is_loop(routes: Array, id: String) -> bool:

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Ligue d'hiver au menu (série CH, lot CH4a, maquettes CH0 01 à 03) : ligne de l'accueil après la séance
 ## conseillée, écran de la ligue (classement, « Toi » écrit et encadré), écran Prêt d'une manche sur une boucle
-## (`start` {mode race, league}), saison à commencer, encart du bilan. Message `league` au format de
+## (`start` {mode race, league} ; lot CH4c : mode et parcours de chaque manche), saison à commencer, encart du bilan. Message `league` au format de
 ## league.status() (rivaux et équipes fictifs, FTP fictive 250 W).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_league_menu.gd
 
@@ -65,6 +65,7 @@ func _init() -> void:
 	_test_model()
 	_test_flow()
 	_test_grand_prix_loop()
+	_test_other_modes()
 	_test_card()
 	_test_summary()
 	print("test_league_menu : %d vérifications, %d échecs" % [_checked, _failures])
@@ -181,6 +182,56 @@ func _test_grand_prix_loop() -> void:
 	st = f.state()
 	_check(st["screen"] == MenuModel.READY and not _item(st, "start")["enabled"]
 		and "boucle" in str(_item(st, "start")["detail"]), "parcours en ligne : Démarrer grisé, expliqué")
+
+
+static func _round_msg(index: int, mode: String, terrain: String, short: String) -> Dictionary:
+	var msg := _msg()
+	msg["season"]["week"] = index + 1
+	msg["season"]["round"].merge({"index": index, "mode": mode, "terrain": terrain, "short": short, "title": short,
+		"event": "elimination" if mode == "track" else null}, true)
+	return msg
+
+
+func _flow_with_routes():
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.menu.set_modes(["ride", "erg", "grandprix", "race", "track"])
+	f.menu.set_mode_routes({"track": "velodrome", "grandprix": "grandprix"})
+	f.set_routes([{"id": "ligne", "name": "Col en ligne", "status": "ready", "length_m": 12000, "route_type": "open"},
+		{"id": "boucle", "name": "Boucle des Prés", "status": "ready", "length_m": 4000, "route_type": "loop"},
+		{"id": "piste", "name": "Vélodrome", "status": "ready", "length_m": 250, "route_type": "loop",
+			"library": {"tags": ["velodrome"]}}])
+	f.on_state({"session_state": "IDLE"})
+	return f
+
+
+## Lot CH4c : chaque manche part dans son mode (`start.mode`) sur un parcours qui va à son terrain.
+func _test_other_modes() -> void:
+	var cases := [[1, "survivor", "boucle", "Dernier survivant", "boucle"],
+		[2, "grandprix", "grandprix", "Grand Prix", "boucle"],
+		[3, "track", "piste", "Élimination", "piste"],
+		[4, "race", "arrivee_cote", "Arrivée en côte", "ligne"]]
+	for c in cases:
+		var f = _flow_with_routes()
+		f.on_league(_round_msg(c[0], c[1], c[2], c[3]))
+		f.menu.focus_item("league")
+		f.handle("A_LONG")
+		var act: Dictionary = f.handle("A_LONG")
+		var st: Dictionary = f.state()
+		_check(act.get("list", [{}])[0] == {"action": "select_route", "route_id": c[4]} and st["screen"] == MenuModel.READY
+			and _item(st, "start")["enabled"], "manche %d (%s) : parcours %s (%s)" % [c[0] + 1, c[1], c[4], str(act)])
+		act = f.handle("A_LONG")
+		_check(act == {"action": "start", "args": {"mode": c[1], "league": true}},
+			"manche %d : Démarrer en mode %s (%s)" % [c[0] + 1, c[1], str(act)])
+	var m = League.new()
+	m.on_league(_round_msg(3, "track", "piste", "Élimination"))
+	_check(not m.ready({"route_type": "loop"})["enabled"] and "vélodrome" in m.ready({"route_type": "loop"})["detail"],
+		"élimination sur une boucle : grisée, « vélodrome » écrit")
+	m.on_league(_round_msg(4, "race", "arrivee_cote", "Arrivée en côte"))
+	_check(not m.ready({"route_type": "loop"})["enabled"] and "en ligne" in m.ready({"route_type": "loop"})["detail"],
+		"arrivée en côte sur une boucle : grisée, « en ligne » écrit")
+	m.on_league(_msg())
+	_check(not m.ready({"route_type": "loop"}, "track")["enabled"], "course en tours au vélodrome : grisée")
 
 
 func _test_card() -> void:
