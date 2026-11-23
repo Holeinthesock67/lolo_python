@@ -140,7 +140,7 @@ def check_claude_architecture_modules(claude_text: str) -> list[str]:
     }
     existing_compiler = {
         p.name
-        for p in COMPILER_SRC_DIR.glob("*.py")
+        for p in COMPILER_SRC_DIR.rglob("*.py")          # sous-paquets compris (worldgen/, 21 novembre)
         if p.name not in ("__init__.py", "__main__.py")
     }
     all_existing = existing_core | existing_tools | existing_compiler
