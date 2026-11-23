@@ -25,7 +25,7 @@ from typing import Any
 
 from .. import config as config_mod
 from .. import profiles
-from .history import MATCH_TOLERANCE_S, _discover_files, _header_of, counts
+from .history import MATCH_TOLERANCE_S, _discover_files, _header_of, counted_for, counts
 from .session_summary import SummaryError, load_session, running_records
 
 DURATIONS_S = (180, 300, 480, 720, 1200)
@@ -131,7 +131,7 @@ def estimate(directory: Path | None = None, ftp_w: float = 250.0, days: int = DE
 
     # Séances qui ne comptent pas pour le profil (rejeu, simulée sur un profil de joueur : C6-01), et le
     # .fit écrit depuis chacune, reconnu à l'heure de début de son journal.
-    counted = ctx.counted_sources
+    counted = counted_for(ctx)
     refused = [e["start_ts"] for _, e in sessions if e.get("source") is not None and not counts(e["source"], counted)]
     kept = []
     for p, e in sessions:

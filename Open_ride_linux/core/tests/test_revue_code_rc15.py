@@ -232,6 +232,16 @@ def test_c6_01_history_counts_live_and_old_journals(tmp_path):
     assert sorted(s["filename"] for s in r["sessions"]) == ["ancien.jsonl", "live.jsonl"]
 
 
+def test_c6_01_legacy_context_keeps_simulated_sessions(tmp_path):
+    """Contexte historique (sans profil, bancs des menus) : la séance simulée reste dans l'historique."""
+    act = tmp_path / "Activities"
+    _journal(act / ".journal", "sim", time.time() - 3600, "simulated")
+    _journal(act / ".journal", "rejeu", time.time() - 600, "replay")
+    profiles.activate(None)
+    r = history.compute_history(act, ftp=250.0, weeks=4, cache_path=tmp_path / "h.json")
+    assert [s["filename"] for s in r["sessions"]] == ["sim.jsonl"]
+
+
 def test_c6_01_cp_estimate_skips_simulated_sessions_of_a_player_profile(tmp_path):
     def build(pid):
         ctx = profiles.ProfileContext.for_id(pid, tmp_path / "Profils")

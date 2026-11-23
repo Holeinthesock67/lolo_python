@@ -167,6 +167,17 @@ def counts(source: str | None, counted: tuple[str, ...] | list[str]) -> bool:
     return source in (None, "", "live") or source in counted
 
 
+def counted_for(ctx: profiles.ProfileContext) -> tuple[str, ...]:
+    """Sources comptées : `seances_comptees` d'un profil ; toutes sauf le rejeu en contexte historique.
+
+    Le contexte historique (sans profil, d'avant la migration MJ5 ; bancs des menus) n'a pas de type de
+    profil : ses séances simulées restaient dans l'historique, et y restent.
+    """
+    if ctx.id is None:
+        return tuple(s for s in profiles.SOURCES if s != "replay")
+    return ctx.counted_sources
+
+
 def _discover_files(directory: Path) -> tuple[list[Path], list[Path]]:
     """Renvoie `(fichiers_fit, fichiers_jsonl)` trouvés dans `directory` et `directory/.journal`."""
     if not directory.is_dir():
@@ -265,7 +276,7 @@ def compute_history(
 
     valid_sessions: list[dict[str, Any]] = []
     fit_starts = [s["start_ts"] for _, s in fit_valid]
-    counted = ctx.counted_sources
+    counted = counted_for(ctx)
 
     for p, s in fit_valid:
         dt = datetime.fromtimestamp(s["start_ts"])
