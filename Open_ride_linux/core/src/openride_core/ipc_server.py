@@ -378,7 +378,7 @@ class IpcServer:
                                 "world_search", "world_map", "world_regions", "list_contents",
                                 "list_history", "history_session", "get_coach", "set_next_race",
                                 "clear_next_race", "set_watch_advice", "clear_watch_advice",
-                                "list_collection")
+                                "list_collection", "league_status")   # league_status : lecture seule (revue F1-14)
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

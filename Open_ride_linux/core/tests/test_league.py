@@ -75,13 +75,14 @@ def test_record_once_and_only_this_week():
     assert s.results[0].places[ME] == 4 and s.results[0].source == "joueur"
 
 
-def test_missed_weeks_simulated_for_rivals_and_six_best():
+def test_missed_weeks_simulated_for_rivals_and_six_best(monkeypatch):
+    monkeypatch.setattr(league, "PLAYABLE_MODES", tuple({r.mode for r in league.ROUNDS}))   # tous les modes jouables
     s = _season()
     for i in range(6):
         s.record(i, _places(s, 2), _week(i))
     # Semaines 7 et 8 sautées : jokers, simulées pour les rivaux.
     done = s.advance(_week(8, 0))
-    assert done == [6, 7, league.WEEKS] and s.closed == "fin"
+    assert done == [6, 7] and s.closed == "fin" and s.classic is None   # classique non datée : pas simulée
     assert ME not in s.results[6].places and s.results[6].source == "simule"
     assert sorted(s.results[6].places.values()) == list(range(1, 12))
     me = next(r for r in s.standings() if r["id"] == ME)
@@ -322,3 +323,45 @@ def test_rivals_come_from_the_shared_roster():
     changed = [a.key for a, b in zip(s.rivals, nxt.rivals) if a.name != b.name]
     assert len(changed) == 11 - league.KEEP_RIVALS
     assert all(roster.get(r.key).name == r.name for r in nxt.rivals)
+
+
+def test_unplayable_week_is_neutral_for_everyone():
+    """Revue F1-03 : une semaine dont le mode n'était pas jouable par le cycliste n'est pas simulée (sinon 0 point
+    définitif pour lui seul) : manche neutralisée, personne ne marque, relue telle quelle."""
+    s = _season()
+    s.record(0, _places(s, 3), _week(0))
+    assert league.ROUNDS[1].mode not in league.PLAYABLE_MODES
+    done = s.advance(_week(2))
+    assert done == [1] and s.results[1].source == "neutre" and s.results[1].places == {}
+    assert all(r["rounds"][1] == 0 for r in s.standings())
+    again = league.Season.from_dict(json.loads(json.dumps(s.to_dict())))
+    assert again.results[1].source == "neutre"
+    bad = s.to_dict()
+    bad["results"]["1"]["places"] = {ME: 1}
+    with pytest.raises(LeagueError, match="neutralisée"):
+        league.Season.from_dict(bad)
+
+
+def test_classic_without_date_is_not_simulated():
+    """Revue F1-02 : sans date choisie (classique pas encore jouable, CH5), personne ne marque la classique."""
+    s = _season()
+    s.advance(_week(8))
+    assert s.closed == "fin" and s.classic is None
+    assert all(r["classic"] == 0 for r in s.standings())
+
+
+def test_round_started_sunday_counts_for_its_week():
+    """Revue F1-01 : la manche partie dimanche soir et finie après minuit est enregistrée au jour du départ."""
+    s = _season()
+    sunday = _week(0, 6)
+    s.record(0, _places(s, 1), sunday)
+    assert s.results[0].places[ME] == 1 and s.current_round(_week(1)) == 1
+
+
+@pytest.mark.parametrize("broken", [[1], {"0": 1}, {"0": {"places": [1], "source": "simule"}}])
+def test_from_dict_wrong_types_refused(broken):
+    """Revue F1-08 : types faux dans `ligue.json` : LeagueError (fichier mis de côté), jamais une autre exception."""
+    data = _season().to_dict()
+    data["results"] = broken
+    with pytest.raises(LeagueError):
+        league.Season.from_dict(data)

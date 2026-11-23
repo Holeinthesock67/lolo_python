@@ -149,3 +149,81 @@ def test_clock_going_back_keeps_last_seen_day(env):
     s._on_command("league_status", {}, 3)
     assert _status(sent)["season"]["week"] == season.week_index(ahead) + 1 >= 2
     assert league.load(tmp_path / "ligue.json").last_seen == ahead
+
+
+def test_round_finished_after_midnight_counts_for_its_week(env, short_round):
+    """Revue F1-01 : manche partie le dimanche soir, arrivée le lundi : enregistrée pour la semaine du départ."""
+    from datetime import timedelta
+
+    make, run, _, tmp_path = env
+    s, _, errors = make(7210)
+    s._on_command("league_new", {}, 2)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    assert not errors
+    start_day = s._league_run["day"]
+    s._league_today = lambda: start_day + timedelta(days=7)   # l'horloge passe au lundi suivant pendant la course
+    run(s, 900)
+    assert s.state.summary.get("league") is not None
+    season = league.load(tmp_path / "ligue.json")
+    assert season.results[0].source == "joueur" and season.results[0].day == start_day.isoformat()
+
+
+def test_arrival_frame_fits_the_datagram(env, short_round):
+    """Revue F1-04 : la trame `state` d'arrivée d'une manche (11 rivaux, encart de la ligue) tient sous la limite
+    sans rien retirer du bilan ; les lignes de l'encart n'ont que place, nom, points et `me`."""
+    from openride_core import ipc_server
+    from openride_core.ipc_budget import encode, fit_state, state_limit
+
+    make, run, _, _ = env
+    s, _, _ = make(7220)
+    s._on_command("league_new", {}, 2)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    run(s, 900)
+    frame = s.state.to_dict()
+    assert set(frame["summary"]["league"]["rows"][0]) == {"place", "name", "points", "me"}
+    limit = state_limit(ipc_server.CONTRACT_REV)
+    assert len(encode(frame)) <= limit, len(encode(frame))   # trame entière, sans allègement
+    out, dropped = fit_state(frame, limit)
+    assert dropped == [] and out["summary"]["league"] == frame["summary"]["league"]
+    from openride_core.ipc_budget import worst_state
+    with_devices = {**frame, "devices": worst_state("1.1")["devices"]}   # une trame sur 30 porte les appareils
+    print("trame d'arrivée :", len(encode(frame)), "octets ;", len(encode(with_devices)), "avec devices")
+    out, dropped = fit_state(with_devices, limit)
+    assert "summary" not in dropped and out["summary"]["league"] == frame["summary"]["league"]
+    # Bilan le plus lourd du budget (courbe, passages, blocs, test de FTP) plus l'encart : il tient sans perdre
+    # le bilan ni l'encart, même avec `devices`.
+    from openride_core.ipc_budget import worst_finished_state
+    heavy = worst_finished_state()
+    heavy["summary"]["league"] = frame["summary"]["league"]
+    heavy["devices"] = worst_state("1.1")["devices"]
+    print("bilan le plus lourd + encart + devices :", len(encode(heavy)), "octets")
+    out, dropped = fit_state(heavy, limit)
+    assert "summary" not in dropped and out["summary"]["league"] == frame["summary"]["league"], dropped
+
+
+def test_new_season_keeps_the_closed_one_aside(env):
+    """Revue F1-07 : `league_new` après une saison close garde l'ancienne à part (classement et trophée)."""
+    make, _, _, tmp_path = env
+    s, sent, errors = make(7230)
+    s._on_command("league_new", {}, 2)
+    season = league.load(tmp_path / "ligue.json")
+    season.closed = "fin"
+    league.save(tmp_path / "ligue.json", season)
+    s._on_command("league_new", {}, 3)
+    assert not errors and _status(sent)["season"]["number"] == 2
+    old = league.load(tmp_path / "ligue_saison_1.json")
+    assert old is not None and old.number == 1 and old.closed == "fin"
+
+
+def test_hill_finish_round_refuses_a_loop(env, monkeypatch):
+    """Revue F1-05 : la manche « arrivée en côte » ne se court pas sur une boucle."""
+    from datetime import timedelta
+
+    make, _, _, tmp_path = env
+    s, _, errors = make(7240)
+    s._on_command("league_new", {}, 2)
+    monkeypatch.setattr(league, "PLAYABLE_MODES", ("race", "survivor", "grandprix", "track"))
+    start = league.load(tmp_path / "ligue.json").start
+    s._league_today = lambda: start + timedelta(weeks=4, days=1)   # semaine 5 ; semaines 2 à 4 jouables (simulées)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    assert errors and "parcours en ligne" in errors[-1][1]

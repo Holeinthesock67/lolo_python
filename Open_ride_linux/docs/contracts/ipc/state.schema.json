@@ -1113,7 +1113,7 @@
         },
         "league": {
           "type": "object",
-          "description": "Facultatif, révision 1.30 (lot CH3) : encart « Ligue d'hiver » du bilan d'une manche courue jusqu'à l'arrivée : manche, place et points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement autour du cycliste.",
+          "description": "Facultatif, révision 1.30 (lot CH3) : encart « Ligue d'hiver » du bilan d'une manche courue jusqu'à l'arrivée : manche, place et points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement autour du cycliste. Lignes réduites à place, nom, points et `me` (revue F1-04 : la trame d'arrivée tient sous 4 096 octets ; caractère, équipe et couleur viennent du message `league`).",
           "required": [
             "round",
             "of_rounds",
@@ -1173,14 +1173,8 @@
                 "type": "object",
                 "required": [
                   "place",
-                  "id",
                   "name",
-                  "style",
-                  "team",
-                  "color",
                   "points",
-                  "ran",
-                  "wins",
                   "me"
                 ],
                 "properties": {
@@ -1188,41 +1182,12 @@
                     "type": "integer",
                     "minimum": 1
                   },
-                  "id": {
-                    "type": "string"
-                  },
                   "name": {
                     "type": "string",
                     "maxLength": 32
                   },
-                  "style": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "team": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "color": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
                   "points": {
                     "type": "number",
-                    "minimum": 0
-                  },
-                  "ran": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "wins": {
-                    "type": "integer",
                     "minimum": 0
                   },
                   "me": {

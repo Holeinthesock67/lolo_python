@@ -990,6 +990,7 @@ class CoreSession:
         self.cfg = cfg
         self.journal_dir = ctx.journal_dir
         self.records_path = ctx.records_path
+        self._league_seen = None   # jour vu par la saison du profil précédent (revue F1-15)
         self.progress_svc = self._build_progression(None)
         self.rogue_provider = self.progress_svc.rogue_progress
         self._base_params = self._equipped_params()
@@ -3004,10 +3005,13 @@ class CoreSession:
                 self.server.send_error("bad_args", "Ligue d'hiver : une saison est déjà en cours.")
                 return
             roster = rivals.load(self._rivals_path())   # mêmes rivaux que les autres modes (lot R4)
-            season = league.new_season(self._league_today(), previous=season, roster=roster)
+            previous = season
+            season = league.new_season(self._league_today(), previous=previous, roster=roster)
             try:
+                if previous is not None:   # saison close gardée à part, classement et trophée compris (revue F1-07)
+                    league.save(self._league_path().with_name(f"ligue_saison_{previous.number}.json"), previous)
+                rivals.save(self._rivals_path(), roster)   # rivaux d'abord : jamais une saison sans ses rivaux
                 league.save(self._league_path(), season)
-                rivals.save(self._rivals_path(), roster)
             except OSError as exc:
                 self.server.send_error("bad_args", f"Ligue d'hiver : saison non enregistrée ({exc}).")
                 return
@@ -3043,6 +3047,15 @@ class CoreSession:
         if self.openworld is not None or route is None or (rnd.terrain == "boucle" and not route.is_loop):
             self.server.send_error("bad_args", f"Ligue d'hiver : la manche {index + 1} se court sur une boucle.")
             return None
+        if rnd.terrain == "arrivee_cote" and route.is_loop:   # revue F1-05 : terrain de la manche contrôlé
+            self.server.send_error("bad_args", f"Ligue d'hiver : la manche {index + 1} se court sur un parcours en ligne.")
+            return None
+        if not route.is_loop:   # longueur de course vérifiée avant le départ (revue F1-05), comme la Course
+            try:
+                self._grandprix_course("race")
+            except GrandPrixError as exc:
+                self.server.send_error("bad_args", f"Ligue d'hiver : {exc}.")
+                return None
         book = bot_elo.load(self._elo_path())
         ratings = league.round_ratings(season, rnd, book.rating, book.offsets)
         factors = league.level_factors(ratings)
@@ -3053,7 +3066,8 @@ class CoreSession:
         laps = league.laps_for(route.length_m, speed) if route.is_loop else 1
         self._league_run = {"index": index, "ratings": ratings, "laps": laps,
                             "keys": {f"bot{i + 1}": r.key for i, r in enumerate(season.rivals)}, "number": season.number,
-                            "easy": objective in league.EASY_OBJECTIVES}
+                            "easy": objective in league.EASY_OBJECTIVES,
+                            "day": today}   # jour du départ : une manche finie après minuit compte pour sa semaine
         self._elo_race = None   # la manche tient la cote elle-même (`league.rider_update`)
         params = PhysicsParams.from_config(self.cfg)
         log.info("Ligue d'hiver : manche %d/%d (%s), %d tours, cote %.0f.", index + 1, league.WEEKS, rnd.title,
@@ -3077,12 +3091,12 @@ class CoreSession:
         keys = run["keys"]
         places = league.places_from_order([[keys.get(r, r) for r in g] for g in order])
         season = league.load(self._league_path())
-        today = self._league_today()
         if season is None:
+            log.warning("Ligue d'hiver : saison illisible à l'arrivée, manche non enregistrée.")
             return None, None
         before = season.standings()
         try:
-            season.record(run["index"], places, today, easy=run["easy"])
+            season.record(run["index"], places, run["day"], easy=run["easy"])   # jour du départ (revue F1-01)
             book = bot_elo.load(self._elo_path())
             elo = league.rider_update(book, places, run["ratings"], time.time())
             league.save(self._league_path(), season)
