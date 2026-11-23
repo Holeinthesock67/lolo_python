@@ -86,7 +86,6 @@ class RenderConfig:
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
-    draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des biomes de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
@@ -446,7 +445,6 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "texture_level"): ("auto", "low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
-    ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("render", "day_night"): ("off", "theme", "real", "accelerated"),
@@ -579,6 +577,10 @@ DEV_KEYS: dict[tuple[str, str], str] = {
     ("log", "latence"): "journal de latence du Click",
     ("ride", "traffic_bench_s"): "passages forcés de véhicules proches pour sim_bench (lot AS6)",
 }
+# Clés retirées du jeu : encore lues sans avertissement de faute de frappe dans un config.toml d'avant, puis ignorées.
+RETIRED_KEYS: dict[tuple[str, str], str] = {
+    ("render", "draft_gauge"): "jauge d'abri au-dessus des bots, retirée le 21/11/2026 (lot NI1)",
+}
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {}   # vide depuis le lot GP9 (réglages du Grand Prix)
 
@@ -635,7 +637,10 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
     for key in data:
         if key not in known:
             name = f"[{section}] {key}" if section else f"[{key}]"
-            log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
+            if (section, key) in RETIRED_KEYS:
+                log.info("%s : %s ignoré (%s)", source, name, RETIRED_KEYS[(section, key)])
+            else:
+                log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
     if section == "drivers" and isinstance(data.get("click_reset_locked"), bool):
         # Booléen d'avant le lot K9 : true = "reset", false = "off" (même effet qu'avant).
         data = {**data, "click_reset_locked": "reset" if data["click_reset_locked"] else "off"}
