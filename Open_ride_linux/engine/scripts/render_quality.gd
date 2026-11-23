@@ -127,6 +127,12 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 			streamer.forest_impostors.set_preset(key)   # forêts lointaines (lot Y5)
 
 
+## Saturation de l'étalonnage posée par les préréglages, essai `saturation=F` compris : celle que le style
+## graphique « réaliste » garde (graphic_style.gd, lot CS1).
+static func look_saturation() -> float:
+	return RenderDiag.number("saturation", LOOK["saturation"])
+
+
 ## Qualité d'image (lot Y13) : anticrénelage, filtrage, occlusion ambiante, glow, ombres, LOD, et rendu
 ## des tons commun (LOOK). La résolution reste celle de l'écran : aucune mise à l'échelle 3D.
 static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environment, viewport: Viewport,

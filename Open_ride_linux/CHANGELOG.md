@@ -5,6 +5,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Style graphique « dessin animé », première pierre (lot CS1)
+- Nouveau réglage **Style graphique** dans Réglages › Graphisme : « réaliste » (par défaut, l'image ne change pas) ou « dessin animé ». Pour l'instant, le dessin animé rend seulement les couleurs plus vives ; les aplats et les contours noirs arrivent avec les lots suivants. Cyber-Rogue garde son propre style.
+
 ### Cyber-Rogue sans voile en high (lot R27)
 - En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
 

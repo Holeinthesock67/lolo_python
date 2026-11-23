@@ -144,6 +144,10 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
+    # Style graphique (lot CS1, décisions du propriétaire du 23 novembre : dessin animé complet, « vif », hors Cyber-Rogue)
+    Setting("render.style", "Style graphique", "graphics", applies="now",
+            help="Réaliste : l'image actuelle. Dessin animé : couleurs plus vives pour l'instant ; les aplats et "
+                 "les contours noirs arrivent avec les lots suivants. Ne change pas Cyber-Rogue."),
     # « Textures du décor » (lot P20) retiré du menu au lot NI2 (R5) : « auto » suit la Qualité graphique ;
     # une valeur choisie avant est remise à « auto » par `migration_reglages.py`.
     Setting("render.theme", "Thème", "graphics", applies="now"),
