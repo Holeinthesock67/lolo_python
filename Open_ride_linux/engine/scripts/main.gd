@@ -558,7 +558,9 @@ func _ready() -> void:
 		menu_flow.on_history_session(msg)
 		_refresh_menu())
 	ipc.collection_received.connect(func(msg: Dictionary) -> void:
-		_run_menu_action(menu_flow.on_collection(msg))
+		_run_menu_action(menu_flow.on_collection(msg)))
+	ipc.league_received.connect(func(msg: Dictionary) -> void:   # ligue d'hiver (lot CH4a)
+		menu_flow.on_league(msg)
 		_refresh_menu())
 	ipc.coach_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_coach(msg)
@@ -810,6 +812,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_settings()
 			ipc.list_plans()
 			ipc.list_collection()   # ligne « Collection » de l'accueil (lot BC5)
+			ipc.league_status()   # ligne « Ligue d'hiver » de l'accueil (lot CH4a)
 			ipc.coach_command("get_coach", menu_flow.coach.request_args())   # ligne « Séance conseillée » de l'accueil
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
@@ -845,6 +848,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.history_session(str(act["id"]))
 		"list_collection":
 			ipc.list_collection()
+		"league_status":
+			ipc.league_status()
+		"league_new":
+			ipc.league_new()
 		"collection_seen":
 			ipc.collection_seen(act.get("keys", []))
 		"list_wtf_rules":
