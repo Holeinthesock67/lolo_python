@@ -1,5 +1,5 @@
 {
-  "description": "Lots W19, W20 et W21 (monde ouvert), recette sur le PC : départ de Sarre-Union trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie une montée ou un sprint repéré en roulant (W20), les portiques posés par l'engine (W21), un résultat de segment rangé sous « ow » (W20), l'arrivée de la boucle au retour au départ et la balade enregistrée (W19), l'index des segments du profil (W20). Captures : écran du cap, départ, segments annoncés, quatre vues de la route, résultat, bilan. À lancer en low, medium et high, sur la tête de la branche W21 (elle contient W19 et W20).",
+  "description": "Lots W19, W20 et W21 (monde ouvert), recette sur le PC : départ de Sevrier trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie une montée ou un sprint repéré en roulant (W20), les portiques posés par l'engine (W21), un résultat de segment rangé sous « ow » (W20), l'arrivée de la boucle au retour au départ et la balade enregistrée (W19), l'index des segments du profil (W20). Captures : écran du cap, départ, segments annoncés, quatre vues de la route, résultat, bilan. À lancer en low, medium et high, sur la tête de la branche W21 (elle contient W19 et W20).",
   "voies": [
     "clavier"
   ],
@@ -8,8 +8,8 @@
   "etapes": [
     {
       "depart_monde_ouvert": {
-        "recherche": "sarre union",
-        "contient": "Sarre-Union",
+        "recherche": "sevrier",
+        "contient": "Sevrier",
         "cap": [
           {
             "note": "Ligne suivante (navigation), Balade -> Destination -> Boucle",
