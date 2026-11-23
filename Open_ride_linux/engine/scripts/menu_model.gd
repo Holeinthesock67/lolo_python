@@ -252,6 +252,39 @@ var interrupted_detail := ""
 var coach_detail := ""
 ## Course conseillée (lot CO5) : `mode` « coach », rappel du format affiché sur l'écran Prêt.
 var coach_ready := ""
+## Ligue d'hiver (série CH, lot CH4a) : ligne de l'accueil après « Séance conseillée », montrée seulement quand le
+## core a répondu à `league_status` (`league_shown`) ; écran Prêt d'une manche (`mode` « league ») : « Démarrer »
+## avec le rappel de la manche, grisé et expliqué quand le parcours n'est pas une boucle ou la manche déjà courue.
+var league_shown := false
+var league_detail := ""
+var league_ready: Dictionary = {"enabled": true, "detail": ""}
+
+
+func set_league_home(shown: bool, detail: String) -> void:
+	league_shown = shown
+	league_detail = detail
+	_refresh_home()
+
+
+## Manche de la semaine (lot CH4a) : course du core (`mode` « race », `league` vrai) sur une boucle, libre ou
+## d'un mode (`rmode` : « grandprix » quand seuls les circuits du Grand Prix sont des boucles) ; ouvre l'écran
+## Prêt, ou les parcours d'abord sans boucle choisie.
+func prepare_league(ready: Dictionary, rmode := "") -> Dictionary:
+	_clear_start()
+	mode = "league"
+	route_mode = rmode if mode_routes.has(rmode) else ""
+	league_ready = ready.duplicate()
+	_refresh_home()
+	_open_ready()
+	return state()
+
+
+func set_league_ready(ready: Dictionary) -> void:
+	league_ready = ready.duplicate()
+	if mode == "league":
+		_refresh_home()
+		if _screen == READY and (_focus < 0 or _focus >= _items().size() or not _items()[_focus]["enabled"]):
+			_focus = _first_enabled_from(maxi(_focus, 0), 1)
 
 
 func set_coach_home(detail: String) -> void:
@@ -309,6 +342,8 @@ func _refresh_home() -> void:
 func _build_home_and_ready() -> void:
 	var world := free_world_name if free_world_name != "" else "à choisir"   # dernier parcours libre (lot GP13)
 	var items := [_item("world", "Parcours : " + world)]
+	if league_shown:
+		items.push_front(_item("league", "Ligue d'hiver", true, league_detail))
 	if coach_detail != "":
 		items.push_front(_item("coach", "Séance conseillée", true, coach_detail))
 	if profile_label != "":
@@ -338,6 +373,11 @@ func _build_home_and_ready() -> void:
 		_screens[READY]["items"] = [_item("start", "Démarrer", true, rogue_ready),
 			_item("rogue_change", "Changer les choix")]
 		_screens[READY]["title"] = "Prêt : Cyber-Rogue"
+		return
+	if mode == "league":
+		_screens[READY]["items"] = [_item("start", "Démarrer", bool(league_ready.get("enabled", true)),
+			str(league_ready.get("detail", ""))), _item("change_route", "Changer de parcours")]
+		_screens[READY]["title"] = "Prêt : Ligue d'hiver" + ("" if world_name == "" else " — " + world_name)
 		return
 	if mode == "coach":
 		_screens[READY]["items"] = [_item("start", "Démarrer", true, coach_ready), _item("ghost",
@@ -704,6 +744,8 @@ func _start_args() -> Dictionary:
 			var v = track_value(str(o))
 			choice[str(o)] = int(v) if v is float and is_equal_approx(v, round(v)) else v   # 20 et non 20.0
 		return {"mode": "track", "track": choice}
+	if mode == "league":   # le core compose le plateau de la manche (11 rivaux de la saison)
+		return {"mode": "race", "league": true}
 	if mode == "coach" and ghost:   # bots du format de la course conseillée, fantôme en plus (lot CO5)
 		out["bots"] = (out.get("bots", []) as Array) + [{"kind": "ghost"}]
 	if mode == "coach":
@@ -887,7 +929,7 @@ func reset() -> void:
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
-	if mode in ["rogue", "wtf", "coach"] or mode in SETTINGS_MODES:
+	if mode in ["rogue", "wtf", "coach", "league"] or mode in SETTINGS_MODES:
 		mode = "free"
 	route_mode = ""
 	_refresh_home()
@@ -1210,7 +1252,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "race", "track", "interrupted", "coach":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "race", "track", "interrupted", "coach", "league":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -1232,7 +1274,7 @@ func _validate() -> Dictionary:
 		READY:
 			match id:
 				"start":
-					if not (mode in ["rogue", "coach"] or mode in SETTINGS_MODES):   # bots de la séance notés aussi par le core (lot O32)
+					if not (mode in ["rogue", "coach", "league"] or mode in SETTINGS_MODES):   # bots de la séance notés aussi par le core (lot O32)
 						last_bots = bot_choices.duplicate()
 						last_ghost = ghost
 						last_peloton = peloton
