@@ -10,6 +10,7 @@ const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd"
 const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
+const LeagueViewModel := preload("res://scripts/league_view_model.gd")
 
 const KEY_DURATION := "duration_s"
 const KEY_DISTANCE := "distance_m"
@@ -177,6 +178,7 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 		out.append_array(GpHudModel.summary_lines(summary["gp"]))
 	if summary.get("track") is Dictionary:   # Épreuves de piste (lot VD9) : place, temps, tours, record
 		out.append_array(TrackHudModel.summary_lines(summary["track"]))
+	out.append_array(LeagueViewModel.summary_lines(summary))   # ligue d'hiver (lot CH4a) : manche et général
 	out.append_array(bots_lines(summary))
 
 	return out
@@ -276,6 +278,7 @@ func mode_lines(summary: Dictionary) -> Array:
 		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
 	if summary.get("gp") is Dictionary:
 		out.append_array(GpHudModel.summary_lines(summary["gp"]))
+	out.append_array(LeagueViewModel.summary_lines(summary))   # ligue d'hiver (lot CH4a)
 	out.append_array(bots_lines(summary))   # lots GP-niv et BOT-elo
 	return out
 
