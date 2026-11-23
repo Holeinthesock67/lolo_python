@@ -84,6 +84,7 @@ class CombatState:
     grade_scale: float = 1.0           # 0,5 tant qu'une bosse est aspirée (lu par R8)
     hack_kind: str | None = None       # "blocked" ou "forced_gear"
     forced_gear: int | None = None
+    gear_imposed: bool = False         # braquet de ce pas imposé par le piratage (revue de code C4-03)
     hack_t_s: float = 0.0              # début du piratage en cours
     done_markers: frozenset = frozenset()
     rock_armor: tuple = ()             # ((indice, armure restante), ...)
@@ -241,13 +242,18 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
     if hack_kind is not None and t - hack_t > b.hack_max_s:
         hack_kind, forced = None, None
     hacked = hack_kind is not None
-    gear = forced if (hack_kind == "forced_gear" and forced is not None) else inp.gear
+    imposed = hack_kind == "forced_gear" and forced is not None
+    # revue de code C4-03 : braquet tenu par le piratage à ce pas ou au pas d'avant (fin par expiration ou purge)
+    held = imposed or (st.hack_kind == "forced_gear" and st.forced_gear is not None)
+    gear = forced if imposed else inp.gear
 
     # Perfect Shift
     ps = st.perfect_shifts
     adr = st.adrenaline
     shift_t, shift_dir = st.shift_t_s, st.shift_dir
-    if gear != st.prev_gear:
+    # revue de code C4-03 : le passage au braquet imposé (début du piratage) et le retour au braquet d'avant (fin)
+    # ne sont pas des changements du joueur : ni Perfect Shift ni verdict « mauvais sens » sans aucun appui.
+    if gear != st.prev_gear and not held and not getattr(st, "gear_imposed", False):
         direction = "up" if gear > st.prev_gear else "down"
         shift_t, shift_dir = t, direction
         half = 0.5 * b.ps_window_s * max(v, 0.1)
@@ -464,7 +470,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
         st, t_s=t, gear=gear, prev_gear=gear, enemy_hp=hp, down_s_m=down_s, shield=min(shield, b.shield_max),
         adrenaline=adr, perfect_shifts=ps, gold_lost=gold_lost, contact_prev=inp.contact, over_s=over_s, in_target=at_target,
         overheat=overheat, tunnel_s=tunnel_s, charges=charges, roc_s=roc_s, roc_charges=roc_charges,
-        hook_until_s=hook_until, grade_scale=grade_scale, hack_kind=hack_kind, forced_gear=forced, hack_t_s=hack_t,
+        hook_until_s=hook_until, grade_scale=grade_scale, hack_kind=hack_kind, forced_gear=forced, hack_t_s=hack_t, gear_imposed=held,
         done_markers=frozenset(done), rock_armor=tuple(sorted(rock_armor.items())), bins=bins,
         bin_sum=bsum, bin_n=bn, crit_second=crit_sec, crit_now=crit_now, z_reason=z_reason,
         z_action=z_action, adr_rate=adr_rate, adr_cause=adr_cause,
