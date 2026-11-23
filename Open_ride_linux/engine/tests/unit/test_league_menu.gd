@@ -176,11 +176,8 @@ func _test_grand_prix_loop() -> void:
 	st = f.state()
 	_check(st["screen"] == MenuModel.ROUTES and "demo-circuit" in _ids(st) and not "demo" in _ids(st),
 		"Changer de parcours : liste du Grand Prix (%s)" % str(_ids(st)))
-	f.menu.focus_item("vignes")
-	f.handle("A_LONG")
-	st = f.state()
-	_check(st["screen"] == MenuModel.READY and not _item(st, "start")["enabled"]
-		and "boucle" in str(_item(st, "start")["detail"]), "parcours en ligne : Démarrer grisé, expliqué")
+	# Lot GPL1 : un parcours de mode est une boucle ; un parcours en ligne étiqueté grandprix n'est pas proposé.
+	_check(not "vignes" in _ids(st), "parcours en ligne étiqueté Grand Prix : absent de la liste (%s)" % str(_ids(st)))
 
 
 func _test_card() -> void:
