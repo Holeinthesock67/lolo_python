@@ -18,6 +18,7 @@ range par semaine et par jour des entraînements de la bibliothèque (`~/OpenRid
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import sys
@@ -329,8 +330,10 @@ def start_plan(plan_id: str, start: date | None = None, plans_dir: Path | None =
     st = PlanState(plan_id, date.today() if start is None else start)
     path = _state_path(state_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("# Plan d'entraînement actif (openride-core plan start), lot O11\n"
-                    f'[active]\nplan = "{st.plan_id}"\nstart = "{st.start.isoformat()}"\n', encoding="utf-8")
+    tmp = path.with_name(path.name + ".tmp")   # même dossier : remplacement atomique
+    tmp.write_text("# Plan d'entraînement actif (openride-core plan start), lot O11\n"
+                   f'[active]\nplan = "{st.plan_id}"\nstart = "{st.start.isoformat()}"\n', encoding="utf-8")
+    os.replace(tmp, path)
     return st
 
 
