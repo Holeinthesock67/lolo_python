@@ -11,7 +11,9 @@ range par semaine et par jour des entraînements de la bibliothèque (`~/OpenRid
 - Plan actif : `~/OpenRide/plan_state.toml` (hors du dépôt), écrit par `start_plan`.
 - Une séance prévue est **faite** si une séance de l'historique du même jour, ou rattrapée dans
   les `CATCH_UP_DAYS` jours suivants, porte le même entraînement (`workout_id` du journal) et a
-  duré au moins `DONE_RATIO` de la durée prévue. Chaque séance de l'historique ne compte qu'une fois.
+  duré au moins `DONE_RATIO` de la durée prévue (test de FTP : échauffement et 4 min de paliers).
+  Chaque séance de l'historique ne compte qu'une fois ; celles roulées le jour prévu sont attribuées
+  avant les rattrapages (revue RC13).
 - Le journal d'une séance roulée pendant un plan actif porte `plan` = {id, week, day} (en-tête,
   champ facultatif) quand l'entraînement est celui du jour ou une séance en retard rattrapable.
 """
@@ -214,21 +216,39 @@ def schedule(plan: Plan, start: date) -> list[tuple[PlanDay, date]]:
     return sorted(((d, when) for d, when in out if when >= start), key=lambda dw: (dw[1], dw[0].week))
 
 
+def done_threshold_s(plan: Plan, workout: str) -> float:
+    """Durée roulée à partir de laquelle une séance prévue est faite : `DONE_RATIO` de la durée prévue ; pour
+    un test de FTP, l'échauffement et les 4 min de paliers d'un test valable (revue RC13, C1-03 : la rampe
+    s'arrête plus tôt pour un cycliste moins fort que la FTP supposée de la durée prévue)."""
+    if workout in FTP_TESTS and ftp_tests_available():
+        from . import ftp_test
+
+        return float(ftp_test.min_valid_duration_s(workout.split(":", 1)[1]))
+    return DONE_RATIO * plan.durations_s.get(workout, 0.0)
+
+
 def match_done(plan: Plan, start: date, history: Iterable[DoneSession]) -> dict[int, DoneSession]:
-    """Index dans `schedule()` → séance de l'historique qui la valide."""
+    """Index dans `schedule()` → séance de l'historique qui la valide.
+
+    Deux passes (revue RC13, C1-02) : d'abord les séances roulées le jour prévu, puis les rattrapages dans
+    l'ordre du calendrier ; une séance roulée le jour d'une séance prévue du même entraînement ne rattrape
+    donc pas la séance manquée d'avant (même choix que `plan_tag`, la plus récente d'abord)."""
     sched = schedule(plan, start)
     pool = sorted((h for h in history if h.workout_id), key=lambda h: h.day)
     used: set[int] = set()
     done: dict[int, DoneSession] = {}
-    for i, (entry, when) in enumerate(sched):
-        need = DONE_RATIO * plan.durations_s.get(entry.workout, 0.0)
-        for k, h in enumerate(pool):
-            if k in used or h.workout_id != entry.workout:
+    for same_day in (True, False):
+        for i, (entry, when) in enumerate(sched):
+            if i in done:
                 continue
-            if when <= h.day <= when + timedelta(days=CATCH_UP_DAYS) and h.duration_s >= need:
-                used.add(k)
-                done[i] = h
-                break
+            need = done_threshold_s(plan, entry.workout)
+            for k, h in enumerate(pool):
+                if k in used or h.workout_id != entry.workout or h.duration_s < need:
+                    continue
+                if (h.day == when) if same_day else (when <= h.day <= when + timedelta(days=CATCH_UP_DAYS)):
+                    used.add(k)
+                    done[i] = h
+                    break
     return done
 
 
