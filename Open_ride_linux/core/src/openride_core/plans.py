@@ -34,7 +34,7 @@ from .workout import BUILTIN_WORKOUTS_DIR, WORKOUT_SUFFIXES, WorkoutError, load_
 
 PLANS_DIR = config_mod.PLANS_DIR
 STATE_PATH = config_mod.OPENRIDE_HOME / "plan_state.toml"
-# Plans de référence livrés : copie embarquée de `core/plans/` (lot J4, comme les entraînements).
+# Plans de référence livrés, rangés dans le paquet (lot J4, comme les entraînements ; seul exemplaire).
 BUILTIN_PLANS_DIR = Path(__file__).resolve().parent / "data" / "plans"
 
 WEEKDAYS = ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
@@ -501,7 +501,7 @@ def create_from_library(workouts: list[str], days: list[str], weeks: int | None 
 
 
 def install_builtin(plans_dir: Path | None = None, workouts_dir: Path | None = None) -> tuple[list[str], list[str]]:
-    """Copie les plans de référence (copie embarquée de `core/plans/`) et les entraînements de
+    """Copie les plans de référence (`data/plans/` du paquet) et les entraînements de
     référence qu'ils citent, sans rien écraser ; renvoie `(copiés, conservés)`."""
     plans_dir = PLANS_DIR if plans_dir is None else plans_dir
     workouts_dir = config_mod.WORKOUTS_DIR if workouts_dir is None else workouts_dir
