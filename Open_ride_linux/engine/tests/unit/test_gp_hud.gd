@@ -251,5 +251,18 @@ func _run() -> void:
 	_check(not view.test_info()["visible"], "vue cachée hors du mode")
 	view.queue_free()
 
+	# Consigne commune (lot RT1) : sans objet, passer dans une boîte « + BONUS » ; avec objet, Z pour le lancer
+	var c: Dictionary = m.consigne(_state(GP))
+	_check(c["action"] == "Lance ton objet : Trois musettes" and c["chips"] == ["Z lancer"]
+		and c["detail"].begins_with("Objectif : finir 1er en 3 tours"), "consigne : lancer l'objet (%s)" % str(c))
+	var none := GP.duplicate(true)
+	none["held"] = null
+	c = m.consigne(_state(none))
+	_check(c["action"] == "Passe dans une boîte « + BONUS » pour prendre un objet" and c["chips"] == ["A ← → voie"],
+		"consigne : prendre une boîte (%s)" % str(c))
+	none["roll_s"] = 1.2
+	_check(m.consigne(_state(none))["action"] == "Tirage de ton objet…", "consigne : tirage en cours")
+	_check(m.consigne({"session_state": "RUNNING"}).is_empty() and m.goal(_state(GP)) == "finir 1er en 3 tours", "hors du mode ; objectif")
+
 	print("test_gp_hud : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
