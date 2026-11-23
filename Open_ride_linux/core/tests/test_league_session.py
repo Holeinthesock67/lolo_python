@@ -227,3 +227,98 @@ def test_hill_finish_round_refuses_a_loop(env, monkeypatch):
     s._league_today = lambda: start + timedelta(weeks=4, days=1)   # semaine 5 ; semaines 2 à 4 jouables (simulées)
     s._on_command("start", {"mode": "race", "league": True}, 3)
     assert errors and "parcours en ligne" in errors[-1][1]
+
+
+# --- lot CH3b : les autres modes du calendrier --------------------------------------------------
+
+
+def _week(s, tmp_path, k):
+    from datetime import timedelta
+
+    start = league.load(tmp_path / "ligue.json").start
+    s._league_today = lambda: start + timedelta(weeks=k, days=1)   # semaine k + 1 (les précédentes simulées)
+
+
+def _finish_round(s, run, tmp_path, errors, index, mode, seconds):
+    assert not errors, errors
+    assert s.state.session_state == "RUNNING" and len(s.bots) == 11
+    season = league.load(tmp_path / "ligue.json")
+    assert [b.name for b in s.bots] == [r.short for r in season.rivals]
+    run(s, seconds)
+    assert s.state.session_state == "FINISHED" and not errors, (s.state.session_state, errors)
+    validator("state").validate(s.state.to_dict())
+    box = s.state.summary["league"]
+    assert box["round"] == index + 1 and box["of"] == 12 and box["points"] == league.points_for(box["place"])
+    season = league.load(tmp_path / "ligue.json")
+    res = season.results[index]
+    assert res.source == "joueur" and set(res.places) == set(season.racers())
+    assert sorted(res.places.values())[0] == 1 and s.state.summary["elo"]["mode"] == "league"
+    journal = next((tmp_path / "journal").glob("*.jsonl"))
+    lines = [json.loads(x) for x in journal.read_text("utf-8").splitlines()]
+    assert any(x.get("kind") == "league_start" and x.get("mode") == mode for x in lines)
+    return box
+
+
+def test_survivor_round_eleven_arches(env):
+    make, run, _, tmp_path = env
+    s, sent, errors = make(7300)
+    s._on_command("league_new", {}, 2)
+    _week(s, tmp_path, 1)
+    s._on_command("league_status", {}, 3)
+    rnd = _status(sent)["season"]["round"]
+    assert rnd["mode"] == "survivor" and rnd["playable"]
+    s.cfg.survivor.opponents = 4   # réglage du mode ignoré : la ligue engage ses 11 rivaux
+    s._on_command("start", {"mode": "survivor", "league": True}, 4)
+    assert s.survivor is not None and len(s.survivor.arches) == 11
+    _finish_round(s, run, tmp_path, errors, 1, "survivor", 4000)
+
+
+def test_grandprix_round_keeps_objects_and_league_laps(env, short_round):
+    make, run, _, tmp_path = env
+    s, _, errors = make(7310, laps=5)
+    s._on_command("league_new", {}, 2)
+    _week(s, tmp_path, 2)
+    s._on_command("start", {"mode": "grandprix", "league": True}, 3)
+    assert s.grandprix is not None and s.grandprix.mode == "grandprix"
+    assert s.grandprix.length_m == pytest.approx(1500.0)   # 1 tour de ligue (cible courte), pas les 5 du réglage
+    _finish_round(s, run, tmp_path, errors, 2, "grandprix", 900)
+
+
+def test_track_round_is_an_elimination_on_the_velodrome(env):
+    from openride_core import velodrome
+
+    make, run, _, tmp_path = env
+    velodrome.write_velodrome(tmp_path / "routes")
+    s, _, errors = make(7320)
+    s._on_command("league_new", {}, 2)
+    _week(s, tmp_path, 3)
+    s._on_command("start", {"mode": "track", "league": True}, 3)   # sur l'anneau : refusé
+    assert errors and "vélodrome" in errors[-1][1]
+    errors.clear()
+    s2, _, errors2 = make(7330, route_id=velodrome.TRACK_ID)
+    _week(s2, tmp_path, 3)
+    s2._on_command("start", {"mode": "track", "league": True}, 2)
+    assert s2.track_event is not None and s2.track_event.event_id == "elimination"
+    _finish_round(s2, run, tmp_path, errors2, 3, "track", 7200)
+
+
+def test_road_round_refused_on_the_velodrome(env):
+    from openride_core import velodrome
+
+    make, _, _, tmp_path = env
+    velodrome.write_velodrome(tmp_path / "routes")
+    s, _, errors = make(7340, route_id=velodrome.TRACK_ID)
+    s._on_command("league_new", {}, 2)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    assert errors and "pas sur la piste" in errors[-1][1]
+
+
+def test_missed_weeks_are_now_simulated(env):
+    """CH3b : tous les modes du calendrier sont jouables, une semaine manquée est simulée (plus neutralisée)."""
+    make, _, _, tmp_path = env
+    s, sent, _ = make(7350)
+    s._on_command("league_new", {}, 2)
+    _week(s, tmp_path, 4)
+    s._on_command("league_status", {}, 3)
+    season = league.load(tmp_path / "ligue.json")
+    assert [season.results[i].source for i in range(4)] == ["simule"] * 4

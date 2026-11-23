@@ -325,9 +325,11 @@ def test_rivals_come_from_the_shared_roster():
     assert all(roster.get(r.key).name == r.name for r in nxt.rivals)
 
 
-def test_unplayable_week_is_neutral_for_everyone():
+def test_unplayable_week_is_neutral_for_everyone(monkeypatch):
     """Revue F1-03 : une semaine dont le mode n'était pas jouable par le cycliste n'est pas simulée (sinon 0 point
-    définitif pour lui seul) : manche neutralisée, personne ne marque, relue telle quelle."""
+    définitif pour lui seul) : manche neutralisée, personne ne marque, relue telle quelle. Depuis CH3b, tous les
+    modes du calendrier sont jouables : le cas est rejoué avec la Course seule, comme avant CH3b."""
+    monkeypatch.setattr(league, "PLAYABLE_MODES", ("race",))
     s = _season()
     s.record(0, _places(s, 3), _week(0))
     assert league.ROUNDS[1].mode not in league.PLAYABLE_MODES
