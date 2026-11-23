@@ -39,6 +39,8 @@ signal bots_preview_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
 ## Collection de cartes (série BC, lot BC5, contrat 1.6) : réponse à list_collection.
 signal collection_received(msg: Dictionary)
+## Ligue d'hiver (série CH, lot CH4a, contrat 1.30) : réponse à league_status et league_new.
+signal league_received(msg: Dictionary)
 ## Séance conseillée (série CO, lot CO5, contrat 1.12) : réponse à get_coach, set_next_race, clear_next_race,
 ## set_watch_advice et clear_watch_advice.
 signal coach_received(msg: Dictionary)
@@ -336,6 +338,8 @@ func _poll_incoming() -> void:
 				history_session_received.emit(json_obj)
 			"collection":
 				collection_received.emit(json_obj)
+			"league":
+				league_received.emit(json_obj)
 			"coach":
 				_on_coach(json_obj)
 			"world_status":
@@ -673,6 +677,16 @@ func list_history() -> int:
 ## Collection de cartes du profil en cours (lot BC5). Réponse : collection_received.
 func list_collection() -> int:
 	return send_command("list_collection", {})
+
+
+## Ligue d'hiver (lot CH4a) : saison en cours et classement ; réponse : league_received.
+func league_status() -> int:
+	return send_command("league_status", {})
+
+
+## Nouvelle saison de la ligue d'hiver (refusée tant qu'une saison court) ; réponse : league_received.
+func league_new() -> int:
+	return send_command("league_new", {})
 
 
 ## Cartes montrées au joueur (clés « id » ou « id:année »), notées dans collection_vue.json du profil ;
