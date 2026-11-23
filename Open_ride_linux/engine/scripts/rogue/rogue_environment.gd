@@ -6,13 +6,16 @@ extends RefCounted
 
 const Palette := preload("res://scripts/rogue/neon_palette.gd")
 
-## Glow par niveau (niveaux allumés sur 7), intensité, bloom, brume, part des particules, aberration.
+## Glow par niveau (niveaux allumés sur 7), intensité, bloom, fin de la brume, part des particules, aberration.
+## Une seule règle de brume pour les trois préréglages (lot R27) : linéaire, du joueur à `fog_end_m`. La brume
+## exponentielle du high grisait tout le ciel (voile signalé en run le 21/11) ; le glow du high reprend celui
+## du medium pour la même raison (halo de la route jaune sur tout l'écran).
 const PRESETS := {
-	"low": {"glow_levels": 3, "glow_intensity": 0.8, "glow_bloom": 0.05, "fog_exponential": false,
+	"low": {"glow_levels": 3, "glow_intensity": 0.8, "glow_bloom": 0.05,
 		"fog_end_m": 400.0, "particles_share": 0.25, "chromatic": false, "sun": false},
-	"medium": {"glow_levels": 5, "glow_intensity": 1.0, "glow_bloom": 0.10, "fog_exponential": false,
+	"medium": {"glow_levels": 5, "glow_intensity": 1.0, "glow_bloom": 0.10,
 		"fog_end_m": 600.0, "particles_share": 0.60, "chromatic": false, "sun": true},
-	"high": {"glow_levels": 7, "glow_intensity": 1.1, "glow_bloom": 0.15, "fog_exponential": true,
+	"high": {"glow_levels": 5, "glow_intensity": 1.0, "glow_bloom": 0.10,
 		"fog_end_m": 900.0, "particles_share": 1.0, "chromatic": true, "sun": true},
 }
 const GLOW_LEVEL_COUNT := 7
@@ -21,11 +24,6 @@ const GLOW_HDR_THRESHOLD := 1.0
 
 static func settings(preset: String) -> Dictionary:
 	return PRESETS.get(preset, PRESETS["low"])
-
-
-## Densité de la brume exponentielle qui devient opaque (≈ 95 %) à `fog_end_m`.
-static func exponential_density(fog_end_m: float) -> float:
-	return 3.0 / maxf(fog_end_m, 1.0)
 
 
 ## Applique les réglages à un `Environment`.
@@ -44,9 +42,9 @@ static func apply(env: Environment, preset: String) -> void:
 	env.glow_hdr_threshold = GLOW_HDR_THRESHOLD
 	env.fog_enabled = true
 	env.fog_light_color = Palette.color("night")
-	# Brume linéaire (mode « profondeur ») en low et medium, exponentielle en high. Le mode d'abord : Godot
-	# remet la densité à sa valeur par défaut quand le mode change (1,0 laissait une brume opaque en high).
-	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL if s["fog_exponential"] else Environment.FOG_MODE_DEPTH
-	env.fog_density = exponential_density(s["fog_end_m"]) if s["fog_exponential"] else 1.0
+	# Brume linéaire (mode « profondeur ») partout. Le mode d'abord : Godot remet la
+	# densité à sa valeur par défaut quand le mode change.
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_density = 1.0
 	env.fog_depth_begin = 0.0
 	env.fog_depth_end = s["fog_end_m"]
