@@ -102,7 +102,7 @@ def test_kilo_end_to_end_record_fit_and_summary(env):
 
 
 def test_scratch_with_bots_on_the_grid(env):
-    make, run, _ = env
+    make, run, tmp_path = env
     s, errors = make(6810, power_w=300.0)
     s._on_command("start", {"mode": "track", "track": {"event": "scratch", "opponents": 3, "laps": 10}}, 2)
     assert not errors and len(s.bots) == 3 and all(b.s <= s.physics.s for b in s.bots)
@@ -110,6 +110,8 @@ def test_scratch_with_bots_on_the_grid(env):
     f = s.state.track
     assert f["event"] == "scratch" and f["laps"] == 10 and len(f["ranking"]) == 4 and f["points"] is None
     validator().validate(s.state.to_dict())
+    s._on_command("end_session", {"save": True}, 3)   # épreuve arrêtée avant l'arrivée : la cote ne bouge pas
+    assert "elo" not in s.state.summary and not (tmp_path / "elo.json").exists()
 
 
 def test_pursuit_opponent_starts_on_the_other_side(env):
@@ -183,6 +185,9 @@ def test_second_elimination_in_a_row_starts_from_scratch(env, caplog):
     assert first is not None and first.finished and first.riders["me"].out is not None
     s._on_command("end_session", {"save": True}, 3)
     assert s.state.session_state == "FINISHED" and s.state.track is None
+    elo = s.state.summary["elo"]   # lot BOT-elo : élimination courue jusqu'au bout, cycliste éliminé
+    assert elo["mode"] == "track" and elo["of"] == 8 and elo["place"] == s.state.summary["track"]["place"]
+    assert elo["after"] <= elo["before"] or elo["place"] <= 4
     s._on_command("select_route", {"route_id": velodrome.TRACK_ID}, 4)
     # 15 novembre : la trame de l'attente du départ repart de la ligne, pas de l'arrivée d'avant
     assert s.state.session_state == "READY" and s.state.s == 0.0 and s.state.t == 0.0 and s.state.v == 0.0
