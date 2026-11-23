@@ -28,6 +28,8 @@ avant elle.
   - une suite d'erreurs (moins d'une seconde entre deux) ne donne qu'un message et qu'une pile ; hors séance, une suite
     de plus de 5 s (`MODE_FAIL_LIMIT_S`) remonte : un core relancé vaut mieux qu'un core vivant et bloqué ;
   - une erreur du trainer (`driver.poll`) n'est pas attrapée : le lanceur relance le core, comme avant.
+- Revue de code du 22 novembre : journal impossible à ouvrir au départ (disque plein, dossier protégé) : la séance
+  ne roule plus sans journal, elle attend en pause (`recording_failed`) ; `resume` rouvre le journal ou refuse en mots.
 - `journal.py` : `mode_error` ajouté à `GAME_KINDS`.
 - Contrat IPC (`ipc_v1.md` §6 et §8, `state.schema.json`) : code `mode_failed`, `summary.mode_error` ; numéro de
   révision pris à la fusion.
@@ -37,12 +39,12 @@ avant elle.
 - Reprise (`resume.py`, lot N8) : `_finish` écrit l'événement `stop`, le journal est terminé et le lanceur ne tente pas
   de reprise ; rien ne change dans `resume.py`.
 - Ligue d'hiver (CH3) : une manche coupée par une erreur n'a pas d'arrivée, `_league_finish` ne compte rien et la manche
-  se recourt dans la semaine, comme une manche plantée. Aucun changement de CH3 nécessaire ; un test de ce cas viendra
-  avec CH3 fusionné.
+  se recourt dans la semaine, comme une manche plantée. Aucun changement de CH3 ; test
+  `test_round_cut_by_mode_error_stays_open` (`test_league_session.py`).
 
 ## 4. Tests
 
 `core/tests/test_mode_error_net.py` : mode qui lève une exception au pas (séance `FINISHED`, FIT écrit, bilan du mode
 gardé, `mode_error` au bilan et au journal, journal terminé par `stop`, un seul message, nouvelle séance possible), à la
 trame, erreur du trainer non attrapée, fin de séance qui échoue (`ERROR`, modes vidés), erreur répétée hors séance
-(remonte après 5 s). Core pur : CI et cloud, pas de banc PC.
+(remonte après 5 s), journal impossible à ouvrir au départ (pause, puis reprise une fois le dossier rendu). Core pur : CI et cloud, pas de banc PC.

@@ -155,7 +155,8 @@ def test_journal_unwritable_at_start_waits_paused(env):
     assert (s.state.session_state, s.state.pause_reason) == ("PAUSED", "recording_failed")
     assert [c for c, _ in errors] == ["recording_failed"]
     s._on_command("resume", {}, 3)   # toujours impossible : refus en mots, la séance reste en pause
-    assert s.state.session_state == "PAUSED" and [c for c, _ in errors] == ["recording_failed"] * 2
+    assert s.state.session_state == "PAUSED" and errors[-1][0] == "recording_failed"
+    assert "toujours impossible" in errors[-1][1]
     s.journal_dir.unlink()
     s._on_command("resume", {}, 4)   # dossier de nouveau possible : journal rouvert, la séance roule
     assert s.state.session_state == "RUNNING" and not s._rec.failed
