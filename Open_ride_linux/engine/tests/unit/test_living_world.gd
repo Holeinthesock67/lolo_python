@@ -123,8 +123,8 @@ func _run() -> void:
 	_check(dir.x < -0.9 and float(lw.last_wind["strength"]) > 0.3, "vent du core vers le décor : souffle vers l'ouest, force %.2f" % float(lw.last_wind["strength"]))
 	_check((off1 - off0).x > 0.0, "nuages qui défilent dans le sens du vent (décalage du motif %.1f m)" % (off1 - off0).x)
 	_check(hud_view.get("visible", false) and hud_view["label"] == "face" and hud_view["tone"] == "bad"
-		and hud_view["level_text"] == "fort", "indicateur : « %s %s », %s, %s" % [hud_view.get("speed_text"), hud_view.get("label"),
-		hud_view.get("verdict_text"), hud_view.get("level_text")])
+		and hud_view["direction_text"] == "de face", "indicateur : « %s %s », %s" % [hud_view.get("speed_text"),
+		hud_view.get("direction_text"), hud_view.get("verdict")])
 	_check(lw.neigh_updates >= 3 and lw.neigh_updates <= 5, "voisinage sonore recalculé %d fois en 2 s (au plus 2 fois par seconde)" % lw.neigh_updates)
 	_check(float(lw.neigh.get("forest_share", 0.0)) > 0.9 and osm.calls == 1, "en forêt : part de forêt %.2f, contours lus une seule fois" % float(lw.neigh.get("forest_share", 0.0)))
 	_check(float(lw.neigh.get("wind_strength", 0.0)) > 0.3 and float(lw.neigh.get("alt_m", 0.0)) == 300.0,
@@ -149,12 +149,12 @@ func _run() -> void:
 	for i in range(80):
 		hud_view = lw.wind_hud(back, 270.0, now)
 		now += 0.05
-	_check(hud_view["label"] == "dos" and hud_view["tone"] == "good", "demi-tour : « %s », %s" % [hud_view["label"], hud_view["verdict_text"]])
+	_check(hud_view["label"] == "dos" and hud_view["tone"] == "good", "demi-tour : « %s », %s" % [hud_view["label"], hud_view["verdict"]])
 	var cross := {"wind": {"speed_mps": 25.0 / 3.6, "from_deg": 0.0, "gust": 0.0, "head_mps": 0.0}}
 	for i in range(80):
 		hud_view = lw.wind_hud(cross, 90.0, now)
 		now += 0.05
-	_check(hud_view["verdict"] == "neutre" and hud_view["tone"] == "neutral", "route en travers du vent : %s" % hud_view["verdict_text"])
+	_check(hud_view["verdict"] == "neutre" and hud_view["tone"] == "neutral", "route en travers du vent : %s" % hud_view["verdict"])
 
 	# 2. HUD : panneau du vent sous le panneau de gauche, caché sans vent
 	var hud = HudView.new()
@@ -163,8 +163,9 @@ func _run() -> void:
 		hud_view = lw.wind_hud(state, 90.0, now)
 		now += 0.05
 	hud.update_wind(hud_view)
-	_check(hud.panel_wind.visible and hud.wind_speed_label.text.ends_with("face") and hud.wind_verdict_label.text == "Vent défavorable",
-		"HUD : « %s », « %s »" % [hud.wind_speed_label.text, hud.wind_verdict_label.text])
+	_check(hud.panel_wind.visible and hud.wind_speed_label.text.ends_with("km/h") and hud.wind_dir_label.text == "de face",
+		"HUD : « %s », « %s » (lot NI1 : vitesse et sens, sans niveau ni pastille)" % [hud.wind_speed_label.text,
+		hud.wind_dir_label.text])
 	var left_end: float = hud.panel_left.get_rect().end.y
 	_check(hud.panel_wind.get_rect().position.y >= left_end and hud.panel_wind.get_rect().end.x <= hud.panel_left.get_rect().end.x + 0.5,
 		"HUD : indicateur sous le panneau de gauche, coin supérieur droit laissé libre")

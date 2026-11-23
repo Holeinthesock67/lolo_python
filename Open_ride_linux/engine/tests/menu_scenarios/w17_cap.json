@@ -8,8 +8,8 @@
   "etapes": [
     {
       "depart_monde_ouvert": {
-        "recherche": "sarre union",
-        "contient": "Sarre-Union",
+        "recherche": "sevrier",
+        "contient": "Sevrier",
         "cap": [
           {
             "monde": "setup",

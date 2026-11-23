@@ -18,6 +18,7 @@ range par semaine et par jour des entraînements de la bibliothèque (`~/OpenRid
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import sys
@@ -33,7 +34,7 @@ from .workout import BUILTIN_WORKOUTS_DIR, WORKOUT_SUFFIXES, WorkoutError, load_
 
 PLANS_DIR = config_mod.PLANS_DIR
 STATE_PATH = config_mod.OPENRIDE_HOME / "plan_state.toml"
-# Plans de référence livrés : copie embarquée de `core/plans/` (lot J4, comme les entraînements).
+# Plans de référence livrés, rangés dans le paquet (lot J4, comme les entraînements ; seul exemplaire).
 BUILTIN_PLANS_DIR = Path(__file__).resolve().parent / "data" / "plans"
 
 WEEKDAYS = ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
@@ -329,8 +330,10 @@ def start_plan(plan_id: str, start: date | None = None, plans_dir: Path | None =
     st = PlanState(plan_id, date.today() if start is None else start)
     path = _state_path(state_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("# Plan d'entraînement actif (openride-core plan start), lot O11\n"
-                    f'[active]\nplan = "{st.plan_id}"\nstart = "{st.start.isoformat()}"\n', encoding="utf-8")
+    tmp = path.with_name(path.name + ".tmp")   # même dossier : remplacement atomique
+    tmp.write_text("# Plan d'entraînement actif (openride-core plan start), lot O11\n"
+                   f'[active]\nplan = "{st.plan_id}"\nstart = "{st.start.isoformat()}"\n', encoding="utf-8")
+    os.replace(tmp, path)
     return st
 
 
@@ -498,7 +501,7 @@ def create_from_library(workouts: list[str], days: list[str], weeks: int | None 
 
 
 def install_builtin(plans_dir: Path | None = None, workouts_dir: Path | None = None) -> tuple[list[str], list[str]]:
-    """Copie les plans de référence (copie embarquée de `core/plans/`) et les entraînements de
+    """Copie les plans de référence (`data/plans/` du paquet) et les entraînements de
     référence qu'ils citent, sans rien écraser ; renvoie `(copiés, conservés)`."""
     plans_dir = PLANS_DIR if plans_dir is None else plans_dir
     workouts_dir = config_mod.WORKOUTS_DIR if workouts_dir is None else workouts_dir
