@@ -916,6 +916,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("list_profiles", {})
 		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
+		"undo_profile_reset":   # lot RZ1 : confirmation exigée aussi par le core
+			ipc.send_command(name, {"id": str(act["id"]), "confirmed": true})
+		"reset_profile_stats":
+			ipc.send_command(name, {"confirmed": true})
 		"clear_trial_profile":   # lot O33
 			ipc.send_command(name, {})
 		"create_profile":
