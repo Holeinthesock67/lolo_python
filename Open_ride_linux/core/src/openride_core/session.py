@@ -1578,7 +1578,8 @@ class CoreSession:
         try:
             advice = await asyncio.to_thread(coach.advice_today, today, float(self.cfg.rider.ftp_w), c.objectif,
                                              c.temps_disponible_min, self.journal_dir.parent, self.workouts_dir,
-                                             None, None, chosen, table, self.routes_root)
+                                             None, None, chosen, table, self.routes_root,
+                                             c.seances_semaine)
         except Exception:
             log.exception("Erreur lors du calcul du conseil (cmd_id=%d)", cmd_id)
             return

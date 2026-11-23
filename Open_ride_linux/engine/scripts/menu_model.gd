@@ -258,6 +258,18 @@ var coach_ready := ""
 var league_shown := false
 var league_detail := ""
 var league_ready: Dictionary = {"enabled": true, "detail": ""}
+## Objectif de la semaine (lot OS1) : ligne de l'accueil sous la ligue (« Semaine : 1 séance sur 2 », détail
+## « il reste 4 jours » ou « objectif atteint ») ; "" : pas de ligne. Elle ouvre l'Historique.
+var week_label := ""
+var week_detail := ""
+
+
+func set_week_home(label: String, detail: String) -> void:
+	if label == week_label and detail == week_detail:
+		return
+	week_label = label
+	week_detail = detail
+	_refresh_home()
 
 
 func set_league_home(shown: bool, detail: String) -> void:
@@ -342,6 +354,8 @@ func _refresh_home() -> void:
 func _build_home_and_ready() -> void:
 	var world := free_world_name if free_world_name != "" else "à choisir"   # dernier parcours libre (lot GP13)
 	var items := [_item("world", "Parcours : " + world)]
+	if week_label != "":
+		items.push_front(_item("week", week_label, true, week_detail))
 	if league_shown:
 		items.push_front(_item("league", "Ligue d'hiver", true, league_detail))
 	if coach_detail != "":
@@ -1252,7 +1266,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "race", "track", "interrupted", "coach", "league":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "race", "track", "interrupted", "coach", "league", "week":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:

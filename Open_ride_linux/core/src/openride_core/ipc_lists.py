@@ -444,7 +444,8 @@ def build_coach_message(request_cmd_id: int, advice: dict[str, Any]) -> dict[str
             "tss_estimate": workout["tss_estimate"] if workout else None,
             "notes": list(advice["notes"]), "alternatives": list(advice["alternatives"]),
             "workout": workout, "other_workouts": [_coach_workout(w) for w in advice["other_workouts"]],
-            "route": advice.get("route"), "details": advice["details"]}
+            "route": advice.get("route"), "details": advice["details"],
+            "week_goal": advice.get("week_goal")}   # lot OS1 : objectif de la semaine, facultatif
 
 
 # --- collection de cartes (série BC, lot BC2, contrat IPC révision 1.8) -----------------------
