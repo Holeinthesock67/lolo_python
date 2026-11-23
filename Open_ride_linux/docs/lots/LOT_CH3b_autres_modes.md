@@ -27,7 +27,8 @@ neutralisée, et personne n'y marque de points.
   - Elle se court sur le vélodrome seulement, sans argument `track`, contre les 11 rivaux.
   - Les autres réglages sont ceux par défaut de l'épreuve.
   - La séance finit avec l'épreuve.
-  - Une manche de route est refusée au vélodrome.
+  - Une manche de route reste permise sur une piste : la boucle d'essai du Grand Prix du banc des menus est une
+    copie du vélodrome.
 - Le journal `league_start` porte le mode de la manche, quel que soit ce mode.
 
 ## 2. Contrat

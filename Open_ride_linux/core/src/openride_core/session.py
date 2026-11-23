@@ -3053,9 +3053,9 @@ class CoreSession:
         if self.openworld is not None or route is None or (rnd.terrain == "boucle" and not route.is_loop):
             self.server.send_error("bad_args", f"Ligue d'hiver : la manche {index + 1} se court sur une boucle.")
             return None
-        if (rnd.terrain == "piste") != (self._track is not None):   # lot CH3b : l'élimination, au vélodrome seul
-            self.server.send_error("bad_args", f"Ligue d'hiver : la manche {index + 1} se court "
-                                   + ("sur un vélodrome." if rnd.terrain == "piste" else "sur la route, pas sur la piste."))
+        if rnd.terrain == "piste" and self._track is None:   # lot CH3b : l'élimination, au vélodrome seul
+            # (une manche de route reste permise sur une piste : boucle d'essai du Grand Prix du banc des menus)
+            self.server.send_error("bad_args", f"Ligue d'hiver : la manche {index + 1} se court sur un vélodrome.")
             return None
         problem = self._league_mode_problem(rnd)
         if problem is not None:

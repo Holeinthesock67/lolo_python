@@ -302,7 +302,9 @@ def test_track_round_is_an_elimination_on_the_velodrome(env):
     _finish_round(s2, run, tmp_path, errors2, 3, "track", 7200)
 
 
-def test_road_round_refused_on_the_velodrome(env):
+def test_road_round_allowed_on_a_velodrome_loop(env, short_round):
+    """Une manche de route reste permise sur une piste (boucle d'essai du Grand Prix du banc des menus : copie du
+    vélodrome) ; seule l'élimination exige le vélodrome."""
     from openride_core import velodrome
 
     make, _, _, tmp_path = env
@@ -310,7 +312,7 @@ def test_road_round_refused_on_the_velodrome(env):
     s, _, errors = make(7340, route_id=velodrome.TRACK_ID)
     s._on_command("league_new", {}, 2)
     s._on_command("start", {"mode": "race", "league": True}, 3)
-    assert errors and "pas sur la piste" in errors[-1][1]
+    assert not errors and s.state.session_state == "RUNNING"
 
 
 def test_missed_weeks_are_now_simulated(env):
