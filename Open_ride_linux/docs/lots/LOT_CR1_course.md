@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Mode « Course » à l'accueil : le Grand Prix sans objet, sur tous les parcours libres | Python, GDScript | GP9, GP13, PL1, BT1 | Moyenne | En PR le 20 novembre 2026 |
+| Mode « Course » à l'accueil : le Grand Prix sans objet, sur tous les parcours libres | Python, GDScript | GP9, GP13, PL1, BT1 | Moyenne | **Livré le 22 novembre** (PR #939) |
 
 ## 1. Objectif
 
