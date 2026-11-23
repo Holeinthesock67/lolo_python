@@ -156,7 +156,7 @@ func _run() -> void:
 	view2.pulse("hit")
 	_check(view2.hit_flash_s > 0.0 and view2.z_pulse.color == view2.UiTheme.GOLD, "attaque réussie : éclair et anneau or")
 	view2.apply(hm.values(), Vector3.ZERO, 0.1)
-	_check(view2.hit_flash.color.a > 0.0 and view2.hit_flash.color.a < 0.45, "l'éclair s'éteint en 0,25 s")
+	_check(view2.hit_flash.color.a > 0.0 and view2.hit_flash.color.a < view2.HIT_FLASH_ALPHA, "l'éclair s'éteint en 0,25 s")
 	view2.pulse("ok")
 	_check(view2.z_pulse.color == view2.UiTheme.GOLD, "relance ou déblocage : anneau or seul")
 	var hm2 = HudModel.new()

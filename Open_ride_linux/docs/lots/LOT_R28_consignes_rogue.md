@@ -34,6 +34,13 @@ Essai du propriétaire du 22 novembre (analyse : `rogue-r28/ANALYSE_ESSAI_ROGUE_
   ou « 12 W de trop » ; conseil « Monte dans la plage pour remplir l'adrénaline (12/50) » ou « Dans la plage :
   l'adrénaline monte ». Toujours des mots, jamais la couleur seule.
 
+## 3 bis. Voile et halo (retour du 23 novembre)
+
+« Il y a encore un peu trop brouillard/halo en médium et high » : l'éclair d'une attaque réussie couvrait tout l'écran
+d'un crème à 45 % (voile gris sur la capture « Z : FRAPPE ! », dans les trois qualités) ; il passe à 15 %
+(`HIT_FLASH_ALPHA`). Le glow du medium et du high passe à 4 niveaux, intensité 0,8, sans bloom (le bloom éclairait
+tout l'écran). La brume reste celle du lot R27.
+
 ## 4. Contrat
 
 Précision compatible des champs `target_pct` et `in_target` (révision 1.33 **provisoire**, à renuméroter à la fusion au-dessus de
