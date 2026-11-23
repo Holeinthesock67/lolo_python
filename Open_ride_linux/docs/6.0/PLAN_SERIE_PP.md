@@ -232,3 +232,16 @@ PP5 du §6 est remplacé par quatre lots, lancés dans cet ordre quand la file l
 
 Lien avec la ligue d'hiver (série CH) : PP6 fournit le réglage des bots selon la durée de la manche ; à raccorder au cahier CH quand CH1 partira.
 Les garde-fous du §8.5 restent : rien pendant la séance, aucune difficulté changée sans le dire, aucune comparaison avec d'autres personnes, rien n'est exporté hors du PC.
+
+## 11. Remise à zéro des statistiques (lot RZ1, 23/11)
+
+Quand le profil a une date de remise à zéro (`ProfileContext.stats_since`, lot RZ1), `power_curve.kept_sessions(found, sources, since)` écarte les séances commencées avant. Décision du propriétaire : « garder coach, FIT et mon Elo ». Le filtre vaut donc seulement pour ce qu'il voit comme ses statistiques :
+
+| Lit seulement les séances d'après la remise à zéro | Lit toutes les séances |
+| --- | --- |
+| Courbe de « Ma puissance » (PP1, PP3) | FTP estimée, proposition et évolution mensuelle (PP2) |
+| Records du bilan (PP4) | Signal « FTP à revoir » du bilan (PP4) |
+| Profil « Se connaître » (PP5) | Coach (PP8) |
+| Défi « bats ton record » (PP7) | Courbe des bots (PP6) et trophées de puissance (PP7b, triés par la progression) |
+
+Juste après la remise à zéro, la courbe est vide et la première séance n'annonce aucun record, comme la toute première séance d'un profil. Tests : `core/tests/test_power_since.py`.

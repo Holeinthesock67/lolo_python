@@ -1592,7 +1592,7 @@ class CoreSession:
                 log.exception("Catalogue des parcours illisible pour le défi de « Ma puissance »")
                 routes = []
             return build_power_curve_message(cmd_id, self.cfg.rider.ftp_w, activities, cache, ctx.counted_sources,
-                                             ctx.id, routes=routes)
+                                             ctx.id, routes=routes, since=getattr(ctx, "stats_since", None))
 
         try:
             msg = await asyncio.to_thread(build)
@@ -1730,7 +1730,8 @@ class CoreSession:
 
         ctx = self.profile_ctx
         return compute_summary_power(journal_path, float(self.cfg.rider.ftp_w), self.journal_dir.parent,
-                                     self._curve_cache(ctx), ctx.counted_sources)
+                                     self._curve_cache(ctx), ctx.counted_sources,
+                                     since=getattr(ctx, "stats_since", None))   # remise à zéro (lot RZ1)
 
     def _attach_power_report(self, report: dict | None) -> None:
         if report is None or self.state.summary is None:
