@@ -1499,6 +1499,8 @@ func _warmup_steps() -> Array:
 			steps.append(["cyclistes", func(): living_decor.cyclists_view.warm_up(camera)])
 	if streamer.forest_impostors != null:
 		steps.append(["forets", func(): streamer.forest_impostors.warm_up(camera)])
+	if streamer.osm_streamer != null:   # bâtiments, eau, mer, côte et ponts des tronçons à venir (lot AC2)
+		steps.append(["osm", func(): streamer.osm_streamer.warm_up(camera)])
 	return steps
 
 
