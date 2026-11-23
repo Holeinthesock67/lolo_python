@@ -39,7 +39,7 @@ def test_open_world_scenarios_all_use_the_template() -> None:
         raw = json.loads(path.read_text(encoding="utf-8"))
         if any("depart_monde_ouvert" in s for s in raw.get("etapes", [])):
             users.append(name)
-    assert {"w17_cap", "ea1_lac", "ea2_lac_loin", "ea3_riviere", "ea4_pont", "ow_6km"} <= set(users)
+    assert {"w17_cap", "ea1_lac", "ea2_lac_loin", "ea3_riviere", "ea4_pont", "ea5_tunnel", "ow_6km"} <= set(users)
 
 
 def test_template_is_the_w18_start(tmp_path) -> None:

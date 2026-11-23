@@ -58,6 +58,8 @@ float caustic(vec2 p, float t) {
 }
 
 #include "res://shaders/terrain_shade.gdshaderinc"
+// Trou dans le volume des tunnels proches (lot EA5)
+#include "res://shaders/tunnel_cut.gdshaderinc"
 // layer_color : couleurs sRGB des couches (Vector4), converties en linéaire comme les textures `ground_a`.
 #include "res://shaders/couleur_srgb.gdshaderinc"
 
@@ -197,5 +199,9 @@ void fragment() {
 			// Plus forts sur les sols tournés vers la surface
 			EMISSION = ALBEDO * caustic(q, anim_time) * CAUSTIC_GAIN * uw * fade * clamp(n.y, 0.0, 1.0);
 		}
+	}
+	// Lot EA5 : terrain du volume d'un tunnel non dessiné, en dernier (dérivées calculées par tout le quad)
+	if (tunnel_cut_inside(v_world_pos)) {
+		discard;
 	}
 }
