@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from . import ftms
-from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device
+from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, short_address
 
 log = logging.getLogger("hr")
 
@@ -112,7 +112,8 @@ class HeartRateProvider:
                 device_scanner = _sim_scanner(world)
         self._scan = device_scanner
         self._bpm: int | None = None
-        self._implausible_at: float | None = None   # dernière ligne « FC invraisemblable »
+        self._implausible_at: float | None = None
+        self._listed = False   # liste des appareils cardio déjà écrite en INFO   # dernière ligne « FC invraisemblable »
         self._last_at: float | None = None
         self._contact: bool | None = None
         self._rr: deque[float] = deque(maxlen=RR_KEEP)
@@ -200,8 +201,11 @@ class HeartRateProvider:
             return await self._find(self.name, self.address, SCAN_S, service=ftms.HR_SERVICE)
         cands = await self._scan(SCAN_S)
         if cands:
-            log.info("Appareils cardio trouvés : %s", " ; ".join(
-                f"{c.name or '?'} ({c.address}, RSSI {c.rssi if c.rssi is not None else '?'})"
+            # Appareils cardio à portée, voisins compris : une ligne INFO par lancement, adresses
+            # tronquées ; les cycles suivants en DEBUG (revue S6-11).
+            listed, self._listed = self._listed, True
+            log.log(logging.DEBUG if listed else logging.INFO, "Appareils cardio trouvés : %s", " ; ".join(
+                f"{c.name or '?'} ({short_address(c.address)}, RSSI {c.rssi if c.rssi is not None else '?'})"
                 + (", montre" if c.is_watch else "") for c in cands))
         choice = choose_device(cands, self.name)
         if choice is None:
