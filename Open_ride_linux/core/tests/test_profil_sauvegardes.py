@@ -117,13 +117,14 @@ def test_failed_copy_leaves_nothing_behind(home, monkeypatch):
 def test_restore_brings_the_copy_back_and_saves_the_current_state(home):
     ctx = player_b(home)
     copy = pb.create(ctx, "semaine", base(home), now=T1)
+    elo_before = (ctx.root / "elo.json").read_text(encoding="utf-8")
     write_journal(ctx.journal_dir / "apres.jsonl", km=20, climb_m=100, minutes=30, start_ts=1_764_000_000.0)
     (ctx.root / "elo.json").write_text('{"rating": 900}', encoding="utf-8")
     (ctx.root / "profil.toml").write_text((ctx.root / "profil.toml").read_text(encoding="utf-8")
                                          .replace("ftp_w = 300", "ftp_w = 310"), encoding="utf-8")
     (ctx.root / profiles.LOCK_NAME).write_text("verrou", encoding="utf-8")
     saved = pb.restore(ctx, copy.name, base(home), now=T1 + timedelta(hours=1))
-    assert (ctx.root / "elo.json").read_text(encoding="utf-8") == '{"rating": 1620}'
+    assert (ctx.root / "elo.json").read_text(encoding="utf-8") == elo_before
     assert "ftp_w = 300" in (ctx.root / "profil.toml").read_text(encoding="utf-8")   # réglages de la copie
     assert not (ctx.journal_dir / "apres.jsonl").exists()
     assert (ctx.root / profiles.LOCK_NAME).read_text(encoding="utf-8") == "verrou"   # verrou intact

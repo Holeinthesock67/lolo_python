@@ -239,7 +239,7 @@ func manage_items() -> Array:
 		out.append({"id": UNDO_RESET_ID, "label": "Annuler la remise à zéro", "enabled": true,
 			"detail": "remise du " + reset_when(resets[0])})
 	out.append({"id": BACKUPS_ID, "label": "Restaurer une sauvegarde", "enabled": own,
-		"detail": "copie faite chaque semaine et avant les mises à jour" if own else "choisir ce profil d'abord"})
+		"detail": "copie faite chaque semaine" if own else "choisir ce profil d'abord"})
 	return out
 
 
