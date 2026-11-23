@@ -565,10 +565,18 @@ from recompte_tests import DOCUMENTS, hard_counts  # noqa: E402
 
 CITED_PATH_RE = re.compile(r"`((?:core|compiler|engine|docs|scripts)/[^`\s]+)`")
 
-# Chemins cités volontairement absents du dépôt, avec leur motif.
+# Chemins cités volontairement absents du dépôt, avec leur motif (un dossier couvre aussi ce qu'il contenait).
 CITED_PATH_EXCEPTIONS: dict[str, str] = {
     "core/.venv": "environnement virtuel local, non versionné",
+    "core/workouts": "copie retirée (audit du 22/11, C12), citée par les cahiers livrés et l'historique : "
+                     "aujourd'hui core/src/openride_core/data/workouts/",
+    "core/plans": "copie retirée (audit du 22/11, C12), citée par les cahiers livrés et l'historique : "
+                  "aujourd'hui core/src/openride_core/data/plans/",
 }
+
+
+def _cited_exception(path: str) -> bool:
+    return any(path == e or path.startswith(e + "/") for e in CITED_PATH_EXCEPTIONS)
 
 
 def undelivered_lot_files(lots_dir: Path = LOTS_DIR) -> set[str]:
@@ -585,7 +593,7 @@ def check_cited_paths(text: str, doc_name: str, root: Path = REPO_ROOT) -> list[
             if re.search(r"[*<>{}…]|\.\.\.", cited):
                 continue                                          # motif ou gabarit, pas un chemin
             path = re.sub(r":\d+(-\d+)?$", "", cited).rstrip("/.,;")
-            if path not in CITED_PATH_EXCEPTIONS and not (root / path).exists():
+            if not _cited_exception(path) and not (root / path).exists():
                 errors.append(f"{doc_name}:{line_no} : chemin cité absent : {cited}")
     return errors
 
@@ -645,8 +653,10 @@ def test_cited_paths_exist_and_negative() -> None:
         errors += check_cited_paths(f.read_text(encoding="utf-8"), str(f.relative_to(REPO_ROOT)))
     assert errors == []
 
-    text = "`core/src/openride_core/session.py:12` `docs/lots/` `core/tests/test_*.py` `core/absent.py`\n"
-    assert check_cited_paths(text, "faux.md") == ["faux.md:1 : chemin cité absent : core/absent.py"]
+    text = ("`core/src/openride_core/session.py:12` `docs/lots/` `core/tests/test_*.py` `core/absent.py` "
+            "`core/workouts/tempo_2x15.erg` `core/workoutsx/a`\n")
+    assert check_cited_paths(text, "faux.md") == ["faux.md:1 : chemin cité absent : core/absent.py",
+                                                  "faux.md:1 : chemin cité absent : core/workoutsx/a"]
 
 
 # === Tests du lot O6 : raccourcis du guide d'utilisation =============================
