@@ -232,6 +232,8 @@ func _test_other_modes() -> void:
 		"arrivée en côte sur une boucle : grisée, « en ligne » écrit")
 	m.on_league(_msg())
 	_check(not m.ready({"route_type": "loop"}, "track")["enabled"], "course en tours au vélodrome : grisée")
+	_check(League.RECORD_HINT in m.sheet(250.0)["lines"] and "Y puis A maintenu" in m.ready_text(),
+		"fiche et Démarrer : la manche compte au bilan, geste écrit")
 
 
 func _test_card() -> void:

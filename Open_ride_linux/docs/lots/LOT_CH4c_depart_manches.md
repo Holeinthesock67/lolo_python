@@ -28,6 +28,10 @@
   - « choisis une boucle » ;
   - « choisis un parcours sur route ».
 
+- Comment la manche s'enregistre, écrit sur la fiche de la ligue et sur la ligne « Démarrer » : « La manche compte
+  au bilan : après l'arrivée, Y puis A maintenu. » Cela suit la fin de séance commune RT2 (#1000) : après
+  l'arrivée, on continue à rouler, et la manche ne s'écrit qu'au bilan.
+
 ## 2. Recette
 
 - Test unitaire `engine/tests/unit/test_league_menu.gd` (`_test_other_modes`) : quatre manches (survivant, Grand

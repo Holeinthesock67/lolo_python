@@ -10,6 +10,9 @@ const SCREEN := "league"
 const SCREENS := [SCREEN]
 const RUN_ID := "league_run"
 const NEW_ID := "league_new"
+## Comment la manche s'enregistre (fin de séance commune RT2 : après l'arrivée on roule encore, « A maintenu =
+## bilan ») : écrit sur la fiche de la ligue et sur la ligne « Démarrer ».
+const RECORD_HINT := "La manche compte au bilan : après l'arrivée, Y puis A maintenu."
 const STYLES := {"climber": "grimpeur", "rouleur": "rouleur", "sprinter": "sprinteur", "diesel": "diesel"}
 
 ## Saison du dernier message `league` (null : pas de saison) ; `loaded` : un message est arrivé (sinon, core sans
@@ -113,6 +116,7 @@ func sheet(ftp_w: float) -> Dictionary:
 	lines.append("Manche %d : %s, environ 27 min de course." % [int(r.get("index", 0)) + 1, str(r.get("title", ""))])
 	if bool(r.get("open", false)):
 		lines.append(_deadline())
+	lines.append(RECORD_HINT)
 	lines.append("Comptent : tes 6 meilleures manches sur 8.")
 	lines.append("Classique : pas encore datée." if season.get("classic_day") == null
 		else "Classique : le %s." % str(season["classic_day"]))
@@ -224,7 +228,7 @@ static func is_loop(routes: Array, id: String) -> bool:
 ## Texte de la ligne « Démarrer » de l'écran Prêt d'une manche.
 func ready_text() -> String:
 	var r := _round()
-	return "manche %d sur %d · environ 27 min · %s" % [int(r.get("index", 0)) + 1,
+	return "manche %d sur %d · environ 27 min · %s · comptée au bilan (Y puis A maintenu)" % [int(r.get("index", 0)) + 1,
 		int(season.get("weeks", 8)) if season is Dictionary else 8, str(r.get("title", ""))]
 
 
