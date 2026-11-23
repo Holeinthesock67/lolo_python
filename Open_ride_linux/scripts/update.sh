@@ -173,6 +173,9 @@ wait_game_closed() {
 backup_profiles() {
     [[ -d "${OPENRIDE_DIR}/Profils" ]] || { log "pas de dossier Profils : aucune copie à faire"; return 0; }
     local core="${VENV}/bin/openride-core" out
+    # sans venv (installation par OPENRIDE_PYTHON) : la commande posée par install.sh dans ~/.local/bin
+    [[ -x "${core}" ]] || core="${HOME}/.local/bin/openride-core"
+    [[ -x "${core}" ]] || core="$(command -v openride-core 2>/dev/null || echo "${VENV}/bin/openride-core")"
     if [[ ! -x "${core}" ]]; then
         log "copie des profils impossible : ${core} introuvable"
         fail "la copie de tes profils n'a pas pu être faite : programme ${core} introuvable. Rien n'a été changé. Lance scripts/install.sh, puis relance « Mettre à jour »."
