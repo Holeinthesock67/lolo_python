@@ -63,6 +63,7 @@ var _cadence_shown := 0.0
 var _go_left_s := 0.0
 var _t := 0.0
 var _route := {}          # carte du parcours (StartWaitModel.route_card), {} sans parcours
+var _goal := ""           # objectif du mode (lot RT2), écrit sous la carte du parcours ; "" sans objectif
 var _font: Font = null
 var _title_font: FontVariation = null
 var _tag_font: FontVariation = null
@@ -92,6 +93,14 @@ func _ready() -> void:
 ## Parcours qui va être roulé (StartWaitModel.route_card) ; {} : pas de carte.
 func set_route(card: Dictionary) -> void:
 	_route = card
+	queue_redraw()
+
+
+## Objectif du mode en une ligne (lot RT2, « Objectif : finir 1er en 3 tours ») ; "" : pas de ligne.
+func set_goal(goal: String) -> void:
+	if goal == _goal:
+		return
+	_goal = goal
 	queue_redraw()
 
 
@@ -152,7 +161,7 @@ func _animated() -> bool:
 func test_info() -> Dictionary:
 	return {"visible": visible, "lights": StartWaitModel.lights(_wait), "go": _go_left_s > 0.0,
 		"text": StartWaitModel.text(_wait), "steps": StartWaitModel.steps(_wait),
-		"route": str(_route.get("name", "")), "route_line": str(_route.get("line", "")), "animated": _animated(),
+		"route": str(_route.get("name", "")), "route_line": str(_route.get("line", "")), "goal": goal_text(), "animated": _animated(),
 		"warmup": StartWaitModel.warmup_view(_wait)}
 
 
@@ -319,6 +328,8 @@ func _draw_route_card() -> void:
 	_text(_tag_font, Vector2(x, CARD.position.y + 30.0), "PARCOURS", -1, 16, UiTheme.DIM)
 	_text(_bold_font, Vector2(x, CARD.position.y + 62.0), str(_route.get("name", "")), 250.0, 24, UiTheme.TEXT)
 	_text(_font, Vector2(x, CARD.position.y + 90.0), str(_route.get("line", "")), 250.0, SMALL_SIZE, UiTheme.GOLD)
+	if _goal != "":   # lot RT2 : l'objectif écrit avant le départ, en mots
+		_text(_bold_font, Vector2(x, CARD.position.y + 120.0), goal_text(), 260.0, SMALL_SIZE, UiTheme.TEXT)
 	var h: PackedFloat32Array = _route.get("heights", PackedFloat32Array())
 	if h.size() < 2:
 		return
@@ -401,3 +412,8 @@ func _centered(font: Font, text: String, y: float, font_size: int, col: Color) -
 func _centered_at(font: Font, text: String, at: Vector2, font_size: int, col: Color) -> void:
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	_text(font, Vector2(at.x - w * 0.5, at.y), text, -1, font_size, col)
+
+
+## Ligne d'objectif affichée : « Objectif : … », "" sans objectif.
+func goal_text() -> String:
+	return ("Objectif : " + _goal) if _goal != "" else ""

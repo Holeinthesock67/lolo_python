@@ -108,6 +108,41 @@ func _run() -> void:
 		and v["consigne"]["k"] == "ENTRAÎNEMENT FINI" and v["consigne"]["chips"] == ["Y puis A maintenu = bilan"],
 		"entraînement fini : résultat et consigne (%s)" % str(v))
 
+	# Fin commune (lot RT2) : `state.arrival` du Grand Prix, de la Course et d'un parcours en ligne
+	var ma = Model.new()
+	var gp_st := _st("RUNNING", {"arrival": {"kind": "grandprix", "place": 3, "of": 8}})
+	_check(ma.on_state(gp_st, 5.0) == ["jingle_finish"] and ma.on_state(gp_st, 6.0).is_empty(), "arrivée GP : un son, une fois")
+	var va: Dictionary = ma.view(gp_st, 6.0)
+	_check(va["result"]["title"] == "ARRIVÉE · 3e sur 8" and va["result"]["sub"] == "Grand Prix des objets"
+		and va["consigne"]["k"] == "COURSE FINIE · 3e sur 8" and va["consigne"]["chips"] == ["Y puis A maintenu = bilan"],
+		"arrivée GP : résultat et consigne de fin (%s)" % str(va))
+	var mw = Model.new()
+	var win_st := _st("RUNNING", {"arrival": {"kind": "race", "place": 1, "of": 6}})
+	_check(mw.on_state(win_st, 0.0) == ["jingle_winner"], "Course gagnée : son de victoire")
+	_check(mw.view(win_st, 1.0)["result"]["title"] == "VICTOIRE !"
+		and mw.view(win_st, 1.0)["result"]["sub"] == "Tu remportes la course · 1er sur 6", "Course gagnée : VICTOIRE")
+	var mr = Model.new()
+	var rt_st := _st("RUNNING", {"arrival": {"kind": "route", "place": null, "of": null}})
+	mr.on_state(rt_st, 0.0)
+	var vr: Dictionary = mr.view(rt_st, 1.0)
+	_check(vr["result"]["title"] == "ARRIVÉE" and vr["consigne"]["k"] == "PARCOURS FINI"
+		and vr["consigne"]["action"] == "Roule au calme : tu repars dans l'autre sens", "bout du parcours : arrivée (%s)" % str(vr))
+	_check(not mr.view(rt_st, 1.0 + Model.RESULT_S + 0.1)["consigne"].is_empty()
+		and mr.view(rt_st, 1.0 + Model.RESULT_S + 0.1)["result"].is_empty(), "après 6 s : consigne de fin gardée, résultat retiré")
+	var mx = Model.new()   # entraînement fini : `workout_done` l'annonce, `arrival` ne refait pas de résultat
+	var both := _st("RUNNING", {"workout_done": {"workout_name": "Z2"}, "arrival": {"kind": "workout"}})
+	_check(mx.on_state(both, 0.0) == ["jingle_finish"], "entraînement fini et arrivée : un seul résultat")
+	var my = Model.new()   # un mode a déjà donné son résultat : pas de second
+	my.push_all([{"family": "resultat", "tone": "win", "title": "VICTOIRE !", "sub": "", "done_k": "COURSE FINIE · 1er sur 4"}], 0.0)
+	_check(my.on_state(gp_st, 0.5).is_empty() and my.view(gp_st, 1.0)["consigne"]["k"] == "COURSE FINIE · 1er sur 4",
+		"résultat du mode déjà là : l'arrivée n'en ajoute pas")
+	ma.on_state(_st("FINISHED"), 20.0)
+	_check(ma.on_state(gp_st, 30.0) == ["jingle_finish"], "nouvelle séance : l'arrivée s'annonce de nouveau")
+	_check(Model.arrival_result({"kind": "inconnu"}).is_empty(), "sorte inconnue : rien")
+	mr.end_chips = ["A : Enchaîner un autre parcours"]
+	_check(mr.view(rt_st, 2.0)["consigne"]["chips"] == ["A : Enchaîner un autre parcours", "Y puis A maintenu = bilan"],
+		"place réservée aux boutons de fin ajoutés")
+
 	# Vue : textes affichés
 	var view = View.new()
 	get_root().add_child(view)

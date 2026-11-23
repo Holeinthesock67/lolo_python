@@ -89,8 +89,12 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         s._lighten_bots_frame()
         return s.state.to_dict()
 
-    def run(s: CoreSession, seconds: float, check=None, every: int = 15) -> None:
+    def run(s: CoreSession, seconds: float, check=None, every: int = 15, end_at_arrival: bool = True) -> None:
         for i in range(int(round(seconds / DT))):
+            if end_at_arrival and s.state.session_state == "RUNNING" and s.state.arrival is not None \
+                    and s.state.arrival["kind"] != "workout":
+                # lot RT2 : l'arrivée ne termine plus la séance ; le cycliste la termine comme Y puis A maintenu
+                s._on_command("end_session", {"save": True}, 9000)
             if s.state.session_state != "RUNNING":
                 return
             wall[0] += DT
