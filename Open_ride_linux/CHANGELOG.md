@@ -5,6 +5,14 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Trainer et FIT : constats forts de la revue de code du 22 novembre (lot RC2)
+- Vent « ressenti par le trainer » (`[wind] feel = "ftms"`) : le vent n'est plus renvoyé au trainer en pause, au bilan, au menu, ni dans la séance suivante sans vent (vélodrome, Cyber-Rogue) ; remis à zéro aussi à l'arrêt (S2-02).
+- Pilotage « résistance calculée » : une consigne de niveau acceptée lève le bandeau « trainer occupé » et remet le compteur de refus à zéro ; trois pertes de contrôle espacées ne mettent plus la séance en erreur (S6-01).
+- Après un changement de profil, « Pilotage du trainer » et les réglages du trainer et des braquets du nouveau joueur prennent effet sans relancer (S1-05b).
+- Mesures invraisemblables ignorées, valeur précédente gardée, une ligne de journal par sorte toutes les 10 s au plus : puissance au-delà de 1,5 fois la plage annoncée (3 000 W au moins), cadence au-dessus de 250 tr/min, FC hors de 25 à 250 bpm, du trainer comme de la ceinture (S6-03).
+- Export FIT : une valeur hors des plages du format ne fait plus échouer tout le fichier (ni `recover`) : la mesure fautive est retirée de ce relevé, vitesse et distance bornées, le journal garde les valeurs brutes (S7-01).
+- Tours du FIT : la distance d'un tour part du dernier relevé du tour précédent (les tours s'additionnent à la séance) et le temps chronométré d'un tour ne compte plus ses pauses (S7-04).
+
 ### Cyber-Rogue sans voile en high (lot R27)
 - En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
 
