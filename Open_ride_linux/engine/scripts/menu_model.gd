@@ -478,7 +478,6 @@ func is_free_route(id: String) -> bool:
 
 
 ## Mode auquel appartient un parcours ("" : parcours libre, y compris un parcours de mode resté libre, lot GPL1).
-## Gardé pour la ligue d'hiver (menu_flow.gd `_handle_league`, LeagueViewModel.pick_loop), qui l'appelle depuis CH3.
 func route_mode_of(id: String) -> String:
 	if is_free_route(id):
 		return ""

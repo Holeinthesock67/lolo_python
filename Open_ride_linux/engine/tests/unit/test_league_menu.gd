@@ -176,8 +176,7 @@ func _test_grand_prix_loop() -> void:
 	st = f.state()
 	_check(st["screen"] == MenuModel.ROUTES and "demo-circuit" in _ids(st) and not "demo" in _ids(st),
 		"Changer de parcours : liste du Grand Prix (%s)" % str(_ids(st)))
-	# Lot GPL1 : un parcours de mode est une boucle ; un parcours en ligne étiqueté grandprix n'est pas proposé.
-	_check(not "vignes" in _ids(st), "parcours en ligne étiqueté Grand Prix : absent de la liste (%s)" % str(_ids(st)))
+	_check(not "vignes" in _ids(st), "trace en ligne étiquetée : parcours libre, hors de la liste du Grand Prix (lot GPL1)")
 
 
 func _test_card() -> void:
