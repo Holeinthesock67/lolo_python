@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideLeagueMessage",
+  "description": "Révision 1.30 (lot CH3, série CH) : réponse à `league_status` et `league_new` : saison de la ligue d'hiver du profil (null sans saison), manche de la semaine et classement général des 12 coureurs (le cycliste : `me`, nom « Toi »).",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "season"
+  ],
+  "properties": {
+    "type": {
+      "const": "league"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "season": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "number",
+            "start",
+            "end",
+            "weeks",
+            "week",
+            "paused",
+            "closed",
+            "home_line",
+            "round",
+            "classic_day",
+            "trophy",
+            "standings"
+          ],
+          "properties": {
+            "number": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start": {
+              "type": "string",
+              "format": "date"
+            },
+            "end": {
+              "type": "string",
+              "format": "date"
+            },
+            "weeks": {
+              "type": "integer",
+              "const": 8
+            },
+            "week": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "paused": {
+              "type": "boolean"
+            },
+            "closed": {
+              "enum": [
+                null,
+                "fin",
+                "pause"
+              ]
+            },
+            "home_line": {
+              "type": "string",
+              "description": "Ligne de l'accueil, en mots (« 4e · manche 3/8 : Grand Prix, à courir cette semaine »)."
+            },
+            "round": {
+              "type": "object",
+              "required": [
+                "index",
+                "mode",
+                "event",
+                "title",
+                "short",
+                "decides",
+                "terrain",
+                "done",
+                "open",
+                "playable"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 7
+                },
+                "mode": {
+                  "enum": [
+                    "race",
+                    "survivor",
+                    "grandprix",
+                    "track"
+                  ]
+                },
+                "event": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "short": {
+                  "type": "string"
+                },
+                "decides": {
+                  "type": "string"
+                },
+                "terrain": {
+                  "type": "string"
+                },
+                "done": {
+                  "type": "boolean"
+                },
+                "open": {
+                  "type": "boolean",
+                  "description": "Manche à courir cette semaine (pas faite, saison ni close ni en pause)."
+                },
+                "playable": {
+                  "type": "boolean",
+                  "description": "Ouverte et déjà branchée dans le core (CH3a : la Course)."
+                }
+              }
+            },
+            "classic_day": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date"
+            },
+            "trophy": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "label"
+                  ],
+                  "properties": {
+                    "id": {
+                      "enum": [
+                        "or",
+                        "argent",
+                        "bronze",
+                        "regularite"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            },
+            "standings": {
+              "type": "array",
+              "minItems": 12,
+              "maxItems": 12,
+              "items": {
+                "type": "object",
+                "required": [
+                  "place",
+                  "id",
+                  "name",
+                  "style",
+                  "team",
+                  "color",
+                  "points",
+                  "ran",
+                  "wins",
+                  "me"
+                ],
+                "properties": {
+                  "place": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 32
+                  },
+                  "style": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "team": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "color": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "points": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "ran": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "wins": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "me": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

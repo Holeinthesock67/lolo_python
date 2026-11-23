@@ -1110,6 +1110,128 @@
               "minimum": 0
             }
           }
+        },
+        "league": {
+          "type": "object",
+          "description": "Facultatif, révision 1.30 (lot CH3) : encart « Ligue d'hiver » du bilan d'une manche courue jusqu'à l'arrivée : manche, place et points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement autour du cycliste.",
+          "required": [
+            "round",
+            "of_rounds",
+            "title",
+            "place",
+            "of",
+            "points",
+            "general_before",
+            "general_after",
+            "moved",
+            "easy",
+            "rows"
+          ],
+          "properties": {
+            "round": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "of_rounds": {
+              "type": "integer",
+              "const": 8
+            },
+            "title": {
+              "type": "string"
+            },
+            "place": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "points": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "general_before": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "general_after": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "moved": {
+              "type": "string"
+            },
+            "easy": {
+              "type": "boolean"
+            },
+            "rows": {
+              "type": "array",
+              "maxItems": 5,
+              "items": {
+                "type": "object",
+                "required": [
+                  "place",
+                  "id",
+                  "name",
+                  "style",
+                  "team",
+                  "color",
+                  "points",
+                  "ran",
+                  "wins",
+                  "me"
+                ],
+                "properties": {
+                  "place": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 32
+                  },
+                  "style": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "team": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "color": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "points": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "ran": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "wins": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "me": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
         }
       },
       "required": [

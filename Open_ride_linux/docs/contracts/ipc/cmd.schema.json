@@ -93,7 +93,9 @@
         "set_mode_option",
         "set_bots",
         "u_turn",
-        "bots_preview"
+        "bots_preview",
+        "league_status",
+        "league_new"
       ]
     },
     "args": {
