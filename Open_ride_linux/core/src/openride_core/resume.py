@@ -3,7 +3,7 @@
 Le lanceur relance `openride-core run --resume JOURNAL` quand le core meurt pendant une séance.
 Ce module relit le journal JSONL (dernière ligne tronquée tolérée, comme `recover`) et en tire
 l'état à restaurer : temps chronométré, position et distance, sens après un demi-tour (lot N17), braquet,
-mode, bloc ERG et temps écoulé dans le bloc, biais du Click. La vitesse repart de zéro : le cycliste a dû s'arrêter de pédaler.
+mode, bloc ERG et temps écoulé dans le bloc, biais du Click, dernier instantané d'une course (lot RC1, `race_resume.py`). La vitesse repart de zéro : le cycliste a dû s'arrêter de pédaler.
 
 Un journal est « non terminé » quand son dernier événement du chronomètre n'est pas `stop`.
 """
@@ -41,6 +41,7 @@ class ResumeState:
     cadence_target_rpm: int | None = None  # cadence cible de l'ERG cadence (lot O18)
     distance: float | None = None     # distance parcourue (m), None : la position `s` (aucun demi-tour)
     direction: int = 1                # sens du dernier événement `u_turn` (lot N17), 1 sans demi-tour
+    race: dict | None = None          # dernier instantané `race_snapshot` d'une course (lot RC1)
 
 
 def _timer_events(lines: list[dict]) -> list[dict]:
@@ -87,7 +88,8 @@ def load_resume_state(path: Path) -> ResumeState:
         path=path, route_id=header.get("route_id"), workout_id=header.get("workout_id"),
         t=0.0, s=0.0, gear=None, mode="SIM", block=None,
         last_ts=float(events[-1]["ts"]), running=events[-1]["event"] in ("start", "resume"),
-        lines=lines, rogue=next((ln for ln in reversed(lines) if ln.get("kind") == "rogue_snapshot"), None))
+        lines=lines, rogue=next((ln for ln in reversed(lines) if ln.get("kind") == "rogue_snapshot"), None),
+        race=next((ln for ln in reversed(lines) if ln.get("kind") == "race_snapshot"), None))
     if not records:
         return state
     last = records[-1]

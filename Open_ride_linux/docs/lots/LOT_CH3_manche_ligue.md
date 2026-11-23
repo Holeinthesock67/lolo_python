@@ -22,8 +22,9 @@ semaine (Dernier survivant en semaine 2).
   points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement) et
   `summary.elo` (`mode` = `league`) ; journal : `league_start`, `league_round`, `elo`.
 - **Manche arrêtée avant l'arrivée** : rien n'est compté, elle se recourt dans la semaine.
-- **Plantage du core pendant une manche** : la reprise ne restaure pas les courses ; aucun résultat n'est écrit,
-  la manche compte comme abandonnée et se recourt dans la semaine (audit du 22 novembre, L10).
+- **Plantage du core pendant une manche** : aucun résultat n'est écrit au plantage ; la manche compte comme
+  abandonnée et se recourt dans la semaine (audit du 22 novembre, L10). Depuis le lot RC1, la reprise rend la course
+  entière : une manche reprise et menée à l'arrivée compte normalement.
 - **Horloge qui recule** : `ligue.json` garde le dernier jour vu (`last_seen`) ; la ligue ne revient jamais avant
   lui (pile du BIOS, double amorçage ; audit L11).
 - **Refus** (`bad_args`, rien ne démarre) : sans saison ou manche déjà faite, mode qui n'est pas celui de la
