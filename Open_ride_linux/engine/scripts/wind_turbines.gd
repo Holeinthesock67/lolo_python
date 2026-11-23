@@ -7,7 +7,12 @@ extends Node3D
 ##   `height_m` est la hauteur du moyeu (DEFAULT_HEIGHT_M sans valeur), les pales mesurent
 ##   BLADE_RATIO × la hauteur.
 ## - `update(wind, cam_pos, dt_s)` une fois par image, avec l'évaluation de wind_model.gd
-##   (`{dir, strength, gust}`) : rotor à `5 + 12 × strength` tr/min, arrêté sous CUT_IN_KMH (10 km/h) ;
+##   (`{dir, strength, gust}`, vent au sol, à 10 m) : chaque rotor suit le vent à hauteur de SON moyeu
+##   (`hub_kmh`, loi de puissance d'exposant SHEAR_ALPHA = 1/7 : ×1,39 à 100 m), à
+##   `5 + 12 × force au moyeu` tr/min ; il démarre à CUT_IN_KMH (10 km/h au moyeu) et ne s'arrête que
+##   sous CUT_OUT_KMH (8 km/h), pour ne pas repartir à chaque rafale ; sa vitesse suit la cible au premier
+##   ordre de constante SPIN_TAU_S (inertie du rotor, sans à-coup). Sens horaire vu de face, comme les
+##   vraies éoliennes. Lot EO1 (21/11) : le vent du thème par défaut (8 km/h au sol) fait tourner les rotors ;
 ##   nacelle face au vent (le rotor regarde d'où vient le vent), lissée au premier ordre de constante
 ##   YAW_TAU_S et limitée à YAW_MAX_DEG_S, donc sans à-coup ; par vent nul, elle garde son cap.
 ## Au plus MAX_ACTIVE éoliennes affichées, les plus proches de la caméra, retriées tous les
@@ -19,7 +24,11 @@ const DEFAULT_HEIGHT_M := 100.0
 const BLADE_RATIO := 0.45
 const RPM_BASE := 5.0
 const RPM_PER_STRENGTH := 12.0
-const CUT_IN_KMH := 10.0
+const CUT_IN_KMH := 10.0         # au moyeu
+const CUT_OUT_KMH := 8.0         # au moyeu : arrêt (hystérésis, lot EO1)
+const SHEAR_ALPHA := 1.0 / 7.0   # loi de puissance du vent avec la hauteur (lot EO1)
+const SHEAR_REF_M := 10.0        # hauteur du vent du jeu (Open-Meteo : vent à 10 m)
+const SPIN_TAU_S := 6.0          # inertie du rotor (lot EO1)
 const STRENGTH_FULL_KMH := 60.0
 const YAW_TAU_S := 10.0
 const YAW_MAX_DEG_S := 3.0
@@ -33,7 +42,7 @@ const KIND_TOWER := 3
 const KIND_NACELLE := 4
 const KIND_BLADE := 5
 
-var _points: Array = []          # {pos: Vector3, height: float, yaw: float, rotor: float}
+var _points: Array = []          # {pos, height, shear, yaw, rotor, omega (rad/s), running}
 var _slots: Array = []           # {root, nacelle, rotor, point: int}
 var _last_select := Vector3(INF, INF, INF)
 var _dirty := true
@@ -42,10 +51,26 @@ var _mats: Array = []     # mât, nacelle, pale
 var last_update_usec := 0
 
 
-static func rotor_rpm(strength: float) -> float:
-	if strength * STRENGTH_FULL_KMH < CUT_IN_KMH:
+## Facteur du vent au moyeu de hauteur `height_m` par rapport au vent du jeu (10 m), jamais sous 1.
+static func shear_factor(height_m: float) -> float:
+	return pow(maxf(height_m, SHEAR_REF_M) / SHEAR_REF_M, SHEAR_ALPHA)
+
+
+## Vent au moyeu (km/h) pour la force au sol `strength` (0 à 1, 1 = 60 km/h) et un moyeu à `height_m`.
+static func hub_kmh(strength: float, height_m: float) -> float:
+	return maxf(strength, 0.0) * STRENGTH_FULL_KMH * shear_factor(height_m)
+
+
+## Rotor en marche après ce pas : démarre à CUT_IN_KMH, s'arrête sous CUT_OUT_KMH (vent au moyeu).
+static func is_running(hub: float, was_running: bool) -> bool:
+	return hub >= CUT_OUT_KMH if was_running else hub >= CUT_IN_KMH
+
+
+## Vitesse cible du rotor (tr/min) pour un vent au moyeu de `hub` km/h, rotor en marche ou non.
+static func rotor_rpm(hub: float, running: bool = true) -> float:
+	if not running:
 		return 0.0
-	return RPM_BASE + RPM_PER_STRENGTH * clampf(strength, 0.0, 1.0)
+	return RPM_BASE + RPM_PER_STRENGTH * clampf(hub / STRENGTH_FULL_KMH, 0.0, 1.0)
 
 
 ## Cap de la nacelle (rad autour de y, rotor vers -z local) pour un vent qui souffle vers `dir`.
@@ -149,7 +174,8 @@ func set_points(points: Array) -> void:
 		if not is_finite(h) or h <= 0.0:
 			h = DEFAULT_HEIGHT_M
 		_points.append({"pos": Vector3(float(p["x"]), float(p["y"]), float(p["z"])), "height": h,
-			"yaw": 0.0, "rotor": float(hash(str(p.get("id", ""))) % 360) * PI / 180.0})
+			"shear": shear_factor(h), "yaw": 0.0, "rotor": float(hash(str(p.get("id", ""))) % 360) * PI / 180.0,
+			"omega": 0.0, "running": false})
 	_dirty = true
 
 
@@ -161,9 +187,19 @@ func active_count() -> int:
 	return n
 
 
-## Cap lissé (rad) et angle du rotor (rad) de l'éolienne `i` de set_points (tests).
+## Cap lissé (rad), angle (rad), vitesse (tr/min) et marche du rotor de l'éolienne `i` de set_points (tests).
 func turbine_state(i: int) -> Dictionary:
-	return {"yaw": _points[i]["yaw"], "rotor": _points[i]["rotor"]}
+	var p: Dictionary = _points[i]
+	return {"yaw": p["yaw"], "rotor": p["rotor"], "rpm": float(p["omega"]) * 60.0 / TAU, "running": p["running"]}
+
+
+## Scène figée des tests graphiques : rotors posés sur leur régime établi pour `wind`, sans inertie.
+func settle(wind: Dictionary) -> void:
+	var ground_kmh := maxf(float(wind.get("strength", 0.0)), 0.0) * STRENGTH_FULL_KMH
+	for p in _points:
+		var hub := ground_kmh * float(p["shear"])
+		p["running"] = is_running(hub, false)
+		p["omega"] = rotor_rpm(hub, p["running"]) * TAU / 60.0
 
 
 func _select(cam_pos: Vector3) -> void:
@@ -195,12 +231,19 @@ func update(wind: Dictionary, cam_pos: Vector3, dt_s: float) -> void:
 	var dir: Vector3 = wind.get("dir", Vector3.ZERO)
 	var has_dir := Vector2(dir.x, dir.z).length() > 1e-3
 	var target := facing_yaw(dir)
-	var spin := rotor_rpm(strength) * TAU / 60.0 * dt_s
+	var ground_kmh := maxf(strength, 0.0) * STRENGTH_FULL_KMH
+	var k_spin := 1.0 - exp(-maxf(dt_s, 0.0) / SPIN_TAU_S)
 	# Toutes les éoliennes du parcours suivent le vent, même hors de l'écran : pas de saut au retour.
 	for p in _points:
 		if has_dir:
 			p["yaw"] = step_yaw(float(p["yaw"]), target, dt_s)
-		p["rotor"] = fposmod(float(p["rotor"]) + spin, TAU)
+		var hub := ground_kmh * float(p["shear"])
+		var running := is_running(hub, bool(p["running"]))
+		p["running"] = running
+		var omega := float(p["omega"])
+		omega += (rotor_rpm(hub, running) * TAU / 60.0 - omega) * k_spin
+		p["omega"] = omega
+		p["rotor"] = fposmod(float(p["rotor"]) + omega * dt_s, TAU)
 	for s in _slots:
 		var i: int = s["point"]
 		if i < 0:

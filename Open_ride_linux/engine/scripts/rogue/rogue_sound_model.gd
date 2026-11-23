@@ -34,6 +34,7 @@ const EVENT_SOUNDS := {
 	"room_skipped": "rogue_room_skipped", "defeat": "rogue_defeat", "card_taken": "rogue_card_pick",
 	"purge": "rogue_purge", "z_refused": "rogue_refused", "shift_missed": "rogue_shift_missed",
 	"z_ok": "rogue_z_ok", "card_on": "rogue_card_on",
+	"target_in": "rogue_target_in", "target_out": "rogue_target_out",   # lot R26 : plage de la consigne
 }
 ## Priorité des sons (le plus haut garde sa voix à saturation) : défaite > boss > salle > réponse à Z (accepté ou
 ## refusé, lot R23) > Perfect Shift > parade > impact > le reste.
