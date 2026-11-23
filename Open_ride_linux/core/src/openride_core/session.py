@@ -3123,6 +3123,11 @@ class CoreSession:
         if run is None or not save or (self.sim is not None and self.config_path is None):
             return None, None
         order = self._elo_order(run["mode"], run["keys"], survivor, grandprix, track_ev)
+        if order is None and run["mode"] == "track" and track_ev is not None \
+                and track_ev.riders[track_mod.ME].out is not None:
+            # lot CH3b : bilan demandé (`end_session`, règle « A maintenu = bilan » de RT1/RT2) après l'élimination
+            # du cycliste, l'épreuve pas finie : rivaux encore en piste devant lui, dans l'ordre de la course
+            order = [[rid] for rid in track_ev.full_ranking()]
         if order is not None and run["mode"] == "survivor":
             # lot CH3b : les rivaux encore en course quand le cycliste sort sont rangés par distance (pas d'égalité
             # à la 1re place qui donnerait 25 points à chacun)
@@ -4336,15 +4341,6 @@ class CoreSession:
             self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
-            self._finish(True)
-        elif self._league_run is not None and self.survivor is not None \
-                and self.survivor.racers[SURVIVOR_ME].place is not None:
-            # lot CH3b : manche de la ligue en Dernier survivant, finie à l'élimination du cycliste ou à sa victoire
-            log.info("Ligue d'hiver : Dernier survivant fini pour le cycliste (%de).",
-                     self.survivor.racers[SURVIVOR_ME].place)
-            self._finish(True)
-        elif self._league_run is not None and self.track_event is not None and self.track_event.finished:
-            log.info("Ligue d'hiver : élimination du vélodrome finie.")   # lot CH3b : bilan tout de suite
             self._finish(True)
         elif self.grandprix is not None and self.grandprix.racers[GP_ME].finished is not None:
             log.info("%s : arrivée, %de sur %d.", _GP_TITLES[self.grandprix.mode],

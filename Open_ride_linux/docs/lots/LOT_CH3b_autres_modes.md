@@ -17,8 +17,9 @@ neutralisée, et personne n'y marque de points.
   - Il se court sur une boucle, avec une arche par rival (11).
   - L'écart entre arches (1, 2 ou 3 km) est choisi pour une course d'environ 27 min à l'allure du cycliste.
   - Les réglages `survivor.opponents` et `survivor.spread` sont ignorés.
-  - La séance finit à l'élimination du cycliste ou à sa victoire. Les rivaux encore en course sont alors rangés
-    par distance parcourue. Il n'y a donc pas d'égalité à la 1re place, qui donnerait 25 points à chacun.
+  - Comme partout depuis RT1/RT2, on continue à rouler après l'élimination ou la victoire, et la manche compte au
+    bilan (`end_session`). Si le bilan est demandé avant la fin de la course, les rivaux encore en course sont
+    rangés par distance parcourue. Il n'y a donc pas d'égalité à la 1re place, qui donnerait 25 points à chacun.
 - **Grand Prix** (semaines 3 et 7) :
   - Les objets suivent le réglage du cycliste (chaos, écart des boîtes).
   - Sur une boucle, la manche suit les tours de la ligue. Sur un parcours en ligne, elle suit la distance du
@@ -26,7 +27,8 @@ neutralisée, et personne n'y marque de points.
 - **Élimination au vélodrome** (semaine 4) :
   - Elle se court sur le vélodrome seulement, sans argument `track`, contre les 11 rivaux.
   - Les autres réglages sont ceux par défaut de l'épreuve.
-  - La séance finit avec l'épreuve.
+  - La manche compte au bilan, même demandé après l'élimination du cycliste avant la fin de l'épreuve : les
+    rivaux encore en piste sont alors classés devant lui, dans l'ordre de la course.
   - Une manche de route reste permise sur une piste : la boucle d'essai du Grand Prix du banc des menus est une
     copie du vélodrome.
 - Le journal `league_start` porte le mode de la manche, quel que soit ce mode.

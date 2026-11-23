@@ -239,12 +239,20 @@ def _week(s, tmp_path, k):
     s._league_today = lambda: start + timedelta(weeks=k, days=1)   # semaine k + 1 (les précédentes simulées)
 
 
-def _finish_round(s, run, tmp_path, errors, index, mode, seconds):
+def _finish_round(s, run, tmp_path, errors, index, mode, seconds, until=None):
     assert not errors, errors
     assert s.state.session_state == "RUNNING" and len(s.bots) == 11
     season = league.load(tmp_path / "ligue.json")
     assert [b.name for b in s.bots] == [r.short for r in season.rivals]
-    run(s, seconds)
+    if until is None:
+        run(s, seconds)
+    else:
+        for _ in range(int(seconds // 10)):
+            if until(s) or s.state.session_state != "RUNNING":
+                break
+            run(s, 10)
+    if s.state.session_state == "RUNNING":   # après l'arrivée on roule encore : bilan demandé (RT1, RT2)
+        s._on_command("end_session", {"save": True}, 90)
     assert s.state.session_state == "FINISHED" and not errors, (s.state.session_state, errors)
     validator("state").validate(s.state.to_dict())
     box = s.state.summary["league"]
@@ -270,7 +278,9 @@ def test_survivor_round_eleven_arches(env):
     s.cfg.survivor.opponents = 4   # réglage du mode ignoré : la ligue engage ses 11 rivaux
     s._on_command("start", {"mode": "survivor", "league": True}, 4)
     assert s.survivor is not None and len(s.survivor.arches) == 11
-    _finish_round(s, run, tmp_path, errors, 1, "survivor", 4000)
+    _finish_round(s, run, tmp_path, errors, 1, "survivor", 4000,
+                  until=lambda x: x.survivor.racers["me"].place is not None)
+    assert s.state.summary["league"]["of"] == 12
 
 
 def test_grandprix_round_keeps_objects_and_league_laps(env, short_round):
@@ -299,7 +309,8 @@ def test_track_round_is_an_elimination_on_the_velodrome(env):
     _week(s2, tmp_path, 3)
     s2._on_command("start", {"mode": "track", "league": True}, 2)
     assert s2.track_event is not None and s2.track_event.event_id == "elimination"
-    _finish_round(s2, run, tmp_path, errors2, 3, "track", 7200)
+    _finish_round(s2, run, tmp_path, errors2, 3, "track", 7200,
+                  until=lambda x: x.track_event.riders["me"].out is not None or x.track_event.finished)
 
 
 def test_road_round_allowed_on_a_velodrome_loop(env, short_round):
