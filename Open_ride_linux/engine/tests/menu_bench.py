@@ -32,7 +32,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
   `contient` et `absent` : textes cherchés dans la ligne d'état, les éléments « libellé — détail », les pastilles
   des appareils et la carte de détail ; `focus`, `elements`, `statut`, `edition`), `menu_cache`, `config` ({clé: valeur} de
   config.toml, `null` : absente), `journal` (`core` ou `engine`) + `motif`, `fichier` (chemin ou motif
-  glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente » ;
+  glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente », et "≠départ" « présente et différente de la valeur du lancement »
+  (qualité changée au menu quand `--qualite` impose celle du départ) ;
 - autres : `commande` (+ `args`), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
   route, `delai` 900 s par défaut), `capture` (nom), `relancer` (core et engine arrêtés proprement puis relancés sur le
   même HOME : persistance des réglages) ;
@@ -222,13 +223,24 @@ APPAREILS = {"prets": READY, "unilateral": UNILATERAL}
 # Réglages de départ du banc (le scénario peut les changer) : rendu léger sous Xvfb, fenêtre et non plein écran.
 BASE_CONFIG = {"render.quality": "low", "render.display": "windowed"}
 
+
+def config_matches(got: Any, want: Any, start: Any) -> bool:
+    """Valeur lue dans config.toml pour une étape `config` : "*" présente, "≠départ" présente et différente de la
+    valeur écrite au lancement (`start`), sinon égale à `want`."""
+    if want == "*":
+        return got is not None
+    if want == "≠départ":
+        return got is not None and got != start
+    return got == want
+
 STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris", "element", "point", "click",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "distance_km", "capture", "relancer", "delai", "voies", "note",
              "depart_monde_ouvert"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "grand_prix_parcours", "reseau", "caches_reels", "etapes", "demo_jeu"}
+             "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels", "etapes",
+             "demo_jeu"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -278,6 +290,35 @@ def write_grand_prix_routes(routes: Path) -> None:
         manifest = json.loads(mpath.read_text(encoding="utf-8"))
         manifest["name"] = name
         manifest["library"] = {**(manifest.get("library") or {}), "name": name, "tags": ["grandprix"]}
+        mpath.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+# Caches de rendu de Godot et du pilote graphique, rangés dans le HOME (lot ML2) : shaders compilés, pipelines Vulkan,
+# cache de Mesa et de NVIDIA. Le HOME du banc étant neuf, chaque passage partait à froid (15 s de compilation au
+# premier rendu sur le PC, banc rML2 du 17 novembre) ; `--caches-rendu DOSSIER` les garde d'un passage à l'autre.
+RENDER_CACHES = (".local/share/godot/app_userdata/OpenRide Engine/shader_cache",
+                 ".local/share/godot/app_userdata/OpenRide Engine/vulkan", ".cache/mesa_shader_cache", ".cache/nvidia")
+
+
+def copy_render_caches(src_home: Path, dst_home: Path) -> int:
+    """Copie les caches de rendu (RENDER_CACHES) de `src_home` vers `dst_home` ; renvoie le nombre de dossiers copiés."""
+    n = 0
+    for rel in RENDER_CACHES:
+        if (src_home / rel).is_dir():
+            shutil.copytree(src_home / rel, dst_home / rel, dirs_exist_ok=True)
+            n += 1
+    return n
+
+
+def write_demo_copies(routes: Path, n: int) -> None:
+    """`n` copies de la démo (« Copie 01 »…), parcours libres : liste des parcours aussi longue que celle du pack
+    des cols, sans le compilateur (lot ML2)."""
+    for i in range(1, n + 1):
+        rid, name = f"copie-{i:02d}", f"Copie {i:02d}"
+        shutil.copytree(ENGINE_DIR / "demo" / "demo.world", routes / f"{rid}.world")
+        mpath = routes / f"{rid}.world" / "manifest.json"
+        manifest = json.loads(mpath.read_text(encoding="utf-8"))
+        manifest["name"] = name
         mpath.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
@@ -664,8 +705,8 @@ class Run:
                 data = tomllib.loads(self.config.read_text(encoding="utf-8"))
             except (OSError, tomllib.TOMLDecodeError) as exc:
                 data = {"_erreur": str(exc)}
-            bad = {k: config_get(data, k) for k, v in want.items()
-                   if (config_get(data, k) is None if v == "*" else config_get(data, k) != v)}
+            bad = {k: config_get(data, k) for k, v in want.items() if not config_matches(config_get(data, k), v,
+                                                                                      self.start_config.get(k))}
             if not bad or now() >= deadline:
                 break
             time.sleep(0.2)
@@ -767,6 +808,8 @@ class Run:
             install_velodromes(self.routes)
         if doc.get("grand_prix_parcours"):   # parcours d'essai du Grand Prix (lot GP13), sans le compilateur
             write_grand_prix_routes(self.routes)
+        if doc.get("parcours_copies"):   # liste des parcours longue (lot ML2) : copies de la démo
+            write_demo_copies(self.routes, int(doc["parcours_copies"]))
         if doc.get("plans"):
             from openride_core.plans import install_builtin
             install_builtin(self.home / "OpenRide" / "Plans", self.home / "OpenRide" / "Workouts")
@@ -782,12 +825,16 @@ class Run:
                             encoding="utf-8")
         for rel, members in doc.get("archives", {}).items():
             write_archive(self.home / rel, members)
+        if self.args.caches_rendu is not None:   # caches de rendu d'un passage précédent (lot ML2)
+            copy_render_caches(self.args.caches_rendu, self.home)
         self.state_port, self.cmd_port = free_udp_ports(2)
         self.config = self.tmp / "config.toml"
+        # Valeurs écrites au lancement, gardées pour la valeur « ≠départ » des étapes `config` (--qualite change
+        # la qualité de départ : un scénario qui la change au menu ne peut pas viser une valeur fixe, 22 novembre).
+        self.start_config = {**BASE_CONFIG, **self.real_caches_config(), **doc.get("config", {}),
+                             **({"render.quality": self.args.qualite} if self.args.qualite else {})}
         self.config.write_text(f"[ipc]\nport_state = {self.state_port}\nport_commands = {self.cmd_port}\n"
-                               + config_text({**BASE_CONFIG, **self.real_caches_config(), **doc.get("config", {}),
-                                             **({"render.quality": self.args.qualite} if self.args.qualite else {})}),
-                               encoding="utf-8")
+                               + config_text(self.start_config), encoding="utf-8")
         self.control = self.tmp / "click.jsonl"
         scen = {**APPAREILS[doc.get("appareils", "prets")], "control_file": str(self.control)}
         (self.tmp / "scenario.json").write_text(json.dumps(scen), encoding="utf-8")
@@ -831,6 +878,8 @@ class Run:
         sup = build_supervisor(["--config", str(self.config)], env={"GODOT": str(a.godot),
                                                                      "OPENRIDE_ENGINE": str(ENGINE_DIR)})
         cmd += sup.engine_cmd[sup.engine_cmd.index("--"):] + [f"--routes-dir={self.routes}", "--test-mode"]
+        if a.sonde:   # sonde de performance de l'engine (lot X13) : moteur.csv, saccades.csv, taches.csv (lot ML2)
+            cmd.append(f"--perf-probe={self.out / f'sonde{suffix}' / 'moteur.csv'}")
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
@@ -880,6 +929,8 @@ class Run:
             self.core = None
 
     def cleanup(self) -> None:
+        if self.args.caches_rendu is not None and self.home != Path():   # caches gardés pour le passage suivant
+            copy_render_caches(self.home, self.args.caches_rendu)
         if not self.args.keep:
             shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -1061,6 +1112,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--engine-arg", action="append", default=[], help="argument ajouté à la commande de Godot")
     ap.add_argument("--qualite", choices=["low", "medium", "high"],
                     help="préréglage graphique imposé à tous les scénarios (render.quality, défaut : low ou celui du scénario)")
+    ap.add_argument("--caches-rendu", type=Path, metavar="DOSSIER",
+                    help="caches de rendu (shaders, pipelines, pilote) repris de DOSSIER et rangés dedans à la fin : "
+                         "démarrage à chaud comme le jeu (défaut : HOME neuf, démarrage à froid)")
+    ap.add_argument("--sonde", action="store_true",
+                    help="sonde de performance de l'engine : sonde/moteur.csv et saccades.csv de chaque passage (lot ML2)")
     args = ap.parse_args(argv)
     known = scenarios()
     if args.list:

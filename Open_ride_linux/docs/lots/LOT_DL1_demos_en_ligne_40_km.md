@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Les parcours en ligne du jeu de base font au moins 40 km (Col du lacet 40 km, Tour des nouveaux paysages et Route des Érables 42,5 km, Route du Sud 48,5 km) ; variante de recette courte gardée pour les bancs | Python, JSON | NT1, DB1, DB3, DJ1, O37 | Petite | En PR |
+| Les parcours en ligne du jeu de base font au moins 40 km (Col du lacet 40 km, Tour des nouveaux paysages, Route des Érables et Route des Trois Forêts 42,5 km, Route du Sud 48,5 km) ; variante de recette courte gardée pour les bancs | Python, JSON | NT1, DB1, DB3, DJ1, O37 | Petite | En PR |
 
 Demande du propriétaire du 20 novembre 2026 (18 h 28) : « Reprends les circuits en ligne pour qu'ils fassent au minimum 40 km », puis « fais au plus simple ». Choix (carte, 18 h 32) : rallonger en ligne ; 18 h 33 : « rallonger le Col du lacet aussi » ; 18 h 34 : « faire une version finale de 40 km et garder la version de 5 km pour les bancs le temps de finir le jeu ».
 
@@ -22,8 +22,10 @@ Demande du propriétaire du 20 novembre 2026 (18 h 28) : « Reprends les circuit
 | Tour des nouveaux paysages | 14,2 km | 42,5 km (21 blocs) | 840 m | 6 → 808 m | 6,5 % |
 | Route des Érables | 6,1 km | 42,5 km (21 blocs) | 1 407 m | 6 → 1 413 m | 5,0 % |
 | Route du Sud | 12,1 km | 48,5 km (24 blocs) | 398 m | 6 → 387 m | 5,0 % |
+| Route des Trois Forêts (V6-r4, arrivée sur main le 21 novembre) | 6 km | 42,5 km (21 blocs) | 1 644 m | 6 → 1 651 m | 7,0 % |
 
-- Lieux : chaque clé a assez de noms pour ses blocs (3 par paysage, 4 par biome de la Route du Sud, 10 pour le Japon) ; un lieu de sommet (`SUMMIT_KEYS` : col, plateau, belvédère japonais) ne porte son premier nom qu'au dernier bloc du parcours (« Col des Cèdres », « Col des Lamas »).
+- Lieux : chaque clé a assez de noms pour ses blocs (3 par paysage, 4 par biome de la Route du Sud, 7 par forêt de la Route des Trois Forêts, 10 pour le Japon) ; un lieu de sommet (`SUMMIT_KEYS` : col, plateau, belvédère japonais, col des nuages) ne porte son premier nom qu'au dernier bloc du parcours (« Col des Cèdres », « Col des Lamas », « Col des Nuages »).
+- Mise à jour sur main du 23 novembre (après la règle unique sol / route #946, générateur du Col du lacet 0.5.0) : le Col du lacet de 40 km passe en 0.6.0 ; la Route des Trois Forêts, entrée au jeu de base entre-temps, suit la même règle sans rien de particulier.
 - Copies embarquées : `engine/demo/demo.world` reste la variante de recette (5 km, tests de l'engine) ; `engine/demo/jeu/demo.world` (40 km, 5 Mo) est copiée par `ensure_demo_world` dans le dossier des parcours du joueur (la séance n'attend pas l'écriture de 14 s). Générateur 0.5.0 : un Col du lacet de 5 km d'un joueur est remplacé ; celui de recette d'un banc est gardé.
 - Suite de tests du core : `OPENRIDE_DEMO_RECETTE=1` (posé par `core/tests/conftest.py`) fait poser le Col du lacet de recette par `ensure_demo_world` ; ses séances d'essai gardent ainsi le parcours de 5 km sur lequel elles ont été écrites.
 - Fiches : la longueur de la description d'une route ouverte vient de ses blocs (`{km}`), jeu ou recette ; une démonstration de recette n'est pas « périmée » pour les contenus de départ.

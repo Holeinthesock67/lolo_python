@@ -135,6 +135,36 @@ ERG_SHORT_ZWO = """<workout_file>
 """
 
 
+# Caches de shaders (lot PI1) : le HOME temporaire du banc les vidait à chaque passage, et chaque banc mesurait un
+# premier lancement (banc rPI1 : ~25 s de compilation de shaders au chargement, en low, medium et high). « chaud » :
+# caches de Godot (shaders, pipelines Vulkan) et du pilote gardés d'un passage à l'autre dans un dossier du banc,
+# comme le jeu au quotidien ; « froid » : vides, comme un premier lancement après une installation.
+SHADER_CACHE_LINKS = (
+    (".local/share/godot/app_userdata/OpenRide Engine/shader_cache", "godot_shader_cache"),
+    (".local/share/godot/app_userdata/OpenRide Engine/vulkan", "godot_vulkan"),
+    (".cache/nvidia", "nvidia"),
+    (".cache/mesa_shader_cache", "mesa"),
+    (".cache/mesa_shader_cache_db", "mesa_db"),
+)
+SHADER_CACHE_DIR = Path.home() / ".cache" / "openride-bench" / "shaders"
+
+
+def link_shader_caches(home: Path, mode: str, root: Path) -> list[Path]:
+    """Mode « chaud » : liens du HOME temporaire `home` vers les caches gardés dans `root` (créés au besoin) ;
+    « froid » : rien (caches vides). Renvoie les liens posés."""
+    if mode != "chaud":
+        return []
+    out = []
+    for rel, name in SHADER_CACHE_LINKS:
+        target = root / name
+        target.mkdir(parents=True, exist_ok=True)
+        link = home / rel
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(target, target_is_directory=True)
+        out.append(link)
+    return out
+
+
 class BenchProc(Proc):
     """Comme Proc, sans erreur si le processus écrit encore après la fermeture de son journal."""
 
@@ -393,6 +423,7 @@ class Bench:
         home = tmp / "home"
         home.mkdir()
         self.home = home
+        link_shader_caches(home, a.shaders, a.shader_cache_dir)
         for name, table in (("powerups.toml", self.powerups), ("grandprix.toml", self.grandprix)):
             if table is not None:
                 (home / "OpenRide").mkdir(exist_ok=True)
@@ -545,6 +576,7 @@ class Bench:
                 data = json.loads(got[1].group(1))
                 info.update(ok=bool(data.get("ok")), fps=data.get("fps"), meshes=data.get("meshes"),
                             quality=data.get("quality"),
+                            session_state=str(data.get("session_state", "")),   # lot NI1 : plus de ligne d'état à l'écran
                             draw_calls=data.get("draw_calls"),
                             decor={k: int(data.get("decor", {}).get(k, 0)) for k in DECOR_KINDS},
                             sounds=dict(data.get("decor", {}).get("sounds", {})),
@@ -802,13 +834,11 @@ class Bench:
                         f"down {downs[0]['ts'] - t0 - t:+.1f} s{back}" if downs else "aucune ligne down")
             if act == "silence" and float(ev.get("seconds", 0)) >= 6:
                 end = t + float(ev["seconds"])
-                seen = [s for s in self.shots if t + 5 <= s["t"] <= end + 1
-                        and "PAUSED" in s.get("widgets", {}).get("status", "")]
-                r.check(bool(seen), f"trainer muet à {t:.0f} s : pause visible à l'écran",
-                        f"{seen[0]['file']} : « {seen[0]['widgets']['status']} »" if seen
-                        else "aucune capture ne montre PAUSED")
+                seen = [s for s in self.shots if t + 5 <= s["t"] <= end + 1 and s.get("session_state") == "PAUSED"]
+                r.check(bool(seen), f"trainer muet à {t:.0f} s : séance en pause dans l'engine",
+                        f"{seen[0]['file']} : PAUSED" if seen else "aucune capture en PAUSED")
                 after = [s for s in self.shots if end + 4 <= s["t"] <= end + 25]
-                running = [s for s in after if "RUNNING" in s.get("widgets", {}).get("status", "")]
+                running = [s for s in after if s.get("session_state") == "RUNNING"]
                 if after:
                     r.check(bool(running), f"reprise après le silence de {t:.0f} s",
                             f"{running[0]['file']} : RUNNING" if running else "toujours en pause à l'écran")
@@ -1030,7 +1060,7 @@ def write_html(b: Bench) -> None:
     for s in b.shots:
         w = s.get("widgets", {})
         txt = " · ".join(f"{k} : {v}" for k, v in w.items() if v and k in
-                         ("power", "speed", "grade", "hr", "status", "banner", "erg_title", "erg_target"))
+                         ("power", "speed", "grade", "hr", "notice", "banner", "erg_title", "erg_target"))
         shots.append(f'<figure><a href="{s["file"]}"><img src="{s["file"]}" loading="lazy" alt="{html.escape(s["tag"])}"></a>'
                      f'<figcaption><b>{s["t"]:.0f} s · {html.escape(s["tag"])}</b> · {s.get("fps", "?")} img/s'
                      f' · {s.get("meshes", "?")} maillages · {s.get("draw_calls", "?")} appels de dessin'
@@ -1128,7 +1158,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
-    ap.add_argument("--mode", choices=("ride", "wtf", "survivor", "grandprix"),
+    ap.add_argument("--mode", choices=("ride", "wtf", "survivor", "grandprix", "race"),
                     help="mode de la séance (start.mode), ex. survivor ; défaut : bench.mode du scénario, sinon ride")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")
@@ -1172,6 +1202,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))
     ap.add_argument("--keep", action="store_true", help="garder le HOME temporaire")
+    ap.add_argument("--shaders", default="chaud", choices=("chaud", "froid"),
+                    help="caches de shaders : chaud (défaut, gardés d'un passage à l'autre comme au quotidien) ou "
+                         "froid (vides, premier lancement après une installation) (lot PI1)")
+    ap.add_argument("--shader-cache-dir", type=Path, default=SHADER_CACHE_DIR,
+                    help="dossier des caches de shaders gardés en mode chaud (défaut ~/.cache/openride-bench/shaders)")
     ap.add_argument("--list", action="store_true", help="énumérer les scénarios et quitter")
     ap.add_argument("--muet", action="store_true", help="sans bips de départ et de fin")
     args = ap.parse_args(argv)

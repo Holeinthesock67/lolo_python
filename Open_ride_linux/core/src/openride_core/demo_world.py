@@ -18,7 +18,8 @@ synthétique, pour être identique octet pour octet. Lot DL1 : 40 km dans le jeu
     python -m openride_core.tools.fake_world --demo --recette --out ../engine/demo
 
 Les parcours de démonstration des biomes (lot U19 ; trois dans le jeu de base, le tour gravel en plus pour les recettes, lot O37) et le
-circuit en boucle « Circuit des Prés » (lot O38, courses en tours), le récif sous la mer « Récif des tortues » (lot SM1), la boucle « Volcan en flammes » (lot DB2), la « Route du Sud » et la boucle « Route du Grand Nord » (lot DB3) sont écrits par `write_biome_demo_worlds`, qui
+circuit en boucle « Circuit des Prés » (lot O38, courses en tours), le récif sous la mer « Récif des tortues » (lot SM1), la boucle « Volcan en flammes » (lot DB2), la « Route du Sud » et la boucle « Route du Grand Nord » (lot DB3), la « Route des Trois Forêts » (lot V6-r4), la « Boucle de la Corniche » et la « Route des
+Vignes » (parcours du Grand Prix, lot GP13b) sont écrits par `write_biome_demo_worlds`, qui
 appelle le générateur du compilateur `openride_compiler.demo_biomes` (lot O37 ; compilateur requis) :
     openride-core demo-biomes [--out DOSSIER] [--recette]
 
@@ -137,11 +138,12 @@ def build_segments(route: dict) -> list[dict]:
 # Version du générateur, portée par le manifeste (`compiler.version`). 0.2.0 (7 novembre 2026) : terrain proche
 # dégagé sous la chaussée (`synthetic_terrain.clear_road`) ; 0.3.0 (8 novembre 2026, lot O37) : la
 # démonstration porte son nom de parcours `DEMO_TITLE` ; 0.4.0 (12 novembre 2026, lot W17) : couche biome
-# synthétique (forêt et alpages, `synthetic_biome.py`) ; 0.5.0 (20 novembre 2026, lot DL1) : 40 km au lieu de 5. Une
-# démonstration plus ancienne du dossier des
+# synthétique (forêt et alpages, `synthetic_biome.py`) ; 0.5.0 (21 novembre 2026) : règle unique sol / route
+# (`road_ground.py` : route de l'engine, talus appuyés) ; 0.6.0 (23 novembre 2026, lot DL1) : 40 km au lieu de 5.
+# Une démonstration plus ancienne du dossier des
 # parcours est remplacée par `ensure_demo_world`.
 FAKE_WORLD_NAME = "openride-fake-world"
-FAKE_WORLD_VERSION = "0.5.0"
+FAKE_WORLD_VERSION = "0.6.0"
 
 
 def build_manifest(name: str, route: dict, created: str | None = None,

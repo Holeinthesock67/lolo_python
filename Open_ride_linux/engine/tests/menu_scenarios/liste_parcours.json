@@ -1,0 +1,182 @@
+{
+  "description": "Lot ML2 : liste des parcours aussi longue que celle du pack des cols (démo et 20 copies), parcourue au chargement du décor de fond puis une fois chargé ; 12 pas vers le bas et 12 vers le haut, une seconde entre deux. Avec --sonde, saccades.csv dit ce que coûte chaque pas (menu appui, menu affichage, bip) ; avec --caches-rendu, le départ est à chaud comme dans le jeu.",
+  "voies": [
+    "clavier",
+    "click"
+  ],
+  "parcours_copies": 20,
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 60
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "titre": "Parcours",
+      "contient": [
+        "Copie 20"
+      ],
+      "delai": 30
+    },
+    {
+      "attendre": 3
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "PLUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "appui": "MINUS_SHORT"
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "ecran": "routes",
+      "focus": "demo"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "home"
+    }
+  ]
+}

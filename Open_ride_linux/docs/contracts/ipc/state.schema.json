@@ -781,7 +781,7 @@
         },
         "gp": {
           "type": "object",
-          "description": "Révision 1.7 (lot GP2) : bilan du Grand Prix des objets.",
+          "description": "Révision 1.7 (lot GP2) : bilan du Grand Prix des objets. Révision 1.23 (lot CR1) : aussi le bilan de la Course, avec `mode` = « race ».",
           "required": [
             "place",
             "of",
@@ -840,6 +840,13 @@
             },
             "distance_km": {
               "type": "number"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "race"
+              ],
+              "description": "Facultatif, révision 1.23 (lot CR1) : « race » pour le bilan de la Course (aucun objet lancé ni reçu)."
             }
           }
         },
@@ -1025,6 +1032,204 @@
               ],
               "minimum": 1,
               "description": "Place du résultat dans sa table (1 : record), null hors des 10 meilleurs ou sans chrono."
+            }
+          }
+        },
+        "elo": {
+          "type": "object",
+          "description": "Facultatif, révision 1.22 (lot BOT-elo) : cote Elo du cycliste mise à jour par cette course (Grand Prix, Dernier survivant, épreuve de piste en groupe, réglage `bots.elo` = on) ; absent si la course ne compte pas (arrêtée avant l'arrivée, séance non gardée).",
+          "required": [
+            "mode",
+            "place",
+            "of",
+            "before",
+            "after",
+            "delta"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "place": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "before": {
+              "type": "integer"
+            },
+            "after": {
+              "type": "integer"
+            },
+            "delta": {
+              "type": "integer"
+            }
+          }
+        },
+        "bots_effort": {
+          "type": "object",
+          "description": "Facultatif, révision 1.22 (lot GP-niv) : effort visé par les bots à profil de la séance (moyenne des bots) et leur puissance moyenne réelle, face à `avg_power_w` du cycliste.",
+          "required": [
+            "objective",
+            "ftp_pct",
+            "target_w",
+            "duration_s",
+            "bots_avg_w"
+          ],
+          "properties": {
+            "objective": {
+              "type": "string",
+              "enum": [
+                "recovery",
+                "endurance",
+                "tempo",
+                "threshold",
+                "max"
+              ]
+            },
+            "ftp_pct": {
+              "type": "number",
+              "minimum": 0
+            },
+            "target_w": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_s": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bots_avg_w": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          }
+        },
+        "league": {
+          "type": "object",
+          "description": "Facultatif, révision 1.30 (lot CH3) : encart « Ligue d'hiver » du bilan d'une manche courue jusqu'à l'arrivée : manche, place et points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement autour du cycliste.",
+          "required": [
+            "round",
+            "of_rounds",
+            "title",
+            "place",
+            "of",
+            "points",
+            "general_before",
+            "general_after",
+            "moved",
+            "easy",
+            "rows"
+          ],
+          "properties": {
+            "round": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "of_rounds": {
+              "type": "integer",
+              "const": 8
+            },
+            "title": {
+              "type": "string"
+            },
+            "place": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "points": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "general_before": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "general_after": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "moved": {
+              "type": "string"
+            },
+            "easy": {
+              "type": "boolean"
+            },
+            "rows": {
+              "type": "array",
+              "maxItems": 5,
+              "items": {
+                "type": "object",
+                "required": [
+                  "place",
+                  "id",
+                  "name",
+                  "style",
+                  "team",
+                  "color",
+                  "points",
+                  "ran",
+                  "wins",
+                  "me"
+                ],
+                "properties": {
+                  "place": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 32
+                  },
+                  "style": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "team": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "color": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "points": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "ran": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "wins": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "me": {
+                    "type": "boolean"
+                  }
+                }
+              }
             }
           }
         }
@@ -1378,7 +1583,8 @@
               "truck",
               "bus",
               "moto",
-              "tractor"
+              "tractor",
+              "team_car"
             ]
           },
           "color": {
@@ -1847,7 +2053,9 @@
               "z_refused",
               "shift_missed",
               "z_ok",
-              "card_on"
+              "card_on",
+              "target_in",
+              "target_out"
             ]
           }
         },
@@ -2021,6 +2229,15 @@
           "maxLength": 24,
           "description": "Facultatif, révision 1.17 (lot R23) : carte du deck qui vient de se déclencher dans cette trame (événement card_on : overdrive, heal, cursed, springboard, polarity, condition de puissance ou de cadence atteinte), sinon null."
         },
+        "power_judged_w": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Facultatif, révision 1.28 (lot R26) : puissance jugée par le mode (moyenne des judged_power_s dernières secondes, 8 s), sur laquelle se jugent consignes, surchauffe et cartes ; l'engine l'affiche à la place de power_3s pendant la run."
+        },
+        "in_target": {
+          "type": "boolean",
+          "description": "Facultatif, révision 1.28 (lot R26) : puissance jugée dans la plage de la consigne (échauffement, salle, boss), avec la marge de sortie ; false ailleurs."
+        },
         "adrenaline_trend": {
           "type": "object",
           "required": [
@@ -2028,7 +2245,7 @@
             "cause",
             "overheat_in_s"
           ],
-          "description": "Facultatif, révision 1.17 (lot R23) : débit continu de l'adrénaline par seconde (hors gains ponctuels), sa cause et les secondes avant la surchauffe.",
+          "description": "Facultatif, révision 1.17 (lot R23) : débit continu de l'adrénaline par seconde (hors gains ponctuels), sa cause et les secondes avant la surchauffe ; révision 1.28 (lot R26) : aussi à l'échauffement, qui charge l'adrénaline.",
           "properties": {
             "rate_per_s": {
               "type": "number"
@@ -2430,7 +2647,7 @@
     },
     "gp": {
       "type": "object",
-      "description": "Facultatif, révision 1.7 (lot GP2) : présent seulement en Grand Prix des objets (`start` avec `mode: grandprix`). Les effets changent la vitesse virtuelle seulement ; la pente envoyée au trainer n'en dépend jamais.",
+      "description": "Facultatif, révision 1.7 (lot GP2) : présent seulement en Grand Prix des objets (`start` avec `mode: grandprix`). Les effets changent la vitesse virtuelle seulement ; la pente envoyée au trainer n'en dépend jamais. Révision 1.23 (lot CR1) : aussi en Course (`start` avec `mode: race`), avec `mode` = « race ».",
       "required": [
         "place",
         "of",
@@ -2635,6 +2852,13 @@
           "minItems": 2,
           "maxItems": 2,
           "description": "Sur un circuit seulement : [tour en cours, tours]."
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "race"
+          ],
+          "description": "Facultatif, révision 1.23 (lot CR1) : « race » pour la Course (course classique contre les bots, `start` avec `mode: race`) : la même course sans objet (`held` null, `obj` et `boxes` vides) ; absent en Grand Prix des objets."
         }
       },
       "additionalProperties": false
