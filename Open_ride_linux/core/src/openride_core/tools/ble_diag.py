@@ -9,6 +9,7 @@ Exemples (sur le PC Ubuntu, Zwift et téléphone déconnectés) :
     openride-ble-diag trainer --name "HomeTrainer" --duration 30
     openride-ble-diag trainer --name "HomeTrainer" --control --sim-grade 4 --erg 150
     openride-ble-diag click --duration 60
+    openride-ble-diag spindown --duration 90       # sonde d'étalonnage FTMS (lot ET1)
 
 Chaque commande écrit un rapport JSON dans ./spike_reports/.
 """
@@ -220,6 +221,20 @@ async def cmd_trainer(args: argparse.Namespace) -> None:
     save_report("trainer", report)
 
 
+# --- spindown (lot ET1) ---------------------------------------------------------------
+
+async def cmd_spindown(args: argparse.Namespace) -> None:
+    """Sonde d'étalonnage : le trainer fait-il vraiment le Spin Down Control qu'il annonce ?"""
+    from .spindown import probe
+
+    dev = await find_device(args.name, args.address, args.timeout)
+    print("Trainer trouvé. Avant de commencer : Zwift, montre et téléphone déconnectés du trainer.")
+    async with BleakClient(dev, timeout=args.timeout) as client:
+        report = await probe(client, duration_s=args.duration, say=lambda text: print(">>> " + text))
+    path = save_report("spindown", report)   # sans nom ni adresse du trainer
+    print(f"Résultat : {report.get('verdict')}. Rapport : {path}")
+
+
 # --- click ----------------------------------------------------------------------------
 
 async def cmd_click(args: argparse.Namespace) -> None:
@@ -338,6 +353,11 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--sim-grade", type=float, default=None, help="pente à tester en SIM (%%)")
     t.add_argument("--erg", type=float, default=None, help="puissance à tester en ERG (W)")
 
+    sd = sub.add_parser("spindown", help="sonde d'étalonnage FTMS du trainer (lot ET1, 5 min sur le vélo)")
+    sd.add_argument("--name", default="HomeTrainer", help="partie du nom annoncé (défaut : HomeTrainer)")
+    sd.add_argument("--address", help="adresse MAC (prioritaire sur --name)")
+    sd.add_argument("--duration", type=float, default=90.0, help="attente du résultat après la commande (s)")
+
     c = sub.add_parser("click", help="diagnostic du Zwift Click")
     c.add_argument("--name", help="nom annoncé (défaut : Zwift Click)")
     c.add_argument("--address", help="adresse MAC")
@@ -353,7 +373,7 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("bleak").setLevel(logging.INFO if args.verbose else logging.WARNING)
-    handler = {"scan": cmd_scan, "trainer": cmd_trainer, "click": cmd_click, "trace": cmd_trace}[args.command]
+    handler = {"scan": cmd_scan, "trainer": cmd_trainer, "spindown": cmd_spindown, "click": cmd_click, "trace": cmd_trace}[args.command]
     try:
         asyncio.run(handler(args))
     except KeyboardInterrupt:

@@ -1087,6 +1087,19 @@ def write_reports(out: Path, runs: list[Run]) -> Path:
     return path
 
 
+def parse_partie(text: str | None) -> tuple[int, int] | None:
+    """« K/N » de --partie, avec 1 ≤ K ≤ N ; None sans découpage."""
+    if not text:
+        return None
+    try:
+        k, n = (int(x) for x in text.split("/"))
+    except ValueError:
+        raise ValueError(f"--partie attend K/N (par exemple 2/3), reçu {text!r}") from None
+    if not 1 <= k <= n:
+        raise ValueError(f"--partie attend 1 ≤ K ≤ N, reçu {text!r}")
+    return k, n
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
@@ -1095,6 +1108,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--voies", default=",".join(VOIES), help="voies d'entrée, séparées par des virgules")
     ap.add_argument("--rotation", action="store_true",
                     help="une seule voie par scénario, à tour de rôle (intégration continue : trois fois plus court)")
+    ap.add_argument("--partie", metavar="K/N",
+                    help="joue seulement la partie K des N (scénarios K, K+N, K+2N…, rotation des voies inchangée) : "
+                         "intégration continue répartie sur N machines")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel au lieu de Xvfb")
     ap.add_argument("--out", type=Path)
     ap.add_argument("--captures", choices=["echecs", "ecrans"], default="echecs",
@@ -1120,6 +1136,11 @@ def main(argv: list[str] | None = None) -> int:
             doc = load_scenario(path)
             print(f"{name:24s} {','.join(doc.get('voies', VOIES)):22s} {doc.get('description', '')}")
         return 0
+    try:
+        partie = parse_partie(args.partie)
+    except ValueError as exc:
+        print(exc)
+        return 2
     voies = [v for v in args.voies.split(",") if v]
     if any(v not in VOIES for v in voies):
         print(f"voies inconnues : {args.voies} (permises : {', '.join(VOIES)})")
@@ -1145,6 +1166,8 @@ def main(argv: list[str] | None = None) -> int:
     out = args.out or Path(tempfile.mkdtemp(prefix="openride-banc-menus-"))
     runs: list[Run] = []
     for i, (name, path) in enumerate(chosen):
+        if partie and i % partie[1] != partie[0] - 1:
+            continue   # l'indice i reste celui de la liste entière : la rotation des voies ne dépend pas du découpage
         doc = load_scenario(path)
         mine = [v for v in voies if v in doc.get("voies", VOIES)]
         if args.rotation and mine:
