@@ -614,7 +614,8 @@ def test_loop_blocks_must_fill_the_loop(mbw) -> None:
 
 # --- Parcours du Grand Prix des objets (lot GP13b) -------------------------------------------------------------
 
-GRAND_PRIX = ("demo-circuit", "demo-corniche", "demo-vignes")
+GRAND_PRIX = ("demo-circuit", "demo-corniche", "demo-vignes",
+              "demo-recif", "demo-volcan", "demo-biomes-nord")   # lot GPL1 : boucles restées libres, étiquette `libre`
 
 
 def _radius_min(route: dict) -> float:
@@ -632,12 +633,13 @@ def test_grand_prix_routes_are_wide_paved_and_without_hairpin(demo_set: Path, mb
     n'a pas d'épingle (rayon de virage d'au moins 25 m)."""
     from openride_core import mode_routes
 
-    tagged = sorted(n for n in mbw.GAME_DEMOS if mode_routes.mode_of(mbw.library_of(n)) == "grandprix")
+    tagged = sorted(n for n in mbw.GAME_DEMOS if mode_routes.mode_of(mbw.library_of(n), "loop") == "grandprix")
     assert tagged == sorted(GRAND_PRIX)
     for name in tagged:
         world = demo_set / f"{name}.world"
         route = _json(world / "route.json")
         manifest = _json(world / "manifest.json")
+        assert route["type"] == "loop", name   # lot GPL1 : le Grand Prix se court sur une boucle
         assert set(route.get("surface", ["paved"])) == {"paved"}, name
         assert not [g for n, *_, g, _sea, base in mbw.DEMO_SET if n == name and g], name
         assert 2.0 * manifest["layers"]["terrain"]["road_half_width_m"] >= 6.0, name

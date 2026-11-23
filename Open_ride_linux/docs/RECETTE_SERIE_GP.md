@@ -7,7 +7,7 @@ Cahier : [LOT_GP11_recette.md](lots/LOT_GP11_recette.md) ; plan : [PLAN_SERIE_GP
 
 **Règle de la recette : aucune étape ne dépasse 10 minutes sur le vélo.** Chaque étape dit quand s'arrêter, même si l'arrivée n'est pas passée. Entre deux étapes, pause libre : on peut en faire une seule par jour. À cocher par le propriétaire : « fait », ou « à corriger » avec une remarque. Les valeurs réelles (FTP, poids, appareils) restent dans `~/OpenRide/config.toml`, jamais dans le dépôt ; tes traces GPS et tes journaux restent sur ton PC.
 
-Tout se règle au menu (lot GP9) : Accueil › « Grand Prix des objets », puis parcours, réglages (adversaires, tours ou distance, chaos, écart des boîtes, niveau des bots) et « Objets » (une case par objet). Rien ne se lance en ligne de commande. Le mode se joue en SIM seulement.
+Tout se règle au menu (lot GP9) : Accueil › « Grand Prix des objets », puis parcours, réglages (adversaires, tours du circuit : le mode se court sur une boucle depuis le lot GPL1, chaos, écart des boîtes, niveau des bots) et « Objets » (une case par objet). Rien ne se lance en ligne de commande. Le mode se joue en SIM seulement.
 
 Commandes de la recette, à lancer **dans un terminal à côté** après chaque étape :
 

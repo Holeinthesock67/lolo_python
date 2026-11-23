@@ -48,7 +48,8 @@ En-tête d'un scénario : `description`, `voies` (défaut : les trois), `apparei
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `velodrome` (vrai : piste du
 vélodrome des contenus de départ, lot VD10), `grand_prix_parcours` (vrai : deux parcours d'essai du Grand Prix,
-étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13), `fichiers` ({chemin dans le
+étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13 ;
+depuis le lot GPL1, seule la boucle est un parcours du mode, la ligne étiquetée reste un parcours libre), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
@@ -277,7 +278,8 @@ def threads_of(pid: int) -> list[str]:
 
 def write_grand_prix_routes(routes: Path) -> None:
     """Parcours d'essai du Grand Prix (lot GP13) : `gp-ligne` (démo de 5 km en ligne) et `gp-boucle` (piste de 250 m
-    en boucle), copiés et étiquetés « grandprix » : parcours du mode, absents de la liste générale."""
+    en boucle), copiés et étiquetés « grandprix ». Lot GPL1 : seule la boucle est un parcours du mode (absente de la
+    liste générale) ; la ligne étiquetée reste un parcours libre (absente de la liste du mode)."""
     from openride_core.velodrome import write_velodrome
 
     shutil.copytree(ENGINE_DIR / "demo" / "demo.world", routes / "gp-ligne.world")

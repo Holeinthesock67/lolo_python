@@ -125,7 +125,7 @@ SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
 END_GAP_M = draft_mod.BIKE_LENGTH_M + 0.3
 # Nom des courses du Grand Prix au journal (lot CR1 : la Course est le Grand Prix sans objet)
 _GP_TITLES = {"grandprix": "Grand Prix des objets", "race": "Course"}
-GP_RUNOUT_M = 30.0   # Grand Prix sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
+GP_RUNOUT_M = 30.0   # Course (lot CR1) sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
@@ -423,7 +423,8 @@ class CoreSession:
                           "biome": cfg.render.biome,
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances"),
                           "track": track_mod.menu_options(),
-                          "mode_routes": mode_routes_mod.hello_block()})   # lot GP13, révision 1.19
+                          "mode_routes": mode_routes_mod.hello_block(),   # lot GP13, révision 1.19
+                          "free_route_tag": mode_routes_mod.FREE_TAG})   # lot GPL1, révision 1.24
         self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
@@ -1083,12 +1084,15 @@ class CoreSession:
         self.server.hello_config["last_choices"] = choices
 
     def _remember_route(self, route_id: str, cmd_id: int) -> None:
-        """Parcours choisi au menu (lot GP13) : celui d'un mode à parcours propres (Vélodrome, Grand Prix,
-        `mode_routes.py`) est gardé pour ce mode, sans remplacer le dernier parcours libre rechargé au démarrage."""
+        """Parcours choisi au menu (lot GP13) : retenu dans chaque liste où il est. Libre (dont un parcours de mode
+        étiqueté `libre`, lot GPL1) : dernier parcours libre, rechargé au démarrage ; d'un mode à parcours propres
+        (Vélodrome, Grand Prix, `mode_routes.py`) : dernier parcours de ce mode."""
         src = getattr(self, "_world_src", None)
-        mode = mode_routes_mod.mode_of(src[2]) if src is not None else None
-        if mode is None:
+        manifest, kind = (src[2], src[0].type) if src is not None else (None, None)
+        mode = mode_routes_mod.mode_of(manifest, kind)
+        if mode is None or mode_routes_mod.is_free(manifest, kind):
             self._remember("route_id", route_id, cmd_id)
+        if mode is None:
             return
         if cmd_id <= 0 or self.profile_ctx.id is None or (self.sim is not None and self.config_path is None):
             return
@@ -3383,10 +3387,10 @@ class CoreSession:
 
     def _grandprix_course(self, mode: str = "grandprix") -> tuple[float, float | None]:
         """Longueur de la course et d'un tour (circuit) d'après `[grandprix]` (`[race]` pour la Course, lot CR1) ;
-        `GrandPrixError` si le parcours ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne
-        de moins de 1 km). En ligne, la course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) :
-        `distance_km` ou ce qu'il en reste (la Course : tout ce qu'il en reste), ligne posée au moins `GP_RUNOUT_M`
-        avant le bout (lot GP10) : la file des bots arrivés y tient après la ligne."""
+        `GrandPrixError` si le parcours ne s'y prête pas. Sur une boucle : `laps` tours. Le Grand Prix des objets se
+        court sur une boucle seulement (lot GPL1, demande du propriétaire du 20 novembre). La Course va aussi en ligne
+        jusqu'à l'arrivée du parcours, ligne posée `GP_RUNOUT_M` avant le bout (la file des bots arrivés y tient),
+        `MIN_COURSE_M` au moins."""
         gc = self.cfg.race if mode == "race" else self.cfg.grandprix
         route = self.route
         if self.openworld is not None or route is None:
@@ -3394,10 +3398,11 @@ class CoreSession:
         if route.is_loop:
             laps = self._league_run["laps"] if self._league_run is not None and mode == "race" else gc.laps
             return laps * route.length_m, route.length_m
+        if mode != "race":
+            raise GrandPrixError("il se court sur une boucle (Accueil › Grand Prix › Changer de parcours)")
         from .grandprix.boxes import MIN_COURSE_M
 
-        rest = route.length_m - self.physics.s - GP_RUNOUT_M
-        length = rest if mode == "race" else min(self.cfg.grandprix.distance_km * 1000.0, rest)
+        length = route.length_m - self.physics.s - GP_RUNOUT_M
         if length < MIN_COURSE_M - 1e-6:
             raise GrandPrixError(f"parcours trop court pour une course ({route.length_m / 1000.0:.1f} km, "
                                  f"{MIN_COURSE_M / 1000.0:.0f} km au moins)")
