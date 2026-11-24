@@ -10,8 +10,8 @@ M6 = [{"seconds": s, "watts": w} for s, w in [(5, 880), (60, 430), (300, 310), (
     {"seconds": 3600, "watts": None}]
 
 
-def route(rid, length_m, grade, status="ready", tags=None):
-    return SimpleNamespace(id=rid, name=rid.title(), status=status,
+def route(rid, length_m, grade, status="ready", tags=None, route_type="open"):
+    return SimpleNamespace(id=rid, name=rid.title(), status=status, route_type=route_type,
                            stats={"main_climb": {"length_m": length_m, "avg_grade_pct": grade}},
                            library={"tags": tags} if tags else None)
 
@@ -26,7 +26,7 @@ def test_duration_and_target():
 
 def test_route_whose_climb_lasts_long_enough():
     routes = [route("court", 800, 6.0), route("juste", 2500, 6.0), route("long", 9000, 6.0),
-              route("velo", 3000, 6.0, tags=["velodrome"]), route("brouillon", 2500, 6.0, status="to_compile")]
+              route("velo", 3000, 6.0, tags=["velodrome"], route_type="loop"), route("brouillon", 2500, 6.0, status="to_compile")]
     c = ch.challenge({"weak": 300}, M6, routes)
     assert c["route_id"] == "juste" and c["route_name"] == "Juste" and c["climb_s"] >= 300
     assert ch.climb_time_s(routes[0].stats, 311) < 300                 # trop courte
