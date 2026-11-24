@@ -342,6 +342,10 @@ static func _validate_biome(b: Variant, label: String, errors: PackedStringArray
 			errors.append(label + ".ground.slope_threshold_deg : doit être dans [0, 90]")
 		if g.has("high_line_m") and g["high_line_m"] != null and not _is_number(g["high_line_m"]):
 			errors.append(label + ".ground.high_line_m : nombre ou null")
+		if g.has("strata"):
+			_validate_look(g["strata"], STRATA_KEYS, label + ".ground.strata", errors)
+		if g.has("terraces"):
+			_validate_look(g["terraces"], TERRACES_KEYS, label + ".ground.terraces", errors)
 	elif bd.has("ground"):
 		errors.append(label + ".ground : doit être un objet")
 	if typeof(bd.get("vegetation", null)) == TYPE_DICTIONARY:
@@ -362,6 +366,8 @@ static func _validate_biome(b: Variant, label: String, errors: PackedStringArray
 	if typeof(bd.get("water", null)) == TYPE_DICTIONARY:
 		_check_color_key(bd["water"], "color", label + ".water", errors)
 		_check_unit_key(bd["water"], "turbidity", label + ".water", errors)
+		if bd["water"].has("falls"):
+			_validate_look(bd["water"]["falls"], FALLS_KEYS, label + ".water.falls", errors)
 	if typeof(bd.get("sky", null)) == TYPE_DICTIONARY:
 		var sk: Dictionary = bd["sky"]
 		_check_color_key(sk, "light_tint", label + ".sky", errors)
@@ -668,3 +674,34 @@ static func _validate_fire(fire: Variant, label: String, errors: PackedStringArr
 				errors.append(label + ".density : nombre de 0 à 2 attendu")
 		else:
 			errors.append(label + " : clé inconnue " + str(k))
+
+
+## Aspect du sol et de l'eau (lot U25-p2, biome_model.gd `surface_look`) : clé -> [min, max] d'un nombre, "color"
+## (#RRGGBB) ou "colors" (1 à 4 couleurs) ; toutes facultatives sauf `strata.colors` ; clé inconnue refusée.
+const STRATA_KEYS := {"colors": "colors", "band_m": [0.5, 200.0], "strength": [0.0, 1.0]}
+const TERRACES_KEYS := {"step_m": [0.2, 20.0], "max_slope_deg": [0.0, 90.0], "flooded": [0.0, 1.0]}
+const FALLS_KEYS := {"density": [0.0, 1.0], "min_slope_deg": [0.0, 90.0], "width_m": [0.2, 50.0], "color": "color"}
+
+
+static func _validate_look(d: Variant, keys: Dictionary, label: String, errors: PackedStringArray) -> void:
+	if typeof(d) != TYPE_DICTIONARY:
+		errors.append(label + " : doit être un objet")
+		return
+	if keys.has("colors") and not d.has("colors"):
+		errors.append(label + ".colors : obligatoire")
+	for k in d.keys():
+		if not keys.has(k):
+			errors.append(label + " : clé inconnue " + str(k))
+		elif typeof(keys[k]) == TYPE_ARRAY:
+			if not _is_number(d[k]) or float(d[k]) < float(keys[k][0]) or float(d[k]) > float(keys[k][1]):
+				errors.append(label + "." + str(k) + " : nombre de %s à %s attendu" % [str(keys[k][0]), str(keys[k][1])])
+		elif keys[k] == "color":
+			if not _is_hex_color(d[k]):
+				errors.append(label + "." + str(k) + " : couleur #RRGGBB invalide")
+		else:
+			var ok: bool = typeof(d[k]) == TYPE_ARRAY and not (d[k] as Array).is_empty() and (d[k] as Array).size() <= 4
+			if ok:
+				for c in d[k]:
+					ok = ok and _is_hex_color(c)
+			if not ok:
+				errors.append(label + "." + str(k) + " : de 1 à 4 couleurs #RRGGBB")

@@ -13,6 +13,11 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 
 ### Moins de brouillard et de halo en medium et high (lot BH1)
 - En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
+### Paysages, partie 2 : canyons, rizières, fjords (lot U25-p2)
+- Canyons : strates de grès rouge, orange, ocre et brun sur les parois ; brume chaude, rivières boueuses.
+- Rizières : gradins inondés qui reflètent le ciel, diguettes de terre, marches en eau ou en riz ; air chaud et humide.
+- Fjords : cascades d'écume qui coulent sur les parois raides ; eau verte et profonde, lumière froide.
+- Le ciel et la mer suivent le paysage de la tuile, avec un passage en douceur ; nouveaux membres facultatifs du thème `ground.strata`, `ground.terraces` et `water.falls`.
 
 ### Cyber-Rogue sans voile en high (lot R27)
 - En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
