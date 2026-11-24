@@ -17,7 +17,7 @@ import struct
 import re
 import time
 from contextlib import AsyncExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Awaitable, Callable
 
 from . import ftms, latency_log
@@ -43,6 +43,7 @@ RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (a
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
 MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
 DEFAULT_POWER_RANGE = (0.0, 2000.0)
+IMPLAUSIBLE_LOG_S = 10.0   # mesure invraisemblable : une ligne de journal par sorte au plus toutes les 10 s
 # Consigne de résistance (lot RC1, étude « résistance calculée par le core », 31 octobre) : exprimée en %
 # de la plage annoncée (0x2AD6), comme les « 32 % » de l'appli du fabricant ; plage FTMS par défaut
 # 0 à 100 au pas de 1 si le trainer n'en annonce pas.
@@ -368,6 +369,7 @@ class FtmsDriver:
         self.control_refused = False
         self._refusals = 0
         self.power_range = DEFAULT_POWER_RANGE   # remplacée par la plage annoncée (0x2AD8)
+        self._implausible_logged: dict[str, float] = {}   # sorte de mesure -> heure de la dernière ligne
         self.power_increment = 1.0
         self.supports_sim = True
         self._cp: ControlPoint | None = None
@@ -658,6 +660,17 @@ class FtmsDriver:
             log.warning("Indoor Bike Data illisible : %s", bytes(data).hex())
             return
         self._last_data_at = self._clock()
+        # Mesure invraisemblable : valeur précédente gardée, une ligne de journal par sorte et par
+        # IMPLAUSIBLE_LOG_S au plus (revue S6-03).
+        if d.power_w is not None and d.power_w > ftms.plausible_power_max(self.power_range[1]):
+            self._implausible("puissance", d.power_w)
+            d = replace(d, power_w=None)
+        if d.cadence_rpm is not None and d.cadence_rpm > ftms.PLAUSIBLE_CADENCE_MAX_RPM:
+            self._implausible("cadence", d.cadence_rpm)
+            d = replace(d, cadence_rpm=None)
+        if d.heart_rate_bpm and not ftms.plausible_hr(d.heart_rate_bpm):
+            self._implausible("FC relayée", d.heart_rate_bpm)
+            d = replace(d, heart_rate_bpm=None)
         if d.power_w is not None:
             self._raw_power = max(float(d.power_w), 0.0)
         if d.cadence_rpm is not None:
@@ -676,6 +689,13 @@ class FtmsDriver:
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
+
+    def _implausible(self, kind: str, value: Any) -> None:
+        now = self._clock()
+        last = self._implausible_logged.get(kind)
+        if last is None or now - last >= IMPLAUSIBLE_LOG_S:
+            self._implausible_logged[kind] = now
+            log.warning("Trainer : %s invraisemblable ignorée (%s), valeur précédente gardée", kind, value)
 
     def _emit(self, event: str, **fields: Any) -> None:
         """Ligne `ftms` du journal JSONL (statuts du trainer, perte de frein) ; jamais bloquante."""
@@ -743,6 +763,9 @@ class FtmsDriver:
         try:
             bpm = ftms.parse_hr_measurement(bytes(data))
         except Exception:
+            return
+        if bpm and not ftms.plausible_hr(bpm):
+            self._implausible("FC relayée", bpm)
             return
         self._hr_service = bpm or None
         self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
@@ -816,7 +839,9 @@ class FtmsDriver:
         if resp.ok:
             # Seule une consigne acceptée prouve que le contrôle est retrouvé : une prise de
             # contrôle acceptée suivie d'une consigne refusée ne doit pas remettre le compteur à 0.
-            if resp.request_op in (ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_POWER):
+            # Résistance calculée (0x04) comprise : sinon « occupé » et refus restaient posés (revue S6-01).
+            if resp.request_op in (ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_POWER,
+                                   ftms.OP_SET_TARGET_RESISTANCE):
                 self._refusals = 0
                 self.control_refused = False
                 if self.busy:
