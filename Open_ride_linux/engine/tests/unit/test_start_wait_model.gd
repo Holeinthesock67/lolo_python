@@ -117,6 +117,22 @@ func _test_steps_and_card() -> void:
 	_check(st[0]["state"] == "done" and st[1]["state"] == "current" and st[2]["state"] == "todo", "trainer : décor franchi")
 	st = StartWaitModel.steps({"phase": "pedalage"})
 	_check(st[0]["state"] == "done" and st[1]["state"] == "done" and st[2]["state"] == "current", "pédalage : dernière étape")
+	# Échauffement d'une course (révision 1.33) : pastille en plus, cible en watts, temps restant, suite
+	var wu := {"phase": "echauffement", "cadence_rpm": 30, "hold_s": 1.0, "held_s": 0.0, "waited_s": 70.0,
+		"warmup": {"target_w": 165, "left_s": 452.3, "total_s": 600.0, "block": "warmup", "block_left_s": 45.0,
+			"next_target_w": 175, "done": false}}
+	st = StartWaitModel.steps(wu)
+	_check(st.size() == 4 and st[2]["label"] == "Échauffement" and st[2]["state"] == "current" and st[3]["state"] == "todo",
+		"échauffement : quatre pastilles, la troisième en cours")
+	var wv := StartWaitModel.warmup_view(wu)
+	_check(wv["target"] == "165 W" and wv["left"] == "7:33" and wv["part"] == "Montée douce" and wv["next"] == "puis 175 W dans 0:45",
+		"échauffement : watts, temps et suite (%s)" % str(wv))
+	_check(absf(float(wv["progress"]) - 0.2462) < 0.001, "échauffement : avancée")
+	_check(StartWaitModel.text(wu) == "Échauffement : 165 W, encore 7:33  (Z : passer, Y : annuler)", "échauffement : texte (%s)" % StartWaitModel.text(wu))
+	_check(StartWaitModel.lights(wu) == 2, "échauffement : deux feux")
+	wu["phase"] = "pedalage"
+	_check(StartWaitModel.warmup_view(wu).is_empty() and StartWaitModel.steps(wu)[3]["state"] == "current",
+		"après l'échauffement : pédalage, quatrième pastille")
 	_check(StartWaitModel.route_line(24630.0, 409.6) == "24,6 km · 410 m D+", "distance et dénivelé en français")
 	_check(StartWaitModel.route_line(4000.0, null) == "4,0 km", "dénivelé inconnu : distance seule")
 	_check(StartWaitModel.route_card({}, {}).is_empty(), "sans parcours (Cyber-Rogue) : pas de carte")

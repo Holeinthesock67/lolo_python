@@ -28,7 +28,7 @@ from typing import Any
 from .. import config as config_mod
 from .. import profiles
 from . import power_curve
-from .history import MATCH_TOLERANCE_S
+from .history import MATCH_TOLERANCE_S, counted_for, counts
 
 DURATIONS_S = (180, 300, 480, 720, 1200)
 MIN_DURATIONS = 3
@@ -68,12 +68,15 @@ def estimate(directory: Path | None = None, ftp_w: float = 250.0, days: int = DE
     sessions = [(p, e) for p, e in power_curve.session_entries(act_dir, cpath)
                 if e.get("start_ts") is not None and not e.get("error")]
 
-    replays = [e["start_ts"] for _, e in sessions if e.get("source") == "replay"]
+    # Séances qui ne comptent pas pour le profil (rejeu, simulée sur un profil de joueur : C6-01), et le
+    # .fit écrit depuis chacune, reconnu à l'heure de début de son journal.
+    counted = counted_for(ctx)
+    refused = [e["start_ts"] for _, e in sessions if e.get("source") is not None and not counts(e["source"], counted)]
     kept = []
     for p, e in sessions:
-        if e.get("source") == "replay":
+        if e.get("source") is not None and not counts(e["source"], counted):
             continue
-        if any(abs(e["start_ts"] - t) <= MATCH_TOLERANCE_S for t in replays):    # .fit d'une séance rejouée
+        if any(abs(e["start_ts"] - t) <= MATCH_TOLERANCE_S for t in refused):
             continue
         if now - e["start_ts"] > days * 86400.0:
             continue

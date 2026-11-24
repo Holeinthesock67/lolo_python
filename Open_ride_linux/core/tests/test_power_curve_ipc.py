@@ -1,4 +1,4 @@
-"""Lot PP3 (révision 1.29) : `list_power_curve` -> message `power_curve`, courbe et FTP estimée du profil en cours,
+"""Lot PP3 (révision 1.35) : `list_power_curve` -> message `power_curve`, courbe et FTP estimée du profil en cours,
 séances fabriquées d'un cycliste fictif (FTP 250 W, aucune donnée réelle)."""
 
 from __future__ import annotations
