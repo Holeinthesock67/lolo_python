@@ -7,14 +7,20 @@ sans pédaler l'est avant, en une commande, avec un verdict « PRÊT À ROULER �
     scripts/pre_vol.py --seance t11_j7
     scripts/pre_vol.py --seance p27 --sans-bluetooth
     scripts/pre_vol.py --liste
+    scripts/pre_vol.py --seance t11_j7 --remettre    # après la séance : fichiers mis de côté remis en place
 
 Étapes, dans l'ordre :
-  1. git : branche, rien de non commité, à jour avec origin (`--sans-reseau` : pas de `git fetch`) ;
+  1. git : branche, rien de non commité, à jour avec origin (`--sans-reseau` : pas de `git fetch`) ; la tête locale est
+     comparée à FETCH_HEAD, juste relu, et non à `origin/<branche>`, qui peut être périmée sur un dépôt qui ne suit
+     que main (revue O2-09) ;
   2. tests : pytest du core avec la marque de la séance (`recette_sans_velo`) ;
   3. engine : `run_engine_tests.sh` avec les tests unitaires de la séance (UNIT) ;
   4. séance simulée : `sim_bench.py` sur les scénarios de la séance (lot X33 quand ils existent) ;
-  5. fichiers : `config.toml` sauvegardé en `config.toml.<séance>`, parcours compilés présents,
-     fichiers de la séance posés (`powerups.toml`…) ou mis de côté ;
+  5. fichiers : `config.toml` sauvegardé en `config.toml.<séance>` (la sauvegarde précédente, si elle diffère, est
+     gardée en `config.toml.<séance>.<date>`), parcours compilés présents, fichiers de la séance posés
+     (`powerups.toml`…) ou retirés ; un fichier du joueur qui serait écrasé ou retiré est d'abord mis de côté en
+     `<fichier>.pre_vol-<date>`, et rien n'est posé ni retiré si une étape précédente bloque (revue O2-01) ;
+     `--remettre` remet en place les fichiers mis de côté par le dernier pré-vol de la séance ;
   6. Bluetooth : trainer et Click visibles (`openride-core devices --json`) ;
   7. verdict, avec bip (guide).
 `--sans-engine` saute les étapes 3 et 4 (pas de Godot), `--sans-bluetooth` l'étape 6.
@@ -98,27 +104,30 @@ def home_path(text: str, home: Path) -> Path:
 
 # --- étapes ----------------------------------------------------------------------------------------
 
-def step_git(run: Runner, fetch: bool) -> StepResult:
-    rc, out = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], REPO, {})
+def step_git(run: Runner, fetch: bool, repo: Path | None = None) -> StepResult:
+    repo = repo or REPO
+    rc, out = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], repo, {})
     if rc != 0:
         return StepResult("git", "ÉCHEC", "pas un dépôt git", blockers=["dépôt git illisible"])
     branch = out.strip().splitlines()[-1] if out.strip() else "?"
     blockers: list[str] = []
-    _, status = run(["git", "status", "--porcelain", "--untracked-files=no"], REPO, {})
+    _, status = run(["git", "status", "--porcelain", "--untracked-files=no"], repo, {})
     changed = [ln for ln in status.splitlines() if ln.strip()]
     if changed:
         blockers.append(f"{len(changed)} fichier(s) modifié(s) non commité(s) ({changed[0].strip()}…)")
     behind_txt = "non vérifié (--sans-reseau)" if not fetch else "origin injoignable"
     if fetch:
-        rc, out = run(["git", "fetch", "-q", "origin", branch], REPO, {})
+        rc, out = run(["git", "fetch", "-q", "origin", branch], repo, {})
         if rc != 0:
             blockers.append(f"git fetch origin {branch} impossible : {out.strip()[-120:]}")
         else:
-            rc, out = run(["git", "rev-list", "--count", f"HEAD..origin/{branch}"], REPO, {})
+            # FETCH_HEAD : la tête que le fetch vient de lire. origin/<branche> n'est pas mise à jour par ce fetch
+            # sur un dépôt qui ne suit que main, et peut dater d'une file des bancs (O2-09).
+            rc, out = run(["git", "rev-list", "--count", "HEAD..FETCH_HEAD"], repo, {})
             behind = int(out.strip() or 0) if rc == 0 and out.strip().isdigit() else None
             if behind is None:
-                blockers.append(f"branche {branch} absente d'origin")
-                behind_txt = "absente d'origin"
+                blockers.append(f"tête d'origin/{branch} illisible après git fetch")
+                behind_txt = "origin illisible"
             elif behind:
                 blockers.append(f"{behind} commit(s) de retard sur origin/{branch} (git pull --ff-only)")
                 behind_txt = f"{behind} commit(s) de retard"
@@ -179,12 +188,24 @@ def step_simulee(run: Runner, seance: dict[str, Any], out: Path, enabled: bool) 
     return StepResult("simulee", "OK", f"{len(scenarios)} scénario(s) : {', '.join(scenarios)}")
 
 
+ASIDE = ".pre_vol-"            # <fichier>.pre_vol-<date> : fichier du joueur mis de côté par le pré-vol
+
+
+def put_aside(path: Path, stamp: str) -> Path:
+    aside = path.with_name(f"{path.name}{ASIDE}{stamp}")
+    path.rename(aside)
+    return aside
+
+
 def step_fichiers(seance_name: str, seance: dict[str, Any], home: Path, routes: Path, config: Path,
-                  stamp: str) -> StepResult:
+                  stamp: str, modifier: bool = True) -> StepResult:
+    """`modifier` faux (une étape précédente bloque) : rien n'est posé ni retiré, seuls les parcours sont vérifiés."""
     blockers: list[str] = []
     done: list[str] = []
     if config.is_file():
         backup = config.with_name(f"{config.name}.{seance_name}")
+        if backup.is_file() and backup.read_bytes() != config.read_bytes():
+            backup.rename(backup.with_name(f"{backup.name}.{stamp}"))   # sauvegarde précédente gardée
         shutil.copy2(config, backup)
         done.append(f"{config.name} sauvegardé en {backup.name}")
     else:
@@ -194,17 +215,30 @@ def step_fichiers(seance_name: str, seance: dict[str, Any], home: Path, routes: 
         blockers += [f"parcours {r} non compilé (dans {routes})" for r in missing]
     else:
         done.append(f"{len(seance.get('parcours') or [])} parcours présent(s)")
+    if not modifier:
+        if seance.get("poser") or seance.get("retirer"):
+            done.append("fichiers de la séance ni posés ni retirés : une étape précédente bloque")
+        return StepResult("fichiers", "ÉCHEC" if blockers else "OK", " ; ".join(done), blockers=blockers)
+    aside_any = False
     for item in seance.get("poser") or []:
         path = home_path(str(item["chemin"]), home)
+        contenu = str(item["contenu"])
+        if path.is_file() and path.read_text(encoding="utf-8", errors="replace") == contenu:
+            done.append(f"{path.name} déjà en place")
+            continue
+        if path.exists():
+            done.append(f"{path.name} du joueur mis de côté en {put_aside(path, stamp).name}")
+            aside_any = True
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(str(item["contenu"]), encoding="utf-8")
+        path.write_text(contenu, encoding="utf-8")
         done.append(f"{path.name} posé")
     for chemin in seance.get("retirer") or []:
         path = home_path(str(chemin), home)
         if path.exists():
-            aside = path.with_name(f"{path.name}.pre_vol-{stamp}")
-            path.rename(aside)
-            done.append(f"{path.name} mis de côté en {aside.name}")
+            done.append(f"{path.name} mis de côté en {put_aside(path, stamp).name}")
+            aside_any = True
+    if aside_any:
+        done.append(f"après la séance : scripts/pre_vol.py --seance {seance_name} --remettre")
     return StepResult("fichiers", "ÉCHEC" if blockers else "OK", " ; ".join(done), blockers=blockers)
 
 
@@ -229,6 +263,27 @@ def step_bluetooth(run: Runner, seance: dict[str, Any], enabled: bool) -> StepRe
         return StepResult("bluetooth", "ÉCHEC", f"vus : {', '.join(sorted(r for r in seen if r)) or 'aucun'}",
                           blockers=[f"{a} invisible en Bluetooth (réveiller l'appareil, pédaler un tour)" for a in absent])
     return StepResult("bluetooth", "OK", f"{', '.join(wanted)} visibles")
+
+
+def restore_files(seance_name: str, seance: dict[str, Any], home: Path, stamp: str) -> list[str]:
+    """`--remettre` : chaque fichier posé ou retiré par la séance retrouve sa dernière copie mise de côté. Un fichier
+    posé tel quel par le pré-vol est supprimé ; un fichier changé depuis est lui-même mis de côté, jamais perdu."""
+    poses = {str(home_path(str(i["chemin"]), home)): str(i["contenu"]) for i in seance.get("poser") or []}
+    chemins = [*poses, *(str(home_path(str(c), home)) for c in seance.get("retirer") or [])]
+    lines = []
+    for chemin in dict.fromkeys(chemins):
+        path = Path(chemin)
+        asides = sorted(path.parent.glob(f"{path.name}{ASIDE}*")) if path.parent.is_dir() else []
+        if not asides:
+            continue
+        if path.exists():
+            if chemin in poses and path.is_file() and path.read_text(encoding="utf-8", errors="replace") == poses[chemin]:
+                path.unlink()
+            else:
+                lines.append(f"{path.name} actuel mis de côté en {path.rename(path.with_name(f'{path.name}.avant_remise-{stamp}')).name}")
+        asides[-1].rename(path)
+        lines.append(f"{path.name} remis en place depuis {asides[-1].name}")
+    return lines or [f"rien à remettre pour la séance {seance_name}"]
 
 
 # --- résumé ----------------------------------------------------------------------------------------
@@ -264,6 +319,8 @@ def main(argv: list[str] | None = None, run: Runner = run_command, home: Path | 
     ap.add_argument("--sans-reseau", action="store_true", help="sans git fetch")
     ap.add_argument("--out", type=Path, help=f"dossier de sortie (défaut : {DEFAULT_OUT}/<date>)")
     ap.add_argument("--muet", action="store_true", help="sans bips")
+    ap.add_argument("--remettre", action="store_true",
+                    help="remettre en place les fichiers mis de côté par le dernier pré-vol de la séance, et quitter")
     args = ap.parse_args(argv)
     seances = load_seances()
     if args.liste or not args.seance:
@@ -277,6 +334,10 @@ def main(argv: list[str] | None = None, run: Runner = run_command, home: Path | 
     home = home or Path.home()
     started = datetime.now()
     stamp = started.strftime("%Y-%m-%d_%H%M%S")
+    if args.remettre:
+        for line in restore_files(args.seance, seance, home, stamp):
+            print(line)
+        return 0
     out = args.out or home / "OpenRide" / "pre_vol" / stamp
     out.mkdir(parents=True, exist_ok=True)
     guide = Guide(f"Pré-vol {args.seance}", out / "guide.jsonl", sound=sys.stdout.isatty() and not args.muet,
@@ -287,7 +348,8 @@ def main(argv: list[str] | None = None, run: Runner = run_command, home: Path | 
         "engine": lambda: step_engine(run, seance, out, not args.sans_engine),
         "simulee": lambda: step_simulee(run, seance, out, not args.sans_engine),
         "fichiers": lambda: step_fichiers(args.seance, seance, home, home / ROUTES_DIR.relative_to(Path.home()),
-                                          home / CONFIG.relative_to(Path.home()), stamp),
+                                          home / CONFIG.relative_to(Path.home()), stamp,
+                                          modifier=not any(r.blockers for r in results)),
         "bluetooth": lambda: step_bluetooth(run, seance, not args.sans_bluetooth),
     }
     print(f"Pré-vol {args.seance} : {seance.get('titre', '')}", flush=True)
