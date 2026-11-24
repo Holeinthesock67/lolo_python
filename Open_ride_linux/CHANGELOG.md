@@ -2,6 +2,7 @@
 
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
+Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses lignes dans `docs/changements/<LOT>.md`, recopiées par la passe de doc (`docs/changements/README.md`).
 
 ## Non publié
 
@@ -9,7 +10,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Moins de voile et de halo en medium et high : l'éclair d'une frappe n'assombrit plus tout l'écran (15 % au lieu de 45 %), et le halo des néons est plus court, sans bloom (retour du 23 novembre).
 - La consigne écrite est la vraie : la puissance qui bat l'ennemi à temps (au boss du seuil, 11,8 % de plus qu'avant), et l'adrénaline monte dès qu'on l'atteint (« affiche une vraie consigne », choix du propriétaire). La marge de 10 % ne sert plus qu'à rester dans la plage, et elle est écrite : « ✔ marge : remonte de 8 W ».
 - La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
-- L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.33 provisoire).
+- L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.35 provisoire).
+
+### Moins de brouillard et de halo en medium et high (lot BH1)
+- En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
 
 ### Cyber-Rogue sans voile en high (lot R27)
 - En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.

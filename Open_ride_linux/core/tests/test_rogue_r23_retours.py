@@ -133,8 +133,9 @@ def test_strike_and_charges_actions():
 def test_rock_chip_then_rock():
     room = generate_room("grimpeur", "", "threshold", 240.0, RIDER, 1)
     rocks = [(i, m) for i, m in enumerate(room.markers) if m.kind == "rock"]
-    if not rocks:
-        pytest.skip("pas de rocher dans cette salle")
+    # graine fixée (1) et salle du Grimpeur : la salle a des rochers ; un réglage qui les retire doit faire
+    # échouer le test, pas le sauter en silence (audit R11)
+    assert rocks, "la salle du Grimpeur (graine 1) n'a plus de rocher : choisir une autre graine"
     i, rock = rocks[0]
     st = replace(combat_start(room, 1), roc_charges=3, rock_armor=((i, 2),))
     st, ev = combat_step(st, CombatInputs(**_base(s_m=rock.s_m, buttons=frozenset({"Z_SHORT"}))), room, B, DT)

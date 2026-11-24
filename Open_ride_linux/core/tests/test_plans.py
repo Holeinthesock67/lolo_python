@@ -14,9 +14,9 @@ from openride_core.__main__ import main
 from openride_core.journal import JournalWriter, Record, read_journal
 from openride_core.plans import DoneSession, PlanError
 from openride_core.tools.workouts import estimate_metrics
-from openride_core.workout import load_workout, workout_path
+from openride_core.workout import BUILTIN_WORKOUTS_DIR, load_workout, workout_path
 
-BUILTIN = Path(__file__).resolve().parents[1] / "workouts"
+BUILTIN = BUILTIN_WORKOUTS_DIR
 
 
 def zwo(name: str, minutes: float = 30, power: float = 0.7) -> str:

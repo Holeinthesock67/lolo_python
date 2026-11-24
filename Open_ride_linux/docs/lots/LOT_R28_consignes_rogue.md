@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Consignes du Cyber-Rogue : la consigne écrite est celle qui gagne et qui charge l'adrénaline, la puissance n'est écrite qu'une fois, l'adrénaline monte de 1 par seconde quelle que soit la cadence (contrat révision 1.33, provisoire) | Python, GDScript | R26 | Petite | En revue, **version 2.0** |
+| Consignes du Cyber-Rogue : la consigne écrite est celle qui gagne et qui charge l'adrénaline, la puissance n'est écrite qu'une fois, l'adrénaline monte de 1 par seconde quelle que soit la cadence (contrat révision 1.35, provisoire) | Python, GDScript | R26 | Petite | En revue, **version 2.0** |
 
 ## 1. Constat
 
@@ -43,7 +43,7 @@ tout l'écran). La brume reste celle du lot R27.
 
 ## 4. Contrat
 
-Précision compatible des champs `target_pct` et `in_target` (révision 1.33 **provisoire**, à renuméroter à la fusion au-dessus de
+Précision compatible des champs `target_pct` et `in_target` (révision 1.35 **provisoire**, à renuméroter à la fusion au-dessus de
 `CONTRACT_REV` de main) : mêmes clés, mêmes types.
 
 ## 5. Tests
