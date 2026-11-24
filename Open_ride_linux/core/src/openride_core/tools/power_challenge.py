@@ -54,7 +54,8 @@ def pick_route(routes: Iterable[Any], seconds: int, power_w: float) -> tuple[Any
     """Parcours prêt dont la montée principale tient au moins `seconds` à `power_w`, au plus près."""
     best = None
     for r in routes:
-        if getattr(r, "status", "") != "ready" or mode_routes.mode_of(getattr(r, "library", None)):
+        if getattr(r, "status", "") != "ready" or mode_routes.mode_of(getattr(r, "library", None),
+                                                                         getattr(r, "route_type", None)):
             continue
         t = climb_time_s(getattr(r, "stats", None), power_w)
         if t is None or t < seconds or t > seconds * MAX_FACTOR:
