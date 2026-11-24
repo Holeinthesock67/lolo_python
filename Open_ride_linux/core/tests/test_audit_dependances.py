@@ -69,3 +69,21 @@ def test_clean_run_and_missing_tools(tmp_path, monkeypatch, capsys):
     assert ad.main(["--out", str(tmp_path / "b")]) == 2 and not (tmp_path / "b").exists()
     monkeypatch.setattr(ad, "network_ok", lambda: False)
     assert ad.main(["--out", str(tmp_path / "c")]) == ad.EXIT_NO_NETWORK
+
+
+def test_unverified_items_are_reported(tmp_path, monkeypatch):
+    """Revue de code vague 5, O1-10 : action, âge ou paquet non vérifié n'est plus compté comme sain."""
+    audited = {"dependencies": [{"name": "numpy", "version": "2.4.6", "vulns": []},
+                                {"name": "maison", "version": "0.1", "skip_reason": "absent de PyPI"}]}
+    monkeypatch.setattr(ad, "network_ok", lambda: True)
+    monkeypatch.setattr(ad, "run_pip_audit", lambda c: (0, json.dumps(audited), ""))
+    monkeypatch.setattr(ad, "fetch_latest", lambda name: None)
+    monkeypatch.setattr(ad, "fetch_published", lambda n, v: None)
+    assert ad.main(["--out", str(tmp_path)]) == 0
+    text = (tmp_path / "resume.txt").read_text(encoding="utf-8")
+    assert "non vérifiée" in text and "Non vérifiés :" in text
+    assert "maison (pip-audit : absent de PyPI)" in text
+    assert "âge de numpy" in text
+    assert "certains n'ont pas pu l'être" in text
+    data = json.loads((tmp_path / "resume.json").read_text(encoding="utf-8"))
+    assert any(n.startswith("action actions/checkout") for n in data["non_verifies"])
