@@ -485,6 +485,7 @@ box_every_m = 500            # écart des rangées de boîtes, 500 à 3 000 m pa
 opponents = 7                # adversaires, 2 à 11 (bots à profil)
 laps = 3                     # tours sur une boucle, 1 à 10 (en ligne : jusqu'à l'arrivée)
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
+enabled = true               # son : false coupe tout d'un seul choix, volumes gardés (lot NI4)
 master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre
 ambience_pct = 100           # ambiance : fonds, cloches, véhicules, foule, passants

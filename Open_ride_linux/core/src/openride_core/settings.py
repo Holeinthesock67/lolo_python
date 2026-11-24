@@ -19,7 +19,7 @@ se comprennent pas seuls, montrée par l'engine sur la carte de détail (lot U16
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
 la séance suivante, sans relancer), `now` (qualité, thème, biome, mode d'affichage, courbes, images/s,
 jauge d'abri et volumes : l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le niveau des
-textures (retiré du menu au lot NI2, toujours lu dans le fichier), le thème, le biome, le gravel et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief :
+textures (retiré du menu au lot NI2, toujours lu dans le fichier), le thème, le biome, le gravel et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (relief ; décor vivant jusqu'au lot NI4 :
 passés par le lanceur à l'engine ;
 progression : lue au démarrage du core ; pris au prochain lancement, l'engine propose de relancer, lot O26).
 
@@ -166,9 +166,12 @@ SETTINGS: tuple[Setting, ...] = (
                  "souvent) ou une saison au choix : feuillages d'automne, arbres nus et neige plus bas l'hiver."),
     Setting("render.month", "Mois", "graphics", applies="now",   # lot U13b
             help="Date du PC, ou un mois au choix (le 15) : saisons « selon la date » et longueur du jour."),
-    Setting("render.living", "Décor vivant", "graphics", applies="relaunch"),   # lot O26
+    # « Décor vivant » (lot O26) retiré du menu au lot NI4 (R10) : toujours actif, son coût réglé par la Qualité
+    # graphique ; « Son » (groupe Son) coupe tous les sons d'un seul choix.
     Setting("render.visual_grade_scale", "Relief exagéré", "graphics", 25, "%", "relaunch", 100),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
+    # Lot NI4 : « Son » coupe tout d'un seul choix (les volumes gardent leur valeur et se cachent, règle WHEN)
+    Setting("audio.enabled", "Son", "sound", applies="now"),
     Setting("audio.master_pct", "Général", "sound", 10, "%", "now"),
     Setting("audio.ride_pct", "Vent et roue libre", "sound", 10, "%", "now"),
     Setting("audio.ambience_pct", "Ambiance", "sound", 10, "%", "now"),
@@ -204,11 +207,12 @@ SETTINGS = tuple(sorted(SETTINGS, key=lambda s: GROUPS.index(s.menu_group)))
 # Règle commune des lignes sans effet (lot NI2, R3) : clé → ((clé dont elle dépend, valeurs du menu), …). La ligne
 # n'agit que si l'une de ces clés a une de ses valeurs ; l'engine la cache sinon, sa valeur gardée (champ `when`).
 # Une seule table pour tous les réglages : un réglage qui dépend d'un autre choix s'ajoute ici, sans exception.
-_WIND_SET = ("wind.mode", ("fixed", "gusty"))   # force et direction : vent constant ou en rafales seulement
+_WIND_SET = ("wind.mode", ("fixed", "gusty"))
+_SOUND_ON = ("audio.enabled", ("on",))   # volumes : sans effet quand le son est coupé (lot NI4)   # force et direction : vent constant ou en rafales seulement
 WHEN: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
     "depart.cadence_rpm": (("depart.mode", ("pedalage",)),),
-    "ride.vehicle_draft": (("render.living", ("on",)),),   # pas de circulation sans décor vivant (contrat, `vehicles`)
     "render.month": (("render.seasons", ("date",)), ("render.day_night", ("theme", "real", "accelerated"))),
+    **{f"audio.{k}_pct": (_SOUND_ON,) for k in ("master", "ride", "ambience", "events", "rogue_sfx", "rogue_music")},
     "wind.speed_kmh": (_WIND_SET,),
     "wind.from_deg": (_WIND_SET,),
     "wind.gust_pct": (("wind.mode", ("gusty",)),),

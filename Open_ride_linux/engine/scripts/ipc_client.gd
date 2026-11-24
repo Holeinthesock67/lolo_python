@@ -22,8 +22,8 @@ signal list_failed(list_name: String, error_message: String)
 signal scan_results_received(msg: Dictionary)
 ## Réglages du menu (lots O3 et O4, contrat v1.3), réponse à list_settings ou set_setting.
 signal settings_received(msg: Dictionary)
-## Sous-menu ERG (lot N16, contrat v1.3, décision D4) : entraînement écrit par le core (create_workout,
-## create_workout_qwk) ; l'import de fichiers (list_imports, import_workout) est retiré en révision 1.15.
+## Sous-menu ERG (lot N16, contrat v1.3, décision D4) : entraînement écrit par le core (create_workout ;
+## create_workout_qwk n'est plus envoyé depuis le lot NI4) ; l'import de fichiers (list_imports, import_workout) est retiré en révision 1.15.
 signal workout_saved_received(msg: Dictionary)
 ## Traces importées depuis le menu des parcours (lot O23, contrat 1.5) : traces importables
 ## (list_route_imports, en parties comme routes) et avancement de l'import (import_route).
@@ -637,12 +637,6 @@ func pair_devices(args: Dictionary) -> int:
 ## Réponse : workout_saved, ou error (bad_args, busy, workout_write_failed).
 func create_workout(args: Dictionary) -> int:
 	return send_command("create_workout", args)
-
-
-## QWKcode saisi au clavier (lot O21), relu et écrit en `.qwk` par le core. Réponse : workout_saved, ou
-## error (bad_args, workout_invalid avec le numéro de ligne, busy, workout_write_failed).
-func create_workout_qwk(text: String) -> int:
-	return send_command("create_workout_qwk", {"text": text})
 
 
 ## Traces importables depuis le menu des parcours (lot O23, contrat 1.5). Réponse : signal route_imports_received.

@@ -25,6 +25,8 @@ const ROGUE_SFX := &"RogueSfx"
 const ROGUE_MUSIC := &"RogueMusic"
 ## Volume de départ des bus du mode Cyber-Rogue (en %), plus bas que les autres (confort, lot R18).
 const ROGUE_DEFAULTS := {&"RogueSfx": 70, &"RogueMusic": 40}
+## Réglage « Son » (lot NI4) : `on` / `off`, coupe tout sans toucher aux volumes.
+const SOUND_KEY := "audio.enabled"
 ## Clé du réglage (message `settings`) -> bus réglé.
 const SETTING_BUSES := {
 	"audio.master_pct": MASTER,
@@ -81,14 +83,20 @@ static func set_volume(bus_name: StringName, pct: int) -> void:
 
 
 ## Applique les volumes présents dans la liste `settings` (éléments {key, value}) ; renvoie le nombre
-## de bus réglés.
+## de bus réglés. « Son » sur `off` (`audio.enabled`, lot NI4) coupe le bus Master d'un seul choix, les
+## volumes gardant leur valeur pour le retour du son.
 static func apply_settings(items: Array) -> int:
 	var n := 0
+	var sound_on := true
 	for it in items:
+		if it is Dictionary and str(it.get("key", "")) == SOUND_KEY:
+			sound_on = str(it.get("value", "on")) != "off"
 		if not it is Dictionary or not SETTING_BUSES.has(str(it.get("key", ""))):
 			continue
 		var v = it.get("value")
 		if v is int or v is float:
 			set_volume(SETTING_BUSES[str(it["key"])], int(v))
 			n += 1
+	if not sound_on:   # son rallumé : le volume Général de la même liste a déjà rendu le bus Master
+		AudioServer.set_bus_mute(AudioServer.get_bus_index(MASTER), true)
 	return n
