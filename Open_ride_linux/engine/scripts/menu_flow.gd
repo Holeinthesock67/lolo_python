@@ -168,6 +168,8 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 ## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
 ## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
 const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
+## Même ligne après une arrivée (`state.arrival`, lot RT2 : parcours en ligne, Grand Prix, Course).
+const PAUSE_ARRIVAL := "Arrivée passée : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create",
 	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
@@ -281,6 +283,8 @@ var _record_bonus := false
 var pause_reason := ""
 ## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
 var workout_done := false
+## Issue de la séance connue (`state.arrival`, révision 1.34, lot RT2) : sorte, "" sans arrivée.
+var arrival_kind := ""
 ## Départ au pédalage en attente (lot O36) : objet `start_wait` de la dernière trame, {} sinon ; le menu
 ## est masqué pendant l'attente, le bandeau dit l'étape (start_wait_model.gd).
 var start_wait: Dictionary = {}
@@ -417,7 +421,8 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
-	workout_done = state.get("workout_done", null) is Dictionary
+	workout_done = state.get("workout_done", null) is Dictionary or state.get("arrival", null) is Dictionary
+	arrival_kind = str(state["arrival"].get("kind", "")) if state.get("arrival", null) is Dictionary else ""
 	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
 	_track_run(st, state)
 	if state.get("devices") is Dictionary:
@@ -1008,7 +1013,7 @@ func _refresh_summary() -> void:
 	for it in summary_model.menu_screen()["items"]:
 		items.append(it)
 		if it["id"] == "details" and garage.enabled and bool(progress_view().get("garage", false)):
-			items.append({"id": "garage", "label": "Aller au Garage", "detail": "une pièce est devenue achetable"})
+			items.append({"id": "garage", "label": "Garage", "detail": "nouveau"})
 	menu.set_screen_items(SUMMARY, items)
 
 
@@ -1604,7 +1609,7 @@ func _refresh_mode_ready() -> void:
 		menu.set_mode_ready(_mode_rows(race_keys(route), RACE_PREFIX),
 			race_launch(int(settings.item("race.laps").get("value", 3)), route))
 	elif menu.mode == "league":
-		menu.set_league_ready(league.ready(route))
+		menu.set_league_ready(league.ready(route, menu.route_mode_of(str(route.get("id", "")))))
 
 
 ## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
@@ -2561,7 +2566,7 @@ func state() -> Dictionary:
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
 		if st["status"] == "" and workout_done:
-			st["status"] = PAUSE_WORKOUT_DONE
+			st["status"] = PAUSE_WORKOUT_DONE if arrival_kind in ["", "workout"] else PAUSE_ARRIVAL
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
 	st["collection"] = collection_view(st)
@@ -2722,19 +2727,21 @@ func _refresh_league() -> void:
 	menu.set_screen_items(LeagueViewModel.SCREEN, league.items(), league.title())
 
 
-## Écran de la ligue : « Courir la manche » ouvre l'écran Prêt sur une boucle (LeagueViewModel.pick_loop ; circuit du
-## Grand Prix : liste du Grand Prix derrière « Changer de parcours ») ; « Commencer la saison » demande `league_new`.
+## Écran de la ligue : « Courir la manche » ouvre l'écran Prêt sur un parcours qui va au terrain de la manche
+## (league.pick_route, lot CH4c : boucle, parcours en ligne, route ou vélodrome ; liste du mode du parcours derrière
+## « Changer de parcours ») ; « Commencer la saison » demande `league_new`.
 func _handle_league(id: String) -> Dictionary:
 	if id == LeagueViewModel.NEW_ID:
 		league.message = "Création de la saison…"
 		return {"action": "league_new"}
 	if id != LeagueViewModel.RUN_ID:
 		return {}
-	var rid: String = LeagueViewModel.pick_loop(routes_raw, menu.world_id, menu.route_mode_of)
+	var rid: String = league.pick_route(routes_raw, menu.world_id, menu.route_mode_of)   # terrain de la manche (CH4c)
 	ready_message = ""
 	var list: Array = [{"action": "select_workout", "workout_id": null}]
 	if rid != "" and rid != menu.world_id:
 		menu.set_world(rid, str(_route_entry(rid).get("name", rid)))
 		list.push_front({"action": "select_route", "route_id": rid})
-	menu.prepare_league(league.ready(_route_entry(menu.world_id)), menu.route_mode_of(menu.world_id))
+	menu.prepare_league(league.ready(_route_entry(menu.world_id), menu.route_mode_of(menu.world_id)),
+		menu.route_mode_of(menu.world_id), league.round_mode())
 	return {"action": "sequence", "list": list}

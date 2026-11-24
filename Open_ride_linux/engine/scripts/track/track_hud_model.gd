@@ -8,7 +8,10 @@ extends RefCounted
 ## - liste à gauche sous la puissance : points, positions, ordre de course (dernier marqué en rouge, sortis
 ##   grisés et barrés), coureurs derrière le derny, équipes ; « Toi » ou « Ton équipe » surlignés ;
 ## - blocs du bas : anneau de la poursuite et écart, chrono des contre-la-montre et distance de l'heure ;
-## - bloc du derny du keirin sous les tours ; bandeau du milieu : « DERNIER ! » (élimination), relais (américaine) ;
+## - bloc du derny du keirin sous les tours ;
+## - retours et consigne communs (lot RT1, feedback_model.gd) : `moments` (adversaire sorti, cycliste dernier,
+##   éliminé, résultat de l'épreuve) et `consigne` (quoi faire maintenant dans chaque épreuve, relais de
+##   l'américaine, « passe X avant la ligne » à l'élimination) ; plus de bandeau du milieu propre à la piste ;
 ## - tableau d'affichage de la salle (`board_text`, Label3D de velodrome_hall.gd) : même contenu, 8 lignes au plus ;
 ## - sons : cloche du dernier tour, pistolet du départ, public qui monte au sprint (`sounds`).
 ## Objet `track` de `state` : {event, t_s, lap, laps, laps_to_go, bell, ranking, points, eliminated, finished}
@@ -27,7 +30,6 @@ const MAX_LINES := 8
 const PACER_ID := "derny"
 const PACER_LANE_M := 0.3       # derny à la corde quand la trame n'a pas la place du cycliste
 const BOARD_LINES := 8
-const FINISH_SHOW_S := 6.0      # bandeau du résultat (« VICTOIRE ! », place) à la fin de l'épreuve
 const CROWD_LAPS := 1            # le public monte au dernier tour d'un sprint
 const RED := Color(0.47, 0.08, 0.10, 0.93)
 const GOLD_BG := Color(0.47, 0.31, 0.04, 0.93)
@@ -45,9 +47,12 @@ var _bell := false
 var _started := false
 var _crowd_key := ""
 var _team := {}                 # coureurs vus dans `order` : ton équipe (épreuves par équipes)
-var _finished := false
-var _finish_t := -1.0            # temps de séance de la première trame finie
-var _me_out := false
+var _finished := false           # épreuve finie à la trame précédente (public, sounds)
+var _m_finished := false         # même chose pour moments (résultat annoncé une fois)
+var _m_out := {}                 # coureurs déjà annoncés sortis (moments)
+var _m_last := false             # cycliste dernier à la trame précédente (moments)
+var _m_me_out := false           # cycliste déjà annoncé éliminé (moments)
+var _m_seen := false             # première trame vue : les sortis d'avant ne sont pas annoncés
 
 
 func reset() -> void:
@@ -57,8 +62,11 @@ func reset() -> void:
 	_crowd_key = ""
 	_team.clear()
 	_finished = false
-	_finish_t = -1.0
-	_me_out = false
+	_m_finished = false
+	_m_out.clear()
+	_m_last = false
+	_m_me_out = false
+	_m_seen = false
 
 
 func remember_names(bots) -> void:
@@ -90,7 +98,7 @@ func view(state) -> Dictionary:
 	if ev == "omnium":
 		shown = str(tr.get("sub", "scratch"))
 	var out := {"visible": true, "event": ev, "banner": banner(tr), "laps": laps_block(tr), "list": list_block(tr),
-		"pursuit": {}, "chrono": {}, "pacer": {}, "center": {}, "gaps": gaps_block(tr)}
+		"pursuit": {}, "chrono": {}, "pacer": {}, "gaps": gaps_block(tr)}
 	if ev in ["pursuit", "team_pursuit", "team_sprint"]:
 		out["pursuit"] = pursuit_block(tr)
 	elif ev in ["kilo", "500", "flying_200"]:
@@ -99,19 +107,6 @@ func view(state) -> Dictionary:
 		out["chrono"] = hour_block(tr)
 	if ev == "keirin":
 		out["pacer"] = pacer_block(tr)
-	if shown == "elimination":
-		out["center"] = elimination_center(tr)
-	elif ev == "madison":
-		out["center"] = madison_center(tr)
-	if bool(tr.get("finished", false)):
-		# résultat affiché FINISH_SHOW_S secondes (temps de séance `t`), puis on continue à rouler (choix du 21/11)
-		var now := float(state.get("t", 0.0))
-		if _finish_t < 0.0:
-			_finish_t = now
-		if now - _finish_t < FINISH_SHOW_S:
-			out["center"] = finish_center(tr)
-	else:
-		_finish_t = -1.0
 	return out
 
 
@@ -124,17 +119,185 @@ static func my_place(tr: Dictionary) -> int:
 	return 0
 
 
-## Épreuve finie (révision 1.33, montré FINISH_SHOW_S secondes, puis on continue à rouler) : « VICTOIRE ! » en or, ou « ARRIVÉE · 3e sur 8 ».
-func finish_center(tr: Dictionary) -> Dictionary:
+## Résultat de l'épreuve finie (révision 1.33), moment RÉSULTAT de feedback_model.gd (lot RT1) : « VICTOIRE ! » en
+## or, « ARRIVÉE · 3e sur 8 », ou « ÉPREUVE TERMINÉE » sans classement ; puis on continue à rouler (choix du 21/11).
+func finish_moment(tr: Dictionary) -> Dictionary:
 	var place := my_place(tr)
 	var of := (tr.get("ranking", []) as Array).size() if tr.get("ranking") is Array else 0
-	if place == 1:
-		var sub := "Dernier en course" if str(tr.get("event", "")) == "elimination" else "Tu remportes l'épreuve"
-		return {"title": "VICTOIRE !", "sub": sub, "color": GOLD_BG}
-	if place == 0:
-		return {"title": "ÉPREUVE TERMINÉE", "sub": "Retour au calme", "color": BLUE_BG}
-	return {"title": "ARRIVÉE · %d%s sur %d" % [place, "er" if place == 1 else "e", of], "sub": "Retour au calme",
-		"color": BLUE_BG}
+	if place == 1 and of > 1:
+		var sub := "Tu es le dernier en course · 1er sur %d" % of if str(tr.get("event", "")) == "elimination" \
+			else "Tu remportes l'épreuve · 1er sur %d" % of
+		return {"family": "resultat", "tone": "win", "title": "VICTOIRE !", "sub": sub,
+			"done_k": "COURSE FINIE · 1er sur %d" % of}
+	if place == 0 or of <= 1:
+		var t := float(tr.get("t_s", 0.0))
+		return {"family": "resultat", "tone": "done", "title": "ÉPREUVE TERMINÉE",
+			"sub": "%s · %s" % [event_title(tr), chrono_text(t)], "done_k": "ÉPREUVE FINIE"}
+	return {"family": "resultat", "tone": "place", "title": "ARRIVÉE · %s sur %d" % [place_text(place), of],
+		"sub": event_title(tr), "done_k": "COURSE FINIE · %s sur %d" % [place_text(place), of]}
+
+
+func event_title(tr: Dictionary) -> String:
+	return str(TITLES.get(str(tr.get("event", "")), str(tr.get("event", ""))))
+
+
+## Moments de la trame pour feedback_model.gd (lot RT1) : coureur sorti (BIEN, `jingle_elim` à l'élimination),
+## cycliste devenu dernier à l'élimination (ATTENTION), cycliste éliminé (RÉSULTAT rouge), épreuve finie (RÉSULTAT).
+## Chaque moment n'est rendu qu'une fois ; les sortis déjà là à la première trame ne sont pas annoncés.
+func moments(state) -> Array:
+	var tr = state.get("track", null) if state is Dictionary else null
+	if not tr is Dictionary:
+		return []
+	remember_names(state.get("bots", null))
+	var out: Array = []
+	var ev := str(tr.get("event", ""))
+	var shown := str(tr.get("sub", "scratch")) if ev == "omnium" else ev
+	var finished := bool(tr.get("finished", false))
+	var out_ids: Array = tr.get("eliminated", []) if tr.get("eliminated") is Array else []
+	var ranking: Array = tr.get("ranking", []) if tr.get("ranking") is Array else []
+	for id in out_ids:
+		var rid := str(id)
+		if _m_out.has(rid):
+			continue
+		_m_out[rid] = true
+		if not _m_seen:
+			continue
+		if rid == ME or rid == HOME:
+			_m_me_out = true
+			var place := ranking.find(rid) + 1
+			var of := ranking.size()
+			var pl := ("%s sur %d" % [place_text(place), of]) if place > 0 else ""
+			out.append({"family": "resultat", "tone": "out", "title": ("ÉLIMINÉ · " + pl) if pl != "" else "ÉLIMINÉ",
+				"sub": "Passé en dernier sur la ligne" if shown == "elimination" else "Tu sors de la course",
+				"done_k": ("COURSE FINIE POUR TOI · " + pl) if pl != "" else "COURSE FINIE POUR TOI",
+				"done_action": "Roule au calme : la course continue sans toi", "sound": "jingle_elim"})
+		elif not finished:
+			var alive = tr.get("alive", null)
+			out.append({"family": "bien", "title": ("%s est éliminé" if shown == "elimination" else "%s sort de la course")
+				% name_of(rid), "sub": ("Plus que %d en course" % int(alive)) if alive != null else "",
+				"sound": "jingle_elim" if shown == "elimination" else ""})
+	var last := shown == "elimination" and str(tr.get("last", "")) == ME and not finished
+	if last and not _m_last and _m_seen:
+		var d = tr.get("to_elim_m", null)
+		out.append({"family": "attention", "title": "Tu es dernier en course",
+			"sub": ("Ligne d'élimination dans " + distance_text(float(d))) if d != null else "Passe un coureur avant la ligne"})
+	_m_last = last
+	if finished and not _m_finished and not _m_me_out:
+		out.append(finish_moment(tr))
+	_m_finished = finished
+	_m_seen = true
+	return out
+
+
+## Consigne de la zone commune (lot RT1) pour l'épreuve en cours : {k, action, detail, chips} ; {} pour la séance
+## libre et une fois l'épreuve finie ou le cycliste sorti.
+func consigne(state) -> Dictionary:
+	var tr = state.get("track", null) if state is Dictionary else null
+	if not tr is Dictionary or bool(tr.get("finished", false)):
+		return {}
+	var ev := str(tr.get("event", ""))
+	var shown := str(tr.get("sub", "scratch")) if ev == "omnium" else ev
+	var out_ids: Array = tr.get("eliminated", []) if tr.get("eliminated") is Array else []
+	if out_ids.has(ME) or out_ids.has(HOME) or ev == "free":
+		return {}
+	var to_go = tr.get("laps_to_go", null)
+	var laps_left := ""
+	if to_go != null:
+		laps_left = "dernier tour" if int(to_go) <= 1 else "encore %d tours" % int(to_go)
+	var action := ""
+	var goal := ""
+	var why := ""
+	var chips: Array = []
+	match shown:
+		"elimination":
+			goal = "être le dernier en course"
+			why = "le dernier sur la ligne est éliminé"
+			if str(tr.get("last", "")) == ME:
+				var racing: Array = []
+				for id in (tr.get("ranking", []) if tr.get("ranking") is Array else []):
+					if not out_ids.has(id):
+						racing.append(str(id))
+				var i := racing.find(ME)
+				var g = tr.get("gap_last_s", null)
+				action = ("Passe %s avant la ligne%s" % [name_of(racing[i - 1]), (" : %s s" % fr1(float(g))) if g != null and float(g) >= 0.05 else ""]) \
+					if i > 0 else "Passe un coureur avant la ligne"
+				chips = ["pédale plus fort"]
+			else:
+				var d = tr.get("to_elim_m", null)
+				action = "Ne sois pas dernier sur la ligne" + ((" · dans " + distance_text(float(d))) if d != null else "")
+		"scratch":
+			goal = "passer la ligne d'arrivée en tête"
+			why = "seule l'arrivée compte"
+			action = "Garde des forces pour le sprint final" + ((" · " + laps_left) if laps_left != "" else "")
+		"points":
+			goal = "marquer le plus de points"
+			why = "chaque sprint donne 5, 3, 2 et 1 points aux 4 premiers"
+			action = _sprint_action(tr)
+		"tempo":
+			goal = "marquer le plus de points"
+			why = "le premier sur la ligne à chaque tour marque 1 point"
+			action = "Passe la ligne en tête à chaque tour"
+		"keirin":
+			goal = "passer la ligne en tête"
+			var p = tr.get("pacer", null)
+			if p is Dictionary and bool(p.get("on", false)):
+				action = "Reste derrière le derny : ne le dépasse pas"
+				why = "le derny lance la course, puis s'écarte à 3 tours de la fin"
+			else:
+				action = "Sprint jusqu'à la ligne !"
+				why = "le derny est parti, la course est lancée"
+		"madison":
+			goal = "marquer le plus de points avec ton coéquipier"
+			why = "un seul coureur de l'équipe est en course à la fois"
+			var racers = tr.get("racers", null)
+			if racers is Dictionary and racers.has(HOME) and str(racers[HOME]) != ME:
+				action = "Au repos en haut : redescends au passage de %s pour le relais" % name_of(str(racers[HOME]))
+			else:
+				action = _sprint_action(tr)
+		"pursuit", "team_pursuit", "team_sprint":
+			goal = "rattraper l'adversaire ou finir avant lui"
+			why = "départ arrêté, ligne A ; l'adversaire part en face, ligne B"
+			var to = tr.get("to_go_m", null)
+			action = "Roule le plus vite possible" + ((" · encore " + distance_text(float(to))) if to != null else "")
+		"kilo", "500", "flying_200":
+			goal = "le meilleur temps"
+			why = "épreuve contre la montre, seul en piste"
+			var to2 = tr.get("to_go_m", null)
+			action = "Donne tout jusqu'à la ligne" + ((" · encore " + distance_text(float(to2))) if to2 != null else "")
+		"hour":
+			goal = "aller le plus loin possible en une heure"
+			why = "seule la distance compte"
+			action = "Garde une allure régulière"
+		_:
+			return {}
+	return {"k": "À FAIRE", "action": action, "detail": _detail(goal, why), "chips": chips}
+
+
+func _sprint_action(tr: Dictionary) -> String:
+	var nxt = tr.get("next_sprint_lap", null)
+	var lap = tr.get("lap", null)
+	if nxt == null or lap == null:
+		return "Finis dans les 4 premiers à chaque sprint"
+	var n := int(nxt) - int(lap)
+	if n <= 0:
+		return "Sprint à ce tour : finis dans les 4 premiers !"
+	return "Sprint dans %d tour%s : place-toi devant" % [n, "s" if n > 1 else ""]
+
+
+static func _detail(goal: String, why: String) -> String:
+	var parts := []
+	if goal != "":
+		parts.append("Objectif : " + goal)
+	if why != "":
+		parts.append("Pourquoi : " + why)
+	return " · ".join(parts)
+
+
+## Objectif de l'épreuve en une ligne (départ, feedback_model.gd on_state `goal`).
+func goal(state) -> String:
+	var c := consigne(state)
+	var d := str(c.get("detail", ""))
+	return d.get_slice(" · ", 0).trim_prefix("Objectif : ") if d != "" else ""
 
 
 ## Écarts en temps aux voisins (révision 1.33, `track.ahead` / `track.behind`, signés comme `bots[].gap_s`) :
@@ -351,32 +514,6 @@ func pacer_block(tr: Dictionary) -> Dictionary:
 		"speed": "%d km/h" % int(round(float(p.get("v", 0.0)) * 3.6)), "hint": "Ne le dépasse pas avant"}
 
 
-func elimination_center(tr: Dictionary) -> Dictionary:
-	if str(tr.get("last", "")) != ME or bool(tr.get("finished", false)):
-		return {}
-	var ranking: Array = tr.get("ranking", []) if tr.get("ranking") is Array else []
-	var out_ids: Array = tr.get("eliminated", []) if tr.get("eliminated") is Array else []
-	var racing: Array = []
-	for id in ranking:
-		if not out_ids.has(id):
-			racing.append(str(id))
-	var i := racing.find(ME)
-	var sub := "Remonte un coureur avant la ligne"
-	if i > 0:
-		var g = tr.get("gap_last_s", null)
-		sub = "Remonte %s avant la ligne%s" % [name_of(racing[i - 1]), (" (%s s)" % fr1(float(g))) if g != null else ""]
-	return {"title": "DERNIER !", "sub": sub, "color": RED}
-
-
-## Américaine : bandeau du relais quand le cycliste est au repos (son coéquipier court).
-func madison_center(tr: Dictionary) -> Dictionary:
-	var racers = tr.get("racers", null)
-	if not racers is Dictionary or not racers.has(HOME) or str(racers[HOME]) == ME:
-		return {}
-	return {"title": "AU REPOS EN HAUT", "sub": "%s court · redescends à son passage pour le relais" % name_of(str(racers[HOME])),
-		"color": BLUE_BG}
-
-
 ## Bots de la trame et, au keirin tant qu'il roule, le derny (`track.pacer`), à la place du cycliste sur la piste
 ## (le derny mène à la corde) ; sans derny : `state.bots` tel quel.
 static func bots_with_pacer(state: Dictionary):
@@ -423,18 +560,11 @@ func sounds(state) -> Array:
 		_started = true
 		if float(tr.get("t_s", 0.0)) < 1.0:
 			out.append("track_gun")
-	# Fin de l'épreuve : arpège de la victoire et public, ou public seul ; éliminé : deux notes qui descendent.
+	# Fin de l'épreuve : le public (le son du résultat vient du moment RÉSULTAT, feedback_model.gd, lot RT1).
 	var finished := bool(tr.get("finished", false))
 	if finished and not _finished:
-		if my_place(tr) == 1:
-			out.append("jingle_winner")
 		out.append("track_crowd")
 	_finished = finished
-	var out_ids: Array = tr.get("eliminated", []) if tr.get("eliminated") is Array else []
-	var me_out := out_ids.has(ME)
-	if me_out and not _me_out and not finished:
-		out.append("jingle_elim")
-	_me_out = me_out
 	var bell := bool(tr.get("bell", false))
 	if bell and not _bell:
 		out.append("track_bell")

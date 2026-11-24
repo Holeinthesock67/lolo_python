@@ -39,6 +39,9 @@ const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
 const GpView := preload("res://scripts/grandprix/gp_view.gd")
 const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
 const TrackView := preload("res://scripts/track/track_view.gd")
+## Retours et consignes communs à tous les modes (lot RT1).
+const FeedbackModel := preload("res://scripts/feedback_model.gd")
+const FeedbackView := preload("res://scripts/feedback_view.gd")
 const GpScene := preload("res://scripts/grandprix/gp_scene.gd")
 const GpSoundModel := preload("res://scripts/grandprix/gp_sound_model.gd")
 const GpItems := preload("res://scripts/grandprix/gp_items.gd")
@@ -157,6 +160,8 @@ var gp_hud = GpHudModel.new()
 var gp_view = null
 var track_hud = TrackHudModel.new()
 var track_view = null
+var feedback = FeedbackModel.new()
+var feedback_view = null
 ## Grand Prix des objets en 3D (lot GP7) : boîtes, objets, effets sur les coureurs, onomatopées ; et ses sons.
 var gp_scene = null
 var gp_sounds = GpSoundModel.new()
@@ -436,7 +441,8 @@ func _ready() -> void:
 			ipc.test_log("gp_event kind=%s item=%s rider=%s" % [msg.get("kind", "?"), msg.get("item", "?"), msg.get("rider", "?")])
 			_play_gp_bot_sound(GpSoundModel.on_event(msg), str(msg.get("rider", ""))))
 	ipc.elimination_received.connect(func(msg: Dictionary) -> void:
-		var jingles: Array = survivor_hud.on_elimination(msg, Time.get_ticks_msec() / 1000.0)
+		var now_s := Time.get_ticks_msec() / 1000.0
+		var jingles: Array = feedback.push_all(survivor_hud.on_elimination(msg, now_s), now_s)   # lot RT1
 		if not jingles.is_empty():
 			print("Élimination : arche %s, %s" % [msg.get("arch", "?"), msg.get("rider", "?")])
 			ipc.test_log("elimination arch=%s rider=%s" % [msg.get("arch", "?"), msg.get("rider", "?")])
@@ -496,6 +502,8 @@ func _ready() -> void:
 	hud.add_child(gp_view)
 	track_view = TrackView.new()
 	hud.add_child(track_view)
+	feedback_view = FeedbackView.new()   # au-dessus des vues des modes (lot RT1)
+	hud.add_child(feedback_view)
 	wtf_scene = WtfScene.new()
 	add_child(wtf_scene)
 	ipc.world_menu_received.connect(_on_world_menu_received)
@@ -1889,6 +1897,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"grandprix_scene": gp_scene.test_info() if gp_scene != null else {},
 		"survivor_arches": segment_markers.survivor_arches().size() if segment_markers != null else 0,
 		"track": track_view.test_info() if track_view != null else {},
+		"feedback": feedback_view.test_info() if feedback_view != null else {},
 		"scoreboard": velodrome_hall.scoreboard_text() if velodrome_hall != null else "",
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
@@ -2007,14 +2016,11 @@ func _on_garage(items: Array) -> void:
 	_refresh_menu()
 
 
-## `xp_result` de fin de séance (lot V9) : bilan dans le résumé, bandeau « Niveau N ! » une seule fois.
-const LEVEL_UP_S := 6.0
-
-
+## `xp_result` de fin de séance (lot V9) : bilan dans le résumé.
+## Retour d'essai du 22/11 : le bandeau du haut masquait le titre et « Rejouer » ; « Niveau N ! » reste écrit en
+## vert dans le bloc « Progression » du bilan, le bandeau n'est plus affiché sur la fin de séance.
 func _on_xp_result(msg: Dictionary) -> void:
-	var text := menu_flow.on_xp_result(msg)
-	if text != "":
-		banner.show_message("level_up", text, LEVEL_UP_S)
+	menu_flow.on_xp_result(msg)
 	menu_view.summary.animate = _quality_name != "low"
 	_refresh_menu()
 
@@ -2235,12 +2241,7 @@ func _on_state_received(state: Dictionary) -> void:
 		banner.show_message("trainer_busy", DevicesViewModel.TRAINER_BUSY_TEXT)
 	else:
 		banner.clear_message("trainer_busy")
-	# Invite de fin de séance (1er novembre) : entraînement fini, la séance continue jusqu'à Y puis A maintenu.
-	var done_text := HudViewModel.workout_done_text(state)
-	if done_text != "" and str(state.get("session_state", "")) == "RUNNING":
-		banner.show_message("workout_done", done_text)
-	else:
-		banner.clear_message("workout_done")
+	# Fin d'un entraînement (1er novembre) : RÉSULTAT et consigne de fin communs (feedback_model.gd, lot RT1).
 	var end_turn := HudViewModel.end_u_turn_text(_dir, state)
 	if end_turn != "":
 		banner.show_message("press", end_turn, PRESS_HINT_S)
@@ -2253,6 +2254,7 @@ func _on_state_received(state: Dictionary) -> void:
 	if waiting:
 		if not _was_start_waiting:
 			start_screen.set_route(_start_route_card(state.get("route_id", null)))
+		start_screen.set_goal(_start_goal(state))   # lot RT2 : objectif écrit avant le départ
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
 		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed() and not _wtf_warm_queued:
@@ -2354,6 +2356,7 @@ func _on_state_received(state: Dictionary) -> void:
 		_update_survivor(state, in_session)
 		_update_grandprix(state, in_session)
 		_update_track(state, in_session)
+		_update_feedback(state)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
@@ -2514,6 +2517,57 @@ func _update_track(state: Dictionary, in_session: bool) -> void:
 		velodrome_hall.set_scoreboard(track_hud.board_text(state))
 	for j in track_hud.sounds(state):
 		_play_event(j)
+
+
+## Retours et consignes communs (lot RT1), à chaque trame : moments des modes (piste, Dernier survivant), départ et
+## fin d'un entraînement, puis bandeau du moment, résultat et zone de consigne. Les éliminations du Dernier survivant
+## arrivent par le message `elimination` (signal de ipc_client.gd).
+func _update_feedback(state: Dictionary) -> void:
+	var now_s := Time.get_ticks_msec() / 1000.0
+	var moments: Array = track_hud.moments(state) + survivor_hud.moments(state)
+	var sounds: Array = feedback.push_all(moments, now_s)
+	sounds += feedback.on_state(state, now_s, _mode_goal(state))
+	for j in sounds:
+		_play_event(j)
+	feedback_view.update_view(feedback.view(state, now_s, _mode_consigne(state)))
+
+
+## Consigne du mode en cours (lot RT1) : épreuve de piste, Dernier survivant, Grand Prix ; {} sinon.
+func _mode_consigne(state: Dictionary) -> Dictionary:
+	if state.get("track", null) is Dictionary:
+		return track_hud.consigne(state)
+	if state.get("survivor", null) is Dictionary:
+		return survivor_hud.consigne(state)
+	if state.get("gp", null) is Dictionary:
+		return gp_hud.consigne(state)
+	return {}
+
+
+## Objectif du mode en une ligne, annoncé au départ (bandeau « ▶ DÉPART », lot RT1) ; "" sans objectif.
+func _mode_goal(state: Dictionary) -> String:
+	if state.get("track", null) is Dictionary:
+		return track_hud.goal(state)
+	if state.get("survivor", null) is Dictionary:
+		return survivor_hud.goal(state)
+	if state.get("gp", null) is Dictionary:
+		return gp_hud.goal(state)
+	return ""
+
+
+## Objectif sur l'écran de départ (lot RT2) : celui du mode quand sa trame est là, sinon d'après le mode choisi
+## au menu ; "" pour une séance libre.
+func _start_goal(state: Dictionary) -> String:
+	var g := _mode_goal(state)
+	if g != "":
+		return g
+	match str(menu_flow.menu.mode):
+		"survivor":
+			return "être le dernier en course"
+		"grandprix", "race":
+			return "finir 1er"
+		"erg":
+			return "aller au bout de l'entraînement"
+	return ""
 
 
 ## Coureurs du Grand Prix pour gp_scene.gd (lot GP7) : le cycliste à sa place affichée `pos`, puis les bots à

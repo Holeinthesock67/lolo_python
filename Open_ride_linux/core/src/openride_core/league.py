@@ -97,7 +97,7 @@ PROFILE_LABELS = {"climber": "Grimpeur", "rouleur": "Rouleur", "sprinter": "Spri
 
 TROPHIES = {1: ("or", "Trophée d'or"), 2: ("argent", "Trophée d'argent"), 3: ("bronze", "Trophée de bronze")}
 REGULARITY = ("regularite", "Trophée de régularité")
-ROUND_SOURCES = ("joueur", "simule")
+ROUND_SOURCES = ("joueur", "simule", "neutre")   # neutre : manche pas jouable cette semaine-là, personne ne marque
 
 
 class LeagueError(ValueError):
@@ -217,7 +217,8 @@ class Season:
         return i
 
     def record(self, index: int, places: Mapping[str, int], today: date, easy: bool = False) -> RoundResult:
-        """Résultat de la course du cycliste pour la manche `index` (premier résultat seulement)."""
+        """Résultat de la course du cycliste pour la manche `index` (premier résultat seulement). `today` : jour
+        du départ de la manche (une manche partie dimanche soir et finie après minuit compte pour sa semaine)."""
         if self.closed:
             raise LeagueError("saison close")
         if self.paused:
@@ -291,11 +292,16 @@ class Season:
         last = min(self.week_index(today), WEEKS)
         for i in range(last):
             if i not in self.results:
-                self.results[i] = RoundResult(self._check_places(sim(self, ROUNDS[i], i), with_me=False), "simule",
-                                              day=today.isoformat())
+                if ROUNDS[i].mode not in PLAYABLE_MODES:   # le cycliste ne pouvait pas la courir : neutralisée
+                    self.results[i] = RoundResult({}, "neutre", day=today.isoformat())
+                else:
+                    self.results[i] = RoundResult(self._check_places(sim(self, ROUNDS[i], i), with_me=False),
+                                                  "simule", day=today.isoformat())
                 done.append(i)
         if last >= WEEKS:
-            if self.classic is None:
+            # Classique simulée seulement si le cycliste l'a datée (plan §3.2 : la manquer ne coûte rien ; tant
+            # qu'elle n'est pas jouable, lot CH5, personne ne la marque).
+            if self.classic is None and self.classic_day is not None:
                 self.classic = RoundResult(self._check_places(sim(self, CLASSIC, WEEKS), with_me=False), "simule",
                                            day=today.isoformat())
                 done.append(WEEKS)
@@ -424,14 +430,20 @@ class Season:
             if data.get("last_seen"):
                 s.last_seen = date.fromisoformat(data["last_seen"])
             return s
-        except (KeyError, TypeError, ValueError) as e:   # LeagueError est un ValueError
+        except (KeyError, TypeError, ValueError, AttributeError) as e:   # LeagueError est un ValueError
             raise LeagueError(f"saison illisible : {e}") from e
 
 
 def _result_from(season: Season, r: Any) -> RoundResult:
+    if not isinstance(r, dict) or not isinstance(r.get("places"), dict):
+        raise LeagueError(f"résultat mal écrit : {r!r}")
     source = r.get("source")
     if source not in ROUND_SOURCES:
         raise LeagueError(f"source inconnue : {source!r}")
+    if source == "neutre":
+        if r["places"]:
+            raise LeagueError("manche neutralisée avec des places")
+        return RoundResult({}, source, False, str(r.get("day", "")))
     places = season._check_places(r["places"], with_me=ME in r["places"])
     return RoundResult(places, source, bool(r.get("easy", False)), str(r.get("day", "")))
 
@@ -637,7 +649,10 @@ def rider_update(book: Any, places: Mapping[str, int], ratings: Mapping[str, flo
 
 # --- manche lancée par la séance (lot CH3) --------------------------------------------------------
 
-PLAYABLE_MODES = ("race",)      # modes déjà branchés (CH3a : la Course) ; les autres manches attendent CH3b
+PLAYABLE_MODES = ("race", "survivor", "grandprix", "track")   # CH3a : la Course ; CH3b : les trois autres modes
+FIELD_SIZE = sum(n for _, n in FIELD)   # 11 rivaux
+TRACK_EVENT = "elimination"     # manche du vélodrome (CH3b) : une élimination contre les 11 rivaux
+SURVIVOR_SPACINGS_KM = (1, 2, 3)   # écarts entre arches du Dernier survivant (`survivor.SPACINGS_KM`)
 RACE_TARGET_S = 27 * 60.0       # course de 25 à 30 min (manche de 45 min tout compris, plan §3.1)
 RACE_LAPS = (1, 10)             # bornes de `race.laps`
 EASY_OBJECTIVES = ("recovery", "endurance")   # intensité « facile » de R1 : mention au classement de la manche
@@ -649,6 +664,22 @@ def laps_for(lap_m: float, speed_ms: float, target_s: float | None = None) -> in
     if lap_m <= 0 or speed_ms <= 0:
         return RACE_LAPS[0]
     return int(min(max(round(target_s * speed_ms / lap_m), RACE_LAPS[0]), RACE_LAPS[1]))
+
+
+def survivor_spacing_km(speed_ms: float, target_s: float | None = None) -> int:
+    """Écart entre arches d'une manche « Dernier survivant » (une arche par rival) pour environ `target_s`."""
+    target_s = RACE_TARGET_S if target_s is None else target_s
+    if speed_ms <= 0:
+        return SURVIVOR_SPACINGS_KM[0]
+    km = target_s * speed_ms / FIELD_SIZE / 1000.0
+    return min(SURVIVOR_SPACINGS_KM, key=lambda x: (abs(x - km), x))
+
+
+def track_settings() -> dict[str, Any]:
+    """Réglages de l'élimination de la ligue : les 11 rivaux, défauts de l'épreuve pour le reste."""
+    from . import track as track_mod
+
+    return track_mod.check(TRACK_EVENT, {"opponents": FIELD_SIZE})
 
 
 def places_from_order(order: Sequence[Sequence[str]]) -> dict[str, int]:
@@ -713,4 +744,8 @@ def round_summary(season: Season, index: int, before: list[dict[str, Any]], easy
     lo = max(0, min(k - 2, len(after) - 5))
     return {"round": index + 1, "of_rounds": WEEKS, "title": ROUNDS[index].title, "place": res.places[ME],
             "of": len(res.places), "points": points_for(res.places[ME]), "general_before": was,
-            "general_after": now, "moved": moved, "easy": easy, "rows": standings_rows(season, after[lo:lo + 5])}
+            "general_after": now, "moved": moved, "easy": easy,
+            # Lignes réduites (revue F1-04) : la trame d'arrivée reste sous 4 096 octets ; caractère, équipe et
+            # couleur sont dans le message `league`.
+            "rows": [{"place": r["place"], "name": r["name"], "points": round(float(r["points"]), 1), "me": r["id"] == ME}
+                     for r in after[lo:lo + 5]]}

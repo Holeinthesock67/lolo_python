@@ -122,7 +122,8 @@ def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m:
                     raise CampaignError("effort des bots inconnu")
             s.driver.base_power_w = force * target_w
             t = 0.0
-            while s.state.session_state == "RUNNING" and t < MAX_RACE_S:
+            # Lot RT2 : l'arrivée ne finit plus la séance (on continue au calme) ; la course est jouée à `arrival`.
+            while s.state.session_state == "RUNNING" and s.state.arrival is None and t < MAX_RACE_S:
                 wall[0] += DT
                 s._step(DT, wall[0])
                 t += DT

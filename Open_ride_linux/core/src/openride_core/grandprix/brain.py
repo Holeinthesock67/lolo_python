@@ -4,7 +4,8 @@ Règles du plan `docs/4.0/PLAN_SERIE_GP.md` §6, lues sur la fiche de chaque obj
 que sur son nom, pour qu'un objet ajouté à la table suive la règle de sa famille :
 
 - objet pour soi (coup de fouet, super-forme, voiture d'équipe, furtif) et nuage d'orage : tout de suite,
-  après un délai tiré entre 0,5 et 3 s (graine de la séance) ; le nuage seulement s'il y a un premier devant ;
+  après un délai tiré entre 0,5 et 3 s (graine de la séance) ; le nuage seulement s'il y a un premier devant,
+  ou en tête juste avant une rangée de boîtes pour le dissiper (revue de code C4-08) ;
 - bidon (posé derrière) : un coureur à moins de 30 m derrière ;
 - musette (lancée devant) : une cible sur la voie du bot à moins de 150 m ; musette guidée : une cible à
   moins de sa portée de verrouillage (200 m), toutes voies ;
@@ -159,8 +160,10 @@ def wants(mode: GrandPrixMode, r: Racer, spec: ItemSpec) -> bool:
     if spec.target == "self":
         return True
     if spec.target == "leader":
-        lead = mode._leader(but=r)
-        return lead is not None and lead.s > r.s
+        if mode._nobody_ahead(r):
+            # revue de code C4-08 : en tête, le bot dissipe son nuage avant une rangée de boîtes pour en reprendre un
+            return bool(mode.boxes.ahead(r.s, GUARD_BOX_M))
+        return True
     if spec.form == "dropped":
         return any(0.0 < r.s - o.s <= DROP_BEHIND_TRIGGER_M for o in mode._racing() if o is not r)
     if spec.target == "ahead" and spec.form == "projectile":
