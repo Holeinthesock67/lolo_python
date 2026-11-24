@@ -312,6 +312,7 @@ class Harness:
         (tmp / "workouts").mkdir(parents=True, exist_ok=True)
         (tmp / "workouts" / "matrice_x42.zwo").write_text(WORKOUT, "utf-8")
         self.n = 0
+        self.why: dict[str, str] = {}      # mode -> raison d'une mesure arrêtée tôt (C7-04)
 
     def session(self, power: float = 180.0) -> CoreSession:
         self.n += 1
@@ -431,6 +432,7 @@ def phases_rogue(h: Harness) -> Iterator[Phase]:
     s.cfg.rider.ftp_w = prof.ftp_w
     h.cmd(s, "start_run", {"objective": "threshold", "duration_min": 30, "seed": 5})
     if s.rogue is None:
+        h.why["ROGUE"] = "start_run refusé : aucune run lancée"
         return
     yield Phase("ROGUE", "prêt", s)
     h.cmd(s, "start")
@@ -481,6 +483,7 @@ def phases_rogue(h: Harness) -> Iterator[Phase]:
 
 def phases_world(h: Harness) -> Iterator[Phase]:
     if not STUB_WORLDGEN.exists():
+        h.why["MONDE"] = f"doublure du générateur absente ({STUB_WORLDGEN})"
         return
     s = h.session(power=0.0)
     s.worldgen_cmd, s.worldgen_args = [sys.executable, str(STUB_WORLDGEN)], []
@@ -491,6 +494,7 @@ def phases_world(h: Harness) -> Iterator[Phase]:
             h.run(s, 0.1)
             time.sleep(0.005)
         if s.state.session_state != "READY":
+            h.why["MONDE"] = f"monde ouvert pas prêt en 30 s (état {s.state.session_state})"
             return
         yield Phase("MONDE", "prêt", s)
         h.cmd(s, "start")
@@ -508,6 +512,17 @@ def phases_world(h: Harness) -> Iterator[Phase]:
 
 
 PHASES = {"sim": phases_sim, "erg": phases_erg, "rogue": phases_rogue, "monde": phases_world}
+
+# Phases que chaque mode doit avoir atteintes (C7-04, revue de code vague 2) : une phase qui manque est un mode
+# non mesuré, donc un échec, et pas une ligne « sur N phases » plus courte. Les phases conditionnelles (bonus en
+# réserve, qui dépendent des bonus du parcours) n'y sont pas.
+EXPECTED_PHASES: dict[str, tuple[str, ...]] = {
+    "sim": ("prêt", "en route", "ERG libre", "ERG à cadence verrouillée", "pause", "bilan"),
+    "erg": ("prêt", "bloc", "pause", "bloc FreeRide", "dernier bloc", "fin de l'entraînement", "bilan"),
+    "rogue": ("prêt", "échauffement", "salle", "pause", "couloir, aucune carte choisie", "couloir, carte choisie",
+              "boss", "retour au calme", "résultats", "bilan"),
+    "monde": ("prêt", "en route", "carrefour", "pause"),
+}
 
 
 # --- observation et vérification d'un appui ------------------------------------------------------------
@@ -862,18 +877,28 @@ def check_setting(h: Harness, phase: str, s: CoreSession, st: settings_mod.Setti
 # --- rapport --------------------------------------------------------------------------------------------
 
 @dataclass
+class MissingPhases:
+    """Mode dont des phases attendues n'ont pas été atteintes (C7-04) : toujours un échec."""
+    mode: str
+    phases: list[str]
+    detail: str
+    ok: bool = False
+
+
+@dataclass
 class Report:
     cells: list[Cell] = field(default_factory=list)
     settings: list[SettingCell] = field(default_factory=list)
     keys: list[KeyCell] = field(default_factory=list)
     backup: list[BackupCell] = field(default_factory=list)
     phases: list[str] = field(default_factory=list)
+    missing: list[MissingPhases] = field(default_factory=list)
     wall_s: float = 0.0
 
     @property
     def failures(self) -> list[Cell | SettingCell | KeyCell | BackupCell]:
-        return [c for c in self.cells if c.ok is False] + [c for c in (*self.settings, *self.keys, *self.backup)
-                                                             if not c.ok]
+        return [c for c in self.cells if c.ok is False] + [c for c in (*self.settings, *self.keys, *self.backup,
+                                                                        *self.missing) if not c.ok]
 
     @property
     def unknown(self) -> list[Cell]:
@@ -906,13 +931,19 @@ def run(part: str = "tout", modes: tuple[str, ...] = tuple(PHASES), spec: Path =
         h = Harness(Path(tmp_s))
         if part in ("boutons", "tout"):
             for m in modes:
+                reached: set[str] = set()
                 for ph in PHASES[m](h):
+                    reached.add(ph.name)
                     rep.phases.append(f"{ph.mode} · {ph.name}")
                     cells = [check(h, ph, ev, plan) for ev in InputEvent]
                     if ph.session.state.session_state == "RUNNING":   # aucun menu : la touche passe par le core
                         cells += [check(h, ph, ev, plan, keys) for ev, keys in key_events.items()]
                         rep.backup += check_backup(ph.mode, ph.name, cells)
                     rep.cells += cells
+                lost = [n for n in EXPECTED_PHASES.get(m, ()) if n not in reached]
+                if lost:
+                    rep.missing.append(MissingPhases(m, lost, h.why.get(m.upper(), "")
+                                                     or "phases non atteintes avant la limite"))
         if part in ("reglages", "tout"):
             for name, s in setting_phases(h):
                 for st in settings_mod.SETTINGS:
@@ -937,6 +968,8 @@ def format_text(rep: Report) -> str:
     for c in rep.settings:
         if not c.ok:
             out.append(f"[ÉCHEC] réglage {c.key} → {c.value!r} · {c.phase} : {c.detail}")
+    for mp in rep.missing:
+        out.append(f"[ÉCHEC] mode {mp.mode} non mesuré : manquent {', '.join(mp.phases)} ({mp.detail})")
     every = [*rep.cells, *rep.settings, *rep.keys, *rep.backup]
     n_ok = sum(1 for c in every if c.ok)
     n_key = sum(1 for c in rep.cells if c.source != "Click")
@@ -963,6 +996,9 @@ def format_md(rep: Report) -> str:
               "| --- | --- | --- | --- | --- | --- |"]
     for b in rep.backup:
         lines.append(f"| {b.mode} | {b.phase} | {b.event} | {b.effect} | {'OK' if b.ok else '**ÉCHEC**'} | {b.detail} |")
+    if rep.missing:
+        lines += ["", "## Modes non mesurés", ""]
+        lines += [f"- **ÉCHEC** {mp.mode} : manquent {', '.join(mp.phases)} ({mp.detail})" for mp in rep.missing]
     lines += ["", "## Réglages", "", "| Phase | Réglage | Appliqué | Valeur | Résultat | Relevé |",
               "| --- | --- | --- | --- | --- | --- |"]
     for c in rep.settings:
@@ -973,7 +1009,8 @@ def format_md(rep: Report) -> str:
 def to_json(rep: Report) -> dict:
     return {"ok": rep.ok, "phases": rep.phases, "wall_s": round(rep.wall_s, 1),
             "boutons": [c.__dict__ for c in rep.cells], "reglages": [c.__dict__ for c in rep.settings],
-            "clavier": [c.__dict__ for c in rep.keys], "boitier_gauche": [c.__dict__ for c in rep.backup]}
+            "clavier": [c.__dict__ for c in rep.keys], "boitier_gauche": [c.__dict__ for c in rep.backup],
+            "modes_non_mesures": [c.__dict__ for c in rep.missing]}
 
 
 def main(argv: list[str] | None = None) -> int:

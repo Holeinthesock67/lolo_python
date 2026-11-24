@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Profils : copie complète de chaque profil de joueur chaque semaine, avant les mises à jour et avant la remise à zéro, rotation, « Restaurer une sauvegarde » dans « Gérer : <profil en cours> » (commandes `list_profile_backups`, `restore_profile_backup`, message `profile_backups`, révision attribuée à la fusion) | Python + GDScript + Bash | RZ1 (#991) | Moyenne | En PR (23 novembre) |
+| Profils : copie complète de chaque profil de joueur chaque semaine, avant les mises à jour et avant la remise à zéro, rotation, « Restaurer une sauvegarde » dans « Gérer : <profil en cours> » (commandes `list_profile_backups`, `restore_profile_backup`, message `profile_backups`, révision 1.36) | Python + GDScript + Bash | RZ1 (#991) | Moyenne | En PR (23 novembre) |
 
 ## 1. Objectif
 
@@ -28,7 +28,7 @@ ligue d'hiver et les mises à jour. Cadrage : `/mnt/project-files/plans/CADRAGE_
 ## 3. Contrat
 
 Ajouts compatibles : commandes `list_profile_backups` et `restore_profile_backup`, message `profile_backups`
-(`docs/contracts/ipc_v1.md`, schémas `cmd` et `profile_backups`). Numéro de révision pris à la fusion, au-dessus de main.
+(`docs/contracts/ipc_v1.md`, schémas `cmd` et `profile_backups`). Révision 1.36 (la 1.35 est prise par la courbe de puissance, lot PP3, #975).
 
 ## 4. Fichiers
 

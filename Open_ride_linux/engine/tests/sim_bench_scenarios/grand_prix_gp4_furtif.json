@@ -1,5 +1,5 @@
 {
-  "description": "Lot GP4, avatar du cycliste et d'un bot translucides sous le Furtif : course de `grand_prix` (démonstration de 5 km, 4 bots, chaos fou : rangées de boîtes à 500, 1 269, 2 038 et 2 808 m) où seul cet objet est joué et tiré dans toutes les tranches (`bench.grandprix`). Le cycliste roule à 200 W, derrière les bots. Z toutes les 3 s autour de chaque rangée (de 6 s avant à 18 s après le passage attendu) pour l'utiliser dès la fin de la roulette, capture 1,5 s après chaque appui ; captures en distance 30 et 50 m après chaque rangée (objets des bots). À lancer avec `--camera follow_far` (la vue subjective ne montre ni l'avatar ni la voiture). Banc GPU en low, medium et high (8, 13 et 16 ms).",
+  "description": "Lot GP4, avatar du cycliste et d'un bot translucides sous le Furtif : course de `grand_prix` (Circuit des Prés, boucle de 3 km en 2 tours depuis le lot GPL1, 4 bots, chaos fou : rangées de boîtes à 500, 1 269 et 2 038 m de chaque tour, la quatrième à 3 500 m au second tour) où seul cet objet est joué et tiré dans toutes les tranches (`bench.grandprix`). Le cycliste roule à 200 W, derrière les bots. Z toutes les 3 s autour de chaque rangée (de 6 s avant à 18 s après le passage attendu) pour l'utiliser dès la fin de la roulette, capture 1,5 s après chaque appui ; captures en distance 30 et 50 m après chaque rangée (objets des bots). À lancer avec `--camera follow_far` (la vue subjective ne montre ni l'avatar ni la voiture). Banc GPU en low, medium et high (8, 13 et 16 ms).",
   "trainer": {
     "appear_at": 0.3,
     "connect_delay_s": 0.3
@@ -19,26 +19,6 @@
   },
   "events": [],
   "inputs": [
-    {
-      "t": 84,
-      "key": "Z",
-      "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
-    },
-    {
-      "t": 87,
-      "key": "Z",
-      "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
-    },
-    {
-      "t": 90,
-      "key": "Z",
-      "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
-    },
-    {
-      "t": 93,
-      "key": "Z",
-      "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
-    },
     {
       "t": 96,
       "key": "Z",
@@ -65,148 +45,168 @@
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 220,
+      "t": 111,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 223,
+      "t": 114,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 226,
+      "t": 117,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 229,
+      "t": 120,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 232,
+      "t": 167,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 235,
+      "t": 170,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 238,
+      "t": 173,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 241,
+      "t": 176,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 244,
+      "t": 179,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 344,
+      "t": 182,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 347,
+      "t": 185,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 350,
+      "t": 188,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 353,
+      "t": 191,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 356,
+      "t": 236,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 359,
+      "t": 239,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 362,
+      "t": 242,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 365,
+      "t": 245,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 368,
+      "t": 248,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 474,
+      "t": 251,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 477,
+      "t": 254,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 480,
+      "t": 257,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 483,
+      "t": 260,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 486,
+      "t": 448,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 489,
+      "t": 451,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 492,
+      "t": 454,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 495,
+      "t": 457,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     },
     {
-      "t": 498,
+      "t": 460,
+      "key": "Z",
+      "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
+    },
+    {
+      "t": 463,
+      "key": "Z",
+      "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
+    },
+    {
+      "t": 466,
+      "key": "Z",
+      "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
+    },
+    {
+      "t": 469,
+      "key": "Z",
+      "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
+    },
+    {
+      "t": 472,
       "key": "Z",
       "recette": "GP4 : avatar du cycliste et d'un bot translucides sous le Furtif"
     }
   ],
   "bench": {
-    "world": "demo",
+    "world": "circuit",
     "mode": "grandprix",
     "config": {
       "grandprix": {
         "opponents": 4,
-        "distance_km": 5,
+        "laps": 2,
         "chaos": "wild",
         "box_every_m": 1000
       },
@@ -280,8 +280,8 @@
       1319,
       2068,
       2088,
-      2838,
-      2858
+      3530,
+      3550
     ]
   }
 }
