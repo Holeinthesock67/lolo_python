@@ -63,4 +63,4 @@ Carte plein écran, zoom réglable, noms des routes et des lieux sur la carte, f
 
 ## Livraison
 
-PR à venir (branche `claude/project-thread-i86ilm`).
+PR #1055 (branche `claude/project-thread-i86ilm`), en revue.
