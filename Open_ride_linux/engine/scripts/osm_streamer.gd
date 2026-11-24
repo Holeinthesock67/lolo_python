@@ -85,6 +85,28 @@ var boats_enabled := false             # Lot P29 : chemins des bateaux des plans
 var biome_model = null
 var water_shimmer := false
 
+## Préchauffage (lot AC2, fil « à-coups de main » du 21/11) : chaque sorte de nœud de tronçon, avec son matériau,
+## son format de sommets (attributs de `_arrays_from_mesh_dict` du constructeur de la sorte) et ses ombres, est
+## dessinée une fois au chargement. Sans lui, la première rivière, le premier pont ou la première plage d'un
+## parcours compilaient leur shader en roulant (banc rNUIT20, DB1 low : 1 610 ms au premier ruisseau, à 1,9 km).
+## Formats : bâtiments sommets, normales, couleurs, UV, UV2 (building_mesh.gd) ; eau (lignes et aires) normales et
+## UV (water_mesh.gd) ; mer couleurs (sea_mesh.gd build_sea et horizon) ; écume et plages couleurs et UV ; ponts
+## couleurs (bridge_mesh.gd). test_osm_warm.gd vérifie ces formats sur les vrais constructeurs.
+const WARM_FORMATS := {
+	"buildings": ["normals", "colors", "uvs", "uvs2"],
+	"water_lines": ["normals", "uvs"],
+	"water_areas": ["normals", "uvs"],
+	"sea": ["normals", "colors"],
+	"sea_foam": ["normals", "colors", "uvs"],
+	"beach": ["normals", "colors", "uvs"],
+	"bridges": ["normals", "colors"],
+}
+const WARM_FRAMES := 5
+const WARM_DIST_M := 2.0
+const WARM_SIZE_M := 0.002
+var _warm: Node3D = null
+var _warm_frames := 0
+
 
 func _init() -> void:
 	_init_materials()
@@ -101,6 +123,64 @@ func _init_materials() -> void:
 	_beach_material = ShaderMaterial.new()
 	_beach_material.shader = BeachShader
 	_bridge_material = BridgeMesh.make_material()
+
+
+## Triangle minuscule au format de sommets de `kind` (WARM_FORMATS), tableaux prêts pour add_surface_from_arrays.
+static func warm_arrays(kind: String) -> Array:
+	var d := {"vertices": PackedVector3Array([Vector3.ZERO, Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0)]),
+		"indices": PackedInt32Array([0, 1, 2])}
+	for key in WARM_FORMATS.get(kind, []):
+		match key:
+			"normals":
+				d[key] = PackedVector3Array([Vector3.BACK, Vector3.BACK, Vector3.BACK])
+			"colors":
+				d[key] = PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE])
+			_:
+				d[key] = PackedVector2Array([Vector2.ZERO, Vector2.RIGHT, Vector2.UP])
+	return _arrays_from_mesh_dict(d)
+
+
+## Étape du préchauffage unique (main.gd, warmup_plan.gd) : un triangle de chaque sorte de nœud de tronçon,
+## minuscule à WARM_DIST_M devant `camera`, avec le matériau et les ombres des vrais nœuds (integrate), retiré
+## après WARM_FRAMES images. Sans caméra : rien. Retourne le nombre de sortes posées.
+func warm_up(camera: Node3D) -> int:
+	_drop_warm()
+	if camera == null:
+		return 0
+	_warm = Node3D.new()
+	_warm.name = "OsmWarm"
+	_warm.position = Vector3(0.0, 0.0, -WARM_DIST_M)
+	_warm.scale = Vector3.ONE * WARM_SIZE_M
+	for kind in WARM_FORMATS:
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, warm_arrays(kind))
+		var mi := MeshInstance3D.new()
+		mi.name = "warm_" + kind
+		mi.mesh = mesh
+		mi.material_override = _material_for(kind)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if _casts_shadow(kind) \
+			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_warm.add_child(mi)
+	camera.add_child(_warm)
+	_warm_frames = WARM_FRAMES
+	return WARM_FORMATS.size()
+
+
+## Triangles du préchauffage encore en scène (tests).
+func is_warming() -> bool:
+	return _warm != null
+
+
+func _drop_warm() -> void:
+	if _warm != null:
+		_warm.queue_free()
+		_warm = null
+	_warm_frames = 0
+
+
+## Nœuds de tronçon qui portent une ombre (integrate) : bâtiments et ponts.
+static func _casts_shadow(kind: String) -> bool:
+	return kind == "buildings" or kind == "bridges"
 
 
 ## Matériau d'un nœud de tronçon selon sa sorte (meshes_data.kind).
@@ -710,6 +790,10 @@ func _poll_jobs(wait: bool) -> void:
 
 
 func integrate(max_new: int) -> int:
+	if _warm_frames > 0:
+		_warm_frames -= 1
+		if _warm_frames <= 0:
+			_drop_warm()
 	_poll_jobs(false)
 	var created := 0
 	while created < max_new and not _ready_chunks.is_empty():
@@ -733,13 +817,12 @@ func integrate(max_new: int) -> int:
 			mi.mesh = mesh
 
 			mi.material_override = _material_for(kind)
+			# Ombres des bâtiments, et des ponts (lot EA4 : tablier sur l'eau et le fond de vallée) ; même règle
+			# pour le préchauffage (warm_up).
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if _casts_shadow(kind) \
+				else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			if kind == "buildings":
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.visibility_range_end = vis_end
-			elif kind == "bridges":   # lot EA4 : ombre du tablier sur l'eau et le fond de vallée
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-			else:
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 			add_child(mi)
 			nodes.append(mi)
