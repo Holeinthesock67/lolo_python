@@ -44,6 +44,8 @@ var _pacer: PanelContainer
 var _pacer_speed: Label
 var _pacer_text: Label
 var _pacer_hint: Label
+var _gaps: PanelContainer
+var _gap_rows: Array = []       # [ligne, nom (Label), écart (Label)] : devant, derrière
 var _list: PanelContainer
 var _list_title: Label
 var _rows: Array = []           # [ligne, place (Label), nom (RichTextLabel), valeur (Label), fond (StyleBoxFlat)]
@@ -127,6 +129,28 @@ func _build() -> void:
 	pcol.add_child(_pacer_text)
 	pcol.add_child(_pacer_hint)
 
+	# Écarts en temps aux voisins (révision 1.33, essai du 21 novembre), sous les tours et le derny.
+	_gaps = _right_panel()
+	var gcol0 := _vbox(_gaps)
+	var gt := _label(14, UiTheme.DIM)
+	gt.text = "ÉCARTS"
+	gcol0.add_child(gt)
+	for title in ["Devant", "Derrière"]:
+		var h := HBoxContainer.new()
+		var t := _label(15, UiTheme.DIM)
+		t.text = title
+		t.custom_minimum_size = Vector2(74, 0)
+		var n := _label(17, UiTheme.INK)
+		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		n.clip_text = true
+		var g := _label(20, UiTheme.INK)
+		g.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		h.add_child(t)
+		h.add_child(n)
+		h.add_child(g)
+		gcol0.add_child(h)
+		_gap_rows.append([h, n, g])
+
 	_list = _panel(UiTheme.PANEL_BG)
 	_list.offset_left = MARGIN
 	_list.offset_right = MARGIN + BLOCK_W
@@ -209,7 +233,7 @@ func _build() -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		mcol.add_child(l)
 
-	for p in [_banner, _laps, _pacer, _list, _pursuit, _chrono, _center]:
+	for p in [_banner, _laps, _pacer, _gaps, _list, _pursuit, _chrono, _center]:
 		add_child(p)
 
 
@@ -250,6 +274,21 @@ func update_view(view: Dictionary) -> void:
 		_pacer_text.text = str(pc.get("text", ""))
 		_pacer_hint.text = str(pc.get("hint", ""))
 		_pacer_hint.visible = _pacer_hint.text != ""
+
+	var gp: Dictionary = view.get("gaps", {})
+	_gaps.visible = not gp.is_empty()
+	_gaps.offset_top = _pacer.offset_top + (_pacer.get_combined_minimum_size().y + 10.0 if _pacer.visible else 0.0)
+	if _gaps.visible:
+		var keys := ["ahead", "behind"]
+		for i in 2:
+			var it = gp.get(keys[i], null)
+			var row: Array = _gap_rows[i]
+			(row[0] as Control).visible = it is Dictionary
+			if it is Dictionary:
+				(row[1] as Label).text = str(it.get("name", ""))
+				(row[2] as Label).text = str(it.get("text", ""))
+				# devant : écart à reprendre (or) ; derrière : avance sur lui (vert)
+				(row[2] as Label).add_theme_color_override("font_color", UiTheme.GOLD if i == 0 else GREEN)
 
 	var lst: Dictionary = view.get("list", {})
 	var rows: Array = lst.get("rows", [])
@@ -373,7 +412,9 @@ func test_info() -> Dictionary:
 		"pursuit": _gap.text if visible and _pursuit.visible else "",
 		"chrono": _chrono_big.text if visible and _chrono.visible else "",
 		"pacer": _pacer_text.text if visible and _pacer.visible else "",
-		"center": _center_title.text if visible and _center.visible else "", "laps_top": _laps.offset_top}
+		"center": _center_title.text if visible and _center.visible else "", "laps_top": _laps.offset_top,
+		"gaps": [(_gap_rows[0][2] as Label).text if visible and _gaps.visible and (_gap_rows[0][0] as Control).visible else "",
+			(_gap_rows[1][2] as Label).text if visible and _gaps.visible and (_gap_rows[1][0] as Control).visible else ""]}
 
 
 func _right_panel() -> PanelContainer:
