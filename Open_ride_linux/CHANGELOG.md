@@ -8,6 +8,14 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 
 ### Moins de brouillard et de halo en medium et high (lot BH1)
 - En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
+### Bluetooth et pilotes : constats de confort de la revue de code du 22 novembre (lot RC2, S6-05 à S6-13)
+- Après une reconnexion, le trainer n'est « connecté » qu'à sa première trame de mesures, et l'ancienne puissance n'est plus resservie (S6-05).
+- Une consigne de pente ou de puissance non finie (NaN) est ignorée au lieu de mettre le pilote en boucle de reconnexion (S6-06) ; une caractéristique de capacités ou de plage trop courte garde les valeurs par défaut (S6-07).
+- Trainer sans mode SIM : la pause et la fin ramènent la cible ERG au plus bas annoncé au lieu de la laisser appliquée (S6-08).
+- Click : trames de boutons tronquées ou incohérentes ignorées (S6-09) ; un même appui classé différemment par les deux boîtiers ne compte qu'une fois (S6-10).
+- Journal : adresses Bluetooth tronquées aux trois derniers octets, liste des appareils cardio à portée écrite une fois par lancement (S6-11).
+- `openride-ble-diag` : rapports dans `~/OpenRide/rapports/diag/` (droits du seul propriétaire), `scan` limité aux appareils reconnus sauf `--all` (S6-12) ; `--erg` et `--sim-grade` bornés, Reset tenté même si la pente 0 % échoue (S6-13).
+
 ### Trainer et FIT : constats forts de la revue de code du 22 novembre (lot RC2)
 - Vent « ressenti par le trainer » (`[wind] feel = "ftms"`) : le vent n'est plus renvoyé au trainer en pause, au bilan, au menu, ni dans la séance suivante sans vent (vélodrome, Cyber-Rogue) ; remis à zéro aussi à l'arrêt (S2-02).
 - Pilotage « résistance calculée » : une consigne de niveau acceptée lève le bandeau « trainer occupé » et remet le compteur de refus à zéro ; trois pertes de contrôle espacées ne mettent plus la séance en erreur (S6-01).
