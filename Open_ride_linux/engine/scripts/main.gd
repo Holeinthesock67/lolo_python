@@ -84,6 +84,7 @@ const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
+const ShaderWarm := preload("res://scripts/shader_warm.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const OW_PREFIX := "ow:"
@@ -334,6 +335,11 @@ func _ready() -> void:
 		streamer.add_child(horizon)
 		streamer.horizon_view = horizon
 		horizon.setup(world_env.environment, sun)
+	if streamer.shader_warm == null and bool(cfg.get("shader_warm", true)):
+		var warm = ShaderWarm.new()   # premier affichage à froid (lot AC6) : une doublure de shader par image
+		warm.name = "ShaderWarm"
+		streamer.add_child(warm)
+		streamer.shader_warm = warm
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
@@ -2274,6 +2280,8 @@ func _on_state_received(state: Dictionary) -> void:
 	var previous_session_state := session_state
 	if new_session_state != session_state:
 		session_state = new_session_state
+		if streamer.shader_warm != null:   # lot AC6 : rien de caché en séance (une tuile retardée se verrait)
+			streamer.shader_warm.set_active(session_state != "RUNNING")
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
 		if session_state == "RUNNING" and HudViewModel.is_ftp_warmup(state.get("erg", null)):
 			banner.show_message("controls", HudViewModel.ftp_warmup_text(), CONTROLS_HINT_S)
