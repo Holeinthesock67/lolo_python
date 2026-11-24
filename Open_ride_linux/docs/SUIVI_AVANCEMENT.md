@@ -219,6 +219,10 @@ Lots entrés sur `main` sans ligne dans ce suivi, relevés d'après les PR fusio
 - [x] **Outils de test** : banc simulé `--seasons`, `--day-night` et `--month` (#880, 14 novembre, banc rS1 ; les bancs tournent en été par défaut) ; captures de test avec le menu à jour (`garage_modif`, #910) ; e2e qui attend le départ avant le + (#914) ; gabarit `depart_monde_ouvert` du banc des menus (#920, 18 novembre) ; file des bancs du PC en étapes avec reprise (`scripts/file_bancs.py`, #924, 19 novembre ; suite #926 en revue) ; paquets, matrice rendu/logique et étapes cloud (20 novembre).
 - [x] Revue de code du 22 novembre, lot RV1 (corrections de `session.py`, core seul) : journal impossible à ouvrir au départ → pause `recording_failed` au lieu d'une séance sans journal ; le vent d'un pas ne s'écrit plus dans les paramètres de base (plus de vent fantôme au vélodrome après une séance ventée) ; CdA de base des bots gardé au retrait d'un éliminé du Dernier survivant et pour un bot conservé par `set_bots` ; `set_bots` et demi-tour refusés pendant une épreuve de piste ; vague 2, C2-01 : une montée dont la fin arrondie dépasse le dernier point du parcours n'arrête plus le core au départ (même tolérance de 0,1 m dans `route.py` et `segment_timing.py`, fin ramenée à la longueur). Tests : `core/tests/test_revue_code_s1.py`.
 
+### Lots du 21 novembre
+
+- [x] **Gestes de base des bots du Grand Prix et du Dernier survivant** (lot BR5, 21 novembre) : réponse aux attaques au Grand Prix, attaque avant l'arche et réponse au Dernier survivant, dans la table `bot_tactics.MODE_TACTICS` ; ce qui est propre au mode (esquive, sprint de survie, économie) garde la priorité. Recette PC : fumée + medium.
+
 ## 2. Ce qui a été testé
 
 ### Tests automatiques

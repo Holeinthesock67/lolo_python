@@ -750,7 +750,7 @@ class CoreSession:
             self._start_wtf()
         # la Course (lot CR1) garde tout le mode classique (segments, maillots, bonus, tactique des bots)
         self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"),
-                       tactics=self._track_tactics() if game_mode == "track" else None, game_mode=game_mode)
+                       tactics=self._mode_tactics(game_mode), game_mode=game_mode)
         if game_mode == "survivor":
             self._start_survivor()
         if game_mode in ("grandprix", "race"):
@@ -3441,6 +3441,15 @@ class CoreSession:
         self._league_start_line()
         log.info("Épreuve de piste : %s, %s.", event, ", ".join(f"{k} = {v}" for k, v in settings.items()) or "réglages par défaut")
 
+    def _mode_tactics(self, game_mode: str | None) -> str | None:
+        """Ligne de `bot_tactics.MODE_TACTICS` imposée par le mode de jeu : épreuve de piste (lot VD7), gestes de
+        base du Grand Prix et du Dernier survivant (lot BR5) ; None : celle du mode classique (ou « none »)."""
+        if game_mode == "track":
+            return self._track_tactics()
+        if game_mode in bot_tactics.GAME_MODES and self.wtf is None:
+            return game_mode
+        return None
+
     def _track_tactics(self) -> str:
         """Ligne de `bot_tactics.MODE_TACTICS` de l'épreuve choisie (réglage « Tactique des bots », lot VD7)."""
         assert self._track_choice is not None
@@ -3697,6 +3706,9 @@ class CoreSession:
         lanes = [(GP_ME, self._lane, self.cfg.ride.auto_draft == "on", draft_mod.RIDER_LANE_M)]
         lanes += [(b.id, b.lane, True, draft_mod.BOT_LANE_M) for b in self.bots
                   if gp is not None and b.id in gp.racers]
+        for b in self.bots:   # lot BR5 : voie tenue (esquive du lot GP3) : le mode tient le bot
+            if hasattr(b, "mode_hold"):
+                b.mode_hold = gp is not None and b.id in gp.racers and gp.lane_target(b.id) is not None
         for rid, lane, auto, home in lanes:
             target = gp.lane_target(rid) if gp is not None else None
             if target is None:
