@@ -15,8 +15,9 @@ de test ou étape). Sortie dans `~/OpenRide/stabilite/<date>_<heure>/` :
 - `resume.txt` et `resume.json` : tests instables (au moins un échec et une réussite), tests toujours
   en échec, les 20 plus lents (durée médiane), durée totale médiane de chaque suite.
 
-`--analyse DOSSIER` refait l'analyse d'un dossier sans relancer. Code de sortie : 0 sans test instable ni
-toujours en échec, 1 sinon. Bibliothèque standard seulement.
+`--analyse DOSSIER` refait l'analyse d'un dossier sans relancer. Une suite qui a planté sans rapport JUnit lisible
+(Godot absent, pytest tué : code non nul dans `passages.json`) est listée à part, « plantages » (revue O2-10).
+Code de sortie : 0 sans test instable, toujours en échec, ni plantage, 1 sinon. Bibliothèque standard seulement.
 """
 
 from __future__ import annotations
@@ -117,6 +118,11 @@ def analyse(folder: Path) -> dict[str, Any]:
         passes = json.loads((folder / "passages.json").read_text(encoding="utf-8"))
     tests: list[dict[str, Any]] = []
     totals: dict[str, dict[str, Any]] = {}
+    # Suites lancées sans rapport (aucun fichier JUnit) : elles doivent apparaître dans le résumé (O2-10).
+    for p in passes:
+        runs.setdefault(p["suite"], {})
+    crashes = [{"suite": p["suite"], "passage": p["pass"], "code": p["code"]} for p in passes
+               if p.get("code") not in (0, None) and not read_junit(folder / "junit" / f"{p['suite']}_{p['pass']}.xml")]
     for suite, files in runs.items():
         results = {n: read_junit(p) for n, p in files.items()}
         names = sorted({k for r in results.values() for k in r})
@@ -134,14 +140,14 @@ def analyse(folder: Path) -> dict[str, Any]:
         walls = [p["seconds"] for p in passes if p["suite"] == suite]
         if not walls:
             walls = [t for t in (suite_time(p) for p in files.values()) if t is not None]
-        totals[suite] = {"passages": len(files),
+        totals[suite] = {"passages": max(len(files), sum(1 for p in passes if p["suite"] == suite)),
                          "duree_mediane_s": round(statistics.median(walls), 1) if walls else None,
                          "codes": [p["code"] for p in passes if p["suite"] == suite]}
     unstable = [t for t in tests if 0 < t["echecs"] < t["passages"]]
     always = [t for t in tests if t["echecs"] == t["passages"]]
     slowest = sorted(tests, key=lambda t: -t["duree_mediane_s"])[:SLOWEST]
     return {"suites": totals, "tests": tests, "instables": unstable, "toujours_en_echec": always,
-            "plus_lents": slowest}
+            "plus_lents": slowest, "plantages": crashes}
 
 
 def summary_text(res: dict[str, Any]) -> str:
@@ -158,6 +164,9 @@ def summary_text(res: dict[str, Any]) -> str:
     lines += ["", f"Tests toujours en échec : {len(res['toujours_en_echec'])}"]
     for t in res["toujours_en_echec"]:
         lines.append(f"  {t['suite']} {t['test']} : {t['echecs']} échec(s) sur {t['passages']}")
+    lines += ["", f"Suites plantées sans rapport JUnit : {len(res.get('plantages', []))}"]
+    for c in res.get("plantages", []):
+        lines.append(f"  {c['suite']} passage {c['passage']} : code {c['code']} (journaux/{c['suite']}_{c['passage']}.log)")
     lines += ["", f"Les {len(res['plus_lents'])} tests les plus lents (durée médiane, maximale) :"]
     for t in res["plus_lents"]:
         lines.append(f"  {t['duree_mediane_s']:>8.2f} s {t['duree_max_s']:>8.2f} s  {t['suite']} {t['test']}")
@@ -186,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--analyse", type=Path, metavar="DOSSIER", help="refaire l'analyse d'un dossier sans relancer")
     args = ap.parse_args(argv)
     if args.analyse is not None:
-        if not (args.analyse / "junit").is_dir():
+        if not (args.analyse / "junit").is_dir() and not (args.analyse / "passages.json").is_file():
             print(f"Pas de dossier junit/ dans {args.analyse}")
             return 2
         folder = args.analyse
@@ -205,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     res = analyse(folder)
     print(write(folder, res), end="")
     print(f"Résultats : {folder}")
-    return 0 if not res["instables"] and not res["toujours_en_echec"] else 1
+    return 0 if not res["instables"] and not res["toujours_en_echec"] and not res["plantages"] else 1
 
 
 if __name__ == "__main__":
