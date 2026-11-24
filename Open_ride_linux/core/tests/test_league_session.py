@@ -151,6 +151,192 @@ def test_clock_going_back_keeps_last_seen_day(env):
     assert league.load(tmp_path / "ligue.json").last_seen == ahead
 
 
+def test_round_finished_after_midnight_counts_for_its_week(env, short_round):
+    """Revue F1-01 : manche partie le dimanche soir, arrivée le lundi : enregistrée pour la semaine du départ."""
+    from datetime import timedelta
+
+    make, run, _, tmp_path = env
+    s, _, errors = make(7210)
+    s._on_command("league_new", {}, 2)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    assert not errors
+    start_day = s._league_run["day"]
+    s._league_today = lambda: start_day + timedelta(days=7)   # l'horloge passe au lundi suivant pendant la course
+    run(s, 900)
+    assert s.state.summary.get("league") is not None
+    season = league.load(tmp_path / "ligue.json")
+    assert season.results[0].source == "joueur" and season.results[0].day == start_day.isoformat()
+
+
+def test_arrival_frame_fits_the_datagram(env, short_round):
+    """Revue F1-04 : la trame `state` d'arrivée d'une manche (11 rivaux, encart de la ligue) tient sous la limite
+    sans rien retirer du bilan ; les lignes de l'encart n'ont que place, nom, points et `me`."""
+    from openride_core import ipc_server
+    from openride_core.ipc_budget import encode, fit_state, state_limit
+
+    make, run, _, _ = env
+    s, _, _ = make(7220)
+    s._on_command("league_new", {}, 2)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    run(s, 900)
+    frame = s.state.to_dict()
+    assert set(frame["summary"]["league"]["rows"][0]) == {"place", "name", "points", "me"}
+    limit = state_limit(ipc_server.CONTRACT_REV)
+    assert len(encode(frame)) <= limit, len(encode(frame))   # trame entière, sans allègement
+    out, dropped = fit_state(frame, limit)
+    assert dropped == [] and out["summary"]["league"] == frame["summary"]["league"]
+    from openride_core.ipc_budget import worst_state
+    with_devices = {**frame, "devices": worst_state("1.1")["devices"]}   # une trame sur 30 porte les appareils
+    print("trame d'arrivée :", len(encode(frame)), "octets ;", len(encode(with_devices)), "avec devices")
+    out, dropped = fit_state(with_devices, limit)
+    assert "summary" not in dropped and out["summary"]["league"] == frame["summary"]["league"]
+    # Bilan le plus lourd du budget (courbe, passages, blocs, test de FTP) plus l'encart : il tient sans perdre
+    # le bilan ni l'encart, même avec `devices`.
+    from openride_core.ipc_budget import worst_finished_state
+    heavy = worst_finished_state()
+    heavy["summary"]["league"] = frame["summary"]["league"]
+    heavy["devices"] = worst_state("1.1")["devices"]
+    print("bilan le plus lourd + encart + devices :", len(encode(heavy)), "octets")
+    out, dropped = fit_state(heavy, limit)
+    assert "summary" not in dropped and out["summary"]["league"] == frame["summary"]["league"], dropped
+
+
+def test_new_season_keeps_the_closed_one_aside(env):
+    """Revue F1-07 : `league_new` après une saison close garde l'ancienne à part (classement et trophée)."""
+    make, _, _, tmp_path = env
+    s, sent, errors = make(7230)
+    s._on_command("league_new", {}, 2)
+    season = league.load(tmp_path / "ligue.json")
+    season.closed = "fin"
+    league.save(tmp_path / "ligue.json", season)
+    s._on_command("league_new", {}, 3)
+    assert not errors and _status(sent)["season"]["number"] == 2
+    old = league.load(tmp_path / "ligue_saison_1.json")
+    assert old is not None and old.number == 1 and old.closed == "fin"
+
+
+def test_hill_finish_round_refuses_a_loop(env, monkeypatch):
+    """Revue F1-05 : la manche « arrivée en côte » ne se court pas sur une boucle."""
+    from datetime import timedelta
+
+    make, _, _, tmp_path = env
+    s, _, errors = make(7240)
+    s._on_command("league_new", {}, 2)
+    monkeypatch.setattr(league, "PLAYABLE_MODES", ("race", "survivor", "grandprix", "track"))
+    start = league.load(tmp_path / "ligue.json").start
+    s._league_today = lambda: start + timedelta(weeks=4, days=1)   # semaine 5 ; semaines 2 à 4 jouables (simulées)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    assert errors and "parcours en ligne" in errors[-1][1]
+
+
+# --- lot CH3b : les autres modes du calendrier --------------------------------------------------
+
+
+def _week(s, tmp_path, k):
+    from datetime import timedelta
+
+    start = league.load(tmp_path / "ligue.json").start
+    s._league_today = lambda: start + timedelta(weeks=k, days=1)   # semaine k + 1 (les précédentes simulées)
+
+
+def _finish_round(s, run, tmp_path, errors, index, mode, seconds, until=None):
+    assert not errors, errors
+    assert s.state.session_state == "RUNNING" and len(s.bots) == 11
+    season = league.load(tmp_path / "ligue.json")
+    assert [b.name for b in s.bots] == [r.short for r in season.rivals]
+    if until is None:
+        run(s, seconds)
+    else:
+        for _ in range(int(seconds // 10)):
+            if until(s) or s.state.session_state != "RUNNING":
+                break
+            run(s, 10)
+    if s.state.session_state == "RUNNING":   # après l'arrivée on roule encore : bilan demandé (RT1, RT2)
+        s._on_command("end_session", {"save": True}, 90)
+    assert s.state.session_state == "FINISHED" and not errors, (s.state.session_state, errors)
+    validator("state").validate(s.state.to_dict())
+    box = s.state.summary["league"]
+    assert box["round"] == index + 1 and box["of"] == 12 and box["points"] == league.points_for(box["place"])
+    season = league.load(tmp_path / "ligue.json")
+    res = season.results[index]
+    assert res.source == "joueur" and set(res.places) == set(season.racers())
+    assert sorted(res.places.values())[0] == 1 and s.state.summary["elo"]["mode"] == "league"
+    journal = next((tmp_path / "journal").glob("*.jsonl"))
+    lines = [json.loads(x) for x in journal.read_text("utf-8").splitlines()]
+    assert any(x.get("kind") == "league_start" and x.get("mode") == mode for x in lines)
+    return box
+
+
+def test_survivor_round_eleven_arches(env):
+    make, run, _, tmp_path = env
+    s, sent, errors = make(7300)
+    s._on_command("league_new", {}, 2)
+    _week(s, tmp_path, 1)
+    s._on_command("league_status", {}, 3)
+    rnd = _status(sent)["season"]["round"]
+    assert rnd["mode"] == "survivor" and rnd["playable"]
+    s.cfg.survivor.opponents = 4   # réglage du mode ignoré : la ligue engage ses 11 rivaux
+    s._on_command("start", {"mode": "survivor", "league": True}, 4)
+    assert s.survivor is not None and len(s.survivor.arches) == 11
+    _finish_round(s, run, tmp_path, errors, 1, "survivor", 4000,
+                  until=lambda x: x.survivor.racers["me"].place is not None)
+    assert s.state.summary["league"]["of"] == 12
+
+
+def test_grandprix_round_keeps_objects_and_league_laps(env, short_round):
+    make, run, _, tmp_path = env
+    s, _, errors = make(7310, laps=5)
+    s._on_command("league_new", {}, 2)
+    _week(s, tmp_path, 2)
+    s._on_command("start", {"mode": "grandprix", "league": True}, 3)
+    assert s.grandprix is not None and s.grandprix.mode == "grandprix"
+    assert s.grandprix.length_m == pytest.approx(1500.0)   # 1 tour de ligue (cible courte), pas les 5 du réglage
+    _finish_round(s, run, tmp_path, errors, 2, "grandprix", 900)
+
+
+def test_track_round_is_an_elimination_on_the_velodrome(env):
+    from openride_core import velodrome
+
+    make, run, _, tmp_path = env
+    velodrome.write_velodrome(tmp_path / "routes")
+    s, _, errors = make(7320)
+    s._on_command("league_new", {}, 2)
+    _week(s, tmp_path, 3)
+    s._on_command("start", {"mode": "track", "league": True}, 3)   # sur l'anneau : refusé
+    assert errors and "vélodrome" in errors[-1][1]
+    errors.clear()
+    s2, _, errors2 = make(7330, route_id=velodrome.TRACK_ID)
+    _week(s2, tmp_path, 3)
+    s2._on_command("start", {"mode": "track", "league": True}, 2)
+    assert s2.track_event is not None and s2.track_event.event_id == "elimination"
+    _finish_round(s2, run, tmp_path, errors2, 3, "track", 7200,
+                  until=lambda x: x.track_event.riders["me"].out is not None or x.track_event.finished)
+
+
+def test_road_round_allowed_on_a_velodrome_loop(env, short_round):
+    """Une manche de route reste permise sur une piste (boucle d'essai du Grand Prix du banc des menus : copie du
+    vélodrome) ; seule l'élimination exige le vélodrome."""
+    from openride_core import velodrome
+
+    make, _, _, tmp_path = env
+    velodrome.write_velodrome(tmp_path / "routes")
+    s, _, errors = make(7340, route_id=velodrome.TRACK_ID)
+    s._on_command("league_new", {}, 2)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    assert not errors and s.state.session_state == "RUNNING"
+
+
+def test_missed_weeks_are_now_simulated(env):
+    """CH3b : tous les modes du calendrier sont jouables, une semaine manquée est simulée (plus neutralisée)."""
+    make, _, _, tmp_path = env
+    s, sent, _ = make(7350)
+    s._on_command("league_new", {}, 2)
+    _week(s, tmp_path, 4)
+    s._on_command("league_status", {}, 3)
+    season = league.load(tmp_path / "ligue.json")
+    assert [season.results[i].source for i in range(4)] == ["simule"] * 4
+
+
 def test_round_cut_by_mode_error_stays_open(env, short_round):
     """Filet de la boucle (lot FB1) : une erreur du mode pendant la manche termine la séance avec son bilan, sans
     arrivée ; aucun résultat n'est écrit et la manche se recourt dans la semaine."""

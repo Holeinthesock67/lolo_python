@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Monde classique gelé pendant toute la run Cyber-Rogue, pause comprise : plus de parcours de démo chargé sous la scène du mode | GDScript, Python (banc) | R22, #897 | Petite | En revue, **version 2.0** |
+| Monde classique gelé pendant toute la run Cyber-Rogue, pause comprise : plus de parcours de démo chargé sous la scène du mode | GDScript, Python (banc) | R22, #897 | Petite | **Livré le 22 novembre** (PR #933), **version 2.0** |
 
 ## 1. Constat
 
