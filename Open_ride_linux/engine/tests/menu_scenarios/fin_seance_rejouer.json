@@ -1,49 +1,174 @@
 {
-  "description": "Fin de séance (PR #944, 20 novembre) : « Rejouer » suit le dernier lancement et « Menu principal » ramène au même accueil après tous les modes. Run du Cyber-Rogue abandonnée, puis Rejouer : écran de départ du Rogue, mêmes choix. Grand Prix sur la course en ligne d'essai, puis Rejouer : écran Prêt du Grand Prix. 2e course enchaînée, puis Menu principal : accueil en session libre. Captures fs_*, à lancer avec --captures ecrans --qualite medium pour la planche du propriétaire.",
-  "config": {"grandprix.distance_km": 5},
+  "description": "Fin de séance (PR #944, 20 novembre) : « Rejouer » suit le dernier lancement et « Menu principal » ramène au même accueil après tous les modes. Run du Cyber-Rogue abandonnée, puis Rejouer : écran de départ du Rogue, mêmes choix. Grand Prix sur la boucle d'essai (seul parcours du mode depuis GPL1), puis Rejouer : écran Prêt du Grand Prix. 2e course enchaînée, puis Menu principal : accueil en session libre. Captures fs_*, à lancer avec --captures ecrans --qualite medium pour la planche du propriétaire.",
   "grand_prix_parcours": true,
   "etapes": [
-    {"ecran": "home", "delai": 15, "elements": ["rogue", "grandprix"]},
-    {"choisir": "rogue"},
-    {"ecran": "rogue_start", "contient": ["Objectif : Endurance", "Durée : 30 min"]},
-    {"choisir": "launch"},
-    {"ecran": "confirm", "focus": "no"},
-    {"choisir": "yes"},
-    {"ecran": "ready", "titre": "Prêt : Cyber-Rogue", "delai": 20},
-    {"choisir": "start"},
-    {"journal": "core", "motif": "-> RUNNING", "delai": 20},
-    {"menu_cache": true},
-    {"commande": "end_session", "args": {"save": false}},
-    {"ecran": "summary", "titre": "Fin de séance", "elements": ["replay", "new_session", "details", "quit"], "focus": "replay", "delai": 15},
-    {"capture": "fs_1_fin_rogue"},
-    {"note": "Rejouer après une run : écran de départ du Cyber-Rogue, mêmes choix (la run est effacée par le core)", "choisir": "replay"},
-    {"ecran": "rogue_start", "titre": "Départ Cyber-Rogue", "contient": ["Objectif : Endurance", "Durée : 30 min"]},
-    {"capture": "fs_2_rejouer_rogue"},
-    {"appui": "Y_SHORT"},
-    {"ecran": "home", "contient": ["Session libre"]},
-    {"choisir": "grandprix"},
-    {"ecran": "ready"},
-    {"choisir": "change_route"},
-    {"ecran": "routes", "elements": ["gp-boucle", "gp-ligne"]},
-    {"choisir": "gp-ligne"},
-    {"ecran": "ready", "titre": "Prêt : Grand Prix des objets — Course en ligne (essai)"},
-    {"choisir": "start"},
-    {"journal": "core", "motif": "Grand Prix des objets : ", "delai": 15},
-    {"menu_cache": true},
-    {"attendre": 10},
-    {"commande": "end_session", "args": {"save": false}},
-    {"ecran": "summary", "titre": "Fin de séance", "delai": 15},
-    {"capture": "fs_3_fin_gp"},
-    {"note": "Rejouer après le Grand Prix : écran Prêt du mode, même parcours", "choisir": "replay"},
-    {"ecran": "ready", "titre": "Prêt : Grand Prix des objets — Course en ligne (essai)", "focus": "start"},
-    {"capture": "fs_4_rejouer_gp"},
-    {"choisir": "start"},
-    {"menu_cache": true},
-    {"note": "le journal du core garde les lignes de la course d'avant : on laisse le départ s'ouvrir", "attendre": 20},
-    {"commande": "end_session", "args": {"save": false}},
-    {"ecran": "summary", "delai": 15},
-    {"choisir": "new_session"},
-    {"ecran": "home", "contient": ["Session libre"]},
-    {"capture": "fs_5_menu_principal"}
+    {
+      "ecran": "home",
+      "delai": 15,
+      "elements": [
+        "rogue",
+        "grandprix"
+      ]
+    },
+    {
+      "choisir": "rogue"
+    },
+    {
+      "ecran": "rogue_start",
+      "contient": [
+        "Objectif : Endurance",
+        "Durée : 30 min"
+      ]
+    },
+    {
+      "choisir": "launch"
+    },
+    {
+      "ecran": "confirm",
+      "focus": "no"
+    },
+    {
+      "choisir": "yes"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Cyber-Rogue",
+      "delai": 20
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "journal": "core",
+      "motif": "-> RUNNING",
+      "delai": 20
+    },
+    {
+      "menu_cache": true
+    },
+    {
+      "commande": "end_session",
+      "args": {
+        "save": false
+      }
+    },
+    {
+      "ecran": "summary",
+      "titre": "Fin de séance",
+      "elements": [
+        "replay",
+        "new_session",
+        "details",
+        "quit"
+      ],
+      "focus": "replay",
+      "delai": 15
+    },
+    {
+      "capture": "fs_1_fin_rogue"
+    },
+    {
+      "note": "Rejouer après une run : écran de départ du Cyber-Rogue, mêmes choix (la run est effacée par le core)",
+      "choisir": "replay"
+    },
+    {
+      "ecran": "rogue_start",
+      "titre": "Départ Cyber-Rogue",
+      "contient": [
+        "Objectif : Endurance",
+        "Durée : 30 min"
+      ]
+    },
+    {
+      "capture": "fs_2_rejouer_rogue"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Session libre"
+      ]
+    },
+    {
+      "choisir": "grandprix"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Grand Prix des objets — Boucle (essai)"
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "journal": "core",
+      "motif": "Grand Prix des objets : ",
+      "delai": 15
+    },
+    {
+      "menu_cache": true
+    },
+    {
+      "attendre": 10
+    },
+    {
+      "commande": "end_session",
+      "args": {
+        "save": false
+      }
+    },
+    {
+      "ecran": "summary",
+      "titre": "Fin de séance",
+      "delai": 15
+    },
+    {
+      "capture": "fs_3_fin_gp"
+    },
+    {
+      "note": "Rejouer après le Grand Prix : écran Prêt du mode, même parcours",
+      "choisir": "replay"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Grand Prix des objets — Boucle (essai)",
+      "focus": "start"
+    },
+    {
+      "capture": "fs_4_rejouer_gp"
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "menu_cache": true
+    },
+    {
+      "note": "le journal du core garde les lignes de la course d'avant : on laisse le départ s'ouvrir",
+      "attendre": 20
+    },
+    {
+      "commande": "end_session",
+      "args": {
+        "save": false
+      }
+    },
+    {
+      "ecran": "summary",
+      "delai": 15
+    },
+    {
+      "choisir": "new_session"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Session libre"
+      ]
+    },
+    {
+      "capture": "fs_5_menu_principal"
+    }
   ]
 }
