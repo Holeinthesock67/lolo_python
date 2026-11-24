@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Début de run et adrénaline du Cyber-Rogue : échauffement qui charge l'adrénaline, consignes jugées sur 8 s à 10 % près avec marge de sortie, plage et écart en direct, sons d'entrée et de sortie (contrat révision 1.28) | Python, GDScript | R23 | Moyenne | En revue, **version 2.0** |
+| Début de run et adrénaline du Cyber-Rogue : échauffement qui charge l'adrénaline, consignes jugées sur 8 s à 10 % près avec marge de sortie, plage et écart en direct, sons d'entrée et de sortie (contrat révision 1.28) | Python, GDScript | R23 | Moyenne | **Livré le 22 novembre** (PR #960), **version 2.0** |
 
 ## 1. Constat
 

@@ -30,7 +30,8 @@ MAX_PLACES = 50
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_PERIOD_S = 1.0
 QUERY_TIMEOUT_S = 20.0
-USER_AGENT = f"OpenRide/{__version__} (https://github.com/Holeinthesock67/lolo_python)"
+# Nom de client générique, sans lien vers le dépôt ni le compte (audit du 22/11, V4).
+USER_AGENT = f"OpenRide/{__version__}"
 MAX_RADIUS_M = 20_000.0
 
 
