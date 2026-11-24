@@ -43,6 +43,9 @@ def test_current_lists_the_settings_with_bounds_from_config():
     quality = next(it for it in items if it["key"] == "render.quality")
     assert quality["type"] == "choice" and quality["choices"] == ["low", "medium", "high"]
     assert quality["applies"] == "now"
+    # Lot QG1 : aide en mots des trois qualités (portée, végétation, brume)
+    assert all(m in quality["help"] for m in ("Haute : on voit à 8\u00a0km", "Moyenne : 5\u00a0km", "GTX\u00a01060",
+                                              "Basse : 3\u00a0km", "80\u00a0%", "si l'image saccade"))
     gear = next(it for it in items if it["key"] == "gearing.start_gear")
     assert (gear["min"], gear["max"]) == (1, 24)
     display = next(it for it in items if it["key"] == "render.display")
