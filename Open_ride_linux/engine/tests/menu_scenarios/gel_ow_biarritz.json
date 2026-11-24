@@ -1,0 +1,134 @@
+{
+  "description": "Lot GL2, recette sur le PC des gels du monde ouvert (essai du 22/11 : écarts de 9 à 10 s entre trames state vers 9 min, Biarritz en high, après deux choix aux carrefours) : départ de Biarritz trouvé par son nom (réseau, caches du banc), 12 min de balade, un choix à droite puis à gauche toutes les 80 s, captures toutes les 4 min. Mesure seule : après le banc, chercher les lignes « [gel] » du journal de l'engine (étape bloquée et durée) et les comparer aux lignes « [gigue] state ». À lancer en high, medium et low avec cache séparé (jamais ~/OpenRide/Cache/monde).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "biarritz",
+        "contient": "Biarritz"
+      }
+    },
+    {
+      "attendre": 55
+    },
+    {
+      "note": "Carrefour 1 : branche de droite puis de gauche 25 s plus tard (essai du 22/11, 16:01:11 et 16:01:36)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 25
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "attendre": 55
+    },
+    {
+      "note": "Carrefour 2 : branche de droite puis de gauche 25 s plus tard (essai du 22/11, 16:01:11 et 16:01:36)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 25
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "attendre": 55
+    },
+    {
+      "note": "Carrefour 3 : branche de droite puis de gauche 25 s plus tard (essai du 22/11, 16:01:11 et 16:01:36)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 25
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "capture": "route_3"
+    },
+    {
+      "attendre": 55
+    },
+    {
+      "note": "Carrefour 4 : branche de droite puis de gauche 25 s plus tard (essai du 22/11, 16:01:11 et 16:01:36)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 25
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "attendre": 55
+    },
+    {
+      "note": "Carrefour 5 : branche de droite puis de gauche 25 s plus tard (essai du 22/11, 16:01:11 et 16:01:36)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 25
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "attendre": 55
+    },
+    {
+      "note": "Carrefour 6 : branche de droite puis de gauche 25 s plus tard (essai du 22/11, 16:01:11 et 16:01:36)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 25
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "capture": "route_6"
+    },
+    {
+      "attendre": 55
+    },
+    {
+      "note": "Carrefour 7 : branche de droite puis de gauche 25 s plus tard (essai du 22/11, 16:01:11 et 16:01:36)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 25
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "attendre": 55
+    },
+    {
+      "note": "Carrefour 8 : branche de droite puis de gauche 25 s plus tard (essai du 22/11, 16:01:11 et 16:01:36)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 25
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "capture": "fin"
+    },
+    {
+      "journal": "engine",
+      "motif": "\\[perf-rendu\\]",
+      "delai": 30
+    }
+  ]
+}
