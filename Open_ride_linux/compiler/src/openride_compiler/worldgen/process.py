@@ -48,7 +48,8 @@ from .. import __version__
 from .. import constants as C
 from .. import koppen
 from ..cache import Downloader, Log
-from ..elevation import COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider, copernicus_tile_name
+from ..elevation import (COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider,
+                         check_tile_list, check_tiff, copernicus_tile_name)
 from ..errors import CompileError
 from ..pipeline import sample_positions
 from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts, turnaround_points,
@@ -968,9 +969,10 @@ class WorldSession:
         name = copernicus_tile_name(la, lo)
         dl = Downloader(log=self.log)
         try:
-            listing = dl.fetch(f"{prov.base_url}/tileList.txt", prov.dir / "tileList.txt", "liste des tuiles")
+            listing = dl.fetch(f"{prov.base_url}/tileList.txt", prov.dir / "tileList.txt", "liste des tuiles",
+                               validate=check_tile_list)
             if name in listing.read_text():
-                dl.fetch(f"{prov.base_url}/{name}/{name}.tif", prov.tile_path(la, lo), name)
+                dl.fetch(f"{prov.base_url}/{name}/{name}.tif", prov.tile_path(la, lo), name, validate=check_tiff)
                 self.stats["downloads"] += 1
         except Exception as exc:  # noqa: BLE001 - réessayé au prochain passage
             self.log(f"relief {name} non téléchargé : {exc}")
