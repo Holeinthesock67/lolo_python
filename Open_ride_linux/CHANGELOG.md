@@ -12,6 +12,8 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - Contrat IPC révision 1.31 : `reset_profile_stats`, `undo_profile_reset`, `profiles.resets`.
 ### Gels du monde ouvert : mesure des trames perdues (lot GL1)
 - Le journal dit maintenant, chaque minute, combien de trames de position le core a envoyées et combien le jeu en a reçues, avec les erreurs d'envoi ; un gel de plus de 2 s est noté avec la cause probable (`log_report --gigue`).
+### À-coups de main (lot AC4)
+- Plus d'image figée d'une demi-seconde à une seconde au chargement d'un parcours (départ du Cyber-Rogue, Grand Prix) : les cyclistes du décor se préparent sans bloquer l'affichage (lot AC4).
 
 ### Moins de brouillard et de halo en medium et high (lot BH1)
 - En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.

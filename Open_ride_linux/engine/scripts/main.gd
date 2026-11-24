@@ -1517,7 +1517,7 @@ func _warmup_steps() -> Array:
 		if living_decor.passersby_view != null:
 			steps.append(["passants", func(): living_decor.passersby_view.warm_up(camera)])
 		if living_decor.cyclists_view != null and int(living_decor.living.get("cyclists", 0)) > 0:
-			steps.append(["cyclistes", func(): living_decor.cyclists_view.warm_up(camera)])
+			steps.append_array(living_decor.cyclists_view.warm_steps(camera))   # un temps par image (lot AC4)
 	if streamer.forest_impostors != null:
 		steps.append(["forets", func(): streamer.forest_impostors.warm_up(camera)])
 	return steps
