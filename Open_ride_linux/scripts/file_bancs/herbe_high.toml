@@ -76,7 +76,7 @@ python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sond
 delai_min = 40
 
 [[pr]]
-id = "rHERBE"                            # non-régression sans mer : monde ouvert avec biomes, cache réel (schéma de main)
+id = "rHERBE"                            # non-régression sans mer : monde ouvert avec biomes, cache séparé (défaut depuis RC17 ; "reel" seulement écrit en toutes lettres)
 pr = 929
 branche = "claude/project-thread-5ofk6g"
 risque = 2

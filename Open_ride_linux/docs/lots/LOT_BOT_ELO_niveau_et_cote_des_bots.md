@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Effort des bots en watts sur l'écran Prêt et au bilan, objectif de la course conseillée (GP-niv) ; cote Elo du cycliste et des bots qui règle le peloton (BOT-elo) | Python, GDScript | BT1 (#909), T13 (#900) | Moyenne | PR du 20 novembre |
+| Effort des bots en watts sur l'écran Prêt et au bilan, objectif de la course conseillée (GP-niv) ; cote Elo du cycliste et des bots qui règle le peloton (BOT-elo) | Python, GDScript | BT1 (#909), T13 (#900) | Moyenne | **Livré le 21 novembre** (PR #941) |
 
 ## 1. Objectif
 

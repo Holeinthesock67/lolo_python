@@ -48,9 +48,9 @@ def test_one_table_no_branch_per_bonus():
     assert DEFAULT_TABLE.kinds("tactiques")[:4] == ("feather", "aero", "power", "anvil")
     # Les objets du Grand Prix sont des lignes du même modèle (plan GP §5).
     assert gp_effects.EffectSpec is EffectSpec and gp_effects.EFFECTS is powerups.EFFECTS
-    assert {"kick", "slip", "speed_floor", "cap", "immune", "wind", "mass", "cda", "breakaway"} <= set(powerups.EFFECTS)
+    assert {"speed_floor", "cap", "immune", "wind", "mass", "cda", "breakaway"} <= set(powerups.EFFECTS)
     with pytest.raises(ValueError):
-        powerups.PowerUpSpec("x", "kick", 1.2, 5.0, "X")       # effet réservé au Grand Prix
+        powerups.PowerUpSpec("x", "speed_floor", 1.2, 5.0, "X")   # effet réservé au Grand Prix
     with pytest.raises(ValueError):
         powerups.PowerUpSpec("x", "mass", 1.2, 5.0, "X", refuse_unless=(("lune", "erg"),))
 

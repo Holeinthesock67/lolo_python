@@ -102,9 +102,9 @@ func _test_catalog() -> void:
 func _test_environment() -> void:
 	var low: Dictionary = RogueEnvironment.settings("low")
 	var high: Dictionary = RogueEnvironment.settings("high")
-	_check(low["glow_levels"] == 3 and high["glow_levels"] == 7, "glow : 3 niveaux en low, 7 en high")
+	_check(low["glow_levels"] == 3 and high["glow_levels"] == 5, "glow : 3 niveaux en low, 5 en high (lot R27)")
 	_check(RogueEnvironment.settings("medium")["glow_levels"] == 5, "glow : 5 niveaux en medium")
-	_check(absf(low["glow_bloom"] - 0.05) < 0.001 and absf(high["glow_bloom"] - 0.15) < 0.001, "bloom 0,05 / 0,15")
+	_check(absf(low["glow_bloom"] - 0.05) < 0.001 and absf(high["glow_bloom"] - 0.10) < 0.001, "bloom 0,05 / 0,10 (lot R27)")
 	_check(low["fog_end_m"] == 400.0 and high["fog_end_m"] == 900.0, "brume 400 m / 900 m")
 	_check(high["chromatic"] and not low["chromatic"], "aberration chromatique seulement en high")
 	_check(low["particles_share"] < RogueEnvironment.settings("medium")["particles_share"], "particules 25 % < 60 %")
@@ -118,12 +118,11 @@ func _test_environment() -> void:
 			if env.get_glow_level(i) > 0.0:
 				lit += 1
 		_check(lit == RogueEnvironment.settings(p)["glow_levels"], "%s : %d niveaux de glow allumés" % [p, lit])
-		# La densité doit survivre au changement de mode (Godot la remet à 1,0 : brume opaque en high)
-		var st: Dictionary = RogueEnvironment.settings(p)
-		var dens := RogueEnvironment.exponential_density(st["fog_end_m"]) if st["fog_exponential"] else 1.0
-		_check(is_equal_approx(env.fog_density, dens), "%s : densité de brume %.4f (lue %.4f)" % [p, dens, env.fog_density])
-		_check(env.fog_mode == (Environment.FOG_MODE_EXPONENTIAL if st["fog_exponential"] else Environment.FOG_MODE_DEPTH),
-				"%s : mode de brume" % p)
+		# Lot R27 : une seule règle, brume linéaire jusqu'à fog_end_m (l'exponentielle du high grisait tout le ciel).
+		_check(env.fog_mode == Environment.FOG_MODE_DEPTH and is_equal_approx(env.fog_density, 1.0),
+				"%s : brume linéaire" % p)
+		_check(is_equal_approx(env.fog_depth_end, RogueEnvironment.settings(p)["fog_end_m"]),
+				"%s : brume jusqu'à %d m" % [p, int(RogueEnvironment.settings(p)["fog_end_m"])])
 
 
 func _test_no_imported_assets() -> void:
