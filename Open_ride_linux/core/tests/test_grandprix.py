@@ -28,16 +28,25 @@ V_EQ = steady_speed(250.0, 0.0, P)
 
 # --- chiffres du plan §3 (cycliste de 84 kg à 250 W, écart 60 s après) --------------------------
 
-PLAN_GAINS = {      # objet : (plat, 6 %, −4 %)
-    "gel": (3.9, 1.9, 3.4),
-    "bottle": (-3.9, -1.5, -3.7),
-    "musette": (-3.9, -1.5, -3.7),
-    "homing": (-3.9, -1.5, -3.7),
-    "storm": (-6.9, -3.0, -7.0),
-    "star": (4.2, 2.8, 3.9),
-    "headwind": (-2.1, -1.1, -1.9),
-    "team_car": (9.5, 6.4, 8.5),
+PLAN_GAINS = {      # objet : (plat, 6 %, −4 %) ; valeurs du lot GPO1 (tout effet dure)
+    "gel": (5.4, 3.4, 4.9),
+    "bottle": (-7.0, -3.9, -6.9),      # glissade à 60 % pendant 5 s (essai du 22 novembre)
+    "musette": (-7.0, -3.9, -6.9),
+    "homing": (-7.0, -3.9, -6.9),
+    "storm": (-8.7, -4.7, -8.7),
+    "star": (7.5, 5.5, 7.0),
+    "headwind": (-4.2, -2.2, -3.7),
+    "team_car": (12.4, 9.4, 11.4),
 }
+
+
+def test_every_effect_lasts():
+    """Lot GPO1 : plus d'impulsion d'une image, chaque effet d'objet a une durée (HUD et dessin)."""
+    for spec in DEFAULT_ITEMS.values():
+        for e in spec.self_fx + spec.hit_fx + spec.splash_fx:
+            assert e.effect in items.DURATIONS and e.duration_s in (items.SHORT_S, items.LONG_S, items.WIND_S), (
+                spec.id, e)
+    assert HIT_GRACE_S == items.SHORT_S
 
 
 @pytest.mark.parametrize("item", sorted(PLAN_GAINS))
@@ -50,8 +59,8 @@ def test_plan_gains_within_10_pct(item):
 
 
 def test_chaos_scales_strength_not_duration():
-    kick = EffectSpec("kick", 1.3)
-    assert kick.scaled(0.7).factor == pytest.approx(1.21)
+    kick = EffectSpec("speed_floor", 1.3, 5.0)
+    assert kick.scaled(0.7).factor == pytest.approx(1.21) and kick.scaled(0.7).duration_s == 5.0
     assert kick.scaled(1.3).factor == pytest.approx(1.39)
     cap = EffectSpec("cap", 0.5, 1.5)
     assert cap.scaled(1.3) == EffectSpec("cap", 0.35, 1.5)
@@ -92,23 +101,38 @@ def test_weights_follow_plan_rows():
 def test_values_file(tmp_path):
     f = tmp_path / "grandprix.toml"
     assert load_table(f) is DEFAULT_TABLE
-    f.write_text("[gel]\nkick = 1.4\n[storm]\nduration_s = 2.0\nslip = 0.8\n[weights.lead]\nbell = 0\n")
+    f.write_text("[gel]\nspeed_floor = 1.4\n[storm]\nduration_s = 2.0\n[bottle]\ncap = 0.8\n"
+                 "[weights.lead]\nbell = 0\n")
     t = load_table(f)
     assert t.items["gel"].self_fx[0].factor == 1.4
-    assert t.items["storm"].hit_fx[0].duration_s == 2.0 and t.items["storm"].splash_fx[0].factor == 0.8
+    assert t.items["storm"].hit_fx[0].duration_s == 2.0 and t.items["bottle"].hit_fx[0].factor == 0.8
     assert t.weights["lead"]["bell"] == 0.0
-    for bad in ("[gel]\nkick = 3.0\n", "[gel]\nslip = 0.5\n", "[banana]\nx = 1\n", "[gel]\ncolor = 1\n",
+    for bad in ("[gel]\nspeed_floor = 3.0\n", "[gel]\ncap = 0.5\n", "[banana]\nx = 1\n", "[gel]\ncolor = 1\n",
                 "[weights.top]\ngel = 1\n", "[weights.lead]\nbanana = 1\n", "[gel]\nrange_m = 100\n",
-                "[gel]\nkick = true\n"):
+                "[gel]\nspeed_floor = true\n"):
         f.write_text(bad)
         with pytest.raises(GrandPrixError):
             load_table(f)
+    f.write_text("[gel]\nkick = 1.4\n[bottle]\nslip = 0.6\n")   # clés d'avant le lot GPO1 : ignorées
+    assert load_table(f).items == DEFAULT_TABLE.items
     f.write_text("[gel\n")
     with pytest.raises(GrandPrixError):
         load_table(f)
 
 
 # --- tirage ---------------------------------------------------------------------------------------
+
+def test_box_family_per_lane():
+    """Lot GPO1 : gauche « s'aider », centre tout, droite « attaquer » ; une boîte donne toujours un objet."""
+    help_, attack = items.lane_items(0), items.lane_items(2)
+    assert items.lane_items(1) is None
+    assert help_ == {"gel", "gel_x3", "star", "team_car", "stealth", "bell"}
+    assert attack == {"musette", "musette_x3", "homing", "bottle", "bottle_x3", "storm", "headwind"}
+    ctx = DrawContext(4, 30.0, 3, False)
+    assert set(draw.weights_for(ctx, DEFAULT_WEIGHTS, ITEM_IDS, help_)) <= help_
+    assert set(draw.weights_for(ctx, DEFAULT_WEIGHTS, ITEM_IDS, attack)) <= attack
+    lead = DrawContext(1, 0.0, 0, False)
+    assert draw.weights_for(lead, DEFAULT_WEIGHTS, {"bottle"}, help_) == {"bottle": 100.0}   # famille vide : tout
 
 CTX = {"lead": DrawContext(1, 0.0, 0, False), "lt5": DrawContext(3, 2.0, 2, False),
        "5to15": DrawContext(3, 9.0, 2, False), "gt15": DrawContext(4, 30.0, 3, False)}
@@ -237,7 +261,7 @@ class Sim:
         r.held, r.charges, r.roll = item, DEFAULT_ITEMS[item].charges, None
 
 
-def test_gel_kicks_once_and_matches_plan():
+def test_gel_holds_speed_and_matches_plan():
     sim = Sim({ME: 250.0, "ref": 250.0}, gap_m=0.0)
     sim.mode.set_lane("ref", 0)
     sim.run(1.0)
@@ -246,9 +270,11 @@ def test_gel_kicks_once_and_matches_plan():
     v0 = sim.phys[ME].v
     sim.step()
     assert sim.phys[ME].v == pytest.approx(v0 * 1.3, rel=0.01)
-    sim.run(60.0)
+    sim.run(4.5)
+    assert sim.phys[ME].v >= 1.3 * V_EQ - 1e-6 and sim.mode.frame()["fx"][0][0] == "gel"   # tenu 5 s, au HUD
+    sim.run(55.5)
     gain = (sim.phys[ME].s - sim.phys["ref"].s) / V_EQ
-    assert gain == pytest.approx(3.9, rel=0.10)
+    assert gain == pytest.approx(5.4, rel=0.10)
 
 
 def test_gel_x3_one_charge_per_second():
@@ -271,9 +297,11 @@ def test_bottle_slips_follower_on_same_lane_only():
     assert sim.mode.racers[ME].received == {"bottle": 1}
     assert sim.mode.racers["other"].received == {}
     msgs = sim.mode.due_results(sim.t + 10)
+    assert msgs[0] == {"type": "gp_event", "v": 1, "kind": "use", "item": "bottle", "rider": "lead"}   # lot GPO1
+    msgs = msgs[1:]
     assert msgs and msgs[0]["type"] == "gp_hit" and msgs[0]["target"] == ME and msgs[0]["by"] == "lead"
-    assert msgs[0]["loss_s"] == pytest.approx(3.9, rel=0.10)            # perte estimée, en secondes
-    assert len(sim.mode.due_results(sim.t + 11)) == 1 and len(sim.mode.due_results(sim.t + 12)) == 1
+    assert msgs[0]["loss_s"] == pytest.approx(7.0, rel=0.10)            # perte estimée, en secondes
+    assert len(sim.mode.due_results(sim.t + 11)) == 2 and len(sim.mode.due_results(sim.t + 12)) == 2
     assert sim.mode.due_results(sim.t + 13) == []                         # répété 3 fois
     assert sim.mode.summary()["lost_s"]["bottle"] > 0
     assert sim.mode.summary("lead")["launched"] == {"bottle": 1}
@@ -306,18 +334,18 @@ def test_homing_follows_lane_and_is_parried_by_shield():
     assert sim2.mode.racers["a"].received == {} and sim2.mode.racers["a"].charges == 2
 
 
-def test_hit_grace_2_s():
+def test_hit_grace_is_one_hit_duration():
     sim = Sim({"a": 250.0, ME: 250.0}, gap_m=10.0)
     sim.run(1.0)
     sim.give("a", "bottle_x3")
     assert sim.mode.use("a")
     sim.run(1.0)
-    assert sim.mode.use("a")       # second bidon : touché moins de 2 s après le premier
+    assert sim.mode.use("a")       # second bidon : touché pendant la glissade du premier (5 s)
     sim.run(3.0)
     me = sim.mode.racers[ME]
     assert me.received == {"bottle": 1} or me.received == {"bottle_x3": 1}
     assert me.dodged == 1
-    assert HIT_GRACE_S == 2.0
+    assert HIT_GRACE_S == 5.0
 
 
 def test_storm_hits_leader_and_splash_and_one_in_flight():
@@ -332,8 +360,29 @@ def test_storm_hits_leader_and_splash_and_one_in_flight():
     sim.run(5.0)
     assert sim.mode.racers["lead"].received == {"storm": 1}
     assert sim.mode.racers["near"].received == {"storm": 1}       # à 8 m du premier : glissade
-    assert sim.mode.racers["mid"].received == {}                    # à 16 m : rien
+    assert sim.mode.racers["mid"].received == {}                    # à 16 m : rien (éclaboussure 15 m)
     assert not sim.mode._storm_flying()
+
+
+def test_parries_are_announced_for_everyone():
+    """Lot GPO1 : réserve qui pare, onde de la sonnette, invincibilité : `gp_event` « parry » avec le lanceur."""
+    sim = Sim({"a": 250.0, ME: 250.0}, gap_m=30.0)
+    sim.run(0.5)
+    sim.give(ME, "homing")
+    sim.give("a", "bottle")
+    assert sim.mode.use(ME)
+    sim.run(5.0)
+    ev = [m for m in sim.mode.due_results(sim.t + 10) if m["type"] == "gp_event" and m["kind"] == "parry"]
+    assert ev == [{"type": "gp_event", "v": 1, "kind": "parry", "item": "homing", "rider": "a", "by": ME}]
+    sim2 = Sim({"a": 250.0, ME: 250.0}, gap_m=10.0)
+    sim2.run(0.5)
+    sim2.give(ME, "musette")
+    assert sim2.mode.use(ME)
+    sim2.give("a", "bell")
+    assert sim2.mode.use("a")
+    ev = [m for m in sim2.mode.due_results(sim2.t + 10) if m["type"] == "gp_event" and m["kind"] == "parry"]
+    assert ev and ev[0]["rider"] == "a" and ev[0]["by"] == ME
+    assert any(ln["event"] == "parry" and ln.get("how") == "bell" for ln in sim2.mode.take_journal())
 
 
 def test_bell_chases_storm_and_clears_objects():
@@ -355,11 +404,11 @@ def test_star_immune_floor_and_touch():
     sim.give(ME, "star")
     assert sim.mode.use(ME)
     sim.step()
-    assert sim.phys[ME].v >= 1.2 * V_EQ - 1e-6
+    assert sim.phys[ME].v >= 1.3 * V_EQ - 1e-6
     assert sim.mode.racers["b"].received == {"star": 1}             # frôlé sur la même voie
-    assert sim.mode.frame()["fx"] == [["star", 8.0]] or sim.mode.frame()["fx"][0][0] == "star"
+    assert sim.mode.frame()["fx"] == [["star", 12.0]] or sim.mode.frame()["fx"][0][0] == "star"
     assert sim.mode.bot_frame(ME) == {"item": None, "fx": ["star"]}
-    sim.run(8.0)
+    sim.run(12.0)
     assert not sim.mode.frame()["fx"]
 
 
@@ -367,9 +416,9 @@ def test_headwind_slows_all_ahead_without_grade():
     sim = Sim({"a": 250.0, "b": 250.0, ME: 250.0}, gap_m=20.0)
     sim.give(ME, "headwind")
     assert sim.mode.use(ME)
-    assert sim.mode.wind_mps("a") == pytest.approx(5.0) and sim.mode.wind_mps("b") == pytest.approx(5.0)
+    assert sim.mode.wind_mps("a") == pytest.approx(6.0) and sim.mode.wind_mps("b") == pytest.approx(6.0)
     assert sim.mode.wind_mps(ME) == 0.0
-    sim.run(6.1)
+    sim.run(10.1)
     assert sim.mode.wind_mps("a") == 0.0
 
 
@@ -384,7 +433,7 @@ def test_team_car_fixed_speed_and_stealth_steals():
     sim2.give("a", "star")
     assert sim2.mode.use(ME)
     assert sim2.mode.racers[ME].held == "star" and sim2.mode.racers["a"].held is None
-    assert sim2.mode.frame()["fx"] == [["stealth", 10.0]]
+    assert sim2.mode.frame()["fx"] == [["stealth", 12.0]]
 
 
 def test_pause_freezes_and_grace_after_resume():

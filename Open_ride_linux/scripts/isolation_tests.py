@@ -13,6 +13,9 @@ import d'openride_core (les chemins du type `~/OpenRide/Activities` sont calcul�
 - `verrou_suite()` : une seule suite de tests OpenRide à la fois sur la machine ; une deuxième
   attend la fin de la première (les mesures de performance ne sont plus faussées par une suite
   lancée en parallèle). `OPENRIDE_TESTS_VERROU` marque les sous-processus d'une suite qui le tient.
+- `OPENRIDE_TESTS_PARTIE` = « K/N » (intégration continue, audit du 22 novembre P1) : la suite ne joue
+  que la partie K de ses fichiers de test répartis en N parts de durée voisine (`repartir_fichiers`,
+  durées mesurées dans `scripts/durees_tests.json`) ; les N parties jouent ensemble tous les tests.
 
 Bibliothèque standard seulement : sert aussi à `scripts/recette_pc.py` et aux bancs de l'engine.
 """
@@ -32,6 +35,8 @@ from pathlib import Path
 _BIBLIOTHEQUE = (sysconfig.get_paths()["stdlib"], sysconfig.get_paths()["platstdlib"])
 DIALOGUES = ("zenity", "kdialog", "notify-send")
 VARIABLE_VERROU = "OPENRIDE_TESTS_VERROU"
+VARIABLE_PARTIE = "OPENRIDE_TESTS_PARTIE"
+DUREES = Path(__file__).with_name("durees_tests.json")
 _ECRITURE = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND
 # événement d'audit → (position du chemin, position de son dir_fd ou None), pour chaque chemin écrit
 _EVENEMENTS = {"os.mkdir": ((0, 2),), "os.remove": ((0, 1),), "os.rmdir": ((0, 1),),
@@ -244,5 +249,67 @@ def brancher_pytest() -> dict:
             if releves:
                 pytest.fail(message_garde(releves), pytrace=False)
 
+    def pytest_collection_modifyitems(session, config, items) -> None:
+        # Lue puis retirée : un pytest lancé par un test (garde-fou, recompte) voit toute sa petite suite.
+        partie = lire_partie(os.environ.pop(VARIABLE_PARTIE, None))
+        if partie is None:
+            return
+        k, n = partie
+        fichier = {it: nom_fichier_test(Path(it.path)) for it in items}
+        parts = repartir_fichiers(sorted(set(fichier.values())), n, lire_durees())
+        gardes = [it for it in items if parts[fichier[it]] == k - 1]
+        ecartes = [it for it in items if parts[fichier[it]] != k - 1]
+        if ecartes:
+            config.hook.pytest_deselected(items=ecartes)
+        items[:] = gardes
+
     return {f.__name__: f for f in (pytest_configure, pytest_unconfigure, pytest_runtest_setup,
-                                    pytest_runtest_call, pytest_runtest_teardown)}
+                                    pytest_runtest_call, pytest_runtest_teardown,
+                                    pytest_collection_modifyitems)}
+
+
+def nom_fichier_test(chemin: Path) -> str:
+    """Chemin d'un fichier de test depuis Open_ride_linux/ (« core/tests/test_x.py »), clé des durées."""
+    projet = DUREES.parent.parent.resolve()
+    chemin = chemin.resolve()
+    return chemin.relative_to(projet).as_posix() if chemin.is_relative_to(projet) else chemin.name
+
+
+def lire_partie(texte: str | None) -> tuple[int, int] | None:
+    """« K/N » avec 1 ≤ K ≤ N ; None sans découpage. Une valeur fausse arrête la suite (jamais de tests perdus)."""
+    if not texte:
+        return None
+    try:
+        k, n = (int(x) for x in texte.split("/"))
+    except ValueError:
+        raise SystemExit(f"{VARIABLE_PARTIE} attend K/N (par exemple 2/3), reçu {texte!r}") from None
+    if not 1 <= k <= n:
+        raise SystemExit(f"{VARIABLE_PARTIE} attend 1 ≤ K ≤ N, reçu {texte!r}")
+    return k, n
+
+
+def lire_durees(chemin: Path = DUREES) -> dict[str, float]:
+    """Durées mesurées par fichier de test (secondes), clés « core/tests/test_x.py » ; vide si absent."""
+    import json
+
+    try:
+        brut = json.loads(chemin.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {str(k): float(v) for k, v in brut.get("fichiers", {}).items()}
+
+
+def repartir_fichiers(fichiers: list[str], n: int, durees: dict[str, float]) -> dict[str, int]:
+    """Fichier → partie (0 à n − 1), parts de durée voisine : le plus long d'abord dans la partie la moins
+    chargée. Un fichier sans durée mesurée compte pour la durée médiane. Même résultat sur toutes les
+    machines (ordre et égalités fixés par le nom), si bien que les n parties couvrent chaque fichier une fois."""
+    connues = sorted(durees[f] for f in fichiers if f in durees)
+    defaut = connues[len(connues) // 2] if connues else 1.0
+    poids = {f: durees.get(f, defaut) for f in fichiers}
+    charge = [0.0] * n
+    partie: dict[str, int] = {}
+    for f in sorted(fichiers, key=lambda f: (-poids[f], f)):
+        i = min(range(n), key=lambda i: (charge[i], i))
+        partie[f] = i
+        charge[i] += poids[f]
+    return partie
