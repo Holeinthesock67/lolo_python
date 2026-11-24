@@ -54,6 +54,37 @@
                                "ftp": {"type": ["integer", "null"]}, "p5": {"type": ["integer", "null"]},
                                "p20": {"type": ["integer", "null"]}}}
     },
-    "warnings": {"type": "array", "items": {"type": "string"}}
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "profile": {
+      "description": "Facultatif, lot PP5 (même révision 1.35) : « Se connaître ». kind : sprinteur, puncheur, grimpeur, rouleur, complet, ou null s'il manque un effort à fond (durées dans missing) ; strong et weak : durées du point fort et du point faible ; form_pct : forme du moment (6 semaines / 6 mois, médiane, %) ; aging : record des 6 mois le plus ancien s'il a plus de 120 jours ; gaps : plages de durées sans effort libre depuis 6 semaines (3 au plus).",
+      "type": "object",
+      "required": ["kind", "strong", "weak", "missing", "form_pct", "aging", "gaps"],
+      "properties": {
+        "kind": {"enum": ["sprinteur", "puncheur", "grimpeur", "rouleur", "complet", null]},
+        "strong": {"type": ["integer", "null"]},
+        "weak": {"type": ["integer", "null"]},
+        "missing": {"type": "array", "items": {"enum": [5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600]}},
+        "form_pct": {"type": ["integer", "null"], "minimum": 0},
+        "aging": {"type": ["object", "null"], "required": ["s", "age_d", "left_d"],
+                  "properties": {"s": {"enum": [5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600]}, "age_d": {"type": "integer", "minimum": 0},
+                                 "left_d": {"type": "integer", "minimum": 0}}},
+        "gaps": {"type": "array", "maxItems": 3,
+                 "items": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": [5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600]}}}
+      }
+    },
+    "challenge": {
+      "description": "Facultatif, lot PP7 (même révision 1.35) : défi « bats ton record ». s : durée (point faible, sinon record vieillissant, sinon 5 min) ; target_w : record des 6 mois + 1 W ; record_w ; why : weak, aging ou default ; route_id, route_name (40 caractères au plus), climb_s : parcours prêt dont la montée principale dure au moins s à la puissance visée, null en dessous d'une minute ou sans parcours qui convient. null sans record sur la durée retenue.",
+      "type": ["object", "null"],
+      "required": ["s", "target_w", "record_w", "why", "route_id", "route_name", "climb_s"],
+      "properties": {
+        "s": {"enum": [5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600]},
+        "target_w": {"type": "integer", "minimum": 1},
+        "record_w": {"type": "integer", "minimum": 0},
+        "why": {"enum": ["weak", "aging", "default"]},
+        "route_id": {"type": ["string", "null"]},
+        "route_name": {"type": ["string", "null"], "maxLength": 40},
+        "climb_s": {"type": ["integer", "null"], "minimum": 0}
+      }
+    }
   }
 }

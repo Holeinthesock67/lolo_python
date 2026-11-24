@@ -557,6 +557,14 @@ def record_collection_seen(profile_ctx: Any, keys: list[str],
     return current
 
 
+def compute_summary_power(journal_path: Path, ftp_w: float, activities_dir: Path, cache_path: Path,
+                          sources: Any) -> dict[str, Any] | None:
+    """Records de puissance et signal « FTP à revoir » du bilan (série PP, lot PP4) : `tools.power_records`."""
+    from .tools.power_records import session_report
+
+    return session_report(journal_path, ftp_w, activities_dir, cache_path, sources)
+
+
 def compute_summary_collection(profile_ctx: Any,
                                journal_dir: Path | None = None,
                                table_path: Path | None = None,
@@ -601,10 +609,11 @@ def _curve_point(p: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir: Path, cache_path: Path,
-                              sources, profile_id: str | None = None, now: float | None = None) -> dict[str, Any]:
+                              sources, profile_id: str | None = None, now: float | None = None,
+                              routes: list | None = None) -> dict[str, Any]:
     """Réponse à `list_power_curve` : courbe du profil en cours (13 durées, 6 mois et 6 semaines, PP1), FTP estimée
     et sa proposition (PP2), évolution sur 6 mois ; un seul datagramme de moins de 4 096 octets."""
-    from .tools import ftp_estimate, power_curve
+    from .tools import ftp_estimate, power_challenge, power_curve, power_profile
 
     now = time.time() if now is None else now
     kept = power_curve.kept_sessions(power_curve.session_entries(activities_dir, cache_path), tuple(sources))
@@ -623,7 +632,12 @@ def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir:
            "review": est["review"], "delta_pct": est["delta_pct"],
            "monthly": [{"m": x["month"], "ftp": x["ftp_w"], "p5": x["best_5min_w"], "p20": x["best_20min_w"]}
                        for x in est["monthly"]],
-           "warnings": est["warnings"]}
+           "warnings": est["warnings"],
+           "profile": power_profile.profile_from_windows(m6, w6, now)}   # lot PP5 : « Se connaître »
+    chal = power_challenge.challenge(msg["profile"], m6["points"], routes or [])   # lot PP7 : défi
+    if chal is not None and chal["route_name"]:
+        chal["route_name"] = str(chal["route_name"])[:40]
+    msg["challenge"] = chal
     if len(json.dumps(msg, ensure_ascii=False).encode("utf-8")) > POWER_CURVE_MAX_BYTES:   # noms très longs
         for pt in msg["points"]:
             for key in ("m6", "w6"):

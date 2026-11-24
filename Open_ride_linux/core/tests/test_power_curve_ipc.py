@@ -39,6 +39,10 @@ def test_message_from_the_current_profile(home, monkeypatch):
     assert abs(msg["estimate"]["ftp_w"] - 250) <= 6 and msg["proposal_w"] == msg["estimate"]["ftp_w"]
     assert msg["review"] is True                              # FTP réglée 200 W : plus de 5 % d'écart
     assert len(msg["monthly"]) == 6 and len(msg["warnings"]) == 2
+    prof = msg["profile"]                                     # lot PP5 : « Se connaître »
+    assert prof["kind"] in ("sprinteur", "puncheur", "grimpeur", "rouleur", "complet") and prof["form_pct"] > 0
+    chal = msg["challenge"]                                   # lot PP7 : défi, sans parcours dans ce dossier vide
+    assert chal is None or (chal["target_w"] == chal["record_w"] + 1 and chal["route_id"] is None)
     assert len(json.dumps(msg, ensure_ascii=False).encode("utf-8")) < 4096
     assert jdir.parent.parent.joinpath(".cache", "mmp.json").is_file()   # cache du profil
 

@@ -2320,7 +2320,30 @@ func _handle_power(screen: String, item_id: String) -> Dictionary:
 			if power.proposal_w() > 0:
 				power.message = ""
 				menu.confirm(power.accept_question(), power.accept_action())
+		PowerViewModel.CHALLENGE_ID:
+			return _launch_power_challenge()
 	return {}
+
+
+## « Rouler ce défi » (lot PP7) : parcours proposé (ou celui de l'écran Prêt pour un sprint), session libre, et un
+## bot à puissance constante à la cible, le fantôme de ton record ; écran Prêt avec le défi en mots.
+func _launch_power_challenge() -> Dictionary:
+	var c: Dictionary = power.challenge()
+	if c.is_empty():
+		return {}
+	var list: Array = []
+	if c.get("route_id") is String:
+		var rid: String = str(c["route_id"])
+		var entry := _route_entry(rid)
+		menu.set_world(rid, str(entry.get("name", c.get("route_name", rid))) if not entry.is_empty() else str(c.get("route_name", rid)))
+		list.append({"action": "select_route", "route_id": rid})
+	list.append({"action": "select_workout", "workout_id": null})
+	menu.prepare_coach_race("défi : " + PowerViewModel.duration_label(int(c["s"])),
+		{"bots": [{"kind": "constant", "power_w": int(c["target_w"])}]}, power.challenge_ready_text())
+	if menu._needs_route():   # sprint, ou aucun parcours qui convienne : la liste des parcours d'abord
+		menu._routes_return = MenuModel.READY
+		menu._open_routes(true)
+	return {"action": "sequence", "list": list}
 
 
 ## Historique (lot O28) : réponse `history` à `list_history` ; noms des parcours de la dernière liste.

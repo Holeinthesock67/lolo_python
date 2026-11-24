@@ -1624,10 +1624,22 @@ class CoreSession:
             return
         ctx = profiles.current()
         activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
-        cache = self.mmp_cache_path if self.mmp_cache_path is not None else ctx.mmp_cache
+        cache = self._curve_cache(ctx)
+        routes_root, gpx_dir = self.routes_root, self.gpx_dir or GPX_DIR
+
+        def build() -> dict:
+            from .catalog import list_routes
+
+            try:   # lot PP7 : parcours proposé pour le défi ; un catalogue illisible n'empêche pas la courbe
+                routes = list_routes(routes_root, gpx_dir)
+            except Exception:
+                log.exception("Catalogue des parcours illisible pour le défi de « Ma puissance »")
+                routes = []
+            return build_power_curve_message(cmd_id, self.cfg.rider.ftp_w, activities, cache, ctx.counted_sources,
+                                             ctx.id, routes=routes)
+
         try:
-            msg = await asyncio.to_thread(build_power_curve_message, cmd_id, self.cfg.rider.ftp_w, activities, cache,
-                                          ctx.counted_sources, ctx.id)
+            msg = await asyncio.to_thread(build)
         except Exception:
             log.exception("Erreur lors du calcul de la courbe de puissance (cmd_id=%d)", cmd_id)
             return
@@ -1738,6 +1750,47 @@ class CoreSession:
                 self.state.summary["collection"] = col_ann
         except Exception:
             log.exception("Erreur lors du calcul de summary.collection")
+
+    def _after_session_power(self, journal_path: Path) -> None:
+        """Records de puissance et signal « FTP à revoir » au bilan (série PP, lot PP4) : `summary.power_records`
+        et `summary.ftp_review`, calculés hors de la boucle à 50 Hz, absents si rien à dire."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : calcul direct
+            self._attach_power_report(self._power_report(journal_path))
+            return
+        self._spawn(self._attach_summary_power(journal_path))
+
+    def _curve_cache(self, ctx: Any) -> Path:
+        """Cache de la courbe de puissance (série PP) : celui donné à la séance, sinon celui du profil quand la
+        séance écrit dans les journaux du profil, sinon un cache à côté des activités de la séance (dossier
+        donné à la séance : jamais le cache du profil pour d'autres séances)."""
+        if self.mmp_cache_path is not None:
+            return self.mmp_cache_path
+        if Path(self.journal_dir) == Path(ctx.journal_dir):
+            return ctx.mmp_cache
+        return self.journal_dir.parent / ".cache" / "mmp.json"
+
+    def _power_report(self, journal_path: Path) -> dict | None:
+        from .ipc_lists import compute_summary_power
+
+        ctx = self.profile_ctx
+        return compute_summary_power(journal_path, float(self.cfg.rider.ftp_w), self.journal_dir.parent,
+                                     self._curve_cache(ctx), ctx.counted_sources)
+
+    def _attach_power_report(self, report: dict | None) -> None:
+        if report is None or self.state.summary is None:
+            return
+        if report["records"]:
+            self.state.summary["power_records"] = report["records"]
+        if report["ftp_review"] is not None:
+            self.state.summary["ftp_review"] = report["ftp_review"]
+
+    async def _attach_summary_power(self, journal_path: Path) -> None:
+        try:
+            self._attach_power_report(await asyncio.to_thread(self._power_report, journal_path))
+        except Exception:
+            log.exception("Erreur lors du calcul des records de puissance du bilan")
 
     def _setting_file(self, key: str) -> Path:
         """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),
@@ -2656,6 +2709,7 @@ class CoreSession:
     def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
         journal: str | None = None
+        journal_path: Path | None = None
         records_done: list[dict] | None = []
         race, self.race = self.race, None
         wtf, self.wtf = self.wtf, None
@@ -2706,6 +2760,7 @@ class CoreSession:
         if self._rec:
             rec, self._rec = self._rec, None
             journal = rec.path.name if rec.path is not None else None
+            journal_path = rec.path
             ftp_result = self._write_ftp_test(rec)
             if ftp_result is not None:
                 self._ftp_result = ftp_result
@@ -2773,6 +2828,8 @@ class CoreSession:
         if journal is not None and final_state == "FINISHED":
             self._after_session(journal, records_done)
             self._after_session_collection()
+            if journal_path is not None:
+                self._after_session_power(journal_path)
 
     # --- mode « What the fuck » (série WTF, lot WTF2) -----------------------------------
 
