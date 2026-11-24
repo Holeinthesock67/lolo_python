@@ -41,7 +41,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from . import draft
+from . import draft, road_ground
 from .route_mirror import MirroredRoute, flip_s
 
 MASK32 = 0xFFFFFFFF
@@ -88,6 +88,10 @@ LATERAL_MPS = 1.5
 CYCLIST_GAP_M = 0.5
 CYCLIST_LOOK_M = 40.0
 CYCLIST_HALF_LENGTH_M = 0.9
+# Bord extérieur qu'une carrosserie ne dépasse pas : demi-chaussée et accotement (RoadBuilder.ROAD_WIDTH_M / 2,
+# SHOULDER_WIDTH_M) plus VERGE_M d'herbe mordue au plus (traffic_model.gd VERGE_M)
+VERGE_M = 0.25
+ROAD_EDGE_M = road_ground.ROAD_HALF_WIDTH_M + road_ground.SHOULDER_WIDTH_M + VERGE_M
 LANE_FREE_M = 150.0
 HOLD_GAP_M = 5.0
 WHEEL_RADIUS_M = 0.33
@@ -507,7 +511,10 @@ class Traffic:
             spd = pass_mps
             # engagé derrière le cycliste qu'il suivait (FOLLOW_GAP_M, rapprochement nul), il déboîte d'abord
             target_lat = left if rel >= min(zone[0], -FOLLOW_GAP_M - 1.0) else RIGHT_LANE_M
-            if abs(v.lateral - left) > 0.05 and rel > -FOLLOW_GAP_M:
+            # Pas sur la voie de gauche à temps (ou plus à gauche, pour laisser la place aux bots et aux cyclistes
+            # du décor) : il ne s'approche pas plus du cycliste (revue C5-03, comme traffic_model.gd `minf(left, goal)`)
+            goal = self._clear_of_others(v, left)
+            if abs(v.lateral - min(left, goal)) > 0.05 and rel > -FOLLOW_GAP_M:
                 spd = min(spd, rider_v)
         elif not v.committed:
             if rel >= zone[0] - 40.0:
@@ -546,6 +553,25 @@ class Traffic:
                     self._hold_behind(v, o.s)
                     continue
                 out = o.lateral - room if out < o.lateral else o.lateral + room
+        # Jamais hors de la route (revue C5-02, bloc de traffic_model.gd `_clear_of_others`) : sans la place de passer
+        # sur la chaussée, il attend derrière (ou, en face, devant) le premier qu'il toucherait ; seul un dépassement
+        # déjà engagé à côté d'un cycliste qui s'écarte mord l'herbe
+        edge = ROAD_EDGE_M - v.half_width
+        if abs(out) > edge:
+            clamped = min(max(out, -edge), edge)
+            blocked: list[float] = []
+            for o in self._others:
+                ahead = (o.s - v.s) * v.dir
+                gap = LATERAL_CLEARANCE_M if o.dir == v.dir else CYCLIST_GAP_M
+                if ahead < -half_len or ahead > half_len + CYCLIST_LOOK_M \
+                        or abs(clamped - o.lateral) >= RIDER_HALF_WIDTH_M + gap + v.half_width:
+                    continue
+                if ahead <= half_len and v.dir == 1:
+                    return out
+                blocked.append(o.s)
+            for s_o in blocked:
+                self._hold_behind(v, s_o)
+            out = clamped
         return out
 
     @staticmethod
