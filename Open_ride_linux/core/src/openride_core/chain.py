@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
-from .mode_routes import mode_of
+from .mode_routes import is_free
 
 JOURNAL_KIND = "chain"
 EVENT_ROUTE_START = "route_start"
@@ -99,7 +99,7 @@ def _ascent(stats: Any) -> float | None:
 
 
 def candidates(entries: Iterable[Any], current_id: str | None, ridden: Iterable[str]) -> list[Candidate]:
-    """Parcours proposés après `current_id` : prêts, libres (pas réservés à un mode, lot GP13), autres que celui
+    """Parcours proposés après `current_id` : prêts, libres (pas réservés à un mode, lots GP13 et GPL1 : liste générale « Parcours »), autres que celui
     qu'on vient de finir. Ceux pas encore roulés dans la séance d'abord, puis l'ordre du catalogue.
 
     `entries` : `catalog.RouteEntry` (ou tout objet aux mêmes attributs : id, name, status, length_m,
@@ -110,7 +110,7 @@ def candidates(entries: Iterable[Any], current_id: str | None, ridden: Iterable[
     for e in entries:
         if getattr(e, "status", None) != "ready" or e.id == current_id:
             continue
-        if mode_of(getattr(e, "library", None) or {}) is not None:
+        if not is_free(getattr(e, "library", None) or {}, getattr(e, "route_type", None)):
             continue
         c = Candidate(id=str(e.id), name=str(getattr(e, "name", "") or e.id),
                       length_m=getattr(e, "length_m", None), ascent_m=_ascent(getattr(e, "stats", None)),

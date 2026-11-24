@@ -30,7 +30,8 @@ CATALOG = [
     Entry("demo", "Col du lacet", stats={"gain_m": 412.4}),
     Entry("erables", "Route des Érables", length_m=25_400.0),
     Entry("pres", "Circuit des Prés", route_type="loop", library={"tags": ["grandprix"]}),
-    Entry("velodrome-250", "Vélodrome", library={"tags": ["velodrome"]}),
+    Entry("velodrome-250", "Vélodrome", route_type="loop", library={"tags": ["velodrome"]}),
+    Entry("recif", "Récif des tortues", route_type="loop", library={"tags": ["grandprix", "libre"]}),
     Entry("brouillon", "Trace à compiler", status="to_compile"),
     Entry("volcan", "Volcan en flammes", route_type="loop"),
 ]
@@ -58,12 +59,12 @@ def test_only_free_ride_on_an_open_route_can_chain(ctx, code):
 
 def test_candidates_ready_free_routes_without_the_current_one():
     ids = [c.id for c in chain.candidates(CATALOG, "demo", ["demo"])]
-    assert ids == ["erables", "volcan"]   # ni le Grand Prix, ni la piste, ni une trace à compiler
+    assert ids == ["erables", "recif", "volcan"]   # ni le Grand Prix seul, ni la piste, ni une trace à compiler
 
 
 def test_candidates_put_routes_already_ridden_last():
     offer = chain.candidates(CATALOG, "volcan", ["demo", "volcan"])
-    assert [c.id for c in offer] == ["erables", "demo"]
+    assert [c.id for c in offer] == ["erables", "recif", "demo"]
     assert offer[-1].ridden and not offer[0].ridden
     assert offer[-1].to_dict() == {"id": "demo", "name": "Col du lacet", "length_m": 12000, "ascent_m": 412,
                                    "ridden": True}
@@ -75,7 +76,7 @@ def test_full_chain_two_routes_one_journal_line():
     assert cs.to_state(can_chain=True) == {"leg": 1, "can_chain": True}
     assert cs.open_choice(CATALOG) is None
     st = cs.to_state(True)
-    assert st["phase"] == "choose" and [o["id"] for o in st["offer"]] == ["erables", "volcan"]
+    assert st["phase"] == "choose" and [o["id"] for o in st["offer"]] == ["erables", "recif", "volcan"]
     assert cs.choose("velodrome-250") == "no_route"   # pas dans la liste
     assert cs.choose("erables") is None
     assert cs.to_state(True)["target"] == {"id": "erables", "name": "Route des Érables"}
@@ -95,9 +96,11 @@ def test_cancel_and_failed_load_go_back_without_ending_the_session():
     cs.open_choice(CATALOG)
     cs.choose("erables")
     cs.fail()   # parcours illisible : retour à la liste, sans lui
-    assert cs.phase == "choose" and [c.id for c in cs.offer] == ["volcan"]
-    cs.choose("volcan")
-    cs.fail()
+    assert cs.phase == "choose"
+    assert [c.id for c in cs.offer] == ["recif", "volcan"]
+    for rid in ("recif", "volcan"):
+        cs.choose(rid)
+        cs.fail()
     assert cs.phase is None   # plus rien à proposer : on roule au calme
 
 
