@@ -179,6 +179,43 @@ def running_records(records: list[dict], events: list[dict]) -> list[dict]:
     return [r for r in records if not any(a < r["ts"] < b for a, b in pauses)]
 
 
+MAX_GAP_S = 2.0   # trou de relevés au-delà duquel une meilleure puissance ne se prolonge pas (comme PP1)
+
+
+def running_segments(records: list[dict], events: list[dict]) -> list[list[dict]]:
+    """Tronçons continus des relevés hors pauses (revue RC13, C6-02) : coupés à chaque pause et à chaque trou
+    de plus de `MAX_GAP_S` entre deux relevés. NP et zones lisent la série recollée (`running_records`) ;
+    une meilleure puissance sur une fenêtre ne doit pas enjamber une pause."""
+    pauses: list[tuple[float, float]] = []
+    paused_at: float | None = None
+    for ev in sorted(events, key=lambda e: e["ts"]):
+        if ev["event"] == "pause" and paused_at is None:
+            paused_at = ev["ts"]
+        elif ev["event"] == "resume" and paused_at is not None:
+            pauses.append((paused_at, ev["ts"]))
+            paused_at = None
+    if paused_at is not None:
+        pauses.append((paused_at, math.inf))
+    out: list[list[dict]] = []
+    cur: list[dict] = []
+    prev_ts: float | None = None
+    for r in records:
+        ts = float(r["ts"])
+        if any(a < ts < b for a, b in pauses):
+            if cur:
+                out.append(cur)
+            cur, prev_ts = [], None
+            continue
+        if prev_ts is not None and (ts - prev_ts > MAX_GAP_S or any(prev_ts <= a < ts for a, _ in pauses)):
+            out.append(cur)
+            cur = []
+        cur.append(r)
+        prev_ts = ts
+    if cur:
+        out.append(cur)
+    return out
+
+
 # --- calculs ----------------------------------------------------------------------------
 
 def rolling_means(values: list[float], window: int) -> list[float]:
@@ -259,8 +296,10 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
              for i, (name, lo, hi) in enumerate(ZONES)]
 
     best = {}
-    for key, win in BEST_WINDOWS:
-        rolled = rolling_means(powers, win)
+    seg_powers = [[max(0.0, float(r["power"])) if r.get("power") is not None else 0.0 for r in seg]
+                  for seg in running_segments(session.records, session.events)]
+    for key, win in BEST_WINDOWS:   # par tronçon continu : une fenêtre n'enjambe pas une pause (RC13)
+        rolled = [m for seg in seg_powers for m in rolling_means(seg, win)]
         best[key] = round(max(rolled), 1) if rolled else None
 
     alts = [float(r["alt"]) for r in recs if r.get("alt") is not None]

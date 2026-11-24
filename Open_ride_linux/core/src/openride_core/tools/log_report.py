@@ -199,8 +199,42 @@ PATTERNS: dict[str, re.Pattern[str]] = {
         r"supplément de pente moyen (?P<offset>-?[0-9.]+) points \(mode (?P<mode>\w+)\)$"
     ),
 }
-# Lignes « Trainer : … » sans coupure de liaison (renvoi après erreur ATT, bilan de fin).
-TRAINER_INFO_RE = re.compile(r"^(?:écriture 0x[0-9a-fA-F]{2} (?:refusée|acceptée)|\d+ reconnexion\(s\))")
+# Lignes « Trainer : … » sans coupure de liaison (revue de code C6-03) : le pilote écrit aussi sous
+# cette forme le renvoi après erreur ATT, les bilans de fin, les fonctions annoncées, le frein qui lâche
+# ou l'état machine. Seule l'exception de la boucle de connexion (`ftms_driver.run`, « Trainer : %s »
+# en WARNING) est une perte ; une ligne INFO ou DEBUG n'en est jamais une.
+TRAINER_INFO_RE = re.compile(
+    r"^(?:écriture 0x[0-9a-fA-F]{2} (?:refusée|acceptée)"
+    r"|\d+ reconnexion\(s\)"
+    r"|\d+ perte\(s\) de frein"
+    r"|consigne de résistance non annoncée"
+    r"|pilotage \S+ demandé mais consigne non annoncée"
+    r"|résistance calculée"
+    r"|le frein a lâché"
+    r"|la puissance n'est pas revenue"
+    r"|puissance revenue"
+    r"|le cycliste a cessé de pédaler"
+    r"|contrôle FTMS perdu"
+    r"|consignes remises à zéro"
+    r"|état machine"
+    r"|étalonnage"
+    r"|pilotage par résistance calculée"
+    r"|fonctions FTMS"
+    r"|mode \S+ non annoncé"
+    # Mesures et consignes refusées par le pilote (revue RC2, #1019) : valeur ignorée, liaison gardée.
+    r"|.+ illisible \(.*\), valeurs par défaut gardées$"
+    r"|.+ invraisemblable ignorée \(.*\), valeur précédente gardée$"
+    r"|.+ non finie \(.*\) ignorée, consigne précédente gardée$)"
+)
+TRAINER_LOSS_LEVELS = frozenset({"WARNING", "ERROR", "CRITICAL"})
+
+
+def is_trainer_loss(level: str, msg: str) -> bool:
+    """Vrai si la ligne de journal annonce une perte de la liaison avec le trainer (C6-03)."""
+    if PATTERNS["trainer_lost_pause"].match(msg):
+        return True
+    m = PATTERNS["trainer_warning"].match(msg)
+    return bool(m) and level in TRAINER_LOSS_LEVELS and not TRAINER_INFO_RE.match(m.group("err"))
 
 
 @dataclass
@@ -436,10 +470,9 @@ def _analyse_single_session(lines: list[str]) -> Report:
                                "mean_offset_pct": float(m_gravel.group("offset")), "mode": m_gravel.group("mode")})
             continue
 
-        m_warn = PATTERNS["trainer_warning"].match(msg)
-        if m_warn and TRAINER_INFO_RE.match(m_warn.group("err")):
-            continue   # renvoi après erreur ATT ou bilan de fin : la liaison n'est pas coupée
-        if m_warn or PATTERNS["trainer_lost_pause"].match(msg):
+        if PATTERNS["trainer_warning"].match(msg) and not is_trainer_loss(level, msg):
+            continue   # ligne d'information du pilote (C6-03) : la liaison n'est pas coupée
+        if is_trainer_loss(level, msg):
             if trainer_lost_since is None:
                 rep.trainer.disconnections += 1
                 if dt is not None:

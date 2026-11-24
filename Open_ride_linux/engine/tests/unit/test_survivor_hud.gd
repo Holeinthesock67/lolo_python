@@ -58,6 +58,20 @@ func _run() -> void:
 		"liste : Toi dernier")
 	_check(rows[0]["detail"] == "+6,0 s" and not rows[0]["last"], "liste : écart au cycliste en secondes")
 	_check(rows[4]["name"] == "Diesel" and rows[4]["out"] and rows[4]["detail"] == "arche 1", "liste : éliminé barré avec son arche")
+	# Consigne et moment ATTENTION communs (lot RT1)
+	var c: Dictionary = m.consigne(_state(sv))
+	_check(c["k"] == "À FAIRE" and c["action"] == "Passe Rouleur avant l'arche : 1,2 s"
+		and c["detail"] == "Objectif : être le dernier en course · Pourquoi : le dernier à chaque arche est éliminé"
+		and c["chips"] == ["pédale plus fort"], "consigne : passer le coureur devant (%s)" % str(c))
+	var att: Array = m.moments(_state(sv))
+	_check(att.size() == 1 and att[0]["family"] == "attention" and att[0]["title"] == "Tu es dernier en course"
+		and att[0]["sub"] == "Arche d'élimination dans 650 m", "moment ATTENTION quand le cycliste devient dernier (%s)" % str(att))
+	_check(m.moments(_state(sv)).is_empty(), "ATTENTION une seule fois tant qu'il reste dernier")
+	var safe := sv.duplicate(true)
+	safe["last"] = "bot3"
+	_check(m.consigne(_state(safe))["action"] == "Ne sois pas dernier à l'arche · arche dans 650 m", "consigne hors danger")
+	_check(m.moments(_state(safe)).is_empty() and m.moments(_state(sv)).size() == 1, "redevenu dernier : ATTENTION à nouveau")
+	_check(m.goal(_state(sv)) == "être le dernier en course" and m.goal({"session_state": "RUNNING"}) == "", "objectif du départ")
 	sv["d_m"] = 320.0
 	b = m.view(_state(sv, 5680.0), 11.0)["block"]
 	_check(absf(float(b["bar"]) - (1.0 - 320.0 / 650.0)) < 0.01, "barre d'approche depuis le début de l'arche")
@@ -77,9 +91,12 @@ func _run() -> void:
 	var rows2: Array = m.view(_state(sv2, 5680.0), 12.0)["list"]
 	_check(rows2[3]["last"] and rows2[3]["name"] == "Rouleur", "dernier marqué")
 
-	# Élimination d'un bot : bandeau du bas 3 s, doublons ignorés, jingle
+	# Élimination d'un bot : moment BIEN commun (lot RT1), doublons ignorés, jingle
 	var msg := {"type": "elimination", "v": 1, "arch": 2, "rider": "bot2", "name": "Sprinteur", "place": 4, "gap_s": 0.6, "alive": 3}
-	_check(m.on_elimination(msg, 20.0) == ["jingle_elim"], "élimination : jingle")
+	var mo: Array = m.on_elimination(msg, 20.0)
+	_check(mo.size() == 1 and mo[0]["family"] == "bien" and mo[0]["title"] == "Sprinteur est éliminé"
+		and mo[0]["sub"] == "arche 2 · à 0,6 s · plus que 3 en course" and mo[0]["sound"] == "jingle_elim",
+		"élimination : moment BIEN et jingle (%s)" % str(mo))
 	_check(m.on_elimination(msg, 21.0).is_empty() and m.on_elimination(msg, 22.0).is_empty(), "doublons (3 envois) ignorés")
 	var sv3 := sv2.duplicate(true)
 	sv3["arch"] = 3
@@ -87,8 +104,7 @@ func _run() -> void:
 	sv3["out"] = [["bot4", 1], ["bot2", 2]]
 	sv3["d_m"] = 1990.0
 	v = m.view(_state(sv3, 6010.0), 21.0)
-	_check(v["bottom"].get("title", "") == "Éliminé : Sprinteur" and v["bottom"]["sub"] == "arche 2 · à 0,6 s", "bandeau du bas")
-	_check(m.view(_state(sv3, 6010.0), 23.5)["bottom"].is_empty(), "bandeau du bas effacé après 3 s")
+	_check(not v.has("bottom") and not v.has("center"), "plus de bandeau propre au mode (retours communs, lot RT1)")
 	var rows3: Array = v["list"]
 	_check(rows3[3]["name"] == "Sprinteur" and rows3[4]["name"] == "Diesel", "éliminés du plus récent au plus ancien")
 	draw = m.arches_to_draw(_state(sv3, 6010.0))
@@ -96,33 +112,37 @@ func _run() -> void:
 
 	# Joueur éliminé (maquette « Éliminé · 3e sur 5 »)
 	var me_msg := {"type": "elimination", "v": 1, "arch": 3, "rider": "me", "name": "", "place": 3, "gap_s": 1.9, "alive": 2}
-	_check(m.on_elimination(me_msg, 30.0) == ["jingle_elim"], "joueur éliminé : jingle")
+	var me_mo: Array = m.on_elimination(me_msg, 30.0)
+	_check(me_mo.size() == 1 and me_mo[0]["family"] == "resultat" and me_mo[0]["tone"] == "out"
+		and me_mo[0]["title"] == "ÉLIMINÉ · 3e sur 5" and str(me_mo[0]["sub"]).begins_with("Tu continues à rouler")
+		and me_mo[0]["sound"] == "jingle_elim" and me_mo[0]["done_k"] == "COURSE FINIE POUR TOI · 3e sur 5",
+		"joueur éliminé : RÉSULTAT rouge, puis consigne de fin (%s)" % str(me_mo))
 	var sv4 := {"arch": 4, "arches": 4, "d_m": null, "alive": ["bot1", "bot3"], "last": "bot3", "gap_last_s": null,
 		"out": [["bot4", 1], ["bot2", 2]], "me_out": 3, "winner": null}
 	v = m.view(_state(sv4, 7000.0), 31.0)
 	_check(v["block"].is_empty(), "joueur éliminé : plus de bloc")
-	_check(v["center"].get("title", "") == "ÉLIMINÉ · 3e sur 5" and str(v["center"]["sub"]).begins_with("Tu continues à rouler"),
-		"bandeau rouge du milieu (continuer à rouler)")
+	_check(m.consigne(_state(sv4, 7000.0)).is_empty(), "joueur éliminé : plus de consigne du mode")
 	_check(v["list"][2]["name"] == "Toi" and v["list"][2]["out"] and v["list"][2]["detail"] == "arche 3", "Toi barré dans la liste")
 	var m_end = Model.new()
 	m_end.after_out = "end"
 	m_end.view(_state(sv4.merged({"me_out": null, "alive": ["bot1", "bot3", "me"]}, true), 7000.0), 0.0)
-	m_end.on_elimination(me_msg, 1.0)
-	_check(m_end.view(_state(sv4, 7000.0), 2.0)["center"]["sub"] == "Bilan de la course", "réglage « terminer la séance »")
+	_check(m_end.on_elimination(me_msg, 1.0)[0]["sub"] == "Bilan de la course", "réglage « terminer la séance »")
 
 	# Vainqueur (maquette « Dernier survivant ! »)
 	var w = Model.new()
 	w.view(_state({"arch": 4, "arches": 4, "d_m": 50.0, "alive": ["me", "bot1"], "last": "bot1", "gap_last_s": 2.2,
 		"out": [["bot4", 1], ["bot2", 2], ["bot3", 3]], "me_out": null, "winner": null}, 7950.0), 0.0)
-	var jingles: Array = w.on_elimination({"type": "elimination", "v": 1, "arch": 4, "rider": "bot1", "name": "Grimpeur",
+	var wm: Array = w.on_elimination({"type": "elimination", "v": 1, "arch": 4, "rider": "bot1", "name": "Grimpeur",
 		"place": 2, "gap_s": 2.2, "alive": 1}, 1.0)
-	_check(jingles == ["jingle_elim", "jingle_winner"], "victoire : jingles d'élimination et de victoire")
+	_check(wm.size() == 2 and wm[0]["sound"] == "jingle_elim" and wm[1]["sound"] == "jingle_winner"
+		and wm[1]["family"] == "resultat" and wm[1]["tone"] == "win" and wm[1]["title"] == "VICTOIRE !"
+		and wm[1]["sub"] == "Dernier survivant · 1er sur 5 · Grimpeur éliminé à 2,2 s"
+		and wm[1]["done_k"] == "COURSE FINIE · 1er sur 5", "victoire : élimination puis RÉSULTAT or (%s)" % str(wm))
 	v = w.view(_state({"arch": 4, "arches": 4, "d_m": null, "alive": ["me"], "last": "me", "gap_last_s": null,
 		"out": [["bot4", 1], ["bot2", 2], ["bot3", 3], ["bot1", 4]], "me_out": null, "winner": "me"}, 8010.0), 2.0)
-	_check(v["center"].get("title", "") == "DERNIER SURVIVANT !" and v["center"]["sub"] == "1er sur 5 · Grimpeur éliminé à 2,2 s",
-		"bandeau vert du vainqueur")
 	_check(v["list"][0]["name"] == "Toi" and v["list"][0]["detail"] == "vainqueur" and not v["list"][0]["last"], "Toi vainqueur")
-	_check(v["bottom"].is_empty() and v["block"].is_empty(), "pas de bandeau du bas ni de bloc après la victoire")
+	_check(v["block"].is_empty() and w.consigne(_state({"winner": "me", "alive": ["me"]})).is_empty(),
+		"pas de bloc ni de consigne du mode après la victoire")
 
 	# 11 adversaires (peloton DS8) : 12 lignes au plus
 	var many := Model.new()
@@ -205,9 +225,6 @@ func _run() -> void:
 	var bb_before := me_name.text
 	view.update_view(vm.view(_state(sv), 0.0))
 	_check(changes[0] == 0 and me_name.text == bb_before, "vue : image identique, fond et nom non reposés")
-	vm.on_elimination(msg, 0.0)
-	view.update_view(vm.view(_state(sv3), 0.5))
-	_check(view.test_info()["bottom"] == "Éliminé : Sprinteur", "vue : bandeau du bas")
 	view.update_view({"visible": false})
 	_check(not view.test_info()["visible"], "vue cachée hors du mode")
 	view.queue_free()
