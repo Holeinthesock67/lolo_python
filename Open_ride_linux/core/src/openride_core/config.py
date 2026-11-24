@@ -646,7 +646,10 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
     for key in data:
         if key not in known and not _retired(source, section, key):
             name = f"[{section}] {key}" if section else f"[{key}]"
-            log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
+            if (section, key) in RETIRED_KEYS:
+                log.info("%s : %s ignoré (%s)", source, name, RETIRED_KEYS[(section, key)])
+            else:
+                log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
     if section == "drivers" and isinstance(data.get("click_reset_locked"), bool):
         # Booléen d'avant le lot K9 : true = "reset", false = "off" (même effet qu'avant).
         data = {**data, "click_reset_locked": "reset" if data["click_reset_locked"] else "off"}

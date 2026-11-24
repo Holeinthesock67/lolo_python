@@ -429,7 +429,12 @@ func _ready() -> void:
 	ipc.gp_hit_received.connect(func(msg: Dictionary) -> void:
 		if gp_scene != null and gp_scene.on_hit(msg, Time.get_ticks_msec() / 1000.0):
 			ipc.test_log("gp_hit item=%s target=%s" % [msg.get("item", "?"), msg.get("target", "?")])
-			_play_event(GpSoundModel.on_hit(msg)))
+			_play_event(GpSoundModel.on_hit(msg))
+			_play_gp_bot_sound(GpSoundModel.bot_hit(msg), str(msg.get("target", ""))))
+	ipc.gp_event_received.connect(func(msg: Dictionary) -> void:   # révision 1.32 (lot GPO1) : tous les coureurs
+		if gp_scene != null and gp_scene.on_event(msg, Time.get_ticks_msec() / 1000.0):
+			ipc.test_log("gp_event kind=%s item=%s rider=%s" % [msg.get("kind", "?"), msg.get("item", "?"), msg.get("rider", "?")])
+			_play_gp_bot_sound(GpSoundModel.on_event(msg), str(msg.get("rider", ""))))
 	ipc.elimination_received.connect(func(msg: Dictionary) -> void:
 		var jingles: Array = survivor_hud.on_elimination(msg, Time.get_ticks_msec() / 1000.0)
 		if not jingles.is_empty():
@@ -1108,6 +1113,22 @@ func _play_event(jingle: String) -> void:
 		sound_player.play_event(jingle)
 	print("Jingle : ", jingle)
 	ipc.test_log("event_sound kind=" + jingle)
+
+
+## Son d'un bot du Grand Prix (lot GPO1) : le même que celui du cycliste, plus bas, seulement s'il est proche.
+func _play_gp_bot_sound(jingle: String, rider: String) -> void:
+	if jingle.is_empty() or sound_player == null:
+		return
+	if rider == GpSoundModel.ME:   # parade du cycliste : son plein
+		_play_event(jingle)
+		gp_sounds.me_played(Time.get_ticks_msec() / 1000.0)
+		return
+	var at = bots_view.anchor_of(rider)
+	if not at is Vector3:
+		return
+	if gp_sounds.bot_sound(jingle, (at as Vector3).distance_to(avatar_view.global_position), Time.get_ticks_msec() / 1000.0):
+		sound_player.play_event(jingle, GpSoundModel.BOT_DB)
+		ipc.test_log("event_sound kind=%s rider=%s" % [jingle, rider])
 
 
 func _play_tones(notes: Array, level: float) -> void:
@@ -2468,6 +2489,7 @@ func _update_grandprix(state: Dictionary, in_session: bool) -> void:
 	var t_step := Time.get_ticks_usec()
 	for snd in gp_sounds.on_state(gp):   # roulette, lancer, sonnette, klaxon (lot GP7)
 		_play_event(snd)
+		gp_sounds.me_played(Time.get_ticks_msec() / 1000.0)
 	gp_view.right_top = hud.free_right_top()
 	gp_view.update_view(gp_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	PerfProbe.mark_since("grand_prix", "", t_step)   # banc : une image lente nomme le mode

@@ -222,12 +222,13 @@ func kind_of(st: Resource) -> String:
 
 
 ## Joue un jingle d'événement (lot T17) ; nom inconnu : rien.
-func play_event(jingle: String) -> void:
+func play_event(jingle: String, volume_db := 0.0) -> void:
 	if not EventSoundsModel.JINGLES.has(jingle):
 		return
 	var st: Resource = stream(jingle)
 	events_played.append(jingle)
 	_event_player.stream = st
+	_event_player.volume_db = EVENT_DB + volume_db   # plus bas pour un bot du Grand Prix (lot GPO1)
 	if is_inside_tree():
 		_event_player.play()
 
