@@ -436,7 +436,7 @@ func _ready() -> void:
 			ipc.test_log("gp_hit item=%s target=%s" % [msg.get("item", "?"), msg.get("target", "?")])
 			_play_event(GpSoundModel.on_hit(msg))
 			_play_gp_bot_sound(GpSoundModel.bot_hit(msg), str(msg.get("target", ""))))
-	ipc.gp_event_received.connect(func(msg: Dictionary) -> void:   # révision 1.31 (lot GPO1) : tous les coureurs
+	ipc.gp_event_received.connect(func(msg: Dictionary) -> void:   # révision 1.32 (lot GPO1) : tous les coureurs
 		if gp_scene != null and gp_scene.on_event(msg, Time.get_ticks_msec() / 1000.0):
 			ipc.test_log("gp_event kind=%s item=%s rider=%s" % [msg.get("kind", "?"), msg.get("item", "?"), msg.get("rider", "?")])
 			_play_gp_bot_sound(GpSoundModel.on_event(msg), str(msg.get("rider", ""))))
@@ -929,6 +929,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("list_profiles", {})
 		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
+		"undo_profile_reset":   # lot RZ1 : confirmation exigée aussi par le core
+			ipc.send_command(name, {"id": str(act["id"]), "confirmed": true})
+		"reset_profile_stats":
+			ipc.send_command(name, {"confirmed": true})
 		"clear_trial_profile":   # lot O33
 			ipc.send_command(name, {})
 		"create_profile":

@@ -9,10 +9,11 @@ Commandes :
 leur en-tête), pour qu'ils suivent la FTP du cycliste.
 
 Estimation de charge dans ``check`` :
-La puissance normalisée approchée (NP), le facteur d'intensité (IF) et le score de charge
-d'entraînement (TSS) sont calculés par échantillonnage à 1 s sur les blocs de l'entraînement
-(sans fenêtre glissante de 30 s) :
-- ``NP = (moyenne(P(t)^4))^(1/4)`` (cible jamais sous 50 W, lot O19) ;
+La puissance normalisée (NP), le facteur d'intensité (IF) et le score de charge d'entraînement
+(TSS) sont calculés par échantillonnage à 1 s sur les blocs de l'entraînement, avec la même formule
+que le bilan d'une séance (`session_summary.normalized_power`, moyenne glissante de 30 s ; revue
+RC13, C6-05 : sans elle le TSS des sprints courts était presque doublé) :
+- ``NP = (moyenne(moyenne30s(P(t))^4))^(1/4)`` (cible jamais sous 50 W, lot O19) ;
 - ``IF = NP / FTP`` ;
 - ``TSS = (durée_s * NP * IF) / (FTP * 3600) * 100``.
 """
@@ -47,7 +48,9 @@ def format_hms(seconds: float) -> str:
 
 
 def estimate_metrics(workout: Workout, ftp_w: float) -> dict[str, float]:
-    """Calcule la puissance moyenne, NP approchée (paliers de 1 s sans lissage 30 s), IF et TSS."""
+    """Calcule la puissance moyenne, NP (paliers de 1 s, lissage 30 s comme le bilan), IF et TSS."""
+    from .session_summary import normalized_power
+
     samples_w: list[float] = []
     for blk in workout.blocks:
         dur = max(int(round(blk.duration_s)), 1)
@@ -58,8 +61,7 @@ def estimate_metrics(workout: Workout, ftp_w: float) -> dict[str, float]:
         return {"avg_w": 0.0, "np_w": 0.0, "if": 0.0, "tss": 0.0}
 
     avg_w = sum(samples_w) / len(samples_w)
-    mean_p4 = sum(w**4 for w in samples_w) / len(samples_w)
-    np_w = mean_p4**0.25
+    np_w = normalized_power(samples_w)
     intensity_factor = np_w / ftp_w
     tss = (workout.duration_s * np_w * intensity_factor) / (ftp_w * 3600.0) * 100.0
     return {

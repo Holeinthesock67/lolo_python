@@ -146,7 +146,7 @@ def test_three_laps_four_bots_frames_hits_and_bilan(env):
     for m in hits:
         hit_v.validate(m)
     assert len(hits) % 3 == 0 and hits                   # chaque coup envoyé 3 fois
-    events = [m for m in sent if m.get("type") == "gp_event"]   # révision 1.31 (lot GPO1), bots compris
+    events = [m for m in sent if m.get("type") == "gp_event"]   # révision 1.32 (lot GPO1), bots compris
     ev_v = validator("gp_event")
     for m in events:
         ev_v.validate(m)

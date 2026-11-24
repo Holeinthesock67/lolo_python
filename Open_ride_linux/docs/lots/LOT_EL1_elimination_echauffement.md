@@ -17,7 +17,7 @@ Essai du 21 novembre (élimination au vélodrome) : « très bien, mais une séa
 | 2 | Toutes les épreuves de piste : champs `ahead` et `behind` de l'objet `track` (coureur juste devant et juste derrière, écart en temps de passage signé, règle de `gaps.py` du lot T16, coéquipiers exclus) ; bloc « ÉCARTS » du HUD sous les tours. |
 | 3 | Épreuve finie : bandeau du milieu « VICTOIRE ! » (or, arpège `jingle_winner` et public) ou « ARRIVÉE · 3e sur 8 », 6 s, puis on continue à rouler (choix du propriétaire du 21 novembre, fil « retours », lot RT1 : retour au calme, bilan à la demande ; le bandeau permanent est celui de RT1). Cycliste éliminé : `jingle_elim`. |
 | 4 | Échauffement (choix du propriétaire : « sur place en ERG, avant le départ ») : une règle pour tous les modes de course (`warmup.RACE_MODES` : Dernier survivant, Grand Prix, épreuves de piste sauf la séance libre, `EventSpec.race`) ; étape `echauffement` du départ (`start_gate.py`) entre le trainer et le pédalage ; profil `warmup.profile` (montée 45→70 % FTP, palier 70 %, deux fois 20 s à 100 % / 40 s à 55 %) passé par `ErgController` ; Z court ou `skip_warmup` le passe, + et − règlent la cible ; Y annule et rend le trainer en SIM ; réglage `depart.echauffement_min` (10 min, 0 : aucun). Rien n'est compté ni enregistré pendant l'échauffement. |
-| 5 | Contrat IPC révision 1.32 (ajouts compatibles). |
+| 5 | Contrat IPC révision 1.33 (ajouts compatibles). |
 
 ## 3. Livraison
 
@@ -37,4 +37,4 @@ Catégorie : rendu
   - `python3 engine/tests/menu_bench.py --scenario elimination --qualite medium --captures ecrans --sonde`
 - `sim_bench` ne connaît pas le vélodrome : rien à y lancer
 - Essai vélo : échauffement passé à Z, élimination à 4 tours, victoire
-- Versions : révision IPC 1.32 ; WORLDGEN_VERSION et SCHEMA_VERSION inchangés
+- Versions : révision IPC 1.33 ; WORLDGEN_VERSION et SCHEMA_VERSION inchangés

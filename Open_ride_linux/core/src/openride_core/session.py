@@ -117,7 +117,8 @@ CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation,
 COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_advice",
                   "clear_watch_advice")   # séance conseillée (lot CO3), réponse `coach`
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
-                    "clear_trial_profile", "restore_profile")   # lots MJ7 et O33
+                    "clear_trial_profile", "restore_profile",   # lots MJ7 et O33
+                    "reset_profile_stats", "undo_profile_reset")   # lot RZ1 (révision 1.31)
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
@@ -500,6 +501,7 @@ class CoreSession:
         self.profiles_base: Path | None = None   # None : ~/OpenRide/Profils
         self.active_profile_path: Path | None = None   # None : ~/OpenRide/.profil_actif
         self._last_create: tuple[int, Any] | None = None   # dernier create_profile traité (copies ignorées)
+        self._last_reset_cmd: tuple[int, str, Any] | None = None   # dernière remise à zéro traitée (lot RZ1)
         self._publish_profile()
         self._resumed_journal: Path | None = None   # journal repris par `--resume`, jamais proposé (lot O34)
         self._publish_last_choices()
@@ -521,6 +523,8 @@ class CoreSession:
         if self.erg:
             self.erg.paused = new == "PAUSED"   # l'ERG suit la pause de la séance (Y), seule pause (§7.1)
             self._sync_erg_state()
+        if getattr(self, "_ramp_watch", None) is not None and new == "PAUSED":
+            self._ramp_watch.pause()   # rampe d'un test de FTP : délai de grâce à la reprise (revue RC13)
         if self.race and new == "PAUSED" and old == "RUNNING":
             self.race.pause(reason or "user")   # pause Y : passages annulés ; coupure subie : suspendus (T4)
         if new in ("READY", "FINISHED", "IDLE", "ERROR"):
@@ -639,7 +643,7 @@ class CoreSession:
         elif name == "scene_ready":   # révision 1.5 (lot O36) : décor du départ prêt dans l'engine
             rid = (args if isinstance(args, dict) else {}).get("route_id")
             self._scene_route = str(rid) if rid not in (None, "") else None
-        elif name == "skip_warmup":   # révision 1.32 : passe l'échauffement d'une course
+        elif name == "skip_warmup":   # révision 1.33 : passe l'échauffement d'une course
             self._skip_warmup()
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
@@ -914,8 +918,9 @@ class CoreSession:
         items = [profile_summary(c, workouts) for c in profiles.list_contexts(self.profiles_base)
                  if not c.is_trial or c.id == self.profile_ctx.id][:profiles.MAX_PROFILES]
         trash = profiles.trash_entries(self.profiles_base)[:profiles.TRASH_SHOWN]   # lot O33
+        resets = profiles.reset_entries(self.profile_ctx, self.profiles_base)[:profiles.RESETS_SHOWN]   # lot RZ1
         return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items,
-                "trash": trash}
+                "trash": trash, "resets": resets}
 
     def _send_profiles(self, cmd_id: int) -> None:
         try:
@@ -967,6 +972,8 @@ class CoreSession:
                 log.info("Profil restauré depuis la corbeille : %s (%s).", ctx.name, ctx.id)
                 self._publish_profile()
                 self._send_profiles(cmd_id)
+            elif name in ("reset_profile_stats", "undo_profile_reset"):
+                self._reset_stats(name, args, cmd_id)
             else:
                 self._clear_trial(cmd_id)
         except profiles.ProfileNameError as exc:
@@ -975,6 +982,31 @@ class CoreSession:
         except (profiles.ProfileContextError, OSError) as exc:
             log.warning("Profil : %s refusé : %s", name, exc)
             self.server.send_error("profile_invalid", str(exc))
+
+    def _reset_stats(self, name: str, args: dict, cmd_id: int) -> None:
+        """`reset_profile_stats` et `undo_profile_reset` (lot RZ1) : profil en cours seulement (son verrou
+        est tenu par cette séance) ; sauvegarde horodatée avant tout déplacement, puis profil rechargé
+        (progression, records, Elo, plan) et `hello_ack` complet, comme après `clear_trial_profile`."""
+        key = (cmd_id, name, args.get("id"))
+        if self._last_reset_cmd == key:   # copie d'une commande déjà traitée : pas de seconde remise
+            self._send_profiles(cmd_id)
+            return
+        ctx = self.profile_ctx
+        if args.get("confirmed") is not True:   # confirmation exigée par le core aussi, pas seulement à l'écran
+            self.server.send_error("bad_args", f"{name} : confirmation absente (\"confirmed\": true)")
+            return
+        if name == "reset_profile_stats":
+            dest, moved = profiles.reset_stats(ctx, self.profiles_base)
+            log.info("Statistiques du profil %s remises à zéro : %s mis de côté dans %s.", ctx.id,
+                     ", ".join(moved), dest)
+        else:
+            back, saved = profiles.undo_reset(ctx, args.get("id"), self.profiles_base)
+            log.info("Remise à zéro annulée pour %s : %s remis%s.", ctx.id, ", ".join(back) or "rien",
+                     f" ; statistiques d'aujourd'hui mises de côté dans {saved}" if saved else "")
+        self._last_reset_cmd = key
+        ctx = profiles.ProfileContext.for_id(ctx.id, self.profiles_base)   # nouvelle date de départ des statistiques
+        self._select_profile(ctx, cmd_id, reload=True)
+        self._send_profiles(cmd_id)
 
     def _clear_trial(self, cmd_id: int) -> None:
         """`clear_trial_profile` (lot O33) : vide le profil d'essai comme `openride-core profil essai --vider` ;
@@ -1421,7 +1453,8 @@ class CoreSession:
             wanted = bots_from_menu(items, PhysicsParams.from_config(self.cfg), self.cfg.rider.ftp_w,
                                     self.state.route_id, self.journal_dir, s=self.physics.s,
                                     bike_mass_kg=self.cfg.bike.mass_kg, taken_ids=self._bot_ids_seen,
-                                    names=self._rival_names)
+                                    names=self._rival_names,
+                                    exclude_journal=self._rec.path if self._rec else None)
         except BotError as exc:
             self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
             return
@@ -2457,7 +2490,7 @@ class CoreSession:
         return True
 
     def _set_arrival(self, kind: str, place: int | None = None, of: int | None = None) -> None:
-        """Issue de la séance connue (lot RT2, révision 1.33) : `state.arrival` {kind, place, of}, posé une seule
+        """Issue de la séance connue (lot RT2, révision 1.34) : `state.arrival` {kind, place, of}, posé une seule
         fois par séance, gardé jusqu'à la fin (et copié dans le bilan). `kind` : `route` (bout d'un parcours en
         ligne), `workout` (entraînement fini), `grandprix` ou `race` (arrivée du cycliste). La séance continue."""
         if self.state.arrival is not None:
