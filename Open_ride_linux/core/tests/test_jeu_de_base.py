@@ -42,6 +42,8 @@ FINAL = {   # identifiant de fichier → nom au menu
 RETIRED = ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
 MODE_ROUTES = {"demo-circuit": "grandprix", "demo-corniche": "grandprix", "demo-vignes": "grandprix",
                "velodrome-250": "track"}   # hors de la liste générale (lots GP13 et GP13b)
+# Au Grand Prix et restés dans la liste générale (étiquette `libre`, lot GPL1, demande du propriétaire du 21 novembre)
+SHARED_ROUTES = {"demo-recif": "grandprix", "demo-volcan": "grandprix", "demo-biomes-nord": "grandprix"}
 
 
 def _base_game() -> dict[str, str]:
@@ -57,15 +59,19 @@ def test_final_list_is_locked() -> None:
 
 def test_every_route_has_a_fiche_and_modes_by_tag() -> None:
     """Chaque parcours du jeu de base a une description au menu ; seuls les parcours du Grand Prix et la piste sont
-    d'un mode."""
+    d'un mode, et le Récif, le Volcan et le Grand Nord sont au Grand Prix sans quitter la liste générale (lot GPL1)."""
     libs = {demo_world.DEMO_NAME: demo_world.DEMO_LIBRARY,
             **{n: demo_biomes.library_of(n) for n in demo_biomes.GAME_DEMOS}}
     for name in FINAL:
         if name in TRACKS:
             continue   # fiche de la piste : `velodrome.build_manifest`
         assert libs[name] and libs[name]["description"], name
-    modes = {n: mode_routes.mode_of(lib) for n, lib in libs.items() if mode_routes.mode_of(lib)}
-    assert modes == {k: v for k, v in MODE_ROUTES.items() if k not in TRACKS}
+    kinds = {name: kind for name, _, kind, *_ in demo_biomes.DEMO_SET}
+    types = {n: "loop" if kinds.get(n) in demo_biomes.LOOPS else "open" for n in libs}   # lot GPL1 : boucles seulement
+    modes = {n: mode_routes.mode_of(lib, types[n]) for n, lib in libs.items() if mode_routes.mode_of(lib, types[n])}
+    assert modes == {**{k: v for k, v in MODE_ROUTES.items() if k not in TRACKS}, **SHARED_ROUTES}
+    shared = {n for n, lib in libs.items() if modes.get(n) and mode_routes.is_free(lib, types[n])}
+    assert shared == set(SHARED_ROUTES)
 
 
 def _captures_routes() -> tuple[str, ...]:
@@ -97,8 +103,9 @@ def test_menu_scenario_follows_the_list() -> None:
     titles = {s["titre"] for s in steps if s.get("ecran") == "ready" and "titre" in s}
     for n in free:
         assert f"Prêt : session libre — {FINAL[n]}" in titles, n
-    for n in ("demo-circuit", "demo-corniche", "demo-vignes"):
+    for n in ("demo-circuit", "demo-corniche", "demo-vignes", *SHARED_ROUTES):
         assert f"Prêt : Grand Prix des objets — {FINAL[n]}" in titles, n
     assert f"Prêt : {FINAL['velodrome-250']}" in titles
     captures = {s["capture"] for s in steps if "capture" in s}
-    assert captures == {"parcours_liste"} | {f"pret_{n}" for n in FINAL}
+    # lot GPL1 : écran Prêt du Grand Prix des boucles restées libres en plus
+    assert captures == {"parcours_liste"} | {f"pret_{n}" for n in FINAL} | {f"pret_gp_{n}" for n in SHARED_ROUTES}

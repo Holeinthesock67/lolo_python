@@ -350,3 +350,51 @@ def parse_control_response(data: bytes) -> ControlResponse | None:
     if len(data) < 3 or data[0] != OP_RESPONSE:
         return None
     return ControlResponse(request_op=data[1], result=data[2])
+
+
+# --- Étalonnage (Spin Down Control, FTMS §4.16.2.20, lot ET1 : sonde seulement) ---------------
+OP_SPIN_DOWN_CONTROL = 0x13
+SPIN_DOWN_START = 0x01
+SPIN_DOWN_IGNORE = 0x02
+# Paramètre du Fitness Machine Status 0x14 (Spin Down Status) : ce que le trainer demande au cycliste.
+SPIN_DOWN_STATUS = {0x01: "SPIN_DOWN_REQUESTED", 0x02: "SUCCESS", 0x03: "ERROR", 0x04: "STOP_PEDALING"}
+# Training Status (0x2AD3, FTMS §4.10) : octet de drapeaux puis état ; ceux qui guident un étalonnage.
+TRAINING_STATUS_NAMES = {0x01: "IDLE", 0x09: "SPEED_TOO_LOW", 0x0A: "SPEED_TOO_HIGH", 0x0D: "MANUAL_MODE"}
+# Cycling Power Feature (0x2A65) : compensation d'offset (bit 9) et compensation d'offset améliorée (bit 19).
+CYCLING_POWER_FEATURE = uuid16(0x2A65)
+CP_FEATURE_OFFSET = 9
+CP_FEATURE_ENHANCED_OFFSET = 19
+
+
+def cmd_spin_down(start: bool = True) -> bytes:
+    """Spin Down Control : lancer (0x01) ou ignorer (0x02) l'étalonnage demandé par le trainer."""
+    return bytes([OP_SPIN_DOWN_CONTROL, SPIN_DOWN_START if start else SPIN_DOWN_IGNORE])
+
+
+def parse_spin_down_targets(data: bytes) -> tuple[float, float] | None:
+    """Vitesses cibles (km/h, basse et haute) qui suivent la réponse SUCCESS à 0x13 ; None si absentes."""
+    if len(data) < 7 or data[0] != OP_RESPONSE or data[1] != OP_SPIN_DOWN_CONTROL or data[2] != 0x01:
+        return None
+    low, high = struct.unpack_from("<HH", data, 3)
+    return low / 100.0, high / 100.0
+
+
+def parse_spin_down_status(data: bytes) -> str | None:
+    """Nom de l'état d'un Fitness Machine Status 0x14 ; None pour un autre état."""
+    if len(data) < 2 or data[0] != 0x14:
+        return None
+    return SPIN_DOWN_STATUS.get(data[1], f"UNKNOWN_0x{data[1]:02x}")
+
+
+def parse_training_status(data: bytes) -> str | None:
+    """Nom de l'état de Training Status (octet 1) ; None si la trame est trop courte."""
+    if len(data) < 2:
+        return None
+    return TRAINING_STATUS_NAMES.get(data[1], f"0x{data[1]:02x}")
+
+
+def parse_cp_offset_features(data: bytes) -> dict[str, bool]:
+    """Compensation d'offset annoncée par le service Cycling Power (lecture seule, rien n'est écrit)."""
+    bits = struct.unpack_from("<I", data.ljust(4, b"\0"), 0)[0]
+    return {"offset_compensation": bool(bits >> CP_FEATURE_OFFSET & 1),
+            "enhanced_offset_compensation": bool(bits >> CP_FEATURE_ENHANCED_OFFSET & 1)}

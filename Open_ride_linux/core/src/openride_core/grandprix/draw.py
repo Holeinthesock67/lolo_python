@@ -42,17 +42,21 @@ def useless(item: str, ctx: DrawContext) -> bool:
 
 
 def weights_for(ctx: DrawContext, weights: Mapping[str, Mapping[str, float]],
-                enabled: Iterable[str]) -> dict[str, float]:
-    """Poids remis à 100 % des objets tirables dans ce contexte (vide : rien à tirer)."""
+                enabled: Iterable[str], only: Iterable[str] | None = None) -> dict[str, float]:
+    """Poids remis à 100 % des objets tirables dans ce contexte (vide : rien à tirer). `only` : objets de la
+    famille de la voie (lot GPO1) ; si aucun n'est tirable, tout le tirage (une boîte donne toujours un objet)."""
     on = set(enabled)
     row = {k: w for k, w in weights[bracket(ctx)].items() if k in on and w > 0.0 and not useless(k, ctx)}
+    if only is not None:
+        keep = set(only)
+        row = {k: w for k, w in row.items() if k in keep} or row
     total = sum(row.values())
     return {k: 100.0 * w / total for k, w in sorted(row.items())} if total > 0.0 else {}
 
 
 def draw(ctx: DrawContext, weights: Mapping[str, Mapping[str, float]], enabled: Iterable[str],
-         rng: random.Random) -> str | None:
-    row = weights_for(ctx, weights, enabled)
+         rng: random.Random, only: Iterable[str] | None = None) -> str | None:
+    row = weights_for(ctx, weights, enabled, only)
     if not row:
         return None
     return rng.choices(list(row), weights=list(row.values()))[0]

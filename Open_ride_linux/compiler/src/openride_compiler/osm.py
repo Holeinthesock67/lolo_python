@@ -27,7 +27,8 @@ from .frame import LocalFrame
 
 OSM_CACHE_ENV = "OPENRIDE_OSM_CACHE"
 DEFAULT_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-USER_AGENT = "OpenRideCompiler/0.1 (+https://github.com/Holeinthesock67/lolo_python)"
+# Nom de client générique, sans lien vers le dépôt ni le compte (audit du 22/11, V4).
+USER_AGENT = "OpenRideCompiler/0.1"
 CHUNKS_PER_PACKET = 10
 
 

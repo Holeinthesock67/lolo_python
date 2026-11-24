@@ -4,13 +4,18 @@ Règles du plan `docs/4.0/PLAN_SERIE_GP.md` §6, lues sur la fiche de chaque obj
 que sur son nom, pour qu'un objet ajouté à la table suive la règle de sa famille :
 
 - objet pour soi (coup de fouet, super-forme, voiture d'équipe, furtif) et nuage d'orage : tout de suite,
-  après un délai tiré entre 0,5 et 3 s (graine de la séance) ; le nuage seulement s'il y a un premier devant ;
+  après un délai tiré entre 0,5 et 3 s (graine de la séance) ; le nuage seulement s'il y a un premier devant,
+  ou en tête juste avant une rangée de boîtes pour le dissiper (revue de code C4-08) ;
 - bidon (posé derrière) : un coureur à moins de 30 m derrière ;
 - musette (lancée devant) : une cible sur la voie du bot à moins de 150 m ; musette guidée : une cible à
   moins de sa portée de verrouillage (200 m), toutes voies ;
-- sonnette (autour de soi) : un projectile à moins de 30 m derrière qui arrive, ou le nuage qui vise le bot ;
+- sonnette (autour de soi) : un projectile à moins de 30 m derrière qui arrive, ou le nuage qui vise le bot,
+  vu depuis un temps de réaction humain tiré entre 0,6 et 1,5 s (lot GPO1) ;
 - vent contraire (devant, durée) : au moins deux coureurs devant ;
 - garde : le bot en tête garde son bidon ou sa musette comme bouclier tant qu'aucune boîte n'approche ;
+- voie des boîtes (lot GPO1) : à moins de 150 m d'une rangée, le bot prend la voie de la famille qui
+  lui sert, « attaquer » (droite) dans les 5 s du premier ou en tête, « s'aider » (gauche) plus loin, ou
+  reste au centre une fois sur trois (graine de la séance) ; une décision par rangée, jamais sur un objet ;
 - esquive : un objet sur sa voie à moins de 40 m devant, une décision par objet, réussie avec une
   probabilité de 30, 50 ou 75 % selon le chaos, plus ou moins 10 points selon le niveau du bot.
 
@@ -25,7 +30,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Mapping
 
 from .boxes import LANES
-from .items import SHIELDS, ItemSpec
+from .items import BOX_LANES, BRACKET_LIMITS_S, SHIELDS, ItemSpec
 
 if TYPE_CHECKING:
     from .mode import GrandPrixMode, Racer
@@ -37,7 +42,10 @@ BELL_TRIGGER_M = 30.0                # sonnette : projectile à moins de 30 m de
 HEADWIND_MIN_AHEAD = 2               # vent contraire : au moins deux coureurs devant
 GUARD_BOX_M = 150.0                  # garde levée quand une rangée de boîtes approche (vue du choix de voie)
 DODGE_LOOK_M = 40.0
-DODGE_BASE = {"soft": 0.30, "normal": 0.50, "wild": 0.75}
+BOX_LANE_M = 150.0                   # voie de la famille choisie à moins de 150 m d'une rangée de boîtes
+BOX_CENTRE_P = 1.0 / 3.0             # une fois sur trois : centre (tout le tirage)
+DODGE_BASE = {"soft": 0.18, "normal": 0.30, "wild": 0.45}   # lot GPO1 : 0,30 / 0,50 / 0,75 avant (essai du 22/11)
+REACT_S = (0.6, 1.5)                 # sonnette : temps de réaction humain à une menace (0,02 s avant, essai du 22/11)
 DODGE_LEVEL_PTS = 10.0               # ± 10 points entre 50 et 150 % de la FTP
 LEVEL_MIN, LEVEL_MID, LEVEL_MAX = 50.0, 100.0, 150.0
 
@@ -53,6 +61,8 @@ def dodge_chance(chaos: str, level_pct: float) -> float:
 class _Mind:
     ready_at: float | None = None    # objet en réserve utilisable à partir de cet instant
     seen: set[tuple[int, float]] = field(default_factory=set)   # objets déjà jugés (id, naissance)
+    box_row: float | None = None     # rangée de boîtes pour laquelle la voie est déjà choisie
+    react_at: float | None = None    # menace vue : sonnette possible à partir de cet instant
 
 
 @dataclass
@@ -75,14 +85,43 @@ class BotBrain:
             r = mode.racers[rid]
             if r.finished is not None:
                 continue
+            self._box_lane(mode, r, mind)
             self._dodge(mode, r, mind, now)
             if r.held is None:
                 mind.ready_at = None
                 continue
             if mind.ready_at is None:
                 mind.ready_at = now + self.rng.uniform(*DELAY_S)
-            if now >= mind.ready_at and wants(mode, r, mode.table.items[r.held]):
+            spec = mode.table.items[r.held]
+            if spec.target == "near":   # sonnette : pas avant un temps de réaction humain après la menace vue
+                if not threatened(mode, r):
+                    mind.react_at = None
+                    continue
+                if mind.react_at is None:
+                    mind.react_at = now + self.rng.uniform(*REACT_S)
+                if now < mind.react_at:
+                    continue
+            if now >= mind.ready_at and wants(mode, r, spec):
                 mode.use(rid)
+                mind.react_at = None
+
+    def _box_lane(self, mode: GrandPrixMode, r: Racer, mind: _Mind) -> None:
+        """Voie de la famille d'objets qui sert au bot, avant chaque rangée (sans réserve ni roulette)."""
+        if r.held is not None or r.roll is not None:
+            return
+        rows = mode.boxes.ahead(r.s, BOX_LANE_M)
+        if not rows or rows[0] == mind.box_row:
+            return
+        mind.box_row = rows[0]
+        if self.rng.random() < BOX_CENTRE_P:
+            want = BOX_LANES.index("any")
+        else:
+            near_lead = mode.place(r.id) <= 1 or mode.gap_s(r.id) < BRACKET_LIMITS_S[0]
+            want = BOX_LANES.index("attack" if near_lead else "help")
+        lane = r.lane if r.lane_to is None else r.lane_to
+        blocked = {o.lane for o in mode.objects.near(r.s, 0.0, DODGE_LOOK_M) if o.s > r.s and o.owner != r.id}
+        if want != lane and want not in blocked:
+            mode.set_lane(r.id, want)
 
     def _dodge(self, mode: GrandPrixMode, r: Racer, mind: _Mind, now: float) -> None:
         lane = r.lane if r.lane_to is None else r.lane_to
@@ -121,8 +160,10 @@ def wants(mode: GrandPrixMode, r: Racer, spec: ItemSpec) -> bool:
     if spec.target == "self":
         return True
     if spec.target == "leader":
-        lead = mode._leader(but=r)
-        return lead is not None and lead.s > r.s
+        if mode._nobody_ahead(r):
+            # revue de code C4-08 : en tête, le bot dissipe son nuage avant une rangée de boîtes pour en reprendre un
+            return bool(mode.boxes.ahead(r.s, GUARD_BOX_M))
+        return True
     if spec.form == "dropped":
         return any(0.0 < r.s - o.s <= DROP_BEHIND_TRIGGER_M for o in mode._racing() if o is not r)
     if spec.target == "ahead" and spec.form == "projectile":

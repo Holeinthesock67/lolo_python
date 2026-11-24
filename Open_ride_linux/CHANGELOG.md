@@ -2,8 +2,30 @@
 
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
+Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses lignes dans `docs/changements/<LOT>.md`, recopiées par la passe de doc (`docs/changements/README.md`).
 
 ## Non publié
+
+### Moins de brouillard et de halo en medium et high (lot BH1)
+- En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
+
+### Cyber-Rogue sans voile en high (lot R27)
+- En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
+
+### HUD sans éléments inutiles (lot NI1)
+- Plus de ligne « ÉTAT: RUNNING | TRAINER… | ENTRÉE… » en haut de l'écran : le bandeau central ne parle que de la prochaine montée, ou d'un problème (core attendu, trainer perdu) ; sinon il disparaît.
+- La cible ERG n'est plus qu'au bandeau ERG (case « CIBLE ERG » retirée) ; la pente n'est plus affichée au vélodrome (toujours 0 %).
+- Le vent tient en une flèche et deux lignes : « 26 km/h » et « de face » (plus de barres, de niveau ni de pastille).
+- Cyber-Rogue : la vitesse engagée n'est plus qu'au pavé VITESSE.
+- La jauge d'abri au-dessus des bots et son réglage sont retirés : la pastille « Abri 30 % » du HUD dit la même chose.
+### Début de run et adrénaline du Cyber-Rogue (lot R26)
+- L'échauffement charge l'adrénaline à sa consigne, comme une salle : on arrive à la première porte de quoi frapper (essai du 21 novembre : « on commence sans adrénaline, il y a tout de suite une porte à frapper » ; choix du propriétaire).
+- Consignes jugées sur la puissance moyenne des 8 dernières secondes, affichée pendant la run, à 10 % de la consigne près (au moins 5 W), avec une marge de sortie (15 % sous la consigne) : sur 3 s et à 5 W près, le bruit du trainer faisait sortir de la plage sans cesse.
+- Plage en watts et écart en direct à l'écran, son d'entrée et de sortie de la plage (événements `target_in` et `target_out`, contrat IPC révision 1.28).
+
+### Jauge « Réserve W' » retirée du Cyber-Rogue (lot R25)
+- La 4e jauge du HUD, « Réserve W' », disparaît : elle n'agissait sur rien dans le jeu et nuisait à la lisibilité (essai du 21 novembre). Restent Ennemi, Bouclier et Adrénaline.
+- L'écran de départ du mode ne propose plus le choix « W' », qui ne réglait que cette jauge.
 
 ### Monde classique gelé pendant une run Cyber-Rogue (lot R24)
 - La pause d'une run ne recharge plus le parcours de démo sous la scène du mode : en mode Cyber-Rogue la trame n'a pas de parcours, et l'écran de pause, qui est un menu, demandait la démo des menus, construite en entier (tuiles, arbres, bâtiments, horizon) pendant la run (images de 140 ms vers 104 s, passes PC du 12 novembre).
@@ -30,6 +52,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Après un demi-tour, le décor se charge dans le sens de la marche : portiques, herbe, détails du sol et gags du mode WTF (lot N22).
 - Voitures, camions, tracteurs et cyclistes du décor circulent aussi à rebours (lot N23) ; les montées du retour ont leurs panneaux d'approche, chiffres peints, spectateurs et parapentes (lot N24) ; les arches de bonus se comptent à rebours, une fois chacune par tour (lot N25).
 - Pendant un entraînement ERG ou un test de FTP, le bout d'un parcours en ligne fait demi-tour tout seul, sans arrêt (bandeau « Bout du parcours : demi-tour, l'entraînement continue ») ; une fois l'entraînement fini, le bout suivant termine la séance (lot N26).
+
+### Réglages sans lignes inutiles (lot NI2)
+- Une seule place par réglage : les réglages du Dernier survivant, du Grand Prix, de la Course et de la séance conseillée ne se règlent plus que sur leur propre écran, plus dans Réglages › Séance.
+- Une ligne sans effet est cachée tant que le choix dont elle dépend la rend inutile (force, direction et rafales du vent, ressenti du vent, mois, cadence de départ, abri derrière les véhicules) ; la Difficulté n'apparaît plus à la pause d'une séance ERG ; le Thème n'apparaît qu'avec un pack de thème installé.
+- « Textures du décor » retiré : la taille des textures suit la Qualité graphique ; une valeur choisie avant est remise par défaut au lancement (copie `config.toml.bak`).
+- « Pilotage du trainer », « Ressenti du vent » et « Pente ajoutée max » (ancien « Plafond du vent », il borne aussi l'abri et le gravel) passent dans Réglages › Avancé.
 
 ### Grand Prix des objets : voiture d'équipe, Furtif, recette et parcours (lots GP4, GP11, GP13b)
 - Deux nouveaux parcours du Grand Prix, installés avec les contenus de départ : la « Boucle de la Corniche », 2,5 km au-dessus de la mer entre maquis, pins et falaises, et la « Route des Vignes », une boucle sinueuse et vallonnée de 5 km dans les vignes, entre villages et domaines. Comme le Circuit des Prés, ils se choisissent par « Changer de parcours » dans l'écran Prêt du Grand Prix, sont revêtus de bout en bout et sans épingle (lot GP13b).

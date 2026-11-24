@@ -76,10 +76,11 @@ def _passages(tmp_path, pr, etape):
 
 def test_classer_separe_contacts_environnement_et_echec():
     assert fb.classer(0, "")[0] == fb.OK
-    assert fb.classer(1, "[ÉCHEC] décor : aucun contact sur la route : 3")[0] == fb.CONTACTS
-    v, d = fb.classer(1, "[ÉCHEC] décor : aucun contact sur la route : 3\n[ÉCHEC] pire image : 140 ms")
+    fin = "\nRapport : /x/index.html\n"                # ligne de fin d'un banc allé au bout
+    assert fb.classer(1, "[ÉCHEC] décor : aucun contact sur la route : 3" + fin)[0] == fb.CONTACTS
+    v, d = fb.classer(1, "[ÉCHEC] décor : aucun contact sur la route : 3\n[ÉCHEC] pire image : 140 ms" + fin)
     assert v == fb.ACOUPS and "1 à-coup(s) connu(s), 1 contact(s)" in d
-    assert fb.classer(1, "[ÉCHEC] images lentes : 8 par minute")[0] == fb.ACOUPS
+    assert fb.classer(1, "[ÉCHEC] images lentes : 8 par minute" + fin)[0] == fb.ACOUPS
     assert fb.ACOUPS in fb.ACQUIS
     v, d = fb.classer(1, "[ÉCHEC] pire image : 140 ms\n[ÉCHEC] pont : tablier absent")
     assert v == fb.ECHEC and "2 échec(s)" in d
@@ -339,7 +340,7 @@ def test_pr_qui_change_le_schema_jamais_sur_le_cache_reel(tmp_path, depot):
     _branche(origine, "mer", {src: "SCHEMA_VERSION = 2\n"})
     _git(clone, "fetch", "-q", "origin")
     etape = f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n'
-    f = _file(tmp_path, clone, f'[[pr]]\nid = "mer"\nbranche = "mer"\n{etape}')
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "mer"\nbranche = "mer"\ncache = "reel"\n{etape}')
     assert fb.main(["lancer", str(f), "--sans-reseau"]) == 1
     v = _etat(tmp_path)["prs"]["mer"]["low"]
     assert v["verdict"] == fb.ENV and "1 → 2" in v["detail"]
@@ -650,3 +651,113 @@ def test_etape_cloud_dun_paquet_jamais_separee(tmp_path, depot):
     assert fb.main(["lancer", str(f), "--sans-reseau", "--lieu", "cloud"]) == 1
     etat = _etat(tmp_path)["prs"]
     assert etat["p1"]["cap"]["verdict"] == fb.ECHEC and not any(k.startswith("p1.") for k in etat)
+
+
+# --- revue de code, vague 5, lot O2 (24 novembre) -------------------------------------------------------------
+
+def test_o2_03_plantage_apres_des_contacts_reste_un_echec():
+    contacts = "[ÉCHEC] décor : aucun contact sur la route : 3\n"
+    assert fb.classer(1, contacts + "Traceback (most recent call last):\n  ...")[0] == fb.ECHEC
+    assert fb.classer(137, contacts + "Killed\nRapport : /x")[0] == fb.ECHEC       # tué : jamais acquis
+    v, d = fb.classer(-11, "[ÉCHEC] pire image : 140 ms\n")
+    assert v == fb.ECHEC and "non terminé" in d
+    assert fb.classer(1, contacts + "Rapport : /x/index.html\n")[0] == fb.CONTACTS   # banc allé au bout
+
+
+def _echoue_si_assemble(etape_id=""):
+    """Commande qui échoue seulement quand pa.txt et pb.txt sont là ensemble (défaut d'assemblage)."""
+    return (f"{PY} -c \"import pathlib,sys; a=pathlib.Path('pa.txt').exists() and pathlib.Path('pb.txt').exists(); "
+            f"print('[ÉCHEC] départ : refusé {etape_id}' if a else 'ok'); sys.exit(1 if a else 0)\"")
+
+
+def test_o2_02_fumee_de_paquet_en_echec_rejoue_toute_la_matrice_pr_par_pr(tmp_path, depot):
+    origine, clone = depot
+    for b in ("pa", "pb"):
+        _branche(origine, b, {f"{b}.txt": b})
+    _git(clone, "fetch", "-q", "origin")
+    f = _file(tmp_path, clone, _paquet(clone, ["pa", "pb"], f'fumee = {json.dumps(_echoue_si_assemble())}\n'
+                                       f'matrice = {json.dumps(_cmd(0) + " {qualite}")}'))
+    journal = []
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=journal.append)
+    assert r.lancer() == 1                                    # défaut d'assemblage : jamais un code 0
+    etat = _etat(tmp_path)["prs"]
+    assert {etat["p1"][q]["verdict"] for q in ("fumee", "low", "high", "medium")} == {fb.SCINDE}
+    for m in ("p1.r900", "p1.r901"):
+        assert [etat[m][q]["verdict"] for q in ("fumee", "low", "high", "medium")] == [fb.OK] * 4
+    md = (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+    assert "p1/fumee : DÉFAUT D'ASSEMBLAGE" in md
+    journal.clear()
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=journal.append)
+    assert r.lancer() == 1 and not [l for l in journal if l.startswith("→")]   # rien à rejouer, toujours en échec
+
+
+def test_o2_02_etape_en_echec_seulement_en_paquet_compte_en_echec(tmp_path, depot):
+    origine, clone = depot
+    for b in ("pa", "pb"):
+        _branche(origine, b, {f"{b}.txt": b})
+    _git(clone, "fetch", "-q", "origin")
+    corps = (f'fumee = {json.dumps(_cmd(0))}\n[[paquet.etape]]\nid = "high"\n'
+             f'commande = {json.dumps(_echoue_si_assemble("high"))}\n')
+    f = _file(tmp_path, clone, _paquet(clone, ["pa", "pb"], corps))
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 1
+    etat = _etat(tmp_path)["prs"]
+    assert etat["p1.r900"]["high"]["verdict"] == fb.OK and etat["p1.r901"]["high"]["verdict"] == fb.OK
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 1
+
+
+def test_o2_04_branche_disparue_nArrete_pas_la_file(tmp_path, depot):
+    _, clone = depot
+    etape = f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n'
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "partie"\nbranche = "fusionnee-et-supprimee"\nrisque = 1\n'
+                               f'fumee = {json.dumps(_cmd(0))}\n{etape}\n'
+                               f'[[pr]]\nid = "suite"\nbranche = "br"\nrisque = 2\n{etape}')
+    assert fb.main(["lancer", str(f)]) == 1                  # avec git fetch : la branche n'existe pas
+    etat = _etat(tmp_path)["prs"]
+    assert etat["partie"]["fumee"]["verdict"] == fb.ENV and "git fetch" in etat["partie"]["fumee"]["detail"]
+    assert etat["partie"]["low"]["verdict"] == fb.BLOQUE
+    assert etat["suite"]["low"]["verdict"] == fb.OK          # la PR suivante est jouée
+    assert "partie" in (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+
+
+def test_o2_05_cache_separe_par_defaut_et_reel_refuse_si_la_generation_change(tmp_path, depot, monkeypatch):
+    origine, clone = depot
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    _branche(origine, "gen", {"compiler/src/openride_compiler/worldgen/squares.py": "def carre(): return 2\n"})
+    _git(clone, "fetch", "-q", "origin")
+    cmd = f"{PY} -c \"import os; print('cache', os.environ.get('OPENRIDE_BANC_CACHES'))\""
+    etape = f'[[pr.etape]]\nid = "low"\ncommande = {json.dumps(cmd)}\n'
+    f = _file(tmp_path, clone, f'[[pr]]\nid = "defaut"\nbranche = "br"\n{etape}')
+    assert fb.lire_file(f).prs[0].cache == "separe"
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 0
+    journal = (tmp_path / "sortie" / "defaut" / "low" / "journal.txt").read_text(encoding="utf-8")
+    assert str(tmp_path / "sortie" / "caches" / "defaut") in journal
+    g = _file(tmp_path, clone, f'[[pr]]\nid = "gen"\nbranche = "gen"\ncache = "reel"\n{etape}')
+    assert fb.main(["lancer", str(g), "--sans-reseau"]) == 1
+    v = _etat(tmp_path)["prs"]["gen"]["low"]
+    assert v["verdict"] == fb.ENV and "génération du monde ouvert" in v["detail"]
+    assert not (tmp_path / "sortie" / "gen" / "low" / "journal.txt").exists()    # rien lancé
+    h = _file(tmp_path, clone, f'[[pr]]\nid = "reel"\nbranche = "br"\ncache = "reel"\n{etape}')
+    assert fb.main(["lancer", str(h), "--sans-reseau"]) == 0   # écrit en toutes lettres, génération inchangée
+    assert "cache None" in (tmp_path / "sortie" / "reel" / "low" / "journal.txt").read_text(encoding="utf-8")
+
+
+def test_o2_13_amorce_naffecte_pas_le_dossier_du_cache_reel(tmp_path, depot, monkeypatch):
+    _, clone = depot
+    reel = tmp_path / "home" / "OpenRide" / "Cache" / "monde"
+    (reel / "brut" / "osm").mkdir(parents=True)
+    (reel / "brut" / "osm" / "fr.sqlite").write_text("x", encoding="utf-8")
+    con = sqlite3.connect(reel / "index.sqlite")
+    con.execute("PRAGMA journal_mode=WAL")
+    con.executescript("CREATE TABLE entries (key TEXT PRIMARY KEY, path TEXT);"
+                      "INSERT INTO entries VALUES ('osm:fr','brut/osm/fr.sqlite');"
+                      "INSERT INTO entries VALUES ('square:a','genere/a');")
+    con.commit()
+    con.close()
+    avant = sorted(p.name for p in reel.iterdir())
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    f = fb.lire_file(_file(tmp_path, clone, '[[pr]]\nid = "ow"\nbranche = "br"\n'))
+    monde = fb.cache_separe(f, f.prs[0], lambda *_: None) / "monde"
+    assert sorted(p.name for p in reel.iterdir()) == avant          # ni -shm ni -wal dans le cache réel
+    con = sqlite3.connect(monde / "index.sqlite")
+    assert con.execute("SELECT key FROM entries").fetchall() == [("osm:fr",)]
+    con.close()

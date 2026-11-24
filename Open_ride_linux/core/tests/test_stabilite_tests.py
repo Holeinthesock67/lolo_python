@@ -89,3 +89,17 @@ def test_engine_script_writes_a_valid_junit(tmp_path):
     env.pop("ENGINE_JUNIT")
     env["UNIT"] = "test_absent"
     assert subprocess.run(["bash", str(script)], env=env, capture_output=True, check=False).returncode == 1
+
+
+def test_o2_10_suite_crashed_without_report_fails_the_summary(tmp_path, capsys):
+    """Revue O2-10 : Godot absent (127) ou pytest tué (-9) sans fichier JUnit : listés, code 1."""
+    junit(tmp_path / "junit" / "core_1.xml", {"test_ok": ("pass", 0.2)})
+    (tmp_path / "passages.json").write_text(
+        '[{"suite": "core", "pass": 1, "code": 0, "seconds": 10.0},'
+        ' {"suite": "engine", "pass": 1, "code": 127, "seconds": 1.0},'
+        ' {"suite": "compiler", "pass": 1, "code": -9, "seconds": 2.0}]')
+    res = st.analyse(tmp_path)
+    assert [(c["suite"], c["code"]) for c in res["plantages"]] == [("engine", 127), ("compiler", -9)]
+    assert {"core", "engine", "compiler"} <= set(res["suites"]) and res["suites"]["engine"]["passages"] == 1
+    assert st.main(["--analyse", str(tmp_path)]) == 1
+    assert "Suites plantées sans rapport JUnit : 2" in capsys.readouterr().out

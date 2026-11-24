@@ -44,11 +44,12 @@ class EventSpec:
     options: tuple[Option, ...] = ()
     fixed: dict = field(default_factory=dict)
     erg: bool = False                    # la séance libre seule accepte l'ERG (plan §5)
+    race: bool = True                    # course : échauffement avant le départ (`warmup.py`) ; pas la séance libre
 
 
 _MASS = tuple(range(3, 12))
 EVENTS: dict[str, EventSpec] = {s.id: s for s in (
-    EventSpec("free", Free, tuple(range(0, 12)), erg=True),
+    EventSpec("free", Free, tuple(range(0, 12)), erg=True, race=False),
     EventSpec("pursuit", Pursuit, (0, 1), options=(Option("distance_m", (3000, 4000), 4000),)),
     EventSpec("kilo", TimeTrial, (0,), fixed={"variant": "kilo"}),
     EventSpec("500", TimeTrial, (0,), fixed={"variant": "500"}),
@@ -57,7 +58,9 @@ EVENTS: dict[str, EventSpec] = {s.id: s for s in (
     EventSpec("scratch", Scratch, _MASS, options=(Option("laps", (10, 15, 20, 30, 40, 60), 20),)),
     EventSpec("points", Points, _MASS, options=(Option("laps", (20, 30, 40, 60), 40),)),
     EventSpec("tempo", Tempo, _MASS, options=(Option("laps", (10, 20, 30), 10),)),
-    EventSpec("elimination", Elimination, _MASS),
+    # Tours entre deux éliminations (essai du 21 novembre : 2 tours, 8 minutes, séance trop courte) : 4 par défaut,
+    # 2 pour la règle olympique ; l'omnium garde 2 tours (`omnium.PROGRAM`).
+    EventSpec("elimination", Elimination, _MASS, options=(Option("every_laps", (2, 3, 4, 5, 6), 4),)),
     EventSpec("keirin", Keirin, (3, 4, 5, 6), options=(Option("laps", (6, 8), 8),)),
     EventSpec("omnium", Omnium, _MASS),
     EventSpec("team_sprint", TeamSprint, (0, 1), team_size=3, options=(Option("place", (1, 2, 3), 1),)),
