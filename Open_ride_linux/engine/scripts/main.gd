@@ -132,6 +132,8 @@ var minimap_view = null          # mini-carte du monde ouvert (lot W24)
 var _ow_start_args = null         # arguments du dernier start_open_world envoyé (but de la mini-carte)
 var _minimap_goal := {}           # but de la mini-carte dans le repère du monde, recalculé à chaque route
 var _minimap_goal_route: Array = []
+var _minimap_zoom := -1           # indice de MinimapModel.ZOOM_TEXTS ; -1 : pas encore lu (user://mini_carte.json)
+const MINIMAP_FILE := "user://mini_carte.json"
 ## Menu « Monde ouvert » (lot W11) : globe, carte, préchargement ; caché hors de ce menu.
 var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
@@ -1460,6 +1462,7 @@ func _poll_live_world() -> void:
 func _update_minimap(s_disp: float) -> void:
 	if minimap_view == null:
 		return
+	_sync_minimap_zoom()
 	var shown: bool = not ipc.open_world.is_empty() and route != null and hud.visible \
 		and session_state in ["READY", "RUNNING", "PAUSED"]
 	if not shown:
@@ -1490,10 +1493,42 @@ func _update_minimap(s_disp: float) -> void:
 	if not was_visible:
 		ipc.test_log("minimap shown goal=%s lines=%d quality=%s" % [str(goal.get("label", "aucun")), lines, _quality_name])
 	var aspect: float = minimap_view.map.size.y / maxf(minimap_view.map.size.x, 1.0)
-	var opts := {"stride": int(q["stride"]), "previews": live_world.previews(s_disp) if live_world.route != null else [],
+	var radius := MinimapModel.zoom_radius_m(_minimap_zoom)
+	var opts := {"radius_m": radius, "stride": MinimapModel.stride_for(int(q["stride"]), radius), "previews": live_world.previews(s_disp) if live_world.route != null else [],
 		"next": nxt, "goal": goal, "aspect": aspect}
 	var force: bool = not was_visible or old_rect != minimap_view.get_rect()
 	minimap_view.show_view(MinimapModel.build(route, s_disp, follow.direction, opts), force)
+
+
+## Zoom de la mini-carte (lot W24) : lu une fois dans `user://mini_carte.json` (pas en mode test), proposé à la
+## ligne « Zoom de la carte » de la pause en monde ouvert (menu_flow.minimap_zoom), enregistré quand il change.
+func _sync_minimap_zoom() -> void:
+	if _minimap_zoom < 0:
+		_minimap_zoom = MinimapModel.DEFAULT_ZOOM
+		if not ipc.test_mode and FileAccess.file_exists(MINIMAP_FILE):
+			var doc = JSON.parse_string(FileAccess.get_file_as_string(MINIMAP_FILE))
+			if doc is Dictionary:
+				_minimap_zoom = MinimapModel.zoom_index(str(doc.get("zoom", "")))
+	var shown_text: String = MinimapModel.ZOOM_TEXTS[_minimap_zoom] if not ipc.open_world.is_empty() else ""
+	if menu_flow.minimap_zoom != "" and menu_flow.minimap_zoom != MinimapModel.ZOOM_TEXTS[_minimap_zoom]:
+		_set_minimap_zoom(MinimapModel.zoom_index(menu_flow.minimap_zoom))   # choisi à la pause
+		shown_text = MinimapModel.ZOOM_TEXTS[_minimap_zoom]
+	if menu_flow.minimap_zoom != shown_text:
+		menu_flow.minimap_zoom = shown_text
+
+
+func _set_minimap_zoom(i: int) -> void:
+	_minimap_zoom = clampi(i, 0, MinimapModel.ZOOM_TEXTS.size() - 1)
+	var text: String = MinimapModel.ZOOM_TEXTS[_minimap_zoom]
+	print("Mini-carte : zoom %s de large" % text)
+	ipc.test_log("minimap zoom=%s" % text)
+	if minimap_view != null:
+		minimap_view.show_view(minimap_view.view, true)   # redessinée au prochain appel avec la nouvelle échelle
+	if ipc.test_mode:
+		return
+	var f := FileAccess.open(MINIMAP_FILE, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify({"zoom": text}))
 
 
 ## But de la mini-carte (destination ou retour au départ de la boucle) dans le repère de `r`, d'après le dernier
@@ -1742,6 +1777,9 @@ func _on_test_message(msg: Dictionary) -> void:
 		"avatar_camera":   # caméra de contrôle derrière (« follow ») ou à côté (« side ») de l'avatar (lot V6)
 			_avatar_cam = str(msg.get("view", "")) if str(msg.get("view", "")) in ["follow", "side"] else ""
 			avatar_view.set_visible_for_view(_avatar_view_name())
+		"minimap_zoom":   # zoom de la mini-carte imposé (galerie du HUD, lot W24) : indice de MinimapModel.ZOOM_TEXTS
+			_set_minimap_zoom(int(msg.get("zoom", MinimapModel.DEFAULT_ZOOM)))
+			menu_flow.minimap_zoom = MinimapModel.ZOOM_TEXTS[_minimap_zoom] if menu_flow.minimap_zoom != "" else ""
 		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
 

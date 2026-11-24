@@ -18,6 +18,7 @@ extends RefCounted
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
+const MinimapModel := preload("res://scripts/minimap_model.gd")
 
 ## Écran de modification des champs de l'avatar du Garage (V8) : seul réglage qui garde son écran
 ## (aperçu 3D à côté), les autres se modifient en place dans leur liste.
@@ -28,6 +29,7 @@ const PAUSE_DIFFICULTY := "pause.difficulty"   # difficulté de la séance en co
 const PAUSE_RIDE_MODE := "pause.ride_mode"     # session libre : SIM, ERG ou ERG cadence (lot O18)
 const PAUSE_TARGET_W := "pause.target_w"       # ERG libre : puissance cible
 const PAUSE_CADENCE := "pause.cadence_rpm"     # ERG cadence : cadence cible
+const PAUSE_MINIMAP_ZOOM := "pause.minimap_zoom"   # monde ouvert : largeur de la mini-carte (lot W24)
 const RIDE_MODES := ["sim", "erg", "cadence"]
 ## Ligne « Relancer OpenRide maintenant » d'un sous-écran (lot O26) : action `relaunch` (code 64).
 const RELAUNCH := "relaunch"
@@ -340,6 +342,9 @@ static func pause_item(key: String, value) -> Dictionary:
 		PAUSE_CADENCE:
 			return {"key": key, "label": "Cadence cible", "type": "int", "value": value, "min": 50, "max": 120,
 				"step": 1, "unit": "tr/min"}
+		PAUSE_MINIMAP_ZOOM:
+			return {"key": key, "label": "Zoom de la carte", "type": "choice", "value": value,
+				"choices": MinimapModel.ZOOM_TEXTS.duplicate()}
 	return {}
 
 
@@ -384,6 +389,8 @@ func commit() -> Dictionary:
 			return {"action": "set_ride_mode", "args": {"mode": "erg", "target_w": int(e["value"])}}
 		PAUSE_CADENCE:
 			return {"action": "set_ride_mode", "args": {"mode": "cadence", "cadence_rpm": int(e["value"])}}
+		PAUSE_MINIMAP_ZOOM:
+			return {"action": "set_minimap_zoom", "zoom": str(e["value"])}
 	if str(e["key"]).begins_with(GarageViewModel.KEY_PREFIX):
 		return {"action": "garage_set", "key": str(e["key"]).substr(GarageViewModel.KEY_PREFIX.length()),
 			"value": int(e["value"])}

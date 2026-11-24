@@ -23,6 +23,30 @@ const SCALE_STEPS := [50, 100, 200, 500, 1000, 2000, 5000]
 const SCALE_SHARE := 0.4           # barre d'échelle : au plus 40 % de la largeur
 const MIN_FIT_M := 200.0           # sous 200 m de route connue, pas de correction du repère pour le but
 
+## Zoom réglable (ligne « Zoom de la carte » de l'écran de pause, retour du propriétaire du 24 novembre) : largeur
+## de la carte d'un bord à l'autre, écrite telle quelle (« 1,2 km »). Par défaut 1,2 km (`RADIUS_M`).
+const ZOOM_WIDTHS_M := [600.0, 1200.0, 3000.0, 6000.0, 15000.0]
+const ZOOM_TEXTS := ["0,6 km", "1,2 km", "3 km", "6 km", "15 km"]
+const DEFAULT_ZOOM := 1
+
+
+## Indice de zoom d'un texte de ZOOM_TEXTS (indice par défaut s'il est inconnu).
+static func zoom_index(text: String) -> int:
+	var i := ZOOM_TEXTS.find(text)
+	return i if i >= 0 else DEFAULT_ZOOM
+
+
+## Demi-largeur de la carte (m) au zoom `i` (borné).
+static func zoom_radius_m(i: int) -> float:
+	return float(ZOOM_WIDTHS_M[clampi(i, 0, ZOOM_WIDTHS_M.size() - 1)]) * 0.5
+
+
+## Pas de lecture des points de la route : celui de la qualité, allongé quand la carte s'élargit (un point tous
+## les 10 m à 1,2 km de large, tous les 120 m à 15 km) : le nombre de segments dessinés reste à peu près le même.
+static func stride_for(quality_stride: int, radius_m: float) -> int:
+	return maxi(quality_stride, int(radius_m / RADIUS_M))
+
+
 ## Réglages par qualité : pas de lecture des points de la route (1 = tous les 10 m) et intervalle entre deux
 ## dessins. Le dessin ne coûte que quelques centaines de segments 2D ; en low on lit un point sur trois et on
 ## redessine 4 fois par seconde.

@@ -1,5 +1,5 @@
 {
-  "description": "Lot W24 (mini-carte du monde ouvert), recette sur le PC : départ de Sevrier trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie la mini-carte en bas à gauche (route devant en trait plein, route roulée en pointillés, branches des carrefours proches, « N », échelle « 200 m »), le carrefour écrit dessous et le but « Départ : … à vol d'oiseau » épinglé au bord puis revenu dans la carte au retour. Captures à 0,5, 2, 5 et 8 km. À lancer en low, medium et high, cache du monde ouvert séparé (cache=\"separe\").",
+  "description": "Lot W24 (mini-carte du monde ouvert), recette sur le PC : départ de Sevrier trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie la mini-carte en bas à gauche (route devant en trait plein, route roulée en pointillés, branches des carrefours proches, « N », échelle « 200 m »), le carrefour écrit dessous et le but « Départ : … à vol d'oiseau » épinglé au bord puis revenu dans la carte au retour. Zoom réglable à la pause (« Zoom de la carte », 1,2 km puis 6 km de large, gardé pour la suite). Captures à 0,5, 2 (avant et après le zoom), 5 et 8 km. À lancer en low, medium et high, cache du monde ouvert séparé (cache=\"separe\").",
   "voies": [
     "clavier"
   ],
@@ -66,6 +66,54 @@
     },
     {
       "capture": "carte_2km"
+    },
+    {
+      "note": "Zoom réglable (retour du 24 novembre) : pause, « Zoom de la carte » de 1,2 km à 6 km, reprise",
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "pause",
+      "contient": [
+        "Zoom de la carte",
+        "1,2 km"
+      ]
+    },
+    {
+      "choisir": "minimap_zoom"
+    },
+    {
+      "ecran": "pause",
+      "edition": true
+    },
+    {
+      "appui": [
+        "PLUS_SHORT",
+        "PLUS_SHORT",
+        "A_LONG"
+      ]
+    },
+    {
+      "journal": "engine",
+      "motif": "minimap zoom=6 km"
+    },
+    {
+      "ecran": "pause",
+      "edition": false,
+      "contient": [
+        "6 km"
+      ]
+    },
+    {
+      "capture": "pause_zoom_6km"
+    },
+    {
+      "choisir": "resume"
+    },
+    {
+      "menu_cache": true
+    },
+    {
+      "capture": "carte_2km_zoom_6km"
     },
     {
       "distance_km": 5,

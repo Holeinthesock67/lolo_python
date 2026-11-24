@@ -33,7 +33,12 @@ la route, les carrefours proches et, en Destination ou en Boucle, où est le but
 - **Affichage** `minimap_view.gd` : panneau de la largeur de la colonne gauche du HUD, en bas à gauche, au-dessus du
   bandeau ERG quand il est là, jamais sur la colonne gauche (vent, abri) : la carte rétrécit jusqu'à 96 px de haut, puis
   se cache. Visible en séance de monde ouvert seulement (prête, en route ou en pause), cachée sous les menus.
-- **Performance** : quelques centaines de segments 2D ; redessinée au plus 4 fois par seconde en low, 10 en medium,
+- **Zoom réglable** (retour du propriétaire du 24 novembre, « pouvoir ajuster le niveau de zoom pour vraiment se
+  diriger et s'orienter ») : ligne « Zoom de la carte » de l'écran de pause en monde ouvert, cinq largeurs écrites
+  (0,6 km, 1,2 km par défaut, 3 km, 6 km, 15 km), modifiée comme la difficulté (A, + / −, A maintenu). Aucun bouton du
+  Click n'est libre en roulant (flèches et A : carrefours, ↑ ↓ : vue, Z : bonus), d'où la pause. Réglage de l'engine
+  seul, gardé dans `user://mini_carte.json` (pas en mode test). La barre d'échelle suit (« 200 m » à « 5,0 km »).
+- **Performance** : quelques centaines de segments 2D ; pas de lecture des points allongé avec la largeur (même nombre de segments à 15 km qu'à 1,2 km) ; redessinée au plus 4 fois par seconde en low, 10 en medium,
   15 en high ; le but n'est recalculé qu'à chaque nouvelle route (révision du monde vivant).
 - Pas de contrat modifié (ni IPC, ni format), pas de `class_name`.
 
@@ -41,8 +46,8 @@ la route, les carrefours proches et, en Destination ou en Boucle, où est le but
 
 - **Nouveaux :** `engine/scripts/minimap_model.gd`, `engine/scripts/minimap_view.gd`,
   `engine/tests/unit/test_minimap_model.gd`, `engine/tests/menu_scenarios/ow_minicarte.json`.
-- **Modifiés :** `engine/scripts/main.gd` (branchement, widget « minimap » des captures, ligne de test
-  `minimap shown`), `engine/tests/hud_galerie.py` (cas `monde_ouvert_carte` et `monde_ouvert_destination`),
+- **Modifiés :** `engine/scripts/settings_view_model.gd` et `menu_flow.gd` (ligne « Zoom de la carte » de la pause), `engine/scripts/main.gd` (branchement, zoom lu et enregistré, message de test `minimap_zoom`, widget « minimap » des captures, ligne de test
+  `minimap shown`), `engine/tests/hud_galerie.py` (cas `monde_ouvert_carte`, `monde_ouvert_destination`, `monde_ouvert_zoom_6km`, `monde_ouvert_zoom_0_6km`, `monde_ouvert_erg`),
   `engine/tests/hud_lisibilite.py` (panneau compté dans les chevauchements), `engine/tests/fake_core.py`
   (`last_choices` du `hello_ack`), `docs/GUIDE_UTILISATION.md` (§4 bis).
 
@@ -58,7 +63,7 @@ la route, les carrefours proches et, en Destination ou en Boucle, où est le but
 
 ## 6. Hors périmètre
 
-Carte plein écran, zoom réglable, noms des routes et des lieux sur la carte, flèche de l'itinéraire jusqu'au but
+Carte plein écran, zoom en roulant (aucun bouton libre), noms des routes et des lieux sur la carte, flèche de l'itinéraire jusqu'au but
 (le navigateur du générateur choisit déjà les branches vers le but).
 
 ## Livraison

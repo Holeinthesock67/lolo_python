@@ -190,6 +190,12 @@ CAS: list[dict[str, Any]] = [
      "texts_contains": {"minimap": "Carrefour dans 240 m"}, "shown": ["minimap"]},
     {"name": "monde_ouvert_destination", "state": {"open_world": OW_FIELD}, "last_choices": OW_DESTINATION,
      "texts_contains": {"minimap": "Arrivée : "}, "shown": ["minimap"]},
+    # Zoom réglable (retour du propriétaire du 24 novembre) : 6 km de large (indice 3 de MinimapModel.ZOOM_TEXTS),
+    # puis 0,6 km (indice 0) ; la largeur se lit à l'échelle écrite.
+    {"name": "monde_ouvert_zoom_6km", "state": {"open_world": OW_FIELD}, "last_choices": OW_DESTINATION, "zoom": 3,
+     "texts_contains": {"minimap": "Carte · 2,0 km"}, "shown": ["minimap"]},
+    {"name": "monde_ouvert_zoom_0_6km", "state": {"open_world": OW_FIELD}, "last_choices": OW_DESTINATION, "zoom": 0,
+     "texts_contains": {"minimap": "Carte · 200 m"}, "shown": ["minimap"]},
     {"name": "monde_ouvert_erg", "state": {"open_world": OW_FIELD, "mode": "ERG", "erg": _erg(230.0, 100)},
      "last_choices": OW_DESTINATION, "texts_contains": {"minimap": "Arrivée : "}, "shown": ["minimap", "erg_target"]},
     {"name": "gp_bilan", "state": {"session_state": "FINISHED", "summary": GP_SUMMARY},
@@ -220,6 +226,8 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
         if cas.get("last_choices") != core.last_choices:
             core.last_choices = cas.get("last_choices")
             core.send_hello_ack()
+        zoom = cas.get("zoom", 1)   # mini-carte (lot W24) : 1,2 km de large par défaut
+        core.send_raw({"type": "_test", "v": vc.CONTRACT_VERSION, "action": "minimap_zoom", "zoom": zoom})
         if "open_world" not in cas.get("state", {}):
             with core.lock:   # hors monde ouvert, pas de champ `open_world` (mini-carte et carrefour cachés)
                 core.fields.pop("open_world", None)

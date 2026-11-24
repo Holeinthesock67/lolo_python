@@ -7,6 +7,7 @@ extends SceneTree
 const Model := preload("res://scripts/minimap_model.gd")
 const MinimapView := preload("res://scripts/minimap_view.gd")
 const RouteData := preload("res://scripts/route_data.gd")
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 
 const LAT0 := 45.0
 const LON0 := 6.0
@@ -133,6 +134,26 @@ func _init() -> void:
 		"next": {"d_m": 100.0}})
 	_check(v["lines"] == ["Carrefour dans 100 m", "Départ : 1,0 km à vol d'oiseau"], "deux lignes : carrefour puis but")
 	_check(v["goal"]["pos"].y > Model.RIDER.y, "départ derrière : épinglé en bas")
+
+	# Zoom réglable (retour du propriétaire du 24 novembre)
+	_check(Model.ZOOM_TEXTS[Model.DEFAULT_ZOOM] == "1,2 km" and is_equal_approx(Model.zoom_radius_m(Model.DEFAULT_ZOOM), Model.RADIUS_M),
+		"zoom par défaut : 1,2 km de large")
+	_check(Model.zoom_index("6 km") == 3 and Model.zoom_index("n'importe quoi") == Model.DEFAULT_ZOOM, "zoom lu par son texte")
+	_check(is_equal_approx(Model.zoom_radius_m(99), 7500.0) and is_equal_approx(Model.zoom_radius_m(-3), 300.0), "zoom borné")
+	_check(Model.stride_for(1, 300.0) == 1 and Model.stride_for(1, 7500.0) == 12 and Model.stride_for(3, 600.0) == 3,
+		"pas de lecture allongé quand la carte s'élargit")
+	_check(Model.scale_bar(3000.0)["text"] == "2,0 km" and Model.scale_bar(300.0)["text"] == "200 m", "échelle écrite à 6 km et 0,6 km")
+	var wide: Dictionary = Model.build(north, 1000.0, 1, {"radius_m": 3000.0, "stride": Model.stride_for(1, 3000.0),
+		"goal": {"label": "Arrivée", "x": 0.0, "z": -3000.0}, "aspect": 0.7})
+	_check(wide["goal"]["inside"] and absf(wide["goal"]["pos"].y - (Model.RIDER.y - 2000.0 / 3000.0)) < 0.01,
+		"à 6 km de large, l'arrivée à 2 km devant tient dans la carte (épinglée au bord à 1,2 km)")
+	var it := SettingsViewModel.pause_item(SettingsViewModel.PAUSE_MINIMAP_ZOOM, "1,2 km")
+	_check(it["label"] == "Zoom de la carte" and it["choices"] == Model.ZOOM_TEXTS, "ligne de pause « Zoom de la carte »")
+	var svm = SettingsViewModel.new()
+	svm.begin_pause(SettingsViewModel.PAUSE_MINIMAP_ZOOM, "1,2 km")
+	svm.step(1)
+	_check(SettingsViewModel.row("minimap_zoom", it, svm.editing)["detail"] == "◀ 3 km ▶", "+ : 3 km, écrit entre les flèches")
+	_check(svm.commit() == {"action": "set_minimap_zoom", "zoom": "3 km"}, "A long : zoom enregistré")
 
 	# Panneau : place suffisante ou non
 	var view = MinimapView.new()
