@@ -1095,8 +1095,12 @@ func current_screen() -> String:
 
 
 ## Demande de confirmation d'une action destructrice (focus sur « Non »), depuis l'écran courant.
-func confirm(title: String, action: Dictionary) -> Dictionary:
+## Confirmation, « Non » par défaut. `yes_label`, `no_label` et les détails : boutons qui disent ce qu'ils font
+## (lot RZ1, remise à zéro des statistiques) ; par défaut « Non » et « Oui ».
+func confirm(title: String, action: Dictionary, yes_label := "Oui", no_label := "Non", yes_detail := "",
+		no_detail := "") -> Dictionary:
 	_confirm(title, action)
+	_screens[CONFIRM]["items"] = [_item("no", no_label, true, no_detail), _item("yes", yes_label, true, yes_detail)]
 	return state()
 
 
@@ -1240,6 +1244,7 @@ func _confirm(title: String, action: Dictionary) -> void:
 	_confirm_back = _screen
 	_confirm_focus = _focus
 	_screens[CONFIRM]["title"] = title
+	_screens[CONFIRM]["items"] = [_item("no", "Non"), _item("yes", "Oui")]
 	_screen = CONFIRM
 	_focus = 0   # « Non » par défaut
 
