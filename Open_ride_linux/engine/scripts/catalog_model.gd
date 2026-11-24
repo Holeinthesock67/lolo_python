@@ -51,20 +51,27 @@ static func tagged_route_ids(raw_routes: Array, tag: String) -> Array:
 
 
 ## Parcours de chaque mode à parcours propres (lot GP13) : `table` mode → étiquette (hello_ack.config.mode_routes).
+## Un parcours de mode est une boucle qui porte l'étiquette du mode (lot GPL1, règle du core `mode_routes.py`) :
+## une trace en ligne étiquetée reste un parcours libre.
 static func mode_route_ids(raw_routes: Array, table: Dictionary) -> Dictionary:
+	var loops: Array = raw_routes.filter(func(r): return r is Dictionary and str(r.get("route_type", "")) == "loop")
 	var out := {}
 	for m in table:
-		out[str(m)] = tagged_route_ids(raw_routes, str(table[m]))
+		out[str(m)] = tagged_route_ids(loops, str(table[m]))
 	return out
 
 
-## Parcours d'une liste : ceux du mode `mode` (lot GP13), ou les parcours libres pour "" (aucun parcours d'un mode).
-static func routes_of_mode(raw_routes: Array, by_mode: Dictionary, mode: String) -> Array:
+## Parcours d'une liste : ceux du mode `mode` (lot GP13), ou les parcours libres pour "" : d'aucun mode, ou d'un
+## mode avec l'étiquette `free_tag` (hello_ack.config.free_route_tag, lot GPL1 : dans son mode et dans la liste générale).
+static func routes_of_mode(raw_routes: Array, by_mode: Dictionary, mode: String, free_tag := "") -> Array:
+	if mode != "":
+		return raw_routes.filter(func(r): return r is Dictionary and str(r.get("id", "")) in by_mode.get(mode, []))
+	var shared: Array = tagged_route_ids(raw_routes, free_tag) if free_tag != "" else []
 	var taken: Array = []
 	for m in by_mode:
 		taken.append_array(by_mode[m])
 	return raw_routes.filter(func(r): return r is Dictionary and (
-		str(r.get("id", "")) in by_mode.get(mode, []) if mode != "" else not str(r.get("id", "")) in taken))
+		not str(r.get("id", "")) in taken or str(r.get("id", "")) in shared))
 
 
 static func route_tags(raw_routes: Array) -> Array:
