@@ -10,7 +10,8 @@ extends RefCounted
 ## - `strip` : bande de course, coureurs dans l'ordre (cycliste « Toi » à sa place du core), retard sur le
 ##   premier, objet tenu, pastille « touché » (effet d'un objet d'attaque, de piège ou contre la tête) ;
 ## - `lanes` : trois traits de voie, voie choisie en blanc ou en gris en placement automatique, aide des
-##   boutons (« Bidon glissant en vue : A ou ← → » quand A change de voie et qu'un objet est en vue) ;
+##   boutons et but de la voie (lot GPH1 : « Boîte sur ta voie : passe dessus pour un objet », « Bidon glissant
+##   devant sur ta voie : A ou ← → pour l'éviter », « Boîte prise sur ta voie : A ou ← → pour en changer ») ;
 ## - `warn` : menace sur le cycliste (« Musette guidée derrière ! », flèche vers le bas, contour de l'écran
 ##   et chevrons en bas), ou orage lancé vers un autre premier (« Orage vers le premier », sans contour) ;
 ##   sans menace, coup reçu en cours (« Touché ! Bidon glissant 2 s », contour de la couleur de l'objet, lot GP14).
@@ -28,7 +29,8 @@ const MAX_ROWS := 12               # 11 bots et le cycliste (lot GP10)
 const MAX_FX := 4
 const ROLL_STEP_S := 0.12          # roulette : un objet toutes les 0,12 s pendant le tirage
 const ON_ME_M := 2.0               # menace à moins de 2 m : « sur toi » (nuage d'orage au-dessus du cycliste)
-const PICK_VIEW_M := 150.0         # objet « en vue » sur sa voie, pour l'aide du choix de voie
+const PICK_VIEW_M := 150.0         # objet ou boîte « en vue » devant, pour l'aide du choix de voie (core VIEW_AHEAD_M)
+const PICK_BEHIND_M := 100.0       # musette « en vue » derrière (core VIEW_BEHIND_M)
 const GAP_MIN_SPEED_MPS := 1.0     # vitesse plancher d'un écart estimé (gaps.py MIN_SPEED_MPS)
 const MAX_ITEM_LINES := 6          # lignes « temps par objet » du bilan
 
@@ -198,34 +200,78 @@ static func _any_family(fx: Array, families: Array) -> bool:
 	return false
 
 
-## Choix de voie : {lane, auto, pick, hint}.
+## Choix de voie : {lane, auto, pick, hint}. L'aide dit ce qui est en vue, la touche et à quoi sert la voie
+## (lot GPH1, « Aucune explication nulle part ») : bidon devant ou musette derrière sur ta voie (à éviter), boîte
+## devant (libre, prise par un bot ou réserve pleine), sinon les touches seules.
 func lanes_view(gp: Dictionary, rider_s: float) -> Dictionary:
 	var lane := clampi(int(_num(gp.get("lane", null), 1.0)), 0, 2)
 	var pick := bool(gp.get("pick", false))
-	var hint := "← → : voie"
+	var auto := bool(gp.get("auto", false))
+	var hint := "← → : changer de voie" if auto else "← → : changer de voie · A maintenu : placement auto"
 	if pick:
-		hint = "A : voie suivante · ← → : voie"
-		var seen := _object_in_view(gp, lane, rider_s)
-		if seen != "":
-			hint = "%s en vue : A ou ← →" % Items.label(seen)
-	return {"lane": lane, "auto": bool(gp.get("auto", false)), "pick": pick, "hint": hint}
+		hint = "A ou ← → : changer de voie"
+		var threat := _threat_on_lane(gp, lane, rider_s)
+		var box := _box_ahead(gp, lane, rider_s)
+		if threat != "":
+			hint = threat
+		elif box == "free" and _reserve_full(gp):
+			hint = "Boîte devant, réserve pleine : Z d'abord pour en prendre une"
+		elif box == "free":
+			hint = "Boîte sur ta voie : passe dessus pour un objet"
+		elif box == "gone":
+			hint = "Boîte prise sur ta voie : A ou ← → pour en changer"
+	return {"lane": lane, "auto": auto, "pick": pick, "hint": hint}
 
 
-## Objet le plus proche devant sur la voie du cycliste (ou sur toute la route), à moins de PICK_VIEW_M.
-static func _object_in_view(gp: Dictionary, lane: int, rider_s: float) -> String:
+## Réserve occupée (objet tenu ou tirage en cours) : une boîte ne donne rien (core : grandprix/mode.py).
+static func _reserve_full(gp: Dictionary) -> bool:
+	return _num(gp.get("roll_s", null), 0.0) > 0.0 or (gp.get("held", null) != null and str(gp["held"]) != "")
+
+
+## Objet à éviter sur la voie du cycliste : bidon posé devant à moins de PICK_VIEW_M, musette lancée derrière à
+## moins de PICK_BEHIND_M (elle file tout droit sur sa voie) ; "" sans menace. La musette guidée suit sa cible
+## quelle que soit la voie : le bandeau d'avertissement s'en charge (warn_view).
+static func _threat_on_lane(gp: Dictionary, lane: int, rider_s: float) -> String:
 	if is_nan(rider_s) or not gp.get("obj", null) is Array:
 		return ""
-	var best := ""
-	var best_d := PICK_VIEW_M
+	var ahead := PICK_VIEW_M + 1.0
+	var behind := PICK_BEHIND_M + 1.0
 	for o in gp["obj"]:
-		if not o is Array or o.size() < 4:
+		if not o is Array or o.size() < 4 or int(_num(o[3], -1.0)) != lane:
 			continue
 		var d := _num(o[2], NAN) - rider_s
-		var l := int(_num(o[3], -1.0))
-		if d > 0.0 and d <= best_d and (l == lane or l == -1):
+		if str(o[1]) == "bottle" and d > 0.0 and d <= PICK_VIEW_M:
+			ahead = minf(ahead, d)
+		elif str(o[1]) == "musette" and d < 0.0 and -d <= PICK_BEHIND_M:
+			behind = minf(behind, -d)
+	if ahead <= PICK_VIEW_M:
+		return "%s devant sur ta voie : A ou ← → pour l'éviter" % Items.label("bottle")
+	if behind <= PICK_BEHIND_M:
+		return "Musette derrière sur ta voie : A ou ← → pour l'éviter"
+	return ""
+
+
+## Boîte de la rangée la plus proche devant (à moins de PICK_VIEW_M) sur la voie du cycliste : "free", "gone"
+## (prise, pas encore revenue : `boxes_gone`) ou "" sans rangée en vue.
+static func _box_ahead(gp: Dictionary, lane: int, rider_s: float) -> String:
+	if is_nan(rider_s) or not gp.get("boxes", null) is Array:
+		return ""
+	var best := -1
+	var best_d := PICK_VIEW_M
+	var rows: Array = gp["boxes"]
+	for k in rows.size():
+		var d := _num(rows[k], NAN) - rider_s
+		if d > 0.0 and d <= best_d:
 			best_d = d
-			best = str(o[1])
-	return best
+			best = k
+	if best < 0:
+		return ""
+	var gone = gp.get("boxes_gone", [])
+	if gone is Array:
+		for g in gone:
+			if g is Array and g.size() >= 2 and int(_num(g[0], -1.0)) == best and int(_num(g[1], -1.0)) == lane:
+				return "gone"
+	return "free"
 
 
 ## Avertissement : {text, kind, arrow ("down", "up" ou ""), color, outline, chevrons} ; {} sans menace.
@@ -340,3 +386,32 @@ static func signed_s(t: float) -> String:
 	if absf(t) < 0.05:
 		return "0 s"
 	return ("+" if t > 0.0 else "−") + fr1(absf(t)) + " s"
+
+
+## Consigne de la zone commune (lot RT1, feedback_model.gd) : {k, action, detail, chips} ; {} sans objet `gp`.
+## Sans objet : passer dans une boîte « + BONUS » (le mot écrit sur les boîtes) ; objet en réserve : Z pour le lancer.
+func consigne(state) -> Dictionary:
+	var gp = state.get("gp", null) if state is Dictionary else null
+	if not gp is Dictionary:
+		return {}
+	var lap = gp.get("lap", null)
+	var goal := "finir 1er" + ((" en %d tours" % int(_num(lap[1], 1.0))) if lap is Array and lap.size() >= 2 else "")
+	if _num(gp.get("roll_s", null), 0.0) > 0.0:
+		return {"k": "À FAIRE", "action": "Tirage de ton objet…", "detail":
+			"Objectif : %s · Pourquoi : un objet te fait gagner du temps" % goal, "chips": []}
+	var held = gp.get("held", null)
+	if held == null or not Items.known(str(held)):
+		return {"k": "À FAIRE", "action": "Passe dans une boîte « + BONUS » pour prendre un objet",
+			"detail": "Objectif : %s · Pourquoi : un objet te fait gagner du temps" % goal, "chips": ["A ← → voie"]}
+	return {"k": "À FAIRE", "action": "Lance ton objet : %s" % Items.label(str(held)),
+		"detail": "Objectif : %s · Pourquoi : il ralentit un adversaire ou te fait gagner du temps" % goal,
+		"chips": ["Z lancer"]}
+
+
+## Objectif du Grand Prix en une ligne (départ, feedback_model.gd on_state `goal`).
+func goal(state) -> String:
+	var gp = state.get("gp", null) if state is Dictionary else null
+	if not gp is Dictionary:
+		return ""
+	var lap = gp.get("lap", null)
+	return "finir 1er" + ((" en %d tours" % int(_num(lap[1], 1.0))) if lap is Array and lap.size() >= 2 else "")

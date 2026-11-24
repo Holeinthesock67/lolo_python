@@ -73,9 +73,18 @@ func _run() -> void:
 	act = f.handle("A_LONG")
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
 	_check(str(f.state()["title"]) == "Prêt : Course — Longue", "titre du mode (%s)" % f.state()["title"])
-	_check(_ids(f) == ["start", "change_route", "set:race.opponents", "set:bots.level_pct", "set:bots.objective"],
+	_check(_ids(f) == ["start", "change_route", "set:race.opponents", "set:bots.level_pct"],
 		"en ligne : pas de tours, pas de ligne Objets (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["detail"] == "25,0 km en ligne", "Lancer : jusqu'à l'arrivée (%s)" % _item(f, "start")["detail"])
+	# Cote Elo et effort des bots en watts (contrat 1.22) : ligne « Intensité » (lot R1) comme au Grand Prix
+	_check(f.wanted_bots_preview() == {"mode": "race"}, "écran Prêt : bots_preview demandé (%s)" % str(f.wanted_bots_preview()))
+	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 9, "mode": "race", "objective": "tempo",
+		"ftp_pct": 90.0, "power_w": 225, "duration_s": 2400, "elo": {"rating": 1520, "races": 2}})
+	_check(_ids(f)[1] == "intensity" and _item(f, "intensity")["label"] == "Intensité : moyen"
+		and _item(f, "intensity")["detail"] == "bots ≈ 225 W", "lot R1 : ligne « Intensité » sous Lancer (%s)" % str(_item(f, "intensity")))
+	f.menu.focus_item("intensity")
+	_check(str(f.state()["status"]).ends_with("Course estimée à ≈ 40 min. Ta cote : 1520."), "durée et cote dans la ligne d'état")
+	_check(f.handle("A_LONG") == {"action": "set_setting", "key": "bots.objective", "value": "max"}, "Course : moyen → dur")
 	_check(_item(f, "set:race.opponents")["label"] == "Adversaires" and _item(f, "set:race.opponents")["detail"] == "7",
 		"réglage : libellé court et valeur")
 	f.menu.focus_item("set:race.opponents")
@@ -83,6 +92,8 @@ func _run() -> void:
 	f.handle("PLUS_SHORT")
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_setting", "key": "race.opponents", "value": 8}, "adversaires : set_setting (%s)" % str(act))
+	_check(f.wanted_bots_preview() == {"mode": "race"}, "adversaires changés : bots_preview redemandé")
+	_check(f.wanted_bots_preview().is_empty(), "même course : pas de nouvelle demande")
 	f.menu.focus_item("start")
 	act = f.handle("A_LONG")
 	_check(act == {"action": "start", "args": {"mode": "race"}}, "start avec mode « race », sans bots (%s)" % str(act))
@@ -93,7 +104,7 @@ func _run() -> void:
 	_check(_item(f, "start")["detail"] == "3 tours, 9,0 km", "boucle : tours et longueur (%s)" % _item(f, "start")["detail"])
 	_check(not MenuFlow.race_launch(3, {"length_m": 800.0, "route_type": "point_to_point"})["enabled"],
 		"parcours de moins de 1 km : Lancer grisé")
-	_check(MenuFlow.race_keys({}) == ["race.opponents", "race.laps", "bots.level_pct", "bots.objective"], "parcours inconnu : tours")
+	_check(MenuFlow.race_keys({}) == ["race.opponents", "race.laps", "bots.level_pct"], "parcours inconnu : tours")
 	f.menu.reset()
 	_check(f.menu.mode == "free", "retour à l'accueil : le mode ne reste pas collé")
 

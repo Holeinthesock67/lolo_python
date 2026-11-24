@@ -14,10 +14,13 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
   du carré (arêtes canoniques de W4, profils de W5), ponts et tunnels exceptés ; abaissé sous les lacs,
   étangs et réservoirs qui touchent le carré (lot EA1, `water_terrain.py`) et sous les grandes rivières
   (lot EA3, `river_surface.py` : morceaux découpés au carré, niveau qui descend le long du cours),
-  chaussée gardée ;
-- `buildings.json`, `vegetation.json`, `water.json`, `poi.json` : mêmes schémas que les
-  `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
-  z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre ;
+  chaussée gardée ; puis réglé sur la route telle que l'engine la dessine (règle unique sol / route,
+  `road_ground.py` : sol sous les chaussées à ciel ouvert, ponts compris, pas dans les tunnels ; pieds des talus
+  appuyés hors ponts et tunnels) ;
+- `buildings.json`, `vegetation.json`, `water.json`, `poi.json`, `coast.json` : mêmes schémas que
+  les `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
+  z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre, sauf la mer et
+  la côte, découpées au carré (lot W23, `square_coast.py`) ;
 - `edges.json` : arêtes dont le premier nœud est dans le carré, avec leur profil, dans le repère
   de zone (pour la route engagée, W8) ;
 - `meta.json` : versions (générateur, schéma et date de la base, relief) et nombres d'objets.
@@ -47,13 +50,30 @@ from ..elevation import ElevationProvider
 from ..frame import LocalFrame, utm_transformer
 from ..terrain import blend
 from .. import river_surface as RS
+from .. import road_ground as RG
 from .. import water_terrain as WT
-from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile
+from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile, with_turnaround
 from .graph import RoadGraph
-from .osmdb import OsmDb
+from .osmdb import OsmDb, WATERWAY_KINDS
+from .square_coast import COAST_SQUARE_VERSION, square_coast
 from .store import WorldCache
 
-WORLDGEN_VERSION = 4          # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : ponts dessinés (EA4) ; 4 : grandes rivières (EA3)
+# 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : ponts dessinés (EA4) ; 4 : grandes rivières (EA3) ;
+# 5 (20/11) : garde-fou de la chaussée (#936), ponts compris, sur la largeur du ruban de l'engine ; 8 (21/11) : règle
+# unique sol / route (road_ground.py : route de l'engine, talus appuyés). Un même numéro pour
+# deux contenus différents garderait un carré périmé en cache : à chaque fusion, garder un numéro plus grand que tous
+# ceux déjà dans main. Carrés recalculés. 6 réservé (EA5) ; 7 (20/11) : fond des lacs fondu avec la route (rive en
+# pente douce au lieu d'une chute de 7 m sous la chaussée).
+WORLDGEN_VERSION = 8
+# Règle sol / route du carré (road_ground.fit) en SQUARE_ROUNDS paires de passes ; chaque passe ne lit que le relief à
+# deux cases d'un sommet : relief proche calculé avec RING_CELLS cases de plus tout autour, bords communs identiques.
+# Marges du carré (21/11) : la balade, rééchantillonnée tous les 10 m sur ses arêtes, s'écarte de quelques cm de la
+# route de l'arête ; le carré dégage donc un peu plus large et un peu plus bas, la séance réglant ensuite le sol sur sa
+# propre route (session_ground.py) tant que l'engine n'a pas la tuile.
+SQUARE_ROUNDS = 3
+RING_CELLS = 4 * SQUARE_ROUNDS + 1
+SQUARE_WIDTH_MARGIN_M = 0.25
+SQUARE_SINK_MARGIN_M = 0.03
 FAR_WATER_VERSION = 1         # eau des tuiles lointaines (lot EA2)
 SQUARE_M = 1000
 FAR_M = 5000
@@ -128,10 +148,11 @@ class FarKey(SquareKey):
         return WorldCache.far_key(self.zone, self.ix, self.i_n)
 
 
-def grid_xz(key: SquareKey, step_m: int) -> tuple[np.ndarray, np.ndarray]:
-    """Coordonnées de zone des 101 × 101 échantillons, tableau [ligne j, colonne i], en entiers exacts."""
+def grid_xz(key: SquareKey, step_m: int, ring: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    """Coordonnées de zone des 101 × 101 échantillons, tableau [ligne j, colonne i], en entiers exacts ;
+    `ring` cases de plus tout autour (garde-fou de la chaussée)."""
     x0, z0 = key.corner
-    k = np.arange(C.TILE_SAMPLES, dtype=np.int64) * step_m
+    k = np.arange(-ring, C.TILE_SAMPLES + ring, dtype=np.int64) * step_m
     return np.meshgrid((x0 + k).astype(float), (z0 + k).astype(float))
 
 
@@ -231,7 +252,8 @@ def half_width(road_class: str) -> float:
 def square_versions(db: OsmDb, provider: ElevationProvider) -> dict[str, Any]:
     return {"worldgen": WORLDGEN_VERSION, "osm_schema": db.meta.get("schema_version"),
             "osm_date": db.meta.get("osm_date") or None, "osm_region": db.meta.get("region"),
-            "relief": getattr(provider, "name", "inconnu")}
+            "relief": getattr(provider, "name", "inconnu"),
+            "coast": COAST_SQUARE_VERSION if db.has_coast else None}   # lot W23 : carré refait avec la mer
 
 
 def far_versions(provider: ElevationProvider, db: OsmDb | None = None,
@@ -398,7 +420,19 @@ def far_water_grid(key: "FarKey", y: np.ndarray, lakes: list[dict]) -> np.ndarra
 
 def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
                    provider: ElevationProvider, frame: LocalFrame, water: list[dict] | None = None) -> np.ndarray:
-    gx, gz = grid_xz(key, NEAR_STEP_M)
+    """Relief du carré fondu avec ses routes, abaissé sous les lacs (EA1), puis réglé sur la route (règle sol / route,
+    `road_ground.py`) ; calculé sur RING_CELLS cases de plus tout autour : les sommets des bords communs reçoivent la
+    même valeur dans les deux carrés."""
+    return square_relief(key, graph, profiles, provider, frame, water)[1]
+
+
+def square_relief(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
+                  provider: ElevationProvider, frame: LocalFrame,
+                  water: list[dict] | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """(relief avant le garde-fou de la chaussée, relief final) du carré, 101 × 101 chacun. Le premier sert à poser
+    les bâtiments (20/11) : une maison du bord de route garde le pied qu'elle avait, au lieu de descendre au fond de
+    l'entaille du garde-fou et de disparaître dans le talus (banc #936, lac d'Annecy)."""
+    gx, gz = grid_xz(key, NEAR_STEP_M, ring=RING_CELLS)
     lat, lon = frame.to_latlon(gx.ravel(), gz.ravel())
     y = np.asarray(provider.elevations(lat, lon), dtype=float)
     pieces = []
@@ -406,10 +440,68 @@ def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgePro
         e = graph.edges[k]
         pieces += axis_pieces(profiles[k], half_width(e.road_class), e.spans)
     dist, y_road = RoadsAxis(pieces).nearest(gx.ravel(), gz.ravel(), C.BLEND_OUTER_M)
-    y = blend(y, dist, y_road, half_width=0.0)
-    if water:   # lot EA1 : sol sous les lacs, chaussée gardée (hors ponts : ils ne sont pas dans l'axe)
-        WT.sink_grid(gx, gz, y, WT.inland_areas(water), protect=np.isfinite(dist) & (dist < C.BLEND_INNER_M))
-    return y.astype("<f4").reshape(C.TILE_SAMPLES, C.TILE_SAMPLES)
+    y = blend(y, dist, y_road, half_width=0.0).reshape(gx.shape)
+    if water:   # lot EA1 : sol sous les lacs ; près d'une route (hors ponts : ils ne sont pas dans l'axe), fond fondu
+        # avec la route comme le relief : chaussée gardée, puis rive en pente douce (20/11, route en surplomb d'une
+        # chute de 7 m au bord d'un lac)
+        WT.sink_grid(gx, gz, y, WT.inland_areas(water), road=(dist, y_road))
+    # Fondu hors ponts et tunnels (la vallée reste sous un pont), garde-fou sur toute la chaussée à ciel ouvert, ponts
+    # compris (20/11, « herbe au-dessus de la route »). Pas dans les tunnels : sous 40 m de colline, l'entaille faisait
+    # une gorge aux parois grises (banc #936, Sevrier) ; un tunnel se dessinera (lot à venir) au lieu d'être taillé.
+    # Largeur dégagée : au moins la chaussée de l'engine (ROAD_HALF_WIDTH_M, ruban de 6 m du thème par défaut), même
+    # pour une piste ou un chemin fondus sur 2 m : la route engagée est dessinée à la largeur du thème quelle que soit
+    # sa classe, et le talus d'une piste cyclable passait sur le bord du ruban.
+    # Règle unique sol / route (21/11, road_ground.py) : route telle que l'engine la dessine (Catmull-Rom, cap
+    # interpolé), sol sous la chaussée et les bas-côtés à ciel ouvert (ponts compris, pas dans les tunnels : la colline
+    # reste, choix du 20/11), pieds des talus appuyés où la route repose sur le sol (hors ponts et tunnels). Largeur
+    # au moins celle du ruban de l'engine, quelle que soit la classe de la route.
+    upper, lower = [], []
+    for k in sorted(profiles):
+        e, p = graph.edges[k], profiles[k]
+        up, lo = RG.corridor_s(p.x, p.z, p.alt_m, p.heading_deg, s=p.s,
+                             open_spans=[sp for sp in e.spans if sp[2] == "tunnel"], ground_spans=e.spans,
+                             half_width=half_width(e.road_class) + SQUARE_WIDTH_MARGIN_M,
+                             sink=C.ROAD_SINK_M + SQUARE_SINK_MARGIN_M)
+        upper.append(up)
+        lower.append(lo)
+    for up, lo in turnaround_corridors(graph, profiles, provider, frame):
+        upper.append(up)
+        lower.append(lo)
+    s = RING_CELLS
+    ground = y[s:-s, s:-s].astype("<f4")
+    # abscisses des points, décalées de 1e7 m par route (arête ou boucle) : pieds de talus au bord d'une autre route
+    for n, (u, lo) in enumerate(zip(upper, lower)):
+        upper[n] = (*u[:3], u[3] + 1e7 * n)
+        lower[n] = (*lo[:3], lo[3] + 1e7 * n)
+    up_all = [np.concatenate([u[c] for u in upper]) if upper else np.empty(0) for c in range(4)]
+    lo_all = [np.concatenate([lo[c] for lo in lower]) if lower else np.empty(0) for c in range(4)]
+    RG.fit_grid(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, up_all[:3],
+                RG.drop_covered_feet(up_all, lo_all, up_all[3], lo_all[3]), rounds=SQUARE_ROUNDS)
+    return ground, y[s:-s, s:-s].astype("<f4")
+
+
+def turnaround_corridors(graph: RoadGraph, profiles: dict[str, EdgeProfile], provider: ElevationProvider,
+                         frame: LocalFrame):
+    """Points de la règle sol / route des boucles de retournement (21/11) : au bout de chaque impasse du carré, la
+    balade tourne dans une boucle (`edge_profile.with_turnaround`) qu'aucune arête ne décrit. Même boucle, même
+    altitude que celle que la séance tracera, si bien que le sol du carré la porte déjà (la séance la reprend sur la
+    route qu'elle dessine, `session_ground.py`)."""
+    out = []
+    for k in sorted(profiles):
+        e, p = graph.edges[k], profiles[k]
+        if len(p.s) < 2:
+            continue
+        for node, forward in ((e.b, True), (e.a, False)):
+            n = graph.nodes.get(node)
+            if n is None or n.frontier or len(graph._adj.get(node, [])) != 1 or e.a == e.b:
+                continue
+            arrive = p if forward else p.reversed()
+            loop = with_turnaround(arrive.reversed(), (float(arrive.x[-2]), float(arrive.z[-2])), provider, frame)
+            m = int(np.searchsorted(loop.s, loop.length_m - arrive.length_m + 30.0))   # la boucle et 30 m d'arête
+            out.append(RG.corridor_s(loop.x[:m + 1], loop.z[:m + 1], loop.alt_m[:m + 1], loop.heading_deg[:m + 1],
+                                     s=loop.s[:m + 1], half_width=C.ROAD_HALF_WIDTH_M + SQUARE_WIDTH_MARGIN_M,
+                                     sink=C.ROAD_SINK_M + SQUARE_SINK_MARGIN_M))
+    return out
 
 
 def _ring_xz(frame: LocalFrame, coords, outer: bool) -> list[list[float]] | None:
@@ -426,10 +518,14 @@ def _rel(points, x0: float, z0: float) -> list[list[float]]:
 
 
 def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: ElevationProvider,
-                  frame: LocalFrame, water_areas: list[dict] | None = None) -> dict[str, dict[str, Any]]:
-    """Bâtiments, végétation, eau et points d'intérêt du carré, coordonnées relatives à son coin."""
+                  frame: LocalFrame, water_areas: list[dict] | None = None,
+                  ground: np.ndarray | None = None) -> dict[str, dict[str, Any]]:
+    """Bâtiments, végétation, eau (mer comprise), côte et points d'intérêt du carré, coordonnées
+    relatives à son coin. `ground` : relief avant le garde-fou de la chaussée (square_relief), pour le pied
+    des bâtiments ; sinon `near`."""
     x0, z0 = key.corner
     near_tiles = {(key.ix, -(key.i_n + 1)): near}
+    ground_tiles = near_tiles if ground is None else {(key.ix, -(key.i_n + 1)): ground}
     buildings: list[dict] = []
     vegetation: list[dict] = []
     water: dict[str, list[dict]] = {"lines": [], "areas": []}
@@ -455,7 +551,8 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
         if key.contains(*a["centroid"]):
             water["areas"].append({"id": a["id"], "kind": a["kind"], "level_y": a["level_y"],
                                    "outer": _rel(a["outer"], x0, z0), "holes": [_rel(h, x0, z0) for h in a["holes"]]})
-    for a in db.areas_in(lonlat_bbox(frame, x0 - m, z0 - m, x0 + key.size_m + m, z0 + key.size_m + m)):
+    for a in db.areas_in(lonlat_bbox(frame, x0 - m, z0 - m, x0 + key.size_m + m, z0 + key.size_m + m),
+                         kinds=("building", *VEGETATION_DENSITY)):
         outer = _ring_xz(frame, a.outer, True)
         if outer is None:
             continue
@@ -467,7 +564,7 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
             colour = a.tags.get("colour")
             buildings.append({
                 "id": a.osm_id, "outer": _rel(outer, x0, z0), "holes": [_rel(h, x0, z0) for h in holes],
-                "base_y": L.compute_footprint_base_y(outer, frame, near_tiles, provider),
+                "base_y": L.compute_footprint_base_y(outer, frame, ground_tiles, provider),
                 "height_m": L.compute_building_height(a.osm_id, a.tags), "roof": "flat",
                 "hint": {"building": str(a.tags.get("building")), "colour": colour}})
         elif a.kind in VEGETATION_DENSITY:
@@ -475,7 +572,7 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
                                "holes": [_rel(h, x0, z0) for h in holes], "density": VEGETATION_DENSITY[a.kind]})
 
     bbox = lonlat_bbox(frame, x0, z0, x0 + key.size_m, z0 + key.size_m)
-    for line in db.lines_in(bbox):
+    for line in db.lines_in(bbox, kinds=WATERWAY_KINDS):
         lon = np.array([c[0] for c in line.coords], float)
         lat = np.array([c[1] for c in line.coords], float)
         xs, zs = frame.to_xz(lat, lon)
@@ -514,11 +611,23 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
         poi.append({"id": p.osm_id, "kind": kind, "x": round(x - x0, 2), "y": round(float(y[0]), 2),
                     "z": round(z - z0, 2), "radius_m": radius, "name": p.name})
 
+    def height_fn(xs: np.ndarray, zs: np.ndarray) -> np.ndarray:
+        return L.sample_terrain_y(np.asarray(xs, float), np.asarray(zs, float), frame, near_tiles, provider)
+
+    sea, coast = square_coast(x0, z0, key.size_m, db, frame,
+                              lambda a, b, c, d: lonlat_bbox(frame, a, b, c, d), height_fn, f"{key.ix}_{key.i_n}")
+    for a in sea:
+        water["areas"].append({**a, "outer": _rel(a["outer"], x0, z0), "holes": [_rel(h, x0, z0) for h in a["holes"]]})
+    coast["lines"] = [{**c, "points": _rel(c["points"], x0, z0)} for c in coast["lines"]]
+    coast["beaches"] = [{**b, "outer": _rel(b["outer"], x0, z0), "holes": [_rel(h, x0, z0) for h in b["holes"]]}
+                        for b in coast["beaches"]]
+
     return {
         "buildings": {"version": C.BUILDINGS_VERSION, "buildings": buildings},
         "vegetation": {"version": C.VEGETATION_VERSION, "areas": vegetation},
         "water": {"version": C.WATER_VERSION, **water},
         "poi": {"version": C.POI_VERSION, "points": poi},
+        "coast": coast,
     }
 
 
@@ -606,13 +715,15 @@ def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cach
     frame = zone_frame(key.zone)
     graph, profiles = square_edges(key, db, provider, frame)
     water = square_water(key, db, provider, frame)
-    near = square_terrain(key, graph, profiles, provider, frame, water)
-    layers = square_layers(key, db, near, provider, frame, water)
+    ground, near = square_relief(key, graph, profiles, provider, frame, water)
+    layers = square_layers(key, db, near, provider, frame, water, ground)
     layers["bridges"] = square_bridges(key, graph, profiles, provider, frame)
     counts = {"edges": len(profiles), "buildings": len(layers["buildings"]["buildings"]),
               "vegetation": len(layers["vegetation"]["areas"]), "water_lines": len(layers["water"]["lines"]),
               "water_areas": len(layers["water"]["areas"]), "poi": len(layers["poi"]["points"]),
-              "bridges": len(layers["bridges"]["bridges"])}
+              "bridges": len(layers["bridges"]["bridges"]),
+              "sea": sum(1 for a in layers["water"]["areas"] if a["kind"] == "sea"),
+              "coast_lines": len(layers["coast"]["lines"]), "beaches": len(layers["coast"]["beaches"])}
     meta = {"zone": key.zone, "ix": key.ix, "in": key.i_n, "corner": list(key.corner), "versions": versions,
             "counts": counts}
     files = {"near.f32": np.ascontiguousarray(near, dtype="<f4").tobytes(),

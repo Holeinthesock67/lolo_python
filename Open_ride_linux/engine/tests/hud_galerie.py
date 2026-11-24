@@ -66,8 +66,11 @@ def _bots(s_now: float) -> list[dict[str, Any]]:
 
 # Grand Prix des objets (lot GP8, maquettes GP6 scènes 3, 4, 6 et 7) : bots de la scène 6 (écart au cycliste en s,
 # objet tenu, effets en cours) placés à `ds` mètres du cycliste ; objets de `gp.obj` donnés en mètres devant lui.
-GP_BOTS = [("Grimpeur", 60.0, 6.4, "bell", []), ("Rouleur", 40.0, 4.3, None, []), ("Sprinteur", -6.0, -0.6, "bottle", []),
-           ("Diesel", -60.0, -6.4, None, ["musette"])]
+# Noms courts des rivaux (lot BR4, `rivals.Rival.short`), les plus longs (11 caractères) pour éprouver les colonnes.
+GP_BOTS = [("G. Lagrimpe", 60.0, 6.4, "bell", []), ("A. Asphalte", 40.0, 4.3, None, []),
+           ("V. Vitesse", -6.0, -0.6, "bottle", []), ("G. Lentrain", -60.0, -6.4, None, ["musette"])]
+GP_NAMES_12 = ["G. Lagrimpe", "A. Asphalte", "V. Vitesse", "G. Lentrain", "A. Altitude", "H. Rouleau",
+               "K. Lafusée", "H. Tracteur", "S. Perché", "O. Lebidon", "É. Endurant"]
 GP_WBAL = [74.0, 92.0, 38.0, 100.0]   # réserve W' des bots de la scène 6 (lot RW)
 GP_BASE = {"place": 3, "of": 5, "gap_s": 2.1, "held": "musette_x3", "n": 3, "roll_s": 0.0, "lane": 1, "auto": False,
            "fx": [], "warn": None, "obj": [], "boxes": [], "pick": True, "lap": [2, 3]}
@@ -80,7 +83,7 @@ def _gp_bots(s_now: float, count: int = 0) -> list[dict[str, Any]]:
         # Peloton (lot PL1) : seuls les 5 bots les plus proches portent `wbal_pct` et `gap_s` (bots.light_frame).
         out = []
         for i in range(count):
-            b = {"id": f"g{i}", "name": f"Coureur {i + 1}", "s": s_now + 120.0 - 30.0 * i, "v": 0.0, "kind": "constant",
+            b = {"id": f"g{i}", "name": GP_NAMES_12[i % len(GP_NAMES_12)], "s": s_now + 120.0 - 30.0 * i, "v": 0.0, "kind": "constant",
                  "gap_s": (120.0 - 30.0 * i) / 10.0, "item": items[i % len(items)], "fx": ["bottle"] if i == 9 else []}
             if 2 <= i <= 6:
                 b["wbal_pct"] = 20.0 + 15.0 * (i - 2)
@@ -92,8 +95,9 @@ def _gp_bots(s_now: float, count: int = 0) -> list[dict[str, Any]]:
 
 
 def _gp(s_now: float, spec: dict[str, Any]) -> dict[str, Any]:
-    gp = GP_BASE | {k: v for k, v in spec.items() if k != "obj_ahead"}
+    gp = GP_BASE | {k: v for k, v in spec.items() if k not in ("obj_ahead", "boxes_ahead")}
     gp["obj"] = [[i + 1, kind, round(s_now + ds, 1), lane] for i, (kind, ds, lane) in enumerate(spec.get("obj_ahead", []))]
+    gp["boxes"] = [round(s_now + ds) for ds in spec.get("boxes_ahead", [])]   # rangées de boîtes, devant (lot GPH1)
     return gp
 
 
@@ -109,7 +113,7 @@ GP_SUMMARY = {"duration_s": 1455.0, "distance_m": 15200.0, "avg_power_w": 246.0,
 # et attente avant la capture.
 CAS: list[dict[str, Any]] = [
     {"name": "sim", "state": {}, "texts": {"power": "248", "grade": "+4.5 %"}, "zones": {"power": 4, "hr": 3},
-     "shown": ["gear", "profile"], "hidden": ["target", "erg_hist"]},
+     "shown": ["gear", "profile", "grade"], "hidden": ["notice", "erg_hist"]},
     {"name": "zones_recuperation", "state": {"power": 100.0, "power_3s": 100.0, "hr": 100},
      "zones": {"power": 1, "hr": 1}},
     {"name": "zones_sprint", "state": {"power": 450.0, "power_3s": 450.0, "hr": 176},
@@ -119,19 +123,21 @@ CAS: list[dict[str, Any]] = [
     {"name": "sim_vent_abri", "state": {"wind": {"speed_mps": 26.0 / 3.6, "from_deg": 100.0, "gust": 0.0,
                                                  "head_mps": 26.0 / 3.6, "grade_pct": 1.2}, "draft": 0.165,
                                        "draft_w": 48},
-     "texts": {"draft": "Abri 30 %", "draft_w": "−48 W"}, "shown": ["wind", "draft", "draft_w"]},
+     "texts": {"draft": "Abri 30 %", "draft_w": "−48 W", "wind_direction": "de face"},
+     "shown": ["wind", "wind_speed", "wind_direction", "draft", "draft_w"]},
     {"name": "sim_bots_segment_bonus", "bots": True,
      "state": {"bot_ahead": "b2", "bot_behind": "b3", "jerseys": {"sprint": "b3", "kom": "b1"},
                "segment": {"id": "climb1", "kind": "climb", "category": "4", "d_to_start_m": 0.0,
                            "elapsed_s": 42.0, "gap_to_pr_s": -1.6},
                "powerup": {"held": "aero", "active": None, "remaining_s": 0.0}},
      "shown": ["bots_panel", "segment_panel", "bonus_panel"]},
-    {"name": "erg_cible", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "texts": {"target": "230 W"},
-     "shown": ["target", "erg_hist"], "hidden": ["gear", "profile"]},
-    {"name": "erg_cible_longue", "state": {"mode": "ERG", "erg": _erg(152.0, 98)}, "texts": {"target": "152 W (98 %)"},
-     "hidden": ["gear", "profile"]},
-    {"name": "erg_palier_50w", "state": {"mode": "ERG", "erg": _erg(50.0, 98, "steady")}, "texts": {"target": "50 W (98 %)"},
-     "hidden": ["gear", "profile"]},
+    # Lot NI1 : la cible ERG n'est plus qu'au bandeau ERG (case CIBLE ERG de la colonne gauche retirée).
+    {"name": "erg_cible", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "texts_contains": {"erg_target": "230 W"},
+     "shown": ["erg_target", "erg_hist"], "hidden": ["gear", "profile"]},
+    {"name": "erg_cible_longue", "state": {"mode": "ERG", "erg": _erg(152.0, 98)},
+     "texts_contains": {"erg_target": "152 W (98 %)"}, "hidden": ["gear", "profile"]},
+    {"name": "erg_palier_50w", "state": {"mode": "ERG", "erg": _erg(50.0, 98, "steady")},
+     "texts_contains": {"erg_target": "50 W (98 %)"}, "hidden": ["gear", "profile"]},
     {"name": "erg_test_ftp", "state": {"mode": "ERG", "erg": _erg(300.0, 100, "steady") | {
         "workout_name": "Test de FTP : rampe", "block_index": 12, "block_count": 33, "block_remaining_s": 40.0,
         "block_total_s": 60.0, "next_target_w": 320.0, "bias_locked": True, "ftp_test": "ramp",
@@ -142,18 +148,19 @@ CAS: list[dict[str, Any]] = [
     {"name": "erg_courbes_completes", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "chart": "full", "wait": 7.0,
      "shown": ["chart_erg"], "hidden": ["profile"]},
     {"name": "sim_courbes", "state": {}, "chart": "full", "wait": 7.0, "shown": ["chart_sim", "profile"]},
-    # Épreuves de piste (lot VD9) : bandeau, tours et liste à la place de la ligne d'état et du profil
+    # Épreuves de piste (lot VD9) : bandeau, tours et liste à la place du bandeau central et du profil ; PENTE cachée
+    # (piste plate, lot NI1)
     {"name": "piste_points", "state": {"track": {
         "event": "points", "t_s": 412.0, "lap": 23, "laps": 40, "laps_to_go": 17, "bell": False,
         "ranking": ["b1", "me", "b2", "b3"], "points": [14, 11, 8, 5], "eliminated": [], "finished": False,
         "laps_up": 0, "my_lap": 23, "next_sprint_lap": 25}},
-     "hidden": ["profile", "status"]},
+     "hidden": ["profile", "panel", "grade"]},
     # Réserve W' des bots sur la liste du vélodrome (lot RW) : bots à profil de l'encart de la session libre
     {"name": "piste_points_reserve", "bots": True, "state": {"track": {
         "event": "points", "t_s": 412.0, "lap": 23, "laps": 40, "laps_to_go": 17, "bell": False,
         "ranking": ["b1", "me", "b2", "b3", "b4"], "points": [14, 11, 8, 5, 2], "eliminated": [], "finished": False,
         "laps_up": 0, "my_lap": 23, "next_sprint_lap": 25}},
-     "reserve": "track", "hidden": ["profile", "status", "bots_panel"]},
+     "reserve": "track", "hidden": ["profile", "panel", "grade", "bots_panel"]},
     # Dernier survivant (lot RW) : liste des coureurs avec la réserve des bots
     {"name": "ds_reserve", "bots": True, "state": {"survivor": {
         "arch": 2, "arches": 4, "d_m": 650.0, "alive": ["b1", "b2", "me", "b3", "b4"], "last": "b4", "out": [],
@@ -163,12 +170,12 @@ CAS: list[dict[str, Any]] = [
         "event": "elimination", "t_s": 200.0, "lap": 6, "laps": 24, "laps_to_go": 18, "bell": True,
         "ranking": ["b1", "b2", "me", "b3"], "points": None, "eliminated": ["b3"], "finished": False,
         "to_elim_m": 180.0, "gap_last_s": 0.4, "last": "me", "alive": 3}},
-     "hidden": ["profile", "status"]},
+     "hidden": ["profile", "panel", "grade"]},
     {"name": "piste_poursuite", "state": {"track": {
         "event": "pursuit", "t_s": 150.0, "lap": 9, "laps": 16, "laps_to_go": 8, "bell": False, "ranking": ["me", "b1"],
         "points": None, "eliminated": [], "finished": False, "d_m": 2125.0, "to_go_m": 1875.0, "gap_m": 12.0,
         "gap_s": 0.84, "lead": None}},
-     "hidden": ["profile", "status"]},
+     "hidden": ["profile", "panel", "grade"]},
     {"name": "valeurs_extremes", "state": {"power": 1999.0, "power_3s": 1999.0, "cadence": 199.0, "hr": 199,
                                            "grade": -19.9, "grade_sent": -19.9, "mode": "ERG",
                                            "erg": _erg(1999.0, 150)},
@@ -177,12 +184,15 @@ CAS: list[dict[str, Any]] = [
     # super-forme (maquette 4), 12 coureurs (lot GP10), bilan (maquette 7, en dernier : écran de fin de séance)
     {"name": "gp_hud", "gp": {"obj_ahead": [("bottle", 60.0, 1)]},
      "expect": {"item": "musette_x3", "key": "Z : Trois musettes", "place": "3e / 5", "warn": "",
-                "hint": "Bidon glissant en vue : A ou ← →"}, "hidden": ["bots_panel"]},
+                "hint": "Bidon glissant devant sur ta voie : A ou ← → pour l'éviter"}, "hidden": ["bots_panel"]},
+    # Aide des voies (lot GPH1) : boîte de sa voie prise par un bot, réserve vide
+    {"name": "gp_boite_prise", "gp": {"held": None, "n": 0, "boxes_ahead": [80.0], "boxes_gone": [[0, 1]]},
+     "expect": {"hint": "Boîte prise sur ta voie : A ou ← → pour en changer"}, "hidden": ["bots_panel"]},
     {"name": "gp_attaque", "gp": {"n": 2, "warn": ["homing", 42.0], "obj_ahead": [("homing", -42.0, 1), ("bottle", 25.0, 0)]},
      "expect": {"warn": "Musette guidée derrière !", "outline": True}},
     {"name": "gp_orage_roulette", "gp": {"roll_s": 1.2, "held": None, "n": 0, "fx": [["star", 5.2]], "auto": True,
                                          "lane": 2, "pick": False, "obj_ahead": [("storm", 140.0, -1)]},
-     "expect": {"warn": "Orage vers le premier", "outline": False, "hint": "← → : voie"}},
+     "expect": {"warn": "Orage vers le premier", "outline": False, "hint": "← → : changer de voie"}},
     {"name": "gp_12_coureurs", "gp": {"place": 9, "of": 12, "gap_s": 3.0, "held": "homing", "n": 1, "lap": None},
      "gp_count": 11, "expect": {"place": "9e / 12", "key": "Z : Musette guidée"}},
     # Course (lot CR1) : bande de course du Grand Prix sans objet, réserve des bots (lot RW)
@@ -226,7 +236,10 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
                 gp.pop("lap")
             state |= {"gp": gp, "bots": _gp_bots(core.current_s(), cas.get("gp_count", 0)), "summary": None}
         else:
-            state["gp"] = None
+            # Hors Grand Prix, `gp` est absent de la trame (contrat, révision 1.7) : un `gp: null` laissé par le cas
+            # précédent cachait l'encart des bots (main.gd teste la présence de la clé).
+            with core.lock:
+                core.fields.pop("gp", None)
         core.set_scene(speed=7.0 if chart else 0.0, **state)
         time.sleep(cas.get("wait", vc.SETTLE_S))
         shot = s.capture(cas["name"])

@@ -85,6 +85,10 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     def run(s: CoreSession, seconds: float, every=None) -> None:
         for i in range(int(round(seconds / DT))):
+            if s.state.session_state == "RUNNING" and s.state.arrival is not None \
+                    and s.state.arrival["kind"] != "workout":
+                # lot RT2 : l'arrivée ne termine plus la séance ; le cycliste la termine comme Y puis A maintenu
+                s._on_command("end_session", {"save": True}, 9000)
             wall[0] += DT
             s._step(DT, wall[0])
             if every and i % 15 == 0:   # trame state à environ 30 Hz

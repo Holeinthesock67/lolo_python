@@ -144,6 +144,18 @@ const RARITY_EPIQUE := Color(0.871, 0.698, 0.235)
 const RARITY_LEGENDAIRE := Color(0.745, 0.471, 0.902)
 const CARD_NEW := Color(1.000, 0.690, 0.180)
 const CARD_LOCKED := Color(0.18, 0.20, 0.27)
+## Retours et consignes communs à tous les modes (lot RT1, feedback_model.gd / feedback_view.gd) : une couleur
+## fixe par famille de moment et par ton de résultat, zone de consigne bleu nuit.
+const FB_DEPART := Color(0.15, 0.39, 0.66, 0.94)
+const FB_BIEN := Color(0.12, 0.54, 0.30, 0.94)
+const FB_ATTENTION := Color(0.75, 0.22, 0.17, 0.94)
+const FB_REFUS := Color(0.36, 0.39, 0.45, 0.94)
+const FB_GOLD := Color(0.69, 0.49, 0.07, 0.95)
+const FB_PLACE := Color(0.23, 0.36, 0.53, 0.95)
+const FB_OUT := Color(0.61, 0.17, 0.17, 0.95)
+const FB_CONSIGNE_BG := Color(0.114, 0.165, 0.235, 0.92)
+const FB_CONSIGNE_KEY := Color(0.561, 0.827, 1.0)
+const FB_CONSIGNE_DETAIL := Color(0.85, 0.89, 0.93)
 const DATA := {
 	"grade_descent": GRADE_DESCENT,
 	"grade_flat": GRADE_FLAT,
@@ -229,6 +241,16 @@ const DATA := {
 	"rarity_legendaire": RARITY_LEGENDAIRE,
 	"card_new": CARD_NEW,
 	"card_locked": CARD_LOCKED,
+	"fb_depart": FB_DEPART,
+	"fb_bien": FB_BIEN,
+	"fb_attention": FB_ATTENTION,
+	"fb_refus": FB_REFUS,
+	"fb_gold": FB_GOLD,
+	"fb_place": FB_PLACE,
+	"fb_out": FB_OUT,
+	"fb_consigne_bg": FB_CONSIGNE_BG,
+	"fb_consigne_key": FB_CONSIGNE_KEY,
+	"fb_consigne_detail": FB_CONSIGNE_DETAIL,
 }
 
 # --- Tailles de police --------------------------------------------------------------------------
@@ -277,6 +299,23 @@ static func row_style(focused: bool) -> StyleBoxFlat:
 		s.bg_color = Color(0, 0, 0, 0)
 		s.border_color = Color(0, 0, 0, 0)
 	return s
+
+
+## Ligne d'un tableau de la carte de détail (classement de la ligue d'hiver) ; `me` : ligne du cycliste, encadrée.
+static func table_row_style(me: bool) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.set_corner_radius_all(6)
+	s.content_margin_left = 8
+	s.content_margin_right = 8
+	s.set_border_width_all(2 if me else 0)
+	s.border_color = FOCUS
+	s.bg_color = Color(FOCUS, 0.14) if me else Color(0, 0, 0, 0)
+	return s
+
+
+## Couleur d'un maillot reçue du core (« #rrggbb ») ; vide ou illisible : couleur de la sélection.
+static func jersey_color(hex: String) -> Color:
+	return Color.from_string(hex, FOCUS) if hex != "" else FOCUS
 
 
 ## Carte de détail (fiche du parcours, bilan).

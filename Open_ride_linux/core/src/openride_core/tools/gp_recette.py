@@ -20,7 +20,8 @@ Contrôles :
   reste de la course (99e centile) de plus de `MARGE_PENTE_PCT` point, avec un plancher de
   `PLANCHER_PENTE_PCT` ; celle du supplément de vent et d'abri, seul canal par lequel un objet peut se
   ressentir (plan GP §7), ne dépasse pas `PAS_SUPPLEMENT_PCT` point par seconde ;
-- **format** : au moins une course sur circuit et une course en ligne (cahier GP11 §3).
+- **formats joués** : circuit et course en ligne, pour information seulement (lot GP13b, décision du propriétaire
+  du 20 novembre : les parcours du Grand Prix sont tous en boucle, la course en ligne n'est plus exigée).
 
 Le ressenti sous les pieds, la lisibilité et l'esquive au Click et au clavier restent à cocher par le
 cycliste dans la recette : le journal ne note pas les changements de voie.
@@ -199,7 +200,7 @@ def bilan(courses: list[Course]) -> dict[str, Any]:
     manque_util = [l.item for l in lignes if l.joue and l.utilise == 0]
     manque_subi = [l.item for l in lignes if l.joue and l.a_subir and l.subi == 0]
     non_joues = [l.item for l in lignes if not l.joue]
-    ok = (bool(courses) and not manque_util and not manque_subi and all(formats.values())
+    ok = (bool(courses) and not manque_util and not manque_subi
           and all(p["pente_ok"] for p in par_course))
     return {"courses": par_course, "formats": formats,
             "objets": [{**asdict(l), "ok": l.ok} for l in lignes],
@@ -229,10 +230,6 @@ def texte(b: dict[str, Any]) -> str:
         out.append(f"{o['label']:<24} {'oui' if o['joue'] else 'non':<5} {o['utilise']:>8} {subi:>6} "
                    f"{o['pare']:>6}  {etat}")
     out.append("")
-    if not b["formats"]["circuit"]:
-        out.append("Reste à faire : une course sur circuit.")
-    if not b["formats"]["en_ligne"]:
-        out.append("Reste à faire : une course en ligne.")
     if b["a_utiliser"]:
         out.append("Reste à utiliser : " + ", ".join(gp_items.LABELS[i] for i in b["a_utiliser"]) + ".")
     if b["a_subir"]:

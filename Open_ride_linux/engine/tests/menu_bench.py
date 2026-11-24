@@ -32,7 +32,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
   `contient` et `absent` : textes cherchés dans la ligne d'état, les éléments « libellé — détail », les pastilles
   des appareils et la carte de détail ; `focus`, `elements`, `statut`, `edition`), `menu_cache`, `config` ({clé: valeur} de
   config.toml, `null` : absente), `journal` (`core` ou `engine`) + `motif`, `fichier` (chemin ou motif
-  glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente » ;
+  glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente », et "≠départ" « présente et différente de la valeur du lancement »
+  (qualité changée au menu quand `--qualite` impose celle du départ) ;
 - autres : `commande` (+ `args`), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
   route, `delai` 900 s par défaut), `capture` (nom), `relancer` (core et engine arrêtés proprement puis relancés sur le
   même HOME : persistance des réglages) ;
@@ -47,7 +48,8 @@ En-tête d'un scénario : `description`, `voies` (défaut : les trois), `apparei
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `velodrome` (vrai : piste du
 vélodrome des contenus de départ, lot VD10), `grand_prix_parcours` (vrai : deux parcours d'essai du Grand Prix,
-étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13), `fichiers` ({chemin dans le
+étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13 ;
+depuis le lot GPL1, seule la boucle est un parcours du mode, la ligne étiquetée reste un parcours libre), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
@@ -219,7 +221,19 @@ READY = {"trainer": {"appear_at": 0.3, "connect_delay_s": 0.3},
 UNILATERAL = {**READY, "click": {"appear_at": 0.5, "connect_delay_s": 0.3, "minus": {"appear_at": 100000}}}
 APPAREILS = {"prets": READY, "unilateral": UNILATERAL}
 # Réglages de départ du banc (le scénario peut les changer) : rendu léger sous Xvfb, fenêtre et non plein écran.
-BASE_CONFIG = {"render.quality": "low", "render.display": "windowed"}
+# `depart.echauffement_min` 0 : pas d'échauffement avant les courses (lot EL1) ; le scénario `elimination` le remet
+# par son en-tête `config`.
+BASE_CONFIG = {"render.quality": "low", "render.display": "windowed", "depart.echauffement_min": 0}
+
+
+def config_matches(got: Any, want: Any, start: Any) -> bool:
+    """Valeur lue dans config.toml pour une étape `config` : "*" présente, "≠départ" présente et différente de la
+    valeur écrite au lancement (`start`), sinon égale à `want`."""
+    if want == "*":
+        return got is not None
+    if want == "≠départ":
+        return got is not None and got != start
+    return got == want
 
 STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris", "element", "point", "click",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
@@ -227,7 +241,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "attendre", "distance_km", "capture", "relancer", "delai", "voies", "note",
              "depart_monde_ouvert"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "grand_prix_parcours", "reseau", "caches_reels", "etapes"}
+             "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -266,7 +280,8 @@ def threads_of(pid: int) -> list[str]:
 
 def write_grand_prix_routes(routes: Path) -> None:
     """Parcours d'essai du Grand Prix (lot GP13) : `gp-ligne` (démo de 5 km en ligne) et `gp-boucle` (piste de 250 m
-    en boucle), copiés et étiquetés « grandprix » : parcours du mode, absents de la liste générale."""
+    en boucle), copiés et étiquetés « grandprix ». Lot GPL1 : seule la boucle est un parcours du mode (absente de la
+    liste générale) ; la ligne étiquetée reste un parcours libre (absente de la liste du mode)."""
     from openride_core.velodrome import write_velodrome
 
     shutil.copytree(ENGINE_DIR / "demo" / "demo.world", routes / "gp-ligne.world")
@@ -277,6 +292,35 @@ def write_grand_prix_routes(routes: Path) -> None:
         manifest = json.loads(mpath.read_text(encoding="utf-8"))
         manifest["name"] = name
         manifest["library"] = {**(manifest.get("library") or {}), "name": name, "tags": ["grandprix"]}
+        mpath.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+# Caches de rendu de Godot et du pilote graphique, rangés dans le HOME (lot ML2) : shaders compilés, pipelines Vulkan,
+# cache de Mesa et de NVIDIA. Le HOME du banc étant neuf, chaque passage partait à froid (15 s de compilation au
+# premier rendu sur le PC, banc rML2 du 17 novembre) ; `--caches-rendu DOSSIER` les garde d'un passage à l'autre.
+RENDER_CACHES = (".local/share/godot/app_userdata/OpenRide Engine/shader_cache",
+                 ".local/share/godot/app_userdata/OpenRide Engine/vulkan", ".cache/mesa_shader_cache", ".cache/nvidia")
+
+
+def copy_render_caches(src_home: Path, dst_home: Path) -> int:
+    """Copie les caches de rendu (RENDER_CACHES) de `src_home` vers `dst_home` ; renvoie le nombre de dossiers copiés."""
+    n = 0
+    for rel in RENDER_CACHES:
+        if (src_home / rel).is_dir():
+            shutil.copytree(src_home / rel, dst_home / rel, dirs_exist_ok=True)
+            n += 1
+    return n
+
+
+def write_demo_copies(routes: Path, n: int) -> None:
+    """`n` copies de la démo (« Copie 01 »…), parcours libres : liste des parcours aussi longue que celle du pack
+    des cols, sans le compilateur (lot ML2)."""
+    for i in range(1, n + 1):
+        rid, name = f"copie-{i:02d}", f"Copie {i:02d}"
+        shutil.copytree(ENGINE_DIR / "demo" / "demo.world", routes / f"{rid}.world")
+        mpath = routes / f"{rid}.world" / "manifest.json"
+        manifest = json.loads(mpath.read_text(encoding="utf-8"))
+        manifest["name"] = name
         mpath.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
@@ -663,8 +707,8 @@ class Run:
                 data = tomllib.loads(self.config.read_text(encoding="utf-8"))
             except (OSError, tomllib.TOMLDecodeError) as exc:
                 data = {"_erreur": str(exc)}
-            bad = {k: config_get(data, k) for k, v in want.items()
-                   if (config_get(data, k) is None if v == "*" else config_get(data, k) != v)}
+            bad = {k: config_get(data, k) for k, v in want.items() if not config_matches(config_get(data, k), v,
+                                                                                      self.start_config.get(k))}
             if not bad or now() >= deadline:
                 break
             time.sleep(0.2)
@@ -764,6 +808,8 @@ class Run:
             install_velodromes(self.routes)
         if doc.get("grand_prix_parcours"):   # parcours d'essai du Grand Prix (lot GP13), sans le compilateur
             write_grand_prix_routes(self.routes)
+        if doc.get("parcours_copies"):   # liste des parcours longue (lot ML2) : copies de la démo
+            write_demo_copies(self.routes, int(doc["parcours_copies"]))
         if doc.get("plans"):
             from openride_core.plans import install_builtin
             install_builtin(self.home / "OpenRide" / "Plans", self.home / "OpenRide" / "Workouts")
@@ -779,12 +825,16 @@ class Run:
                             encoding="utf-8")
         for rel, members in doc.get("archives", {}).items():
             write_archive(self.home / rel, members)
+        if self.args.caches_rendu is not None:   # caches de rendu d'un passage précédent (lot ML2)
+            copy_render_caches(self.args.caches_rendu, self.home)
         self.state_port, self.cmd_port = free_udp_ports(2)
         self.config = self.tmp / "config.toml"
+        # Valeurs écrites au lancement, gardées pour la valeur « ≠départ » des étapes `config` (--qualite change
+        # la qualité de départ : un scénario qui la change au menu ne peut pas viser une valeur fixe, 22 novembre).
+        self.start_config = {**BASE_CONFIG, **self.real_caches_config(), **doc.get("config", {}),
+                             **({"render.quality": self.args.qualite} if self.args.qualite else {})}
         self.config.write_text(f"[ipc]\nport_state = {self.state_port}\nport_commands = {self.cmd_port}\n"
-                               + config_text({**BASE_CONFIG, **self.real_caches_config(), **doc.get("config", {}),
-                                             **({"render.quality": self.args.qualite} if self.args.qualite else {})}),
-                               encoding="utf-8")
+                               + config_text(self.start_config), encoding="utf-8")
         self.control = self.tmp / "click.jsonl"
         scen = {**APPAREILS[doc.get("appareils", "prets")], "control_file": str(self.control)}
         (self.tmp / "scenario.json").write_text(json.dumps(scen), encoding="utf-8")
@@ -828,6 +878,8 @@ class Run:
         sup = build_supervisor(["--config", str(self.config)], env={"GODOT": str(a.godot),
                                                                      "OPENRIDE_ENGINE": str(ENGINE_DIR)})
         cmd += sup.engine_cmd[sup.engine_cmd.index("--"):] + [f"--routes-dir={self.routes}", "--test-mode"]
+        if a.sonde:   # sonde de performance de l'engine (lot X13) : moteur.csv, saccades.csv, taches.csv (lot ML2)
+            cmd.append(f"--perf-probe={self.out / f'sonde{suffix}' / 'moteur.csv'}")
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
@@ -877,6 +929,8 @@ class Run:
             self.core = None
 
     def cleanup(self) -> None:
+        if self.args.caches_rendu is not None and self.home != Path():   # caches gardés pour le passage suivant
+            copy_render_caches(self.home, self.args.caches_rendu)
         if not self.args.keep:
             shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -1037,6 +1091,19 @@ def write_reports(out: Path, runs: list[Run]) -> Path:
     return path
 
 
+def parse_partie(text: str | None) -> tuple[int, int] | None:
+    """« K/N » de --partie, avec 1 ≤ K ≤ N ; None sans découpage."""
+    if not text:
+        return None
+    try:
+        k, n = (int(x) for x in text.split("/"))
+    except ValueError:
+        raise ValueError(f"--partie attend K/N (par exemple 2/3), reçu {text!r}") from None
+    if not 1 <= k <= n:
+        raise ValueError(f"--partie attend 1 ≤ K ≤ N, reçu {text!r}")
+    return k, n
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
@@ -1045,6 +1112,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--voies", default=",".join(VOIES), help="voies d'entrée, séparées par des virgules")
     ap.add_argument("--rotation", action="store_true",
                     help="une seule voie par scénario, à tour de rôle (intégration continue : trois fois plus court)")
+    ap.add_argument("--partie", metavar="K/N",
+                    help="joue seulement la partie K des N (scénarios K, K+N, K+2N…, rotation des voies inchangée) : "
+                         "intégration continue répartie sur N machines")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel au lieu de Xvfb")
     ap.add_argument("--out", type=Path)
     ap.add_argument("--captures", choices=["echecs", "ecrans"], default="echecs",
@@ -1058,6 +1128,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--engine-arg", action="append", default=[], help="argument ajouté à la commande de Godot")
     ap.add_argument("--qualite", choices=["low", "medium", "high"],
                     help="préréglage graphique imposé à tous les scénarios (render.quality, défaut : low ou celui du scénario)")
+    ap.add_argument("--caches-rendu", type=Path, metavar="DOSSIER",
+                    help="caches de rendu (shaders, pipelines, pilote) repris de DOSSIER et rangés dedans à la fin : "
+                         "démarrage à chaud comme le jeu (défaut : HOME neuf, démarrage à froid)")
+    ap.add_argument("--sonde", action="store_true",
+                    help="sonde de performance de l'engine : sonde/moteur.csv et saccades.csv de chaque passage (lot ML2)")
     args = ap.parse_args(argv)
     known = scenarios()
     if args.list:
@@ -1065,6 +1140,11 @@ def main(argv: list[str] | None = None) -> int:
             doc = load_scenario(path)
             print(f"{name:24s} {','.join(doc.get('voies', VOIES)):22s} {doc.get('description', '')}")
         return 0
+    try:
+        partie = parse_partie(args.partie)
+    except ValueError as exc:
+        print(exc)
+        return 2
     voies = [v for v in args.voies.split(",") if v]
     if any(v not in VOIES for v in voies):
         print(f"voies inconnues : {args.voies} (permises : {', '.join(VOIES)})")
@@ -1090,6 +1170,8 @@ def main(argv: list[str] | None = None) -> int:
     out = args.out or Path(tempfile.mkdtemp(prefix="openride-banc-menus-"))
     runs: list[Run] = []
     for i, (name, path) in enumerate(chosen):
+        if partie and i % partie[1] != partie[0] - 1:
+            continue   # l'indice i reste celui de la liste entière : la rotation des voies ne dépend pas du découpage
         doc = load_scenario(path)
         mine = [v for v in voies if v in doc.get("voies", VOIES)]
         if args.rotation and mine:

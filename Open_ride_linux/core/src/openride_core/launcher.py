@@ -330,6 +330,21 @@ def migrate_profiles(home: Path | None = None) -> str | None:
     return None
 
 
+def migrate_settings(home: Path | None = None) -> list[str]:
+    """Réglages retirés du menu remis par défaut dans les fichiers du joueur (lot NI2, `migration_reglages.py`) ;
+    une ligne au journal par fichier changé ; une erreur d'écriture n'empêche pas de démarrer."""
+    from . import migration_reglages
+
+    try:
+        done = migration_reglages.migrate(home)
+    except OSError as exc:
+        print(f"openride : réglages retirés non migrés : {exc}", file=sys.stderr)
+        return []
+    for line in done:
+        print(f"openride : {line}", flush=True)
+    return done
+
+
 def _default_echo() -> bool:
     try:
         return sys.stdout.isatty()
@@ -447,8 +462,9 @@ class Supervisor:
         if self.alert is not None:
             try:
                 self.alert(f"{msg}\n\nJournal : {self.log_path}")
-            except Exception:   # une fenêtre impossible ne doit rien bloquer
-                pass
+            except Exception as exc:   # une fenêtre impossible ne doit rien bloquer
+                self._write_log(
+                    f"{log_timestamp()} WARNING [openride] fenêtre d'alerte impossible : {exc}\n".encode())
 
     def _log_text(self, new_only: bool = False) -> str:
         try:
@@ -899,8 +915,10 @@ def record_theme_use(themes_dir: Path, theme: str, when: datetime | None = None)
     if not isinstance(uses, dict):
         uses = {}
     uses[theme] = (when or datetime.now()).isoformat(timespec="seconds")
+    tmp = path.with_name(path.name + ".tmp")   # même dossier : remplacement atomique
     try:
-        path.write_text(json.dumps(uses, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        tmp.write_text(json.dumps(uses, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
     except OSError:
         pass
 
@@ -1073,6 +1091,7 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
         if warning:
             print(f"openride : {warning}", file=sys.stderr)
             message(warning, True)
+        migrate_settings()
     for _ in range(config_repair.MAX_REPAIRS + 1):
         try:
             sup = build_supervisor(args)

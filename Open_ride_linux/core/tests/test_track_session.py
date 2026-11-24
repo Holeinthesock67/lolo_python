@@ -102,7 +102,7 @@ def test_kilo_end_to_end_record_fit_and_summary(env):
 
 
 def test_scratch_with_bots_on_the_grid(env):
-    make, run, _ = env
+    make, run, tmp_path = env
     s, errors = make(6810, power_w=300.0)
     s._on_command("start", {"mode": "track", "track": {"event": "scratch", "opponents": 3, "laps": 10}}, 2)
     assert not errors and len(s.bots) == 3 and all(b.s <= s.physics.s for b in s.bots)
@@ -110,6 +110,8 @@ def test_scratch_with_bots_on_the_grid(env):
     f = s.state.track
     assert f["event"] == "scratch" and f["laps"] == 10 and len(f["ranking"]) == 4 and f["points"] is None
     validator().validate(s.state.to_dict())
+    s._on_command("end_session", {"save": True}, 3)   # épreuve arrêtée avant l'arrivée : la cote ne bouge pas
+    assert "elo" not in s.state.summary and not (tmp_path / "elo.json").exists()
 
 
 def test_pursuit_opponent_starts_on_the_other_side(env):
@@ -183,6 +185,9 @@ def test_second_elimination_in_a_row_starts_from_scratch(env, caplog):
     assert first is not None and first.finished and first.riders["me"].out is not None
     s._on_command("end_session", {"save": True}, 3)
     assert s.state.session_state == "FINISHED" and s.state.track is None
+    elo = s.state.summary["elo"]   # lot BOT-elo : élimination courue jusqu'au bout, cycliste éliminé
+    assert elo["mode"] == "track" and elo["of"] == 8 and elo["place"] == s.state.summary["track"]["place"]
+    assert elo["after"] <= elo["before"] or elo["place"] <= 4
     s._on_command("select_route", {"route_id": velodrome.TRACK_ID}, 4)
     # 15 novembre : la trame de l'attente du départ repart de la ligne, pas de l'arrivée d'avant
     assert s.state.session_state == "READY" and s.state.s == 0.0 and s.state.t == 0.0 and s.state.v == 0.0
@@ -201,3 +206,34 @@ def test_second_elimination_in_a_row_starts_from_scratch(env, caplog):
     assert {t.seed for t in tactics} == {s.track_event.seed}
     lines = [r.getMessage() for r in caplog.records if r.getMessage().startswith("Tactique des bots")]
     assert len(lines) == 1 and lines[0].startswith("Tactique des bots : track_full")
+
+
+def test_elimination_win_is_marked_and_frames_carry_gaps(env):
+    """Essai du 21 novembre : premier à l'élimination, rien ne le marquait. L'épreuve finie, la trame le dit (place
+    dans `ranking`, l'engine affiche la victoire) et la séance continue (choix du propriétaire du 21 novembre, fil
+    « retours » : retour au calme, bilan à la demande) ; les trames portent les écarts aux voisins."""
+    make, run, tmp_path = env
+    s, errors = make(6820, power_w=600.0)
+    s.cfg.bots.level_pct = 50
+    s._on_command("start", {"mode": "track", "track": {"event": "elimination", "opponents": 3, "every_laps": 2}}, 2)
+    assert not errors and s.state.session_state == "RUNNING"
+    v = validator()
+    frames: list[dict] = []
+
+    def check(sess):
+        d = sess.state.to_dict()
+        v.validate(d)
+        assert ipc_budget.size(d) <= 4096
+        frames.append(d["track"])
+
+    run(s, 1800.0, check, until=lambda x: x.track_event is not None and x.track_event.finished)
+    ev = s.track_event
+    assert ev is not None and ev.finished and ev._ranking()[0] == "me"
+    assert all(f["every_laps"] == 2 for f in frames)
+    assert any(f["ahead"] is not None or f["behind"] is not None for f in frames)
+    assert all(f["ahead"] is None or f["ahead"]["gap_s"] >= 0 for f in frames)
+    assert all(f["behind"] is None or f["behind"]["gap_s"] <= 0 for f in frames)
+    run(s, 30.0)
+    s._fill_track_frame()
+    assert s.state.session_state == "RUNNING" and s.state.track["finished"] and s.state.track["ranking"][0] == "me"
+    assert s.state.track["ahead"] is None and s.state.track["behind"] is None

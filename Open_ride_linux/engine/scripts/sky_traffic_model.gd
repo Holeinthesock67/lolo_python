@@ -121,6 +121,10 @@ const BIOME_SKY := {
 	"atlantic_heath": {"para": 0.7, "para_max": 4, "balloon": 0.15, "paramotor": 0.15},
 	"high_plateau": {"para": 0.3, "para_max": 2, "balloon": 0.0, "paramotor": 0.0},
 	"reef": {"para": 0.0, "para_max": 1, "balloon": 0.0, "paramotor": 0.0},   # lot SM1 : sous l'eau, rien ne vole
+	# Lot V6-r4 : peu de parapentes dans le brouillard de la forêt de nuages et sous la pluie de la forêt pluviale
+	"cloud_forest": {"para": 0.2, "para_max": 2, "balloon": 0.0, "paramotor": 0.0},
+	"eucalypt_woodland": {"para": 0.4, "para_max": 3, "balloon": 0.3, "paramotor": 0.1},
+	"temperate_rainforest": {"para": 0.2, "para_max": 2, "balloon": 0.0, "paramotor": 0.0},
 }
 
 const CAMERA_EYE_M := 1.4          # hauteur de la caméra au-dessus du sol (sol des montgolfières)

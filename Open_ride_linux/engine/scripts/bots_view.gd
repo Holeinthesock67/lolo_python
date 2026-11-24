@@ -262,7 +262,7 @@ func avatar_of(id: String) -> Variant:
 	return null
 
 
-## Position dans le monde de la silhouette du bot `id` (jauge d'abri, draft_gauge.gd) ; null s'il n'est pas affiché.
+## Position dans le monde de la silhouette du bot `id` (effets posés sur un bot : WTF, Grand Prix) ; null s'il n'est pas affiché.
 func anchor_of(id: String) -> Variant:
 	for key in _nodes:
 		if str(key).get_slice(":", 0) == id and _nodes[key].visible:
