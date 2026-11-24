@@ -493,6 +493,8 @@ rogue_sfx_pct = 70           # Cyber-Rogue : bruitages de jeu (lot R18, bus Rogu
 rogue_music_pct = 40         # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 [log]
 latence = false              # journal de latence des appuis du Click, lignes [latence] (lot X7 ; --latence)
+[privacy]
+hide_start = "off"           # zone privée au départ (lot PZ1) : "on", aucune position à moins de 500 m du départ dans les FIT et le GPX du monde ouvert ; réglable dans le menu (Avancé), suit le profil
 [profils]
 dernier = ""                 # dernier profil de joueur choisi, profil par défaut au lancement (série MJ, lot MJ7 ; écrit par le core)
 [rogue]

@@ -57,6 +57,7 @@ const CHOICE_TEXTS := {
 	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"ride.vehicle_draft": {"on": "oui", "off": "non"},
 	"bots.elo": {"on": "oui", "off": "non"},   # lot BOT-elo : niveau automatique (Elo)
+	"privacy.hide_start": {"on": "oui", "off": "non"},   # lot PZ1 : zone privée au départ
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	"gravel.mode": {"off": "coupé", "auto": "chemins réels", "compacted": "chemin compact", "gravel": "gravier",
 		"dirt": "terre"},
