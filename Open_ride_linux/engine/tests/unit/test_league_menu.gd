@@ -174,9 +174,10 @@ func _test_grand_prix_loop() -> void:
 	f.menu.focus_item("change_route")
 	f.handle("A_LONG")
 	st = f.state()
-	_check(st["screen"] == MenuModel.ROUTES and "demo-circuit" in _ids(st) and not "demo" in _ids(st),
-		"Changer de parcours : liste du Grand Prix (%s)" % str(_ids(st)))
-	_check(not "vignes" in _ids(st), "trace en ligne étiquetée : parcours libre, hors de la liste du Grand Prix (lot GPL1)")
+	# Lot GPL1 : un parcours de mode est une boucle ; la trace en ligne étiquetée « grandprix » reste libre, hors de
+	# la liste du Grand Prix (Démarrer grisé sur un parcours en ligne : vérifié plus haut par LeagueViewModel.ready)
+	_check(st["screen"] == MenuModel.ROUTES and "demo-circuit" in _ids(st) and not "demo" in _ids(st)
+		and not "vignes" in _ids(st), "Changer de parcours : liste du Grand Prix, boucles seulement (%s)" % str(_ids(st)))
 
 
 func _test_card() -> void:

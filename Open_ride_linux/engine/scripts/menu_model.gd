@@ -114,6 +114,9 @@ const SETTINGS_MODES := ["survivor", "grandprix", "race"]
 const INTENSITY_ID := "intensity"
 ## Ligne « Objets » de l'écran Prêt du Grand Prix (lot GP9) : ouvre l'écran des objets (menu_flow.gd).
 const GP_ITEMS_ID := "gp_items"
+## Dernière ligne de l'écran Prêt du Grand Prix (lot GPH1) : « Comment ça marche ? », résumé dans la carte de
+## droite, ouvre l'écran « Aide Grand Prix » (grandprix/gp_help.gd, menu_flow.gd).
+const GP_HELP_ID := "_gp_help"
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 ## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
@@ -390,7 +393,7 @@ func _build_home_and_ready() -> void:
 	if mode in SETTINGS_MODES:
 		_screens[READY]["items"] = [_item("start", "Lancer", bool(mode_launch.get("enabled", true)),
 			str(mode_launch.get("detail", "")))] + _intensity_items() + [_item("change_route", "Changer de parcours")] \
-			+ mode_rows + ([_item(GP_ITEMS_ID, gp_items_label)] if mode == "grandprix" else [])
+			+ mode_rows + ([_item(GP_ITEMS_ID, gp_items_label), _item(GP_HELP_ID, "Comment ça marche ?")] if mode == "grandprix" else [])
 		_screens[READY]["title"] = "Prêt : " + str(HOME_MODES[mode]) + ("" if world_name == "" else " — " + world_name)
 		return
 	if is_track():
@@ -474,7 +477,8 @@ func is_free_route(id: String) -> bool:
 	return true
 
 
-## Mode auquel appartient un parcours ("" : parcours libre, y compris un parcours de mode resté libre, lot GPL1).
+## Mode d'un parcours de mode (ligue d'hiver, lot CH3), "" pour un parcours de la liste générale : libre, ou d'un
+## mode et resté libre (étiquette `free_route_tag`, lot GPL1), même règle que is_free_route().
 func route_mode_of(id: String) -> String:
 	if is_free_route(id):
 		return ""
@@ -1326,7 +1330,7 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open_routes()
-				"rogue_change", "wtf_rules", GP_ITEMS_ID, INTENSITY_ID:
+				"rogue_change", "wtf_rules", GP_ITEMS_ID, INTENSITY_ID, GP_HELP_ID:
 					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
 					return {"action": "item", "screen": READY, "id": id}
