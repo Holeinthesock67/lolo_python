@@ -448,7 +448,7 @@ static func _validate_v2(data: Dictionary, errors: PackedStringArray) -> void:
 
 
 static func _resolve_tex_path(theme_dir: String, rel_path: String) -> String:
-	var base := ProjectSettings.globalize_path(theme_dir).simplify_path()
+	var base := theme_dir.simplify_path()
 	var full := base.path_join(rel_path).simplify_path()
 	if not full.begins_with(base + "/") and full != base:
 		return ""
@@ -504,7 +504,7 @@ static func load_theme(theme_dir: String) -> Dictionary:
 	var warnings := PackedStringArray()
 	var errors := PackedStringArray()
 
-	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(theme_dir)):
+	if not DirAccess.dir_exists_absolute(theme_dir):
 		errors.append("dossier de thème introuvable : " + theme_dir)
 		print("[theme] erreur : ", errors[0], " ; repli sur default")
 		return {"theme": default_theme, "warnings": warnings, "errors": errors, "theme_dir": DEFAULT_THEME_DIR}
@@ -565,7 +565,7 @@ static func load_theme(theme_dir: String) -> Dictionary:
 	# Le pack de biomes du thème par défaut n'est jamais prêté à un autre thème : un thème 1.x décrit
 	# tous les biomes, et un biome absent d'un thème 2.0 prend ses clés 1.x (Format .world v1 §9).
 	var base := default_theme
-	if ProjectSettings.globalize_path(theme_dir).simplify_path() != ProjectSettings.globalize_path(DEFAULT_THEME_DIR).simplify_path():
+	if theme_dir.simplify_path() != DEFAULT_THEME_DIR.simplify_path():
 		base = without_biomes(default_theme)
 	var merged := _deep_merge(base, dict_data)
 	return {"theme": merged, "warnings": warnings, "errors": errors, "theme_dir": theme_dir}
