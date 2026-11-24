@@ -1,7 +1,7 @@
 # Série CH – Ligue d'hiver (mode championnat)
 
-Cahier du mode, lot CH0 (21 novembre 2026). Rien n'est codé : ce document et les maquettes doivent être validés
-par le propriétaire avant le premier lot de code (CH1).
+Cahier du mode, lot CH0 (21 novembre 2026, fusionné avec la PR #968). Code en PR au 22 novembre : CH1 cœur de la
+saison (#972), CH2 dureté (#987), CH3a manche de la semaine (#989) ; CH4 (écrans) et CH5 restent à coder.
 
 Maquettes : `menus/ch0-ligue-hiver/` des fichiers du projet (hors dépôt), planche `planche_1280x720.png`.
 FTP fictive de 250 W sur toutes les maquettes.
@@ -139,3 +139,6 @@ des fichiers du projet).
 
 - 21/11/2026 : cahier CH0 et maquettes 01 à 05, réponses par défaut du §3 à faire valider.
 - 21/11/2026, 18 h 32 : maquettes 01 à 05 validées par le propriétaire (« Ok captures ») ; les réponses par défaut du §3 restent appliquées sauf correction.
+- 21/11/2026, soir : CH1 codé (`league.py`, `docs/lots/LOT_CH1_saison_ligue.md`) ; la classique se court de la date choisie à la fin de la semaine 8 ; les pauses s'additionnent pour la limite de 4 semaines.
+- 21/11/2026, soir : CH2 codé (dureté à 10 % par manche, étalement de 150 points, banc `ligue_campagne`, `docs/lots/LOT_CH2_calibrage_ligue.md`).
+- 22/11/2026 : objectif du propriétaire, démarrer un championnat le week-end du 28-29 novembre ; CH3a codé (manche 1 en Course, révision IPC 1.30, `docs/lots/LOT_CH3_manche_ligue.md`).

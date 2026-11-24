@@ -2,9 +2,22 @@
 
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
+Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses lignes dans `docs/changements/<LOT>.md`, recopiées par la passe de doc (`docs/changements/README.md`).
 
 ## Non publié
 
+### Moins de brouillard et de halo en medium et high (lot BH1)
+- En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
+
+### Cyber-Rogue sans voile en high (lot R27)
+- En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
+
+### HUD sans éléments inutiles (lot NI1)
+- Plus de ligne « ÉTAT: RUNNING | TRAINER… | ENTRÉE… » en haut de l'écran : le bandeau central ne parle que de la prochaine montée, ou d'un problème (core attendu, trainer perdu) ; sinon il disparaît.
+- La cible ERG n'est plus qu'au bandeau ERG (case « CIBLE ERG » retirée) ; la pente n'est plus affichée au vélodrome (toujours 0 %).
+- Le vent tient en une flèche et deux lignes : « 26 km/h » et « de face » (plus de barres, de niveau ni de pastille).
+- Cyber-Rogue : la vitesse engagée n'est plus qu'au pavé VITESSE.
+- La jauge d'abri au-dessus des bots et son réglage sont retirés : la pastille « Abri 30 % » du HUD dit la même chose.
 ### Début de run et adrénaline du Cyber-Rogue (lot R26)
 - L'échauffement charge l'adrénaline à sa consigne, comme une salle : on arrive à la première porte de quoi frapper (essai du 21 novembre : « on commence sans adrénaline, il y a tout de suite une porte à frapper » ; choix du propriétaire).
 - Consignes jugées sur la puissance moyenne des 8 dernières secondes, affichée pendant la run, à 10 % de la consigne près (au moins 5 W), avec une marge de sortie (15 % sous la consigne) : sur 3 s et à 5 W près, le bruit du trainer faisait sortir de la plage sans cesse.
