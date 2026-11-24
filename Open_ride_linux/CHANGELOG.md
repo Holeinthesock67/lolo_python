@@ -38,6 +38,9 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - Consignes jugées sur la puissance moyenne des 8 dernières secondes, affichée pendant la run, à 10 % de la consigne près (au moins 5 W), avec une marge de sortie (15 % sous la consigne) : sur 3 s et à 5 W près, le bruit du trainer faisait sortir de la plage sans cesse.
 - Plage en watts et écart en direct à l'écran, son d'entrée et de sortie de la plage (événements `target_in` et `target_out`, contrat IPC révision 1.28).
 
+### À-coups de main (lot AC4)
+- Plus d'image figée d'une demi-seconde à une seconde au chargement d'un parcours (départ du Cyber-Rogue, Grand Prix) : les cyclistes du décor se préparent sans bloquer l'affichage (lot AC4).
+
 ### Jauge « Réserve W' » retirée du Cyber-Rogue (lot R25)
 - La 4e jauge du HUD, « Réserve W' », disparaît : elle n'agissait sur rien dans le jeu et nuisait à la lisibilité (essai du 21 novembre). Restent Ennemi, Bouclier et Adrénaline.
 - L'écran de départ du mode ne propose plus le choix « W' », qui ne réglait que cette jauge.
@@ -46,6 +49,10 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - La pause d'une run ne recharge plus le parcours de démo sous la scène du mode : en mode Cyber-Rogue la trame n'a pas de parcours, et l'écran de pause, qui est un menu, demandait la démo des menus, construite en entier (tuiles, arbres, bâtiments, horizon) pendant la run (images de 140 ms vers 104 s, passes PC du 12 novembre).
 - Un thème ou un biome changés pendant la run ne reconstruisent plus le décor vidé ; il est rechargé au retour.
 - Banc du Cyber-Rogue : nouvelle vérification « monde classique gelé pendant la run (pause comprise) ».
+
+### À-coups du rechargement d'un parcours (lot AC5)
+- Changer de parcours au menu, ou revenir au monde classique après une run Cyber-Rogue, ne fige plus une image de 180 à 220 ms : le chargement se fait en trois étapes, une par image, et jamais dans l'image qui affiche déjà un écran lourd (bilan de fin de run).
+- Les spectateurs et les passants se préparent un groupe à la fois, au lieu de tous dans la même image (133 ms en medium).
 
 ### Trois nouveaux biomes : forêt de nuages, bush à eucalyptus, forêt pluviale tempérée (lot V6-r4)
 - Forêt de nuages des Andes, d'Amérique centrale et d'Afrique de l'Est : fougères arborescentes, palmiers à cire, brouillard épais, perroquets et singes.

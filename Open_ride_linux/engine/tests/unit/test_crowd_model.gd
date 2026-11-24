@@ -157,6 +157,18 @@ func _run() -> void:
 	_check(r.visible_count() == r._mmi.size(), "préchauffage en cours : une personne par MultiMesh, rien d'autre")
 	r.update(route.sample_point(9900.0), 0.0, 0.0)
 	_check(r.visible_count() == r.budget, "après le préchauffage, la sélection reprend (%d)" % r.visible_count())
+	# Lot AC5 : étapes du plan unique, un MultiMesh par image (11 pipelines dans une image de 133 ms avant).
+	var wsteps: Array = r.warm_steps(cam)
+	_check(wsteps.size() == r._mmi.size(), "préchauffage par étapes : une étape par MultiMesh (%d)" % wsteps.size())
+	var one_each := true
+	for m in range(wsteps.size()):
+		(wsteps[m][1] as Callable).call()
+		for k in range(r._mmi.size()):
+			one_each = one_each and r._mmi[k].multimesh.visible_instance_count == (1 if k == m else 0)
+	_check(one_each, "chaque étape ne montre que son MultiMesh devant la caméra")
+	for k in range(CrowdRenderer.WARM_FRAMES):
+		r.update(route.sample_point(9900.0), 0.0, 0.0)
+	_check(r.visible_count() == r.budget, "après les étapes, la sélection reprend (%d)" % r.visible_count())
 	cam.queue_free()
 	r.set_preset("high", false)
 	r.update(route.sample_point(9950.0), 0.1, 0.0)
