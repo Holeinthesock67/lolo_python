@@ -49,9 +49,8 @@ MONTHS = 6
 BLOCKING_RAMP = ("too_short", "trainer_dropout", "paused")   # ftp_test.BLOCKING
 CONF_RELIABLE, CONF_INDICATIVE, CONF_NONE = "Fiable", "Indicative", "Pas assez de données"
 WARNINGS = (
-    "L'estimation suppose des efforts à fond : sans effort à fond récent, elle est trop basse.",
-    "La puissance vient du home trainer : un changement de calibration décale toute la courbe, "
-    "et le jeu ne peut pas le voir.",
+    "Suppose des efforts à fond : sans effort à fond récent, l'estimation est trop basse.",
+    "Un changement de calibration du home trainer décale toute la courbe.",
 )
 
 
@@ -108,8 +107,7 @@ def _cp_estimate(free: dict[int, tuple[float, float]], ftp_set_w: float) -> tupl
     last = max(free[d][1] for d in used)
     return {"ftp_w": int(round(cp)), "source": "cp", "confidence": conf, "date": _date(last),
             "source_text": (f"puissance critique de tes efforts libres de "
-                            f"{pc.duration_label(used[0])} à {pc.duration_label(used[-1])} "
-                            f"des 6 dernières semaines ({len(used)} durées)")}, None
+                            f"{pc.duration_label(used[0])} à {pc.duration_label(used[-1])}, 6 dernières semaines")}, None
 
 
 def estimate_from_sessions(kept: list, ftp_set_w: float, now: float) -> dict[str, Any]:

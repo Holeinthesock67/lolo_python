@@ -13,6 +13,7 @@ extends RefCounted
 ##   profil en cours et le dernier profil joueur ne se suppriment pas).
 ## - « Gérer un profil » finit par « Vider le profil d'essai » (confirmation, `clear_trial_profile`) et
 ##   « Restaurer un profil supprimé » (RESTORE : profils de la corbeille, `restore_profile`), lot O33.
+## - « Ma puissance » (lot PP3) sous le profil en cours : courbe de puissance et FTP estimée (power_view_model.gd).
 ## - « Gérer : <profil en cours> » (lot RZ1, révision 1.31) : « Remettre à zéro mes statistiques »
 ##   (confirmation aux boutons écrits, « Non » par défaut, `reset_profile_stats`) et « Annuler la remise à zéro »
 ##   (dernière remise de `profiles.resets`, `undo_profile_reset`) ; la sauvegarde est faite par le core avant tout.
@@ -27,6 +28,8 @@ const MANAGE := "profile_manage"
 const RESTORE := "profile_restore"
 const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE, RESTORE]
 const CLEAR_TRIAL_ID := "clear_trial"
+## « Ma puissance » (série PP, lot PP3) : courbe de puissance et FTP estimée du profil en cours.
+const POWER_ID := "power"
 const RESTORE_ID := "restore"
 const RESET_ID := "reset_stats"     # lot RZ1
 const UNDO_RESET_ID := "undo_reset"
@@ -115,6 +118,14 @@ func current_id() -> String:
 	return active
 
 
+## Nom du profil en cours (« » s'il n'est pas encore connu) : titre de « Ma puissance » (lot PP3).
+func current_name() -> String:
+	var it := _find(current_id())
+	if not it.is_empty():
+		return str(it.get("name", current_id()))
+	return str(profile.get("name", current_id())) if str(profile.get("id", "")) == current_id() else current_id()
+
+
 func on_profiles(msg: Dictionary) -> void:
 	var raw = msg.get("items", [])
 	items = raw if raw is Array else []
@@ -168,6 +179,9 @@ func who_items() -> Array:
 			out.append(row)
 		else:
 			rest.append(row)
+	if not out.is_empty():   # juste sous le profil en cours, une fois la liste reçue : sa courbe et sa FTP (PP3)
+		out.append({"id": POWER_ID, "label": "Ma puissance", "enabled": true,
+			"detail": "courbe et FTP estimée de " + current_name()})
 	out.append_array(rest)
 	if _players().size() < MAX_PROFILES:
 		out.append({"id": "new", "label": "Nouveau profil", "enabled": true, "detail": ""})

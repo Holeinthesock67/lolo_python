@@ -827,6 +827,8 @@ class CoreSession:
             self._recover_session(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_history", "history_session"):
             self._spawn(self._send_history(name, args if isinstance(args, dict) else {}, cmd_id))
+        elif name == "list_power_curve":
+            self._spawn(self._send_power_curve(cmd_id))
         elif name in COACH_COMMANDS:
             self._spawn(self._send_coach(name, args if isinstance(args, dict) else {}, cmd_id))
         elif name in CONTENT_COMMANDS:
@@ -1608,6 +1610,26 @@ class CoreSession:
             msg = await asyncio.to_thread(build_history_session, cmd_id, sid, path, ftp_w)
         except HistoryError as exc:
             self.server.send_error("bad_args", f"Bilan impossible : {exc}")
+            return
+        self.server.send_raw(msg)
+
+    async def _send_power_curve(self, cmd_id: int) -> None:
+        """« Ma puissance » (série PP, lot PP3) : `list_power_curve` -> `power_curve`, calculé hors de la boucle à
+        50 Hz (cache des séances du profil). Refusé pendant une séance : rien ne s'affiche pendant qu'on roule."""
+        from . import profiles
+        from .ipc_lists import build_power_curve_message
+
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "« Ma puissance » s'ouvre au menu, pas pendant une séance.")
+            return
+        ctx = profiles.current()
+        activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
+        cache = self.mmp_cache_path if self.mmp_cache_path is not None else ctx.mmp_cache
+        try:
+            msg = await asyncio.to_thread(build_power_curve_message, cmd_id, self.cfg.rider.ftp_w, activities, cache,
+                                          ctx.counted_sources, ctx.id)
+        except Exception:
+            log.exception("Erreur lors du calcul de la courbe de puissance (cmd_id=%d)", cmd_id)
             return
         self.server.send_raw(msg)
 

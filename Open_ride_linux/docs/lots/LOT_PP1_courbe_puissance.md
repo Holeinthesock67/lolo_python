@@ -7,7 +7,7 @@
 
 ## 1. Objectif
 
-Premier lot de la série PP (`docs/6.0/PLAN_SERIE_PP.md`, cadrage validé le 21 novembre) : calculer, pour le profil de joueur en cours, la meilleure puissance moyenne de 13 durées sur les 6 derniers mois et les 6 dernières semaines, en disant pour chaque point si l'effort était libre ou imposé par l'ERG. Ni écran ni contrat IPC : l'écran « Ma puissance » est le lot PP3 (révision 1.29), la FTP estimée le lot PP2.
+Premier lot de la série PP (`docs/6.0/PLAN_SERIE_PP.md`, cadrage validé le 21 novembre) : calculer, pour le profil de joueur en cours, la meilleure puissance moyenne de 13 durées sur les 6 derniers mois et les 6 dernières semaines, en disant pour chaque point si l'effort était libre ou imposé par l'ERG. Ni écran ni contrat IPC : l'écran « Ma puissance » est le lot PP3 (révision 1.35), la FTP estimée le lot PP2.
 
 ## 2. À lire
 
