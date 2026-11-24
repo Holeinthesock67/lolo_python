@@ -283,7 +283,7 @@ var _record_bonus := false
 var pause_reason := ""
 ## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
 var workout_done := false
-## Issue de la séance connue (`state.arrival`, révision 1.33, lot RT2) : sorte, "" sans arrivée.
+## Issue de la séance connue (`state.arrival`, révision 1.34, lot RT2) : sorte, "" sans arrivée.
 var arrival_kind := ""
 ## Départ au pédalage en attente (lot O36) : objet `start_wait` de la dernière trame, {} sinon ; le menu
 ## est masqué pendant l'attente, le bandeau dit l'étape (start_wait_model.gd).
@@ -1317,6 +1317,16 @@ func _handle_event(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"reset_profile_stats":   # confirmation acceptée (lot RZ1)
+			profiles.message = "Sauvegarde puis remise à zéro…"
+			profiles.done_message = "Statistiques remises à zéro (sauvegarde faite)"
+			_refresh_profiles()
+			return act
+		"undo_profile_reset":   # lot RZ1
+			profiles.message = "Annulation de la remise à zéro…"
+			profiles.done_message = "Statistiques d'avant remises en place"
+			_refresh_profiles()
+			return act
 		"clear_trial_profile":   # confirmation acceptée (lot O33)
 			profiles.message = "Vidage du profil d'essai…"
 			profiles.done_message = "Profil d'essai vidé"
@@ -2110,6 +2120,16 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				_open_name()
 			elif item_id == "delete":
 				menu.confirm(profiles.delete_question(), {"action": "delete_profile", "id": profiles.manage_id})
+			elif item_id == ProfilesViewModel.RESET_ID:   # lot RZ1
+				profiles.message = ""
+				var c := profiles.reset_confirm()
+				menu.confirm(c["title"], {"action": "reset_profile_stats"}, c["yes"], c["no"], c["yes_detail"],
+					c["no_detail"])
+			elif item_id == ProfilesViewModel.UNDO_RESET_ID:
+				profiles.message = ""
+				var u := profiles.undo_confirm()
+				menu.confirm(u["title"], {"action": "undo_profile_reset", "id": u["id"]}, u["yes"], u["no"],
+					u["yes_detail"], u["no_detail"])
 	_refresh_profiles()
 	return act
 

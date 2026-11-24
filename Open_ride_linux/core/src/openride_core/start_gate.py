@@ -99,6 +99,6 @@ class StartGate:
         out = {"phase": self.phase, "cadence_rpm": int(round(self.cadence_rpm)),
                "hold_s": round(self.duree_s, 1), "held_s": round(min(self.held_s, self.duree_s), 1),
                "waited_s": round(self.waited_s, 1)}
-        if self.warmup is not None:   # révision 1.32 : échauffement d'une course (`warmup.py`)
+        if self.warmup is not None:   # révision 1.33 : échauffement d'une course (`warmup.py`)
             out["warmup"] = self.warmup.to_dict()
         return out

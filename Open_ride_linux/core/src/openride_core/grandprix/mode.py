@@ -472,7 +472,7 @@ class GrandPrixMode:
         return True
 
     def _event(self, kind: str, r: Racer, item: str, by: str | None = None) -> None:
-        """Message `gp_event` (révision 1.31, lot GPO1) : boîte prise, objet utilisé ou objet paré (`parry` : `r` a
+        """Message `gp_event` (révision 1.32, lot GPO1) : boîte prise, objet utilisé ou objet paré (`parry` : `r` a
         arrêté l'objet `item` lancé ou posé par `by`) par un coureur, cycliste comme bot, pour que l'engine montre le
         même mot et le même son pour tous ; répété comme `gp_hit`."""
         msg = {"type": "gp_event", "v": 1, "kind": kind, "item": item, "rider": r.id}
@@ -614,7 +614,7 @@ class GrandPrixMode:
         out = {"place": self.place(rid), "of": len(self.racers), "launched": dict(sorted(r.launched.items())),
                "received": dict(sorted(r.received.items())), "dodged": r.dodged,
                "gained_s": dict(sorted(r.gained_s.items())), "lost_s": dict(sorted(r.lost_s.items())),
-               "finished": r.finished is not None}   # révision 1.33 (lot RT2) : ligne passée, place définitive
+               "finished": r.finished is not None}   # révision 1.34 (lot RT2) : ligne passée, place définitive
         if self.lap_m:
             out["laps"] = max(int(round(self.length_m / self.lap_m)), 1)
         else:
