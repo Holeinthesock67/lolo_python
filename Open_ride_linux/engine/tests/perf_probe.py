@@ -342,6 +342,16 @@ def slope_per_hour(rows: list[dict[str, Any]], key: str, after_s: float = 0.0) -
     return sum((t - mt) * (v - mv) for t, v in pts) / den * 3600.0
 
 
+def unmeasured(rows: list[dict[str, Any]], warmup_s: float) -> str:
+    """Libellé d'un budget sans mesure après la chauffe (O3-02, revue de code vague 5) : secondes mesurées en
+    tout et secondes jugées, pour qu'un banc trop court se voie au rapport."""
+    ts = values(rows, "t_s")
+    span = (max(ts) - min(ts) + 1.0) if ts else 0.0
+    judged = sum(1 for t in ts if t >= min(ts) + warmup_s) if ts else 0
+    return (f"pas de mesure après la chauffe de {warmup_s:.0f} s ({len(ts)} relevé(s) sur {span:.0f} s, "
+            f"{judged} jugé(s))")
+
+
 def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
                      limits: dict[str, Any] | None = None) -> list[tuple[bool | None, str, str]]:
     """Vérifications de l'essai d'endurance : (réussi, libellé, mesure) ; réussi vaut None pour une mesure
@@ -365,6 +375,8 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
             drop = (1.0 - statistics.median(last) / statistics.median(first)) * 100.0 if statistics.median(first) else 0.0
             out.append((drop <= lim["max_fps_drop_pct"] if real_window else None, "endurance : images/s dans la durée",
                         f"{statistics.median(first):.1f} au début, {statistics.median(last):.1f} à la fin ({drop:+.0f} %)"))
+    else:   # O3-02 : un essai d'endurance dont toute la mesure tombe dans la chauffe n'a rien jugé
+        out.append((False if real_window else None, "endurance : images/s", unmeasured(rows, lim["warmup_s"])))
     worst = values(steady, "frame_max_ms")
     if worst:
         stutters = sum(w > lim["stutter_ms"] for w in worst)
@@ -379,6 +391,8 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
                     f" (seuil {lim['max_stutters_per_h']:.0f}"
                     + (f", soit {allowed:.0f} sur un essai de moins d'une heure)" if hours < 1.0 else ")")
                     + (f" ; {shots} autre(s) due(s) aux captures d'écran, non comptée(s)" if shots else "")))
+    else:
+        out.append((False if real_window else None, "endurance : saccades", unmeasured(rows, lim["warmup_s"])))
     long_enough = max(ts) - warm >= lim["min_slope_span_s"]
     labels = {k: lab for k, lab, _ in SUMMARY}
     for key, max_slope in lim["slopes_mb_per_h"].items():
@@ -464,7 +478,9 @@ def budget_checks(rows: list[dict[str, Any]], targets: dict[str, Any] | None = N
                   real_window: bool = True) -> list[tuple[bool | None, str, str]]:
     """Vérifications des budgets du préréglage noté par l'engine dans la sonde (pas celui de la ligne de
     commande : lot X32) : (réussi, libellé, mesure). Réussi vaut None sous Xvfb (rendu logiciel, à titre
-    indicatif) et pour une mesure absente (pas de nvidia-smi)."""
+    indicatif) et pour la charge du GPU sans nvidia-smi. Un budget de l'engine (images/s, p99, GPU de la vue)
+    sans aucune seconde après la chauffe est un échec en fenêtre réelle (O3-02) : un banc trop court ou une
+    colonne absente ne passe plus pour un banc réussi."""
     t = targets or load_targets()
     presets = presets_of(rows)
     if len(presets) != 1:
@@ -482,7 +498,8 @@ def budget_checks(rows: list[dict[str, Any]], targets: dict[str, Any] | None = N
 
     def judge(label: str, vals: list[float], ok_of: Callable[[float], bool], text: Callable[[float], str]) -> None:
         if not vals:
-            out.append((None, label, "pas de mesure"))
+            out.append((False if real_window else None, label,
+                        unmeasured(rows, float(t.get("warmup_s", 0))) + note))
             return
         v = statistics.median(vals)
         out.append((ok_of(v) if real_window else None, label, text(v) + note))
@@ -588,7 +605,7 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
     warmup_s = float(lim.get("warmup_s", t.get("warmup_s", 0)))
     ts = values(rows, "t_s")
     if not ts:
-        return []
+        return [(False if real_window else None, "à-coups", "aucune seconde datée dans la sonde")]
     warm = min(ts) + warmup_s
     steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
     # Lot PL1 : une seconde lente du régime établi que saccades.csv explique par une capture du banc (déjà mise à
@@ -617,6 +634,8 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
         top = max(worst)
         out.append(((top <= freeze_ms) if real_window else None, "à-coups : pire image",
                     f"{top:.0f} ms (au plus {freeze_ms:.0f} ms){note}"))
+    else:   # O3-02 : toutes les secondes dans la chauffe des à-coups (ou mises à part) : rien de jugé
+        out.append((False if real_window else None, "à-coups : images lentes", unmeasured(rows, warmup_s) + note))
     if saccades is not None:
         t0 = min((float(r["t_s"]) for r in saccades if isinstance(r.get("t_s"), float)), default=0.0)
         hits = [r for r in saccades if isinstance(r.get("frame_ms"), float) and r["frame_ms"] > hitch_ms
@@ -789,12 +808,13 @@ def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de p
     write_csv(rows, out / "sonde.csv")
     summary = summarize(rows)
     text = summary_text(summary, title)
-    summary["budgets"] = budget_checks(rows, real_window=real_window) if values(rows, "fps") else []
+    # O3-02 : budgets jugés dès qu'il y a des relevés, même sans colonne d'images/s (échec « pas de mesure »).
+    summary["budgets"] = budget_checks(rows, real_window=real_window) if rows else []
     if summary["budgets"]:
         text += "\nBudgets du préréglage (engine/tests/perf_targets.json, lot X14) :\n" + budget_text(summary["budgets"]) + "\n"
     stalls = read_stalls(engine_dir) if engine_dir is not None else None
     hitches = hitch_checks(rows, stalls["saccades"] if stalls is not None else None, real_window=real_window) \
-        if values(rows, "frame_max_ms") else []
+        if rows else []
     if hitches:
         summary["budgets"] += hitches
         text += "\nÀ-coups (seuils « hitches » de perf_targets.json) :\n" + budget_text(hitches) + "\n"
@@ -829,10 +849,16 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
           idle_stop_s: float = IDLE_STOP_S, period_s: float = 1.0, quality: str | None = None) -> int:
     print(f"Sonde : attente du fichier de l'engine {engine_csv} …", flush=True)
     t0 = time.monotonic()
-    while not engine_csv.is_file() and time.monotonic() - t0 < wait_s:
+    # O3-01 : un fichier laissé par une séance précédente n'est pas une mesure. L'engine le vide à son démarrage
+    # puis y écrit chaque seconde : on attend un fichier modifié après le départ de la sonde.
+    since = time.time() - 1.0
+    if engine_csv.is_file() and not _fresh(engine_csv, since):
+        print("Sonde : fichier d'une séance précédente ignoré, attente de l'engine (pour relire une ancienne "
+              "séance : perf_probe.py report).", flush=True)
+    while not _fresh(engine_csv, since) and time.monotonic() - t0 < wait_s:
         time.sleep(0.5)
-    if not engine_csv.is_file():
-        print(f"Pas de fichier en {wait_s:.0f} s : l'engine est-il lancé avec --perf-probe ou OPENRIDE_PERF_PROBE ?")
+    if not _fresh(engine_csv, since):
+        print(f"Pas de fichier écrit en {wait_s:.0f} s : l'engine est-il lancé avec --perf-probe ou OPENRIDE_PERF_PROBE ?")
         return 1
     sampler = SystemSampler(period_s)
     sampler.start()
@@ -860,9 +886,24 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
     return max(_quality_verdict(summary, quality), _budget_verdict(summary, budgets))
 
 
+def _fresh(path: Path, since: float) -> bool:
+    """Fichier présent et modifié depuis `since` (heure murale)."""
+    try:
+        return path.stat().st_mtime >= since
+    except OSError:
+        return False
+
+
 def _budget_verdict(summary: dict[str, Any], strict: bool) -> int:
-    """Code 1 si un budget est dépassé et que `--budgets` est demandé."""
-    return 1 if strict and any(ok is False for ok, _, _ in summary.get("budgets", [])) else 0
+    """Code 1 si un budget est dépassé ou non mesuré et que `--budgets` est demandé ; aucun budget jugé
+    (aucun relevé) compte aussi comme un échec (O3-02)."""
+    if not strict:
+        return 0
+    checks = summary.get("budgets", [])
+    if not checks:
+        print("[ÉCHEC] budgets demandés : aucun relevé à juger")
+        return 1
+    return 1 if any(ok is False for ok, _, _ in checks) else 0
 
 
 def _quality_verdict(summary: dict[str, Any], quality: str | None) -> int:

@@ -2,11 +2,15 @@
 
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
+Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses lignes dans `docs/changements/<LOT>.md`, recopiées par la passe de doc (`docs/changements/README.md`).
 
 ## Non publié
 
 ### Style graphique « dessin animé », première pierre (lot CS1)
 - Nouveau réglage **Style graphique** dans Réglages › Graphisme : « réaliste » (par défaut, l'image ne change pas) ou « dessin animé ». Pour l'instant, le dessin animé rend seulement les couleurs plus vives ; les aplats et les contours noirs arrivent avec les lots suivants. Cyber-Rogue garde son propre style.
+
+### Moins de brouillard et de halo en medium et high (lot BH1)
+- En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
 
 ### Cyber-Rogue sans voile en high (lot R27)
 - En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.

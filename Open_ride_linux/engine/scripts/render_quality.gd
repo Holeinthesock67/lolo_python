@@ -55,8 +55,9 @@ const LOOK := {
 }
 ## Glow des préréglages qui l'activent : léger, seulement sur ce qui dépasse le blanc (ciel, soleil).
 ## Trois premiers niveaux seulement, agrandis en linéaire (étude du rendu du 6 novembre : −0,45 ms en medium,
-## halo à peine moins large).
-const GLOW := {"intensity": 0.6, "strength": 1.0, "bloom": 0.0, "hdr_threshold": 1.0, "levels": 3, "bicubic": false}
+## halo à peine moins large). Intensité 0,6 → 0,4 (lot BH1, 23 novembre) : le halo blanchissait encore le ciel
+## en medium et high (« un peu trop de brouillard/halo », Grand Prix compris). Coût inchangé.
+const GLOW := {"intensity": 0.4, "strength": 1.0, "bloom": 0.0, "hdr_threshold": 1.0, "levels": 3, "bicubic": false}
 
 const AO_QUALITY := {
 	"low": RenderingServer.ENV_SSAO_QUALITY_LOW,
@@ -79,9 +80,12 @@ const SHADOW_FILTER := {
 ## portée en m, densité minimale et anisotropie (le soleil éclaire la brume vers l'avant, rayons dans
 ## les trouées des arbres). Les densités des thèmes (0,0004 à 0,0012) ne se voient pas à ces portées :
 ## celle du thème ne l'emporte que si elle est plus forte. La brume prend la couleur de l'horizon.
+## Densités divisées par deux (lot BH1, 23 novembre : 0,004 → 0,002 et 0,006 → 0,003) : voile bleu-gris au loin
+## et ciel laiteux en medium et high, absents en low (captures du Grand Prix et du Cyber-Rogue, nuit du 22 au
+## 23 novembre). La jungle (0,0018) reste juste sous le plancher. Coût inchangé (grille et portée identiques).
 const VOLUMETRIC := {
-	"light": {"grid": 48, "length_m": 600.0, "density": 0.004, "anisotropy": 0.6},
-	"full": {"grid": 64, "length_m": 1200.0, "density": 0.006, "anisotropy": 0.6},
+	"light": {"grid": 48, "length_m": 600.0, "density": 0.002, "anisotropy": 0.6},
+	"full": {"grid": 64, "length_m": 1200.0, "density": 0.003, "anisotropy": 0.6},
 }
 ## Part de la lumière du ciel injectée dans la brume volumétrique : sans elle, la brume assombrit tout ce qui est
 ## au-delà de sa portée (montagnes noires, 5 novembre) ; à 1, elle voile l'image (trop claire, 6 novembre) :

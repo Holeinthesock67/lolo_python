@@ -76,6 +76,8 @@ extends RefCounted
 ## Course (lot CR1, contrat 1.23) : « Course » à l'accueil ouvre l'écran Prêt du mode comme le Dernier survivant,
 ## sur les parcours libres : réglages `race.*` et « Niveau des bots » (tours sur une boucle ; en ligne, jusqu'à
 ## l'arrivée), « Lancer » avec la longueur ; `start` part avec `mode` « race » sans `bots`.
+## Aide du Grand Prix (lot GPH1) : « Comment ça marche ? », dernière ligne de son écran Prêt, met le résumé du mode
+## dans la carte et ouvre l'écran « Aide Grand Prix » (grandprix/gp_help.gd), un sujet par ligne.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -95,6 +97,7 @@ const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
 const GpItemsMenuModel := preload("res://scripts/grandprix/gp_items_menu_model.gd")
+const GpHelp := preload("res://scripts/grandprix/gp_help.gd")
 ## Dernier survivant (lot DS7) : réglages de l'écran Prêt du mode, dans l'ordre du plan (§4).
 const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et survivor.spacing_km (config.py)
 const SURVIVOR_SPACING_KM := [1, 3]
@@ -103,9 +106,14 @@ const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la va
 const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread",
 	"survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
-## Course en ligne la plus courte du Grand Prix (lot GP14, `grandprix.boxes.MIN_COURSE_M` du core).
+## Grand Prix des objets (lot GP9) : réglages de l'écran Prêt dans l'ordre du plan (§4.4), tours du circuit
+## seulement (lot GPL1 : le Grand Prix se court sur une boucle), et préfixe des libellés du core.
+## Objectif des bots : ligne « Intensité » (lot R1).
+const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "bots.level_pct", "grandprix.chaos",
+	"grandprix.box_every_m"]
+## Course (lot CR1) en ligne la plus courte (`grandprix.boxes.MIN_COURSE_M` du core) ; le Grand Prix des objets
+## se court sur une boucle (lot GPL1).
 const GP_MIN_COURSE_M := 1000.0
-## Grand Prix des objets (lot GP9) : préfixe des libellés du core.
 const GP_PREFIX := "Grand Prix : "
 ## Course (lot CR1) : préfixe des libellés du core.
 const RACE_PREFIX := "Course : "
@@ -113,6 +121,7 @@ const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
+const LeagueViewModel := preload("res://scripts/league_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 
 const SUMMARY := "summary"
@@ -159,6 +168,8 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 ## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
 ## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
 const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
+## Même ligne après une arrivée (`state.arrival`, lot RT2 : parcours en ligne, Grand Prix, Course).
+const PAUSE_ARRIVAL := "Arrivée passée : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create",
 	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
@@ -272,6 +283,8 @@ var _record_bonus := false
 var pause_reason := ""
 ## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
 var workout_done := false
+## Issue de la séance connue (`state.arrival`, révision 1.34, lot RT2) : sorte, "" sans arrivée.
+var arrival_kind := ""
 ## Départ au pédalage en attente (lot O36) : objet `start_wait` de la dernière trame, {} sinon ; le menu
 ## est masqué pendant l'attente, le bandeau dit l'étape (start_wait_model.gd).
 var start_wait: Dictionary = {}
@@ -283,6 +296,8 @@ var history = HistoryViewModel.new()
 var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
 var coach = CoachViewModel.new()
+## Ligue d'hiver (série CH, lot CH4a) : saison du core, ligne de l'accueil, écran de la ligue, écran Prêt.
+var league = LeagueViewModel.new()
 ## Effort des bots en watts sur l'écran Prêt (lot GP-niv, contrat 1.22) : clé de la dernière demande `bots_preview`
 ## (mode, parcours, réglages), texte de sa réponse, et une seule nouvelle demande quand le core n'avait pas encore
 ## le parcours (réponse sans watts).
@@ -340,6 +355,8 @@ func _init() -> void:
 			[CoachViewModel.OTHER, "Autre séance", CoachViewModel.SCREEN]]:
 		menu.add_screen({"id": screen[0], "title": screen[1], "on_back": screen[2], "items": []})
 	_refresh_coach()
+	menu.add_screen({"id": LeagueViewModel.SCREEN, "title": "Ligue d'hiver", "on_back": MenuModel.HOME, "items": []})
+	_refresh_league()
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
@@ -348,6 +365,7 @@ func _init() -> void:
 	menu.add_screen({"id": WtfRulesModel.SCREEN, "title": "Mode WTF", "on_back": MenuModel.HOME, "items": []})
 	_refresh_wtf()
 	menu.add_screen({"id": GpItemsMenuModel.SCREEN, "title": "Grand Prix : objets", "on_back": MenuModel.READY, "items": []})
+	menu.add_screen({"id": GpHelp.SCREEN, "title": GpHelp.TITLE, "on_back": MenuModel.READY, "items": GpHelp.items()})
 	_refresh_gp_items()
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
 	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
@@ -403,7 +421,8 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
-	workout_done = state.get("workout_done", null) is Dictionary
+	workout_done = state.get("workout_done", null) is Dictionary or state.get("arrival", null) is Dictionary
+	arrival_kind = str(state["arrival"].get("kind", "")) if state.get("arrival", null) is Dictionary else ""
 	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
 	_track_run(st, state)
 	if state.get("devices") is Dictionary:
@@ -611,11 +630,14 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in CoachViewModel.SCREENS and code == "bad_args":
 		coach.message = "Échec : " + text
 		return
+	if menu.current_screen() == LeagueViewModel.SCREEN and code == "bad_args":
+		league.message = "Échec : " + text
+		return
 	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
 		contents.on_error(code, text)
 		_refresh_contents()
 		return
-	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode in MenuModel.SETTINGS_MODES or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
+	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league" or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
@@ -656,9 +678,11 @@ func set_routes(raw: Array) -> void:
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	# Parcours propres aux modes (lot GP13) : la liste montre ceux du mode de l'écran Prêt, ou les parcours libres
 	var by_mode: Dictionary = CatalogModel.mode_route_ids(raw, menu.mode_routes)
-	menu.set_mode_route_ids(by_mode, route_names)   # dont les pistes, écran Prêt du vélodrome (lot VD10)
+	# Parcours de mode restés libres (étiquette `free_route_tag`, lot GPL1) : aussi dans la liste générale
+	var shared: Array = CatalogModel.tagged_route_ids(raw, menu.free_route_tag) if menu.free_route_tag != "" else []
+	menu.set_mode_route_ids(by_mode, route_names, shared)   # dont les pistes, écran Prêt du vélodrome (lot VD10)
 	_routes_mode_shown = menu.routes_mode
-	raw = CatalogModel.routes_of_mode(raw, by_mode, menu.routes_mode)
+	raw = CatalogModel.routes_of_mode(raw, by_mode, menu.routes_mode, menu.free_route_tag)
 	var tags: Array = CatalogModel.route_tags(raw)
 	if route_tag != "" and not route_tag in tags:
 		route_tag = ""
@@ -732,6 +756,8 @@ func card(st: Dictionary) -> Dictionary:
 	var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
 	var screen := str(st["screen"])
 	if screen == MenuModel.READY:
+		if focused == MenuModel.GP_HELP_ID:   # Grand Prix (lot GPH1) : résumé du mode à la place de la fiche
+			return GpHelp.sheet(GpHelp.SUMMARY)
 		return _sheet(routes_raw, menu.world_id, func(r): return CatalogModel.route_sheet(r))
 	if screen == MenuModel.ROUTES:
 		if focused in ROUTE_HELP_TOPICS:
@@ -739,6 +765,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
 	if screen == ROUTE_HELP:
 		return RouteHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == GpHelp.SCREEN:
+		return GpHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
 	if screen == ROUTE_IMPORT:
 		return _route_import_card(focused)
 	if screen == MenuModel.WORKOUTS:
@@ -778,6 +806,8 @@ func card(st: Dictionary) -> Dictionary:
 		return {"title": "Bilan de la séance"}
 	if screen in CoachViewModel.SCREENS:
 		return _coach_card(screen, focused)
+	if screen == LeagueViewModel.SCREEN:
+		return league.sheet(_ftp_w())
 	if screen == RECORDS:
 		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
 	if screen == RECORD_TABLE:
@@ -983,7 +1013,7 @@ func _refresh_summary() -> void:
 	for it in summary_model.menu_screen()["items"]:
 		items.append(it)
 		if it["id"] == "details" and garage.enabled and bool(progress_view().get("garage", false)):
-			items.append({"id": "garage", "label": "Aller au Garage", "detail": "une pièce est devenue achetable"})
+			items.append({"id": "garage", "label": "Garage", "detail": "nouveau"})
 	menu.set_screen_items(SUMMARY, items)
 
 
@@ -1255,7 +1285,7 @@ func handle(event: String) -> Dictionary:
 	if pick != "":   # parcours du mode, ou retour au parcours libre (lot GP13) : envoyé au core
 		var route_act := {"action": "select_route", "route_id": pick}
 		act = route_act if act.is_empty() else {"action": "sequence", "list": [act, route_act]}
-	if menu.mode in MenuModel.SETTINGS_MODES:
+	if menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league":
 		_refresh_mode_ready()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
 	return act
 
@@ -1287,6 +1317,16 @@ func _handle_event(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"reset_profile_stats":   # confirmation acceptée (lot RZ1)
+			profiles.message = "Sauvegarde puis remise à zéro…"
+			profiles.done_message = "Statistiques remises à zéro (sauvegarde faite)"
+			_refresh_profiles()
+			return act
+		"undo_profile_reset":   # lot RZ1
+			profiles.message = "Annulation de la remise à zéro…"
+			profiles.done_message = "Statistiques d'avant remises en place"
+			_refresh_profiles()
+			return act
 		"clear_trial_profile":   # confirmation acceptée (lot O33)
 			profiles.message = "Vidage du profil d'essai…"
 			profiles.done_message = "Profil d'essai vidé"
@@ -1333,6 +1373,11 @@ func _handle_event(event: String) -> Dictionary:
 		_refresh_gp_items()
 		menu.push_screen(GpItemsMenuModel.SCREEN)
 		return {"action": "list_mode_options", "mode": GpItemsMenuModel.MODE}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == MenuModel.GP_HELP_ID:
+		menu.push_screen(GpHelp.SCREEN)
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == GpHelp.SCREEN:
+		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == GpItemsMenuModel.SCREEN:
 		var gp_act: Dictionary = gp_items.handle(str(act["id"]))
 		_refresh_gp_items()
@@ -1388,6 +1433,11 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_collection()
 			menu.push_screen(CollectionViewModel.SCREEN)
 			return {"action": "list_collection"}
+		if str(act["id"]) == "league":   # classement relu à chaque ouverture (une manche vient peut-être de finir)
+			league.message = ""
+			_refresh_league()
+			menu.push_screen(LeagueViewModel.SCREEN)
+			return {"action": "league_status"}
 		if str(act["id"]) == "coach":   # conseil recalculé à chaque ouverture (une séance vient peut-être de finir)
 			var request: Dictionary = coach.request()
 			_refresh_coach()
@@ -1406,6 +1456,8 @@ func _handle_event(event: String) -> Dictionary:
 		return _handle_collection(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in CoachViewModel.SCREENS:
 		return _handle_coach(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in LeagueViewModel.SCREENS:
+		return _handle_league(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
 		if str(act["id"]) == MenuModel.ADD_ROUTE_ID:
 			return _open_route_import()
@@ -1551,12 +1603,13 @@ func _refresh_mode_ready() -> void:
 			survivor_launch(int(settings.item("survivor.opponents").get("value", 4)),
 			int(settings.item("survivor.spacing_km").get("value", 2)), route))
 	elif menu.mode == "grandprix":
-		menu.set_mode_ready(_mode_rows(grandprix_keys(route), GP_PREFIX),
-			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)),
-			int(settings.item("grandprix.distance_km").get("value", 10)), route), gp_items.ready_label())
+		menu.set_mode_ready(_mode_rows(GRANDPRIX_KEYS, GP_PREFIX),
+			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)), route), gp_items.ready_label())
 	elif menu.mode == "race":
 		menu.set_mode_ready(_mode_rows(race_keys(route), RACE_PREFIX),
 			race_launch(int(settings.item("race.laps").get("value", 3)), route))
+	elif menu.mode == "league":
+		menu.set_league_ready(league.ready(route, menu.route_mode_of(str(route.get("id", "")))))
 
 
 ## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
@@ -1601,7 +1654,7 @@ static func mode_label(label: String, prefix: String) -> String:
 # --- effort des bots en watts sur l'écran Prêt (lot GP-niv) et cote Elo (lot BOT-elo) ----------------------
 
 const PREVIEW_KEYS := ["bots.level_pct", "bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
-	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps", "grandprix.distance_km",
+	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps",
 	"race.opponents", "race.laps"]   # race.* : Course (lot CR1), la durée suit les tours et le plateau
 
 
@@ -1749,33 +1802,17 @@ static func duration_text(seconds: float) -> String:
 	return "%d h %02d" % [m / 60, m % 60]
 
 
-## Réglages de l'écran Prêt du Grand Prix, dans l'ordre du plan (§4.4) : tours sur un circuit, distance sur un
-## parcours en ligne, les deux tant que le parcours est inconnu.
-static func grandprix_keys(route: Dictionary) -> Array:
-	var loop := str(route.get("route_type", "")) == "loop"
-	var course: Array = ["grandprix.laps"] if loop else (["grandprix.distance_km"] if not route.is_empty()
-		else ["grandprix.laps", "grandprix.distance_km"])
-	return ["grandprix.opponents"] + course + ["bots.level_pct", "grandprix.chaos", "grandprix.box_every_m"]
-
-
-## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Circuit : tours et longueur de la course ; en
-## ligne : distance, au plus le parcours (lot GP14 : « tout le parcours ») ; désactivé sous GP_MIN_COURSE_M (le
-## core refuse aussi le départ, `bad_args`).
-static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> Dictionary:
+## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Tours et longueur de la course ; désactivé sur un
+## parcours en ligne (lot GPL1 : le Grand Prix se court sur une boucle, le core refuse aussi le départ, `bad_args`).
+static func grandprix_launch(laps: int, route: Dictionary) -> Dictionary:
 	var length = route.get("length_m", null)
 	if route.is_empty() or length == null:
 		return {"enabled": true, "detail": "", "advice": ""}
-	if str(route.get("route_type", "")) == "loop":
-		return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
-			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
-	if float(length) < GP_MIN_COURSE_M:
-		return {"enabled": false, "detail": "parcours trop court",
-			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours du Grand Prix." % [
-				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
-	if float(length) < distance_km * 1000.0:
-		return {"enabled": true, "detail": "course de %s (tout le parcours)" % CatalogModel._format_fr_km(float(length)),
-			"advice": ""}
-	return {"enabled": true, "detail": "course de %d km" % distance_km, "advice": ""}
+	if str(route.get("route_type", "")) != "loop":
+		return {"enabled": false, "detail": "parcours en ligne",
+			"advice": "Lancer grisé : le Grand Prix se court sur une boucle.\nChoisis un parcours du Grand Prix."}
+	return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
+		CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
 
 
 ## Réglages de l'écran Prêt de la Course (lot CR1) : tours sur une boucle ; en ligne, la course va jusqu'à l'arrivée.
@@ -2083,6 +2120,16 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				_open_name()
 			elif item_id == "delete":
 				menu.confirm(profiles.delete_question(), {"action": "delete_profile", "id": profiles.manage_id})
+			elif item_id == ProfilesViewModel.RESET_ID:   # lot RZ1
+				profiles.message = ""
+				var c := profiles.reset_confirm()
+				menu.confirm(c["title"], {"action": "reset_profile_stats"}, c["yes"], c["no"], c["yes_detail"],
+					c["no_detail"])
+			elif item_id == ProfilesViewModel.UNDO_RESET_ID:
+				profiles.message = ""
+				var u := profiles.undo_confirm()
+				menu.confirm(u["title"], {"action": "undo_profile_reset", "id": u["id"]}, u["yes"], u["no"],
+					u["yes_detail"], u["no_detail"])
 	_refresh_profiles()
 	return act
 
@@ -2499,6 +2546,9 @@ func state() -> Dictionary:
 		var on_album: bool = st["screen"] == CollectionViewModel.SCREEN   # l'album : total et nouvelles
 		st["status"] = collection.album_status() if on_album else collection.message
 		st["status_error"] = not on_album and collection.message.begins_with("Échec")
+	elif st["screen"] == LeagueViewModel.SCREEN:
+		st["status"] = league.message
+		st["status_error"] = league.message.begins_with("Échec")
 	elif st["screen"] in CoachViewModel.SCREENS:
 		st["status"] = coach.status(str(st["screen"]))
 		st["status_error"] = coach.message.begins_with("Échec")
@@ -2516,7 +2566,7 @@ func state() -> Dictionary:
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
 		if st["status"] == "" and workout_done:
-			st["status"] = PAUSE_WORKOUT_DONE
+			st["status"] = PAUSE_WORKOUT_DONE if arrival_kind in ["", "workout"] else PAUSE_ARRIVAL
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
 	st["collection"] = collection_view(st)
@@ -2659,4 +2709,39 @@ func _launch_coach_race() -> Dictionary:
 		if str(r.get("objective", "")) != "" and args.has("bots"):
 			args["objective"] = str(r["objective"])   # lot GP-niv : objectif des bots selon le besoin du jour
 		menu.prepare_coach_race("course conseillée", args, coach.race_ready_text())
+	return {"action": "sequence", "list": list}
+
+
+# --- Ligue d'hiver (série CH, lot CH4a) -------------------------------------------------------------------------
+
+## Message `league` du core (réponse à league_status et league_new) : accueil, écran de la ligue et écran Prêt.
+func on_league(msg: Dictionary) -> void:
+	league.on_league(msg)
+	_refresh_league()
+	if menu.mode == "league":
+		_refresh_mode_ready()
+
+
+func _refresh_league() -> void:
+	menu.set_league_home(league.loaded, league.home_detail())
+	menu.set_screen_items(LeagueViewModel.SCREEN, league.items(), league.title())
+
+
+## Écran de la ligue : « Courir la manche » ouvre l'écran Prêt sur un parcours qui va au terrain de la manche
+## (league.pick_route, lot CH4c : boucle, parcours en ligne, route ou vélodrome ; liste du mode du parcours derrière
+## « Changer de parcours ») ; « Commencer la saison » demande `league_new`.
+func _handle_league(id: String) -> Dictionary:
+	if id == LeagueViewModel.NEW_ID:
+		league.message = "Création de la saison…"
+		return {"action": "league_new"}
+	if id != LeagueViewModel.RUN_ID:
+		return {}
+	var rid: String = league.pick_route(routes_raw, menu.world_id, menu.route_mode_of)   # terrain de la manche (CH4c)
+	ready_message = ""
+	var list: Array = [{"action": "select_workout", "workout_id": null}]
+	if rid != "" and rid != menu.world_id:
+		menu.set_world(rid, str(_route_entry(rid).get("name", rid)))
+		list.push_front({"action": "select_route", "route_id": rid})
+	menu.prepare_league(league.ready(_route_entry(menu.world_id), menu.route_mode_of(menu.world_id)),
+		menu.route_mode_of(menu.world_id), league.round_mode())
 	return {"action": "sequence", "list": list}

@@ -60,6 +60,8 @@ Tous les effets agissent sur la **vitesse virtuelle** du coureur visé. Une glis
 | Voiture d'équipe | `team_car` | Fusée de rattrapage | La voiture du directeur sportif te remorque 6 s dans son abri, invincible ; tirée seulement à plus de 15 s du premier (lot GP4, véhicule et abri d'AS6) | v = 1,5 × v_éq pendant 6 s | + 9,5 s, + 6,4 s, + 8,5 s |
 | Furtif | `stealth` | Fantôme voleur | L'Échappée de TT4 (pas d'abri pour les suiveurs, bots aveugles à l'attaque, avatar semi-transparent) plus le vol de l'objet du coureur devant à moins de 50 m (lot GP4) | 10 s | Dépend de l'abri perdu par les suiveurs |
 
+**Lot GPO1 (21 novembre 2026) :** tout effet dure et les valeurs ci-dessus sont renforcées (coup de fouet ≥ 130 % pendant 5 s, glissade ≤ 70 % pendant 5 s, averse 5 s, super-forme et voiture d'équipe 12 s, vent 6 m/s pendant 10 s) ; boîtes de famille par voie (gauche s'aider, centre tout, droite attaquer). Valeurs et règle : `docs/lots/LOT_GPO1_objets_forts.md`.
+
 Repères d'équilibrage :
 
 - **L'inertie rend les coups plus forts que les impulsions** : avec 250 W, une vitesse multipliée par 0,5 coûte 6,2 s sur le plat, alors qu'une puissance × 1,5 pendant 3 s ne rapporte que 0,5 s. C'est pourquoi le coup de fouet est une impulsion de vitesse (v × 1,3) et non un bonus de puissance, et que la glissade est réglée à v × 0,7 : l'un et l'autre valent environ 4 s sur le plat.
@@ -121,7 +123,7 @@ Tout se règle dans le menu, sans ligne de commande (lot GP9) :
 | Réglage (section `[grandprix]` de `config.toml`) | Valeurs | Défaut |
 | --- | --- | --- |
 | Adversaires (`opponents`) | 2 à 11 (2 à 4 avant GP10) | 4 |
-| Tours (`laps`) ou distance (`distance_km`) | 1 à 5 ; 5 à 30 km | 3 ; 10 km |
+| Tours (`laps`) ; distance en ligne (`distance_km`) retirée au lot GPL1 : le mode se court sur une boucle seulement | 1 à 5 | 3 |
 | Niveau des bots (`bots.level_pct`, réglage existant) | 50 à 150 % de la FTP | inchangé |
 | Chaos (`chaos`) | doux, normal, fou : forces et fréquence des objets × 0,7, × 1, × 1,3 | normal |
 | Écart des boîtes (`box_every_m`, lot GP2 : en mètres, au pas de 500 m comme les autres réglages à pas) | 1 000 à 3 000 m | 1 500 m |

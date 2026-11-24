@@ -13,7 +13,7 @@ plan `docs/4.0/PLAN_SERIE_TT.md`.
 (`EffectSpec` : effet, facteur, durée), jeux où il est tiré (`classiques`, `tactiques`), conditions
 de tirage (`draw_if`), conditions d'activation avec la raison du refus (`refuse_unless`), seuil de
 suspension. Aucun bonus n'a de branche de code à lui : `params`, `power` et `CONDITIONS` ne lisent
-que l'effet et les noms de conditions. Les effets du Grand Prix (lot GP1 : `kick`, `slip`,
+que l'effet et les noms de conditions. Les effets du Grand Prix (lot GP1 ; lot GPO1 : tous à durée,
 `speed_floor`, `cap`, `immune`, `wind`) sont des lignes du même `EffectSpec` ; `grandprix/effects.py`
 les applique (un seul système, plan GP §5).
 
@@ -53,12 +53,12 @@ POWERUPS_FILE = OPENRIDE_HOME / "powerups.toml"
 # --- effets : une seule liste pour les bonus et les objets du Grand Prix ----------------------
 
 BONUS_EFFECTS = ("mass", "cda", "power", "draft", "crr", "breakaway")   # série TT (plan §2)
-# Grand Prix (lot GP1), déplacés de `grandprix/effects.py` sans changement :
-IMPULSES = ("kick", "slip")
+# Grand Prix (lot GP1) : depuis le lot GPO1, tout effet dure (plus d'impulsion d'une image : le coup de
+# fouet est un plancher de vitesse, la glissade un plafond, chacun avec sa durée) :
 DURATIONS = ("speed_floor", "cap", "immune", "wind", "breakaway")
-MULTIPLIERS = ("kick", "slip", "speed_floor", "cap")   # facteurs sans unité, comparés à 1
-HITS = ("slip", "cap", "wind")                         # effets subis : arrêtés par `immune`
-EFFECTS = tuple(dict.fromkeys(BONUS_EFFECTS + IMPULSES + DURATIONS))
+MULTIPLIERS = ("speed_floor", "cap")                   # facteurs sans unité, comparés à 1
+HITS = ("cap", "wind")                                 # effets subis : arrêtés par `immune`
+EFFECTS = tuple(dict.fromkeys(BONUS_EFFECTS + DURATIONS))
 
 
 @dataclass(frozen=True)
