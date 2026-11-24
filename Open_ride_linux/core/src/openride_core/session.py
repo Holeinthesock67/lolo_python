@@ -328,6 +328,8 @@ def escort_unblock(blocks: list[tuple[draft_mod.Lane, float, float]]) -> None:
         lane.length, lane.half_width = bike_length, bike_half
 
 
+TRACK_HEIGHT_OUT_MAX_M = 3.0   # hauteur sur la piste publiée au plus (`lane_m` de `state` : -3 à 3 m, lot VD4)
+
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path | None = None, routes_root: Path | None = None,
@@ -4511,8 +4513,13 @@ class CoreSession:
         return draft_mod.Lane(home, home, auto=self.cfg.ride.auto_draft == "on")
 
     def _lane_out(self, lane_m: float) -> float:
-        """`lane_m` publié : écart à l'axe sur une route, hauteur sur la piste d'un vélodrome (plan VD §4.2)."""
-        return velodrome.height_on_track(lane_m) if self._track is not None else lane_m
+        """`lane_m` publié : écart à l'axe sur une route, hauteur sur la piste d'un vélodrome (plan VD §4.2). Sur la
+        piste, la hauteur est bornée à `TRACK_HEIGHT_OUT_MAX_M` (borne `lane_m` du schéma de `state`) : un coureur
+        qui déborde en dépassement (écart jusqu'à -1,5 m, soit 4,1 m de haut) est dessiné en haut de la bande
+        publiable au lieu de rendre la trame invalide (test instable du 24 novembre, 3,11 m publiés)."""
+        if self._track is None:
+            return lane_m
+        return min(velodrome.height_on_track(lane_m), TRACK_HEIGHT_OUT_MAX_M)
 
     def _traffic_for(self, route: Route | None) -> traffic_mod.Traffic | None:
         """Circulation de la route (lot AS6), créée au premier pas sur une route ; aucune sans décor vivant
