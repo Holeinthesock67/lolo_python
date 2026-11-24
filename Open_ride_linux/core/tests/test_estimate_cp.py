@@ -14,7 +14,7 @@ NOW = 1_800_000_000.0
 CP, WP = 250.0, 20000.0
 
 
-def write_session(folder: Path, name: str, start_ts: float, efforts, source="simulated", warm_s=60, warm_w=100.0):
+def write_session(folder: Path, name: str, start_ts: float, efforts, source="live", warm_s=60, warm_w=100.0):
     """Journal à 1 Hz : échauffement puis efforts [(durée s, watts)] séparés de 120 s à 80 W."""
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{name}.jsonl"
