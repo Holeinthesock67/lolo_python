@@ -43,6 +43,9 @@ def test_every_button_in_every_phase_follows_the_plan(modes):
     assert rep.cells and not failed(rep), failed(rep)
     phases = {c.phase for c in rep.cells}
     assert {"pause", "bilan"} <= phases or modes == ("monde",)
+    assert not rep.missing, rep.missing
+    if "monde" in modes:      # C7-04 : le monde ouvert doit avoir été mesuré, pas seulement « prêt »
+        assert {"prêt", "en route", "carrefour", "pause"} <= phases
     if "erg" in modes:
         assert {"bloc FreeRide", "dernier bloc", "fin de l'entraînement"} <= phases
     if "rogue" in modes:
@@ -149,3 +152,28 @@ def test_bad_call_and_exit_codes(capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["ok"] and out["clavier"] and out["boitier_gauche"]
     assert len([c for c in out["boutons"] if c["source"] == "Click"]) == len(InputEvent) * len(out["phases"])
+
+
+def test_unmeasured_mode_is_a_failure(monkeypatch, tmp_path):
+    """C7-04 (revue de code, vague 2) : sans doublure du générateur, le mode monde n'est pas mesuré ; la matrice
+    ne doit pas conclure « tout passe »."""
+    monkeypatch.setattr(tool, "STUB_WORLDGEN", tmp_path / "absent.py")
+    rep = tool.run("boutons", ("monde",))
+    assert not rep.cells and not rep.ok
+    assert rep.missing and rep.missing[0].mode == "monde" and "doublure" in rep.missing[0].detail
+    assert "mode monde non mesuré" in tool.format_text(rep)
+    assert tool.to_json(rep)["modes_non_mesures"][0]["phases"] == ["prêt", "en route", "carrefour", "pause"]
+
+
+def test_refused_rogue_run_is_a_failure(monkeypatch):
+    monkeypatch.setattr(session_mod.CoreSession, "_on_command", _refuse_start_run(session_mod.CoreSession._on_command))
+    rep = tool.run("boutons", ("rogue",))
+    assert not rep.ok and rep.missing and "start_run" in rep.missing[0].detail
+
+
+def _refuse_start_run(orig):
+    def on_command(self, name, args, cmd_id):
+        if name == "start_run":
+            return None
+        return orig(self, name, args, cmd_id)
+    return on_command

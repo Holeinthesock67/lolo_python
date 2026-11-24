@@ -264,6 +264,8 @@ var coach_ready := ""
 var league_shown := false
 var league_detail := ""
 var league_ready: Dictionary = {"enabled": true, "detail": ""}
+## Mode de course de la manche (lot CH4c : race, survivor, grandprix ou track), envoyé dans `start.mode`.
+var league_mode := "race"
 
 
 func set_league_home(shown: bool, detail: String) -> void:
@@ -272,12 +274,13 @@ func set_league_home(shown: bool, detail: String) -> void:
 	_refresh_home()
 
 
-## Manche de la semaine (lot CH4a) : course du core (`mode` « race », `league` vrai) sur une boucle, libre ou
-## d'un mode (`rmode` : « grandprix » quand seuls les circuits du Grand Prix sont des boucles) ; ouvre l'écran
-## Prêt, ou les parcours d'abord sans boucle choisie.
-func prepare_league(ready: Dictionary, rmode := "") -> Dictionary:
+## Manche de la semaine (lot CH4a) : course du core (`mode` = `lmode`, lot CH4c : race, survivor, grandprix ou
+## track ; `league` vrai) sur un parcours libre ou d'un mode (`rmode` : « grandprix », « track » pour le vélodrome) ;
+## ouvre l'écran Prêt.
+func prepare_league(ready: Dictionary, rmode := "", lmode := "race") -> Dictionary:
 	_clear_start()
 	mode = "league"
+	league_mode = lmode
 	route_mode = rmode if mode_routes.has(rmode) else ""
 	league_ready = ready.duplicate()
 	_refresh_home()
@@ -772,7 +775,7 @@ func _start_args() -> Dictionary:
 			choice[str(o)] = int(v) if v is float and is_equal_approx(v, round(v)) else v   # 20 et non 20.0
 		return {"mode": "track", "track": choice}
 	if mode == "league":   # le core compose le plateau de la manche (11 rivaux de la saison)
-		return {"mode": "race", "league": true}
+		return {"mode": league_mode, "league": true}
 	if mode == "coach" and ghost:   # bots du format de la course conseillée, fantôme en plus (lot CO5)
 		out["bots"] = (out.get("bots", []) as Array) + [{"kind": "ghost"}]
 	if mode == "coach":
