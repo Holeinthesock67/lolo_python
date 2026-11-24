@@ -79,6 +79,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const PhotoMomentsModel := preload("res://scripts/photo_moments_model.gd")
 const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
@@ -286,6 +287,8 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+## Photos automatiques à l'arrivée et aux records (photo_moments_model.gd, réglage `render.auto_photos`).
+var photo_moments = PhotoMomentsModel.new()
 var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
 var _beep_until_s := -INF
 ## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
@@ -430,7 +433,8 @@ func _ready() -> void:
 		if segment_hud.on_result(msg, Time.get_ticks_msec() / 1000.0):
 			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
 			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?"))
-			_play_event(event_sounds.on_segment_result(msg)))
+			_play_event(event_sounds.on_segment_result(msg))
+			photo_moments.on_segment_result(msg, Time.get_ticks_msec() / 1000.0))
 	ipc.gp_hit_received.connect(func(msg: Dictionary) -> void:
 		if gp_scene != null and gp_scene.on_hit(msg, Time.get_ticks_msec() / 1000.0):
 			ipc.test_log("gp_hit item=%s target=%s" % [msg.get("item", "?"), msg.get("target", "?")])
@@ -615,6 +619,7 @@ func _on_settings(msg: Dictionary) -> void:
 	AudioMix.apply_settings(menu_flow.settings.items)
 	fps_counter.measure_kept = _probe.is_open() or load_guard.enabled
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
+	photo_moments.enabled = str(menu_flow.settings.item(PhotoMomentsModel.SETTING_KEY).get("value", "on")) != "off"
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
@@ -1094,6 +1099,10 @@ func _flush_menu() -> void:
 	if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
 		st["card"]["profile"] = _route_profile["profile"]
 	var t0 := Time.get_ticks_usec()
+	# Photos de la séance qui vient de finir (photo_moments_model.gd) dans l'encart du résultat ; pas dans le
+	# bilan d'une séance de l'Historique. Une autre source de lignes (ligue, CH4) s'ajoute à la suite.
+	menu_view.summary.result_lines = PhotoMomentsModel.photo_lines(photo_moments.photos, photo_moments.folder) \
+		if str(st["screen"]) == "summary" else []
 	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	PerfProbe.mark("menu", "affichage " + str(st["screen"]), ms)
@@ -1804,6 +1813,33 @@ func _avatar_info() -> Dictionary:
 	return info
 
 
+## Photo automatique (photo_moments_model.gd) : image déjà rendue (celle du passage de la ligne pour
+## l'arrivée, avant que le bilan ne la couvre), écrite en JPEG en tâche de fond (bg_tasks.gd) sous
+## ~/OpenRide/Captures/<séance>/. Jamais sans écran, ni en mode test (bancs, CI) sauf si `OPENRIDE_CAPTURES_DIR`
+## donne un autre dossier (captures de validation), ni sous un menu plein écran (record).
+func _take_photo(req: Dictionary) -> void:
+	var base := OS.get_environment("OPENRIDE_CAPTURES_DIR")
+	if (ipc.test_mode and base == "") or DisplayServer.get_name() == "headless":
+		return
+	if str(req.get("kind", "")) != PhotoMomentsModel.KIND_FINISH and _full_screen_menu():
+		return
+	var shot_us := Time.get_ticks_usec()
+	var img := get_viewport().get_texture().get_image()
+	_probe.mark_capture((Time.get_ticks_usec() - shot_us) / 1000.0)
+	if img == null or img.is_empty():
+		return
+	var file: String = photo_moments.add_photo(req, Time.get_datetime_dict_from_system())
+	if base == "":
+		base = ThemeLoader._home_dir().path_join(PhotoMomentsModel.BASE_DIR)
+	var dir := base.path_join(photo_moments.folder)
+	BgTasks.add(func() -> void:
+		DirAccess.make_dir_recursive_absolute(dir)
+		var err := img.save_jpg(dir.path_join(file), 0.85)
+		if err != OK:
+			push_warning("Photo automatique non écrite (%s) : erreur %d" % [file, err]), false, "photo automatique")
+	print("Photo automatique : %s/%s" % [photo_moments.folder, file])
+
+
 func _test_screenshot(path: String, tag: String) -> void:
 	# Menu à jour de la dernière commande avant l'image (mise à jour une fois par image depuis le lot ML1) :
 	# sous Xvfb à 1 ou 2 images/s, la capture pouvait montrer l'écran d'avant (« Garage : avatar » au lieu de
@@ -2385,6 +2421,8 @@ func _on_state_received(state: Dictionary) -> void:
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
 		_play_event(jingle)
+	for req in photo_moments.on_state(state, float(Time.get_ticks_msec()) / 1000.0):
+		_take_photo(req)
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
 		_play_event(jingle)
 

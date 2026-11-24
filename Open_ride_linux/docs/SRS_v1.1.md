@@ -404,6 +404,7 @@ load_guard = true    # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow pui
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
 fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU et GPU, essais) (« Afficher les images/s » dans Réglages)
+auto_photos = "on"  # photos automatiques à l'arrivée et aux records, ~/OpenRide/Captures/ : on, off (« Photos automatiques »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 biome = "auto"           # biome du décor (lot U16, « Biome du décor ») : auto (biomes du parcours) ou un des seize biomes, forcé sur tout le parcours
 texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high ; retiré du menu au lot NI2 (auto suit la Qualité graphique), une valeur écrite avant est mise en commentaire au lancement (migration_reglages.py)

@@ -307,6 +307,21 @@ def test_draft_gauge_retired(tmp_path: Path, caplog):
     assert any("draft_gauge" in r.getMessage() and "NI1" in r.getMessage() for r in caplog.records)
 
 
+def test_auto_photos_setting(tmp_path: Path):
+    """Photos automatiques à l'arrivée et aux records (idée M9 de l'audit du 22 novembre) : choix on / off,
+    graphisme, appliqué tout de suite, actif par défaut, légende en mots."""
+    cfg = Config()
+    it = {i["key"]: i for i in settings.current(cfg)}["render.auto_photos"]
+    assert (it["value"], it["choices"], it["applies"], it["group"]) == ("on", ["on", "off"], "now", "graphics")
+    assert "~/OpenRide/Captures/" in it["help"]
+    path = tmp_path / "config.toml"
+    path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
+    settings.apply(cfg, {"render.auto_photos": "off"}, path)
+    assert config_mod.load(path).render.auto_photos == "off"
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "render.auto_photos", "non")
+
+
 def test_settings_groups_and_new_entries():
     """Sous-écrans de « Réglages » : chaque réglage a un groupe connu, groupes contigus dans l'ordre de
     `GROUPS` ; poids du vélo, direction et rafales du vent ajoutés (bornes de config.py)."""

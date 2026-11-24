@@ -14,6 +14,8 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - Le journal dit maintenant, chaque minute, combien de trames de position le core a envoyées et combien le jeu en a reçues, avec les erreurs d'envoi ; un gel de plus de 2 s est noté avec la cause probable (`log_report --gigue`).
 ### À-coups de main (lot AC4)
 - Plus d'image figée d'une demi-seconde à une seconde au chargement d'un parcours (départ du Cyber-Rogue, Grand Prix) : les cyclistes du décor se préparent sans bloquer l'affichage (lot AC4).
+### Photos automatiques de la séance
+- Une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus par séance, rangées dans `~/OpenRide/Captures/<date>_<heure>/` (JPEG, écrites hors de l'image) ; elles restent sur le PC. Le bilan dit combien de photos ont été prises et dans quel dossier. Réglages › Graphisme › « Photos automatiques » (oui par défaut). Jamais en Cyber-Rogue ni pendant les bancs.
 
 ### Moins de brouillard et de halo en medium et high (lot BH1)
 - En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
