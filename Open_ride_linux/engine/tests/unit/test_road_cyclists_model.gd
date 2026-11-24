@@ -244,6 +244,94 @@ func _test_warm_up(route) -> void:
 	await process_frame
 
 
+## Lot AC3 (à-coups du décor, 21/11) : hors du champ de la caméra, sans ombre (niveau > 0), un cycliste n'est pas
+## reposé, et il l'est dès son retour dans le champ ; un seul niveau de détail construit par image.
+func _test_view_skip(route) -> void:
+	var planes := []
+	var cam0 := Camera3D.new()
+	root.add_child(cam0)
+	cam0.current = true
+	cam0.global_transform = Transform3D(Basis(), Vector3.ZERO)   # regarde vers −z
+	await process_frame
+	planes = cam0.get_frustum()
+	_check(Renderer.in_view(planes, Vector3(0.0, 0.0, -10.0), 0.5) and not Renderer.in_view(planes, Vector3(0.0, 0.0, 10.0), 2.5)
+		and Renderer.in_view(planes, Vector3(0.0, 0.0, 1.0), 2.5) and Renderer.in_view([], Vector3(0.0, 0.0, 10.0), 0.0),
+		"champ de la caméra : devant oui, derrière non, sphère qui touche le bord oui, sans caméra toujours")
+	cam0.queue_free()
+	await process_frame
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	cam.current = true
+	var rr = Renderer.new()
+	root.add_child(rr)
+	var m = Model.new()
+	m.configure(route, CLIMBS, [], 16, 3)
+	rr.setup(m)
+	rr.set_quality("high")
+	rr.warm_up()
+	m.update(1000.0, 7.0, 0.0)
+	m.place_for_test(1000.0, 7.0, "ahead", 40.0, 3)
+	rr.update(1.0 / 30.0, false, 1000.0)
+	var at: Vector3 = rr.shown_transform(0).origin
+	# Caméra à 30 m (niveau 1, sans ombre), tournée à l'opposé des cyclistes
+	var away := Vector3(30.0, 2.0, 0.0)
+	cam.global_transform = Transform3D(Basis(), at + away).looking_at(at + away * 2.0, Vector3.UP)
+	var skipped: int = rr.posed_skipped
+	for i in range(3):
+		rr.update(1.0 / 30.0, false, 1000.0)
+	var unposed := true
+	for id in rr._by_id:
+		unposed = unposed and not (rr._by_id[id] as Node3D).has_meta("posed")
+	_check(rr.posed_skipped - skipped >= 3 * rr.visible_count() and unposed,
+		"cyclistes derrière la caméra, niveau 1 : pas reposés (%d poses évitées)" % (rr.posed_skipped - skipped))
+	cam.global_transform = Transform3D(Basis(), at + away).looking_at(at, Vector3.UP)
+	skipped = rr.posed_skipped
+	rr.update(1.0 / 30.0, false, 1000.0)
+	var posed := true
+	for id in rr._by_id:
+		posed = posed and (rr._by_id[id] as Node3D).has_meta("posed")
+	_check(rr.posed_skipped == skipped and posed, "caméra retournée vers eux : tous reposés à la même image")
+	rr.queue_free()
+	# Un seul niveau construit par image : deux cyclistes de même apparence sans réserve
+	var rb = Renderer.new()
+	root.add_child(rb)
+	var mb = Model.new()
+	mb.configure(route, CLIMBS, [], 16, 3)
+	rb.setup(mb)
+	rb.set_quality("high")
+	AvatarView.request_parts(1, Look.settings_for(0), Look.looks_for(0))
+	AvatarView.request_parts(2, Look.settings_for(0), Look.looks_for(0))
+	AvatarView.wait_parts()
+	mb.update(1000.0, 7.0, 0.0)
+	mb.place_for_test(1000.0, 7.0, "ahead", 40.0, 3)
+	for g in mb.groups:
+		for mm in g["members"]:
+			mm["jersey"] = 0
+			mm["look"] = 0
+	var far := Vector3(150.0, 2.0, 0.0)   # niveau 2 d'abord, puis tous au niveau 1 à la même image
+	cam.global_transform = Transform3D(Basis(), at + far).looking_at(at, Vector3.UP)
+	for i in range(3):
+		rb.update(1.0 / 30.0, false, 1000.0)
+	cam.global_transform = Transform3D(Basis(), at + away).looking_at(at, Vector3.UP)
+	rb.update(1.0 / 30.0, false, 1000.0)
+	var first_frame: int = rb.levels_deferred
+	var built := 0
+	for id in rb._by_id:
+		built += 1 if (rb._by_id[id] as Node3D).has_node("Lod1") else 0
+	for i in range(6):
+		rb.update(1.0 / 30.0, false, 1000.0)
+	var all_lod := true
+	for id in rb._by_id:
+		var r: Node3D = rb._by_id[id]
+		all_lod = all_lod and int(r.get_meta("shown_lod")) == int(r.get_meta("lod"))
+	_check(rb.visible_count() >= 2 and first_frame >= 1 and built == 1,
+		"un seul niveau construit par image (%d construit, %d remis à l'image suivante)" % [built, first_frame])
+	_check(all_lod, "niveaux remis : chaque cycliste a son niveau quelques images plus tard")
+	rb.queue_free()
+	cam.queue_free()
+	await process_frame
+
+
 ## Garde-robe du décor (lot AS7) : couleurs que ne portent ni les bots, ni le fantôme, ni l'avatar par défaut ;
 ## sans dossard, jamais de cadre de contre-la-montre.
 func _test_decor_look() -> void:
@@ -370,5 +458,6 @@ func _run() -> void:
 	await _test_renderer(route)
 	_test_decor_look()
 	await _test_warm_up(route)
+	await _test_view_skip(route)
 	print("test_road_cyclists_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
