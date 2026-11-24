@@ -6,6 +6,11 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 
 ## Non publié
 
+### Remettre à zéro les statistiques d'un profil (lot RZ1)
+- « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : niveau, expérience, pièces, défis, cartes, records, équipement acheté et cotes des bots repartent de zéro (avant une saison de la ligue, par exemple). Séances et FIT (historique du coach), cote Elo du cycliste, nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
+- Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant. Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut), exigée aussi par le core ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
+- Contrat IPC révision 1.31 : `reset_profile_stats`, `undo_profile_reset`, `profiles.resets`.
+
 ### Moins de brouillard et de halo en medium et high (lot BH1)
 - En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
 
