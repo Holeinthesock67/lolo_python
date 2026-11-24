@@ -9,6 +9,7 @@ extends SceneTree
 const Model := preload("res://scripts/road_cyclists_model.gd")
 const Renderer := preload("res://scripts/road_cyclists_renderer.gd")
 const Look := preload("res://scripts/road_cyclist_look.gd")
+const WarmupPlan := preload("res://scripts/warmup_plan.gd")
 const BotLook := preload("res://scripts/bot_look.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
@@ -238,6 +239,29 @@ func _test_warm_up(route) -> void:
 		_check(rr.visible_count() > 0 and rr.created_count() == created + (rr.visible_count() - distinct.size()),
 			"%s : cyclistes qui arrivent sur les avatars préchauffés (%d créé(s) pour %d affichés)" % [q, rr.created_count() - created, rr.visible_count()])
 		rr.queue_free()
+	# Lot AC4 : les mêmes temps joués un par image par le plan unique (attente des fils de travail sans bloquer).
+	var stepped = Renderer.new()
+	root.add_child(stepped)
+	var sm = Model.new()
+	sm.configure(route, CLIMBS, [], 16, 3)
+	stepped.setup(sm)
+	stepped.set_quality("high")
+	var plan = WarmupPlan.new()
+	plan.start(stepped.warm_steps(cam))
+	var images := 0
+	while plan.pending() > 0 and images < 10000:
+		plan.step()
+		images += 1
+		if plan.pending() > 0 and str(plan._steps[0][0]) == "cyclistes attente":
+			OS.delay_msec(1)   # fils de travail
+	var tiny_s := true
+	for c in stepped.get_children():
+		if c is Node3D and c.has_meta("variant"):
+			tiny_s = tiny_s and c.visible and c.global_transform.basis.get_scale().x < 0.001
+	_check(plan.pending() == 0 and stepped.spare_count() == Look.VARIANTS and tiny_s
+		and plan.done.size() == Look.VARIANTS + 3,
+		"plan unique : demande, attente, une apparence par image puis affichage (%d étapes, %d images)" % [plan.done.size(), images])
+	stepped.queue_free()
 	_check(counts["low"] == Look.VARIANTS * 2 and counts["high"] == Look.VARIANTS * 3,
 		"niveaux préchauffés : 1 et 2 en low (%d), 0 à 2 en high (%d)" % [counts["low"], counts["high"]])
 	cam.queue_free()
