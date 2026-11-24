@@ -16,6 +16,9 @@ extends RefCounted
 ## - Moment de fin unique (choix du propriétaire, 21 novembre 10h37) : une fois l'issue connue, la consigne devient
 ##   « COURSE FINIE · 1er sur 8 / Roule au calme autant que tu veux / Y puis A maintenu = bilan » jusqu'à la fin de
 ##   la séance ; plus jamais une course qui a l'air de durer.
+## - Fin commune (lot RT2, révision 1.34) : `state.arrival` (bout d'un parcours en ligne, arrivée du Grand Prix ou
+##   de la Course, entraînement fini) donne le même RÉSULTAT et la même consigne de fin, si aucun mode ne l'a déjà
+##   annoncé ; le bilan reprend les mêmes mots (`arrival_result`, summary_view_model.gd `result_card`).
 ## Le Click perdu ne s'affiche pas (choix du propriétaire, 21 novembre 11h05 : journal technique seulement).
 ## Pas de class_name : preload("res://scripts/feedback_model.gd").
 
@@ -46,6 +49,11 @@ var _result := {}       # {tone, title, sub, until}
 var _done := {}         # consigne de fin, gardée jusqu'à la fin de la séance : {k, action, detail}
 var _prev_session := ""
 var _erg_done := false
+var _arrival_seen := false
+## Boutons écrits ajoutés devant « Y puis A maintenu = bilan » dans la consigne de fin (place réservée : le fil
+## « Enchaîner plusieurs parcours en session libre » y mettra « A : Enchaîner un autre parcours » quand la trame le
+## permet) ; [] par défaut. Posés par main.gd à chaque trame, jamais gardés d'une séance à l'autre.
+var end_chips: Array = []
 
 
 func reset() -> void:
@@ -54,6 +62,7 @@ func reset() -> void:
 	_done = {}
 	_prev_session = ""
 	_erg_done = false
+	_arrival_seen = false
 
 
 ## Moment d'une famille (`bien`, `attention`, `refus`, `depart`) : bandeau TOAST_S secondes. Rend le son à jouer
@@ -107,6 +116,7 @@ func on_state(state: Dictionary, now_s: float, goal := "") -> Array:
 		_result = {}
 		_toast = {}
 		_erg_done = false
+		_arrival_seen = false
 	if session == "RUNNING" and _prev_session == "READY" and goal != "":
 		push("depart", "C'est parti !", goal, now_s)
 	var done = state.get("workout_done", null)
@@ -117,6 +127,15 @@ func on_state(state: Dictionary, now_s: float, goal := "") -> Array:
 			"ENTRAÎNEMENT FINI", "", "jingle_finish", "Ta séance est gardée · le bilan s'ouvre quand tu le demandes"))
 	elif not done is Dictionary:
 		_erg_done = false
+	var arr = state.get("arrival", null)
+	if arr is Dictionary and session in ["RUNNING", "PAUSED"] and not _arrival_seen:
+		_arrival_seen = true
+		var r := arrival_result(arr)
+		if not is_done() and not r.is_empty():   # un mode a déjà donné son résultat (piste, survivant, ERG)
+			out.append(result(str(r["tone"]), str(r["title"]), str(r["sub"]), now_s, str(r["done_k"]),
+				str(r.get("done_action", "")), "", str(r.get("done_detail", ""))))
+	elif not arr is Dictionary:
+		_arrival_seen = false
 	_prev_session = session
 	return out
 
@@ -142,7 +161,8 @@ func view(state: Dictionary, now_s: float, mode_consigne: Dictionary = {}) -> Di
 		out["result"] = {"tag": FAMILIES["resultat"]["tag"], "title": _result["title"], "sub": _result["sub"],
 			"color": RESULT_TONES.get(_result["tone"], RESULT_TONES["place"])[0]}
 	if not _done.is_empty():
-		out["consigne"] = {"k": _done["k"], "action": _done["action"], "detail": _done["detail"], "chips": [BILAN_CHIP]}
+		out["consigne"] = {"k": _done["k"], "action": _done["action"], "detail": _done["detail"],
+			"chips": end_chips + [BILAN_CHIP]}
 	elif not mode_consigne.is_empty():
 		out["consigne"] = {"k": str(mode_consigne.get("k", "À FAIRE")), "action": str(mode_consigne.get("action", "")),
 			"detail": str(mode_consigne.get("detail", "")), "chips": mode_consigne.get("chips", [])}
@@ -169,3 +189,24 @@ static func race_result(place: int, of: int) -> Array:
 	if place == 1:
 		return ["VICTOIRE !", "win"]
 	return ["ARRIVÉE · %s sur %d" % [place_text(place), of], "place"]
+
+
+## Titres de l'issue de la séance (`state.arrival` et `summary.arrival`, révision 1.34, lot RT2), mêmes mots en
+## séance et au bilan : {tone, title, sub, done_k, done_action?} ; {} pour un entraînement fini (annoncé par
+## `workout_done`) ou une sorte inconnue.
+static func arrival_result(arr: Dictionary) -> Dictionary:
+	var kind := str(arr.get("kind", ""))
+	if kind == "grandprix" or kind == "race":
+		var name := "Grand Prix des objets" if kind == "grandprix" else "Course"
+		var place = arr.get("place", null)
+		var of = arr.get("of", null)
+		if not (place is int or place is float) or not (of is int or of is float) or int(of) < 2:
+			return {"tone": "done", "title": "ARRIVÉE", "sub": name, "done_k": "COURSE FINIE"}
+		var rr := race_result(int(place), int(of))
+		var pl := "%s sur %d" % [place_text(int(place)), int(of)]
+		return {"tone": rr[1], "title": rr[0], "sub": ("Tu remportes la course · " + pl) if int(place) == 1 else name,
+			"done_k": "COURSE FINIE · " + pl}
+	if kind == "route":
+		return {"tone": "done", "title": "ARRIVÉE", "sub": "Bout du parcours : demi-tour automatique",
+			"done_k": "PARCOURS FINI", "done_action": "Roule au calme : tu repars dans l'autre sens"}
+	return {}

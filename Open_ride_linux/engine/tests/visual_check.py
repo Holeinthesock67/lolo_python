@@ -2374,7 +2374,7 @@ XP_RESULT = {"type": "xp_result", "v": CONTRACT_VERSION, "eligible": True, "reas
 
 def _progress_scenes(s: Session) -> None:
     """Lot V9 : bilan de progression en fin de séance (xp_result répété par le core) : lignes, barre, niveau,
-    déblocage, bandeau « Niveau N ! » et accès au Garage ; séance refusée."""
+    déblocage, « Niveau N ! » dans le bilan (sans bandeau du haut) et accès au Garage ; séance refusée."""
     core = s.core
     for _ in range(3):   # le core répète le message une fois par seconde
         core.send(dict(XP_RESULT))
@@ -2386,11 +2386,12 @@ def _progress_scenes(s: Session) -> None:
         s.check_texts("progression", info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
         s.check_texts("progression", info, {"menu": "Niveau 10 : ■■■□□□□□□□ 100 / 400 XP"}, contains=True)
         s.check_texts("progression", info, {"menu": "Niveau 10 !"}, contains=True)
-        s.check_texts("progression", info, {"menu": "Aller au Garage"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Garage — nouveau"}, contains=True)
         s.check_layout("progression", info)
         banner = info["widgets"]["banner"]
-        s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
-                f"{banner.get('text')}")
+        # Retour d'essai du 22/11 : le bandeau du haut masquait le titre et « Rejouer » ; le niveau reste écrit dans le bilan.
+        s.check("progression", "pas de bandeau « Niveau 10 ! » sur la fin de séance",
+                not (banner["visible"] and "Niveau 10 !" in banner.get("text", "")), f"{banner.get('text')}")
     # Bilan complet (six tuiles et la ligne des autres chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du
     # bilan détaillé) et
     # progression : la carte tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
