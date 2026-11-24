@@ -26,7 +26,8 @@ Budgets du préréglage (lot X14) : `sonde.txt` juge images/s, p99, GPU de la vu
 code de sortie 1 (`report --xvfb` : rendu logiciel, budgets en INFO).
 
 Saccades et démarrage (lot X15) : l'engine écrit aussi, à côté de son fichier, `saccades.csv` (chaque
-image de plus de 33 ms avec sa cause : tuile de terrain, tronçon OSM, arbres, capture, ou « inconnue »),
+image de plus de 33 ms avec sa cause : tuile de terrain, tronçon OSM, arbres, capture, shaders compilés, ou
+« inconnue » ; durée réelle, delta de Godot et pipelines compilés, 17/11),
 `taches.csv` (durée des tâches de fond) et `demarrage.txt` (première image jouable). Le rapport y ajoute
 les 20 pires saccades, le compte par cause, les durées des tâches de fond et le temps de démarrage.
 Bibliothèque standard seulement.
@@ -267,7 +268,8 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         v = values(rows, key)
         if v:
             out["stats"][key] = {"p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
-    # Images d'une capture d'écran de test (lot X35) : déjà hors p99 et pire image côté engine, comptées à part.
+    # Images d'une capture d'écran de test (lots X35 et PI1) : l'engine retire le coût mesuré de la capture de
+    # son image (le reste compte dans p99 et pire image) ; `capture_max_ms` est la pire, coût compris.
     cap = values(rows, "capture")
     if cap and sum(cap) > 0:
         out["captures"] = {"frames": int(sum(cap)), "max_ms": max(values(rows, "capture_max_ms"), default=0.0)}
@@ -291,8 +293,8 @@ def summary_text(summary: dict[str, Any], title: str) -> str:
         lines.append(f"  {name:<28} {st['p50']:>10.1f} {st['p99']:>10.1f} {st['max']:>10.1f}")
     if summary.get("captures"):
         c = summary["captures"]
-        lines += ["", f"Images des captures d'écran mises à part : {c['frames']} (pire {c['max_ms']:.0f} ms), "
-                  "hors temps d'image p99, pire image et saccades."]
+        lines += ["", f"Images des captures d'écran : {c['frames']} (pire {c['max_ms']:.0f} ms coût compris) ; "
+                  "le coût mesuré de la capture est retiré du temps d'image, le reste est compté."]
     if summary["drift"]:
         lines += ["", "Dérive (médiane de la dernière minute − première minute) :"]
         for key, d in summary["drift"].items():
@@ -340,6 +342,16 @@ def slope_per_hour(rows: list[dict[str, Any]], key: str, after_s: float = 0.0) -
     return sum((t - mt) * (v - mv) for t, v in pts) / den * 3600.0
 
 
+def unmeasured(rows: list[dict[str, Any]], warmup_s: float) -> str:
+    """Libellé d'un budget sans mesure après la chauffe (O3-02, revue de code vague 5) : secondes mesurées en
+    tout et secondes jugées, pour qu'un banc trop court se voie au rapport."""
+    ts = values(rows, "t_s")
+    span = (max(ts) - min(ts) + 1.0) if ts else 0.0
+    judged = sum(1 for t in ts if t >= min(ts) + warmup_s) if ts else 0
+    return (f"pas de mesure après la chauffe de {warmup_s:.0f} s ({len(ts)} relevé(s) sur {span:.0f} s, "
+            f"{judged} jugé(s))")
+
+
 def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
                      limits: dict[str, Any] | None = None) -> list[tuple[bool | None, str, str]]:
     """Vérifications de l'essai d'endurance : (réussi, libellé, mesure) ; réussi vaut None pour une mesure
@@ -363,6 +375,8 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
             drop = (1.0 - statistics.median(last) / statistics.median(first)) * 100.0 if statistics.median(first) else 0.0
             out.append((drop <= lim["max_fps_drop_pct"] if real_window else None, "endurance : images/s dans la durée",
                         f"{statistics.median(first):.1f} au début, {statistics.median(last):.1f} à la fin ({drop:+.0f} %)"))
+    else:   # O3-02 : un essai d'endurance dont toute la mesure tombe dans la chauffe n'a rien jugé
+        out.append((False if real_window else None, "endurance : images/s", unmeasured(rows, lim["warmup_s"])))
     worst = values(steady, "frame_max_ms")
     if worst:
         stutters = sum(w > lim["stutter_ms"] for w in worst)
@@ -377,6 +391,8 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
                     f" (seuil {lim['max_stutters_per_h']:.0f}"
                     + (f", soit {allowed:.0f} sur un essai de moins d'une heure)" if hours < 1.0 else ")")
                     + (f" ; {shots} autre(s) due(s) aux captures d'écran, non comptée(s)" if shots else "")))
+    else:
+        out.append((False if real_window else None, "endurance : saccades", unmeasured(rows, lim["warmup_s"])))
     long_enough = max(ts) - warm >= lim["min_slope_span_s"]
     labels = {k: lab for k, lab, _ in SUMMARY}
     for key, max_slope in lim["slopes_mb_per_h"].items():
@@ -462,7 +478,9 @@ def budget_checks(rows: list[dict[str, Any]], targets: dict[str, Any] | None = N
                   real_window: bool = True) -> list[tuple[bool | None, str, str]]:
     """Vérifications des budgets du préréglage noté par l'engine dans la sonde (pas celui de la ligne de
     commande : lot X32) : (réussi, libellé, mesure). Réussi vaut None sous Xvfb (rendu logiciel, à titre
-    indicatif) et pour une mesure absente (pas de nvidia-smi)."""
+    indicatif) et pour la charge du GPU sans nvidia-smi. Un budget de l'engine (images/s, p99, GPU de la vue)
+    sans aucune seconde après la chauffe est un échec en fenêtre réelle (O3-02) : un banc trop court ou une
+    colonne absente ne passe plus pour un banc réussi."""
     t = targets or load_targets()
     presets = presets_of(rows)
     if len(presets) != 1:
@@ -480,7 +498,8 @@ def budget_checks(rows: list[dict[str, Any]], targets: dict[str, Any] | None = N
 
     def judge(label: str, vals: list[float], ok_of: Callable[[float], bool], text: Callable[[float], str]) -> None:
         if not vals:
-            out.append((None, label, "pas de mesure"))
+            out.append((False if real_window else None, label,
+                        unmeasured(rows, float(t.get("warmup_s", 0))) + note))
             return
         v = statistics.median(vals)
         out.append((ok_of(v) if real_window else None, label, text(v) + note))
@@ -586,7 +605,7 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
     warmup_s = float(lim.get("warmup_s", t.get("warmup_s", 0)))
     ts = values(rows, "t_s")
     if not ts:
-        return []
+        return [(False if real_window else None, "à-coups", "aucune seconde datée dans la sonde")]
     warm = min(ts) + warmup_s
     steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
     # Lot PL1 : une seconde lente du régime établi que saccades.csv explique par une capture du banc (déjà mise à
@@ -615,6 +634,8 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
         top = max(worst)
         out.append(((top <= freeze_ms) if real_window else None, "à-coups : pire image",
                     f"{top:.0f} ms (au plus {freeze_ms:.0f} ms){note}"))
+    else:   # O3-02 : toutes les secondes dans la chauffe des à-coups (ou mises à part) : rien de jugé
+        out.append((False if real_window else None, "à-coups : images lentes", unmeasured(rows, warmup_s) + note))
     if saccades is not None:
         t0 = min((float(r["t_s"]) for r in saccades if isinstance(r.get("t_s"), float)), default=0.0)
         hits = [r for r in saccades if isinstance(r.get("frame_ms"), float) and r["frame_ms"] > hitch_ms
@@ -697,9 +718,15 @@ def stall_summary(stalls: dict[str, Any]) -> dict[str, Any]:
         v = [float(r["ms"]) for r in stalls["tasks"] if str(r.get("kind")) == kind and isinstance(r.get("ms"), float)]
         if v:
             tasks[kind] = {"count": len(v), "p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
+    # Pire image (17/11) : colonnes `delta_ms` (delta de Godot, borné vers 133-150 ms) et `pipelines` (compilés
+    # pendant l'image) des engines récents ; absentes d'un engine plus ancien.
+    clipped = [r for r in sac if isinstance(r.get("delta_ms"), float) and r["frame_ms"] > r["delta_ms"] + 1.0]
+    pipes = [int(r["pipelines"]) for r in sac if isinstance(r.get("pipelines"), (int, float))]
     return {"count": len(sac), "causes": dict(sorted(causes.items(), key=lambda kv: -kv[1]["count"])),
             "top": sorted(sac, key=lambda r: -r["frame_ms"])[:STALL_TOP], "tasks": tasks,
-            "startup_ms": stalls["startup_ms"]}
+            "startup_ms": stalls["startup_ms"], "clipped": len(clipped),
+            "pipelines": sum(pipes) if pipes else None,
+            "with_pipelines": sum(1 for n in pipes if n > 0)}
 
 
 def stall_text(st: dict[str, Any]) -> str:
@@ -708,12 +735,22 @@ def stall_text(st: dict[str, Any]) -> str:
              "", f"Saccades (images de plus de 33 ms) : {st['count']}"]
     for cause, c in st["causes"].items():
         lines.append(f"  {cause:<10} {c['count']:>5} image(s), pire {c['worst_ms']:.0f} ms, total {c['total_ms'] / 1000:.1f} s")
+    if st.get("pipelines") is not None:
+        lines.append(f"  pipelines compilés pendant les saccades : {st['pipelines']} "
+                     f"(dans {st['with_pipelines']} image(s))")
+    if st.get("clipped"):
+        lines.append(f"  {st['clipped']} image(s) plus longues que le delta de Godot (borné à 8 pas de physique) : "
+                     "durée réelle donnée")
     if st["top"]:
-        lines += ["", f"Les {len(st['top'])} pires saccades :", f"  {'t (s)':>8} {'ms':>7} {'distance':>9}  cause : étapes"]
+        lines += ["", f"Les {len(st['top'])} pires saccades :",
+                  f"  {'t (s)':>8} {'ms':>7} {'distance':>9} {'pipel.':>6}  cause : étapes"]
         for r in st["top"]:
             dist = r.get("distance_m")
+            pipe = r.get("pipelines")
             lines.append(f"  {r.get('t_s', 0.0):>8.1f} {r['frame_ms']:>7.1f} "
-                         f"{(f'{dist:.0f} m') if isinstance(dist, float) else '':>9}  {r.get('cause', '')} : {r.get('steps', '')}")
+                         f"{(f'{dist:.0f} m') if isinstance(dist, float) else '':>9} "
+                         f"{(str(int(pipe))) if isinstance(pipe, (int, float)) else '':>6}  "
+                         f"{r.get('cause', '')} : {r.get('steps', '')}")
     if st["tasks"]:
         lines += ["", "Tâches de fond (ms) :", f"  {'type':<10} {'nombre':>7} {'médiane':>8} {'p99':>8} {'max':>8}"]
         for kind, t in st["tasks"].items():
@@ -771,12 +808,13 @@ def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de p
     write_csv(rows, out / "sonde.csv")
     summary = summarize(rows)
     text = summary_text(summary, title)
-    summary["budgets"] = budget_checks(rows, real_window=real_window) if values(rows, "fps") else []
+    # O3-02 : budgets jugés dès qu'il y a des relevés, même sans colonne d'images/s (échec « pas de mesure »).
+    summary["budgets"] = budget_checks(rows, real_window=real_window) if rows else []
     if summary["budgets"]:
         text += "\nBudgets du préréglage (engine/tests/perf_targets.json, lot X14) :\n" + budget_text(summary["budgets"]) + "\n"
     stalls = read_stalls(engine_dir) if engine_dir is not None else None
     hitches = hitch_checks(rows, stalls["saccades"] if stalls is not None else None, real_window=real_window) \
-        if values(rows, "frame_max_ms") else []
+        if rows else []
     if hitches:
         summary["budgets"] += hitches
         text += "\nÀ-coups (seuils « hitches » de perf_targets.json) :\n" + budget_text(hitches) + "\n"
@@ -811,10 +849,16 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
           idle_stop_s: float = IDLE_STOP_S, period_s: float = 1.0, quality: str | None = None) -> int:
     print(f"Sonde : attente du fichier de l'engine {engine_csv} …", flush=True)
     t0 = time.monotonic()
-    while not engine_csv.is_file() and time.monotonic() - t0 < wait_s:
+    # O3-01 : un fichier laissé par une séance précédente n'est pas une mesure. L'engine le vide à son démarrage
+    # puis y écrit chaque seconde : on attend un fichier modifié après le départ de la sonde.
+    since = time.time() - 1.0
+    if engine_csv.is_file() and not _fresh(engine_csv, since):
+        print("Sonde : fichier d'une séance précédente ignoré, attente de l'engine (pour relire une ancienne "
+              "séance : perf_probe.py report).", flush=True)
+    while not _fresh(engine_csv, since) and time.monotonic() - t0 < wait_s:
         time.sleep(0.5)
-    if not engine_csv.is_file():
-        print(f"Pas de fichier en {wait_s:.0f} s : l'engine est-il lancé avec --perf-probe ou OPENRIDE_PERF_PROBE ?")
+    if not _fresh(engine_csv, since):
+        print(f"Pas de fichier écrit en {wait_s:.0f} s : l'engine est-il lancé avec --perf-probe ou OPENRIDE_PERF_PROBE ?")
         return 1
     sampler = SystemSampler(period_s)
     sampler.start()
@@ -842,9 +886,24 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
     return max(_quality_verdict(summary, quality), _budget_verdict(summary, budgets))
 
 
+def _fresh(path: Path, since: float) -> bool:
+    """Fichier présent et modifié depuis `since` (heure murale)."""
+    try:
+        return path.stat().st_mtime >= since
+    except OSError:
+        return False
+
+
 def _budget_verdict(summary: dict[str, Any], strict: bool) -> int:
-    """Code 1 si un budget est dépassé et que `--budgets` est demandé."""
-    return 1 if strict and any(ok is False for ok, _, _ in summary.get("budgets", [])) else 0
+    """Code 1 si un budget est dépassé ou non mesuré et que `--budgets` est demandé ; aucun budget jugé
+    (aucun relevé) compte aussi comme un échec (O3-02)."""
+    if not strict:
+        return 0
+    checks = summary.get("budgets", [])
+    if not checks:
+        print("[ÉCHEC] budgets demandés : aucun relevé à juger")
+        return 1
+    return 1 if any(ok is False for ok, _, _ in checks) else 0
 
 
 def _quality_verdict(summary: dict[str, Any], quality: str | None) -> int:

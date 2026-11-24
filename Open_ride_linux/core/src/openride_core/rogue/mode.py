@@ -152,6 +152,7 @@ class RogueMode:
         self.gear = self.balance.gear_ref
         self.buttons: set[str] = set()
         self.shift_pending = False
+        self.gear_before_hack: int | None = None   # braquet du joueur pendant un pignon imposé (revue C4-03)
         self.grade_sent = 0.0
         self.room_id = 0
         self.phase = ""
@@ -205,11 +206,11 @@ class RogueMode:
         for ev, key in FRAME_FEEDBACK:
             if ev in out.rogue["events"]:
                 self._frame_feedback[key] = out.rogue.get(key)
-            self.shift_pending = True
         physics.step(power_w, out.grade_enemy, 0.0, dt)       # vitesse virtuelle sur la pente de l'ennemi
         new_room = e.room_id != self.room_id
         if new_room or not (e.room is not None and e.phase in FIGHT_PHASES):
             physics.s = 0.0
+        self._apply_forced_gear()
         lines = [ln for ln in (journal_line(t, ts, e.t_total) for t in out.journal) if ln]
         lines += [{"kind": "rogue", "event": "perfect_shift", "ts": round(ts, 3), "t": round(e.t_total, 2)}
                   for ev in out.rogue["events"] if ev == "perfect_shift"]
@@ -221,6 +222,21 @@ class RogueMode:
         if self.finished:
             self.results_s += dt
         return out, lines
+
+    def _apply_forced_gear(self) -> None:
+        """Pignon imposé du Saboteur (revue de code C4-03) : le braquet passe au pignon tiré dès le début du piratage,
+        sans appui, et revient au braquet d'avant à sa fin (purge, expiration, fin de salle). La pente suit la rampe
+        du mode : ce n'est pas un changement de braquet du joueur. Avant, rien ne changeait tant qu'on n'appuyait
+        pas, puis le pignon imposé restait après le piratage."""
+        cs = self.engine.combat if self.in_fight else None
+        forced = cs.forced_gear if cs is not None and cs.hack_kind == "forced_gear" else None
+        before = getattr(self, "gear_before_hack", None)
+        if forced is not None:
+            if before is None:
+                self.gear_before_hack = self.gear
+            self.gear = forced
+        elif before is not None:
+            self.gear, self.gear_before_hack = before, None
 
     def take_frame(self) -> dict | None:
         """Objet `rogue` de la trame `state` à envoyer : l'état du dernier pas, avec les événements de tous les pas

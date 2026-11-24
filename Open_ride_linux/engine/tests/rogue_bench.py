@@ -206,12 +206,15 @@ class Bench:
         shots = []
         t0 = trace[0][0]
         start = now()
+        prev_state: dict | None = None
         for i, (t, m) in enumerate(trace):
             wait = start + (t - t0) / self.args.speed - now()
             if wait > 0:
                 time.sleep(wait)
+            before = prev_state
             if m.get("type") == "state":
                 self.send_state(core, m)
+                prev_state = m
             else:
                 core.send(m)
             if i in at:
@@ -219,11 +222,22 @@ class Bench:
                 if rider:                               # lot R23 : flèche haut jusqu'à la 4e vue
                     for _ in range(VIEW_PRESSES):
                         core.send({"type": "input", "event": "UP_SHORT"})
-                held = now()
+                # Dégâts reçus : un coup isolé ne fait battre les bords rouges que 0,45 s, moins que le gel de la
+                # trame ; pendant le gel, la trame d'avant (bouclier plus haut) et celle du coup alternent, comme un
+                # contact du Firewall, pour que le coup soit encore à l'écran à la capture. Avant la revue de code
+                # C4-01, la run du banc avait toujours un contact du mur au début des phases 2 et 3 du boss.
+                hurt = at[i] == "degats_recus" and before is not None
+                held, flip = now(), False
                 while now() - held < HOLD_S or (not self.ready and now() - held < READY_TIMEOUT_S):
                     time.sleep(1.0 / FRAME_HZ)
-                    self.send_state(core, m)
+                    flip = not flip
+                    self.send_state(core, before if hurt and flip else m)
                     self.ready = self.ready or core.log.wait_for(READY_RE, 0.0) is not None
+                if hurt:
+                    self.send_state(core, before)
+                    time.sleep(1.0 / FRAME_HZ)
+                    self.send_state(core, m)
+                    time.sleep(1.0 / FRAME_HZ)
                 self.check(at[i], "scène du mode prête avant la capture", self.ready,
                            "" if self.ready else f"pas de « scene_ready id=rogue » en {READY_TIMEOUT_S:.0f} s")
                 shot = self.capture(core, at[i])
@@ -394,11 +408,28 @@ def run(args, out: Path, report: Report) -> None:
         bench.check(b[0], "image différente de la salle précédente", d >= ROOM_DIFF_MIN, f"écart moyen {d:.1f} niveaux sur 255")
     resync = core.messages("cmd", name="rogue_resync")
     bench.check("run", "aucune demande rogue_resync", not resync, f"{len(resync)} demande(s)")
+    loads = classic_loads_during_run(engine_log.read_text(errors="replace"))
+    bench.check("run", "monde classique gelé pendant la run (pause comprise)", loads is not None and not loads,
+                "départ ou sortie de la scène absent du journal" if loads is None
+                else (" | ".join(loads[:3]) or "aucun parcours demandé ni chargé"))
     issues = [ln for ln in engine_log.read_text(errors="replace").splitlines()
               if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
     bench.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
     r_err = rendu_jeu.check_log(engine_log.read_text(errors="replace"))
     bench.check("journal", "rendu du jeu (Forward+)", r_err is None, r_err or "Vulkan, Forward+")
+
+
+def classic_loads_during_run(log_text: str) -> list[str] | None:
+    """Parcours classiques demandés ou chargés entre le décor vidé au départ de la run et la sortie de la scène
+    du mode (lot R-gel) ; None si l'une des deux bornes manque au journal de l'engine."""
+    lines = log_text.splitlines()
+    start = next((i for i, ln in enumerate(lines) if "[test] route_world_released" in ln), None)
+    if start is None:
+        return None
+    end = next((i for i in range(start, len(lines)) if "[test] rogue_scene_left" in lines[i]), None)
+    if end is None:
+        return None
+    return [ln.strip() for ln in lines[start:end] if re.search(r"\[test\] route_(requested|loaded) ", ln)]
 
 
 def main() -> int:

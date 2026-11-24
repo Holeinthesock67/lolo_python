@@ -1,0 +1,44 @@
+{
+  "description": "Course classique contre les bots à 11 adversaires (lot CR1) sur la démonstration de 5 km : départ groupé du cycliste et de 11 bots (pire cas GPU du mode : 12 coureurs, classement complet de 12 lignes au HUD), course jusqu'à l'arrivée, sans objet ni boîte ; à 280 W contre des bots au niveau 100 %. Banc GPU en low, medium et high (budgets 8, 13 et 16 ms). Captures à faire valider par le propriétaire toutes les 20 s : place, tour, écart et classement complet (bots loin compris), sans case d'objet.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 280,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "inputs": [],
+  "bench": {
+    "world": "demo",
+    "mode": "race",
+    "config": {
+      "race": {
+        "opponents": 11
+      },
+      "bots": {
+        "level_pct": 100
+      }
+    },
+    "duration_s": 480,
+    "expect": [
+      {
+        "log": "core",
+        "motif": "Course : 11 adversaires, [0-9.]+ km, 0 objet",
+        "recette": "CR1",
+        "label": "séance lancée en Course à 11 adversaires, sans aucun objet"
+      }
+    ],
+    "every_s": 20
+  }
+}

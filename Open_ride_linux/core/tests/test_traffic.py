@@ -67,6 +67,15 @@ def test_hash_matches_vegetation_placer():
     assert math.isclose(sum(k["share"] for k in tr.KINDS.values()), 1.0)
 
 
+def test_team_car_is_never_drawn_in_traffic():
+    """Voiture d'équipe du Grand Prix (lot GP-voiture-modele) : sorte à part nulle, jamais tirée, même au-delà
+    de la somme des parts (arrondis) ; tables de l'abri et de l'aspiration complètes."""
+    assert tr.KINDS["team_car"]["share"] == 0.0
+    assert tr.pick_kind(1.0) == "tractor" and tr.pick_kind(1.5) == "tractor"
+    assert all(tr.pick_kind(i / 1000.0) != "team_car" for i in range(1001))
+    assert set(tr.DRAFT) == set(tr.KINDS) and set(tr.SUCTION_PEAK) == set(tr.KINDS)
+
+
 # --- séance simulée -------------------------------------------------------------------------------
 
 def ride(seed: int, v_rider: float = 8.3, length_m: float = 30000.0, bots=()):

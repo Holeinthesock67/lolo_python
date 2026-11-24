@@ -26,6 +26,8 @@ Bilan des circuits de démonstration (hors dépôt : `/mnt/project-files/statut/
 | `demo-biomes-sud` | Route du Sud | Parcours | DB3 |
 | `demo-biomes-nord` | Route du Grand Nord | Parcours | DB3 |
 | `demo-circuit` | Circuit des Prés | Accueil › Grand Prix | O38, GP13 |
+| `demo-corniche` | Boucle de la Corniche | Accueil › Grand Prix | GP13b |
+| `demo-vignes` | Route des Vignes | Accueil › Grand Prix | GP13b |
 | `velodrome-250` | Vélodrome 250 m | Accueil › Vélodrome | VD10, GP13 |
 
 Plus le pack « Cols célèbres », livré par le paquet (lot PK1, hors de cette liste). Recette seule (`--recette`) : `demo-biomes-tour`, `demo-biomes-gravel`, `demo-biomes-cote`, `demo-biomes-alpin`. Chez un joueur qui les a déjà, ces quatre parcours restent installés (décision du 13 novembre, rappelée au lot DB1) ; seuls ceux d'avant le lot O37 (générateur `make_biome_world`) sont enlevés.

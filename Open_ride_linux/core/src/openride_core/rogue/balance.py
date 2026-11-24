@@ -85,7 +85,10 @@ class RogueBalance:
     ps_window_s: float = 1.5            # fenêtre de Perfect Shift centrée sur l'arche (R0)
     overheat_frac: float = 0.75   # surchauffe (endurance) : seuil de puissance, en fraction de la FTP
     overheat_margin: float = 0.10   # surchauffe : jamais sous la cible + cette marge (lot R23 : boss d'endurance à 85 %)
-    target_grace_w: float = 5.0   # consignes jugées sur la puissance affichée (3 s), à 5 W près (arrondi de l'affichage, lot R23)
+    target_grace_w: float = 5.0   # tolérance minimale des consignes (W) : jugées sur la puissance jugée, au moins à 5 W près (lot R23)
+    target_grace_frac: float = 0.10   # lot R26 : tolérance des consignes en part de la consigne (10 %, choix du propriétaire, au moins target_grace_w)
+    target_exit_mult: float = 1.5   # lot R26 : une fois dans la plage, on n'en sort qu'à ce multiple de la tolérance
+    judged_power_s: float = 8.0   # lot R26 : puissance jugée (et affichée en run) = moyenne de ces secondes (8 s, choix du propriétaire)
     overheat_after_s: float = 5.0   # surchauffe : durée au-delà du seuil avant qu'elle commence (s)
     overheat_adrenaline_per_s: float = 2.0   # surchauffe : adrénaline perdue par seconde
     long_press_gears: int = 3   # vitesses sautées par un appui long sur + ou B

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Circuit en boucle livré avec le jeu (« Circuit des Prés », 3 km), pour les courses en tours et le Grand Prix des objets | Python | O37, GP2 | Petite | Fait (fusionné le 13 novembre, #849 ; relu par le lot NT1) |
+| Circuit en boucle livré avec le jeu (« Circuit des Prés », 3 km), pour les courses en tours et le Grand Prix des objets | Python | O37, GP2 | Petite | **Livré le 13 novembre** (PR #849, relu par le lot NT1) |
 
 Demande du propriétaire du 12 novembre 2026 (« Ok circuit demo grand prix »), à la suite du constat de la recette GP11 : le jeu de base ne livre aucun parcours en boucle, si bien que l'étape « circuit » de `docs/RECETTE_SERIE_GP.md` dépend d'une trace personnelle.
 
@@ -43,3 +43,7 @@ for q in low medium high; do
     --quality $q --native --probe --out ~/OpenRide/sim_bench/o38_$q
 done
 ```
+
+## 6. Livraison
+
+Fusionné le 13 novembre 2026 (PR #849). Détail des écarts et de la recette : description de la PR.

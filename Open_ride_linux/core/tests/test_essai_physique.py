@@ -363,7 +363,7 @@ def test_launch_writes_the_overrides_then_puts_everything_back(tmp_path, monkeyp
 
     from pathlib import Path
     monkeypatch.setattr(subprocess, "Popen", Fin)
-    assert EP.lancer(EP.fiches()["abri-bonus"], "principal", True, 120.0, muet=True) == 1
+    assert EP.lancer(EP.fiches()["abri-bonus"], EP.profil_par_defaut(True), True, 120.0, muet=True) == 1
     assert "arch_every_m = 500" in seen["powerups"] and "factor = 0.9" in seen["powerups"]
     assert 'mode = "tactiques"' in seen["config"]
     assert seen["seance"]["commandes"][1]["args"]["bots"][0]["power_w"] == 120

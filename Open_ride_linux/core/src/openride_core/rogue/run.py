@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import math
 import pickle
+from collections import deque
 from dataclasses import dataclass, field, replace
 
 from . import cards as cardlib
 from .balance import DEFAULT_BALANCE, RogueBalance, balance_hash
-from .combat import DONE, RECOVERY, CombatInputs, combat_start, combat_step
+from .combat import DONE, RECOVERY, CombatInputs, combat_start, combat_step, in_target
 from .firewall import Firewall
 from .posture import ARRET, PostureState, posture_step
 from .rooms import Room, RoomRider, generate_room
@@ -66,7 +67,7 @@ class RunInputs:
     v_mps: float = 0.0
     buttons: frozenset = frozenset()     # Z_SHORT, Z_LONG, A_SHORT, A_LONG ; les vitesses sont à la session
     input_lost: bool = False             # Click perdu : le Firewall s'arrête
-    power_avg_w: float | None = None     # lot R23 : puissance affichée (moyenne de 3 s), juge consignes et seuils
+    power_avg_w: float | None = None     # puissance jugée imposée (tests) ; None : moyenne de `judged_power_s` (lot R26)
 
 
 @dataclass
@@ -104,6 +105,13 @@ class RunEngine:
         self.gold = 0.0
         self.shield = balance.shield_max
         self.adrenaline = 0.0               # lot R23 : gardée d'une salle et d'une phase du boss à l'autre
+        # lot R26 : puissance jugée (moyenne de `judged_power_s`), plage de l'échauffement et ses retours
+        self._judge_win: deque = deque()
+        self.judged_w = 0.0
+        self._warm_in = False
+        self._warm_rate, self._warm_cause = 0.0, "none"
+        self._band_key = None
+        self._band_was_in = False
         self.last_gear = balance.gear_ref
         self.next_room_id = 1
         self.rooms_started = 0
@@ -162,11 +170,11 @@ class RunEngine:
     def _begin(self, inp, messages) -> None:
         """Démarre l'étape courante : salle, boss ou couloir."""
         if self.phase == ROOM:
-            messages += self._start_room(self._step, self._take_room_id(), None, inp.gear, inp.s_m)
+            messages += self._start_room(self._step, self._take_room_id(), None, inp.gear)
         elif self.phase == BOSS:
             self._fit_boss_to_time_left()
             n = sum(1 for s in self.sc.steps[:self.idx + 1] if s.kind == "boss")
-            messages += self._start_room(self._step, self._take_room_id(), n, inp.gear, inp.s_m)
+            messages += self._start_room(self._step, self._take_room_id(), n, inp.gear)
         elif self.phase == CORRIDOR:
             self._enter_corridor(inp, messages)
 
@@ -212,7 +220,7 @@ class RunEngine:
     def _gold_mult(self) -> float:
         return self.b.gold_mult * (self.b.relic_gold_mult if "relic_gold" in self.relics else 1.0)
 
-    def _start_room(self, spec: Step, room_id: int, boss_phase: int | None, gear: int, s_m: float) -> list:
+    def _start_room(self, spec: Step, room_id: int, boss_phase: int | None, gear: int) -> list:
         self.room = self._previews.pop(room_id, None) or generate_room(
             spec.archetype, spec.variant, spec.objective, spec.nominal_s, self.rider,
             self.sc.seed * 1000 + room_id, self.b)
@@ -220,7 +228,10 @@ class RunEngine:
         bx = self._eff_balance()
         self.combat = replace(combat_start(self.room, self.sc.seed * 1000 + room_id, bx, shield=self.shield, gear=gear),
                               adrenaline=max(getattr(self, "adrenaline", 0.0), bx.adrenaline_start))
-        self.firewall = Firewall(self.room, self.rider, bx, player_s=s_m)
+        # revue de code C4-01 : une salle commence toujours à 0 m (`RogueMode.step` remet la distance à zéro au
+        # changement de salle) ; créé à la distance de fin de la salle d'avant (phases 2 et 3 du boss), le mur
+        # partait collé au joueur au lieu de `start_gap_m` derrière lui.
+        self.firewall = Firewall(self.room, self.rider, bx, player_s=0.0)
         self.gold_lost_seen = 0.0
         self.inversion_used = False
         self.inversion_until = 0.0
@@ -244,6 +255,7 @@ class RunEngine:
         messages: list = []
         events: list = []
         self.t_total += dt
+        inp = replace(inp, power_avg_w=self._judge(dt, inp))
         self.t_phase += dt
         self.last_gear = inp.gear
         self.posture = posture_step(self.posture, inp.cadence_rpm, inp.power_w, dt, self.b)
@@ -259,6 +271,7 @@ class RunEngine:
         elif self.phase == COOLDOWN:
             if self.t_phase >= self._step.nominal_s:
                 self._finish_run()
+        self._band_events(events)
         if "Z_SHORT" in inp.buttons and "z_ok" not in events and "z_refused" not in events:
             # lot R23 : chaque Z court a un retour ; sans effet ici (échauffement, couloir sans choix, retour au
             # calme, bilan) : refus « rien à frapper », que l'engine explique selon la phase.
@@ -272,8 +285,58 @@ class RunEngine:
 
     # --- échauffement et couloirs -------------------------------------------------------------
 
+    def _judge(self, dt: float, inp) -> float:
+        """Puissance jugée (lot R26) : moyenne des `judged_power_s` dernières secondes de la run, sauf valeur imposée.
+        Sur 3 s, l'écart type du trainer en salle (60 à 90 W bruts) sortait sans cesse de la plage."""
+        win = getattr(self, "_judge_win", None)
+        if win is None:                      # run reprise d'un instantané d'avant le lot R26
+            win = self._judge_win = deque()
+        win.append((self.t_total, inp.power_w))
+        while win and win[0][0] <= self.t_total - self.b.judged_power_s:
+            win.popleft()
+        self.judged_w = inp.power_avg_w if inp.power_avg_w is not None else sum(p for _, p in win) / len(win)
+        return self.judged_w
+
+    def _band_now(self):
+        """(clé de la phase, dans la plage) pour les retours d'entrée et de sortie de la plage (lot R26)."""
+        if self.phase == WARMUP:
+            return ("warmup", self.idx), getattr(self, "_warm_in", False)
+        cs = self.combat
+        if self.phase in (ROOM, BOSS) and cs is not None and cs.phase == "FIGHT":
+            return ("fight", self.room_id, self.boss_phase), cs.in_target
+        return None, False
+
+    def _band_events(self, events: list) -> None:
+        """Événements `target_in` et `target_out` (lot R26) : la puissance jugée entre dans la plage de la consigne
+        ou en sort ; rien au premier pas d'une phase ou d'une salle (la plage change avec elle)."""
+        key, now_in = self._band_now()
+        if key is not None and key == getattr(self, "_band_key", None) and now_in != self._band_was_in:
+            events.append("target_in" if now_in else "target_out")
+        self._band_key, self._band_was_in = key, now_in
+
+    def _warmup_adrenaline(self, dt, inp) -> None:
+        """Lot R26 (choix du propriétaire, 21 novembre) : à la consigne de l'échauffement, l'adrénaline monte comme en
+        salle ; gardée ensuite d'une salle à l'autre (R23), elle permet de frapper dès la première porte."""
+        b = self.b
+        u = min(self.t_phase / max(self._step.nominal_s, 1e-9), 1.0)
+        lo = b.warmup_frac_from + (b.warmup_frac_to - b.warmup_frac_from) * u - 0.05
+        shown = inp.power_avg_w / max(inp.ftp_w, 1.0)
+        self._warm_in = in_target(shown, lo, inp.ftp_w, getattr(self, "_warm_in", False), b)
+        rate, cause = 0.0, "below"
+        if self.posture.posture == ARRET:
+            cause = "stopped"
+        elif self._warm_in:
+            mult = b.adrenaline_roc_mult if self.posture.posture == "ROC" else (
+                b.adrenaline_veloce_mult if self.posture.posture == "VELOCE" else 1.0)
+            rate, cause = b.adrenaline_per_s * mult, "gain"
+        self.adrenaline = min(max(self.adrenaline + rate * dt, 0.0), b.adrenaline_max)
+        if cause == "gain" and self.adrenaline >= b.adrenaline_max:
+            rate, cause = 0.0, "full"
+        self._warm_rate, self._warm_cause = rate, cause
+
     def _warmup(self, dt, inp, messages, events) -> float:
         step = self._step
+        self._warmup_adrenaline(dt, inp)
         if not self.relic_offered and self.t_phase >= self.b.warmup_relic_s:
             self.relic_offered = True
             self._open_offer(cardlib.draw(f"{self.sc.seed}|relic", self.b.cards_offered, (), cardlib.RELICS),
@@ -391,7 +454,7 @@ class RunEngine:
                 spec, rid = step.doors[self.door_pick], self.door_ids[self.door_pick]
                 self.phase, self.t_phase = ROOM, 0.0
                 self.door_steps, self.door_ids = (), ()
-                messages += self._start_room(spec, rid, None, inp.gear, inp.s_m)
+                messages += self._start_room(spec, rid, None, inp.gear)
                 self._previews.clear()
             else:
                 self._enter(self.idx + 1)
@@ -443,9 +506,11 @@ class RunEngine:
             self.inversion_used, self.inversion_until = True, t + b.inversion_s
             self._card_fired("polarity", t, events, rearm=False)
         self.prev_raw = raw
-        g = raw
+        # revue de code C4-02 : bosse « aspirée » du Puncheur (parade réussie) : pente de l'ennemi multipliée par
+        # `grade_scale` (0,5 pendant `hook_s`), avant les cartes ; avant, la valeur n'était lue par personne.
+        g = raw * cs.grade_scale
         if "roller" in self.deck:
-            if raw > b.roller_cap_grade:
+            if g > b.roller_cap_grade:
                 g, self.roller_hold_until = b.roller_cap_grade, t + b.roller_hold_s
             elif t < self.roller_hold_until:
                 g = b.roller_cap_grade
@@ -616,7 +681,7 @@ class RunEngine:
             "enemy_hp": round(cs.enemy_hp, 2) if cs else 0.0,
             "enemy_hp_max": round(cs.enemy_hp_max, 2) if cs else 0.0,
             "shield": round(self.shield, 1), "shield_max": bx.shield_max,
-            "adrenaline": round(cs.adrenaline, 1) if cs else 0.0,
+            "adrenaline": round(cs.adrenaline if cs else self.adrenaline, 1),   # lot R26 : chargée à l'échauffement
             "w_bal_j": round(self.wbal.w_bal_j, 1), "w_prime_j": self.w_prime_j,
             "posture": self.posture.posture, "firewall_gap_m": round(gap, 1),
             "gold": int(self.gold), "windows": self._windows(inp.s_m)[:4], "hack": hack,
@@ -634,6 +699,9 @@ class RunEngine:
             "z_action": getattr(self, "_z_action", None) if "z_ok" in events else None,
             "card_on": getattr(self, "_card_on", None) if "card_on" in events else None,
             "adrenaline_trend": self._adrenaline_trend(),
+            # révision 1.28 (lot R26) : puissance jugée (moyenne de `judged_power_s`) et plage tenue
+            "power_judged_w": round(getattr(self, "judged_w", 0.0), 1),
+            "in_target": self._band_now()[1],
         }
 
     def _card_fired(self, card_id: str, t: float, events: list, rearm: bool = True) -> None:
@@ -655,6 +723,9 @@ class RunEngine:
         """Débit continu de l'adrénaline (par seconde), sa cause et, au-dessus du seuil de surchauffe sans y être
         encore, les secondes avant qu'elle commence (lot R23)."""
         cs = self.combat
+        if self.phase == WARMUP:             # lot R26 : l'échauffement charge l'adrénaline
+            return {"rate_per_s": round(getattr(self, "_warm_rate", 0.0), 2),
+                    "cause": getattr(self, "_warm_cause", "none"), "overheat_in_s": None}
         if cs is None or self.phase not in (ROOM, BOSS):
             return {"rate_per_s": 0.0, "cause": "none", "overheat_in_s": None}
         soon = None

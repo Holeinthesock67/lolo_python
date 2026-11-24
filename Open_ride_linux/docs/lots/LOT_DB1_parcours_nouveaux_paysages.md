@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Parcours de démonstration des biomes et paysages de la 6.0, qui remplace au jeu de base le tour des six paysages, la route de la côte et la montée alpine | Python | O37, O38, AT1, JP1, HP1, U25 | Petite | Fait (fusionné le 16 novembre, #866 ; relu par le lot NT1) |
+| Parcours de démonstration des biomes et paysages de la 6.0, qui remplace au jeu de base le tour des six paysages, la route de la côte et la montée alpine | Python | O37, O38, AT1, JP1, HP1, U25 | Petite | **Livré le 16 novembre** (PR #866, relu par le lot NT1) |
 
 Décision du propriétaire du 12 novembre 2026 à 21 h 51 (« on mettra col du lacet et un parcours avec nouveaux biomes », confirmée par carte) : le jeu final livre le Col du lacet et **un parcours qui montre les nouveaux biomes**. Il remplace le « Tour des six paysages », la « Route de la côte » et la « Montée alpine », gardés pour les bancs (`--recette`). Le vélodrome et le « Circuit des Prés » restent (modes Vélodrome et Grand Prix). Voir le bilan des parcours de démonstration du 12 novembre.
 
@@ -77,5 +77,7 @@ done
 À relever par qualité : GPU moyen et p99 par bloc (budgets **8 / 13 / 16 ms**), pire image (< 100 ms), le bloc le plus lourd ; contacts des cyclistes du décor sur la route : 0 attendu (comme `rAS7b`). La planche `$OUT/planche.html` et les captures de menus vont au propriétaire.
 
 ## 6. Livraison
+
+**Fusionné le 16 novembre 2026 (PR #866).** Les points « Reste » ci-dessous décrivent l'état d'avant la fusion.
 
 PR du 13 novembre (branche `claude/project-thread-aj6qj0`), main remise après #849 et #865. Banc r866 rejoué après les correctifs de la section 3 bis. Reste : recette PC (section 5), validation de la planche par le propriétaire, puis go de fusion.

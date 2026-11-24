@@ -139,8 +139,9 @@ def test_open_snaps_start_and_publishes(grid, tmp_path) -> None:
     assert part0["heading_deg"][1] == pytest.approx(90, abs=1)
     # Carrés à moins de 1 500 m de la route, liés dans la séance.
     assert len(live["tiles"]["near"]) >= 12 and live["layer_tiles"] == live["tiles"]["near"]
-    ix, iz = live["tiles"]["near"][0]
-    assert (d / "terrain" / "near" / f"tile_{ix}_{iz}.f32").is_symlink()
+    # tuile liée au carré du cache, ou copie réglée sur la route engagée (sol / route, 21/11)
+    near_files = [d / "terrain" / "near" / f"tile_{a}_{b}.f32" for a, b in live["tiles"]["near"]]
+    assert all(f.is_file() for f in near_files) and any(f.is_symlink() for f in near_files)
     assert len(live["tiles"]["far"]) >= 9
 
 
