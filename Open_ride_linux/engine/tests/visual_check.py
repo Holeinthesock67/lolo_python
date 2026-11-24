@@ -67,16 +67,16 @@ GODOT_TOLERATED = re.compile(
     r"ObjectDB instances (were )?leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync|"
     r"XOpenIM failed|XCreateIC couldn't create")   # méthode de saisie X du bureau, hors OpenRide
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
-HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "time", "erg", "status",
+HUD_LABELS = ("power", "speed", "cadence", "hr", "grade", "distance", "time", "notice",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
-              "wind_speed", "wind_level", "wind_verdict", "draft", "draft_w", "bots_line1", "bots_line2",
+              "wind_speed", "wind_direction", "draft", "draft_w", "bots_line1", "bots_line2",
               "bots_gap1", "bots_jerseys")   # bots_ahead, bots_behind : lignes de bots (lot X22)
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_SSIM = 0.97                # SSIM minimale face aux images de référence (lot X20, image_diff.py)
 FREEZE_SSIM = 0.995               # deux captures de suite d'une scène figée (--fige)
 FREEZE_T = 30.0                   # instant imposé au décor vivant par --fige (s)
 # Éléments du HUD ignorés dans la comparaison aux références : valeurs qui dépendent de l'instant de la capture.
-GOLDEN_MASKS = ("status", "distance", "time", "erg_remaining", "chart_sim", "chart_erg", "bots_line1", "bots_line2")
+GOLDEN_MASKS = ("distance", "time", "erg_remaining", "chart_sim", "chart_erg", "bots_line1", "bots_line2")
 FREEZE_SETTLE_S = 8.0             # --fige : attente du chargement complet des tuiles et du décor avant la vue fixe
 ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
@@ -548,7 +548,7 @@ class Session:
 
     def check_hud_pixels(self, scene: str, img: Image, info: dict[str, Any]) -> None:
         w = info["widgets"]
-        for key in ("power", "status"):
+        for key in ("power", "notice"):
             if not w[key]["visible"]:
                 continue
             frac = fraction(img, rect_box(w[key]["rect"]), lambda p: luminance(p) > 0.75, step=1)
@@ -689,7 +689,7 @@ def _scenes(s: Session) -> None:
     shot = s.capture("attente")
     if shot:
         img, info = shot
-        s.check_texts("attente", info, {"status": "ÉTAT: en attente du core…", "power": "—"})
+        s.check_texts("attente", info, {"notice": "En attente du core…", "power": "—"})
         s.check_layout("attente", info)
         st = stats(img)
         s.check("attente", "image affichée (ni noire ni uniforme)", st["lum"] > 0.05, f"luminance {st['lum']:.2f}")
@@ -713,10 +713,9 @@ def _scenes(s: Session) -> None:
     if shot:
         img, info = shot
         s.check_texts("vue_fixe", info, {
-            "power": "248", "speed": "0.0", "cadence": "90", "hr": "142", "grade": "+4.5 %", "distance": "1.50 km",
-            "status": "ÉTAT: RUNNING | TRAINER: CONNECTED | ENTRÉE: CONNECTED"})
-        s.check("vue_fixe", "ligne ERG cachée en SIM", not info["widgets"]["erg"]["visible"])
-        s.check("vue_fixe", "cible ERG cachée en SIM", not info["widgets"]["target"]["visible"])
+            "power": "248", "speed": "0.0", "cadence": "90", "hr": "142", "grade": "+4.5 %", "distance": "1.50 km"})
+        s.check("vue_fixe", "pas de ligne d'état technique (lot NI1) : rien à signaler", not info["widgets"]["notice"]["visible"],
+                info["widgets"]["notice"]["text"])
         s.check("vue_fixe", "bandeau ERG caché en SIM", not info["widgets"]["erg_hist"]["visible"])
         s.check("vue_fixe", "menu caché pendant la séance", not info["widgets"]["menu"]["visible"])
         s.check_banner("vue_fixe", img, info, None)
@@ -783,13 +782,12 @@ def _scenes(s: Session) -> None:
         img, info = shot
         w = info["widgets"]
         s.check("vent", "indicateur du vent affiché", w["wind"]["visible"] and w["wind_speed"]["visible"])
-        s.check_texts("vent", info, {"wind_verdict": "Vent défavorable", "wind_level": "fort"})
+        # Lot NI1 : vitesse et sens en mots, sans barres, niveau ni pastille du verdict.
+        s.check_texts("vent", info, {"wind_direction": "de face"})
         s.check_texts("vent", info, {"wind_speed": "km/h"}, contains=True)
+        s.check("vent", "indicateur ramené à la flèche et deux lignes (lot NI1)",
+                w["wind"]["rect"][3] <= 100 * info["ui_scale"], f"rectangle {w['wind']['rect']}")
         s.check_layout("vent", info)
-        def red(p):
-            return p[0] > 150 and p[1] < 90 and p[2] < 80
-        frac = fraction(img, rect_box(w["wind_verdict"]["rect"]), red, step=1)
-        s.check("vent", "pastille « Vent défavorable » en rouge", frac >= 0.3, f"{frac:.0%} de pixels rouges")
         left = w["power"]["rect"]
         s.check("vent", "indicateur sous la colonne de gauche", w["wind"]["rect"][0] < s.width * 0.35
                 and w["wind"]["rect"][1] > left[1] + left[3], f"rectangle {w['wind']['rect']}")
@@ -842,7 +840,7 @@ def _scenes(s: Session) -> None:
         s.check("bots", "bot devant visible dans le champ de la caméra", b.get("shown") == 2 and b.get("in_view", 0) >= 1,
                 f"{b}")
         s.check_layout("bots", info)
-    _draft_gauge_scene(s)
+    _draft_boost_scene(s)
     _lane_scene(s)
     _vehicle_draft_scene(s)
     _decor_riders_draft_scene(s)
@@ -1005,11 +1003,12 @@ def _scenes(s: Session) -> None:
     shot = s.capture("erg")
     if shot:
         img, info = shot
-        s.check_texts("erg", info, {"target": "230 W", "erg_title": "Sweet spot 3x10 — Bloc 2 / 7 · Effort",
+        s.check_texts("erg", info, {"erg_title": "Sweet spot 3x10 — Bloc 2 / 7 · Effort",
                                     "erg_target": "230 W", "erg_next": "Ensuite : 150 W"}, contains=True)
         narrow = [k for k in ("erg_title", "erg_target", "erg_remaining", "erg_next") if info["widgets"][k]["rect"][2] < 20]
         s.check("erg", "textes du bandeau ERG de largeur lisible", not narrow, "trop étroits : " + ", ".join(narrow))
-        s.check("erg", "ligne ERG du panneau central laissée au bandeau", not info["widgets"]["erg"]["visible"])
+        s.check("erg", "cible ERG au bandeau seul : plus de case CIBLE ERG ni de ligne ERG (lot NI1)",
+                "target" not in info["widgets"] and "erg" not in info["widgets"])
         s.check("erg", "profil d'altitude caché en ERG", not info["widgets"]["profile"]["visible"])
         s.check_layout("erg", info)
         s.check_hud_pixels("erg", img, info)
@@ -1029,8 +1028,8 @@ def _scenes(s: Session) -> None:
             frac = fraction(img, later, yellow, step=2)
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
 
-    # 4 ter. Cible ERG longue (« 152 W (98 %) », biais −2 %) : la valeur tient dans la colonne gauche, police
-    # réduite au besoin, et le braquet, sans effet en ERG, est caché (suite X22) ; même au palier de 50 W d'un
+    # 4 ter. Cible ERG longue (« 152 W (98 %) », biais −2 %) : la valeur s'affiche au bandeau ERG (la case CIBLE ERG
+    # de la colonne gauche est retirée au lot NI1), et le braquet, sans effet en ERG, est caché (suite X22) ; même au palier de 50 W d'un
     # FreeRide (lot O19 : jamais de roue libre en ERG).
     core.set_scene(speed=7.0, mode="ERG", erg={
         "workout_name": "Recette 8 min", "block_index": 1, "block_count": 4, "block_type": "warmup",
@@ -1040,7 +1039,7 @@ def _scenes(s: Session) -> None:
     shot = s.capture("erg_cible_longue")
     if shot:
         img, info = shot
-        s.check_texts("erg_cible_longue", info, {"target": "152 W (98 %)"})
+        s.check_texts("erg_cible_longue", info, {"erg_target": "152 W (98 %)"}, contains=True)
         s.check("erg_cible_longue", "braquet caché en ERG", not info["widgets"]["gear"]["visible"])
         s.check_layout("erg_cible_longue", info)
     core.set_scene(speed=7.0, mode="ERG", erg={
@@ -1051,7 +1050,7 @@ def _scenes(s: Session) -> None:
     shot = s.capture("erg_palier_50w")
     if shot:
         img, info = shot
-        s.check_texts("erg_palier_50w", info, {"target": "50 W (98 %)"})
+        s.check_texts("erg_palier_50w", info, {"erg_target": "50 W (98 %)"}, contains=True)
         s.check("erg_palier_50w", "braquet caché au palier de 50 W", not info["widgets"]["gear"]["visible"])
         s.check_layout("erg_palier_50w", info)
 
@@ -2073,46 +2072,31 @@ def _sky_cycle_scenes(s: Session) -> None:
         s.check("jour_nuit", "réglages recoupés : image d'avant", abs(a - b) < 0.03, f"luminance {a:.3f} puis {b:.3f}")
 
 
-def _draft_gauge_scene(s: Session) -> None:
-    """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 3,8 m devant donne 16,5 % d'abri (« Abri 30 % ») ;
-    réglage `render.draft_gauge` coupé par défaut, rien au-dessus du bot ; à « on », arc au-dessus du bot, dans le
-    champ de la caméra, avec « 30 % » en medium et high ; coupé à nouveau, plus rien."""
+def _draft_boost_scene(s: Session) -> None:
+    """Abri derrière un bot à 3,8 m devant, 16,5 % d'abri (« Abri 30 % ») : la pastille du HUD le dit, rien au-dessus
+    du bot (jauge d'abri retirée au lot NI1, doublon de la pastille). Lot TT6 : Aspiration + active, pastille en
+    violet ; puis Échappée, avatar translucide vu de la caméra de contrôle derrière lui ; sans bonus, tout revient."""
     core = s.core
-
-    def gauge_setting(value: str) -> None:
-        core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
-            {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
-             "value": value, "choices": ["off", "on"], "applies": "now"}]})
-        time.sleep(1.5)   # rendu lent en medium et high sous Xvfb : réglage appliqué avant la capture
-
     s_now = core.current_s()
     core.set_scene(speed=0.0, bots=[{"id": "bot1", "name": "Bot 250 W", "s": s_now + 6.0, "v": 0.0, "kind": "constant"}],
                    bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.165, draft_bot="bot1")
     time.sleep(SETTLE_S)
-    shot = s.capture("jauge_abri_coupee")
+    shot = s.capture("abri_bot")
     if shot:
-        g = shot[1].get("draft_gauge", {})
-        s.check("jauge_abri_coupee", "réglage coupé par défaut : pas de jauge", g.get("visible") is False, f"{g}")
-    gauge_setting("on")
-    shot = s.capture("jauge_abri")
-    if shot:
-        img, info = shot
-        g = info.get("draft_gauge", {})
-        s.check("jauge_abri", "jauge au-dessus du bot qui abrite, dans l'image",
-                g.get("visible") and g.get("bot") == "bot1" and g.get("on_screen"), f"{g}")
-        want = "" if info.get("quality") == "low" else "30 %"
-        s.check("jauge_abri", f"texte sous l'arc : « {want} »", g.get("text") == want, f"{g.get('text')!r}")
-        s.check("jauge_abri", "pastille du HUD au même pourcentage", info["widgets"]["draft"]["text"] == "Abri 30 %",
+        info = shot[1]
+        s.check("abri_bot", "pastille du HUD « Abri 30 % », pas de jauge au-dessus du bot",
+                info["widgets"]["draft"]["text"] == "Abri 30 %" and "draft_gauge" not in info,
                 f"{info['widgets']['draft']['text']!r}")
-        s.check_layout("jauge_abri", info)
-    # Lot TT6 : Aspiration + active, arc et pastille d'abri en violet ; puis Échappée, avatar translucide vu de la
-    # caméra de contrôle derrière lui ; sans bonus, tout redevient comme avant.
+        s.check_layout("abri_bot", info)
     core.set_scene(powerup={"held": None, "active": "draft_plus", "remaining_s": 30.0})
     time.sleep(SETTLE_S)
     shot = s.capture("aspiration_plus")
     if shot:
-        g = shot[1].get("draft_gauge", {})
-        s.check("aspiration_plus", "Aspiration + : arc violet au-dessus du bot", g.get("visible") and g.get("boost"), f"{g}")
+        img, info = shot
+        def violet(p):
+            return p[0] > 110 and p[2] > 150 and p[1] < 110
+        frac = fraction(img, rect_box(info["widgets"]["draft"]["rect"]), violet, step=1)
+        s.check("aspiration_plus", "Aspiration + : pastille d'abri violette", frac >= 0.3, f"{frac:.0%} de pixels violets")
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     core.set_scene(powerup={"held": None, "active": "breakaway", "remaining_s": 25.0})
     time.sleep(SETTLE_S + 1.0)
@@ -2125,15 +2109,9 @@ def _draft_gauge_scene(s: Session) -> None:
     time.sleep(SETTLE_S)
     shot = s.capture("echappee_finie")
     if shot:
-        av, g = shot[1].get("avatar", {}), shot[1].get("draft_gauge", {})
-        s.check("echappee_finie", "sans bonus : avatar opaque, arc bleu", not av.get("breakaway") and not g.get("boost"),
-                f"{av.get('breakaway')}, {g.get('boost')}")
+        av = shot[1].get("avatar", {})
+        s.check("echappee_finie", "sans bonus : avatar opaque", not av.get("breakaway"), f"{av.get('breakaway')}")
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
-    gauge_setting("off")
-    shot = s.capture("jauge_abri_retiree")
-    if shot:
-        g = shot[1].get("draft_gauge", {})
-        s.check("jauge_abri_retiree", "réglage recoupé : jauge cachée", g.get("visible") is False, f"{g}")
 
 
 def _lane_scene(s: Session) -> None:
@@ -2174,12 +2152,9 @@ RIDERS_AHEAD_M = 2.5    # écart voulu entre le cycliste affiché et le dernier 
 def _decor_riders_draft_scene(s: Session) -> None:
     """Lot AS7 : groupe de trois cyclistes du décor envoyé par le core dans `riders`, en file à 1,5 m de l'axe, le
     dernier ramené à 2,5 m devant le cycliste affiché (même correction que pour le tracteur) ; le cycliste dans leur
-    ligne reçoit 38 % d'abri (`draft_bot` = `rider:c77-2`) : jauge au-dessus du dernier, dans l'image. Puis liste
+    ligne reçoit 38 % d'abri (`draft_bot` = `rider:c77-2`) : pastille « Abri » du HUD. Puis liste
     vide : le groupe quitte la route."""
     core = s.core
-    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
-        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
-         "value": "on", "choices": ["off", "on"], "applies": "now"}]})
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     s_last = core.current_s() + 1.7 + 12.0
 
@@ -2200,9 +2175,9 @@ def _decor_riders_draft_scene(s: Session) -> None:
     shot = s.capture("abri_cyclistes_decor")
     if shot:
         img, info = shot
-        g = info.get("draft_gauge", {})
-        s.check("abri_cyclistes_decor", "jauge au-dessus du dernier cycliste du groupe, dans l'image",
-                g.get("visible") and g.get("bot") == "rider:c77-2" and g.get("on_screen"), f"{g}")
+        s.check("abri_cyclistes_decor", "abri du groupe dit par la pastille du HUD (lot NI1 : plus de jauge)",
+                info["widgets"]["draft"]["visible"] and info["widgets"]["draft"]["text"].startswith("Abri"),
+                f"{info['widgets']['draft']['text']!r}")
         users = info.get("decor", {}).get("road_users", [])
         mine = [u for u in users if str(u.get("id", "")).startswith("c77-")]
         s.check("abri_cyclistes_decor", "trois cyclistes du core en file à 1,5 m de l'axe, le dernier 1 à 4 m devant",
@@ -2217,9 +2192,6 @@ def _decor_riders_draft_scene(s: Session) -> None:
         s.check("abri_cyclistes_decor_parti", "liste vide : plus de groupe près du cycliste",
                 not any(str(u.get("id", "")).startswith("c77-") and abs(float(u.get("rel_m", 999.0))) < 55.0
                         for u in users), f"{users}")
-    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
-        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
-         "value": "off", "choices": ["off", "on"], "applies": "now"}]})
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
@@ -2283,12 +2255,9 @@ def _vehicle_draft_scene(s: Session) -> None:
     ramené à 6,5 m devant le cycliste affiché : la caméra, qui ne recule jamais, a pu prendre de l'avance sur `s`
     de la scène (rendu lent en medium et high), l'écart mesuré sur la première capture corrige la position et
     aucun contact n'est compté. Le cycliste dans sa ligne (1,5 m) reçoit
-    42 % d'abri (`draft_bot` = `veh:v77`) ; jauge au-dessus du tracteur, dans l'image, vue de la caméra de contrôle.
+    42 % d'abri (`draft_bot` = `veh:v77`) ; pastille « Abri » du HUD, vue de la caméra de contrôle.
     Puis liste vide : le tracteur quitte la route (le core dit qu'il n'y est plus)."""
     core = s.core
-    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
-        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
-         "value": "on", "choices": ["off", "on"], "applies": "now"}]})
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     s_now = core.current_s()
     tractor = {"id": "v77", "kind": "tractor", "color": 1, "s": round(s_now + 1.9 + 0.85 + 20.0, 2), "dir": 1, "v": 0.0,
@@ -2306,10 +2275,9 @@ def _vehicle_draft_scene(s: Session) -> None:
     shot = s.capture("abri_tracteur")
     if shot:
         img, info = shot
-        g = info.get("draft_gauge", {})
-        s.check("abri_tracteur", "jauge sur l'arrière du tracteur, dans l'image, sous le bandeau du haut",
-                g.get("visible") and g.get("bot") == "veh:v77" and g.get("on_screen")
-                and float((g.get("point") or [0.0, 0.0])[1]) > 0.15 * img.height, f"{g}")
+        s.check("abri_tracteur", "abri du tracteur dit par la pastille du HUD (lot NI1 : plus de jauge)",
+                info["widgets"]["draft"]["visible"] and info["widgets"]["draft"]["text"].startswith("Abri"),
+                f"{info['widgets']['draft']['text']!r}")
         users = info.get("decor", {}).get("road_users", [])
         s.check("abri_tracteur", "tracteur du core sur la route, 4 à 9 m devant, à 1,5 m de l'axe",
                 any(u.get("kind") == "tractor" and abs(float(u.get("lateral", 0.0)) - 1.5) < 0.05
@@ -2322,9 +2290,6 @@ def _vehicle_draft_scene(s: Session) -> None:
         users = shot[1].get("decor", {}).get("road_users", [])
         s.check("abri_tracteur_parti", "liste vide : plus de tracteur près du cycliste",
                 not any(u.get("kind") == "tractor" and abs(float(u.get("rel_m", 999.0))) < 140.0 for u in users), f"{users}")
-    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
-        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
-         "value": "off", "choices": ["off", "on"], "applies": "now"}]})
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 

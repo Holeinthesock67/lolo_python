@@ -75,6 +75,8 @@ class WtfMode:
         self.journal: list[dict] = []
         self.vexed = False
         self._desc_t = 0.0
+        self._desc_served = False          # fromage déjà sorti dans cette descente (revue de code C4-05)
+        self._flat_t = 0.0                 # temps passé au-dessus du seuil de descente depuis le dernier fromage
         self._bag: list[str] = []          # gags pas encore sortis de ce tour (tirage en sac)
         self._last_drawn: str | None = None
         # Katamari
@@ -104,7 +106,12 @@ class WtfMode:
         if on("clock"):
             self.clock_h = (self.clock_h + inp.dt * inp.cadence_rpm / 30.0 / 60.0) % 24.0
             self.fish = inp.cadence_rpm >= (FISH_OFF_RPM if self.fish else FISH_ON_RPM)
-        self._desc_t = self._desc_t + inp.dt if inp.grade_pct <= CHEESE_GRADE_PCT else 0.0
+        if inp.grade_pct <= CHEESE_GRADE_PCT:
+            self._desc_t, self._flat_t = self._desc_t + inp.dt, 0.0
+        else:
+            self._desc_t, self._flat_t = 0.0, self._flat_t + inp.dt
+            if self._flat_t >= CHEESE_HOLD_S:   # vraie sortie de la descente : un nouveau fromage redevient possible
+                self._desc_served = False
 
         ev = self.event
         if ev is not None:
@@ -113,7 +120,10 @@ class WtfMode:
             if ev.done:
                 self._close(ev, inp.t)
             return
-        if on("cheese") and self._desc_t >= CHEESE_HOLD_S:
+        if on("cheese") and self._desc_t >= CHEESE_HOLD_S and not getattr(self, "_desc_served", False):
+            # revue de code C4-05 : un seul fromage par descente ; avant, `_desc_t` remontait à 3 s après chaque
+            # fromage et une longue descente n'avait plus que lui (21 en 10 min, aucun autre gag)
+            self._desc_served = True
             self._open("cheese", inp)
             return
         if inp.t >= self.next_event_t:

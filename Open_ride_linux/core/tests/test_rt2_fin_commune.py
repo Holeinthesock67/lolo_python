@@ -1,4 +1,4 @@
-"""Lot RT2 : fin de séance commune (révision IPC 1.32).
+"""Lot RT2 : fin de séance commune (révision IPC 1.34).
 
 Choix du propriétaire du 21 novembre (10 h 37, audit des retours) : « après la fin, on continue à rouler, A maintenu
 = bilan », dans tous les modes. L'arrivée d'un parcours en ligne, du Grand Prix et de la Course ne termine plus la
@@ -65,23 +65,23 @@ def test_free_ride_on_a_line_route_turns_back_at_the_end(env):
     assert s.state.summary["arrival"]["kind"] == "route"
 
 
-def test_grand_prix_on_a_line_route_turns_back_once_finished(env):
+def test_race_on_a_line_route_turns_back_once_finished(env):
+    """Le Grand Prix des objets ne se court plus que sur une boucle (lot GPL1) : la fin commune sur un parcours en
+    ligne se vérifie avec la Course, qui va jusqu'au bout du parcours."""
     make, run, _, _ = env
-    s, _, errors = make(6956, route_id="demo", distance_km=2)
-    s._on_command("start", {"mode": "grandprix"}, 2)
-    assert not errors and s.grandprix.lap_m is None
+    s, _, errors = make(6956, route_id="demo")
+    s.cfg.race.opponents = 3
+    s._on_command("start", {"mode": "race"}, 2)
+    assert not errors and not s.route.is_loop
     assert s._u_turn_refusal("RUNNING") is not None, "pas de demi-tour pendant la course"
-    for _ in range(900):
+    for _ in range(1500):
         run(s, 1.0, end_at_arrival=False)
         if s.state.arrival is not None or s.state.session_state != "RUNNING":
             break
-    assert s.state.session_state == "RUNNING" and s.state.arrival["kind"] == "grandprix"
+    assert s.state.session_state == "RUNNING" and s.state.arrival["kind"] == "race"
     assert s._u_turn_refusal("RUNNING") is None, "course finie : demi-tour permis"
-    s.physics.s = s.route.length_m - 1.0   # course de 2 km sur 5 km : le cycliste roule jusqu'au bout
-    run(s, 2.0, end_at_arrival=False)
-    assert s.state.session_state == "RUNNING" and s.physics.direction < 0
     s._on_command("end_session", {"save": True}, 3)
-    assert s.state.summary["arrival"]["kind"] == "grandprix" and s.state.summary["gp"]["finished"] is True
+    assert s.state.summary["arrival"]["kind"] == "race" and s.state.summary["gp"]["finished"] is True
 
 
 def test_finished_workout_sets_the_arrival(env):

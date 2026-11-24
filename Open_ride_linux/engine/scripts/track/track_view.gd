@@ -124,7 +124,7 @@ func _build() -> void:
 	pcol.add_child(_pacer_text)
 	pcol.add_child(_pacer_hint)
 
-	# Écarts en temps aux voisins (révision 1.26, essai du 21 novembre), sous les tours et le derny.
+	# Écarts en temps aux voisins (révision 1.33, essai du 21 novembre), sous les tours et le derny.
 	_gaps = _right_panel()
 	var gcol0 := _vbox(_gaps)
 	var gt := _label(14, UiTheme.DIM)

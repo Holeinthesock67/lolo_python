@@ -134,7 +134,6 @@ SETTINGS: tuple[Setting, ...] = (
     # Grand Prix des objets (série GP, lot GP2) ; écran du mode et entrée à l'accueil au lot GP9
     Setting("grandprix.opponents", "Grand Prix : adversaires", "ride"),
     Setting("grandprix.laps", "Grand Prix : tours du circuit", "ride"),
-    Setting("grandprix.distance_km", "Grand Prix : distance en ligne", "ride", 1, "km"),
     Setting("grandprix.chaos", "Grand Prix : chaos", "ride"),
     Setting("grandprix.box_every_m", "Grand Prix : écart des boîtes", "ride", 500, "m"),
     # Course classique contre les bots (lot CR1) : écran du mode à l'accueil
@@ -153,7 +152,6 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
-    Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
     Setting("render.auto_photos", "Photos automatiques", "graphics", applies="now",
             help="Oui : une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus "
                  "par séance, rangées dans ~/OpenRide/Captures/ ; le bilan dit combien et où. Elles restent sur le PC."),

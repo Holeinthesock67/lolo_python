@@ -28,9 +28,9 @@ from ..route_objects import RouteObjects, Runner
 from .brain import BotBrain
 from .boxes import BOX_EVERY_KM, LANES, ROULETTE_S, BoxRows, row_positions
 from .draw import DrawContext, draw
-from .effects import (CHAOS, DURATIONS, IMPULSES, Active, EffectSpec, apply_speed, gain_s, is_immune, is_unseen,
+from .effects import (CHAOS, DURATIONS, Active, EffectSpec, apply_speed, gain_s, is_immune, is_unseen,
                       wind_of)
-from .items import DEFAULT_TABLE, ITEM_IDS, SHIELDS, GrandPrixError, ItemSpec, ItemTable
+from .items import DEFAULT_TABLE, ITEM_IDS, SHIELDS, SHORT_S, lane_items, GrandPrixError, ItemSpec, ItemTable
 
 ME = "me"
 LANE_EDGES_M = (1.07, 1.83)          # voies des objets sur la chaussée de droite (draft.LANE_MIN_M à LANE_MAX_M)
@@ -38,7 +38,7 @@ LANE_CENTRES_M = (0.68, 1.45, 2.22)  # gauche, centre, droite : cibles du placem
 LANE_CHANGE_S = 0.6
 MANUAL_HOLD_S = 20.0                 # placement automatique repris après 20 s sans objet en vue
 VIEW_AHEAD_M, VIEW_BEHIND_M = 150.0, 100.0
-HIT_GRACE_S = 2.0
+HIT_GRACE_S = SHORT_S                # pas de nouveau coup pendant un coup reçu (lot GPO1)
 RESUME_GRACE_S = 3.0
 CHARGE_GAP_S = 1.0                   # une charge par seconde au plus
 DROP_BEHIND_M, LAUNCH_AHEAD_M = 2.0, 2.0
@@ -94,7 +94,6 @@ class Racer:
     roll_until: float = 0.0
     last_use: float = -1e9
     fx: list[Active] = field(default_factory=list)
-    impulses: list[EffectSpec] = field(default_factory=list)
     hit_until: float = -1e9
     finished: int | None = None      # rang d'arrivée
     launched: dict[str, int] = field(default_factory=dict)
@@ -180,6 +179,7 @@ class GrandPrixMode:
         self.clock = 0.0
         self.t = 0.0
         self.grace_until = 0.0
+        self._touched: dict[tuple[str, str], float] = {}   # (lanceur, frôlé) → fin de l'effet (revue C4-06)
         self.was_paused = False
         self.bursts: list[_Burst] = []
         self.arrivals = 0
@@ -274,8 +274,7 @@ class GrandPrixMode:
         out: dict[str, float] = {}
         for r in self.racers.values():
             r.fx = [a for a in r.fx if a.until_t > now]
-            r.v = apply_speed(r.v, r.v_eq, r.impulses, r.fx)
-            r.impulses.clear()
+            r.v = apply_speed(r.v, r.v_eq, r.fx)
             out[r.id] = r.v
         return out
 
@@ -349,10 +348,11 @@ class GrandPrixMode:
 
     def _roll(self, r: Racer, now: float) -> None:
         ctx = DrawContext(self.place(r.id), self.gap_s(r.id), len(self._ahead_of(r)), self._storm_flying())
-        item = draw(ctx, self.table.weights, self.enabled, self.rng)
+        item = draw(ctx, self.table.weights, self.enabled, self.rng, lane_items(r.lane))
         if item is not None:
             r.roll, r.roll_until = item, now + ROULETTE_S
-            self._log("box", r.id, item=item, place=ctx.place, gap_s=round(ctx.gap_s, 1))
+            self._log("box", r.id, item=item, place=ctx.place, gap_s=round(ctx.gap_s, 1), lane=r.lane)
+            self._event("box", r, item)
 
     def _storm_flying(self) -> bool:
         return any(self.table.items.get(o.kind, None) is not None and self.table.items[o.kind].warn_s > 0.0
@@ -366,6 +366,12 @@ class GrandPrixMode:
             return False
         item = r.held
         spec = self.table.items[item]
+        if spec.target == "leader" and self._nobody_ahead(r):
+            # revue de code C4-08 : en tête, le nuage d'orage n'a pas de cible ; Z le dissipe (objet perdu, réserve
+            # vidée, ligne `discard` au journal) au lieu de ne rien faire et de bloquer la réserve et les boîtes
+            r.held, r.charges, r.last_use = None, 0, now
+            self._log("discard", rid, item=item)
+            return True
         if not self._fire(r, spec, now):
             return False
         r.last_use = now
@@ -374,9 +380,15 @@ class GrandPrixMode:
             r.held, r.charges = None, 0
         r.launched[item] = r.launched.get(item, 0) + 1
         self._log("use", rid, item=item)
+        self._event("use", r, item)
         if spec.steal_m:
             self._steal(r, spec.steal_m)
         return True
+
+    def _nobody_ahead(self, r: Racer) -> bool:
+        """Vrai si `r` mène : aucun coureur encore en course devant lui (cible du nuage d'orage)."""
+        lead = self._leader(but=r)
+        return lead is None or lead.s <= r.s
 
     def _fire(self, r: Racer, spec: ItemSpec, now: float) -> bool:
         if spec.target == "self":
@@ -405,10 +417,15 @@ class GrandPrixMode:
             for o in list(self.objects):
                 if abs(o.s - r.s) <= spec.clear_m and o.target in (None, r.id):
                     self.objects.remove(o)
+                    if o.owner and o.owner != r.id:   # objet d'un autre détruit par l'onde : parade visible (GPO1)
+                        self._log("parry", r.id, item=o.kind, by=o.owner, how="bell")
+                        self._event("parry", r, o.kind, o.owner)
             gone = [b for b in self.bursts if b.target == r.id]
             for b in gone:
                 self.bursts.remove(b)
                 r.dodged += 1
+                self._log("parry", r.id, item=b.item, by=b.by, how="bell")
+                self._event("parry", r, b.item, b.by)
             for o in self._racing():
                 if o is not r and abs(o.s - r.s) <= spec.radius_m:
                     self._hit(o, spec, spec.hit_fx, r.id, now)
@@ -430,16 +447,15 @@ class GrandPrixMode:
 
     def _give(self, r: Racer, fx: Iterable[EffectSpec], item: str, by: str, now: float) -> None:
         for e in fx:
-            if e.effect in IMPULSES:
-                r.impulses.append(e)
-            elif e.effect in DURATIONS:
+            if e.effect in DURATIONS:
+                r.fx = [a for a in r.fx if not (a.item == item and a.spec.effect == e.effect)]   # relancé, pas cumulé
                 r.fx.append(Active(e, now + e.duration_s, item, by))
 
     def _hit(self, target: Racer, spec: ItemSpec, fx: tuple[EffectSpec, ...], by: str, now: float) -> bool:
         """Coup reçu ; faux s'il est arrêté (invincible, parade, coup récent, reprise après pause)."""
         if not fx or target.finished is not None:
             return False
-        knock = any(e.effect in ("slip", "cap") for e in fx)
+        knock = any(e.effect == "cap" for e in fx)
         if is_immune(target.fx) or now < self.grace_until or (knock and now < target.hit_until):
             target.dodged += 1
             return False
@@ -454,6 +470,15 @@ class GrandPrixMode:
         self._pending.append(_Pending(msg, self.t, RESULT_REPEAT))
         self._log("hit", target.id, item=spec.id, by=by, loss_s=round(loss, 1))
         return True
+
+    def _event(self, kind: str, r: Racer, item: str, by: str | None = None) -> None:
+        """Message `gp_event` (révision 1.32, lot GPO1) : boîte prise, objet utilisé ou objet paré (`parry` : `r` a
+        arrêté l'objet `item` lancé ou posé par `by`) par un coureur, cycliste comme bot, pour que l'engine montre le
+        même mot et le même son pour tous ; répété comme `gp_hit`."""
+        msg = {"type": "gp_event", "v": 1, "kind": kind, "item": item, "rider": r.id}
+        if by:
+            msg["by"] = by
+        self._pending.append(_Pending(msg, self.t, RESULT_REPEAT))
 
     def _credit(self, r: Racer, item: str, fx: tuple[EffectSpec, ...]) -> None:
         gain = estimate_s(fx, r.v_eq, r.grade_pct, self.params)
@@ -479,8 +504,12 @@ class GrandPrixMode:
                 if target.charges <= 0:
                     target.held, target.charges = None, 0
                 target.dodged += 1
-                self._log("parry", target.id, item=spec.id, by=c.obj.owner)
+                self._log("parry", target.id, item=spec.id, by=c.obj.owner, how="shield")
+                self._event("parry", target, spec.id, c.obj.owner)
                 continue
+            if is_immune(target.fx):   # objet lancé ou posé arrêté par l'invincibilité : parade visible (lot GPO1)
+                self._log("parry", target.id, item=spec.id, by=c.obj.owner, how="immune")
+                self._event("parry", target, spec.id, c.obj.owner)
             self._hit(target, spec, spec.hit_fx, c.obj.owner or "", now)
 
     def _step_bursts(self, now: float) -> None:
@@ -502,8 +531,15 @@ class GrandPrixMode:
                     continue
                 for o in self._racing():
                     if o is not r and o.lane == r.lane and abs(o.s - r.s) <= spec.radius_m:
+                        # revue de code C4-06 : un seul jugement par coureur frôlé et par effet (coup ou esquive) ;
+                        # avant, chaque pas au contact comptait une esquive de plus au bilan (74 pour 1 coup)
+                        key = (r.id, o.id)
+                        if self._touched.get(key, -1e9) >= a.until_t:
+                            continue
+                        self._touched[key] = a.until_t
                         self._hit(o, spec, spec.hit_fx, r.id, now)
                 break
+        self._touched = {k: until for k, until in self._touched.items() if until > now}
 
     # --- sorties --------------------------------------------------------------------------------
 
@@ -555,7 +591,7 @@ class GrandPrixMode:
         return [[k, round(v, 1)] for k, v in sorted(left.items())]
 
     def due_results(self, t: float) -> list[dict]:
-        """Messages `gp_hit` à envoyer maintenant (3 fois, à une seconde d'intervalle)."""
+        """Messages `gp_hit` et `gp_event` à envoyer maintenant (3 fois, à une seconde d'intervalle)."""
         out: list[dict] = []
         for p in self._pending:
             if t >= p.at:
@@ -578,7 +614,7 @@ class GrandPrixMode:
         out = {"place": self.place(rid), "of": len(self.racers), "launched": dict(sorted(r.launched.items())),
                "received": dict(sorted(r.received.items())), "dodged": r.dodged,
                "gained_s": dict(sorted(r.gained_s.items())), "lost_s": dict(sorted(r.lost_s.items())),
-               "finished": r.finished is not None}   # révision 1.32 (lot RT2) : ligne passée, place définitive
+               "finished": r.finished is not None}   # révision 1.34 (lot RT2) : ligne passée, place définitive
         if self.lap_m:
             out["laps"] = max(int(round(self.length_m / self.lap_m)), 1)
         else:

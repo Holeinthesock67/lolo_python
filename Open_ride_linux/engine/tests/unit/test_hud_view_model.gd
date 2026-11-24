@@ -299,7 +299,7 @@ func _test_session_lines() -> void:
 	_check(l["hr"] == "FC: 151 bpm", "fréquence cardiaque affichée (%s)" % l["hr"])
 	_check(l["grade"] == "PENTE: 4.3 %  (envoyée au trainer: 2.1 %)" or l["grade"] == "PENTE: 4.2 %  (envoyée au trainer: 2.1 %)",
 		"SIM : pente envoyée (%s)" % l["grade"])
-	_check(l["distance"] == "DISTANCE: 1.23 km" and l["erg"] == "", "SIM : distance, pas de ligne ERG")
+	_check(l["distance"] == "DISTANCE: 1.23 km" and not l.has("erg"), "SIM : distance ; plus de ligne ERG (jamais affichée, lot NI1)")
 	sim["gear"] = 10
 	_check(HudViewModel.session_lines(sim, no_erg)["speed"].contains("Braquet: 10/24"),
 		"changement de braquet repris à la trame suivante")
@@ -319,7 +319,7 @@ func _test_session_lines() -> void:
 	_check(l["speed"].contains("± = intensité en ERG"), "ERG : ± règle l'intensité (%s)" % l["speed"])
 	_check(l["grade"].ends_with("(trainer en ERG)"), "ERG : pas de pente envoyée (%s)" % l["grade"])
 	_check(not l["gear_shown"], "ERG : braquet sans effet, caché dans le HUD")
-	_check(l["erg"].begins_with("ERG: Sweet spot 3x10 — Bloc 3 / 7  |  reste 8:32"), "ERG : ligne du bloc (%s)" % l["erg"])
+	_check(not l.has("erg"), "ERG : le bloc est dit par le bandeau ERG seul (lot NI1)")
 	var erg2 := erg.duplicate()
 	erg2["bias_pct"] = 105
 	erg2["target_w"] = 250

@@ -10,6 +10,7 @@ const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd"
 const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
+const LeagueViewModel := preload("res://scripts/league_view_model.gd")
 const FeedbackModel := preload("res://scripts/feedback_model.gd")
 
 const KEY_DURATION := "duration_s"
@@ -178,6 +179,7 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 		out.append_array(GpHudModel.summary_lines(summary["gp"]))
 	if summary.get("track") is Dictionary:   # Épreuves de piste (lot VD9) : place, temps, tours, record
 		out.append_array(TrackHudModel.summary_lines(summary["track"]))
+	out.append_array(LeagueViewModel.summary_lines(summary))   # ligue d'hiver (lot CH4a) : manche et général
 	out.append_array(bots_lines(summary))
 
 	return out
@@ -277,6 +279,7 @@ func mode_lines(summary: Dictionary) -> Array:
 		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
 	if summary.get("gp") is Dictionary:
 		out.append_array(GpHudModel.summary_lines(summary["gp"]))
+	out.append_array(LeagueViewModel.summary_lines(summary))   # ligue d'hiver (lot CH4a)
 	out.append_array(bots_lines(summary))   # lots GP-niv et BOT-elo
 	return out
 
@@ -421,7 +424,7 @@ func _result_head(summary: Dictionary) -> Dictionary:
 	var gp = summary.get("gp", null)
 	if gp is Dictionary:
 		var name := "Course" if str(gp.get("mode", "")) == "race" else "Grand Prix des objets"
-		if gp.get("finished", true) == false:   # absent : bilan d'avant la révision 1.32, fini à l'arrivée
+		if gp.get("finished", true) == false:   # absent : bilan d'avant la révision 1.34, fini à l'arrivée
 			return {"title": "COURSE NON FINIE", "sub": name, "tone": "stop"}
 		return _place_head(gp.get("place", null), gp.get("of", null), name, "ARRIVÉE")
 	if arr is Dictionary and str(arr.get("kind", "")) == "workout":

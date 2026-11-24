@@ -404,7 +404,6 @@ load_guard = true    # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow pui
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
 fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU et GPU, essais) (« Afficher les images/s » dans Réglages)
-draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« Jauge d'abri des bots »)
 auto_photos = "on"  # photos automatiques à l'arrivée et aux records, ~/OpenRide/Captures/ : on, off (« Photos automatiques »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 biome = "auto"           # biome du décor (lot U16, « Biome du décor ») : auto (biomes du parcours) ou un des seize biomes, forcé sur tout le parcours
@@ -480,8 +479,7 @@ objectif = "endurance"       # "endurance", "courses" (et championnat) ou "grimp
 temps_disponible_min = 60    # durée conseillée quand la règle ne fixe pas la sienne, 30 à 120 min par pas de 15
 [grandprix]                  # mode « Grand Prix des objets » (série GP, lot GP2), réglable dans le menu
 opponents = 4                # adversaires, 2 à 4 (bots à profil)
-laps = 3                     # tours sur un circuit, 1 à 5
-distance_km = 10             # longueur sur un parcours en ligne, 5 à 30 km
+laps = 3                     # tours du circuit, 1 à 5 (le Grand Prix se court sur une boucle, lot GPL1)
 chaos = "normal"             # forces et fréquence des objets : "soft" (× 0,7), "normal" (× 1), "wild" (× 1,3)
 box_every_m = 500            # écart des rangées de boîtes, 500 à 3 000 m par pas de 500 m (500 depuis le lot GP14)
 [race]                       # mode « Course », course classique contre les bots (lot CR1), réglable dans le menu
@@ -515,7 +513,7 @@ La section `[bots]` (lot T13) donne le niveau des bots à profil : `level_pct` (
 
 La section `[survivor]` (lot DS2) règle le mode « Dernier survivant » (plan `docs/2.0/PLAN_SERIE_DS.md`) : nombre d'adversaires (une arche par adversaire), écart entre deux arches, écart de niveau des bots autour de `bots.level_pct` et suite donnée à l'élimination du cycliste. Réglages « Survivant : … » du menu, dans « Séance ».
 
-La section `[grandprix]` (lot GP2) règle le mode « Grand Prix des objets » (plan `docs/4.0/PLAN_SERIE_GP.md`) : nombre d'adversaires, tours sur un circuit ou distance sur un parcours en ligne, chaos et écart des boîtes. Réglages « Grand Prix : … » du menu, dans « Séance ». Les objets joués ou coupés et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (section `[items]`, commandes `list_mode_options` et `set_mode_option`).
+La section `[grandprix]` (lot GP2) règle le mode « Grand Prix des objets » (plan `docs/4.0/PLAN_SERIE_GP.md`) : nombre d'adversaires, tours du circuit (le mode se court sur une boucle seulement depuis le lot GPL1 : la clé `distance_km` d'avant est ignorée sans alerte, `config.RETIRED_KEYS`), chaos et écart des boîtes. Réglages « Grand Prix : … » du menu, dans « Séance ». Les objets joués ou coupés et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (section `[items]`, commandes `list_mode_options` et `set_mode_option`).
 
 La section `[log]` (lot X7) active avec `latence = true` (ou `openride-core run --latence`) le journal de latence des appuis du Click : une ligne `[latence]` par étage (notification, événement, envoi à l'engine, Control Point) dans le journal du core, et `recu` puis `affiche` dans celui de l'engine ; `openride-core log-report --latence` en fait la statistique (docs/OUTILS_DE_TEST.md). Sans elle, aucune ligne.
 
