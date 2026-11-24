@@ -164,5 +164,5 @@ func _init() -> void:
 	_check(not view.place(20.0, 600.0, 705.0, 2), "place insuffisante : cachée")
 	view.free()
 
-	print("Mini-carte : %d vérifications, %d échec(s)" % [_checked, _failures])
+	print("test_minimap_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

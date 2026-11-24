@@ -23,7 +23,7 @@ const RIDER_COLOR := UiTheme.FOCUS
 const GOAL_COLOR := UiTheme.GOLD
 const JUNCTION_COLOR := UiTheme.GOLD
 const SHADE := UiTheme.OUTLINE
-const MAP_BG := Color(0.0, 0.0, 0.0, 0.25)
+const MAP_BG := UiTheme.CHART_BG
 
 var map: Control
 var header: Control
