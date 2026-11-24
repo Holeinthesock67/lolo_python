@@ -15,7 +15,9 @@ extends RefCounted
 ##     champ `powerup` (arches affichées, lot T8) ; un saut de plus de `MAX_STEP_M` (reprise après
 ##     coupure, nouvelle séance) ne compte pas ; plusieurs arches dans une trame : un seul jingle ;
 ##   - `jingle_finish` au passage de `RUNNING` ou `PAUSED` à `FINISHED` (SIM comme ERG) : l'arrivée du
-##     parcours ouvert, la fin d'un entraînement ;
+##     parcours ouvert, la fin d'un entraînement ; lot RT2 (fin commune) : seulement si l'issue n'a pas déjà été
+##     annoncée pendant la séance (`arrival`, `workout_done`, épreuve de piste finie, vainqueur du Dernier
+##     survivant : le RÉSULTAT de feedback_model.gd a joué son son), une seule fanfare par séance ;
 ##   - `jingle_start` au passage de `READY` à `RUNNING` (départ du parcours) quand le parcours a ses
 ##     portiques (pas le monde ouvert), et au franchissement d'un portique de `gates` (positions et jingles
 ##     de segment_markers_model.gate_jingles : départ d'un sprint ou d'une montée `jingle_start`, ligne d'une
@@ -28,7 +30,7 @@ extends RefCounted
 ##   fréquence de la note jusqu'au 6e champ, en ratio constant : sifflet, « boing », trombone triste) et
 ##   `noise` (bruit passé au filtre de la fréquence de la note : craquement, éclaboussure, rafale) ; les
 ##   `wtf_*` sont choisis par wtf/wtf_sound_model.gd. `jingle_elim` et `jingle_winner` (lot DS5) : rendus par survivor_hud_model.gd à chaque
-##   message `elimination` nouveau. `track_bell`, `track_gun` et `track_crowd` (lot VD9) : vélodrome. `gp_*` (lot GP7) : choisis par grandprix/gp_sound_model.gd. Synthèse : sound_player.gd ; remplaçables par ~/OpenRide/Sounds/<nom>.ogg.
+##   message `elimination` nouveau. `track_bell`, `track_gun` et `track_crowd` (lot VD9) : vélodrome. `gp_*` (lot GP7) : choisis par grandprix/gp_sound_model.gd. `fb_*` (lot RT1) : familles de moments de feedback_model.gd. Synthèse : sound_player.gd ; remplaçables par ~/OpenRide/Sounds/<nom>.ogg.
 
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 
@@ -103,6 +105,13 @@ const JINGLES := {
 		[0.2, G5, 0.22, 0.4, "tone"]],
 	"wtf_fish": [[0.0, C6, 0.06, 0.45, "slide", E6], [0.1, E6, 0.06, 0.45, "slide", G6],
 		[0.2, G6, 0.08, 0.45, "slide", C7]],
+	# Retours communs (lot RT1, feedback_model.gd) : une signature par famille de moments. BIEN : deux notes qui
+	# montent ; ATTENTION : deux appels graves répétés (plus grave que le départ, distinct de l'élimination) ;
+	# REFUSÉ : petit « non » de deux notes basses et brèves. Le RÉSULTAT garde jingle_winner, jingle_finish, jingle_elim.
+	"fb_bien": [[0.0, E6, 0.08, 0.5, "tone"], [0.09, G6, 0.22, 0.5, "tone"]],
+	"fb_attention": [[0.0, G5, 0.12, 0.6, "tone"], [0.14, D5, 0.12, 0.6, "tone"], [0.30, G5, 0.12, 0.6, "tone"],
+		[0.44, D5, 0.2, 0.6, "tone"]],
+	"fb_refus": [[0.0, E5, 0.08, 0.5, "tone"], [0.11, C5, 0.16, 0.5, "tone"]],
 	# Grand Prix des objets (lot GP7, grandprix/gp_sound_model.gd) : roulette du tirage (tics qui montent),
 	# lancer (souffle qui monte), glissade (bruit et glissando qui descend), averse (pluie), dring de la
 	# sonnette, klaxon de la voiture d'équipe (deux tons, plus grave que celui de la mamie WTF)
@@ -125,6 +134,7 @@ var _start_gate := false
 var _length_m := 0.0
 var _loop := false
 var _prev_s := NAN
+var _issue_known := false   # lot RT2 : RÉSULTAT déjà annoncé, pas de seconde fanfare à FINISHED
 var _prev_session := ""
 
 
@@ -162,10 +172,27 @@ func on_state(state: Dictionary) -> Array:
 	if moving and state.has("powerup") and out.is_empty() and crossed(_prev_s, s) > 0:
 		out.append("jingle_arch")
 	_prev_s = s if session in ["RUNNING", "PAUSED"] else NAN
-	if session == "FINISHED" and _prev_session in ["RUNNING", "PAUSED"]:
+	if session in ["RUNNING", "PAUSED"] and issue_known(state):
+		_issue_known = true
+	if session == "FINISHED" and _prev_session in ["RUNNING", "PAUSED"] and not _issue_known:
 		out.append("jingle_finish")
+	if not session in ["RUNNING", "PAUSED"]:
+		_issue_known = false
 	_prev_session = session
 	return out
+
+
+## Issue de la séance déjà annoncée par le RÉSULTAT commun (lot RT2) : arrivée (`arrival`, révision 1.34),
+## entraînement fini, épreuve de piste finie ou cycliste sorti, Dernier survivant gagné ou cycliste éliminé.
+static func issue_known(state: Dictionary) -> bool:
+	if state.get("arrival", null) is Dictionary or state.get("workout_done", null) is Dictionary:
+		return true
+	var tr = state.get("track", null)
+	if tr is Dictionary and (bool(tr.get("finished", false))
+			or (tr.get("eliminated") is Array and ("me" in tr["eliminated"] or "home" in tr["eliminated"]))):
+		return true
+	var sv = state.get("survivor", null)
+	return sv is Dictionary and (sv.get("winner", null) != null or sv.get("me_out", null) != null)
 
 
 ## Arches franchies entre deux positions cumulées (`s_prev` exclu, `s` inclus), comme le core.

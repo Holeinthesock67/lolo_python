@@ -45,7 +45,7 @@ from ..progression import ProgressionError, load_table, recompute
 from ..garage import workout_duration_finder
 
 REASONS = {"replay": "rejeu", "simulated": "séance simulée", "too_short": "moins de 5 min",
-           "other_profile": "journal d'un autre profil"}
+           "other_profile": "journal d'un autre profil", "before_reset": "avant la remise à zéro"}
 
 
 def _date(ts: float | None) -> str:
@@ -64,7 +64,7 @@ def snapshot(directory: Path, ctx: "profiles.ProfileContext", cfg: config_mod.Co
     ct = coin_table(table, cfg.rider.ftp_w)
     progress = recompute(directory, table,
                          workout_duration_finder(workouts_dir or config_mod.WORKOUTS_DIR),
-                         counted=ctx.counted_sources, owns=ctx.owns)
+                         counted=ctx.counted_sources, owns=ctx.owns, since=ctx.stats_since)
     lv = progress.level
     per_session = coins_by_session(progress, ct)
     return {

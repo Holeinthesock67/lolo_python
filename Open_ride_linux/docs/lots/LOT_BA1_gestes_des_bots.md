@@ -19,9 +19,9 @@ consigne (on dit ce que fait le bot, jamais ce que doit faire le cycliste).
 
 | # | Règle |
 | --- | --- |
-| BA1-1 | **Core.** `ProfileBot.move()` : `attack` pendant une attaque, `respond` quand il suit un départ, `sprint` au pic de son sprint ; champ facultatif `move` des éléments de `bots` (révision 1.33, numéro provisoire), absent sans geste. Peloton allégé : seulement pour les 5 bots les plus proches (`LIGHT_DROPPED`). |
+| BA1-1 | **Core.** `ProfileBot.move()` : `attack` pendant une attaque, `respond` quand il suit un départ, `sprint` au pic de son sprint ; champ facultatif `move` des éléments de `bots` (révision 1.35, numéro provisoire), absent sans geste. Peloton allégé : seulement pour les 5 bots les plus proches (`LIGHT_DROPPED`). |
 | BA1-2 | **Engine.** `bot_moves_model.gd` : au **début** d'un geste d'un bot à moins de 250 m, une ligne dans le bandeau d'information (clé `bot_move`, 3 s) : « Grimpeur attaque, 40 m devant », « Rouleur suit l'attaque, 12 m derrière », « Sprinteur lance le sprint, à ta hauteur », et le son `bot_attack` (trois notes montantes brèves). Attaque avant sprint avant réponse ; au plus une ligne toutes les 4 s ; jamais le fantôme ; seulement en séance qui roule, hors Cyber-Rogue. |
-| BA1-3 | **Contrat.** Ajout compatible (journal de `ipc_v1.md`, schéma `state.schema.json`) ; un engine plus ancien ignore `move`. Numéro 1.33 provisoire (1.29 à 1.32 réservées) : à renuméroter au-dessus du `CONTRACT_REV` de `main` à la fusion. |
+| BA1-3 | **Contrat.** Ajout compatible (journal de `ipc_v1.md`, schéma `state.schema.json`) ; un engine plus ancien ignore `move`. Numéro 1.35 provisoire : à renuméroter au-dessus du `CONTRACT_REV` de `main` à la fusion. |
 
 ## 3. Fichiers
 

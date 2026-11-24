@@ -171,3 +171,91 @@ def test_invalid_calls():
     assert pv.main(["--seance", "inconnue"]) == 2
     assert pv.main([]) == 2
     assert pv.main(["--liste"]) == 0
+
+
+# --- revue de code, vague 5, lot O2 (24 novembre) -------------------------------------------------------------
+
+def _home_with_route(tmp_path: Path) -> Path:
+    home = tmp_path / "home"
+    (home / ".local" / "share" / "openride" / "routes" / "demo.world").mkdir(parents=True)
+    return home
+
+
+def test_o2_01_player_file_put_aside_then_restored(tmp_path: Path):
+    home = _home_with_route(tmp_path)
+    mien = home / "OpenRide" / "powerups.toml"
+    mien.parent.mkdir(parents=True)
+    mien.write_text("[obtain]\narch_every_m = 300\n# mes réglages\n", encoding="utf-8")
+    answers = {**GIT_OK, "pytest": (0, "4 passed in 1s\n"), "run_engine_tests": (0, ""),
+               "devices": (0, _devices("trainer", "click"))}
+    assert pv.main(["--seance", "t11_j7", "--out", str(tmp_path / "o"), "--muet"], run=FakeRunner(answers),
+                   home=home) == 0
+    seance = pv.load_seances()["t11_j7"]
+    assert mien.read_text(encoding="utf-8") == seance["poser"][0]["contenu"]
+    (aside,) = mien.parent.glob("powerups.toml.pre_vol-*")
+    assert "mes réglages" in aside.read_text(encoding="utf-8")
+    assert "--remettre" in (tmp_path / "o" / "resume.txt").read_text(encoding="utf-8")
+    assert pv.main(["--seance", "t11_j7", "--remettre"], home=home) == 0
+    assert "mes réglages" in mien.read_text(encoding="utf-8")
+    assert not list(mien.parent.glob("powerups.toml.pre_vol-*"))
+
+
+def test_o2_01_nothing_placed_when_an_earlier_step_blocks(tmp_path: Path):
+    home = _home_with_route(tmp_path)
+    mien = home / "OpenRide" / "powerups.toml"
+    mien.parent.mkdir(parents=True)
+    mien.write_text("# mes réglages\n", encoding="utf-8")
+    answers = {**GIT_OK, "pytest": (1, "1 failed in 1s\n"), "run_engine_tests": (0, ""),
+               "devices": (0, _devices("trainer", "click"))}
+    assert pv.main(["--seance", "t11_j7", "--out", str(tmp_path / "o"), "--muet"], run=FakeRunner(answers),
+                   home=home) == 1
+    assert mien.read_text(encoding="utf-8") == "# mes réglages\n"
+    assert not list(mien.parent.glob("powerups.toml.pre_vol-*"))
+
+
+def test_o2_01_previous_config_backup_kept(tmp_path: Path):
+    home = tmp_path / "home"
+    routes = home / "routes"
+    (routes / "demo.world").mkdir(parents=True)
+    config = home / "OpenRide" / "config.toml"
+    config.parent.mkdir(parents=True)
+    config.write_text("a\n", encoding="utf-8")
+    seance = {**SEANCE, "poser": []}
+    pv.step_fichiers("erg", seance, home, routes, config, "s1")
+    config.write_text("b\n", encoding="utf-8")
+    pv.step_fichiers("erg", seance, home, routes, config, "s2")
+    assert (home / "OpenRide" / "config.toml.erg").read_text(encoding="utf-8") == "b\n"
+    assert (home / "OpenRide" / "config.toml.erg.s2").read_text(encoding="utf-8") == "a\n"
+
+
+def _git(cwd: Path, *args: str) -> str:
+    import subprocess
+    return subprocess.run(["git", "-C", str(cwd), *args], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def test_o2_09_stale_remote_ref_on_a_main_only_clone_is_seen(tmp_path: Path):
+    """Dépôt du PC qui ne suit que main ; origin/pr1 posée à l'ancienne tête par la file des bancs."""
+    origine = tmp_path / "origine"
+    origine.mkdir()
+    _git(origine, "init", "-q", "-b", "main")
+    _git(origine, "config", "user.email", "t@t")
+    _git(origine, "config", "user.name", "t")
+    (origine / "a").write_text("1")
+    _git(origine, "add", ".")
+    _git(origine, "commit", "-q", "-m", "1")
+    _git(origine, "checkout", "-q", "-b", "pr1")
+    (origine / "a").write_text("2")
+    _git(origine, "commit", "-q", "-am", "2")
+    clone = tmp_path / "clone"
+    _git(tmp_path, "clone", "-q", "--single-branch", "-b", "main", str(origine), str(clone))
+    _git(clone, "fetch", "-q", "origin", "+refs/heads/pr1:refs/remotes/origin/pr1")
+    _git(clone, "checkout", "-q", "-b", "pr1", "origin/pr1")
+    (origine / "a").write_text("3")
+    _git(origine, "commit", "-q", "-am", "3")               # nouvelle tête poussée
+    r = pv.step_git(pv.run_command, fetch=True, repo=clone)
+    assert r.status == "ÉCHEC" and "1 commit(s) de retard" in r.detail
+    _git(clone, "merge", "-q", "--ff-only", "FETCH_HEAD")
+    assert pv.step_git(pv.run_command, fetch=True, repo=clone).status == "OK"
+    _git(clone, "checkout", "-q", "-b", "pr2")              # branche locale sans référence distante
+    _git(origine, "checkout", "-q", "-b", "pr2")
+    assert pv.step_git(pv.run_command, fetch=True, repo=clone).status == "OK"

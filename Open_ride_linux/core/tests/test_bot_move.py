@@ -1,4 +1,4 @@
-"""Lot BA1 : geste des bots (`move` des éléments de `bots`, révision 1.33) montré au cycliste.
+"""Lot BA1 : geste des bots (`move` des éléments de `bots`, révision 1.35) montré au cycliste.
 
 Essai du propriétaire du 22 novembre en mode Course : « rien n'indique quand un bot utilise un boost »."""
 

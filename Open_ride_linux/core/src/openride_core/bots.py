@@ -39,7 +39,7 @@ import math
 import zlib
 from pathlib import Path
 from collections.abc import Iterable
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 from dataclasses import dataclass
 
@@ -573,7 +573,7 @@ class ProfileBot(ConstantPowerBot):
         d.update({"profile": self.profile, "cp_w": round(self.cp_w, 1), "mass_kg": self.mass_kg,
                   "wbal_pct": round(self.wbal_pct, 1)})
         move = self.move()
-        if move is not None:   # lot BA1 (révision 1.33) : absent sans geste en cours
+        if move is not None:   # lot BA1 (révision 1.35) : absent sans geste en cours
             d["move"] = move
         return d
 
@@ -828,13 +828,17 @@ MAX_BOTS = MAX_CONSTANT_BOTS + 1   # et un fantôme
 LEVEL_BOUNDS = BOUNDS[("bots", "level_pct")]   # % de la FTP : bornes du réglage `bots.level_pct`
 
 
-def last_ride(route_id: str | None, directory: Path) -> Path | None:
-    """Journal le plus récent d'une séance sur ce parcours, d'où un fantôme peut partir ; None sinon."""
+def last_ride(route_id: str | None, directory: Path, exclude: Path | None = None) -> Path | None:
+    """Journal le plus récent d'une séance sur ce parcours, d'où un fantôme peut partir ; None sinon.
+    `exclude` : journal de la séance en cours, jamais pris (revue RC13, C2-02 : fantôme ajouté à la pause)."""
     from .journal import read_journal
 
     if not route_id or not directory.is_dir():
         return None
+    skip = _resolved(exclude)
     for path in sorted(directory.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True):
+        if skip is not None and _resolved(path) == skip:
+            continue
         try:
             header = next((line for line in read_journal(path) if isinstance(line, dict)), {})
         except Exception:
@@ -848,15 +852,28 @@ def last_ride(route_id: str | None, directory: Path) -> Path | None:
     return None
 
 
+def _resolved(path: Path | None) -> Path | None:
+    try:
+        return Path(path).resolve() if path is not None else None
+    except OSError:
+        return None
+
+
 def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
                    journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
-                   taken_ids: Iterable[str] = ()) -> list[Any]:
+                   taken_ids: Iterable[str] = (),
+                   names: Callable[[list[str]], list[str]] | None = None,
+                   exclude_journal: Path | None = None) -> list[Any]:
     """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
     ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus `MAX_CONSTANT_BOTS` bots
     de ces deux genres en tout, 11 depuis le lot PL1 ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
     `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
 
     `taken_ids` (lot N18, `set_bots`) : ids déjà pris dans la séance, sautés (`bot1`, `bot2`… sinon).
+    `exclude_journal` (`set_bots`) : journal de la séance en cours, que le fantôme ne rejoue pas (revue RC13).
+
+    `names` (lot R4) : noms des bots à profil d'après leurs profils dans l'ordre de la liste (les rivaux du
+    profil, `CoreSession._rival_names`) ; « Grimpeur », « Grimpeur 2 »… sans lui (`profile_bot_names`).
 
     Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
     """
@@ -876,7 +893,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
     constant = 0
     ghost = False
     profiles = [it.get("profile") for it in items if isinstance(it, dict) and it.get("kind") == "profile"]
-    names = iter(profile_bot_names([p for p in profiles if isinstance(p, str)]))
+    names = iter((names or profile_bot_names)([p for p in profiles if isinstance(p, str) and p in PROFILES]))
     for it in items:
         kind = it.get("kind") if isinstance(it, dict) else None
         if kind == "constant":
@@ -909,7 +926,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             if ghost:
                 raise BotError("un seul fantôme")
             ghost = True
-            path = last_ride(route_id, journal_dir)
+            path = last_ride(route_id, journal_dir, exclude_journal)
             if path is None:
                 raise BotError(f"aucune séance passée sur le parcours « {route_id} » pour le fantôme")
             out.append(GhostBot(path))

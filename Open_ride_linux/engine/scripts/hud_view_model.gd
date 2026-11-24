@@ -96,16 +96,19 @@ static func is_ftp_warmup(erg: Variant) -> bool:
 	return erg is Dictionary and erg.has("ftp_test") and str(erg.get("block_type", "")) == "warmup"
 
 
-## Invite de fin de séance (1er novembre) : `state.workout_done` (contrat IPC 1.5) dit que l'entraînement est
-## fini et que la séance continue en parcours libre ; Y ouvre la pause, focus déjà sur « Terminer et
-## enregistrer », A maintenu valide (Échap puis Entrée au clavier, key_map.gd). Texte vide sans invite.
-static func workout_done_text(state: Dictionary) -> String:
-	var done = state.get("workout_done", null)
-	if not (done is Dictionary):
-		return ""
-	var name := str(done.get("workout_name", "")).strip_edges()
-	var what := "Entraînement « %s » terminé" % name if name != "" else "Entraînement terminé"
-	return what + " : Y puis A maintenu pour terminer et enregistrer · sinon, la balade continue   (clavier : Échap puis Entrée)"
+## Ligne du bandeau central qui signale un problème (lot NI1, à la place de la ligne « ÉTAT: … | TRAINER: … |
+## ENTRÉE: … » retirée) : core pas encore là (aucune trame), trainer perdu en séance ; vide le reste du temps.
+## Même texte que la raison de pause « trainer_lost » (menu_flow.gd). Le Click n'a jamais de message ici (choix du
+## propriétaire : pas d'alerte « Click perdu » à l'écran).
+const NOTICE_WAITING_CORE := "En attente du core…"
+const NOTICE_TRAINER_LOST := "Trainer perdu : reconnexion en cours…"
+
+static func notice_text(state: Dictionary) -> String:
+	if state.is_empty():
+		return NOTICE_WAITING_CORE
+	if str(state.get("trainer_status", "")) in ["RECONNECTING", "LOST"]:
+		return NOTICE_TRAINER_LOST
+	return ""
 
 
 ## Explication d'un appui ni court ni long (PLUS_UNCLEAR ou MINUS_UNCLEAR), menu affiché ou en séance.
@@ -435,14 +438,4 @@ static func session_lines(state: Dictionary, erg_view: Dictionary, ftp_w := 0.0,
 	out["gear_shown"] = not erg_on
 	out["time_val"] = format_hms(t)
 
-	var erg_line := ""
-	if erg_on:
-		erg_line = "ERG: %s" % erg_view.get("title", "")
-		if str(erg_view.get("remaining_text", "")) != "":   # ERG d'une session libre : pas de temps restant
-			erg_line += "  |  reste %s" % erg_view["remaining_text"]
-		if str(erg_view.get("next_text", "")) != "":
-			erg_line += "  |  " + str(erg_view["next_text"])
-		if str(erg_view.get("paused_text", "")) != "":
-			erg_line += "  |  " + str(erg_view["paused_text"])
-	out["erg"] = erg_line
 	return out

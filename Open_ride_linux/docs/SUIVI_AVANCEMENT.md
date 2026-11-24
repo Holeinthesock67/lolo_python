@@ -1,5 +1,7 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
+> Depuis le 22 novembre 2026, les PR n'écrivent plus dans ce fichier : chaque lot laisse sa ligne dans `docs/changements/<LOT>.md`, recopiée ici par la passe de doc (`docs/changements/README.md`).
+
 Mise à jour : 19 novembre 2026 (relevé des statuts sur `main` après les fusions du 8 au 19 novembre : cases cochées et numéros de PR, §1 « Fusions du 13 au 19 novembre » ; aucun nombre de tests écrit, voir `scripts/recompte_tests.py`) ; précédente : 27 octobre 2026 (fusions du jour : séries O, P, Q, X, modules purs des séries T et V, contrat 1.4, W0, Y1 ; statuts remis à l'état de `main` et essais restants rassemblés au §3) ; précédente : 24 octobre (cahiers de la série N ; fusions E1, K1 à K5, K8, braquets réactifs et deux boîtiers du Click)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : constats R1, R2 et S1 corrigés.
@@ -66,10 +68,12 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] Core au contrat IPC v1.1 (lot N2, `ipc_lists.py`) : réponses `routes` et `workouts` en parties de 60 000 octets au plus (200 éléments, profils de 30 triplets), lues hors de la boucle à 50 Hz ; objet `devices` une trame sur 30 et à chaque changement ; bilan `summary` enrichi (NP, IF, TSS, dénivelé, blocs ERG), testés par `core/tests/test_ipc_v1_1.py`.
 - [x] `catalog_model.gd` et client des listes v1.1 (`ipc_client.gd`) : commandes `list_routes` et `list_workouts` avec assemblage des parties par `request_cmd_id` et relance après 1 s, conversion en éléments de menu et scénario complet au Click, testés sans écran (`engine/tests/unit/test_catalog_model.gd`, `test_menu_ipc.gd`, lot N3) ; affiché dans les menus depuis N6.
 - [x] `cue_model.gd` : consignes d'essai affichées dans le bandeau avec un bip quand la distance est atteinte, lues dans `~/OpenRide/Essais/<parcours>.consignes.json` (facultatif) et notées `[essai]` dans le journal du lanceur, testées sans écran (`engine/tests/unit/test_cue_model.gd`, essai sur le HomeTrainer du 25 octobre).
+- [ ] **HUD sans éléments inutiles** (lot NI1, 21 novembre, audit des éléments inutiles, décision du propriétaire « HUD et réglages d'abord ») : ligne d'état technique, case CIBLE ERG, ligne ERG jamais affichée, encart du vent en cinq morceaux, PENTE au vélodrome, vitesse en double au Cyber-Rogue, jauge d'abri des bots et son réglage retirés ou fusionnés ; testé par `test_hud_view.gd`, `test_wind_view_model.gd`, `test_settings.py` et les tests graphiques ; reste la validation des captures et la passe PC.
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
 - [x] Lanceur unique `openride` (`launcher.py`, lot K6) et raccourci de bureau (`scripts/desktop/openride.desktop.in`, `scripts/desktop/openride.svg`, `scripts/install-desktop.sh`, lot L8) : même rôle que `scripts/openride-dev.sh`, plus la supervision : Godot relancé s'il plante (3 fois en 2 min au plus), arrêt forcé du core au bout de 10 s puis `release-trainer`, arrêt de Godot et rappel de `recover` si le core plante, arrêt propre sur SIGINT, SIGTERM et SIGHUP, et installation utilisateur du fichier `.desktop` et de l'icône SVG dans `~/.local/share`. Reste l'essai réel avec le HomeTrainer et Godot.
+- [ ] **Essai d'endurance avant livraison** (lot EN1, `engine/tests/essai_endurance.py`, `docs/ESSAI_ENDURANCE.md`) : séance de 2 h puis saison de la ligue d'hiver (8 semaines simulées) dans les mêmes processus, seuils chiffrés ; essai à blanc en core seul au cloud le 22 novembre, essai sur le PC après la fusion de la ligue (semaine du 30 novembre).
 - [x] **Recette sans matériel** (lot M6, `core/tests/test_sim_matrix.py`) : les 7 scénarios du Bluetooth simulé joués chacun en séance complète, en ERG et en SIM (14 séances en parallèle, ~2 min 30), avec invariants (aucune erreur inattendue, état final, FIT validé par le SDK Garmin, relâche du trainer, bornes des consignes, `summary` et `log_report`) et attentes par scénario. Aucun défaut trouvé.
 - [x] **Parcours depuis un FIT ou un TCX** (lot M7, `compiler/src/openride_compiler/track_formats.py`) : `openride-compiler build sortie.fit` ou `sortie.tcx` (activité ou parcours Garmin), format reconnu par l'extension ou par le contenu, points sans GPS ignorés, FIT sans aucune position refusé (« aucune position GPS dans ce FIT »). `list` et `build-all` ne voient toujours que les `.gpx`.
 - [x] **Dette R3 et S2 de la vérification du 24 octobre** (lot M9) : `ErgController` refuse un pas de temps négatif, infini ou NaN et une FTP ≤ 0 ; `pip install -e "compiler[dev]"` seul donne une suite qui passe, les tests qui lisent le core étant sautés (en CI, leur absence est une erreur).
@@ -103,7 +107,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] **Portiques et arches du monde ouvert** (lot W21, 13 novembre) : le core écrit `segments.json` dans le dossier de séance ; l'engine le relit toutes les 2 s et dessine portiques, lignes et panneaux des montées et sprints trouvés en roulant ; arches de bonus tous les 5 km sur toute la balade (plus seulement les 3 premiers km). Tests `test_open_world_segments.py`, `engine/tests/unit/test_live_segments.gd`. Captures low/medium/high à valider.
 - [x] **Arrivée en destination et en boucle du monde ouvert** (lot W19, 13 novembre) : le générateur annonce `finish_m` dans `revision` (point de la route le plus proche de la cible, ou du départ en boucle ; contrat `worldgen_v1.md`, ajout compatible), le core termine la séance à l'arrivée (bilan, balade enregistrée) ; en destination, le nœud du graphe le plus proche de la cible compte pour l'arrivée. Tests `compiler/tests/test_worldgen_process.py` et `core/tests/test_open_world_session.py`. Reste la recette PC avec W16.
 - [x] **Herbe sans à-coups près de la mer et des villes** (lot HERBE1, fusionné le 20 novembre, #929, `docs/lots/LOT_HERBE1_a_coups_herbe_contours.md`) : chaque touffe testait tous les bâtiments et plans d'eau chargés, sommet par sommet ; avec la mer de #907 (côte détaillée), l'herbe faisait 22 à 35 ms par image au banc r907. Zones d'exclusion indexées par cases de 32 m (`exclusion_zones.gd`, découpage des grands contours, communes à l'herbe et aux détails de sol) et temps vérifié à chaque touffe ; cloud : pire image d'herbe 8,5 / 10,2 / 11,2 → 3,8 / 3,8 / 4,9 ms en low / medium / high, fenêtre de nouveau remplie. Restent le banc PC (`scripts/file_bancs/herbe_high.toml`) et les captures.
-- [x] **Essai W16a sans vélo : plantage du générateur corrigé** (série W). Les arêtes de longueur nulle (points confondus, fréquents avec les tuiles vectorielles quantifiées) n'ont pas de profil : `IndexError` à `open`. `Edge.degenerate` : ces arêtes sont internes (leurs bouts ne font qu'un nœud), jamais accrochées au départ et sans profil dans les carrés. Un `.world` dont le manifeste porte `live` se charge comme un parcours ordinaire (`route.load_world` côté core, `RouteData.load_world_dir` côté engine), d'où `sim_bench.py --world ouvert` (monde vivant synthétique de 20 km de `make_sim_world.py --live`). Reste l'essai réel près de Sarre-Union sur le PC (W16a, puis W16b à vélo).
+- [x] **Essai W16a sans vélo : plantage du générateur corrigé** (série W). Les arêtes de longueur nulle (points confondus, fréquents avec les tuiles vectorielles quantifiées) n'ont pas de profil : `IndexError` à `open`. `Edge.degenerate` : ces arêtes sont internes (leurs bouts ne font qu'un nœud), jamais accrochées au départ et sans profil dans les carrés. Un `.world` dont le manifeste porte `live` se charge comme un parcours ordinaire (`route.load_world` côté core, `RouteData.load_world_dir` côté engine), d'où `sim_bench.py --world ouvert` (monde vivant synthétique de 20 km de `make_sim_world.py --live`). Reste l'essai réel sur une route réelle sur le PC (W16a, puis W16b à vélo).
 - [x] **Biomes dans le monde ouvert** (lot W17, `docs/lots/LOT_W17_biomes_monde_ouvert.md`) : le générateur écrit une tuile de biome par carré et par tuile lointaine, avec la règle du compilateur (WorldCover, OSM, altitude, Köppen, variante régionale ; `worldgen/biome_tiles.py`, cache `genere/<zone>/biome/`), l'engine relit les tuiles arrivées en roulant, et l'écran du cap a une ligne « Biome » (automatique ou forcé) expliquée. Reste : mesures low, medium et high et captures sur le PC, mer et plages après #844.
 - [x] **Monde ouvert : la balade part après le préchargement** (lot W18, fusionné le 14 novembre, #872, `docs/lots/LOT_W18_depart_monde_ouvert.md`) : le monde prêt, « Démarrer » de l'écran du cap enchaîne sur le départ au pédalage (O36) au lieu de revenir à l'accueil, où il fallait repasser par Session libre et l'écran Prêt ; `world_menu_model.gd` (`on_session`), `main.gd` ; essai `test_world_menu_model.gd`. Banc : scénario `w17_cap` (lot W17), qui attend le départ envoyé par l'engine ; banc PC r872b passé le 14 novembre.
 - [x] **Banc des menus : un seul départ du monde ouvert** (gabarit `depart_monde_ouvert` de `engine/tests/menu_bench.py`, 18 novembre, fusionné le 18 novembre, #920) : les scénarios ea1_lac, ea2_lac_loin, ea3_riviere, ea4_pont et ow_6km, écrits avant W18, attendaient encore l'accueil puis l'écran Prêt et échouaient quatre fois, sur main comme sur leurs branches ; tous les scénarios du monde ouvert (avec w17_cap) jouent maintenant le même départ, un départ recopié est refusé au chargement ; étape `distance_km` (de la PR #871) et champ `s_m` de `menu_state` ; essai `core/tests/test_menu_bench_depart_monde_ouvert.py`. Reste : bancs PC des cinq scénarios.
@@ -121,6 +125,8 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] **Firewall du Cyber-Rogue** (lot R4, série R de la 2.0) : `core/src/openride_core/rogue/firewall.py` (cycliste virtuel à une fraction de la FTP, écart au joueur, contact, plafond de 400 m, arrêt en pause et Click perdu), testé par `core/tests/test_rogue_firewall.py`.
 - [x] **Combat du Cyber-Rogue** (lot R5, série R de la 2.0) : `core/src/openride_core/rogue/combat.py` (dégâts par posture et braquet, bouclier, adrénaline, surchauffe en endurance, Perfect Shift, tunnels du Diesel, rochers du Grimpeur, pavés du Sprinteur, piratages du Saboteur, parades du Puncheur et du boss, défaite et récupération, or), testé par `core/tests/test_rogue_combat.py`.
 - [x] **Estimation de CP et W' du Cyber-Rogue** (lot R16, série R de la 2.0) : `core/src/openride_core/tools/estimate_cp.py` (meilleures puissances sur 3, 5, 8, 12 et 20 min, régression travail-temps, seuils de confiance, raisons lisibles, cache, séances rejouées et anciennes exclues, `--json`), testé par `core/tests/test_estimate_cp.py`.
+- [ ] **Courbe de puissance du profil** (lot PP1, série PP, PR ouverte) : `core/src/openride_core/tools/power_curve.py` (13 durées de 5 s à 60 min, 6 derniers mois et 6 dernières semaines, mot « libre » ou « ERG » et courbe libre à part, fenêtres coupées aux pauses, aux coupures du trainer et aux trous, pics de capteur écartés, sources du profil, cache version 2 partagé avec `estimate_cp`), testé par `core/tests/test_power_curve.py`.
+- [ ] **FTP estimée du profil** (lot PP2, série PP, PR ouverte) : `core/src/openride_core/tools/ftp_estimate.py` (test de rampe récent, puissance critique des efforts libres ou 95 % du 20 min libre, confiance en mots et raison, proposition jamais écrite sans `--accept`, signal au-delà de 5 %, évolution sur 6 mois), testé par `core/tests/test_ftp_estimate.py`.
 - [x] **Table d'équilibrage et runs simulées du Cyber-Rogue** (lot R7, série R de la 2.0) : `core/src/openride_core/rogue/balance.toml` (126 constantes commentées, surcharge `~/OpenRide/rogue_balance.toml`, empreinte dans le journal) et `core/src/openride_core/tools/rogue_sim.py` (quatre cyclistes types, cibles, sensibilité ±20 %, rapport texte et JSON), testés par `core/tests/test_rogue_balance.py` ; résultats et valeurs proposées dans `docs/2.0/RAPPORT_EQUILIBRAGE_R7.md`.
 - [x] **Progression permanente du Cyber-Rogue** (lot R9, série R de la 2.0) : `core/src/openride_core/rogue/progress.py` (six châssis à bonus bornés lus dans la table de la série V, déblocages et statistiques recalculés depuis le journal, vies utilisées à la défaite, or converti en pièces), contrat 1.4 complété (`config.rogue.chassis`, `lives`, `start_run.chassis`), testé par `core/tests/test_rogue_progress.py`.
 - [x] **Intégration du Cyber-Rogue dans la session** (lot R8, série R de la 2.0) : `core/src/openride_core/rogue/mode.py` et `session.py` (mode `ROGUE`, `start_run`, pente centrée sur la vitesse 6 avec rampe, boutons Z et A, pause Y, lignes `rogue` du journal, tours FIT par salle, reprise après plantage au début de la salle), testé par `core/tests/test_rogue_session.py`.
@@ -138,11 +144,14 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] **Fin du Cyber-Rogue** (lot R21, 10 novembre, fusionné le 10 novembre, #835) : événement `purge` et son de la purge, son du coffre à l'entrée dans le retour au calme, achat d'une vie depuis l'écran de départ du mode (commande `buy_life`, contrat révision 1.14) ; testé par `test_rogue_r21_finitions.py`, `test_rogue_sound_model.gd` et `test_rogue_menu_model.gd` ; reste le ressenti sur le vélo (R14, 11 novembre).
 - [x] **Lisibilité du Cyber-Rogue** (lot R22, 12 novembre, fusionné le 12 novembre, #842) : HUD en haut à gauche (phase ou salle, compte à rebours, jauges, étapes à venir), Firewall en secondes ou consigne de puissance en haut à droite, consigne et boutons utiles en bas, raison de chaque Z refusé et verdict des arches de Perfect Shift, légende au premier passage de chaque objet, étiquettes des objets et zone Z au sol à la taille de la fenêtre, portique des arches avec anneau d'approche, couloir en deux temps avec minuteur, décor néon sur les côtés, 3 vues sur haut et bas, fonds d'ambiance coupés pendant la run (contrat révision 1.16) ; testé par `test_rogue_r22_lisibilite.py`, `test_rogue_guide_model.gd`, `test_rogue_hud_model.gd` et `test_rogue_host.gd` ; reste les captures low, medium et high sur le PC et le ressenti sur le vélo.
 - [x] **Retours du Cyber-Rogue** (lot R23, 14 novembre, fusionné le 16 novembre, #884, suite de l'essai R22 noté 2/5) : événements de jeu jamais perdus entre deux trames (le core faisait 50 pas par seconde et n'envoyait à 30 Hz que ceux du dernier pas), chaque Z court avec exactement un retour (`z_ok` et son action, ou `z_refused` et sa raison, échauffement et couloir compris) : son, anneau et texte ; surchauffe annoncée puis affichée, consigne en plage en endurance, tendance de l'adrénaline, pavé VITESSE dans toutes les phases, 4e vue « sur le vélo » (contrat révision 1.17) ; cartes Overdrive, Soin, Maudit et Tremplin sans vitesse imposée (puissance ou cadence, choix du propriétaire) et textes des cartes en français simple ; testé par `test_rogue_r23_retours.py`, `test_rogue_r23_retours.gd` et `rogue_bout_en_bout` (un Z par trame vérifié) ; suite de l'essai sur le vélo du 15 novembre (noté 4/5) : consignes jugées sur la puissance affichée (3 s, 5 W près), adrénaline gardée d'une salle à l'autre, couloirs de 45 s (temps rendu aux salles et au boss, durée tenue), fin de salle annoncée et cause de la défaite au bilan ; reste la validation des captures et un nouvel essai sur le vélo.
+- [x] **Début de run et adrénaline du Cyber-Rogue** (lot R26, 21 novembre, fusionné le 22 novembre, #960, essai du propriétaire noté 3/5 pour « savoir quoi faire ») : échauffement qui charge l'adrénaline à sa consigne, consignes jugées sur 8 s à 10 % près avec marge de sortie, plage et écart en direct, sons d'entrée et de sortie de la plage (contrat révision 1.28) ; testé par `test_rogue_r26_debut_run.py`, `test_rogue_guide_model.gd` et la galerie du Cyber-Rogue ; reste la planche, la passe PC et un essai sur le vélo.
+- [ ] **Cyber-Rogue sans voile en high** (lot R27, 21 novembre) : une seule règle de brume (linéaire jusqu'à 400, 600 ou 900 m) au lieu de la brume exponentielle du high qui grisait tout le ciel, glow du high ramené à celui du medium ; testé par `test_neon_palette.gd` et la galerie du Cyber-Rogue en high (168/168) ; reste la planche, la passe PC et la validation du propriétaire.
+
 - [ ] **Début de run et adrénaline du Cyber-Rogue** (lot R26, 21 novembre, essai du propriétaire noté 3/5 pour « savoir quoi faire ») : échauffement qui charge l'adrénaline à sa consigne, consignes jugées sur 8 s à 10 % près avec marge de sortie, plage et écart en direct, sons d'entrée et de sortie de la plage (contrat révision 1.28) ; testé par `test_rogue_r26_debut_run.py`, `test_rogue_guide_model.gd` et la galerie du Cyber-Rogue ; reste la planche, la passe PC et un essai sur le vélo.
 
-- [ ] **Jauge « Réserve W' » retirée du HUD du Cyber-Rogue** (lot R25, 21 novembre, demande du propriétaire pendant l'essai) : jauge sans effet sur le jeu, qui nuisait à la lisibilité ; restent Ennemi, Bouclier et Adrénaline ; testé par `test_rogue_hud_model.gd` et la galerie du Cyber-Rogue ; reste la validation de la planche et la passe PC.
+- [x] **Jauge « Réserve W' » retirée du HUD du Cyber-Rogue** (lot R25, 21 novembre, fusionné le 22 novembre, #956, demande du propriétaire pendant l'essai) : jauge sans effet sur le jeu, qui nuisait à la lisibilité ; restent Ennemi, Bouclier et Adrénaline ; testé par `test_rogue_hud_model.gd` et la galerie du Cyber-Rogue ; reste la validation de la planche et la passe PC.
 
-- [ ] **Monde classique gelé pendant une run Cyber-Rogue** (lot R24, « R-gel », 19 novembre) : la pause d'une run ne charge plus la démo des menus sous la scène du mode, thème et biome ne reconstruisent plus le décor vidé (suite de #897) ; testé par `test_rogue_host.gd`, `test_rogue_bench_gel.py` et la vérification « monde classique gelé » de `rogue_bench.py` ; reste la galerie PC low, medium et high.
+- [x] **Monde classique gelé pendant une run Cyber-Rogue** (lot R24, « R-gel », 19 novembre, fusionné le 22 novembre, #933) : la pause d'une run ne charge plus la démo des menus sous la scène du mode, thème et biome ne reconstruisent plus le décor vidé (suite de #897) ; testé par `test_rogue_host.gd`, `test_rogue_bench_gel.py` et la vérification « monde classique gelé » de `rogue_bench.py` ; reste la galerie PC low, medium et high.
 - [x] **Monde ouvert synthétique** (lot W15, série W de la 2.0) : `compiler/src/openride_compiler/worldgen/synthetic.py` (base fictive en mer au schéma de W3 avec grille déformée, ponts, tunnel, impasse, rond-point, bâtiments, forêts et lac ; `write_live_world` d'après un scénario de carrefours ; faux générateur `openride-worldgen-fake` avec pannes simulées `--offline`, `--missing-after-m`, `--crash-after-m`), `engine/tests/make_sim_world.py --live` (monde vivant de 20 km pour le banc), testés par `compiler/tests/test_world_synthetic.py`.
 - [x] **Mesures du monde ouvert** (lot W0, série W de la 2.0) : `openride-compiler world-measure` (`compiler/src/openride_compiler/worldgen/measure.py`) et décodeur de tuiles vectorielles `worldgen/mvt.py` (bibliothèque standard) ; exécution sur le PC cible à faire par le propriétaire.
 - [x] **Série T (2.0), détection des segments** (lot T2, `segments.py`) : montées trouvées sur la pente lissée de la route (500 m, 3 %, 30 m, fusion sous 200 m de replat, catégories 4 à HC sur longueur × pente), sprints proposés de 200 à 500 m au plus tous les 10 km, segments manuels ajoutés ou à la place ; module pur, branché au `.world` par T3.
@@ -189,6 +198,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] **Variante régionale par tuile au compilateur** (lot U4, 8 novembre) : table d'ébauche `compiler/src/openride_compiler/data/regional_variants.toml` (zones en degrés entiers, 1° au plus fin, grandes régions géologiques françaises et quelques zones européennes ; règles générales volcanique, aride, bouclier nordique au-delà de 58°, tropiques ; variante neutre `calcaire_blanc`) lue par `regional.py` : chaque membre (`ground`, `roofs`) vient de la plus petite zone qui le donne, puis des règles, puis du neutre, sinon reste `null` ; hors des zones le toit reste `null` pour que l'engine garde le style du biome (U23). Une variante au centre de chaque tuile proche, la majoritaire de ses tuiles proches pour chaque tuile lointaine ; `--variant GROUND,ROOFS` pour `build`, `build-all` et `add-layer biome` ; rapport `variantes (…)` à la compilation ; `verify` contrôle l'énumération. Rendu des variantes : lot U14. Tests `compiler/tests/test_regional.py` (PR #785).
 - [x] **Biome alpin au look du parcours de démonstration** (30 octobre, demande et validation du propriétaire) : le biome `alpine` du thème par défaut reprend les sapins (arbre d'avant la série U : `vegetation` sans `species`, 400 arbres par hectare, limite à 2 000 m), l'herbe, la roche et la neige du parcours de démonstration (`#6f9a4a`, `#9a9488`, `#f2f5f8`, pente 22°, neige à 2 200 m) ; rochers, faune et toits d'ardoise du biome gardés ; `docs/3.0/PACK_BIOMES_CC0.md` : mêmes textures que la prairie.
 - [ ] **Intégration des biomes dans la scène** (lot U17, première partie le 28 octobre) : `world_streamer.gd` crée le modèle de biome du parcours (couche `biome`, `--biome=`) et le passe aux arbres et aux animaux ; brouillard et horizon du biome du départ (`main.gd`, `RenderQuality.HAZE_COLOR`) ; tuiles de terrain au sol multi-biome (U6), préréglage transmis par `render_quality.gd`. Suite le 30 octobre : `engine/scripts/atmosphere_view.gd`, seul endroit qui pose brouillard, horizon et soleil, suit en roulant l'atmosphère du biome sous la caméra (U10, recalculée 4 fois par seconde, posée seulement quand elle change) et affiche la brume de chaleur ; la brume de la météo s'y rajoute (`living_decor.set_fog_base`) ; le préréglage changé dans les réglages repose le brouillard ; `[perf-rendu]` donne la mémoire vidéo estimée des textures du sol ; banc simulé : `--biome`, `bench.biome` et neuf scénarios `biome_*` (les six du premier jalon, désert, savane, jungle). Reste : budgets à régler d'après le banc sur la GTX 1060.
+- [x] **Outils du core, revue de code vague 2 (lot RC15, 23 novembre)** : `essai_physique` déroule la fiche Cyber-Rogue (en-tête `route_id = "rogue"`, C7-01), copie les réglages du joueur sur disque avant d'écrire ceux de la fiche et les remet sur fin, Ctrl+C, SIGTERM et SIGHUP, sinon par `essai_physique restaurer` ou le `lancer` suivant (C7-02), et roule `--sim` sur le profil d'essai, refusé sur un profil de joueur (C7-03) ; historique et estimation de CP/W' n'ont plus les séances simulées d'un profil de joueur ni les rejeux (`seances_comptees`, C6-01) ; `log_report` ne compte plus les lignes d'information du pilote comme pertes du trainer (C6-03) ; `coupures` débloque toujours les boîtiers du Click bloqués (Ctrl+C, blocage refusé) et passe à la consigne à la main sans les deux adresses (C6-04). Tests : `core/tests/test_revue_code_rc15.py`.
 ---
 
 ### Fusions du 13 au 19 novembre (relevé du 19 novembre)
@@ -203,6 +213,7 @@ Lots entrés sur `main` sans ligne dans ce suivi, relevés d'après les PR fusio
 - [x] **Fin de séance** : Rejouer, Menu principal, Y ramène au menu (#901, 16 novembre) ; feux verts « GO ! » retirés dès l'arrêt de la séance (#913, 16 novembre).
 - [x] **Bots** : têtes et casques ronds à tous les niveaux de détail (#895, 15 novembre) ; quota de bots détaillés élargi à 11 à tous les préréglages (`BOT_DETAIL_MAX`, #908, 16 novembre) ; vélodrome : tactique de l'épreuve donnée une seule fois, graine commune (#885, 14 novembre).
 - [x] **Cyber-Rogue** : boss gardé à l'écran après une phase gagnée (#918, 16 novembre) ; **WTF** : œufs visibles sur le porte-bagages, boule qui roule dans le bon sens (#898, 16 novembre).
+- [x] Revue de code du 23 novembre, vague 2, lot RC13 (coach et plans, core seul) : une sortie tranquille avec des bots, ou abritée par un véhicule, n'est plus une course (plus de récupération imposée le lendemain : bots sur au moins la moitié des relevés et séance dure, C1-01) ; la séance du plan roulée le jour prévu lui est créditée avant tout rattrapage (C1-02) ; un test de FTP est fait dès l'échauffement et 4 min de paliers, quelle que soit la FTP (C1-03) ; la rampe du test ne s'arrête plus juste après une reprise (compteurs remis à zéro à la pause, 10 s de grâce, C1-04) ; le fantôme ajouté sur l'écran de pause rejoue la séance précédente, pas la séance en cours (C2-02) ; les meilleures puissances du bilan n'enjambent plus une pause ni un trou de relevés (C6-02 ; pour l'estimation de CP et W', c'est la courbe de PP1, #971, qui corrige) ; TSS estimé des entraînements avec la NP du bilan (moyenne glissante de 30 s, C6-05). Tests : `core/tests/test_revue_code_rc13.py`.
 - [x] **Cols Khardung La et Abra Málaga** (lot HP2, fusionné le 13 novembre, #865) ; **glissières des routes japonaises** (lot JP8, #863, 13 novembre).
 - [x] **Outils de test** : banc simulé `--seasons`, `--day-night` et `--month` (#880, 14 novembre, banc rS1 ; les bancs tournent en été par défaut) ; captures de test avec le menu à jour (`garage_modif`, #910) ; e2e qui attend le départ avant le + (#914) ; gabarit `depart_monde_ouvert` du banc des menus (#920, 18 novembre) ; file des bancs du PC en étapes avec reprise (`scripts/file_bancs.py`, #924, 19 novembre ; suite #926 en revue) ; paquets, matrice rendu/logique et étapes cloud (20 novembre).
 
@@ -262,6 +273,113 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 ## 3. Ce qui reste à tester (matériel, en interne)
 
 > **État au 1er novembre 2026.** Pour la 1.0, la liste à jour est celle du cahier [O8](lots/LOT_O8_recette_1_0.md) §7 (lignes faites, reportées en 2.0, 3.0 ou 5.0, restantes). Les cases ci-dessous datent d'avant cette mise à plat ; une case qui recoupe une ligne de O8 suit l'état de O8.
+
+### Tri des cases ouvertes (22 novembre, proposition à valider)
+
+Audit de cohérence et de qualité du 22 novembre (constat C6) : 90 cases restaient ouvertes, dont une trentaine de recettes d'octobre jamais faites ni fermées. **Proposition de tri, à valider par le propriétaire** ; les cases ne changent qu'à la passe de doc qui suit son accord (une case « à faire avant J9 » peut être remontée ou fermée d'un mot).
+
+**Code livré : case à cocher à la prochaine passe de doc** (29, la recette sur le PC ou le vélo prévue en octobre est couverte par l'usage quotidien depuis et par la recette finale du bilan) :
+
+- Ruban de route et terrain par tronçons (lot E1 fusionné le 24 octobre, PR #7, tests…
+- Ciel, arbres par bruit et HUD final (lot E3, 24 octobre)
+- Bâtiments, forêts OSM, eau et sons du parcours (lot E4, 24 octobre)
+- Menu piloté au Click et au clavier (parcours, démarrage, pause, fin), à la place de…
+- Écran d'état des appareils (trainer, Click, batterie du Click)
+- Lignes, portiques, panneaux et arches (lot T8, segment_markers_model.gd,…
+- HUD segment et bonus (lot T9, segment_hud_model.gd)
+- Écran « Records » et option « Bonus » (lot T10, records_view_model.gd)
+- Bots à profil (lot T12, ProfileBot dans bots.py)
+- Équilibrage des bots à profil (lot T13, calibrate dans bots.py)
+- HUD des bots et encart des voisins (lot T15, bot_hud_model.gd)
+- Bots dessinés comme l'avatar du joueur (lot Y18, 31 octobre, demande du propriétaire «…
+- AS8 (2.0)
+- AS9 (2.0)
+- AS10 (2.0)
+- Bandeau ERG, histogramme et bip à T − 3 s à l'écran (lot N7, ancien F2)
+- Effort des bots en watts et cote Elo (lots GP-niv et BOT-elo, PR du 20 novembre,…
+- Intensité du jour (lot R1, PR du 21 novembre, empilée sur #941)
+- Grand Prix des objets (lot GP11 ; étape 5 complète après GP4)
+- Réglages sans lignes inutiles (lot NI2, cahier §5)
+- Pente encore plus marquée à l'écran (lot Y15, demande du 28 octobre)
+- Règle unique sol / route à la génération (21 novembre, demande « sol et niveau réglés…
+- Menus au plan des boutons (PR #287), menu principal (N15), réglages (O3, O4) et…
+- Entraînement choisi après une séance terminée (PR #291, protocole E4).
+- Traces Garmin déposées (O5), plans (O11), modèle des courbes (O13) (protocole F2 à F4).
+- Arbres en high sans à-coup (O1, protocole J1, recette 1.0 ligne 19).
+- Test de FTP par rampe sur le HomeTrainer (O10, protocole J2, recette 1.0 ligne 12) ;…
+- ERG (lot F)
+- Historique (lot L7)
+
+**Sans objet : à fermer** (25, remplacé depuis (installateur J9, file des bancs `file_bancs.py`, banc des menus en CI, mesures de perf des bancs, séances réelles faites)) :
+
+- Raccourci de bureau (lot L8)
+- Lancer et utiliser OpenRide sans ligne de commande après une installation en une…
+- Journal du lanceur (lot M8)
+- Délai entre un appui et l'écriture de la commande au HomeTrainer.
+- Images par seconde de Godot, à relever quand le décor sera chargé (lot E1).
+- Recette du PC en une commande (outil X4, PR #237)
+- Audit des dépendances (outil X24)
+- Tableau de la recette 1.0 (outil X30)
+- Banc de latence du trainer par paliers (outil X5, PR #245)
+- Recette guidée du Click sur 30 min (outil X8, PR #295)
+- Gigue de la boucle sous charge sur le PC (outil X17)
+- Recette guidée de la fréquence cardiaque, 5 min sur le vélo (outil X9)
+- FIT d'une vraie séance contrôlé avant l'import dans Garmin Connect (outil X11,…
+- Coupures volontaires, 6 min pendant une séance (outil X10, protocole G4)
+- Test guidé des boutons du Click, 5 min
+- Sonde de performance du moteur (outil X13, PR #280)
+- File du PC par paquets, matrice et cloud (20 novembre, décision du propriétaire,…
+- File des bancs en étapes avec reprise (19 novembre, scripts/file_bancs.py, fusionné le…
+- Banc des menus au Click simulé, au clavier et à la souris (28 octobre,…
+- Endurance d'une heure en fenêtre (outil X16, PR #294)
+- Budgets de l'engine sur le PC (outil X19)
+- HUD ERG et bilan de fin de séance (PR #549, 29 octobre)
+- Mode d'affichage
+- Séance réelle de 10 minutes ou plus avec braquets perceptibles, puis relecture des…
+- Séance de 10 minutes (§3).
+
+**À faire avant J9** (24, à mettre dans la recette finale ou le bilan) :
+
+- Mesures du monde ouvert (W0, protocole J9).
+- Recette sur le vélo (T11) ; cahiers T7 à T11 et T15 rédigés le 27 octobre (PR #403),…
+- Recette (lot V10).
+- Multi-joueur
+- Fuzz long des lecteurs de fichiers sur le PC (outil X26)
+- Comparer la pente maximale d'une vraie trace de col avec Garmin Connect (à ± 1 point)
+- Recettes du décor vivant (P16 puis P17, protocole J8
+- Horizon en medium et low (Y1) et facteur de relief par défaut (Q2) sur essai-69…
+- Jauge d'abri au-dessus du bot qui abrite (réglage « Jauge d'abri des bots », coupée…
+- Réglages en sous-écrans, volumes et images/s (27 octobre, docs/AUDIO.md)
+- Compteur d'images/s détaillé pour les essais (29 octobre, maquettes validées par le…
+- Présentation des menus, étape 4 (cahier LOT_N20)
+- Monde ouvert au niveau des circuits précalculés (demande du 13 novembre), lot 1
+- Monde ouvert au niveau des circuits précalculés (demande du 13 novembre), lot 2
+- Sol contre route au bord des lacs (20 novembre, trouvé par le fil des bornes sur le…
+- Têtes rondes des bots (retour des essais du 15 novembre, « certains bots ne sont pas…
+- Quota de bots détaillés élargi (retour des essais du 15 novembre, « à même distance,…
+- Intégration des biomes dans la scène (lot U17, première partie le 28 octobre)
+- Modules graphiques et sonores (lots L1 à L5)
+- Cible ERG (lot L6)
+- Erreur ATT 0x80 (lot M1)
+- Journal (lot M4)
+- Panne rejouée (lot M5)
+- Parcours FIT (lot M7)
+
+**Hors J9 ou question ouverte** (12, séries non lancées, prototypes en attente d'accord, questions sur le Click) :
+
+- CT0 à CT12 (5.0)
+- BC0 à BC7 (5.0)
+- Ne pas dessiner ce que le cycliste ne voit pas
+- Qualité d'image par préréglage à résolution native (lot Y13, 27 octobre)
+- Route rugueuse, herbe en relief et personnages plus fins (prototype des lots Y11 et…
+- Fin de projet, série Y (cahiers du 28 octobre)
+- Jour, nuit et saisons dans le jeu
+- Lumières de nuit
+- Résistance calculée par le core, lot RC1 (31 octobre, demande du propriétaire après la…
+- Click
+- Boîtier gauche du Click dans l'appli Zwift (reporté par le propriétaire le 27 octobre)
+- Recherche à faire (demandée le 27 octobre)
+
 
 - [ ] Raccourci de bureau (lot L8) : tester `scripts/install-desktop.sh` sur le PC Ubuntu et vérifier la classe de fenêtre Godot (`xprop WM_CLASS` : `"OpenRide Engine"`).
 - [ ] Historique (lot L7) : tester `openride-core history --weeks 8` sur `~/OpenRide/Activities/` avec les séances réelles.
@@ -465,9 +583,10 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Demi-tour automatique au bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP (lot N26, 14 novembre, fusionné le 17 novembre, #882) : l'arrivée ne coupe plus l'entraînement, le cycliste repart dans l'autre sens sans s'arrêter, aussi souvent qu'il le faut ; l'entraînement fini (ou en SIM, en ERG libre, en Dernier survivant et en Grand Prix), le bout du parcours termine la séance comme avant. Bandeau « Bout du parcours : demi-tour, l'entraînement continue ». Tests `core/tests/test_u_turn_auto.py` et `engine/tests/unit/test_hud_view_model.gd`. Même lot : boucle de retournement de 18 m de rayon au bout des impasses du monde ouvert (générateur, `edge_profile.with_turnaround`), à la place du demi-tour sur place ; test `test_worldgen_process.py` et monde d'essai `engine/tests/make_impasse_world.py`. Reste l'essai sur le PC (séance ERG sans vélo sur le Col du lacet) et la validation des captures de la boucle.
 - [x] Vélodrome et Grand Prix à l'accueil avec leurs propres parcours (lot GP13a, fusionné le 16 novembre, #904) : règle unique des modes à parcours propres, Circuit des Prés au Grand Prix, révision IPC 1.19 ; menu_bench `grand_prix` et `velodrome` en low, medium, high et captures à faire.
 - [x] Parcours propres au Grand Prix (lot GP13b, 19 novembre) : « Boucle de la Corniche » (`demo-corniche`, boucle de 2,5 km dans le méditerranéen, la mer en contrebas d'une falaise) et « Route des Vignes » (`demo-vignes`, boucle sinueuse et vallonnée de 5 km dans les vignes, en boucle depuis la remarque du propriétaire du 19 novembre), installés avec les contenus de départ, étiquette `grandprix` ; routes revêtues de 6 m sans épingle vérifiées par `core/tests/test_biome_demo_world.py` pour les trois parcours du Grand Prix ; recette GP11, étape 2, sur la Route des Vignes. Reste : bancs `grand_prix` en low, medium, high sur les deux parcours, captures validées par le propriétaire.
+- [x] Grand Prix des objets sur des boucles seulement (lot GPL1, 20 novembre) : un parcours de mode est une boucle étiquetée (core `mode_routes.mode_of` et engine `CatalogModel.mode_route_ids`), départ en ligne refusé par le core (`bad_args`), réglage « Distance en ligne » (`grandprix.distance_km`) retiré du menu et de la configuration (clé d'avant ignorée sans alerte, `config.RETIRED_KEYS`), écran Prêt aux tours seulement ; bancs `grand_prix`, `grand_prix_onze` et GP4 passés sur le Circuit des Prés (monde `circuit` de `sim_bench`, captures comptées sur les tours), banc des menus `grand_prix` refait ; Récif des tortues, Volcan en flammes et Route du Grand Nord au Grand Prix sans quitter la liste « Parcours » (étiquette `libre`, `hello_ack.config.free_route_tag`, révision IPC 1.24, 21 novembre). Reste : bancs low, medium, high sur le PC et captures des menus validées par le propriétaire. Cahier : `docs/lots/LOT_GPL1_boucles.md`.
 - [x] Grand Prix plus lisible (lot GP14, fusionné le 16 novembre avec GP13a, #904) : boîtes tous les 500 m, boîtes prises cachées jusqu'à leur retour (`state.gp.boxes_gone`), distance au plus le parcours, bandeau « Touché ! » et contour au coup reçu, panneaux de segment en plaque cadrée ; captures du coup reçu et des panneaux du Col du lacet à faire sur le PC.
 - [x] Voiture d'équipe refaite (lot GP15, fusionné le 21 novembre, #930) : un seul modèle, sorte `team_car` de `vehicle_mesh.gd` (break blanc à bande bleue, galerie et trois vélos sur le toit) au lieu de la berline du décor et de l'ancienne caisse superposées ; révision IPC 1.21 ; planche low, medium, high et banc PC à faire.
-- [ ] Course classique contre les bots (lot CR1, 20 novembre, en PR) : mode « Course » à l'accueil, le Grand Prix sans objet sur tous les parcours libres, classement complet au HUD, révision IPC 1.23 ; captures et banc PC à faire.
+- [x] Course classique contre les bots (lot CR1, 20 novembre, fusionné le 22 novembre, #939) : mode « Course » à l'accueil, le Grand Prix sans objet sur tous les parcours libres, classement complet au HUD, révision IPC 1.23 ; captures et banc PC à faire.
 - [x] Décor lisible après un demi-tour : bornes et panneau de col des deux côtés, bandeaux de portique à deux faces (lot N21, fusionné le 9 novembre, #812).
 - [x] Décor chargé devant à rebours : portiques, herbe, détails du sol et gags WTF dans le sens de la marche (lot N22, fusionné le 15 novembre, #889).
 - [x] Plus de faux « frein lâché » quand on arrête de pédaler (vélodrome et Cyber-Rogue, 14 et 15 novembre) : une seule règle pour le pilote et le rapport des décrochages, cadence en retard simulée (lot FR1, fusionné le 19 novembre, #923, remplace #902).
@@ -537,8 +656,21 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Bandeau ERG, histogramme et bip à T − 3 s à l'écran (lot N7, ancien F2) : code et tests sans écran et graphiques livrés le 25 octobre (`erg_view.gd`) ; histogramme aux vraies durées depuis N6 (liste `workouts` du contrat v1.1) ; reste l'essai de `sweet_spot_3x10` sur le HomeTrainer.
 - [x] Bots à puissance constante et fantôme d'une séance passée, côté core (lot N9) ; affichage à rédiger.
 - [x] Séance verrouillée au lancement pour les essais physiques (lot EP1, 15 novembre) : `run --autostart --seance FICHIER`, commandes du menu jouées au lancement, Cyber-Rogue et vélodrome compris ; guide à étapes déclenchées par le journal livré le même jour (lot EP2, `tools/essai_physique.py`, 3 fiches) et bandeau de la consigne en direct dans le jeu (lot EP3, `live_cue.gd`) ; reste le premier essai sur le vélo.
+- [ ] Élimination plus longue, écarts aux voisins, fin des épreuves de piste et échauffement sur place en ERG avant les courses (lot EL1, essai du 21 novembre, contrat 1.26) : codé et testé ; captures low, medium et high dans `velodrome/elim-ecarts/` à valider, essai vélo à faire.
+- [ ] Retours et consignes communs à tous les modes (lot RT1, audit du 21 novembre) : bandeau du moment en cinq familles (mot, couleur, son), résultat au milieu, zone de consigne unique « À FAIRE · Objectif · Pourquoi · boutons », fin de course explicite (« COURSE FINIE · Y puis A maintenu = bilan ») ; Dernier survivant, piste, Grand Prix, fin d'entraînement ; captures dans `captures/rt1-retours/` à valider.
+- [ ] Fin de séance commune à tous les modes (lot RT2, audit du 21 novembre, contrat 1.34) : l'arrivée du Grand Prix, de la Course et d'un parcours en ligne ne coupe plus la séance (`state.arrival`, demi-tour automatique au bout de la route, « Y puis A maintenu = bilan ») ; bandeau « ★ RÉSULTAT » commun en tête du bilan, encart extensible pour la ligue d'hiver ; objectif sur l'écran de départ ; captures dans `captures/rt2-fin-commune/` à valider, bancs PC et essai vélo à faire.
 
 - [x] **Cw de la commande SIM corrigé** (29 octobre) : FTMS, comme ANT+ FE-C, définit Cw = ρ · CdA (sans le ½) et le trainer applique lui-même ½ · Cw · v². Le core envoyait 0,5 · ρ · CdA (0,20 au lieu de 0,39 pour CdA 0,32 m²), donc un trainer trop mou à vitesse de volant élevée (l'air comptait pour moitié). Corrigé dans `ftms.py`, `ftms_driver.py` (dont la libération) et le trainer simulé `ble_sim.py` ; réglage existant `[bike] cda_m2`.
 - [x] Bots réglés sur la durée de la course et l'objectif (lot BT1, fusionné le 16 novembre, #909, après T13 #900) : `bot_effort.py`, réglage commun « Objectif des bots » (Tempo par défaut), vélodrome par épreuve ; banc `bots_race` en Tempo et À fond sur le PC et essai de 2 × 10 min (Tempo puis Endurance) à faire.
 - [ ] Effort des bots en watts et cote Elo (lots GP-niv et BOT-elo, PR du 20 novembre, contrat 1.22) : ligne « Bots » des écrans Prêt, puissance des bots et cote au bilan, objectif de la course conseillée selon le besoin ; cote commune active par défaut (choix du 20 novembre), réglage « Niveau automatique (Elo) » ; bancs low/medium/high et captures à valider, essai vélo après le 21 novembre.
+- [ ] Ligue d'hiver, cœur de la saison (lot CH1, PR du 21 novembre, série CH de la 6.0, `docs/6.0/PLAN_SERIE_CH.md`) : module pur `league.py` (8 manches, 11 rivaux fixes, barème, 6 meilleurs, classique × 1,5, pause, trophées, `ligue.json` du profil) ; tests `core/tests/test_league.py` avec saisons simulées. Reste : CH2 (calibrage à 10 %), CH3 (lancer une manche), CH4 (écrans), CH5 (classique).
+- [ ] Ligue d'hiver, dureté à 10 % de victoire (lot CH2, série CH) : cotes des rivaux par manche (`league.round_ratings`), cote du cycliste tenue contre elles (`league.rider_update`), banc `python -m openride_core.tools.ligue_campagne` ; cahier `docs/lots/LOT_CH2_calibrage_ligue.md`.
+- [ ] Ligue d'hiver, manche de la semaine dans la séance (lot CH3a, série CH, contrat 1.30) : `league_status`, `league_new`, `start` avec `league`, 11 rivaux de la saison, résultat dans `ligue.json`, `summary.league` ; manche 1 (Course) seulement ; cahier `docs/lots/LOT_CH3_manche_ligue.md`. Reste : écrans (CH4), autres modes (CH3b).
+- [ ] Ligue d'hiver, écrans (lot CH4a, série CH) : ligne « Ligue d'hiver » de l'accueil, écran de la ligue avec le classement des 12 (« Toi » écrit et encadré), écran Prêt d'une manche sur une boucle (`start` mode race et league), encart du bilan ; `engine/scripts/league_view_model.gd`, test `test_league_menu.gd`, banc `ligue_hiver.json` ; cahier `docs/lots/LOT_CH4_ecrans_ligue.md`. Reste : podium et trophée (CH4b), classique (CH5).
+
+
+- [ ] Rivaux reconnaissables (lot BR4 = R4 de la note des bots, PR du 22 novembre) : les bots à profil gardent nom fictif, équipe, caractère et tempérament d'une course à l'autre, sous l'identité de leur cote (`rivals.py`, `rivaux.json` du profil), dans tous les modes ; un seul groupe de rivaux, repris par la ligue d'hiver (décision du 22 novembre) ; captures HUD à valider, banc PC medium.
 - [ ] Intensité du jour (lot R1, PR du 21 novembre, empilée sur #941) : ligne « Intensité : facile / moyen / dur » avec « bots ≈ X W » à droite (durée et cote dans la ligne d'état) sous « Lancer » des écrans Prêt à bots (A change la dose, réglage commun `bots.objective`), grisée au vélodrome ; captures des écrans Prêt à valider.
+- [ ] Ligue d'hiver, correctifs de la revue du 23 novembre (lot CH3c, série CH) : manche finie après minuit comptée, semaine pas jouable neutralisée, classique non datée non simulée, encart du bilan allégé (trame sous 4 096 octets), terrain de la manche contrôlé, saison close gardée à part, types de `ligue.json` contrôlés ; cahier `docs/lots/LOT_CH3_manche_ligue.md`.
+- [ ] Ligue d'hiver, autres modes du calendrier dans la séance (lot CH3b, série CH) : Dernier survivant (11 arches), Grand Prix (objets, tours de la ligue) et élimination au vélodrome jouables en manche ; semaines manquées simulées ; cahier `docs/lots/LOT_CH3b_autres_modes.md`. Reste : départ de ces manches depuis l'écran de la ligue (engine).
+- [ ] Ligue d'hiver, départ de chaque manche dans son mode depuis l'écran de la ligue (lot CH4c, série CH) : `start.mode` de la manche, parcours choisi selon son terrain (boucle, en ligne, vélodrome), raison écrite sinon ; cahier `docs/lots/LOT_CH4c_depart_manches.md`.

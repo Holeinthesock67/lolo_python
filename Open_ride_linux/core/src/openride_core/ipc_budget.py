@@ -27,7 +27,7 @@ from typing import Any, Callable
 from . import road_cyclists
 
 MAX_DATAGRAM_SIZE = 1400          # cible de toutes les révisions, et limite jusqu'à la 1.2
-TRACK_FRAME_MAX = 800             # objet `track` de `state` (révision 1.7, lot VD6) : majorant de `worst_track`
+TRACK_FRAME_MAX = 900             # objet `track` de `state` (révision 1.7, lot VD6 ; 1.33 : voisins `ahead` et `behind`) : majorant de `worst_track`
 STATE_LIMIT_1_3 = 4096            # limite de `state` depuis la révision 1.3 (ipc_server.MAX_DATAGRAM_SIZE, tout message depuis la 1.5)
 
 # Longueurs maximales attendues des textes libres (caractères). Au-delà, `fit_state` raccourcit.
@@ -193,7 +193,7 @@ def _extras_1_4(d: dict[str, Any]) -> None:
     # (T-Q2) ; la pire trame garde quand même `erg` et `powerup` ensemble.
     for bot in d["bots"]:
         bot.update({"profile": "sprinter", "cp_w": 1234.5, "mass_kg": 123.4, "wbal_pct": 100.0,
-                    "jersey": "sprint", "gap_s": -3599.99, "move": "respond"})   # move : lot BA1 (1.33)
+                    "jersey": "sprint", "gap_s": -3599.99, "move": "respond"})   # move : lot BA1 (1.35)
     d["segment"] = {"id": _ID, "kind": "climb", "category": "HC", "d_to_start_m": 199_999.9,
                     "elapsed_s": 3599.99, "gap_to_pr_s": -3599.99}
     d["powerup"] = {"held": "power", "active": "light", "remaining_s": 120.0}
@@ -275,7 +275,9 @@ def worst_track() -> dict[str, Any]:
         "laps_up": -9, "my_lap": 60, "next_sprint_lap": 60,
         "pacer": {"s": 123_456.79, "v": 13.89, "on": True},
         "racers": {f"t{i}": ids[i] for i in range(6)},
-        "to_elim_m": 999.9, "gap_last_s": 99.9, "last": ids[11], "alive": 12,
+        "to_elim_m": 999.9, "gap_last_s": 99.9, "last": ids[11], "alive": 12, "every_laps": 6,
+        # révision 1.33 : voisins du cycliste et écarts en temps de passage (essai du 21 novembre)
+        "ahead": {"id": ids[10], "gap_s": 9999.9}, "behind": {"id": ids[11], "gap_s": -9999.9},
         "sub": "elimination", "sub_index": 4, "subs": 4, "neutral": False,
     }
 

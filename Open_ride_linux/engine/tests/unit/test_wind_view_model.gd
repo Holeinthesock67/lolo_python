@@ -100,10 +100,10 @@ func _test_draft() -> void:
 func _test_verdict() -> void:
 	var vm = WindViewModel.new()
 	var v: Dictionary = _ride(vm, _state(15.0, 0.0, 3.0), 0.0, 0.0, 3.0)
-	_check(v["verdict_text"] == "Vent défavorable" and v["tone"] == "bad", "head_mps 3 : défavorable, bad (%s)" % v["verdict_text"])
+	_check(v["verdict"] == "defavorable" and v["tone"] == "bad", "head_mps 3 : défavorable, bad (%s)" % v["verdict"])
 	vm = WindViewModel.new()
 	v = _ride(vm, _state(15.0, 180.0, -3.0), 0.0, 0.0, 3.0)
-	_check(v["verdict_text"] == "Vent favorable" and v["tone"] == "good", "head_mps −3 : favorable, good (%s)" % v["verdict_text"])
+	_check(v["verdict"] == "favorable" and v["tone"] == "good", "head_mps −3 : favorable, good (%s)" % v["verdict"])
 	vm = WindViewModel.new()
 	v = _ride(vm, _state(20.0, 90.0, 0.0), 0.0, 0.0, 3.0)
 	_check(v["verdict"] == "neutre" and v["tone"] == "neutral", "20 km/h plein travers : neutre (%s)" % v["verdict"])
@@ -119,31 +119,17 @@ func _test_verdict() -> void:
 		_check(same, "head_mps 0,9 ↔ 1,1 depuis %s : verdict inchangé" % before)
 
 
-# Critère 8 : niveaux d'intensité et rafale isolée
-func _test_levels() -> void:
-	var expected := {3.0: 0, 10.0: 1, 20.0: 2, 30.0: 3, 45.0: 4}
-	for kmh in expected:
+# Critère 8 (lot NI1) : sens écrit en mots pour le HUD, une seule info avec la vitesse (plus de niveau d'intensité)
+func _test_direction_text() -> void:
+	var cases := {0.0: "de face", 180.0: "de dos", 90.0: "de droite", 270.0: "de gauche"}
+	for from_deg in cases:
 		var vm = WindViewModel.new()
-		var v: Dictionary = _ride(vm, _state(kmh, 90.0), 0.0, 0.0, 3.0)
-		_check(v["level"] == expected[kmh] and v["level_text"] == WindViewModel.LEVEL_TEXTS[expected[kmh]],
-			"%.0f km/h : niveau %d (%s), reçu %d" % [kmh, expected[kmh], WindViewModel.LEVEL_TEXTS[expected[kmh]], v["level"]])
-	var vm2 = WindViewModel.new()
-	_ride(vm2, _state(20.0, 90.0), 0.0, 0.0, 3.0)
-	# Rafale isolée de 0,8 s à 45 km/h (deux trames), puis retour à 20 km/h
-	var v2: Dictionary = vm2.view(_state(45.0, 90.0), 0.0, 3.2)
-	v2 = vm2.view(_state(45.0, 90.0), 0.0, 3.7)
-	v2 = vm2.view(_state(20.0, 90.0), 0.0, 4.0)
-	v2 = _ride(vm2, _state(20.0, 90.0), 0.0, 4.5, 2.0)
-	_check(v2["level"] == 2, "rafale isolée de 0,8 s : niveau inchangé (%d)" % v2["level"])
-	v2 = _ride(vm2, _state(30.0, 90.0), 0.0, 7.0, 2.0)
-	_check(v2["level"] == 3, "vent soutenu à 30 km/h : niveau 3 après 1 s (%d)" % v2["level"])
-	# Hystérésis de 2 km/h autour de 15 km/h
-	var vm3 = WindViewModel.new()
-	_ride(vm3, _state(16.5, 90.0), 0.0, 0.0, 3.0)
-	var v3: Dictionary = _ride(vm3, _state(14.5, 90.0), 0.0, 3.0, 3.0)
-	_check(v3["level"] == 2, "16,5 puis 14,5 km/h : reste modéré (hystérésis) (%d)" % v3["level"])
-	v3 = _ride(vm3, _state(13.5, 90.0), 0.0, 6.0, 3.0)
-	_check(v3["level"] == 1, "13,5 km/h : redescend à faible (%d)" % v3["level"])
+		var v: Dictionary = _ride(vm, _state(20.0, from_deg), 0.0, 0.0, 3.0)
+		_check(v["direction_text"] == cases[from_deg] and not v.has("level") and not v.has("level_text")
+			and not v.has("verdict_text"), "vent venant de %.0f° : « %s » (%s), sans niveau ni pastille" % [from_deg,
+			cases[from_deg], v["direction_text"]])
+	var none: Dictionary = WindViewModel.new().view({}, 0.0, 0.0)
+	_check(none["direction_text"] == "", "sans vent : pas de sens écrit")
 
 
 func _init() -> void:
@@ -152,6 +138,6 @@ func _init() -> void:
 	_test_hidden_without_wind()
 	_test_draft()
 	_test_verdict()
-	_test_levels()
+	_test_direction_text()
 	print("test_wind_view_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -3,7 +3,7 @@ extends RefCounted
 ## Gestes des bots voisins écrits et entendus (lot BA1, essai du propriétaire du 22 novembre en mode Course :
 ## « rien n'indique quand un bot utilise un boost »). Une seule règle pour tous les modes à bots (session libre
 ## avec peloton, Course, Grand Prix, Dernier survivant) : quand un bot proche commence un geste (champ `move`
-## des éléments de `bots`, révision 1.33 : `attack`, `respond`, `sprint`), une ligne en mots dans le bandeau
+## des éléments de `bots`, révision 1.35 : `attack`, `respond`, `sprint`), une ligne en mots dans le bandeau
 ## (« Grimpeur attaque, 40 m devant ») et un son court (`bot_attack`). Jamais la couleur seule.
 ## Pas de class_name : charger par preload("res://scripts/bot_moves_model.gd").
 
