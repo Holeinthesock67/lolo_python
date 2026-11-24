@@ -887,8 +887,6 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
 			ipc.create_workout(act["args"])
-		"create_workout_qwk":
-			ipc.create_workout_qwk(str(act["text"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"set_ride_mode":   # session libre : SIM, ERG ou ERG cadence depuis la pause (lot O18)
@@ -967,6 +965,7 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
 			ipc.send_command("start_open_world", act["args"])
+			menu_flow.note_launch("start_open_world")   # « Rejouer » de la fin de séance rouvre le globe
 		"set_setting":   # ligne « Biome » de l'écran du cap (lot W17) : même réglage que le menu des réglages
 			ipc.set_setting(str(act["key"]), act["value"])
 
@@ -1010,18 +1009,6 @@ func _profile_name_key(event: InputEventKey) -> bool:
 	var ch := char(event.unicode) if event.unicode > 31 else ""
 	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
 	var res: Dictionary = menu_flow.name_key(ch, enter, event.keycode == KEY_BACKSPACE)
-	if not res.get("used", false):
-		return false
-	_run_menu_action(res.get("action", {}))
-	_refresh_menu()
-	return true
-
-
-## QWKcode au clavier (lot O21) : la touche écrit au lieu d'agir comme un bouton du Click.
-func _qwk_key(event: InputEventKey) -> bool:
-	var ch := char(event.unicode) if event.unicode > 31 else ""
-	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
-	var res: Dictionary = menu_flow.qwk_key(ch, enter, event.keycode == KEY_BACKSPACE)
 	if not res.get("used", false):
 		return false
 	_run_menu_action(res.get("action", {}))
@@ -1169,8 +1156,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			return   # saisie de la recherche du monde ouvert : la touche est une lettre, pas un bouton
 		if menu_flow.is_visible() and _profile_name_key(key):
 			return   # saisie du nom d'un profil (lot MJ8) : lettres, Entrée valide, Retour arrière efface
-		if menu_flow.is_visible() and _qwk_key(key):
-			return   # saisie du QWKcode (lot O21) : caractères, Entrée nouvelle ligne, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
 	if _test_hold_s.has(key.keycode):   # touche simulée (_test_key) : durée demandée, pas celle des images

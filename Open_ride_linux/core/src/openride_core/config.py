@@ -257,6 +257,7 @@ class RaceConfig:
 class AudioConfig:
     """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
     suite par l'engine sur ses bus audio (audio_mix.gd)."""
+    enabled: bool = True           # son coupé d'un seul choix (lot NI4), volumes gardés
     master_pct: int = 100          # volume général (bus Master)
     ride_pct: int = 100            # vélo : vent dans les oreilles, roue libre, « clac » de reprise
     ambience_pct: int = 100        # ambiance : fonds, cloches, points sonores, véhicules, foule, passants
@@ -534,6 +535,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gearing", "step_pct"): "boîte de vitesses virtuelle",
     ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
+    ("render", "living"): "décor vivant coupé pour les bancs, retiré du menu au lot NI4 (coût réglé par la qualité)",
     ("render", "texture_level"): "niveau des textures imposé pour les bancs, retiré du menu au lot NI2 (auto suit la qualité)",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
