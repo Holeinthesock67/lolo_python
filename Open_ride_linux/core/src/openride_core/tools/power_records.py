@@ -17,7 +17,7 @@ puissance ») : rien n'est écrit ici, et rien ne s'affiche pendant la séance.
 
 Une séance non comptée par le profil (rejeu, séance simulée d'un joueur) n'annonce rien.
 
-Clés de la sortie (objet `summary.power_records` et `summary.ftp_review` du contrat IPC 1.29) :
+Clés de la sortie (objet `summary.power_records` et `summary.ftp_review` du contrat IPC 1.35) :
 records ([{s, w, prev_w, e}]), ftp_review (null ou {estimate_w, ftp_set_w, delta_pct, confidence}).
 """
 

@@ -1,6 +1,6 @@
 extends SceneTree
 
-## « Ma puissance » (série PP, lot PP3, contrat 1.29) : ligne de « Qui roule ? », courbe du message
+## « Ma puissance » (série PP, lot PP3, contrat 1.35) : ligne de « Qui roule ? », courbe du message
 ## `power_curve` (6 mois et 6 semaines, mots « libre » et « ERG »), FTP estimée et sa proposition (confirmation,
 ## puis `set_setting` `rider.ftp_w`, puis courbe redemandée), test de rampe, évolution mois par mois, carte de
 ## détail avec la courbe. Valeurs fictives (FTP 250 W).

@@ -158,16 +158,17 @@ def choose(need: str, duration_s: float, reference_need_s: float | None, candida
 
 def load_candidates(routes_root: Path | None = None, gpx_dir: Path | None = None) -> list[Candidate]:
     """Parcours libres prêts du catalogue, avec leur fiche et leur profil (les illisibles sont omis) ; les
-    parcours d'un mode à parcours propres (Vélodrome, Grand Prix, lot GP13) se courent dans leur mode."""
+    parcours d'un mode à parcours propres (Vélodrome, Grand Prix, lot GP13) se courent dans leur mode, sauf ceux
+    restés libres (étiquette `libre`, lot GPL1)."""
     from .catalog import list_routes
-    from .mode_routes import mode_of
+    from .mode_routes import is_free
     from .config import GPX_DIR, ROUTES_DIR
     from .route import WorldError, load_world
 
     root = Path(routes_root) if routes_root is not None else ROUTES_DIR
     out = []
     for e in list_routes(routes_root=root, gpx_dir=Path(gpx_dir) if gpx_dir is not None else GPX_DIR):
-        if e.status != "ready" or not e.stats or mode_of(e.library) is not None:
+        if e.status != "ready" or not e.stats or not is_free(e.library, e.route_type):
             continue
         try:
             world = load_world(root / f"{e.id}.world")

@@ -44,7 +44,7 @@ def snapshot(directory: Path | None = None, ctx: "profiles.ProfileContext | None
     table = load_table(ctx.table_path)
     cards = load_catalogue(table=table)
     progress = recompute(directory, table, workout_duration_finder(WORKOUTS_DIR),
-                         counted=ctx.counted_sources, owns=ctx.owns)
+                         counted=ctx.counted_sources, owns=ctx.owns, since=ctx.stats_since)
     from ..ipc_lists import collection_powers
     col = evaluate(progress, cards, table, now=now, powers=collection_powers(ctx, directory))
     seen = load_seen(seen_path(ctx.root))

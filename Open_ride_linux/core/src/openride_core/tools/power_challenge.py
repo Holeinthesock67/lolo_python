@@ -14,7 +14,7 @@ seulement (rien pendant la séance, plan PP §8.5) :
 
 Sans record sur la durée retenue, pas de défi : l'écran propose déjà de combler le trou.
 
-Clés (objet `challenge` du message `power_curve`, révision 1.29) : s, target_w, record_w, why
+Clés (objet `challenge` du message `power_curve`, révision 1.35) : s, target_w, record_w, why
 (`weak`, `aging` ou `default`), route_id, route_name, climb_s.
 """
 

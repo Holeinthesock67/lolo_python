@@ -8,9 +8,10 @@ from openride_core.tools import elo_campagne as ec
 
 @pytest.mark.slow
 def test_campagne_courte_plus_fort_monte_plus_faible_descend():
-    strong = ec.campaign(1.08, races=4, opponents=3)
-    weak = ec.campaign(0.92, races=4, opponents=3)
-    assert len(strong["lines"]) == 4 and strong["of"] == 4
+    # 12 courses : depuis le lot GPO1, la chance des objets brouille 4 courses (le cycliste joue ses objets comme un bot).
+    strong = ec.campaign(1.08, races=12, opponents=3)
+    weak = ec.campaign(0.92, races=12, opponents=3)
+    assert len(strong["lines"]) == 12 and strong["of"] == 4
     assert strong["final"] > bot_elo.START > weak["final"]
     assert all(1 <= ln["place"] <= 4 for ln in strong["lines"] + weak["lines"])
     assert strong["offset_max"] <= bot_elo.OFFSET_MAX

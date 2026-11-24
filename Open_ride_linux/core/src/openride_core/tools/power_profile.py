@@ -18,7 +18,7 @@ aucune comparaison avec d'autres personnes (plan PP §8.5) : le profil compare l
 - **Trous** : plages de durées sans effort **libre** depuis 6 semaines (une séance ERG n'est pas un effort à
   fond), regroupées (« de 8 à 12 min »).
 
-Clés (objet `profile` du message `power_curve`, révision 1.29) : kind, strong, weak, missing, form_pct, aging
+Clés (objet `profile` du message `power_curve`, révision 1.35) : kind, strong, weak, missing, form_pct, aging
 (null ou {s, age_d, left_d}), gaps ([[de, à]] en secondes).
 """
 
