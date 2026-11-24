@@ -13,6 +13,9 @@ fit-tool attend des horodatages en millisecondes Unix et des positions en degré
 
 from __future__ import annotations
 
+import logging
+import math
+
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +35,8 @@ from fit_tool.profile.profile_type import (
 
 from .config import OPENRIDE_HOME
 from .journal import read_journal
+
+log = logging.getLogger(__name__)
 
 ACTIVITIES_DIR = OPENRIDE_HOME / "Activities"
 FIT_EPOCH_S = 631065600  # 1989-12-31 00:00:00 UTC
@@ -71,6 +76,66 @@ class Summary:
 
 def _avg(values: list[float]) -> float | None:
     return sum(values) / len(values) if values else None
+
+
+def running_intervals(events: list[dict], start: float, end: float) -> list[tuple[float, float]]:
+    """Intervalles chronométrés (start/resume jusqu'à pause/stop) ; toute la séance sans événement."""
+    if not events:
+        return [(start, end)]
+    out: list[tuple[float, float]] = []
+    running_since: float | None = None
+    for ev in sorted(events, key=lambda e: e["ts"]):
+        if ev["event"] in ("start", "resume") and running_since is None:
+            running_since = ev["ts"]
+        elif ev["event"] in ("pause", "stop") and running_since is not None:
+            out.append((running_since, ev["ts"]))
+            running_since = None
+    if running_since is not None:
+        out.append((running_since, end))
+    return out
+
+
+def timer_between(intervals: list[tuple[float, float]], lo: float, hi: float) -> float:
+    """Temps chronométré compris entre `lo` et `hi` : une pause dans un tour n'y compte pas (revue S7-04)."""
+    return sum(max(min(b, hi) - max(a, lo), 0.0) for a, b in intervals)
+
+
+# Plages des champs FIT d'un relevé (profil du SDK : type, échelle, décalage), valeurs invalides exclues.
+FIT_CADENCE_MAX = 254            # uint8, 0xFF = invalide
+FIT_HR_MAX = 254                 # uint8
+FIT_POWER_MAX = 65534            # uint16
+FIT_SPEED_MAX = 65.534           # uint16, échelle 1000
+FIT_ALT_MIN, FIT_ALT_MAX = -500.0, 12606.0   # uint16, échelle 5, décalage 500
+FIT_DISTANCE_MAX = 42949672.0    # uint32, échelle 100
+
+
+def fit_safe_records(records: list[dict]) -> tuple[list[dict], int]:
+    """Copie des relevés aux plages du format FIT (revue S7-01) : une seule valeur hors plage (trame
+    fausse du trainer ou de la ceinture, altitude d'un parcours abîmé) faisait échouer tout l'export,
+    et `recover` pareil. Une mesure hors plage est retirée de ce relevé (puissance, cadence, FC,
+    altitude) ; vitesse et distance sont bornées. Le journal garde les valeurs brutes. Rend aussi
+    le nombre de relevés corrigés."""
+    out: list[dict] = []
+    fixed = 0
+    for r in records:
+        c = dict(r)
+        for key, hi in (("power", FIT_POWER_MAX), ("cadence", FIT_CADENCE_MAX), ("hr", FIT_HR_MAX)):
+            v = c.get(key)
+            if v is not None and not (isinstance(v, (int, float)) and math.isfinite(v) and 0 <= v <= hi):
+                c[key] = None
+        alt = c.get("alt")
+        if alt is not None and not (isinstance(alt, (int, float)) and math.isfinite(alt)
+                                    and FIT_ALT_MIN <= alt <= FIT_ALT_MAX):
+            c["alt"] = None
+        for key, hi in (("speed", FIT_SPEED_MAX), ("distance", FIT_DISTANCE_MAX)):
+            v = c.get(key)
+            if v is not None:
+                v = float(v) if isinstance(v, (int, float)) and math.isfinite(v) else 0.0
+                c[key] = min(max(v, 0.0), hi)
+        if c != r:
+            fixed += 1
+        out.append(c)
+    return out, fixed
 
 
 def summarize(records: list[dict], events: list[dict]) -> Summary:
@@ -209,7 +274,11 @@ def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[fl
     """Écrit le fichier FIT et renvoie le résumé de la séance. `laps` : débuts de tours (un seul tour sinon)."""
     if not records:
         raise ValueError("aucun échantillon : rien à exporter")
+    records, fixed = fit_safe_records(records)
+    if fixed:
+        log.warning("Export FIT : %d relevé(s) hors des plages du format corrigé(s) (journal intact)", fixed)
     s = summarize(records, events)
+    intervals = running_intervals(events, s.start_ts, s.end_ts)
     if not events:
         events = [{"event": "start", "ts": s.start_ts}, {"event": "stop", "ts": s.end_ts}]
 
@@ -306,8 +375,10 @@ def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[fl
         if n_laps == 1:
             fill(lap, totals(records), s.start_ts, s.end_ts, s.elapsed_s, s.timer_s)
         else:
-            fill(lap, totals(part, base_distance=part[0].get("distance", 0.0) if part else 0.0),
-                 lo, hi, hi - lo, hi - lo)
+            # Base : dernier relevé du tour précédent (0 au premier), pour que les tours s'additionnent
+            # à la séance ; temps chronométré sans les pauses du tour (revue S7-04).
+            base = max((r.get("distance", 0.0) for r in records if r["ts"] < lo), default=0.0)
+            fill(lap, totals(part, base_distance=base), lo, hi, hi - lo, timer_between(intervals, lo, hi))
         lap.message_index = i
         lap.lap_trigger = LapTrigger.SESSION_END if last else LapTrigger.MANUAL
         b.add(lap)

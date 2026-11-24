@@ -112,6 +112,7 @@ class HeartRateProvider:
                 device_scanner = _sim_scanner(world)
         self._scan = device_scanner
         self._bpm: int | None = None
+        self._implausible_at: float | None = None   # dernière ligne « FC invraisemblable »
         self._last_at: float | None = None
         self._contact: bool | None = None
         self._rr: deque[float] = deque(maxlen=RR_KEEP)
@@ -165,6 +166,13 @@ class HeartRateProvider:
         self._contact = m.contact
         if m.contact is False:
             return   # valeur fausse : `bpm` devient None au bout de STALE_S
+        if m.bpm and not ftms.plausible_hr(m.bpm):
+            # FC invraisemblable (revue S6-03) : ignorée, valeur précédente gardée jusqu'à STALE_S.
+            now = self._clock()
+            if self._implausible_at is None or now - self._implausible_at >= 10.0:
+                self._implausible_at = now
+                log.warning("Ceinture cardio : FC invraisemblable ignorée (%s bpm)", m.bpm)
+            return
         self._rr.extend(m.rr_ms)
         self._bpm, self._last_at = (m.bpm or None), self._clock()   # 0 = pas de contact
 
