@@ -7,8 +7,7 @@ extends Control
 ##   « DERNIER » en rouge quand le cycliste est dernier (pas de clignotement) ;
 ## - liste des coureurs à gauche, sous le vent : « Toi » sur fond or, point rouge devant le dernier, éliminés
 ##   grisés et barrés avec leur arche ;
-## - bandeau d'élimination d'un bot en bas de l'écran, bandeaux du cycliste éliminé (rouge) et du vainqueur
-##   (vert) au milieu.
+## - éliminations, victoire et consigne : retours communs (feedback_view.gd, lot RT1).
 ## Ne décide rien : affiche la sortie de survivor_hud_model.gd view(). Enfant du HUD : caché avec lui quand un
 ## menu plein écran est ouvert. Pas de class_name : preload("res://scripts/survivor/survivor_view.gd").
 
@@ -23,10 +22,6 @@ const TITLE_SIZE := 13
 const ARCH_SIZE := 24
 const TEXT_SIZE := 17
 const ROW_SIZE := 16
-const BOTTOM_W := 420.0
-const BOTTOM_OFFSET := 150.0    # au-dessus du profil d'altitude et du bandeau ERG
-const CENTER_W := 640.0
-const CENTER_TOP_FRAC := 0.62   # sous le cycliste, sans cacher la route devant lui
 
 var right_top := 160.0          # haut du bloc, posé par main.gd (hud_view.free_right_top())
 var _block: PanelContainer
@@ -42,12 +37,6 @@ var _block_ahead_w: Label
 var _list: PanelContainer
 var _rows: Array = []           # [HBoxContainer, nom (RichTextLabel), détail (Label), fond (StyleBoxFlat), {appliqué}]
 var _block_border := -1         # épaisseur du cadre du bloc déjà posée (-1 : aucune)
-var _bottom: PanelContainer
-var _bottom_title: Label
-var _bottom_sub: Label
-var _center: PanelContainer
-var _center_title: Label
-var _center_sub: Label
 
 
 func _init() -> void:
@@ -124,37 +113,7 @@ func _build() -> void:
 		lcol.add_child(row)
 		_rows.append([row, n, d, bg, {}])
 
-	_bottom = _panel(Model.RED)
-	_bottom.anchor_left = 0.5
-	_bottom.anchor_right = 0.5
-	_bottom.anchor_top = 1.0
-	_bottom.anchor_bottom = 1.0
-	_bottom.offset_left = -BOTTOM_W / 2.0
-	_bottom.offset_right = BOTTOM_W / 2.0
-	_bottom.offset_top = -BOTTOM_OFFSET - 64.0
-	_bottom.offset_bottom = -BOTTOM_OFFSET
-	var bcol := _vbox(_bottom)
-	_bottom_title = _label(22, UiTheme.INK)
-	_bottom_sub = _label(14, UiTheme.INK)
-	for l in [_bottom_title, _bottom_sub]:
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		bcol.add_child(l)
-
-	_center = _panel(Model.RED)
-	_center.anchor_left = 0.5
-	_center.anchor_right = 0.5
-	_center.anchor_top = CENTER_TOP_FRAC
-	_center.anchor_bottom = CENTER_TOP_FRAC
-	_center.offset_left = -CENTER_W / 2.0
-	_center.offset_right = CENTER_W / 2.0
-	var ccol := _vbox(_center)
-	_center_title = _label(40, UiTheme.INK)
-	_center_sub = _label(16, UiTheme.INK)
-	for l in [_center_title, _center_sub]:
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		ccol.add_child(l)
-
-	for p in [_block, _list, _bottom, _center]:
+	for p in [_block, _list]:
 		add_child(p)
 
 
@@ -194,18 +153,6 @@ func update_view(view: Dictionary) -> void:
 		if not shown:
 			continue
 		_apply_row(r, rows[i])
-	var bo: Dictionary = view.get("bottom", {})
-	_bottom.visible = not bo.is_empty()
-	if _bottom.visible:
-		_set_fill(_bottom, bo.get("color", Model.RED))
-		_bottom_title.text = str(bo.get("title", ""))
-		_bottom_sub.text = str(bo.get("sub", ""))
-	var ce: Dictionary = view.get("center", {})
-	_center.visible = not ce.is_empty()
-	if _center.visible:
-		_set_fill(_center, ce.get("color", Model.RED))
-		_center_title.text = str(ce.get("title", ""))
-		_center_sub.text = str(ce.get("sub", ""))
 
 
 ## Ligne `r` de la liste d'après `it` (survivor_hud_model.gd list_rows) : seul ce qui a changé depuis l'image
@@ -249,8 +196,7 @@ func test_info() -> Dictionary:
 		"rank": _block_rank.text if visible and _block.visible else "",
 		"danger": _block_danger.text if visible and _block.visible and _block_danger.visible else "",
 		"ahead": (_block_ahead.text + " · " + _block_ahead_w.text) if visible and _block.visible and _block_ahead.visible else "",
-		"list": names, "bottom": _bottom_title.text if visible and _bottom.visible else "",
-		"center": _center_title.text if visible and _center.visible else "", "block_top": _block.offset_top}
+		"list": names, "block_top": _block.offset_top}
 
 
 static func _style(fill: Color) -> StyleBoxFlat:
