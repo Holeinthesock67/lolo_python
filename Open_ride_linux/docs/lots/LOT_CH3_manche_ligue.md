@@ -39,12 +39,27 @@ semaine (Dernier survivant en semaine 2).
 - Contrat : `docs/contracts/ipc_v1.md` (commandes, `start.league`, journal 1.30), `league.schema.json`,
   `state.schema.json` (`summary.league`), `cmd.schema.json`.
 
+## Correctifs de la revue du 23 novembre (CH3c, rapport `statut/revue-code-vague2/F1.md`)
+
+- F1-01 : la manche s'enregistre au jour de son départ (dimanche soir, arrivée après minuit : elle compte).
+- F1-02 : la classique n'est simulée que si le cycliste l'a datée ; tant qu'elle n'est pas jouable (CH5), personne
+  ne la marque. Choix à confirmer par le propriétaire (le plan §3.2 dit « la manquer ne coûte rien »).
+- F1-03 : une semaine dont le mode n'était pas encore jouable est neutralisée (source `neutre`, personne ne marque)
+  au lieu d'être simulée avec 0 point pour le cycliste seul.
+- F1-04 : lignes de l'encart du bilan réduites à place, nom, points et `me` ; la trame d'arrivée tient sous 4 096
+  octets (test avec le bilan le plus lourd du budget).
+- F1-05 : la manche « arrivée en côte » refuse une boucle ; longueur d'un parcours en ligne vérifiée avant le départ.
+- F1-07 : `league_new` garde la saison close dans `ligue_saison_<n>.json` ; rivaux écrits avant la saison (F1-12).
+- F1-08 : types faux dans `ligue.json` refusés (fichier mis de côté), jamais une autre exception.
+- F1-14 : `league_status` est une requête (réponse à chaque copie). F1-15 : jour vu remis à zéro au changement de profil.
+- Non traités ici : F1-06 (essai au clavier sur le vrai profil : à éviter, la remise à zéro du 28/11 traite les trois
+  fichiers), F1-09, F1-10, F1-11, F1-13.
+
 ## 3. Limites connues (lots suivants)
 
 - Écrans (accueil, écran de la ligue, encart du bilan) : CH4. Pas d'échauffement ERG propre à la manche tant que la
   règle d'échauffement des courses n'est pas dans main.
 - `bots_preview` sur l'écran Prêt donne encore les watts du plateau général, pas ceux des rivaux de la manche.
-- Rivaux nommés communs à tous les modes (R4, #986) : branchés dès sa fusion.
 
 ## Recette PC
 Catégorie : logique
