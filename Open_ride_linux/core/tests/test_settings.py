@@ -364,7 +364,8 @@ def test_advanced_settings_and_settings_in_parts(tmp_path: Path):
     by_key = {it["key"]: it for it in settings.current(cfg)}
     assert [k for k, it in by_key.items() if it["group"] == "advanced"] == [
         "trainer.control", "wind.max_grade_offset_pct", "wind.feel",   # choix d'essai et plafond, lot NI2
-        "open_world.network", "open_world.cache_max_gb", "render.theme_library_gb", "progression.enabled"]
+        "open_world.network", "open_world.cache_max_gb", "render.theme_library_gb", "progression.enabled",
+        "privacy.hide_start"]   # zone privée au départ, lot PZ1
     assert by_key["open_world.network"]["choices"] == ["on", "off"] and by_key["open_world.network"]["value"] == "on"
     cache = by_key["open_world.cache_max_gb"]
     assert (cache["value"], cache["min"], cache["max"], cache["unit"]) == (5, 1, 500, "Go")   # 0,5 Go arrondi au-dessus

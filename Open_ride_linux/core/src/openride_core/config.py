@@ -301,6 +301,13 @@ class LogConfig:
 
 
 @dataclass
+class PrivacyConfig:
+    """Zone privée au départ (lot PZ1, audit du 22 novembre) : aucune position à moins de 500 m du départ
+    dans les FIT et le GPX du monde ouvert (`privacy_zone.py`) ; coupée par défaut."""
+    hide_start: str = "off"        # "on" ou "off"
+
+
+@dataclass
 class ProfilsConfig:
     dernier: str = ""   # dernier profil de joueur choisi, profil par défaut au lancement (série MJ, lot MJ7)
 
@@ -333,6 +340,7 @@ class Config:
     coach: CoachConfig = field(default_factory=CoachConfig)
     log: LogConfig = field(default_factory=LogConfig)
     profils: ProfilsConfig = field(default_factory=ProfilsConfig)
+    privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -473,6 +481,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
     ("bots", "objective"): ("recovery", "endurance", "tempo", "threshold", "max"),   # bot_effort.OBJECTIVES
     ("bots", "elo"): ("on", "off"),   # lot BOT-elo
+    ("privacy", "hide_start"): ("on", "off"),   # lot PZ1
 }
 
 
@@ -497,6 +506,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),
     ("drivers", "hr"), ("drivers", "hr_address"), ("drivers", "hr_name"),
+    ("privacy", "hide_start"),
 )
 PROFILE_SECTION = "profil"   # identité du profil dans `profil.toml` (profiles.py), pas un réglage
 

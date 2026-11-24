@@ -197,6 +197,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("open_world.cache_max_gb", "Cache du monde", "advanced", 1, "Go"),
     Setting("render.theme_library_gb", "Place pour les thèmes", "advanced", 1, "Go"),
     Setting("progression.enabled", "Progression et Garage", "advanced", applies="relaunch"),
+    Setting("privacy.hide_start", "Zone privée au départ", "advanced",   # lot PZ1
+            help="Oui : les fichiers FIT et les balades du monde ouvert enregistrées ne gardent aucune position "
+                 "à moins de 500 m du départ. Temps, distance, puissance et totaux ne changent pas."),
 )
 BOOL_CHOICES = ("on", "off")
 # Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément), puis `screen`
