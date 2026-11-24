@@ -43,18 +43,18 @@ def test_open_world_scenarios_all_use_the_template() -> None:
 
 
 def test_template_is_the_w18_start(tmp_path) -> None:
-    steps = mb.load_scenario(_write(tmp_path, [{"depart_monde_ouvert": {"recherche": "sarre union",
-                                                                         "contient": "Sarre-Union"}},
+    steps = mb.load_scenario(_write(tmp_path, [{"depart_monde_ouvert": {"recherche": "saint jorioz",
+                                                                         "contient": "Saint-Jorioz"}},
                                                {"attendre": 1}]))["etapes"]
     keys = [s["touche"] for s in steps if "touche" in s and s["touche"] != "Enter"]
-    assert keys == list("sarre") + ["Space"] + list("union")
+    assert keys == list("saint") + ["Space"] + list("jorioz")
     motifs = [s["motif"] for s in steps if "journal" in s]
     assert motifs == ["Monde ouvert prêt", "Commande start ", "-> RUNNING"]
     # Lot W18 : ni accueil ni écran Prêt après le préchargement
     after_ready = steps[next(i for i, s in enumerate(steps) if s.get("motif") == "Monde ouvert prêt"):]
     assert not any("ecran" in s or "choisir" in s for s in after_ready)
     assert [s["capture"] for s in steps if "capture" in s] == ["carte", "cap", "depart"]
-    assert next(s for s in steps if s.get("monde") == "search")["contient"] == ["Sarre-Union"]
+    assert next(s for s in steps if s.get("monde") == "search")["contient"] == ["Saint-Jorioz"]
     assert steps[-1] == {"attendre": 1}
 
 

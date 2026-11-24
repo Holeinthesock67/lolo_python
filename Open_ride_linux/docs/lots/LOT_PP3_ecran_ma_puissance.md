@@ -1,4 +1,4 @@
-# Lot PP3 – Écran « Ma puissance » dans le profil (contrat IPC 1.29)
+# Lot PP3 – Écran « Ma puissance » dans le profil (contrat IPC 1.35)
 
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
@@ -7,11 +7,11 @@
 
 ## 1. Objectif
 
-Montrer au joueur, dans son profil, sa courbe de puissance (PP1) et sa FTP estimée (PP2), et lui proposer la FTP estimée sans jamais l'écrire seule (décisions Q2 et Q3 du 21 novembre ; plan `docs/6.0/PLAN_SERIE_PP.md` §4). Révision **1.29** du contrat, réservée à ce lot.
+Montrer au joueur, dans son profil, sa courbe de puissance (PP1) et sa FTP estimée (PP2), et lui proposer la FTP estimée sans jamais l'écrire seule (décisions Q2 et Q3 du 21 novembre ; plan `docs/6.0/PLAN_SERIE_PP.md` §4). Révision **1.35** du contrat, prise à la fusion au-dessus de la 1.34 de main (écrite 1.29 dans la branche jusqu'au 24 novembre).
 
 ## 2. Travail demandé
 
-### 2.1 Contrat (révision 1.29)
+### 2.1 Contrat (révision 1.35)
 
 - Commande `list_power_curve` `{}` ; réponse `power_curve` (schéma `docs/contracts/ipc/power_curve.schema.json`) : 13 points `{s, m6, w6}`, FTP réglée, FTP estimée et sa source en toutes lettres, confiance en mots, raison, proposition, signal à 5 %, évolution sur 6 mois, avertissements ; un seul datagramme de moins de 4 096 octets (noms de parcours raccourcis au besoin).
 - `error` `busy` pendant une séance : rien de la courbe ne s'affiche pendant qu'on roule.
@@ -40,5 +40,5 @@ Montrer au joueur, dans son profil, sa courbe de puissance (PP1) et sa FTP estim
 ## 4. Livraison
 
 - **Créés :** `core/src/openride_core/tools/courbe_fictive.py`, `core/tests/test_power_curve_ipc.py`, `docs/contracts/ipc/power_curve.schema.json`, `engine/scripts/power_view_model.gd`, `engine/tests/unit/test_power_menu.gd`, `engine/tests/menu_scenarios/ma_puissance.json`, ce cahier.
-- **Modifiés :** `core/src/openride_core/ipc_lists.py` (`build_power_curve_message`), `session.py` (`_send_power_curve`), `ipc_server.py` (requête, révision 1.29), `docs/contracts/ipc_v1.md` et `cmd.schema.json` ; `engine/scripts/menu_flow.gd`, `profiles_view_model.gd`, `detail_card.gd` (courbe), `ipc_client.gd`, `main.gd` ; `engine/tests/menu_bench.py` (`seances_courbe`), scénario `profils.json` (ligne « Ma puissance ») ; guide d'utilisation, README, CLAUDE.md, suivi.
+- **Modifiés :** `core/src/openride_core/ipc_lists.py` (`build_power_curve_message`), `session.py` (`_send_power_curve`), `ipc_server.py` (requête, révision 1.35), `docs/contracts/ipc_v1.md` et `cmd.schema.json` ; `engine/scripts/menu_flow.gd`, `profiles_view_model.gd`, `detail_card.gd` (courbe), `ipc_client.gd`, `main.gd` ; `engine/tests/menu_bench.py` (`seances_courbe`), scénario `profils.json` (ligne « Ma puissance ») ; guide d'utilisation, README, CLAUDE.md, suivi.
 - Recette PC : catégorie **rendu des menus** (captures low, medium, high du scénario `ma_puissance`), après l'essai du 22 novembre.

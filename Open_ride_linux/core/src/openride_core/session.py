@@ -80,6 +80,7 @@ from .wtf.mode import WtfMode
 from .free_erg import CadenceLock, FreeErg, start_cadence, start_power
 from .ftp_test import KINDS as FTP_TEST_KINDS
 from .start_gate import StartGate
+from . import warmup as warmup_mod
 from .ftp_test import FtpResult, RampWatch, cooldown_index, estimate_ftp
 from .ftp_test import kind_of as ftp_test_kind
 from .ftp_test import workout_for as ftp_test_workout
@@ -116,7 +117,8 @@ CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation,
 COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_advice",
                   "clear_watch_advice")   # séance conseillée (lot CO3), réponse `coach`
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
-                    "clear_trial_profile", "restore_profile")   # lots MJ7 et O33
+                    "clear_trial_profile", "restore_profile",   # lots MJ7 et O33
+                    "reset_profile_stats", "undo_profile_reset")   # lot RZ1 (révision 1.31)
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
@@ -125,7 +127,7 @@ SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
 END_GAP_M = draft_mod.BIKE_LENGTH_M + 0.3
 # Nom des courses du Grand Prix au journal (lot CR1 : la Course est le Grand Prix sans objet)
 _GP_TITLES = {"grandprix": "Grand Prix des objets", "race": "Course"}
-GP_RUNOUT_M = 30.0   # Grand Prix sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
+GP_RUNOUT_M = 30.0   # Course (lot CR1) sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
@@ -423,7 +425,8 @@ class CoreSession:
                           "biome": cfg.render.biome,
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances"),
                           "track": track_mod.menu_options(),
-                          "mode_routes": mode_routes_mod.hello_block()})   # lot GP13, révision 1.19
+                          "mode_routes": mode_routes_mod.hello_block(),   # lot GP13, révision 1.19
+                          "free_route_tag": mode_routes_mod.FREE_TAG})   # lot GPL1, révision 1.24
         self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
@@ -498,6 +501,7 @@ class CoreSession:
         self.profiles_base: Path | None = None   # None : ~/OpenRide/Profils
         self.active_profile_path: Path | None = None   # None : ~/OpenRide/.profil_actif
         self._last_create: tuple[int, Any] | None = None   # dernier create_profile traité (copies ignorées)
+        self._last_reset_cmd: tuple[int, str, Any] | None = None   # dernière remise à zéro traitée (lot RZ1)
         self._publish_profile()
         self._resumed_journal: Path | None = None   # journal repris par `--resume`, jamais proposé (lot O34)
         self._publish_last_choices()
@@ -519,10 +523,13 @@ class CoreSession:
         if self.erg:
             self.erg.paused = new == "PAUSED"   # l'ERG suit la pause de la séance (Y), seule pause (§7.1)
             self._sync_erg_state()
+        if getattr(self, "_ramp_watch", None) is not None and new == "PAUSED":
+            self._ramp_watch.pause()   # rampe d'un test de FTP : délai de grâce à la reprise (revue RC13)
         if self.race and new == "PAUSED" and old == "RUNNING":
             self.race.pause(reason or "user")   # pause Y : passages annulés ; coupure subie : suspendus (T4)
         if new in ("READY", "FINISHED", "IDLE", "ERROR"):
             self.state.workout_done = None   # l'invite de fin d'entraînement ne vit que pendant la séance
+            self.state.arrival = None        # issue de la séance (lot RT2) : seulement pendant la séance
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
@@ -636,6 +643,8 @@ class CoreSession:
         elif name == "scene_ready":   # révision 1.5 (lot O36) : décor du départ prêt dans l'engine
             rid = (args if isinstance(args, dict) else {}).get("route_id")
             self._scene_route = str(rid) if rid not in (None, "") else None
+        elif name == "skip_warmup":   # révision 1.33 : passe l'échauffement d'une course
+            self._skip_warmup()
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
         elif name == "set_ride_mode":
@@ -653,7 +662,7 @@ class CoreSession:
         """`start` accepté : départ tout de suite (`[depart] mode = "immediat"`) ou attente en READY."""
         dep = self.cfg.depart
         gate = StartGate(float(dep.cadence_rpm), float(dep.duree_s), float(dep.attente_decor_s),
-                         immediate=dep.mode == "immediat")
+                         immediate=dep.mode == "immediat", warmup=self._warmup_for(game_mode))
         if gate.open:
             self._begin_session(game_mode)
             return
@@ -662,7 +671,29 @@ class CoreSession:
         log.info("Départ au pédalage : attente du décor, du trainer puis de %d s à %d tr/min.",
                  dep.duree_s, dep.cadence_rpm)
 
+    def _warmup_for(self, game_mode: str | None) -> "warmup_mod.Warmup | None":
+        """Échauffement d'une course (`warmup.py`, une règle pour tous les modes de course), None sinon."""
+        minutes = int(self.cfg.depart.echauffement_min)
+        race = True
+        if game_mode == "track" and self._track_choice is not None:
+            race = track_mod.EVENTS[self._track_choice[0]].race
+        if not warmup_mod.needed(game_mode, minutes, race):
+            return None
+        return warmup_mod.Warmup(minutes, float(self.cfg.rider.ftp_w))
+
+    def _skip_warmup(self) -> bool:
+        """Z court ou `skip_warmup` pendant l'échauffement : départ au pédalage tout de suite."""
+        gate = self._start_gate
+        if gate is None or not gate.warming:
+            return False
+        gate.warmup.skip()
+        log.info("Échauffement passé (%.0f s sur %.0f).", gate.warmup.elapsed_s, gate.warmup.total_s)
+        return True
+
     def _clear_start_gate(self) -> None:
+        gate = self._start_gate
+        if gate is not None and gate.warmup is not None and gate.warmup.elapsed_s > 0.0:
+            self.driver.set_sim_grade(0.0)   # fin de l'ERG de l'échauffement : la séance repart en SIM
         self._start_gate = self._start_mode = None
         self.state.start_wait = None
 
@@ -688,6 +719,11 @@ class CoreSession:
             log.info("Départ : étape %s -> %s%s (%.1f s)", was, gate.phase,
                      " (décor non signalé par l'engine)" if gate.decor_timeout and was == "decor" else "",
                      gate.waited_s)
+        if gate.phase == "echauffement":
+            self.driver.set_target_power(gate.warmup.target_w)
+        if was == "echauffement" and gate.phase != "echauffement":
+            log.info("Échauffement %s (%.0f s).", "passé" if gate.warmup.skipped else "fini", gate.warmup.elapsed_s)
+            self.driver.set_sim_grade(0.0)
         if opened:
             mode = self._start_mode
             self._clear_start_gate()
@@ -884,8 +920,9 @@ class CoreSession:
         items = [profile_summary(c, workouts) for c in profiles.list_contexts(self.profiles_base)
                  if not c.is_trial or c.id == self.profile_ctx.id][:profiles.MAX_PROFILES]
         trash = profiles.trash_entries(self.profiles_base)[:profiles.TRASH_SHOWN]   # lot O33
+        resets = profiles.reset_entries(self.profile_ctx, self.profiles_base)[:profiles.RESETS_SHOWN]   # lot RZ1
         return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items,
-                "trash": trash}
+                "trash": trash, "resets": resets}
 
     def _send_profiles(self, cmd_id: int) -> None:
         try:
@@ -937,6 +974,8 @@ class CoreSession:
                 log.info("Profil restauré depuis la corbeille : %s (%s).", ctx.name, ctx.id)
                 self._publish_profile()
                 self._send_profiles(cmd_id)
+            elif name in ("reset_profile_stats", "undo_profile_reset"):
+                self._reset_stats(name, args, cmd_id)
             else:
                 self._clear_trial(cmd_id)
         except profiles.ProfileNameError as exc:
@@ -945,6 +984,31 @@ class CoreSession:
         except (profiles.ProfileContextError, OSError) as exc:
             log.warning("Profil : %s refusé : %s", name, exc)
             self.server.send_error("profile_invalid", str(exc))
+
+    def _reset_stats(self, name: str, args: dict, cmd_id: int) -> None:
+        """`reset_profile_stats` et `undo_profile_reset` (lot RZ1) : profil en cours seulement (son verrou
+        est tenu par cette séance) ; sauvegarde horodatée avant tout déplacement, puis profil rechargé
+        (progression, records, Elo, plan) et `hello_ack` complet, comme après `clear_trial_profile`."""
+        key = (cmd_id, name, args.get("id"))
+        if self._last_reset_cmd == key:   # copie d'une commande déjà traitée : pas de seconde remise
+            self._send_profiles(cmd_id)
+            return
+        ctx = self.profile_ctx
+        if args.get("confirmed") is not True:   # confirmation exigée par le core aussi, pas seulement à l'écran
+            self.server.send_error("bad_args", f"{name} : confirmation absente (\"confirmed\": true)")
+            return
+        if name == "reset_profile_stats":
+            dest, moved = profiles.reset_stats(ctx, self.profiles_base)
+            log.info("Statistiques du profil %s remises à zéro : %s mis de côté dans %s.", ctx.id,
+                     ", ".join(moved), dest)
+        else:
+            back, saved = profiles.undo_reset(ctx, args.get("id"), self.profiles_base)
+            log.info("Remise à zéro annulée pour %s : %s remis%s.", ctx.id, ", ".join(back) or "rien",
+                     f" ; statistiques d'aujourd'hui mises de côté dans {saved}" if saved else "")
+        self._last_reset_cmd = key
+        ctx = profiles.ProfileContext.for_id(ctx.id, self.profiles_base)   # nouvelle date de départ des statistiques
+        self._select_profile(ctx, cmd_id, reload=True)
+        self._send_profiles(cmd_id)
 
     def _clear_trial(self, cmd_id: int) -> None:
         """`clear_trial_profile` (lot O33) : vide le profil d'essai comme `openride-core profil essai --vider` ;
@@ -1085,12 +1149,15 @@ class CoreSession:
         self.server.hello_config["last_choices"] = choices
 
     def _remember_route(self, route_id: str, cmd_id: int) -> None:
-        """Parcours choisi au menu (lot GP13) : celui d'un mode à parcours propres (Vélodrome, Grand Prix,
-        `mode_routes.py`) est gardé pour ce mode, sans remplacer le dernier parcours libre rechargé au démarrage."""
+        """Parcours choisi au menu (lot GP13) : retenu dans chaque liste où il est. Libre (dont un parcours de mode
+        étiqueté `libre`, lot GPL1) : dernier parcours libre, rechargé au démarrage ; d'un mode à parcours propres
+        (Vélodrome, Grand Prix, `mode_routes.py`) : dernier parcours de ce mode."""
         src = getattr(self, "_world_src", None)
-        mode = mode_routes_mod.mode_of(src[2]) if src is not None else None
-        if mode is None:
+        manifest, kind = (src[2], src[0].type) if src is not None else (None, None)
+        mode = mode_routes_mod.mode_of(manifest, kind)
+        if mode is None or mode_routes_mod.is_free(manifest, kind):
             self._remember("route_id", route_id, cmd_id)
+        if mode is None:
             return
         if cmd_id <= 0 or self.profile_ctx.id is None or (self.sim is not None and self.config_path is None):
             return
@@ -1388,7 +1455,8 @@ class CoreSession:
             wanted = bots_from_menu(items, PhysicsParams.from_config(self.cfg), self.cfg.rider.ftp_w,
                                     self.state.route_id, self.journal_dir, s=self.physics.s,
                                     bike_mass_kg=self.cfg.bike.mass_kg, taken_ids=self._bot_ids_seen,
-                                    names=self._rival_names)
+                                    names=self._rival_names,
+                                    exclude_journal=self._rec.path if self._rec else None)
         except BotError as exc:
             self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
             return
@@ -2437,7 +2505,8 @@ class CoreSession:
             return "Pas de demi-tour pendant une run Cyber-Rogue."
         if self.openworld is not None:
             return "Pas de demi-tour en monde ouvert : la route se choisit aux carrefours."
-        if self.survivor is not None or self.grandprix is not None:
+        if (self.survivor is not None or self.grandprix is not None) and self.state.arrival is None:
+            # lot RT2 : une fois l'arrivée passée, la course est finie pour le cycliste, il repart au calme
             return "Pas de demi-tour pendant une course à élimination ou un Grand Prix."
         if not self.route.is_loop and self.physics.direction > 0 and self.physics.s <= 0.0:
             return "Déjà au départ du parcours."
@@ -2472,20 +2541,38 @@ class CoreSession:
         return True
 
     def _u_turn_at_end(self, route: Route) -> bool:
-        """Bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP (lot N26) : demi-tour
-        automatique sans s'arrêter, comme Y maintenu, au lieu de couper l'entraînement à l'arrivée. Vrai si le
-        demi-tour est fait ; faux hors entraînement (entraînement fini, SIM, ERG libre) ou quand le demi-tour
-        est refusé (course à élimination, Grand Prix) : l'arrivée termine alors la séance."""
-        if not isinstance(self.erg, ErgController) or self._u_turn_refusal("RUNNING") is not None:
+        """Bout d'un parcours en ligne : demi-tour automatique sans s'arrêter, comme Y maintenu, au lieu de couper
+        la séance. Pendant un entraînement ERG ou un test de FTP (lot N26), l'entraînement continue ; sinon (lot RT2,
+        fin commune, choix du propriétaire du 21 novembre) l'arrivée est annoncée (`state.arrival`, une seule fois)
+        et le cycliste continue au calme jusqu'à « Terminer et enregistrer ». Vrai si le demi-tour est fait ; faux
+        quand il est refusé (Cyber-Rogue, course à élimination ou Grand Prix encore en cours) : l'arrivée termine
+        alors la séance."""
+        if self._u_turn_refusal("RUNNING") is not None:
             return False
+        workout = isinstance(self.erg, ErgController)
+        if not workout:
+            self._set_arrival("route")
         self.physics.s = min(max(self.physics.s, 0.0), route.length_m)   # pas au-delà du bout de la route
         self.physics.u_turn(keep_speed=True)
         if self.race is not None:
             self.race.pause("user")   # passage de segment ou de sprint en cours annulé, comme Y maintenu
-        log.info("Bout du parcours pendant l'entraînement « %s » : demi-tour automatique.",
-                 self.erg.workout.name)
+        if workout:
+            log.info("Bout du parcours pendant l'entraînement « %s » : demi-tour automatique.",
+                     self.erg.workout.name)
+        else:
+            log.info("Bout du parcours : arrivée, demi-tour automatique pour rouler au calme (lot RT2).")
         self._note_u_turn()
         return True
+
+    def _set_arrival(self, kind: str, place: int | None = None, of: int | None = None) -> None:
+        """Issue de la séance connue (lot RT2, révision 1.34) : `state.arrival` {kind, place, of}, posé une seule
+        fois par séance, gardé jusqu'à la fin (et copié dans le bilan). `kind` : `route` (bout d'un parcours en
+        ligne), `workout` (entraînement fini), `grandprix` ou `race` (arrivée du cycliste). La séance continue."""
+        if self.state.arrival is not None:
+            return
+        self.state.arrival = {"kind": kind, "place": place, "of": of}
+        log.info("Arrivée (%s)%s : la séance continue au calme jusqu'à « Terminer et enregistrer ».", kind,
+                 f", {place}e sur {of}" if place is not None else "")
 
     def _note_u_turn(self) -> None:
         """Sens du parcours dans `state`, événement `u_turn` au journal (communs à la pause et à Y maintenu)."""
@@ -2515,6 +2602,7 @@ class CoreSession:
         if erg and erg.finished:
             log.info("Entraînement « %s » terminé : retour au mode SIM, parcours libre.", erg.workout.name)
             self.state.workout_done = {"workout_name": erg.workout.name}
+            self._set_arrival("workout")
             self.erg = erg = None
             self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
         elif isinstance(erg, ErgController):
@@ -2705,6 +2793,8 @@ class CoreSession:
                 summary["league"] = league_line
             if bots_effort is not None:   # lot GP-niv : effort visé par les bots et leur moyenne réelle
                 summary["bots_effort"] = bots_effort
+            if self.state.arrival is not None:   # lot RT2 : issue de la séance, titre commun du bilan
+                summary["arrival"] = dict(self.state.arrival)
             segments = race.summary() if race else None
             if segments is not None:   # série T (lot T7, révision 1.4)
                 summary["segments"] = segments
@@ -3462,10 +3552,10 @@ class CoreSession:
 
     def _grandprix_course(self, mode: str = "grandprix") -> tuple[float, float | None]:
         """Longueur de la course et d'un tour (circuit) d'après `[grandprix]` (`[race]` pour la Course, lot CR1) ;
-        `GrandPrixError` si le parcours ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne
-        de moins de 1 km). En ligne, la course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) :
-        `distance_km` ou ce qu'il en reste (la Course : tout ce qu'il en reste), ligne posée au moins `GP_RUNOUT_M`
-        avant le bout (lot GP10) : la file des bots arrivés y tient après la ligne."""
+        `GrandPrixError` si le parcours ne s'y prête pas. Sur une boucle : `laps` tours. Le Grand Prix des objets se
+        court sur une boucle seulement (lot GPL1, demande du propriétaire du 20 novembre). La Course va aussi en ligne
+        jusqu'à l'arrivée du parcours, ligne posée `GP_RUNOUT_M` avant le bout (la file des bots arrivés y tient),
+        `MIN_COURSE_M` au moins."""
         gc = self.cfg.race if mode == "race" else self.cfg.grandprix
         route = self.route
         if self.openworld is not None or route is None:
@@ -3473,10 +3563,11 @@ class CoreSession:
         if route.is_loop:
             laps = self._league_run["laps"] if self._league_run is not None and mode == "race" else gc.laps
             return laps * route.length_m, route.length_m
+        if mode != "race":
+            raise GrandPrixError("il se court sur une boucle (Accueil › Grand Prix › Changer de parcours)")
         from .grandprix.boxes import MIN_COURSE_M
 
-        rest = route.length_m - self.physics.s - GP_RUNOUT_M
-        length = rest if mode == "race" else min(self.cfg.grandprix.distance_km * 1000.0, rest)
+        length = route.length_m - self.physics.s - GP_RUNOUT_M
         if length < MIN_COURSE_M - 1e-6:
             raise GrandPrixError(f"parcours trop court pour une course ({route.length_m / 1000.0:.1f} km, "
                                  f"{MIN_COURSE_M / 1000.0:.0f} km au moins)")
@@ -3986,6 +4077,14 @@ class CoreSession:
                 return
             self._on_command("pause", {}, 0)   # en attente du départ (lot O36) : annule le départ
             return
+        if self._start_gate is not None and self._start_gate.warming:
+            # Échauffement (demande du 21 novembre) : Z court le passe, + et − règlent la cible comme en ERG.
+            self.server.send_input_event(ev.value)
+            if ev == InputEvent.Z_SHORT:
+                self._skip_warmup()
+            elif ev in BIAS_STEPS:
+                self._start_gate.warmup.erg.change_bias(BIAS_STEPS[ev])
+            return
         # Relayé à l'engine : menus hors séance, retour sonore (bips) et explications pendant la séance.
         self.server.send_input_event(ev.value)
         if self.openworld is not None and ev.value in CHOICE_EVENTS and self.state.session_state == "RUNNING":
@@ -4361,10 +4460,12 @@ class CoreSession:
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
             self._finish(True)
-        elif self.grandprix is not None and self.grandprix.racers[GP_ME].finished is not None:
-            log.info("%s : arrivée, %de sur %d.", _GP_TITLES[self.grandprix.mode],
-                     self.grandprix.racers[GP_ME].finished, len(self.grandprix.racers))
-            self._finish(True)
+        elif self.grandprix is not None and self.grandprix.racers[GP_ME].finished is not None \
+                and self.state.arrival is None:
+            # lot RT2 : l'arrivée ne ferme plus la séance, le cycliste continue au calme (choix du 21 novembre)
+            gp = self.grandprix
+            log.info("%s : arrivée, %de sur %d.", _GP_TITLES[gp.mode], gp.racers[GP_ME].finished, len(gp.racers))
+            self._set_arrival("race" if gp.mode == "race" else "grandprix", gp.racers[GP_ME].finished, len(gp.racers))
 
     def _queue_at_end(self, bot, route) -> None:
         """Bout d'un parcours en ligne : le bot s'arrête à sa place dans la file d'arrivée (`END_GAP_M` entre deux

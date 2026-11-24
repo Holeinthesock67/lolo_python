@@ -244,6 +244,11 @@
           "description": "Facultatif, révision 1.19 (lot GP13) : modes qui ont leurs propres parcours, mode → étiquette de la fiche des parcours (`library.tags`).",
           "additionalProperties": {"type": "string", "minLength": 1}
         },
+        "free_route_tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Facultatif, révision 1.24 (lot GPL1) : étiquette d'un parcours de mode resté aussi dans la liste générale (« libre »)."
+        },
         "track": {
           "type": "object",
           "description": "Facultatif, révision 1.7 (lot VD10) : épreuves de piste et réglages de l'écran Prêt du vélodrome ; `events` : épreuve → réglage → [défaut, valeurs permises] (`track.menu_options` du core).",

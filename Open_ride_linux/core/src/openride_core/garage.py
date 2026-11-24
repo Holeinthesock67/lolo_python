@@ -89,6 +89,7 @@ class ProgressionService:
         self.table_path = ctx.table_path if table_path is _FROM_PROFILE else table_path
         self.counted = ctx.counted_sources   # séances qui rapportent (profil d'essai : simulées aussi, MJ2)
         self.owns = ctx.owns
+        self.stats_since = ctx.stats_since   # remise à zéro des statistiques (lot RZ1)
         self.cache_path = cache_path if cache_path is not None else journal_dir / CACHE_NAME
         self.enabled = False
         self.table: Table | None = None
@@ -117,7 +118,7 @@ class ProgressionService:
 
     def _recompute(self) -> Progress:
         cache = FactsCache(self.cache_path)
-        return recompute(self.journal_dir, self.table, self.workouts, cache, self.counted, self.owns)
+        return recompute(self.journal_dir, self.table, self.workouts, cache, self.counted, self.owns, self.stats_since)
 
     def refresh(self) -> Progress | None:
         """Recalcule la progression (après une séance) ; renvoie l'ancienne."""
@@ -345,7 +346,7 @@ def profile_summary(ctx: "profiles.ProfileContext", workouts: WorkoutDurations =
     try:
         table = load_table(ctx.table_path)
         cache = FactsCache(ctx.journal_dir / CACHE_NAME) if ctx.journal_dir.is_dir() else None
-        progress = recompute(ctx.journal_dir, table, workouts, cache, ctx.counted_sources, ctx.owns)
+        progress = recompute(ctx.journal_dir, table, workouts, cache, ctx.counted_sources, ctx.owns, ctx.stats_since)
         level = progress.level.level
         starts = [r.facts.start_ts for r in progress.sessions if r.facts.start_ts]
         last = date.fromtimestamp(max(starts)).isoformat() if starts else None
