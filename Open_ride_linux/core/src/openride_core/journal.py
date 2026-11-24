@@ -123,7 +123,8 @@ GAME_KINDS = ("powerup", "segment", "jersey", "rogue", "rogue_run", "rogue_snaps
               "gp_start", "gp", "gp_summary",   # lot GP2 : Grand Prix des objets
               "track_start", "track", "track_summary",   # lot VD6 : épreuves de piste
               "elo",   # lot BOT-elo : cote du cycliste après une course à classement
-              "league_new", "league_start", "league_round")   # lot CH3 : ligue d'hiver
+              "league_new", "league_start", "league_round",   # lot CH3 : ligue d'hiver
+              "race_snapshot")   # lot RC1 : instantané d'une course, pour la reprendre après un plantage
 
 def record_line(rec: Record) -> dict:
     # Dictionnaire construit sans ces clés (un `del` ne réduirait pas sa table en mémoire).
