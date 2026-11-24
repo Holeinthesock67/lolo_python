@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Jauge « Réserve W' » retirée du HUD du Cyber-Rogue : sans effet sur le jeu, elle nuisait à la lisibilité | GDScript | R22, R23 | Petite | En revue, **version 2.0** |
+| Jauge « Réserve W' » retirée du HUD du Cyber-Rogue : sans effet sur le jeu, elle nuisait à la lisibilité | GDScript | R22, R23 | Petite | **Livré le 22 novembre** (PR #956), **version 2.0** |
 
 ## 1. Constat
 
@@ -33,4 +33,4 @@ retire pas), le journal de la run.
 
 ## 4. Livraison
 
-PR à venir, séparée de #933 (R24).
+Fusionné le 22 novembre 2026 (PR #956), séparé de #933 (R24).

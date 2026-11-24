@@ -7,11 +7,10 @@ extends RefCounted
 ## - liste des coureurs sous la puissance (MAX_LINES lignes au plus) : en course du premier au dernier sur la
 ##   route (cycliste « Toi » surligné, dernier marqué d'un point rouge, écart au cycliste en secondes), puis
 ##   les éliminés grisés et barrés avec leur arche, du plus récent au plus ancien ;
-## - bandeaux : élimination d'un bot en bas de l'écran (BANNER_S secondes), cycliste éliminé (rouge) et
-##   vainqueur (vert) au milieu (CENTER_S secondes) ; les messages `elimination` répétés par le core (trois
-##   fois, à une seconde d'intervalle) ne comptent qu'une fois par (`arch`, `rider`) ;
-## - jingles : `jingle_elim` à chaque élimination, `jingle_winner` quand le cycliste gagne
-##   (event_sounds_model.gd JINGLES) ;
+## - moments (lot RT1, retours communs de feedback_model.gd, plus de bandeaux propres au mode) : adversaire
+##   éliminé (BIEN, `jingle_elim`), cycliste éliminé (RÉSULTAT rouge), victoire (RÉSULTAT or, `jingle_winner`),
+##   cycliste devenu dernier (ATTENTION) ; les messages `elimination` répétés par le core (trois fois, à une
+##   seconde d'intervalle) ne comptent qu'une fois par (`arch`, `rider`) ; consigne de la zone commune ;
 ## - lignes du bilan (`summary.survivor`) : place, vainqueur, arche par arche.
 ## Objet `survivor` de `state` : {arch, arches, d_m, alive, last, gap_last_s, out, me_out, winner} ; noms des
 ## bots lus dans la liste `bots` de la même trame et gardés (un bot éliminé disparaît de la trame au bout de
@@ -23,8 +22,6 @@ const UiTheme := preload("res://scripts/ui_theme.gd")
 const ME := "me"
 const ME_NAME := "Toi"
 const MAX_LINES := 12
-const BANNER_S := 3.0
-const CENTER_S := 6.0
 const RED := Color(0.62, 0.08, 0.10, 0.92)
 const GREEN := Color(0.13, 0.50, 0.24, 0.92)
 const LAST_RED := Color(1.0, 0.25, 0.25)
@@ -38,8 +35,8 @@ const REACH_FTP := 1.5
 const REACH_MAX_W := 600.0
 const GAP_MIN_SPEED_MPS := 1.0   # vitesse plancher de l'écart estimé d'un bot loin (gaps.py MIN_SPEED_MPS)
 var _seen := {}                 # "arche:coureur" des éliminations déjà affichées
-var _bottom := {}               # bandeau du bas en cours : {title, sub, color, until}
-var _center := {}               # bandeau du milieu en cours
+var _me_out := false            # cycliste éliminé (message `elimination` vu)
+var _was_last := false          # cycliste dernier à la trame précédente (moment ATTENTION, lot RT1)
 var _arch_start_d := {}         # arche -> distance à l'arche quand elle est devenue la prochaine (barre)
 var _arch_s := {}               # arche -> position sur la route (s cumulé), pour les portiques
 var _total := 0                 # coureurs au départ, cycliste compris (lu dans la trame)
@@ -48,8 +45,8 @@ var _total := 0                 # coureurs au départ, cycliste compris (lu dans
 func reset() -> void:
 	names.clear()
 	_seen.clear()
-	_bottom = {}
-	_center = {}
+	_me_out = false
+	_was_last = false
 	_arch_start_d.clear()
 	_arch_s.clear()
 	_total = 0
@@ -71,8 +68,10 @@ func name_of(id: String) -> String:
 	return str(names.get(id, id))
 
 
-## Message `elimination` du core ; rend les jingles à jouer ([] pour un doublon).
-func on_elimination(msg: Dictionary, now_s: float) -> Array:
+## Message `elimination` du core ; rend les moments de feedback_model.gd (lot RT1) à afficher et à jouer ([] pour
+## un doublon) : adversaire éliminé (BIEN, `jingle_elim`), cycliste éliminé (RÉSULTAT rouge), victoire (RÉSULTAT or,
+## `jingle_winner`).
+func on_elimination(msg: Dictionary, _now_s: float = 0.0) -> Array:
 	var key := "%d:%s" % [int(msg.get("arch", 0)), str(msg.get("rider", ""))]
 	if _seen.has(key):
 		return []
@@ -85,29 +84,62 @@ func on_elimination(msg: Dictionary, now_s: float) -> Array:
 	var gap_text := ("à %s s" % fr1(float(gap))) if gap != null else ""
 	if str(msg.get("name", "")) != "" and rider != ME:
 		names[rider] = str(msg["name"])
-	var out := ["jingle_elim"]
 	if rider == ME:
-		_center = {"title": "ÉLIMINÉ · %s sur %d" % [place_text(place), of],
+		_me_out = true
+		return [{"family": "resultat", "tone": "out", "title": "ÉLIMINÉ · %s sur %d" % [place_text(place), of],
 			"sub": "Bilan de la course" if after_out == "end" else "Tu continues à rouler : la course se finit sans toi",
-			"color": RED, "until": now_s + CENTER_S}
-		return out
-	_bottom = {"title": "Éliminé : " + name_of(rider),
-		"sub": "arche %d%s" % [int(msg.get("arch", 0)), (" · " + gap_text) if gap_text != "" else ""],
-		"color": RED, "until": now_s + BANNER_S}
-	if alive == 1 and not _center_is_me_out():
+			"done_k": "COURSE FINIE POUR TOI · %s sur %d" % [place_text(place), of],
+			"done_action": "Roule au calme : la course continue sans toi", "sound": "jingle_elim"}]
+	var out: Array = [{"family": "bien", "title": "%s est éliminé" % name_of(rider),
+		"sub": "arche %d%s · plus que %d en course" % [int(msg.get("arch", 0)), (" · " + gap_text) if gap_text != "" else "",
+			alive], "sound": "jingle_elim"}]
+	if alive == 1 and not _me_out:
 		# dernière arche passée : le cycliste encore en course a gagné
-		_center = {"title": "DERNIER SURVIVANT !", "sub": "1er sur %d · %s éliminé %s" % [of, name_of(rider), gap_text],
-			"color": GREEN, "until": now_s + CENTER_S * 2.0}
-		_bottom = {}
-		out.append("jingle_winner")
+		out.append({"family": "resultat", "tone": "win", "title": "VICTOIRE !",
+			"sub": "Dernier survivant · 1er sur %d · %s éliminé %s" % [of, name_of(rider), gap_text],
+			"done_k": "COURSE FINIE · 1er sur %d" % of, "sound": "jingle_winner"})
 	return out
 
 
-func _center_is_me_out() -> bool:
-	return not _center.is_empty() and _center.get("color") == RED
+## Moments tirés de la trame (lot RT1) : ATTENTION quand le cycliste devient le dernier en course.
+func moments(state) -> Array:
+	var sv = state.get("survivor", null) if state is Dictionary else null
+	if not sv is Dictionary:
+		_was_last = false
+		return []
+	var alive: Array = sv.get("alive", []) if sv.get("alive") is Array else []
+	var last := alive.size() >= 2 and str(sv.get("last", "")) == ME and sv.get("me_out", null) == null \
+		and sv.get("winner", null) == null
+	var out := []
+	if last and not _was_last:
+		var d = sv.get("d_m", null)
+		out.append({"family": "attention", "title": "Tu es dernier en course",
+			"sub": ("Arche d'élimination dans " + distance_text(float(d))) if d != null else "Remonte avant l'arche"})
+	_was_last = last
+	return out
 
 
-## Vue du HUD pour la trame `state` (null ou sans `survivor` : rien).
+## Objectif du mode en une ligne (départ, feedback_model.gd on_state `goal`).
+func goal(state) -> String:
+	return "être le dernier en course" if state is Dictionary and state.get("survivor", null) is Dictionary else ""
+
+
+## Consigne de la zone commune (lot RT1) : {k, action, detail, chips} ; {} une fois l'issue connue.
+func consigne(state) -> Dictionary:
+	var sv = state.get("survivor", null) if state is Dictionary else null
+	if not sv is Dictionary or sv.get("me_out", null) != null or sv.get("winner", null) != null:
+		return {}
+	var alive: Array = sv.get("alive", []) if sv.get("alive") is Array else []
+	var d = sv.get("d_m", null)
+	var where := (" · arche dans " + distance_text(float(d))) if d != null else ""
+	var detail := "Objectif : être le dernier en course · Pourquoi : le dernier à chaque arche est éliminé"
+	if str(sv.get("last", "")) == ME and alive.size() >= 2:
+		var gap = sv.get("gap_last_s", null)
+		return {"k": "À FAIRE", "action": "Passe %s avant l'arche%s" % [name_of(str(alive[alive.size() - 2])),
+			(" : %s s" % fr1(float(gap))) if gap != null and float(gap) >= 0.05 else ""], "detail": detail, "chips": ["pédale plus fort"]}
+	return {"k": "À FAIRE", "action": "Ne sois pas dernier à l'arche" + where, "detail": detail, "chips": []}
+
+
 func view(state, now_s: float) -> Dictionary:
 	var sv = state.get("survivor", null) if state is Dictionary else null
 	if not sv is Dictionary:
@@ -121,7 +153,7 @@ func view(state, now_s: float) -> Dictionary:
 	var winner = sv.get("winner", null)
 	var last := str(sv.get("last", "")) if sv.get("last", null) != null else ""
 	_total = alive.size() + (sv["out"].size() if sv.get("out") is Array else 0) + (1 if me_out != null else 0)
-	var out := {"visible": true, "block": {}, "list": list_rows(sv, state.get("bots", null), _num(state.get("s", null), NAN), _num(state.get("v", null), 0.0)), "bottom": {}, "center": {}}
+	var out := {"visible": true, "block": {}, "list": list_rows(sv, state.get("bots", null), _num(state.get("s", null), NAN), _num(state.get("v", null), 0.0))}
 	if d != null and me_out == null and winner == null:
 		var dm := float(d)
 		if not _arch_start_d.has(arch) or dm > float(_arch_start_d[arch]):
@@ -143,10 +175,6 @@ func view(state, now_s: float) -> Dictionary:
 			"bar": clampf(1.0 - dm / start_d, 0.0, 1.0), "rank": "%s sur %d en course" % [place_text(rank), alive.size()],
 			"danger": danger, "danger_text": "DERNIER" if danger else "", "last": last_line,
 			"ahead": ahead[0], "ahead_w": ahead[1]}
-	if not _bottom.is_empty() and now_s < float(_bottom["until"]):
-		out["bottom"] = _bottom
-	if not _center.is_empty() and now_s < float(_center["until"]):
-		out["center"] = _center
 	return out
 
 

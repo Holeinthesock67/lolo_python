@@ -17,7 +17,10 @@ const ROUTES := [
 	{"id": "demo", "name": "Col du lacet", "status": "ready", "length_m": 5000.0, "route_type": "point_to_point"},
 	{"id": "demo-circuit", "name": "Circuit des Prés", "status": "ready", "length_m": 3000.0, "route_type": "loop",
 		"library": {"tags": ["grandprix"]}},
-	{"id": "vignes", "name": "Route des Vignes", "status": "ready", "length_m": 6000.0, "route_type": "point_to_point",
+	{"id": "vignes", "name": "Route des Vignes", "status": "ready", "length_m": 5000.0, "route_type": "loop",
+		"library": {"tags": ["grandprix"]}},
+	# Lot GPL1 : trace en ligne étiquetée « grandprix » : un parcours de mode est une boucle, elle reste libre
+	{"id": "ligne", "name": "Ligne étiquetée", "status": "ready", "length_m": 6000.0, "route_type": "point_to_point",
 		"library": {"tags": ["grandprix"]}},
 	{"id": "velodrome-250", "name": "Vélodrome 250 m", "status": "ready", "length_m": 250.0, "route_type": "loop",
 		"library": {"tags": ["velodrome"]}}]
@@ -74,7 +77,8 @@ func _run() -> void:
 	# Catalogue : parcours de chaque mode et parcours libres
 	var by_mode: Dictionary = CatalogModel.mode_route_ids(ROUTES, TABLE)
 	_check(by_mode == {"track": ["velodrome-250"], "grandprix": ["demo-circuit", "vignes"]}, "parcours des modes (%s)" % str(by_mode))
-	_check(CatalogModel.routes_of_mode(ROUTES, by_mode, "").map(func(r): return r["id"]) == ["alpe", "demo"], "parcours libres")
+	_check(CatalogModel.routes_of_mode(ROUTES, by_mode, "").map(func(r): return r["id"]) == ["alpe", "demo", "ligne"],
+		"parcours libres, dont la trace en ligne étiquetée (lot GPL1)")
 	_check(CatalogModel.routes_of_mode(ROUTES, by_mode, "grandprix").map(func(r): return r["id"]) == ["demo-circuit", "vignes"],
 		"parcours du Grand Prix")
 	_check(CatalogModel.tag_label("grandprix") == "Grand Prix", "étiquette « Grand Prix »")
@@ -90,7 +94,7 @@ func _run() -> void:
 	_check("track" in _ids(f) and "grandprix" in _ids(f), "Vélodrome et Grand Prix à l'accueil")
 	_press(f, "world")
 	var listed: Array = _ids(f)
-	_check(listed.has("alpe") and listed.has("demo") and not listed.has("demo-circuit") and not listed.has("vignes")
+	_check(listed.has("alpe") and listed.has("demo") and listed.has("ligne") and not listed.has("demo-circuit") and not listed.has("vignes")
 		and not listed.has("velodrome-250"), "liste générale sans les parcours des modes (%s)" % str(listed))
 	f.handle("B_SHORT")
 
@@ -101,7 +105,8 @@ func _run() -> void:
 	_check(f.state()["screen"] == MenuModel.READY and str(f.state()["title"]).ends_with("Circuit des Prés"), "écran Prêt du Grand Prix")
 	_press(f, "change_route")
 	listed = _ids(f)
-	_check(listed.has("demo-circuit") and listed.has("vignes") and not listed.has("alpe") and not listed.has("velodrome-250"),
+	_check(listed.has("demo-circuit") and listed.has("vignes") and not listed.has("alpe") and not listed.has("velodrome-250")
+		and not listed.has("ligne"),
 		"liste du Grand Prix seulement (%s)" % str(listed))
 	act = _press(f, "vignes")
 	_check(_route_of(act) == "vignes" and f.state()["screen"] == MenuModel.READY, "autre parcours du Grand Prix")
@@ -155,6 +160,38 @@ func _run() -> void:
 	o.menu.set_world("alpe", "Alpe d'Huez")
 	act = _press(o, "grandprix")
 	_check(_route_of(act) == "" and o.menu.world_id == "alpe", "sans table : le Grand Prix garde le parcours en cours")
+
+	# Lot GPL1 : boucle de mode restée libre (étiquette `free_route_tag`) : au Grand Prix et dans la liste générale
+	var recif := {"id": "recif", "name": "Récif des tortues", "status": "ready", "length_m": 8000.0, "route_type": "loop",
+		"library": {"tags": ["grandprix", "libre"]}}
+	var shared_routes: Array = ROUTES.duplicate(true) + [recif]
+	var sh = MenuFlow.new()
+	sh.connect_done = true
+	sh.menu.set_modes(["ride", "erg", "survivor", "grandprix", "track"])
+	sh.menu.set_mode_routes(TABLE)
+	sh.menu.set_free_route_tag("libre")
+	sh.menu.set_track_events(TRACK)
+	sh.set_routes(shared_routes)
+	sh.on_state({"session_state": "IDLE"})
+	var by_shared: Dictionary = CatalogModel.mode_route_ids(shared_routes, TABLE)
+	_check("recif" in by_shared["grandprix"], "boucle restée libre : parcours du Grand Prix")
+	_check("recif" in CatalogModel.routes_of_mode(shared_routes, by_shared, "", "libre").map(func(r): return r["id"])
+		and not "recif" in CatalogModel.routes_of_mode(shared_routes, by_shared, "").map(func(r): return r["id"]),
+		"boucle restée libre : liste générale avec l'étiquette, sans elle sinon")
+	_press(sh, "world")
+	_check(_ids(sh).has("recif") and not _ids(sh).has("demo-circuit"), "liste générale : le récif, pas le circuit (%s)" % str(_ids(sh)))
+	act = _press(sh, "recif")
+	_check(_route_of(act) == "recif" and sh.menu.free_world_id == "recif", "récif choisi en session libre : dernier parcours libre")
+	sh.menu.reset()
+	act = _press(sh, "grandprix")
+	_press(sh, "change_route")
+	_check(_ids(sh).has("recif") and _ids(sh).has("demo-circuit") and not _ids(sh).has("alpe"), "liste du Grand Prix avec le récif (%s)" % str(_ids(sh)))
+	act = _press(sh, "recif")
+	_check(_route_of(act) == "recif" and sh.state()["screen"] == MenuModel.READY, "récif choisi au Grand Prix : écran Prêt du mode")
+	sh.menu.reset()
+	act = _press(sh, "ride")
+	_check(_route_of(act) == "" and sh.menu.world_id == "recif" and sh.state()["screen"] == MenuModel.READY,
+		"session libre après le Grand Prix : on reste sur le récif, parcours libre (%s)" % str(act))
 
 	print("test_mode_routes : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

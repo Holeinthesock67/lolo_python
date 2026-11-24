@@ -10,6 +10,8 @@ const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd"
 const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
+const LeagueViewModel := preload("res://scripts/league_view_model.gd")
+const FeedbackModel := preload("res://scripts/feedback_model.gd")
 
 const KEY_DURATION := "duration_s"
 const KEY_DISTANCE := "distance_m"
@@ -177,6 +179,7 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 		out.append_array(GpHudModel.summary_lines(summary["gp"]))
 	if summary.get("track") is Dictionary:   # Épreuves de piste (lot VD9) : place, temps, tours, record
 		out.append_array(TrackHudModel.summary_lines(summary["track"]))
+	out.append_array(LeagueViewModel.summary_lines(summary))   # ligue d'hiver (lot CH4a) : manche et général
 	out.append_array(bots_lines(summary))
 
 	return out
@@ -276,6 +279,7 @@ func mode_lines(summary: Dictionary) -> Array:
 		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
 	if summary.get("gp") is Dictionary:
 		out.append_array(GpHudModel.summary_lines(summary["gp"]))
+	out.append_array(LeagueViewModel.summary_lines(summary))   # ligue d'hiver (lot CH4a)
 	out.append_array(bots_lines(summary))   # lots GP-niv et BOT-elo
 	return out
 
@@ -305,7 +309,7 @@ func power_chart(summary: Dictionary) -> Dictionary:
 ## en montre MAX_RECORD_LINES) : {name, time, before} ; `before` : ancien record (`pr_time_s`, révision 1.10) ou
 ## « premier temps ». names : identifiant du segment → nom (couche `segments` du parcours).
 ##
-## Puis les records de puissance de la séance (`summary.power_records`, série PP, lot PP4, révision 1.29), des
+## Puis les records de puissance de la séance (`summary.power_records`, série PP, lot PP4, révision 1.35), des
 ## plus longs aux plus courts : « Puissance 5 min · libre », « 310 W », « avant 300 W » (ou « premier effort »).
 func records_beaten(summary: Dictionary, names: Dictionary = {}) -> Array:
 	var out: Array = _segment_records(summary, names)
@@ -411,6 +415,71 @@ const ROGUE_RESULTS := {"victory": "Victoire", "defeat": "Défaite", "abandoned"
 # Lot R23 : « non vaincu » et non « fui » : une salle ou une phase se finit au bout de sa distance, gagnée ou non.
 const ROGUE_BOSS := {"won": "vaincu", "fled": "non vaincu", "not_reached": "non atteint"}
 const ROGUE_OBJECTIVES := {"endurance": "Endurance", "threshold": "Seuil", "vo2max": "VO2max"}
+
+
+## Titre du résultat, commun au bilan de tous les modes (lot RT2, fin commune) : les mêmes mots que le moment
+## RÉSULTAT de la séance (feedback_model.gd). {tag, title, sub, tone, extra} ; tone parmi win (or), place (bleu),
+## out (rouge), done (or), stop (neutre : séance arrêtée avant l'issue). `extra` : lignes ajoutées sous le titre
+## par un autre écran (encart extensible : la ligue d'hiver, lot CH4, y mettra ses points de manche), dans l'ordre.
+func result_card(summary: Dictionary, extra: Array = []) -> Dictionary:
+	var card := _result_head(summary)
+	card["tag"] = FeedbackModel.FAMILIES["resultat"]["tag"]
+	card["extra"] = []
+	for line in extra:
+		if str(line) != "":
+			card["extra"].append(str(line))
+	return card
+
+
+func _result_head(summary: Dictionary) -> Dictionary:
+	var rogue = summary.get("rogue", null)
+	if rogue is Dictionary:   # le verdict (lot R23) dit la cause et le conseil en dessous
+		var res := str(rogue.get("result", ""))
+		if res == "victory":
+			return {"title": "VICTOIRE !", "sub": "Cyber-Rogue", "tone": "win"}
+		return {"title": "RUN ARRÊTÉE" if res == "abandoned" else "DÉFAITE", "sub": "Cyber-Rogue",
+			"tone": "stop" if res == "abandoned" else "out"}
+	var tr = summary.get("track", null)
+	if tr is Dictionary:
+		var ev := str(tr.get("event", ""))
+		var title := str(TrackHudModel.TITLES.get(ev, ev))
+		if not bool(tr.get("finished", false)):
+			return {"title": "ÉPREUVE NON FINIE", "sub": title, "tone": "stop"}
+		return _place_head(tr.get("place", null), tr.get("of", null), title, "ÉPREUVE TERMINÉE")
+	var sv = summary.get("survivor", null)
+	if sv is Dictionary:
+		var place = sv.get("place", null)
+		if place == null:
+			return {"title": "COURSE NON FINIE", "sub": "Dernier survivant", "tone": "stop"}
+		if int(place) == 1:
+			return {"title": "VICTOIRE !", "sub": "Dernier survivant · 1er sur %d" % int(sv.get("of", 0)), "tone": "win"}
+		return {"title": "ÉLIMINÉ · %s sur %d" % [FeedbackModel.place_text(int(place)), int(sv.get("of", 0))],
+			"sub": "Dernier survivant", "tone": "out"}
+	var arr = summary.get("arrival", null)
+	var gp = summary.get("gp", null)
+	if gp is Dictionary:
+		var name := "Course" if str(gp.get("mode", "")) == "race" else "Grand Prix des objets"
+		if gp.get("finished", true) == false:   # absent : bilan d'avant la révision 1.34, fini à l'arrivée
+			return {"title": "COURSE NON FINIE", "sub": name, "tone": "stop"}
+		return _place_head(gp.get("place", null), gp.get("of", null), name, "ARRIVÉE")
+	if arr is Dictionary and str(arr.get("kind", "")) == "workout":
+		return {"title": "ENTRAÎNEMENT TERMINÉ", "sub": "Tous les blocs faits", "tone": "done"}
+	if arr is Dictionary:
+		var r := FeedbackModel.arrival_result(arr)
+		if not r.is_empty():
+			return {"title": r["title"], "sub": "Bout du parcours atteint" if str(arr.get("kind", "")) == "route" else r["sub"],
+				"tone": r["tone"]}
+	if summary.get(KEY_BLOCKS) is Array and not (summary[KEY_BLOCKS] as Array).is_empty():
+		return {"title": "ENTRAÎNEMENT ARRÊTÉ", "sub": "Arrêté avant le dernier bloc", "tone": "stop"}
+	return {"title": "SÉANCE TERMINÉE", "sub": "", "tone": "done"}
+
+
+## « VICTOIRE ! » à la 1re place, « ARRIVÉE · 3e sur 8 » sinon, `alone` sans classement.
+static func _place_head(place, of, sub: String, alone: String) -> Dictionary:
+	if not (place is int or place is float) or not (of is int or of is float) or int(of) < 2:
+		return {"title": alone, "sub": sub, "tone": "done"}
+	var rr: Array = FeedbackModel.race_result(int(place), int(of))
+	return {"title": rr[0], "sub": ("%s · 1er sur %d" % [sub, int(of)]) if int(place) == 1 else sub, "tone": rr[1]}
 
 
 ## Verdict du bilan (lot R23, essai du 15 novembre : « je n'ai pas compris pourquoi la défaite ») : en une phrase,
@@ -558,7 +627,7 @@ func menu_screen() -> Dictionary:
 		"title": "Fin de séance",
 		"on_back": "",
 		"items": [
-			{"id": "replay", "label": "Rejouer", "enabled": true, "detail": "même parcours, même mode"},
+			{"id": "replay", "label": "Rejouer", "enabled": true, "detail": ""},
 			{"id": "new_session", "label": "Menu principal", "enabled": true, "detail": ""},
 			{"id": "details", "label": "Voir le bilan détaillé", "enabled": true, "detail": ""},
 			{"id": "quit", "label": "Quitter", "enabled": true, "detail": ""}
