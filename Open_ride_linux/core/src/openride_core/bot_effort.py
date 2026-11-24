@@ -109,6 +109,9 @@ def track_effort(event: str, settings: dict, lap_m: float) -> Effort:
     objective, course_m, duration_s = TRACK_EFFORT.get(event, ("tempo", None, None))
     if "distance_m" in settings:
         course_m = float(settings["distance_m"])
+    if course_m is None and duration_s is None and "every_laps" in settings and "opponents" in settings:
+        # élimination : une élimination tous les `every_laps` tours, une par adversaire
+        course_m = float(settings["every_laps"]) * float(settings["opponents"]) * lap_m
     if course_m is None and duration_s is None:
         course_m = float(settings.get("laps", TRACK_DEFAULT_LAPS)) * lap_m
     return Effort(objective, course_m, duration_s)
