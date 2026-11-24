@@ -967,6 +967,7 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
 			ipc.send_command("start_open_world", act["args"])
+			menu_flow.note_launch("start_open_world")   # « Rejouer » de la fin de séance rouvre le globe
 		"set_setting":   # ligne « Biome » de l'écran du cap (lot W17) : même réglage que le menu des réglages
 			ipc.set_setting(str(act["key"]), act["value"])
 

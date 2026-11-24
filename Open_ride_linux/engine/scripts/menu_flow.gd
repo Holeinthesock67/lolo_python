@@ -259,6 +259,10 @@ var _workouts_raw: Array = []
 ## Résultat du test de FTP du bilan (summary.ftp_test) tant qu'il reste à accepter ou garder ({} sinon).
 var ftp_offer: Dictionary = {}
 var summary_message := ""
+## Commande qui a lancé la dernière séance (20 novembre) : « start » (écran Prêt), « start_run » (Cyber-Rogue)
+## ou « start_open_world » (monde ouvert, note_launch depuis main.gd). Seule source de « Rejouer » : la fin de
+## séance rouvre l'écran par lequel ce lancement était passé, avec les mêmes choix, quel que soit le mode.
+var last_launch := ""
 ## Ligne d'état de l'écran Prêt (bots refusés par le core, lot O7).
 var ready_message := ""
 var _ftp_pending := false
@@ -1287,7 +1291,25 @@ func handle(event: String) -> Dictionary:
 		act = route_act if act.is_empty() else {"action": "sequence", "list": [act, route_act]}
 	if menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league":
 		_refresh_mode_ready()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
+	_note_launch_of(act)
 	return act
+
+
+## Lancement envoyé par le menu (seul ou dans une séquence) : retenu pour « Rejouer ». Le « Démarrer » du
+## Cyber-Rogue suit son `start_run` : la run reste le lancement à rejouer.
+func _note_launch_of(act: Dictionary) -> void:
+	for a in ([act] if act.get("action", "") != "sequence" else act.get("list", [])):
+		match str(a.get("action", "")) if a is Dictionary else "":
+			"start_run":
+				last_launch = "start_run"
+			"start":
+				if menu.mode != "rogue":
+					last_launch = "start"
+
+
+## Lancement fait hors de ce menu (monde ouvert : menu du globe, main.gd).
+func note_launch(command: String) -> void:
+	last_launch = command
 
 
 func _handle_event(event: String) -> Dictionary:
@@ -1571,24 +1593,48 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_garage()
 			menu.push_screen(GarageViewModel.SCREEN)
 			return {"action": "list_garage"}
-		act = summary_model.handle_action(str(act["id"]), menu)
+		var item_id := str(act["id"])
+		if item_id == "replay" and last_launch in ["start_run", "start_open_world"]:
+			menu.reset()   # l'accueil derrière l'écran de départ du mode, comme pour un lancement depuis l'accueil
+			_leave_summary()
+			if last_launch == "start_run":   # écran de départ du Cyber-Rogue, mêmes choix ; « Lancer » refait la run
+				_refresh_rogue()
+				menu.push_screen(RogueMenuModel.SCREEN)
+				return _reload_world()
+			# route du monde ouvert générée à la volée : pas de select_route, le globe en relance une
+			return {"action": "sequence", "list": [{"action": "list"}, {"action": "open_world_menu"}]}
+		act = summary_model.handle_action(item_id, menu)
 		match act.get("action", ""):
 			"new_session":
-				show_details = false
-				xp_result = {}
-				_xp_announced = true   # les copies du bilan encore envoyées par le core ne rouvrent rien
-				summary = {}
-				ftp_offer = {}
-				summary_message = ""
-				_refresh_summary()
-				# Le core reste en FINISHED jusqu'au prochain select_route : le monde choisi est rechargé.
-				if menu.world_id != "":
-					return {"action": "list", "route_id": menu.world_id}
-				return {"action": "list"}
+				_leave_summary()
+				if item_id == "replay":
+					return _reload_world()
+				# « Menu principal » : même accueil après tous les modes, sans entraînement gardé par le core
+				# (sinon un parcours choisi ensuite partirait en ERG sous un écran « session libre »).
+				return {"action": "sequence", "list": [{"action": "select_workout", "workout_id": null},
+					_reload_world()]}
 			"details":
 				show_details = not show_details
 				return {}
 	return act
+
+
+## Fin de séance quittée (Rejouer ou Menu principal) : bilan, expérience et FTP proposée oubliés.
+func _leave_summary() -> void:
+	show_details = false
+	xp_result = {}
+	_xp_announced = true   # les copies du bilan encore envoyées par le core ne rouvrent rien
+	summary = {}
+	ftp_offer = {}
+	summary_message = ""
+	_refresh_summary()
+
+
+## Le core reste en FINISHED jusqu'au prochain select_route : listes redemandées, monde choisi rechargé.
+func _reload_world() -> Dictionary:
+	if menu.world_id != "":
+		return {"action": "list", "route_id": menu.world_id}
+	return {"action": "list"}
 
 
 # --- Écran Prêt des modes à réglages : Dernier survivant (lot DS7), Grand Prix des objets (lot GP9) ---------
