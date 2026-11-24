@@ -86,7 +86,6 @@ class RenderConfig:
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
-    draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des biomes de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
@@ -240,8 +239,7 @@ class GrandPrixConfig:
     """Mode « Grand Prix des objets » (série GP, lot GP2) : plateau, format de la course et objets.
     Les objets joués et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (`grandprix.items`)."""
     opponents: int = 4             # adversaires (2 à 11 depuis le lot GP10, peloton du lot PL1)
-    laps: int = 3                  # circuit : nombre de tours (1 à 5)
-    distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km), au plus le parcours (lot GP14)
+    laps: int = 3                  # nombre de tours du circuit (1 à 5) : le Grand Prix se court sur une boucle (lot GPL1)
     chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
     box_every_m: int = 500         # écart des rangées de boîtes (500 à 3000 m, pas de 500 m ; 500 par défaut depuis le
                                    # lot GP14, essai du 15 novembre : « pas assez d'objets »)
@@ -283,6 +281,9 @@ class DepartConfig:
     cadence_rpm: int = 30          # cadence à tenir pour partir (ou 40 W : la cadence du trainer arrive en retard)
     duree_s: int = 1               # secondes de pédalage cumulées, à-coups de moins de 2 s tolérés (sas du 15/11)
     attente_decor_s: int = 60      # au plus : l'engine n'a pas dit son décor prêt (ancien engine, sans engine)
+    # Échauffement sur place en ERG avant une course (Dernier survivant, Grand Prix, épreuves de piste ; demande du
+    # 21 novembre, `warmup.py`) : minutes, 0 : aucun ; Z court le passe.
+    echauffement_min: int = 10
 
 
 @dataclass
@@ -412,7 +413,6 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("survivor", "spacing_km"): (1, 3),
     ("grandprix", "opponents"): (2, 11),        # lot GP10 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("grandprix", "laps"): (1, 5),
-    ("grandprix", "distance_km"): (5, 30),
     ("grandprix", "box_every_m"): (500, 3000),
     ("race", "opponents"): (2, 11),             # lot CR1 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("race", "laps"): (1, 10),
@@ -425,6 +425,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("depart", "cadence_rpm"): (10, 90),
     ("depart", "duree_s"): (0, 10),
     ("depart", "attente_decor_s"): (0, 600),
+    ("depart", "echauffement_min"): (0, 20),
     ("coach", "temps_disponible_min"): (30, 120),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
@@ -446,7 +447,6 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "texture_level"): ("auto", "low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
-    ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("render", "day_night"): ("off", "theme", "real", "accelerated"),
@@ -486,10 +486,10 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("bots", "level_pct"), ("bots", "objective"), ("bots", "elo"),
     ("gravel", "mode"),
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
-    ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
+    ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"), ("depart", "echauffement_min"),
     ("survivor", "opponents"), ("survivor", "spacing_km"), ("survivor", "spread"), ("survivor", "after_out"),
     ("coach", "objectif"), ("coach", "temps_disponible_min"),
-    ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "distance_km"), ("grandprix", "chaos"),
+    ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "chaos"),
     ("grandprix", "box_every_m"),
     ("race", "opponents"), ("race", "laps"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
@@ -581,8 +581,23 @@ DEV_KEYS: dict[tuple[str, str], str] = {
     ("log", "latence"): "journal de latence du Click",
     ("ride", "traffic_bench_s"): "passages forcés de véhicules proches pour sim_bench (lot AS6)",
 }
+# Clés retirées du jeu : encore lues sans avertissement de faute de frappe dans un config.toml d'avant, puis ignorées.
+RETIRED_KEYS: dict[tuple[str, str], str] = {
+    ("render", "draft_gauge"): "jauge d'abri au-dessus des bots, retirée le 21/11/2026 (lot NI1)",
+    ("grandprix", "distance_km"): "le Grand Prix se court sur une boucle seulement (lot GPL1)",
+}
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {}   # vide depuis le lot GP9 (réglages du Grand Prix)
+# Réglages retirés (RETIRED_KEYS ci-dessus), encore écrits dans le `config.toml` ou le `profil.toml` d'un joueur :
+# ignorés sans alerte de faute de frappe (journal en information seulement), jamais réécrits.
+
+
+def _retired(source: str, section: str, key: str) -> bool:
+    """Vrai (et note au journal) si `[section] key` est un réglage retiré (RETIRED_KEYS)."""
+    why = RETIRED_KEYS.get((section, key))
+    if why is not None:
+        log.info("%s : [%s] %s ignoré, réglage retiré : %s", source, section, key, why)
+    return why is not None
 
 
 def is_profile_key(section: str, key: str) -> bool:
@@ -600,7 +615,7 @@ def profile_overlay(data: dict[str, Any], source: str = "profil.toml") -> dict[s
         for key, value in values.items():
             if is_profile_key(section, key):
                 out.setdefault(section, {})[key] = value
-            else:
+            elif not _retired(source, section, key):
                 log.warning("%s : [%s] %s ignoré (réglage de la machine, à mettre dans config.toml)",
                             source, section, key)
     return out
@@ -635,9 +650,12 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
     """Recopie dans la dataclass `dc` les clés connues de `data` ; signale les clés inconnues."""
     known = {f.name for f in fields(dc)}
     for key in data:
-        if key not in known:
+        if key not in known and not _retired(source, section, key):
             name = f"[{section}] {key}" if section else f"[{key}]"
-            log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
+            if (section, key) in RETIRED_KEYS:
+                log.info("%s : %s ignoré (%s)", source, name, RETIRED_KEYS[(section, key)])
+            else:
+                log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
     if section == "drivers" and isinstance(data.get("click_reset_locked"), bool):
         # Booléen d'avant le lot K9 : true = "reset", false = "off" (même effet qu'avant).
         data = {**data, "click_reset_locked": "reset" if data["click_reset_locked"] else "off"}

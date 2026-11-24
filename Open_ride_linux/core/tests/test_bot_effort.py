@@ -59,6 +59,8 @@ def test_track_objective_follows_the_event():
     assert be.track_effort("hour", {}, 250.0) == be.Effort("max", None, 3600.0)
     assert be.track_effort("free", {}, 250.0).objective == "tempo"
     assert be.track_effort("elimination", {}, 250.0).course_m == be.TRACK_DEFAULT_LAPS * 250.0
+    # élimination : une élimination tous les `every_laps` tours, une par adversaire
+    assert be.track_effort("elimination", {"opponents": 7, "every_laps": 4}, 250.0).course_m == 7 * 4 * 250.0
     from openride_core import track
 
     assert set(be.TRACK_EFFORT) == set(track.EVENTS)            # toutes les épreuves ont leur effort

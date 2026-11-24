@@ -126,6 +126,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("trainer.control", "Pilotage du trainer", "advanced"),
     Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
     Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
+    Setting("depart.echauffement_min", "Échauffement avant une course", "ride", 5, "min",   # demande du 21/11
+            help="Avant le Dernier survivant, le Grand Prix et les épreuves du vélodrome : échauffement sur place "
+                 "en ERG, en watts, montée douce puis deux accélérations. Z le passe ; 0 : aucun."),
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
     Setting("ride.vehicle_draft", "Abri derrière les véhicules", "ride"),   # lot AS6
     # Dernier survivant (série DS, lot DS2) ; écran du mode au lot DS7
@@ -136,7 +139,6 @@ SETTINGS: tuple[Setting, ...] = (
     # Grand Prix des objets (série GP, lot GP2) ; écran du mode et entrée à l'accueil au lot GP9
     Setting("grandprix.opponents", "Grand Prix : adversaires", "ride"),
     Setting("grandprix.laps", "Grand Prix : tours du circuit", "ride"),
-    Setting("grandprix.distance_km", "Grand Prix : distance en ligne", "ride", 1, "km"),
     Setting("grandprix.chaos", "Grand Prix : chaos", "ride"),
     Setting("grandprix.box_every_m", "Grand Prix : écart des boîtes", "ride", 500, "m"),
     # Course classique contre les bots (lot CR1) : écran du mode à l'accueil
@@ -155,7 +157,6 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
-    Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
             help="Automatique : les biomes du parcours, ou de la région en monde ouvert (prairie tempérée sans "

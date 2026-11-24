@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import tomllib
 from pathlib import Path
@@ -290,18 +291,17 @@ def test_fps_counter_setting(tmp_path: Path):
         settings.check(cfg, "render.fps", "oui")
 
 
-def test_draft_gauge_setting(tmp_path: Path):
-    """Jauge d'abri au-dessus des bots (demande du 29 octobre) : choix off / on, graphisme, appliquée tout de
-    suite, coupée par défaut."""
-    cfg = Config()
-    it = {i["key"]: i for i in settings.current(cfg)}["render.draft_gauge"]
-    assert (it["value"], it["choices"], it["applies"], it["group"]) == ("off", ["off", "on"], "now", "graphics")
+def test_draft_gauge_retired(tmp_path: Path, caplog):
+    """Jauge d'abri des bots retirée (lot NI1, 21/11) : plus au menu, et un config.toml d'avant qui la porte se lit
+    sans avertissement de faute de frappe."""
+    assert "render.draft_gauge" not in {i["key"] for i in settings.current(Config())}
     path = tmp_path / "config.toml"
-    path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
-    settings.apply(cfg, {"render.draft_gauge": "on"}, path)
-    assert config_mod.load(path).render.draft_gauge == "on"
-    with pytest.raises(settings.SettingError):
-        settings.check(cfg, "render.draft_gauge", "oui")
+    path.write_text("[render]\nquality = \"low\"\ndraft_gauge = \"on\"\n", encoding="utf-8")
+    with caplog.at_level(logging.INFO, logger=config_mod.log.name):
+        cfg = config_mod.load(path)
+    assert not hasattr(cfg.render, "draft_gauge")
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING and "draft_gauge" in r.getMessage()]
+    assert any("draft_gauge" in r.getMessage() and "NI1" in r.getMessage() for r in caplog.records)
 
 
 def test_settings_groups_and_new_entries():

@@ -7,7 +7,8 @@ autres clés) est gardé. Une ligne déjà en commentaire n'est plus lue : la mi
 marque à part, et une clé remise à la main est de nouveau commentée au lancement suivant.
 
 `RETIRED` : (section, clé, raison écrite dans le commentaire). La clé reste connue de `config.py` (bancs et
-arguments du lanceur), seule la valeur des fichiers du joueur est retirée.
+arguments du lanceur), seule la valeur des fichiers du joueur est retirée ; une clé dont la fonction est retirée du
+jeu (lot NI1) n'est plus que dans `config.RETIRED_KEYS`.
 """
 
 from __future__ import annotations
@@ -25,6 +26,9 @@ RETIRED: tuple[tuple[str, str, str], ...] = (
     ("render", "texture_level", "réglage retiré du menu (lot NI2), suit la Qualité graphique"),
     # Lot NI3 : « Niveau des bots » ; la dose se choisit avec l'Intensité du jour, la cote Elo règle le reste
     ("bots", "level_pct", "réglage retiré du menu (lot NI3), la dose se choisit avec l'Intensité du jour"),
+    # H7 : « Jauge d'abri des bots » ; la jauge est retirée du jeu (doublon de la pastille « Abri » du HUD) : la clé
+    # n'est plus dans `config.py`, seulement dans `config.RETIRED_KEYS` (lue sans avertissement)
+    ("render", "draft_gauge", "jauge d'abri retirée (lot NI1), la pastille « Abri » du HUD la remplace"),
 )
 
 

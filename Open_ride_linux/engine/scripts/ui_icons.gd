@@ -13,7 +13,7 @@ const ITEM_ICONS := {
 	"continue": "play", "records": "trophy", "end_save": "flag", "abandon": "cross", "u_turn": "u_turn", "no": "cross",
 	"yes": "check", "difficulty": "slope", "ride_mode": "bars", "target_w": "bolt", "cadence_rpm": "bike", "ghost": "ghost", "peloton": "rider",
 	"rogue": "rider", "rogue_change": "gear", "objective": "flag", "duration": "calendar",
-	"chassis": "bike", "launch": "play", "history": "list", "collection": "trophy", "coach": "flag",
+	"chassis": "bike", "launch": "play", "history": "list", "collection": "trophy", "coach": "flag", "league": "calendar",
 	"garage": "bike", "bike": "bike", "outfit": "rider", "avatar": "rider", "save": "check", "cancel": "cross",
 }
 ## Bonus du HUD (lot TT6, maquettes validées le 8 novembre) : forme de chaque valeur de `powerup.held` et
