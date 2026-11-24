@@ -1,10 +1,15 @@
 name: Confidentialité
 
 # Lot X23 : le dépôt est public. Chaque PR et chaque envoi sur main passent le scanner
-# Open_ride_linux/scripts/privacy/privacy_scan.py : fichiers suivis, puis commits de la PR
-# (auteur, committer, message, lignes ajoutées). La liste des mots interdits et des zones
-# privées vient du secret PRIVACY_DENYLIST ; sans ce secret, seuls les contrôles génériques
-# tournent (adresses Bluetooth, clés, fichiers d'activité, adresses e-mail des commits).
+# Open_ride_linux/scripts/privacy/privacy_scan.py : fichiers suivis, puis commits de la PR ou
+# de l'envoi (auteur, committer, message, fusions comprises, lignes ajoutées).
+# Lot RC18 (revue O2-06, O2-07, O2-12 c) :
+# - secret PRIVACY_DENYLIST obligatoire (--require-denylist) pour un envoi sur main et pour une PR
+#   ouverte depuis une branche de ce dépôt : secret absent ou vide = job rouge. Une PR venue d'un
+#   fork ne reçoit jamais le secret : contrôles génériques seulement ;
+# - envoi sur main : commits before..after contrôlés aussi ;
+# - scanner toujours pris dans main : une PR qui modifie privacy_scan.py ne peut pas lui faire
+#   afficher le secret (ses nouvelles règles s'appliquent après sa fusion).
 on:
   pull_request:
   push:
@@ -17,21 +22,32 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    env:
+      REQUIRE: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '--require-denylist' || '' }}
     steps:
       - name: Récupération du dépôt (historique complet)
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
+      - name: Scanner de main
+        run: git show origin/main:Open_ride_linux/scripts/privacy/privacy_scan.py > "$RUNNER_TEMP/privacy_scan.py"
+
       - name: Fichiers suivis
         env:
           PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
-        run: python3 Open_ride_linux/scripts/privacy/privacy_scan.py --all
+        run: python3 "$RUNNER_TEMP/privacy_scan.py" --all $REQUIRE
 
       - name: Commits de la PR
         if: github.event_name == 'pull_request'
         env:
           PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
-        run: >-
-          python3 Open_ride_linux/scripts/privacy/privacy_scan.py
-          --commits ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: python3 "$RUNNER_TEMP/privacy_scan.py" --commits "$RANGE" $REQUIRE
+
+      - name: Commits envoyés sur main
+        if: github.event_name == 'push'
+        env:
+          PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
+          RANGE: ${{ github.event.before }}..${{ github.event.after }}
+        run: python3 "$RUNNER_TEMP/privacy_scan.py" --commits "$RANGE" $REQUIRE
