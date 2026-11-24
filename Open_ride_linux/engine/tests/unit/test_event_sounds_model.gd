@@ -91,6 +91,18 @@ func _run() -> void:
 	_check(m.on_state(_st(0.0, "FINISHED", false)) == ["jingle_finish"], "ERG en pause → FINISHED : fin de séance")
 	m.on_state(_st(0.0, "READY", false))
 	_check(m.on_state(_st(0.0, "FINISHED", false)).is_empty(), "READY → FINISHED : rien")
+	# Lot RT2 : issue déjà annoncée (RÉSULTAT et son son pendant la séance) : pas de seconde fanfare à FINISHED
+	var arrived := _st(12000.0)
+	arrived["arrival"] = {"kind": "grandprix", "place": 2, "of": 6}
+	m.on_state(arrived)
+	m.on_state(_st(12010.0, "PAUSED"))
+	_check(m.on_state(_st(12010.0, "FINISHED")).is_empty(), "arrivée annoncée puis FINISHED : pas de fanfare")
+	m.on_state(_st(0.0, "READY"))
+	m.on_state(_st(0.0))
+	_check(m.on_state(_st(100.0, "FINISHED")) == ["jingle_finish"], "séance suivante sans arrivée : fanfare de fin")
+	_check(Model.issue_known({"track": {"finished": true}}) and Model.issue_known({"survivor": {"winner": "me"}})
+		and Model.issue_known({"workout_done": {"workout_name": "x"}}) and not Model.issue_known({"track": {"finished": false}}),
+		"issue connue : piste finie, survivant gagné, entraînement fini")
 
 	# Portiques (29/10) : départ du parcours, départ d'un sprint ou d'une montée, ligne d'une boucle.
 	var gates := [{"s": 2860.0, "jingle": "jingle_start"}]

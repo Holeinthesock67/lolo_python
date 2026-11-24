@@ -183,6 +183,53 @@ func _test_trash_and_trial(f) -> void:
 	f.menu.focus_item("restore")
 	f.on_error("profile_invalid", "le nom « Cycliste B » est déjà pris")
 	_check(f.state()["status"].contains("déjà pris"), "refus du core sur la ligne d'état")
+	_test_reset_stats(f)
+
+
+## Lot RZ1 : « Remettre à zéro mes statistiques » et « Annuler la remise à zéro » dans « Gérer : <profil en cours> ».
+func _test_reset_stats(f) -> void:
+	f.on_profiles(PROFILES)
+	f.menu.reset()
+	f.menu.push_screen(ProfilesViewModel.MANAGE_LIST)
+	f.menu.focus_item("p:cycliste-b")
+	f.handle("A_LONG")
+	var row: Dictionary = f.state()["items"][_ids(f.state()["items"]).find("reset_stats")]
+	_check(not row["enabled"] and row["detail"] == "choisir ce profil d'abord", "autre profil : remise à zéro grisée, mot écrit")
+	f.handle("Y_SHORT")
+	f.menu.focus_item("p:" + str(PROFILES["active"]))
+	f.handle("A_LONG")
+	_check(not _ids(f.state()["items"]).has("undo_reset"), "sans remise faite : pas d'annulation")
+	row = f.state()["items"][_ids(f.state()["items"]).find("reset_stats")]
+	_check(row["enabled"] and row["label"] == "Remettre à zéro mes statistiques" and row["detail"].contains("sauvegarde"),
+		"profil en cours : remise à zéro, sauvegarde annoncée")
+	f.menu.focus_item("reset_stats")
+	f.handle("A_LONG")
+	var st: Dictionary = f.state()
+	_check(f.menu.current_screen() == MenuModel.CONFIRM and st["focus"] == 0, "remise à zéro : confirmation, « Non » d'abord")
+	_check(st["title"].begins_with("Remettre à zéro les statistiques de « ") and st["title"].contains("Sauvegarde faite avant")
+		and st["title"].contains("FTP, réglages et cote Elo gardés"), "question écrite : %s" % st["title"])
+	_check(st["items"][0]["label"] == "Non, garder mes statistiques" and st["items"][1]["label"] == "Oui, remettre à zéro",
+		"boutons qui disent ce qu'ils font")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "reset_profile_stats"}, "« Oui » : reset_profile_stats")
+	_check(f.state()["status"] == "Sauvegarde puis remise à zéro…", "attente écrite")
+	f.on_profiles(PROFILES.merged({"resets": [{"id": "cycliste-a_20261128-093000", "date": "2026-11-28", "time": "09:30"}]}, true))
+	_check(f.state()["status"] == "Statistiques remises à zéro (sauvegarde faite)", "réponse du core : remise faite")
+	var ids := _ids(f.state()["items"])
+	_check(ids.has("undo_reset") and f.state()["items"][ids.find("undo_reset")]["detail"] == "remise du 28/11 à 09:30",
+		"annulation proposée avec la date")
+	f.menu.focus_item("undo_reset")
+	f.handle("A_LONG")
+	_check(f.state()["title"].begins_with("Annuler la remise à zéro du 28/11 à 09:30 ?"), "annulation : question datée")
+	_check(f.state()["items"][1]["label"] == "Oui, annuler la remise", "annulation : bouton écrit")
+	_check(f.handle("A_LONG") == {}, "« Non » par défaut : rien n'est envoyé")
+	f.menu.focus_item("undo_reset")
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "undo_profile_reset", "id": "cycliste-a_20261128-093000"}, "« Oui » : undo_profile_reset")
+	f.menu.confirm("Quitter OpenRide ?", {"action": "quit"})
+	_check(f.state()["items"][0]["label"] == "Non" and f.state()["items"][1]["label"] == "Oui", "autres confirmations : Non / Oui")
+	f.handle("Y_SHORT")
 
 
 func _init() -> void:

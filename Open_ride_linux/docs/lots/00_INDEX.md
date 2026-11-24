@@ -255,6 +255,10 @@ puis ouvre une pull request avec la liste des critères d'acceptation cochés et
 Si un contrat te semble faux ou incomplet, arrête-toi et pose la question au lieu d'improviser.
 ```
 
+## 4 bis. Notes de changement : un fichier par lot (22 novembre)
+
+Une PR n'écrit plus dans `CHANGELOG.md` ni dans `docs/SUIVI_AVANCEMENT.md` : elle ajoute un seul fichier, `docs/changements/<LOT>.md`, avec ses lignes pour le CHANGELOG et le suivi (forme dans [docs/changements/README.md](../changements/README.md)). La passe de doc les recopie et les retire. Raison : ces deux fichiers étaient touchés par presque toutes les PR, si bien que chaque fusion créait un conflit dans toutes les autres (audit de cohérence et de qualité du 22 novembre, constat P3). Le cahier du lot garde son statut et sa section « Livraison ».
+
 ## 5. Partage des lots par issues GitHub
 
 Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M`, `série N`, `série O`, `série P`, `série Q`, `série R`, `série S` ou `série X`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
