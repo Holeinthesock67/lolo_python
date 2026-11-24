@@ -936,7 +936,10 @@ func _run_menu_action(act: Dictionary) -> void:
 		"create_profile":
 			ipc.send_command("create_profile", {"name": str(act["name"])})
 		"recover_session":   # séance interrompue d'un lancement précédent (lot O34)
-			ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
+			if bool(act.get("resume", false)):   # lot RC3 : reprendre la séance ou la course
+				ipc.send_command("recover_session", {"id": str(act["id"]), "resume": true})
+			else:
+				ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
 		"rename_profile":
 			ipc.send_command("rename_profile", {"id": str(act["id"]), "name": str(act["name"])})
 
