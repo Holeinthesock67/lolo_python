@@ -26,7 +26,7 @@ const GO_S := 1.2
 const TITLE := "START YOUR ENGINES"
 const TAG := "OPENRIDE · DÉPART"
 ## Étapes de l'attente, dans l'ordre des pastilles de l'écran : (phase, libellé). L'échauffement d'une course
-## (révision 1.26, `start_wait.warmup`) n'a sa pastille que quand la trame l'annonce.
+## (révision 1.33, `start_wait.warmup`) n'a sa pastille que quand la trame l'annonce.
 const STEPS := [["decor", "Décor"], ["trainer", "Trainer"], ["pedalage", "Pédalage"]]
 const WARMUP_STEP := ["echauffement", "Échauffement"]
 ## Aides d'une attente qui dure (lot RT4) : le mot « À faire » écrit, jamais la couleur seule.

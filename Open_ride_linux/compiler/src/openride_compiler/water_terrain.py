@@ -10,8 +10,11 @@ Une seule règle pour les parcours compilés et les carrés du monde ouvert :
   Trop petit pour un échantillon loin de la rive : tous les points dedans ; aucun : minimum de la rive
   (règle d'avant, lot I4).
 - **Sol sous l'eau** (`sink_grid`) : les échantillons du relief dans un plan d'eau (îles exceptées)
-  descendent à `level_y − WATER_SINK_M` au plus ; jamais remontés ; la chaussée (moins de
-  `BLEND_INNER_M` du bord d'une route hors pont) est gardée. Plus de sol qui perce la surface.
+  descendent à `level_y − WATER_SINK_M` au plus ; jamais remontés. Plus de sol qui perce la surface.
+  Près d'une route (hors pont), le fond du lac passe par le même fondu route / MNT que le relief
+  (`terrain.blend_weight`, argument `road`) : chaussée gardée en deçà de `BLEND_INNER_M`, puis rive
+  qui descend en douceur jusqu'au fond à `BLEND_OUTER_M` (20/11 : la route qui longe un lac ne
+  surplombe plus une chute de 7 m sans talus, monde ouvert comme parcours compilés).
 - La mer (`sea`, lots U3 et U9) n'est pas concernée : niveau 0, MNT à 0, surface 0,2 m au-dessus.
 
 La décision ne dépend que des coordonnées de l'échantillon et du polygone : deux tuiles voisines
@@ -153,10 +156,19 @@ def inland_areas(areas: Iterable[dict[str, Any]], rivers: Any = None) -> list[di
 
 
 def sink_grid(gx: np.ndarray, gz: np.ndarray, y: np.ndarray, areas: list[dict[str, Any]],
-              protect: np.ndarray | None = None, depth: float = C.WATER_SINK_M) -> int:
-    """Abaisse (sur place) les échantillons `y` dans les plans d'eau de `inland_areas` ; rend leur nombre."""
+              protect: np.ndarray | None = None, depth: float = C.WATER_SINK_M,
+              road: tuple[np.ndarray, np.ndarray] | None = None) -> int:
+    """Abaisse (sur place) les échantillons `y` dans les plans d'eau de `inland_areas` ; rend leur nombre.
+
+    `road` = (distance au bord de la chaussée, altitude de la route) de chaque échantillon (inf / NaN loin de toute
+    route) : le fond visé est fondu avec la route comme le relief (`terrain.blend`), si bien que la rive remonte
+    jusqu'à la chaussée au lieu de tomber à pic. `protect` : échantillons jamais abaissés."""
+    from .terrain import blend_weight
+
     fx, fz, fy = np.ravel(gx), np.ravel(gz), y.reshape(-1)
     keep = None if protect is None else np.ravel(protect)
+    if road is not None:
+        r_d, r_y = np.ravel(road[0]), np.ravel(road[1])
     count = 0
     for a in areas:
         x0, z0, x1, z1 = a["bbox"]
@@ -172,6 +184,10 @@ def sink_grid(gx: np.ndarray, gz: np.ndarray, y: np.ndarray, areas: list[dict[st
             target = np.asarray(a["level_at"](fx[sel], fz[sel]), dtype=float) - depth
         else:
             target = np.full(len(sel), a["level_y"] - depth)
+        if road is not None:   # même fondu que le relief : la route, puis la rive, puis le fond
+            w = blend_weight(r_d[sel])
+            ry = r_y[sel] - C.ROAD_SINK_M
+            target = np.where(np.isfinite(ry) & (w < 1.0), (1.0 - w) * ry + w * target, target)
         low = np.isfinite(fy[sel]) & np.isfinite(target) & (fy[sel] > target)
         sel, target = sel[low], target[low]
         fy[sel] = target
@@ -199,7 +215,7 @@ def sink_route_tiles(tiles: dict[str, dict[tuple[int, int], np.ndarray]], route:
     if not lakes:
         return 0
     axis = route_axis(route, spans)
-    reach = C.ROAD_HALF_WIDTH_M + C.BLEND_INNER_M
+    reach = C.ROAD_HALF_WIDTH_M + C.BLEND_OUTER_M
     count = 0
     for level in LEVELS:
         for (ix, iz), g in (tiles.get(level.name) or {}).items():
@@ -210,9 +226,9 @@ def sink_route_tiles(tiles: dict[str, dict[tuple[int, int], np.ndarray]], route:
             if not mine:
                 continue
             gx, gz = tile_coords(ix, iz, level)
-            dist, _ = axis.nearest(gx, gz, reach)
+            dist, y_route = axis.nearest(gx, gz, reach)
             y = g.astype(float)
-            n = sink_grid(gx, gz, y, mine, protect=np.isfinite(dist).reshape(gx.shape))
+            n = sink_grid(gx, gz, y, mine, road=(dist - C.ROAD_HALF_WIDTH_M, y_route))
             if n:
                 g[:, :] = y.astype(g.dtype)
                 count += n

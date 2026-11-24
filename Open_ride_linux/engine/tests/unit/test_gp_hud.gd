@@ -65,7 +65,8 @@ func _run() -> void:
 	_check(rows[0]["item"] == "bell" and rows[3]["item"] == "bottle" and rows[1]["item"] == "", "bande : objet tenu par chaque bot")
 	_check(rows[4]["hit"] and not rows[3]["hit"], "bande : Diesel touché par une musette")
 	var ln: Dictionary = v["lanes"]
-	_check(ln["lane"] == 1 and not ln["auto"] and ln["hint"] == "Bidon glissant en vue : A ou ← →", "voies : objet en vue (%s)" % ln["hint"])
+	_check(ln["lane"] == 1 and not ln["auto"] and ln["hint"] == "Bidon glissant devant sur ta voie : A ou ← → pour l'éviter",
+		"voies : bidon devant, à éviter (%s)" % ln["hint"])
 	_check(v["warn"].is_empty(), "pas de menace : pas d'avertissement")
 
 	# Roulette pendant le tirage : l'objet tourne, pas d'invite Z, rien dans la bande pour Toi
@@ -121,10 +122,31 @@ func _run() -> void:
 	auto["pick"] = false
 	auto["lane"] = 2
 	ln = m.view(_state(auto), 0.0)["lanes"]
-	_check(ln["auto"] and ln["lane"] == 2 and ln["hint"] == "← → : voie", "voies : automatique, flèches seulement")
+	_check(ln["auto"] and ln["lane"] == 2 and ln["hint"] == "← → : changer de voie", "voies : automatique, flèches seulement")
+	var forced := auto.duplicate()
+	forced["auto"] = false
+	_check(m.view(_state(forced), 0.0)["lanes"]["hint"] == "← → : changer de voie · A maintenu : placement auto",
+		"voies : voie choisie, A maintenu rend le placement automatique")
 	var near := GP.duplicate()
 	near["obj"] = []
-	_check(m.view(_state(near), 0.0)["lanes"]["hint"] == "A : voie suivante · ← → : voie", "voies : A change de voie, rien en vue")
+	near["boxes"] = [1600]
+	_check(m.view(_state(near), 0.0)["lanes"]["hint"] == "Boîte devant, réserve pleine : Z d'abord pour en prendre une",
+		"voies : boîte devant, réserve pleine (%s)" % m.view(_state(near), 0.0)["lanes"]["hint"])
+	near["held"] = null
+	_check(m.view(_state(near), 0.0)["lanes"]["hint"] == "Boîte sur ta voie : passe dessus pour un objet", "voies : boîte libre sur sa voie")
+	near["boxes_gone"] = [[0, 1]]
+	_check(m.view(_state(near), 0.0)["lanes"]["hint"] == "Boîte prise sur ta voie : A ou ← → pour en changer", "voies : boîte prise sur sa voie")
+	near["boxes_gone"] = [[0, 2]]
+	_check(m.view(_state(near), 0.0)["lanes"]["hint"] == "Boîte sur ta voie : passe dessus pour un objet", "voies : boîte prise sur une autre voie")
+	near["roll_s"] = 1.2
+	_check(m.view(_state(near), 0.0)["lanes"]["hint"].begins_with("Boîte devant, réserve pleine"), "voies : tirage en cours, réserve pleine")
+	near["boxes"] = [1950]
+	_check(m.view(_state(near), 0.0)["lanes"]["hint"] == "A ou ← → : changer de voie", "voies : A change de voie, rien de proche identifié")
+	var behind := GP.duplicate()
+	behind["obj"] = [[21, "musette", 1450.0, 1], [22, "bottle", 1560.0, 0]]
+	_check(m.view(_state(behind), 0.0)["lanes"]["hint"] == "Musette derrière sur ta voie : A ou ← → pour l'éviter", "voies : musette derrière sur sa voie")
+	behind["obj"] = [[21, "musette", 1450.0, 2], [23, "homing", 1480.0, 1]]
+	_check(m.view(_state(behind), 0.0)["lanes"]["hint"] == "A ou ← → : changer de voie", "voies : musette d'une autre voie, guidée : pas de consigne d'esquive")
 
 	# En tête et deuxième
 	var lead := GP.duplicate()

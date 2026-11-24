@@ -300,6 +300,23 @@ static func row_style(focused: bool) -> StyleBoxFlat:
 	return s
 
 
+## Ligne d'un tableau de la carte de détail (classement de la ligue d'hiver) ; `me` : ligne du cycliste, encadrée.
+static func table_row_style(me: bool) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.set_corner_radius_all(6)
+	s.content_margin_left = 8
+	s.content_margin_right = 8
+	s.set_border_width_all(2 if me else 0)
+	s.border_color = FOCUS
+	s.bg_color = Color(FOCUS, 0.14) if me else Color(0, 0, 0, 0)
+	return s
+
+
+## Couleur d'un maillot reçue du core (« #rrggbb ») ; vide ou illisible : couleur de la sélection.
+static func jersey_color(hex: String) -> Color:
+	return Color.from_string(hex, FOCUS) if hex != "" else FOCUS
+
+
 ## Carte de détail (fiche du parcours, bilan).
 static func card_style() -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()

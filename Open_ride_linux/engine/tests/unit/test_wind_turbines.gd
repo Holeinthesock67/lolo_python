@@ -1,6 +1,7 @@
 extends SceneTree
 
-## Tests sans écran des éoliennes `wind_turbines.gd` (Lot P12) : vitesse du rotor, orientation de la
+## Tests sans écran des éoliennes `wind_turbines.gd` (Lot P12, lot EO1) : vitesse du rotor au vent du moyeu,
+## inertie et hystérésis, orientation de la
 ## nacelle, limite de 20 éoliennes, coût par image avec les drapeaux.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_wind_turbines.gd
 
@@ -34,19 +35,74 @@ func _dir(from_deg: float) -> Vector3:
 func _test_rotor() -> void:
 	var rpms := []
 	for kmh in [0.0, 9.0, 12.0, 30.0, 60.0]:
-		rpms.append(WindTurbines.rotor_rpm(kmh / 60.0))
+		rpms.append(WindTurbines.rotor_rpm(kmh, WindTurbines.is_running(kmh, false)))
 	_check(rpms[0] == 0.0 and rpms[1] == 0.0 and rpms[2] > 0.0 and rpms[2] < rpms[3] and rpms[3] < rpms[4]
 		and is_equal_approx(rpms[4], 17.0),
-		"rotor : arrêté sous 10 km/h, puis croissant jusqu'à 17 tr/min à 60 km/h (%s)" % str(rpms))
+		"rotor : arrêté sous 10 km/h au moyeu, puis croissant jusqu'à 17 tr/min à 60 km/h (%s)" % str(rpms))
+	# Vent au moyeu (lot EO1) : loi de puissance 1/7 depuis 10 m
+	_check(is_equal_approx(WindTurbines.shear_factor(10.0), 1.0) and absf(WindTurbines.shear_factor(100.0) - 1.389) < 0.01
+		and WindTurbines.shear_factor(5.0) == 1.0,
+		"vent au moyeu : ×1 à 10 m, ×1,39 à 100 m, jamais moins qu'au sol (%.3f)" % WindTurbines.shear_factor(100.0))
+	_check(WindTurbines.is_running(9.0, true) and not WindTurbines.is_running(9.0, false)
+		and not WindTurbines.is_running(7.9, true),
+		"hystérésis : démarre à 10 km/h au moyeu, ne s'arrête que sous 8 km/h")
+
+	# Vent du thème par défaut (8 km/h au sol, rafales de 20 % : 7,2 à 8,8 km/h) : moyeu de 100 m en marche
 	var t = WindTurbines.new()
 	root.add_child(t)
 	t.set_points([_turbine(1, 0.0, -500.0)])
+	var stopped_frames := 0
+	for i in range(60 * 120):
+		var g := 0.5 + 0.5 * sin(TAU * i / 60.0 / 23.0)
+		var kmh := 8.0 * (1.0 + 0.5 * 0.2 * (2.0 * g - 1.0))
+		t.update({"dir": _dir(270.0), "strength": kmh / 60.0, "gust": 0.2 * g}, Vector3.ZERO, 1.0 / 60.0)
+		if i > 60 * 30 and not bool(t.turbine_state(0)["running"]):
+			stopped_frames += 1
+	var rpm: float = t.turbine_state(0)["rpm"]
+	_check(stopped_frames == 0 and rpm > 6.0 and rpm < 8.5,
+		"vent du thème par défaut (8 km/h au sol) : le rotor tourne sans s'arrêter, %.1f tr/min" % rpm)
+	t.queue_free()
+
+	# Régime établi : 30 km/h au sol, moyeu de 100 m (41,7 km/h) : 13,3 tr/min
+	t = WindTurbines.new()
+	root.add_child(t)
+	t.set_points([_turbine(1, 0.0, -500.0)])
 	var wind := {"dir": _dir(270.0), "strength": 0.5, "gust": 0.0}
+	var expected := WindTurbines.rotor_rpm(30.0 * WindTurbines.shear_factor(100.0))
+	# Inertie : pas de saut au démarrage, 63 % de la vitesse en SPIN_TAU_S, sans dépassement
+	t.update(wind, Vector3.ZERO, 1.0 / 60.0)
+	var first: float = t.turbine_state(0)["rpm"]
+	var max_rpm := first
+	for i in range(int(WindTurbines.SPIN_TAU_S * 60.0) - 1):
+		t.update(wind, Vector3.ZERO, 1.0 / 60.0)
+		max_rpm = maxf(max_rpm, float(t.turbine_state(0)["rpm"]))
+	var at_tau: float = t.turbine_state(0)["rpm"]
+	_check(first < 0.1 * expected and absf(at_tau / expected - 0.632) < 0.02 and max_rpm <= expected,
+		"inertie : %.2f tr/min à la 1re image, %.0f %% de la vitesse après %.0f s, sans dépassement"
+		% [first, 100.0 * at_tau / expected, WindTurbines.SPIN_TAU_S])
+	for i in range(60 * 60):
+		t.update(wind, Vector3.ZERO, 1.0 / 60.0)
 	var a0: float = t.turbine_state(0)["rotor"]
 	for i in range(60):
 		t.update(wind, Vector3.ZERO, 1.0 / 60.0)
 	var turned := fposmod(float(t.turbine_state(0)["rotor"]) - a0, TAU)
-	_check(absf(turned - 11.0 * TAU / 60.0) < 1e-3, "vent de 30 km/h : rotor à 11 tr/min (%.4f rad en 1 s)" % turned)
+	_check(absf(turned - expected * TAU / 60.0) < 1e-3,
+		"vent de 30 km/h au sol : rotor établi à %.1f tr/min (%.4f rad en 1 s)" % [expected, turned])
+	# Vent qui tombe : le rotor ralentit puis s'arrête, sans s'arrêter net
+	var calm := {"dir": _dir(270.0), "strength": 0.0, "gust": 0.0}
+	t.update(calm, Vector3.ZERO, 1.0 / 60.0)
+	var just_after: float = t.turbine_state(0)["rpm"]
+	for i in range(60 * 60):
+		t.update(calm, Vector3.ZERO, 1.0 / 60.0)
+	_check(just_after > 0.9 * expected and float(t.turbine_state(0)["rpm"]) < 0.01,
+		"calme : le rotor ralentit doucement (%.1f tr/min juste après) puis s'arrête" % just_after)
+	# Une éolienne plus haute tourne plus vite par le même vent au sol
+	t.set_points([_turbine(1, 0.0, -500.0), {"id": "haute", "kind": "wind_turbine", "x": 300.0, "y": 300.0,
+		"z": -500.0, "radius_m": 5000, "name": null, "height_m": 150.0}])
+	t.settle({"strength": 0.25})
+	_check(float(t.turbine_state(1)["rpm"]) > float(t.turbine_state(0)["rpm"]),
+		"moyeu à 150 m plus rapide qu'à 100 m par 15 km/h au sol (%.2f > %.2f tr/min)"
+		% [t.turbine_state(1)["rpm"], t.turbine_state(0)["rpm"]])
 	t.queue_free()
 
 

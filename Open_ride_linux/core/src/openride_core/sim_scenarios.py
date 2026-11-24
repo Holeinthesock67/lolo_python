@@ -40,7 +40,7 @@ class SimScenarioError(Exception):
 TRAINER_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                 "ibd_hz", "erg_tau_s", "cp_latency_s", "power_range", "refuse_control", "busy_window_s", "relayed_hr",
                 "response", "brake_delay_s", "brake_tau_up_s", "brake_tau_down_s", "flywheel_kg_m2",
-                "notify_jitter_s", "rider_max_w", "calibration"}
+                "notify_jitter_s", "rider_max_w", "calibration", "spin_down", "spin_down_stop_s"}
 # Réglages du modèle réaliste (lot X6) : nombres positifs, sans effet en réponse « instant ».
 RESPONSE_KEYS = ("brake_delay_s", "brake_tau_up_s", "brake_tau_down_s", "flywheel_kg_m2", "notify_jitter_s",
                  "rider_max_w")

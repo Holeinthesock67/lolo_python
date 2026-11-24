@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Mer, côte et plages du monde ouvert : le générateur écrit la mer et la couche côte de chaque carré, comme le compilateur | Python | W7, W13, U3, U9 (livrés) | Moyenne | En PR (banc PC à faire en low, medium et high) |
+| Mer, côte et plages du monde ouvert : le générateur écrit la mer et la couche côte de chaque carré, comme le compilateur | Python | W7, W13, U3, U9 (livrés) | Moyenne | **Livré le 21 novembre** (PR #907) |
 
 ## 1. Objectif
 
@@ -38,3 +38,7 @@ Le 19 novembre (le banc du 18 avait converti le cache réel en schéma 2, refus�
 ## 7. Hors périmètre
 
 Ports, digues et jetées ; marées ; ferries (une route sur la mer de plus de 5 km de la côte reste à terre).
+
+## 8. Livraison
+
+Fusionné le 21 novembre 2026 (PR #907 : mer, côte et plages du monde ouvert). Détail des écarts et de la recette : description de la PR.

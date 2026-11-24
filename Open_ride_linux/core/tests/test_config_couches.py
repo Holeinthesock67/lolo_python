@@ -99,6 +99,18 @@ def test_machine_key_in_profile_is_ignored_with_warning(home, caplog):
     assert "quality ignoré" in caplog.text
 
 
+def test_retired_key_in_profile_is_ignored_without_warning(home, caplog):
+    """Lot GPL1 : `[grandprix] distance_km` écrit dans le profil d'un joueur avant le retrait du réglage : ignoré
+    sans l'alerte « réglage de la machine »."""
+    a = player("cycliste-a", "Cycliste A")
+    with (a.root / profiles.FILE_NAME).open("a", encoding="utf-8") as fh:
+        fh.write("[grandprix]\ndistance_km = 12\nlaps = 2\n")
+    profiles.activate(a)
+    with caplog.at_level(logging.WARNING, logger="config"):
+        cfg = config.load(home / "config.toml")
+    assert cfg.grandprix.laps == 2 and caplog.records == []
+
+
 def test_bad_value_in_profile_names_the_file(home):
     a = player("cycliste-a", "Cycliste A")
     with (a.root / profiles.FILE_NAME).open("a", encoding="utf-8") as fh:

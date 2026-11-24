@@ -32,7 +32,10 @@ const COLUMN_GAP := 24
 const TILE_GAP := 8
 ## Plus petite police des lignes du bilan quand `fit` le compacte (celle des autres lignes suit, 2 de moins).
 const MIN_FONT_SIZE := 16
-const COMPACT_LEVELS := 3
+const COMPACT_LEVELS := 4
+## Palier 4 (lot RT2) : bandeau du résultat resserré (marges de 2, titre à la taille des lignes), barre d'XP basse.
+const BAND_MARGIN_COMPACT := 2
+const BAR_H_COMPACT := 4
 const TILE_MARGIN_COMPACT := 2
 ## Chiffre d'une tuile : 6 points de plus que les lignes (28 à la taille normale, comme la carte de détail).
 const TILE_VALUE_EXTRA := UiTheme.VALUE_SIZE - FONT_SIZE
@@ -54,6 +57,17 @@ const BAR_ANIM_S := 1.2
 const BAR_H := 12
 
 var model = SummaryViewModel.new()
+## Résultat commun en tête du bilan (lot RT2) : « ★ RÉSULTAT », titre, sous-titre, lignes ajoutées (encart extensible).
+const RESULT_COLORS := {"win": UiTheme.FB_GOLD, "done": UiTheme.FB_GOLD, "place": UiTheme.FB_PLACE,
+	"out": UiTheme.FB_OUT, "stop": UiTheme.FB_REFUS}
+var result_band: PanelContainer
+var result_tag: Label
+var result_title: Label
+var result_sub: Label
+var result_extra: Label
+## Lignes de l'encart du résultat données par un autre écran (ligue d'hiver, lot CH4) ; [] par défaut.
+var result_lines: Array = []
+var _result_style: StyleBoxFlat
 var ftp_band: PanelContainer
 var ftp_title: Label
 var ftp_value: Label
@@ -97,6 +111,7 @@ func _init() -> void:
 	_tile_style_compact.content_margin_top = TILE_MARGIN_COMPACT
 	_tile_style_compact.content_margin_bottom = TILE_MARGIN_COMPACT
 	add_theme_constant_override("separation", BOX_SEP)
+	_build_result_band()
 	_build_ftp_band()
 	tiles_grid = GridContainer.new()
 	tiles_grid.columns = TILE_COLUMNS
@@ -153,6 +168,51 @@ func _init() -> void:
 	extras_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	progress_box.add_child(extras_label)
 	set_process(false)
+
+
+## Bandeau du résultat (lot RT2, fin commune) : mot « ★ RÉSULTAT », titre (« VICTOIRE ! », « ARRIVÉE · 3e sur 8 »,
+## « ENTRAÎNEMENT TERMINÉ »…), sous-titre, puis les lignes de l'encart ; fond de la couleur du ton, jamais seule.
+func _build_result_band() -> void:
+	result_band = PanelContainer.new()
+	_result_style = UiTheme.band_style()
+	result_band.add_theme_stylebox_override("panel", _result_style)
+	result_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	result_band.visible = false
+	add_child(result_band)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	result_band.add_child(box)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	box.add_child(row)
+	result_tag = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.TEXT)
+	result_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(result_tag)
+	result_title = UiTheme.label(UiTheme.VALUE_SIZE, UiTheme.TEXT)
+	row.add_child(result_title)
+	result_sub = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.FB_CONSIGNE_DETAIL)
+	result_sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	result_sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	result_sub.clip_text = true
+	result_sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(result_sub)
+	result_extra = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.TEXT)
+	result_extra.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	result_extra.visible = false
+	box.add_child(result_extra)
+
+
+func _show_result(card: Dictionary) -> void:
+	result_band.visible = not card.is_empty()
+	if not result_band.visible:
+		return
+	_result_style.bg_color = RESULT_COLORS.get(str(card.get("tone", "")), UiTheme.FB_PLACE)
+	result_tag.text = str(card.get("tag", ""))
+	result_title.text = str(card.get("title", ""))
+	result_sub.text = str(card.get("sub", ""))
+	var extra: Array = card.get("extra", [])
+	result_extra.text = "\n".join(PackedStringArray(extra.map(func(x): return str(x))))
+	result_extra.visible = not extra.is_empty()
 
 
 ## Bandeau du test de FTP : « Résultat du test de FTP », nouvelle FTP en `GOLD`, ancienne FTP en `DIM`, écart
@@ -269,8 +329,16 @@ func fit(width: float, fits: Callable) -> void:
 
 
 ## Paliers après les écarts resserrés, dans l'ordre : 1 tuiles basses, 2 blocs ERG sur deux colonnes,
-## 3 graphique de puissance caché (comme l'étape « courbe du bilan » du contrat, la courbe part la première).
+## 3 graphique de puissance caché (comme l'étape « courbe du bilan » du contrat, la courbe part la première),
+## 4 bandeau du résultat resserré et barre d'XP basse (les mots restent tous affichés).
 func _set_compact(level: int) -> void:
+	var band_m := BAND_MARGIN_COMPACT if level >= 4 else 8
+	_result_style.content_margin_top = band_m
+	_result_style.content_margin_bottom = band_m
+	result_title.add_theme_font_size_override("font_size", result_tag.get_theme_font_size("font_size") + 2 if level >= 4 \
+		else result_title.get_theme_font_size("font_size"))
+	bar.custom_minimum_size.y = BAR_H_COMPACT if level >= 4 else BAR_H
+	bar.queue_redraw()
 	for t in _tiles:
 		t.add_theme_stylebox_override("panel", _tile_style_compact if level >= 1 else _tile_style)
 	blocks_box.columns = 2 if level >= 2 else 1
@@ -291,6 +359,9 @@ func _set_fonts(size: int) -> void:
 	for l in lines_grid.get_children():
 		l.add_theme_font_size_override("font_size", size)
 	verdict_label.add_theme_font_size_override("font_size", size)
+	result_title.add_theme_font_size_override("font_size", size + TILE_VALUE_EXTRA)
+	for l in [result_tag, result_sub, result_extra]:
+		l.add_theme_font_size_override("font_size", small)
 	for t in _tiles:
 		var row := t.get_child(0).get_child(1) as HBoxContainer
 		(row.get_child(0) as Label).add_theme_font_size_override("font_size", size + TILE_VALUE_EXTRA)
@@ -368,6 +439,9 @@ static func _row_text(row: Container) -> String:
 ## « | » entre les parties (tests graphiques).
 func text() -> String:
 	var parts: Array[String] = []
+	if result_band.visible:
+		parts.append(" ".join(PackedStringArray([result_tag.text, result_title.text, result_sub.text]
+			.filter(func(x): return x != ""))) + ((" " + result_extra.text.replace("\n", " ")) if result_extra.visible else ""))
 	if ftp_band.visible:
 		var ftp: Array[String] = []
 		for t in [ftp_value.text, ftp_before.text, ftp_delta.text, ftp_note.text]:
@@ -410,6 +484,7 @@ func chart_kind() -> String:
 ## graphique) ; names : identifiant → nom des segments (records battus).
 func update_display(summary: Dictionary, details: bool, _mode := "", ftp_w := 0.0, names := {}) -> void:
 	_ftp_w = float(ftp_w)
+	_show_result(model.result_card(summary, result_lines))
 	_show_ftp(model.ftp_result(summary))
 	var tiles: Array = model.tiles(summary)
 	for i in range(_tiles.size()):
@@ -605,5 +680,5 @@ func _process(delta: float) -> void:
 
 func _draw_bar() -> void:
 	var w := bar.size.x
-	bar.draw_rect(Rect2(0, 0, w, BAR_H), UiTheme.LINE)
-	bar.draw_rect(Rect2(0, 0, w * _bar_pos, BAR_H), UiTheme.FOCUS)
+	bar.draw_rect(Rect2(0, 0, w, bar.custom_minimum_size.y), UiTheme.LINE)
+	bar.draw_rect(Rect2(0, 0, w * _bar_pos, bar.custom_minimum_size.y), UiTheme.FOCUS)

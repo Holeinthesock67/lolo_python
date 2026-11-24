@@ -117,7 +117,7 @@ func _test_steps_and_card() -> void:
 	_check(st[0]["state"] == "done" and st[1]["state"] == "current" and st[2]["state"] == "todo", "trainer : décor franchi")
 	st = StartWaitModel.steps({"phase": "pedalage"})
 	_check(st[0]["state"] == "done" and st[1]["state"] == "done" and st[2]["state"] == "current", "pédalage : dernière étape")
-	# Échauffement d'une course (révision 1.26) : pastille en plus, cible en watts, temps restant, suite
+	# Échauffement d'une course (révision 1.33) : pastille en plus, cible en watts, temps restant, suite
 	var wu := {"phase": "echauffement", "cadence_rpm": 30, "hold_s": 1.0, "held_s": 0.0, "waited_s": 70.0,
 		"warmup": {"target_w": 165, "left_s": 452.3, "total_s": 600.0, "block": "warmup", "block_left_s": 45.0,
 			"next_target_w": 175, "done": false}}
