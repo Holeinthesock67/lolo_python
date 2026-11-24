@@ -1,5 +1,5 @@
 {
-  "description": "Monde ouvert, recette sur le PC du chantier « même qualité que les circuits » (PR #869 à #871) : départ de Sarre-Union trouvé par son nom (réseau, caches réels), balade du cycliste simulé jusqu'à 6 km, captures à 4, 5 et 6 km (route prolongée par le générateur, bornes et objets du bord, chaussée jamais couverte). À lancer en low, medium et high.",
+  "description": "Monde ouvert, recette sur le PC du chantier « même qualité que les circuits » (PR #869 à #871) : départ de Sevrier trouvé par son nom (réseau, caches réels), balade du cycliste simulé jusqu'à 6 km, captures à 4, 5 et 6 km (route prolongée par le générateur, bornes et objets du bord, chaussée jamais couverte). À lancer en low, medium et high.",
   "voies": [
     "clavier"
   ],
@@ -8,8 +8,8 @@
   "etapes": [
     {
       "depart_monde_ouvert": {
-        "recherche": "sarre union",
-        "contient": "Sarre-Union"
+        "recherche": "sevrier",
+        "contient": "Sevrier"
       }
     },
     {

@@ -48,7 +48,8 @@ En-tête d'un scénario : `description`, `voies` (défaut : les trois), `apparei
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `velodrome` (vrai : piste du
 vélodrome des contenus de départ, lot VD10), `grand_prix_parcours` (vrai : deux parcours d'essai du Grand Prix,
-étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13), `fichiers` ({chemin dans le
+étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13 ;
+depuis le lot GPL1, seule la boucle est un parcours du mode, la ligne étiquetée reste un parcours libre), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
@@ -222,7 +223,9 @@ READY = {"trainer": {"appear_at": 0.3, "connect_delay_s": 0.3},
 UNILATERAL = {**READY, "click": {"appear_at": 0.5, "connect_delay_s": 0.3, "minus": {"appear_at": 100000}}}
 APPAREILS = {"prets": READY, "unilateral": UNILATERAL}
 # Réglages de départ du banc (le scénario peut les changer) : rendu léger sous Xvfb, fenêtre et non plein écran.
-BASE_CONFIG = {"render.quality": "low", "render.display": "windowed"}
+# `depart.echauffement_min` 0 : pas d'échauffement avant les courses (lot EL1) ; le scénario `elimination` le remet
+# par son en-tête `config`.
+BASE_CONFIG = {"render.quality": "low", "render.display": "windowed", "depart.echauffement_min": 0}
 
 
 def config_matches(got: Any, want: Any, start: Any) -> bool:
@@ -280,7 +283,8 @@ def threads_of(pid: int) -> list[str]:
 
 def write_grand_prix_routes(routes: Path) -> None:
     """Parcours d'essai du Grand Prix (lot GP13) : `gp-ligne` (démo de 5 km en ligne) et `gp-boucle` (piste de 250 m
-    en boucle), copiés et étiquetés « grandprix » : parcours du mode, absents de la liste générale."""
+    en boucle), copiés et étiquetés « grandprix ». Lot GPL1 : seule la boucle est un parcours du mode (absente de la
+    liste générale) ; la ligne étiquetée reste un parcours libre (absente de la liste du mode)."""
     from openride_core.velodrome import write_velodrome
 
     shutil.copytree(ENGINE_DIR / "demo" / "demo.world", routes / "gp-ligne.world")
@@ -1093,6 +1097,19 @@ def write_reports(out: Path, runs: list[Run]) -> Path:
     return path
 
 
+def parse_partie(text: str | None) -> tuple[int, int] | None:
+    """« K/N » de --partie, avec 1 ≤ K ≤ N ; None sans découpage."""
+    if not text:
+        return None
+    try:
+        k, n = (int(x) for x in text.split("/"))
+    except ValueError:
+        raise ValueError(f"--partie attend K/N (par exemple 2/3), reçu {text!r}") from None
+    if not 1 <= k <= n:
+        raise ValueError(f"--partie attend 1 ≤ K ≤ N, reçu {text!r}")
+    return k, n
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
@@ -1101,6 +1118,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--voies", default=",".join(VOIES), help="voies d'entrée, séparées par des virgules")
     ap.add_argument("--rotation", action="store_true",
                     help="une seule voie par scénario, à tour de rôle (intégration continue : trois fois plus court)")
+    ap.add_argument("--partie", metavar="K/N",
+                    help="joue seulement la partie K des N (scénarios K, K+N, K+2N…, rotation des voies inchangée) : "
+                         "intégration continue répartie sur N machines")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel au lieu de Xvfb")
     ap.add_argument("--out", type=Path)
     ap.add_argument("--captures", choices=["echecs", "ecrans"], default="echecs",
@@ -1126,6 +1146,11 @@ def main(argv: list[str] | None = None) -> int:
             doc = load_scenario(path)
             print(f"{name:24s} {','.join(doc.get('voies', VOIES)):22s} {doc.get('description', '')}")
         return 0
+    try:
+        partie = parse_partie(args.partie)
+    except ValueError as exc:
+        print(exc)
+        return 2
     voies = [v for v in args.voies.split(",") if v]
     if any(v not in VOIES for v in voies):
         print(f"voies inconnues : {args.voies} (permises : {', '.join(VOIES)})")
@@ -1151,6 +1176,8 @@ def main(argv: list[str] | None = None) -> int:
     out = args.out or Path(tempfile.mkdtemp(prefix="openride-banc-menus-"))
     runs: list[Run] = []
     for i, (name, path) in enumerate(chosen):
+        if partie and i % partie[1] != partie[0] - 1:
+            continue   # l'indice i reste celui de la liste entière : la rotation des voies ne dépend pas du découpage
         doc = load_scenario(path)
         mine = [v for v in voies if v in doc.get("voies", VOIES)]
         if args.rotation and mine:
