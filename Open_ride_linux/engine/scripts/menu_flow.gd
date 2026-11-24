@@ -807,7 +807,7 @@ func card(st: Dictionary) -> Dictionary:
 	if screen in CoachViewModel.SCREENS:
 		return _coach_card(screen, focused)
 	if screen == LeagueViewModel.SCREEN:
-		return league.sheet(_ftp_w())
+		return league.sheet(_ftp_w(), focused)   # lot CH6 : palmarès au focus
 	if screen == RECORDS:
 		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
 	if screen == RECORD_TABLE:

@@ -549,6 +549,51 @@ def load(path: Path) -> Season | None:
         return None
 
 
+# --- palmarès (lot CH6) -----------------------------------------------------------------------------
+
+ARCHIVE_NAME = "ligue_saison_{n}.json"   # saison close gardée à part par `league_new` (revue F1-07)
+HISTORY_MAX = 8                           # saisons du palmarès au plus (message `league` sous 4 096 octets)
+
+
+def archive_path(path: Path, number: int) -> Path:
+    """Fichier de la saison close `number`, à côté de `ligue.json`."""
+    return path.with_name(ARCHIVE_NAME.format(n=int(number)))
+
+
+def _read_only(path: Path) -> Season | None:
+    """Saison d'un fichier du palmarès, sans jamais le déplacer (illisible : sautée)."""
+    try:
+        return Season.from_dict(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return None
+
+
+def history_row(season: Season) -> dict[str, Any]:
+    """Ligne du palmarès d'une saison close : ta place et tes points, le vainqueur et ses points, ton trophée."""
+    rows = season.standings()
+    me = next(r for r in rows if r["id"] == ME)
+    top = rows[0]
+    t = season.trophy()
+    return {"number": season.number, "start": season.start.isoformat(),
+            "end": (season.start + timedelta(weeks=WEEKS, days=-1)).isoformat(),
+            "closed": season.closed, "place": me["place"], "of": len(rows), "points": me["points"],
+            "winner": top["name"], "winner_points": top["points"], "winner_me": top["id"] == ME,
+            "trophy": t[1] if t else None}
+
+
+def history(path: Path, current: Season | None = None) -> list[dict[str, Any]]:
+    """Palmarès : saisons closes (fichiers `ligue_saison_<n>.json`, plus la saison de `ligue.json` si elle est
+    close), la plus récente d'abord, `HISTORY_MAX` au plus."""
+    seasons: dict[int, Season] = {}
+    for f in path.parent.glob(ARCHIVE_NAME.format(n="*")):
+        s = _read_only(f)
+        if s is not None and s.closed:
+            seasons[s.number] = s
+    if current is not None and current.closed:
+        seasons[current.number] = current
+    return [history_row(seasons[n]) for n in sorted(seasons, reverse=True)[:HISTORY_MAX]]
+
+
 def save(path: Path, season: Season) -> None:
     """Écriture sûre (fichier temporaire puis remplacement) ; lève `OSError`."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -705,9 +750,13 @@ def standings_rows(season: Season, rows: list[dict[str, Any]] | None = None) -> 
     return out
 
 
-def status(season: Season | None, today: date, request_cmd_id: int = 0) -> dict[str, Any]:
-    """Message `league` (révision 1.30) : saison en cours ou None, manche de la semaine, classement."""
-    head = {"type": "league", "v": 1, "request_cmd_id": int(request_cmd_id)}
+def status(season: Season | None, today: date, request_cmd_id: int = 0,
+           past: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Message `league` (révision 1.30) : saison en cours ou None, manche de la semaine, classement ; révision 1.35
+    (lot CH6) : `history`, palmarès des saisons closes (`history()`), quand `past` est donné."""
+    head: dict[str, Any] = {"type": "league", "v": 1, "request_cmd_id": int(request_cmd_id)}
+    if past is not None:
+        head["history"] = past
     if season is None:
         return {**head, "season": None}
     i = min(season.week_index(today), WEEKS - 1)

@@ -26,7 +26,7 @@ def test_status_without_season_then_new_season(env):
     s._on_command("league_status", {}, 2)
     msg = _status(sent)
     validator("league").validate(msg)
-    assert msg["season"] is None
+    assert msg["season"] is None and msg["history"] == []
     s._on_command("league_new", {}, 3)
     msg = _status(sent)
     validator("league").validate(msg)
@@ -213,6 +213,9 @@ def test_new_season_keeps_the_closed_one_aside(env):
     assert not errors and _status(sent)["season"]["number"] == 2
     old = league.load(tmp_path / "ligue_saison_1.json")
     assert old is not None and old.number == 1 and old.closed == "fin"
+    msg = _status(sent)   # lot CH6 : palmarès dans la réponse
+    validator("league").validate(msg)
+    assert [r["number"] for r in msg["history"]] == [1] and msg["history"][0]["of"] == 12
 
 
 def test_hill_finish_round_refuses_a_loop(env, monkeypatch):
