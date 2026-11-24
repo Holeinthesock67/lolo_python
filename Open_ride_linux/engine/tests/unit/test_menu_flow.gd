@@ -468,7 +468,7 @@ func _test_settings_screen() -> void:
 	f.handle("A_LONG")   # Graphisme
 	f.handle("A_LONG")   # Qualité
 	f.handle("PLUS_SHORT")
-	_check(f.state()["items"][0]["detail"] == "◀ low ▶", "choix en boucle : high → low")
+	_check(f.state()["items"][0]["detail"] == "◀ basse ▶", "choix en boucle : haute → basse (valeur low, lot QG1)")
 	_check(f.handle("Y_SHORT").is_empty() and f.state()["screen"] == "settings_group", "Y : annulé")
 	f.handle("Y_SHORT")
 	f.handle("PLUS_SHORT")

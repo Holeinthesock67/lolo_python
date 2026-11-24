@@ -145,7 +145,11 @@ SETTINGS: tuple[Setting, ...] = (
                  "d'efforts longs au seuil. Change seulement la répartition visée par la séance conseillée."),
     Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
     # Graphisme
-    Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
+    Setting("render.quality", "Qualité graphique", "graphics", applies="now",   # aide : lot QG1
+            # espaces insécables (\u00a0) : « 80 % » ou « GTX 1060 » jamais coupés en fin de ligne de la carte
+            help="Haute : on voit à 8\u00a0km, toute la végétation, brume complète, ombres jusqu'à 600\u00a0m. "
+                 "Moyenne : 5\u00a0km, 80\u00a0% de la végétation, brume légère, faite pour une GTX\u00a01060. "
+                 "Basse : 3\u00a0km, 30\u00a0% de la végétation, sans brume ni halo : à choisir si l'image saccade."),
     # « Textures du décor » (lot P20) retiré du menu au lot NI2 (R5) : « auto » suit la Qualité graphique ;
     # une valeur choisie avant est remise à « auto » par `migration_reglages.py`.
     Setting("render.theme", "Thème", "graphics", applies="now"),
