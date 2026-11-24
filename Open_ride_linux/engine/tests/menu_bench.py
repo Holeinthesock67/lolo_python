@@ -34,7 +34,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
   config.toml, `null` : absente), `journal` (`core` ou `engine`) + `motif`, `fichier` (chemin ou motif
   glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente », et "≠départ" « présente et différente de la valeur du lancement »
   (qualité changée au menu quand `--qualite` impose celle du départ) ;
-- autres : `commande` (+ `args`), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
+- autres : `commande` (+ `args` ; `end_session` attend d'abord que la séance du dernier départ soit partie,
+  `delai` 120 s par défaut), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
   route, `delai` 900 s par défaut), `capture` (nom), `relancer` (core et engine arrêtés proprement puis relancés sur le
   même HOME : persistance des réglages) ;
 - gabarit : `depart_monde_ouvert` ({`recherche` : texte tapé au clavier, `contient` : lieu attendu dans les résultats
@@ -187,6 +188,7 @@ ENGINE_READY_ASK_S = 3.0   # délai de chaque demande d'état pendant cette atte
 ENGINE_SILENT_S = 60.0
 SILENCE_GAP_S = 1.0
 WAIT_SLICE_S = 0.5
+SESSION_START_S = 120.0   # `end_session` : attente de la séance partie (départ du dernier `start`, décor compris)
 COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 # Écart entre le relâchement d'un appui au Click et l'appui suivant : le core ignore un même événement
 # revenu dans les ClickPair.DEDUP_S (relais du boîtier « − », 5 à 40 ms plus tard) ; en dessous, deux
@@ -554,6 +556,24 @@ class Run:
                 "title": st.get("title", ""), "rows": [r["text"] for r in st.get("rows", [])], "hint": st.get("hint", "")}
         self.shots.append(info)
         return info
+
+    def wait_session_started(self, timeout: float) -> None:
+        """Avant `end_session` : attend que la séance lancée par le dernier départ soit partie (RUNNING ou PAUSED, ou
+        déjà finie). Le core ignore `end_session` en READY et, pendant le départ au pédalage (lot O36), le prend pour
+        une annulation : retour à l'écran Prêt au lieu du bilan. Sur la CI, la préparation du décor peut tenir le
+        départ plus de 40 s (Grand Prix de `bots_elo`, trains #1050 et #1062) : une attente fixe ne suffit pas."""
+        assert self.core is not None
+        starts = self.core.matching(r"Commande (start|start_run|start_open_world) ")
+        if not starts:
+            return
+        t0 = starts[-1][0]
+        got = self.core.wait_for(r"Séance : \S+ -> (RUNNING|PAUSED|FINISHED|ERROR)\b", timeout, after=t0)
+        detail = got[1].group(0) if got else f"absente après {timeout:.0f} s"
+        if got is None:
+            depart = [line for _, line in list(self.core.lines) if "Départ" in line]
+            if depart:
+                detail += " ; " + depart[-1].split(" core ", 1)[-1]
+        self.check(got is not None, "séance partie avant end_session", detail)
 
     def check(self, ok: bool, label: str, measure: str) -> bool:
         self.report.check(ok, label, measure)
@@ -1002,6 +1022,8 @@ class Run:
             self.wait_exit(int(step["sortie"]), delay if "delai" in step else 10.0)
             return False
         elif "commande" in step:
+            if step["commande"] == "end_session":
+                self.wait_session_started(delay if "delai" in step else SESSION_START_S * self.slowdown())
             self._send({"type": "_test", "action": "command", "name": step["commande"], "args": step.get("args", {})})
             time.sleep(1.0)
         elif "attendre" in step:
