@@ -1,0 +1,98 @@
+{
+  "description": "Banc multi-zones du monde ouvert (24/11, règle du propriétaire : corrections globales, jamais au cas par cas) : zone Grenoble (montagne (Alpes), fortes pentes, vallées). Départ trouvé par son nom (liste embarquée, sinon Nominatim ; aucune coordonnée dans le dépôt), 8 min de balade, un choix à droite puis à gauche à chaque carrefour, 4 captures. Même scénario pour les 7 zones (scripts/file_bancs/ow_multi_zones.toml) ; après le banc : controle_sol_route.py, controle_profil_altitude.py et lignes « [gel] » sur la balade du cache séparé. Cache du monde ouvert SÉPARÉ obligatoire (jamais ~/OpenRide/Cache/monde).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "grenoble",
+        "contient": "Grenoble"
+      }
+    },
+    {
+      "note": "Route engagée prolongée par le générateur dans la zone",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 180
+    },
+    {
+      "attendre": 50
+    },
+    {
+      "note": "Carrefour 1 : branche de droite (branches non suivies, amorces, tuiles nouvelles)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "route_1"
+    },
+    {
+      "attendre": 40
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "attendre": 50
+    },
+    {
+      "note": "Carrefour 2 : branche de droite (branches non suivies, amorces, tuiles nouvelles)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "route_2"
+    },
+    {
+      "attendre": 40
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "attendre": 50
+    },
+    {
+      "note": "Carrefour 3 : branche de droite (branches non suivies, amorces, tuiles nouvelles)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "route_3"
+    },
+    {
+      "attendre": 40
+    },
+    {
+      "appui": "LEFT_SHORT"
+    },
+    {
+      "attendre": 50
+    },
+    {
+      "note": "Carrefour 4 : branche de droite (branches non suivies, amorces, tuiles nouvelles)",
+      "appui": "RIGHT_SHORT"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "route_4"
+    },
+    {
+      "attendre": 40
+    },
+    {
+      "appui": "LEFT_SHORT"
+    }
+  ]
+}
