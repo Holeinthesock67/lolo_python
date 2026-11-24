@@ -760,6 +760,10 @@ class CoreSession:
             self._start_track()
         self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ (lot AS2)
         self._set_state("RUNNING")
+        if self._rec is not None and self._rec.failed:
+            # Journal impossible à ouvrir au départ (revue du 22 novembre, S1-01) : l'erreur est partie en
+            # `READY`, donc sans pause ; même règle qu'en cours de séance (contrat IPC §6), `resume` retente.
+            self._set_state("PAUSED", "recording_failed")
 
     def _on_command_more(self, name: str, args: dict, cmd_id: int, st: str) -> None:
         """Suite de `_on_command` : séance en cours, réglages, listes et menus."""
@@ -1445,11 +1449,13 @@ class CoreSession:
         """`set_bots` (lot N18, révision 1.9) : bots changés sur l'écran de pause, même liste que `bots` de
         `start`. Un bot gardé garde sa place, un bot ajouté part à la hauteur du cycliste, un bot retiré
         disparaît, une puissance changée s'applique tout de suite ; ligne `bots` au journal. Hors `PAUSED`, en
-        Cyber-Rogue, en Dernier survivant et au Grand Prix (plateaux composés par le core) : `busy`."""
+        Cyber-Rogue, en Dernier survivant, au Grand Prix et en épreuve de piste (plateaux composés par le
+        core) : `busy`."""
         from .bots import BotError, bots_from_menu, merge_menu_bots
 
         st = self.state.session_state
-        if st != "PAUSED" or self.rogue is not None or self.survivor is not None or self.grandprix is not None:
+        if (st != "PAUSED" or self.rogue is not None or self.survivor is not None or self.grandprix is not None
+                or self.track_event is not None):   # épreuve de piste : plateau inscrit à l'épreuve (S1-07)
             self.server.send_error("busy", "Bots modifiables seulement sur l'écran de pause d'une séance libre, "
                                            "ERG ou WTF.")
             return
@@ -1518,12 +1524,19 @@ class CoreSession:
                         "bots": [bot_line(b) for b in self.bots]})
         log.info("Bots (%s) : %s.", reason, ", ".join(b.name for b in self.bots) or "aucun")
 
+    def _bot_cda_bases(self) -> dict[int, float]:
+        """CdA de base des bots en course. Un bot déjà suivi garde sa base connue : son `params.cda_m2` du
+        moment peut être réduit par la poussée de l'aspiration (`_update_draft`), et le relire en ferait
+        une base de plus en plus basse à chaque retrait d'un adversaire (revue du 22 novembre, S2-03)."""
+        known = self._bot_cda
+        return {id(b): known.get(id(b), b.params.cda_m2) for b in self.bots if getattr(b, "params", None)}
+
     def _set_bots(self, bots: list[Any]) -> None:
         if bots is self.bots:
             return
         self.bots = bots
         self._bot_ids_seen.update(b.id for b in bots)
-        self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
+        self._bot_cda = self._bot_cda_bases()
         self._draft = 0.0
         self._draft_w = None
         log.info("Bots de la séance : %s.", ", ".join(b.name for b in self.bots) or "aucun")
@@ -2438,6 +2451,8 @@ class CoreSession:
         if (self.survivor is not None or self.grandprix is not None) and self.state.arrival is None:
             # lot RT2 : une fois l'arrivée passée, la course est finie pour le cycliste, il repart au calme
             return "Pas de demi-tour pendant une course à élimination ou un Grand Prix."
+        if self.track_event is not None:   # la distance de l'épreuve ne se compte que dans le sens de la piste
+            return "Pas de demi-tour pendant une épreuve de piste."
         if not self.route.is_loop and self.physics.direction > 0 and self.physics.s <= 0.0:
             return "Déjà au départ du parcours."
         return None
@@ -2989,7 +3004,7 @@ class CoreSession:
         gone = {rid for rid, t0 in self._survivor_out.items() if self._t_session - t0 >= SURVIVOR_RETIRED_S}
         if gone:   # retirés sans toucher à l'abri en cours (pas de `_set_bots`, qui le remet à 0)
             self.bots = [b for b in self.bots if b.id not in gone]
-            self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
+            self._bot_cda = self._bot_cda_bases()
             for rid in gone:
                 self._survivor_out.pop(rid)
         for msg in sv.due_results(self._t_session):
@@ -4251,7 +4266,10 @@ class CoreSession:
         if self.wind.active:   # vent figé en pause : son temps est celui de la séance
             self._wind_sample = self.wind.sample(self._t_session)
             self._head_mps = head_component(self._wind_sample, heading)
-            self.physics.p.wind_mps = self._head_mps + (wtf_eff.wind_add_mps if wtf_eff else 0.0)
+            # copie du pas : `self.physics.p` peut être `_base_params` lui-même, qui ne doit jamais garder
+            # le vent d'un pas (revue du 22 novembre, S2-01 : vent fantôme de la séance suivante)
+            self.physics.p = replace(self.physics.p,
+                                     wind_mps=self._head_mps + (wtf_eff.wind_add_mps if wtf_eff else 0.0))
             self._cross_mps = cross_component(self._wind_sample, here.heading_deg if here else 0.0)
             # Roue lenticulaire (lot P34) : gain de CdA réduit puis annulé par fort lacet du vent apparent ;
             # CdA du pas seulement (vitesse virtuelle et ressenti), jamais la puissance mesurée (A7).
@@ -4353,6 +4371,8 @@ class CoreSession:
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
                 params.wind_mps = head_component(self._wind_sample, route.sample(bot.s).heading_deg)
+            elif params is not None and params.wind_mps:   # bot gardé d'une séance ventée : vent coupé (S2-01)
+                params.wind_mps = 0.0
             bot_wind = self.grandprix.wind_mps(bot.id) if self.grandprix is not None and params is not None else 0.0
             if bot_wind:
                 params.wind_mps += bot_wind
