@@ -2,6 +2,7 @@
 
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
+Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses lignes dans `docs/changements/<LOT>.md`, recopiées par la passe de doc (`docs/changements/README.md`).
 
 ## Non publié
 
@@ -20,6 +21,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Mesures invraisemblables ignorées, valeur précédente gardée, une ligne de journal par sorte toutes les 10 s au plus : puissance au-delà de 1,5 fois la plage annoncée (3 000 W au moins), cadence au-dessus de 250 tr/min, FC hors de 25 à 250 bpm, du trainer comme de la ceinture (S6-03).
 - Export FIT : une valeur hors des plages du format ne fait plus échouer tout le fichier (ni `recover`) : la mesure fautive est retirée de ce relevé, vitesse et distance bornées, le journal garde les valeurs brutes (S7-01).
 - Tours du FIT : la distance d'un tour part du dernier relevé du tour précédent (les tours s'additionnent à la séance) et le temps chronométré d'un tour ne compte plus ses pauses (S7-04).
+
+### Moins de brouillard et de halo en medium et high (lot BH1)
+- En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
 
 ### Cyber-Rogue sans voile en high (lot R27)
 - En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
