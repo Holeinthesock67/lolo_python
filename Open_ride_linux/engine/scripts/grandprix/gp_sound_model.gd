@@ -7,6 +7,8 @@ extends RefCounted
 ## - `gp_lancer` : objet utilisé par le cycliste (une charge de moins, ou réserve vidée), sauf la sonnette
 ##   (`gp_sonnette`) et la voiture d'équipe (`gp_klaxon`) ;
 ## - `gp_glissade` : cycliste touché par un bidon ou une musette ; `gp_averse` : par le nuage d'orage.
+## Révision 1.32 (lot GPO1) : mêmes sons pour les bots (`bot_sound`), à moins de BOT_SOUND_M du cycliste, plus bas
+## (BOT_DB), au plus un toutes les BOT_GAP_S et jamais juste après un son du cycliste (le sien passe d'abord).
 ## Ne décide rien : le core arbitre tout. Pas de class_name : preload("res://scripts/grandprix/gp_sound_model.gd").
 
 const ME := "me"
@@ -14,12 +16,21 @@ const USE_SOUND := {"bell": "gp_sonnette", "team_car": "gp_klaxon"}
 const HIT_SOUND := {"bottle": "gp_glissade", "bottle_x3": "gp_glissade", "musette": "gp_glissade",
 	"musette_x3": "gp_glissade", "homing": "gp_glissade", "storm": "gp_averse"}
 
+const BOT_SOUND_M := 30.0
+const BOT_GAP_S := 0.5
+const BOT_DB := -9.0
+const ME_FIRST_S := 0.8
+
 var _rolling := false
+var _last_bot_s := -1e9
+var _last_me_s := -1e9
 var _held := ""
 var _n := 0
 
 
 func reset() -> void:
+	_last_bot_s = -1e9
+	_last_me_s = -1e9
 	_rolling = false
 	_held = ""
 	_n = 0
@@ -52,3 +63,35 @@ static func on_hit(msg: Dictionary) -> String:
 	if str(msg.get("target", "")) != ME:
 		return ""
 	return str(HIT_SOUND.get(str(msg.get("item", "")), ""))
+
+
+## Son d'un message `gp_event` (révision 1.32) : roulette pour une boîte, son de l'objet utilisé ; "" pour le cycliste,
+## dont les sons viennent déjà de la trame (`on_state`) ; parade : le « ding » de la sonnette pour tous.
+static func on_event(msg: Dictionary) -> String:
+	if str(msg.get("kind", "")) == "parry":   # parade (lot GPO1) : le « ding » de la sonnette, cycliste compris
+		return "gp_sonnette"
+	if str(msg.get("rider", "")) == ME:
+		return ""
+	if str(msg.get("kind", "")) == "box":
+		return "gp_roulette"
+	return str(USE_SOUND.get(str(msg.get("item", "")), "gp_lancer"))
+
+
+## Son d'un coup reçu par un bot (`gp_hit` dont la cible n'est pas le cycliste) : celui du cycliste.
+static func bot_hit(msg: Dictionary) -> String:
+	if str(msg.get("target", "")) == ME:
+		return ""
+	return str(HIT_SOUND.get(str(msg.get("item", "")), ""))
+
+
+## Note un son du cycliste (il passe avant ceux des bots pendant ME_FIRST_S).
+func me_played(now_s: float) -> void:
+	_last_me_s = now_s
+
+
+## Vrai si le son `jingle` d'un bot à `dist_m` du cycliste se joue maintenant (puis à BOT_DB).
+func bot_sound(jingle: String, dist_m: float, now_s: float) -> bool:
+	if jingle == "" or dist_m > BOT_SOUND_M or now_s - _last_bot_s < BOT_GAP_S or now_s - _last_me_s < ME_FIRST_S:
+		return false
+	_last_bot_s = now_s
+	return true

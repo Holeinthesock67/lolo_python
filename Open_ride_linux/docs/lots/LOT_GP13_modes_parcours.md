@@ -32,7 +32,7 @@ Un mode peut avoir ses propres parcours, reconnus à une étiquette de leur fich
 ## 4. Retours de l'essai du 15 novembre (GP14, même PR)
 
 - Boîtes : une rangée tous les 500 m par défaut (`box_every_m`, 500 à 3 000 m) ; une boîte prise disparaît jusqu'à sa reformation (REFORM_S = 2 s, inchangé) : `state.gp.boxes` part de 30 m derrière et `state.gp.boxes_gone` liste `[rang, voie]` des boîtes prises (`BoxRows.near`, `BoxRows.gone`).
-- Distance : la course dure au plus le parcours (`distance_km` borné par la longueur restante) ; « Lancer » n'est grisé que sous 1 km (`MIN_COURSE_M`).
+- Distance : la course dure au plus le parcours (`distance_km` borné par la longueur restante) ; « Lancer » n'est grisé que sous 1 km (`MIN_COURSE_M`). Retiré au lot GPL1 (20 novembre) : le Grand Prix se court sur une boucle seulement, `LOT_GPL1_boucles.md`.
 - Coup reçu : tant qu'un effet d'attaque, de piège ou contre la tête court sur le cycliste, le bandeau d'avertissement dit « Touché ! Bidon glissant 2 s » et le contour de l'écran prend la couleur de l'objet (`gp_hud_model.hit_view`) ; une menace en vue passe avant ; son et onomatopée inchangés ; jamais de flash plein écran.
 - Panneaux de segment (« Sommet dans 500 m » au km 1 du Col du lacet, à gauche) : plaque blanche cadrée de noir sur poteaux à colliers, construite par `roadside_props.build_board` (même plaque que les panneaux du bord de route) au lieu d'une caisse blanche.
 
