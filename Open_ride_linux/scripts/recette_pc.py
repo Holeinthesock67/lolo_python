@@ -73,7 +73,8 @@ def step_commands(rapide: bool, out: Path) -> dict[str, tuple[list[str], Path]]:
         # Séances simulées de la recette T11 et de l'essai J7 (lots X33 et Z2) : ce qui se vérifie sans pédaler.
         "seances": ([py, str(PROJECT / "engine" / "tests" / "sim_bench.py")]
                     + [arg for name in SEANCES for arg in ("--scenario", name)] + ["--out", str(out / "seances")], PROJECT),
-        "privacy": ([py, str(PROJECT / "scripts" / "privacy" / "privacy_scan.py"), "--all"], REPO),
+        "privacy": ([py, str(PROJECT / "scripts" / "privacy" / "privacy_scan.py"), "--all",
+                     "--require-denylist"], REPO),   # RC18, O2-06 : la liste du PC est obligatoire
         "deps": ([py, str(PROJECT / "scripts" / "audit_dependances.py"), "--out", str(out / "deps")], PROJECT),
     }
 

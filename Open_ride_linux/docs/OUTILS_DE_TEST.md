@@ -272,15 +272,15 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 
 ## 6. Confidentialité (lot X23)
 
-Le dépôt est public. `scripts/privacy/privacy_scan.py` (bibliothèque standard seulement) cherche les mots interdits (noms, lieux, nom du trainer…), les coordonnées dans une zone privée, les adresses Bluetooth qui ne sont pas des adresses de test, les clés et jetons, et les fichiers d'activité ou de secrets. Les mots trouvés sont masqués dans la sortie.
+Le dépôt est public. `scripts/privacy/privacy_scan.py` (bibliothèque standard seulement) cherche les mots interdits (noms, lieux, nom du trainer…), les coordonnées dans une zone privée, les adresses Bluetooth qui ne sont pas des adresses de test, les clés et jetons, et les fichiers d'activité ou de secrets. Aucun constat ne cite la valeur trouvée : un mot est donné par son rang dans la liste, une coordonnée ou une adresse est « masquée » (lot RC18). Les coordonnées sont cherchées sur une ligne ou à cheval sur quelques lignes (`lat = …` puis `lon = …`, JSON indenté, GPX), dans les deux ordres (GeoJSON) et avec la virgule décimale ; les adresses Bluetooth avec `:`, `-` ou `_` (journaux BlueZ).
 
 | Commande (depuis la racine du dépôt) | Usage |
 | --- | --- |
 | `Open_ride_linux/scripts/privacy/install_hook.sh` | Installe le crochet pre-commit : un commit qui ajoute une donnée interdite est refusé |
 | `python3 Open_ride_linux/scripts/privacy/privacy_scan.py --all` | Tous les fichiers suivis (à lancer avant une étiquette de version, O8 §5.4) |
-| `python3 Open_ride_linux/scripts/privacy/privacy_scan.py --commits origin/main..HEAD` | Auteur, committer, message et lignes ajoutées de chaque commit d'une branche |
+| `python3 Open_ride_linux/scripts/privacy/privacy_scan.py --commits origin/main..HEAD` | Auteur, committer et message de chaque commit d'une branche, fusions comprises, et lignes ajoutées des commits ordinaires ; début de plage nul ou inconnu (branche nouvelle, envoi forcé) : commits absents des autres branches, au moins la tête |
 
-La liste des mots et des zones interdits reste hors du dépôt : `~/OpenRide/privacy_denylist.txt` sur le PC (modèle : `scripts/privacy/privacy_denylist.example.txt`), secret GitHub `PRIVACY_DENYLIST` pour le workflow `.github/workflows/confidentialite.yml`, qui passe chaque PR. Sans liste, seuls les contrôles génériques tournent (avertissement à l'écran).
+La liste des mots et des zones interdits reste hors du dépôt : `~/OpenRide/privacy_denylist.txt` sur le PC (modèle : `scripts/privacy/privacy_denylist.example.txt`), secret GitHub `PRIVACY_DENYLIST` pour le workflow `.github/workflows/confidentialite.yml`, qui passe chaque PR. Sans liste, seuls les contrôles génériques tournent (avertissement à l'écran), sauf avec `--require-denylist` (code 2), que passe la recette du PC (`recette_pc.py`). Une ligne illisible dans la liste donne le code 2 sans citer la valeur.
 
 ## 7. Ce qui demande encore le matériel
 
