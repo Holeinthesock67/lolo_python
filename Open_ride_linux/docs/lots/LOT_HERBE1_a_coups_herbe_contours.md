@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| À-coups de l'herbe : zones sans herbe (bâtiments, eau, mer) indexées par cases, temps vérifié à chaque touffe | GDScript | P5, Y22, U8, W23 (#907) | Petite | En PR (banc PC à faire en low, medium et high) |
+| À-coups de l'herbe : zones sans herbe (bâtiments, eau, mer) indexées par cases, temps vérifié à chaque touffe | GDScript | P5, Y22, U8, W23 (#907) | Petite | **Livré le 20 novembre** (PR #929) |
 
 ## 1. Constat
 
@@ -36,3 +36,7 @@ Avant, en medium et high, la fenêtre d'herbe n'était jamais remplie (6 et 8 tr
 ## 5. Recette PC
 
 File `scripts/file_bancs/herbe_high.toml` (outil `file_bancs.py`) : `w23_mer` en medium, high puis low avec la sonde, sur la branche avec #907 assemblée (cache séparé : #907 change le schéma du cache) et sur #907 seule (même cache séparé) ; puis non-régression `w17_cap` (monde ouvert sans mer, cache réel) en low, medium et high, contre main. Juger : saccades « herbe », images de plus de 50 et 100 ms, budgets GPU (8, 13, 16 ms), captures de l'herbe au bord de la mer et en ville validées par le propriétaire.
+
+## 6. Livraison
+
+Fusionné le 20 novembre 2026 (PR #929 : herbe sans à-coups près de la mer et des villes (zones d'exclusion indexées par cases)). Détail des écarts et de la recette : description de la PR.

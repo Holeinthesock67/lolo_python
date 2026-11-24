@@ -19,7 +19,7 @@ Idées du §8.3 du plan `docs/6.0/PLAN_SERIE_PP.md`, retenues par le propriétai
 - **cible** : record des 6 mois sur cette durée + 1 W ;
 - **parcours proposé** (1 min et plus) : parcours prêt dont la montée principale dure, à la puissance visée, au moins la durée du défi et au plus 2,5 fois (vitesse d'équilibre de `route_stats`), le plus court d'entre eux ; parcours du vélodrome et du Grand Prix écartés ; en dessous d'une minute, n'importe quel sprint.
 - Sans record sur la durée retenue : pas de défi.
-- Contrat : objet facultatif `challenge` du message `power_curve` (même révision 1.29) ; le catalogue des parcours est lu dans le même fil que la courbe, un catalogue illisible n'empêche pas la courbe.
+- Contrat : objet facultatif `challenge` du message `power_curve` (même révision 1.35) ; le catalogue des parcours est lu dans le même fil que la courbe, un catalogue illisible n'empêche pas la courbe.
 
 ### 2.2 Engine
 

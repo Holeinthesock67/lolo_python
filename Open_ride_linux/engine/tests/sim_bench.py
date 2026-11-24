@@ -2,7 +2,7 @@
 """Banc d'essai simulé : vrai core sur Bluetooth simulé, vrai engine, captures et rapport.
 
 Usage :
-    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|demo_long|village|osm|ouvert|DOSSIER.world]
+    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|demo_long|circuit|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side] [--camera-height M]
                  [--culling on|off] [--forest on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--at-m M1,M2…] [--out DOSSIER] [--list]
@@ -265,6 +265,11 @@ def toml_text(table: dict[str, Any]) -> str:
 
 DEMO_LONG_NAME = "demo-long"
 DEMO_LONG_M = 12_000.0
+# Circuit des Prés (lot O38), boucle de 3 km du jeu de base : monde des bancs du Grand Prix des objets, qui se court
+# sur une boucle seulement (lot GPL1) ; écrit par le générateur des démonstrations (`make_biome_world.py --circuit`).
+CIRCUIT_NAME = "demo-circuit"
+CIRCUIT_M = 3000.0   # longueur d'un tour (`openride_compiler.demo_biomes.CIRCUIT_M`, vérifiée par les tests du core)
+LAP_JUMP_M = 500.0   # recul de `s` entre deux positions de la caméra (1/20 s) qui ne peut être qu'un tour bouclé
 
 
 def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
@@ -293,6 +298,16 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         world = next(work.glob("*.world"))
         shutil.copytree(world, routes / world.name, dirs_exist_ok=True)
         return world.stem
+    if kind == "circuit":
+        problem = compiler_problem(())
+        if problem:
+            print(f"ÉCHEC monde circuit : {problem}", file=sys.stderr)
+            raise SystemExit(2)
+        work = tmp / "world-circuit"
+        subprocess.run([sys.executable, str(TESTS_DIR / "make_biome_world.py"), "--out", str(work), "--circuit",
+                        "--name", CIRCUIT_NAME, "--title", "Circuit des Prés"], check=True, stdout=subprocess.DEVNULL)
+        shutil.copytree(work / f"{CIRCUIT_NAME}.world", routes / f"{CIRCUIT_NAME}.world", dirs_exist_ok=True)
+        return CIRCUIT_NAME
     if kind in ("village", "osm", "pont"):
         script = {"village": "make_sim_world.py", "osm": "make_osm_world.py", "pont": "make_bridge_world.py"}[kind]
         problem = compiler_problem(world_layers(kind))
@@ -307,7 +322,7 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, village, osm, pont, ouvert ou dossier .world)")
+        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, circuit, village, osm, pont, ouvert ou dossier .world)")
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
@@ -438,8 +453,10 @@ class Bench:
                                         getattr(a, "month", None)))
         if self.difficulty is not None:
             cfg_lines.append(f"[trainer]\ndifficulty_pct = {float(self.difficulty)}\n")
-        if self.config:
-            cfg_lines.append(toml_text(self.config))
+        # Échauffement avant une course (lot EL1) : un banc mesure la course, pas les 10 min d'échauffement ;
+        # `bench.config` {"depart": {"echauffement_min": N}} le remet.
+        conf = {**self.config, "depart": {"echauffement_min": 0, **self.config.get("depart", {})}}
+        cfg_lines.append(toml_text(conf))
         cfg = tmp / "config.toml"
         cfg.write_text("\n".join(cfg_lines), encoding="utf-8")
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(cfg), "--trainer", "sim",
@@ -576,6 +593,7 @@ class Bench:
                 data = json.loads(got[1].group(1))
                 info.update(ok=bool(data.get("ok")), fps=data.get("fps"), meshes=data.get("meshes"),
                             quality=data.get("quality"),
+                            session_state=str(data.get("session_state", "")),   # lot NI1 : plus de ligne d'état à l'écran
                             draw_calls=data.get("draw_calls"),
                             decor={k: int(data.get("decor", {}).get(k, 0)) for k in DECOR_KINDS},
                             sounds=dict(data.get("decor", {}).get("sounds", {})),
@@ -611,6 +629,9 @@ class Bench:
         next_m = self.first_m if self.every_m > 0.0 else math.inf
         marks = list(self.at_m)
         cam_after = 0.0
+        # Distance parcourue sur une boucle (lot GPL1, Grand Prix sur le Circuit des Prés) : `s` de la caméra
+        # repart de 0 à chaque tour ; un saut en arrière de plus de LAP_JUMP_M ajoute le tour fini.
+        last_s, lap_offset = 0.0, 0.0
         while True:
             t_rel = now() - self.t_core
             if t_rel >= self.duration:
@@ -630,7 +651,11 @@ class Bench:
             if got is None:
                 continue
             cam_after = got[0] + 1e-6
-            s_m = float(got[1].group(1))
+            raw_s = float(got[1].group(1))
+            if raw_s < last_s - LAP_JUMP_M:
+                lap_offset += last_s - raw_s
+            last_s = raw_s
+            s_m = raw_s + lap_offset
             if s_m >= next_m and t_rel >= self.ready_at:   # pas de capture comptée pendant le chargement (X35)
                 self._shot(engine, port, f"d{int(next_m):05d}")
                 while next_m <= s_m:
@@ -833,13 +858,11 @@ class Bench:
                         f"down {downs[0]['ts'] - t0 - t:+.1f} s{back}" if downs else "aucune ligne down")
             if act == "silence" and float(ev.get("seconds", 0)) >= 6:
                 end = t + float(ev["seconds"])
-                seen = [s for s in self.shots if t + 5 <= s["t"] <= end + 1
-                        and "PAUSED" in s.get("widgets", {}).get("status", "")]
-                r.check(bool(seen), f"trainer muet à {t:.0f} s : pause visible à l'écran",
-                        f"{seen[0]['file']} : « {seen[0]['widgets']['status']} »" if seen
-                        else "aucune capture ne montre PAUSED")
+                seen = [s for s in self.shots if t + 5 <= s["t"] <= end + 1 and s.get("session_state") == "PAUSED"]
+                r.check(bool(seen), f"trainer muet à {t:.0f} s : séance en pause dans l'engine",
+                        f"{seen[0]['file']} : PAUSED" if seen else "aucune capture en PAUSED")
                 after = [s for s in self.shots if end + 4 <= s["t"] <= end + 25]
-                running = [s for s in after if "RUNNING" in s.get("widgets", {}).get("status", "")]
+                running = [s for s in after if s.get("session_state") == "RUNNING"]
                 if after:
                     r.check(bool(running), f"reprise après le silence de {t:.0f} s",
                             f"{running[0]['file']} : RUNNING" if running else "toujours en pause à l'écran")
@@ -1061,7 +1084,7 @@ def write_html(b: Bench) -> None:
     for s in b.shots:
         w = s.get("widgets", {})
         txt = " · ".join(f"{k} : {v}" for k, v in w.items() if v and k in
-                         ("power", "speed", "grade", "hr", "status", "banner", "erg_title", "erg_target"))
+                         ("power", "speed", "grade", "hr", "notice", "banner", "erg_title", "erg_target"))
         shots.append(f'<figure><a href="{s["file"]}"><img src="{s["file"]}" loading="lazy" alt="{html.escape(s["tag"])}"></a>'
                      f'<figcaption><b>{s["t"]:.0f} s · {html.escape(s["tag"])}</b> · {s.get("fps", "?")} img/s'
                      f' · {s.get("meshes", "?")} maillages · {s.get("draw_calls", "?")} appels de dessin'
@@ -1154,12 +1177,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
         "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), village (bâtiments, montée et descente), osm, pont (ponts dessinés, lot EA4), ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
+    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), circuit (Circuit des Prés, boucle de 3 km du Grand Prix, lot GPL1), village (bâtiments, montée et descente), osm, pont (ponts dessinés, lot EA4), ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
                     "l'emporte sur le monde du scénario")
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
-    ap.add_argument("--mode", choices=("ride", "wtf", "survivor", "grandprix"),
+    ap.add_argument("--mode", choices=("ride", "wtf", "survivor", "grandprix", "race"),
                     help="mode de la séance (start.mode), ex. survivor ; défaut : bench.mode du scénario, sinon ride")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")

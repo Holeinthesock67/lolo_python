@@ -29,6 +29,9 @@ POWER_CURVE: tuple[tuple[float, float], ...] = (
 OBJECTIVES: dict[str, float] = {"recovery": 55.0, "endurance": 65.0, "tempo": 80.0, "threshold": 92.0,
                                 "max": 100.0}
 DEFAULT_OBJECTIVE = "tempo"
+# Course conseillée (lot GP-niv, CO9) : l'objectif des bots suit le besoin du jour, sans toucher au réglage commun.
+NEED_OBJECTIVE: dict[str, str] = {"light": "endurance", "intense": "threshold", "anaerobic": "max",
+                                  "recovery": "recovery"}
 ITERATIONS = 3
 
 
@@ -106,6 +109,9 @@ def track_effort(event: str, settings: dict, lap_m: float) -> Effort:
     objective, course_m, duration_s = TRACK_EFFORT.get(event, ("tempo", None, None))
     if "distance_m" in settings:
         course_m = float(settings["distance_m"])
+    if course_m is None and duration_s is None and "every_laps" in settings and "opponents" in settings:
+        # élimination : une élimination tous les `every_laps` tours, une par adversaire
+        course_m = float(settings["every_laps"]) * float(settings["opponents"]) * lap_m
     if course_m is None and duration_s is None:
         course_m = float(settings.get("laps", TRACK_DEFAULT_LAPS)) * lap_m
     return Effort(objective, course_m, duration_s)

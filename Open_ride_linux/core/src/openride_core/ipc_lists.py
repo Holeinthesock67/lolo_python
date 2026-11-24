@@ -510,7 +510,7 @@ def build_collection_message(request_cmd_id: int, profile_ctx: Any,
     cards = load_catalogue(table=table)
     cache = FactsCache(journal_dir / CACHE_NAME)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
-                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
     col = evaluate(progress, cards, table, now=now, powers=collection_powers(profile_ctx, journal_dir))
     seen = load_seen(seen_path(profile_ctx.root))
 
@@ -553,7 +553,7 @@ def collection_earned(profile_ctx: Any, journal_dir: Path | None = None,
     table = load_table(table_path)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR),
                          cache=FactsCache(journal_dir / CACHE_NAME),
-                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
     col = evaluate(progress, load_catalogue(table=table), table, now=now,
                    powers=collection_powers(profile_ctx, journal_dir))
     return [(e.start_ts, e.key) for e in col.earned if e.start_ts is not None]
@@ -606,7 +606,7 @@ def compute_summary_collection(profile_ctx: Any,
     cards = load_catalogue(table=table)
     cache = FactsCache(journal_dir / CACHE_NAME)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
-                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
     col = evaluate(progress, cards, table, now=now, powers=collection_powers(profile_ctx, journal_dir))
     seen = load_seen(seen_path(profile_ctx.root))
     ann = announcement(col, seen)
@@ -618,7 +618,7 @@ def compute_summary_collection(profile_ctx: Any,
     }
 
 
-# --- Ma puissance (série PP, lot PP3, révision 1.29) -------------------------------------------------
+# --- Ma puissance (série PP, lot PP3, révision 1.35) -------------------------------------------------
 
 POWER_CURVE_MAX_BYTES = 4096
 

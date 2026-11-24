@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Écran « Ma puissance » du profil (série PP, lot PP3, contrat IPC révision 1.29), sans nœud. Pas de
+## Écran « Ma puissance » du profil (série PP, lot PP3, contrat IPC révision 1.35), sans nœud. Pas de
 ## class_name : charger par preload("res://scripts/power_view_model.gd").
 ##
 ## Les calculs sont ceux du core (message `power_curve`, outils `power_curve` et `ftp_estimate`) :

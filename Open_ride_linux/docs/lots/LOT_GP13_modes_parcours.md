@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : parcours propres à un mode (Vélodrome, Grand Prix), règle unique, accueil et listes | Python, GDScript | GP9, VD10, O32, O38 | Moyenne | GP13a **livré le 16 novembre** (PR #904, avec GP14) ; GP13b fait le 19 novembre (PR en revue, bancs et captures à valider) |
+| Série GP : parcours propres à un mode (Vélodrome, Grand Prix), règle unique, accueil et listes | Python, GDScript | GP9, VD10, O32, O38 | Moyenne | **Livré le 21 novembre** (GP13a : PR #904, 16 novembre ; GP13b : PR #932, 21 novembre) |
 
 Série GP (mode « Grand Prix des objets ») et série VD (vélodrome). Plan validé par le propriétaire le 15 novembre 2026 : `PLAN_PARCOURS_GRAND_PRIX.md` (dossier du projet, v2).
 
@@ -32,7 +32,7 @@ Un mode peut avoir ses propres parcours, reconnus à une étiquette de leur fich
 ## 4. Retours de l'essai du 15 novembre (GP14, même PR)
 
 - Boîtes : une rangée tous les 500 m par défaut (`box_every_m`, 500 à 3 000 m) ; une boîte prise disparaît jusqu'à sa reformation (REFORM_S = 2 s, inchangé) : `state.gp.boxes` part de 30 m derrière et `state.gp.boxes_gone` liste `[rang, voie]` des boîtes prises (`BoxRows.near`, `BoxRows.gone`).
-- Distance : la course dure au plus le parcours (`distance_km` borné par la longueur restante) ; « Lancer » n'est grisé que sous 1 km (`MIN_COURSE_M`).
+- Distance : la course dure au plus le parcours (`distance_km` borné par la longueur restante) ; « Lancer » n'est grisé que sous 1 km (`MIN_COURSE_M`). Retiré au lot GPL1 (20 novembre) : le Grand Prix se court sur une boucle seulement, `LOT_GPL1_boucles.md`.
 - Coup reçu : tant qu'un effet d'attaque, de piège ou contre la tête court sur le cycliste, le bandeau d'avertissement dit « Touché ! Bidon glissant 2 s » et le contour de l'écran prend la couleur de l'objet (`gp_hud_model.hit_view`) ; une menace en vue passe avant ; son et onomatopée inchangés ; jamais de flash plein écran.
 - Panneaux de segment (« Sommet dans 500 m » au km 1 du Col du lacet, à gauche) : plaque blanche cadrée de noir sur poteaux à colliers, construite par `roadside_props.build_board` (même plaque que les panneaux du bord de route) au lieu d'une caisse blanche.
 
@@ -42,6 +42,8 @@ Un mode peut avoir ses propres parcours, reconnus à une étiquette de leur fich
 - GP13b : bancs et captures (section 6).
 
 ## 6. Livraison GP13b (19 novembre 2026)
+
+**Fusionné le 21 novembre 2026 (PR #932 (GP13b)).** Les points « Reste » ci-dessous décrivent l'état d'avant la fusion.
 
 Deux parcours propres au Grand Prix, écrits par le générateur des démonstrations (`openride_compiler.demo_biomes`, entrées de `DEMO_SET` du jeu de base, étiquette `grandprix` de `DEMO_LIBRARY`) et installés avec les contenus de départ, comme le Circuit des Prés :
 

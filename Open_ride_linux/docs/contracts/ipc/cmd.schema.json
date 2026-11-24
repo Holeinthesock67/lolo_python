@@ -31,6 +31,7 @@
         "resume",
         "end_session",
         "skip_block",
+        "skip_warmup",
         "input_event",
         "list_routes",
         "list_workouts",
@@ -76,6 +77,8 @@
         "create_plan",
         "clear_trial_profile",
         "restore_profile",
+        "reset_profile_stats",
+        "undo_profile_reset",
         "recover_session",
         "scene_ready",
         "list_history",
@@ -91,7 +94,10 @@
         "list_mode_options",
         "set_mode_option",
         "set_bots",
-        "u_turn"
+        "u_turn",
+        "bots_preview",
+        "league_status",
+        "league_new"
       ]
     },
     "args": {

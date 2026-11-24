@@ -19,7 +19,7 @@ Dire au joueur, à la fin de sa séance et seulement là, ce que sa séance a ch
   - au plus 4 records, les plus grands gains en pour cent, rangés par durée, avec le mot « libre » ou « ERG » ;
   - signal « FTP à revoir » : estimation du lot PP2 (séance comprise) à plus de 5 % de la FTP réglée.
 - `session.py` : `_after_session_power` à la fin d'une séance finie, calcul hors de la boucle à 50 Hz (comme `summary.collection`), puis `summary.power_records` et `summary.ftp_review`, absents s'il n'y a rien à dire.
-- Contrat : révision 1.29 (déjà réservée à la série PP par le lot PP3), objets facultatifs de `summary` (« Bilan 1.29 » de `docs/contracts/ipc_v1.md`, `state.schema.json`).
+- Contrat : révision 1.35 (déjà réservée à la série PP par le lot PP3), objets facultatifs de `summary` (« Bilan 1.35 » de `docs/contracts/ipc_v1.md`, `state.schema.json`).
 - Ligne de commande : `python -m openride_core.tools.power_records JOURNAL.jsonl [--ftp W] [--json]`.
 
 ### 2.2 Engine
@@ -35,4 +35,4 @@ Dire au joueur, à la fin de sa séance et seulement là, ce que sa séance a ch
 
 ## 4. Livraison
 
-21 novembre 2026, PR empilée sur PP3 : module `power_records.py`, branchement de fin de séance, contrat 1.29 complété, bilan de l'engine, tests du core et de l'engine. Aucune donnée réelle : séances fabriquées (modèle à 250 W).
+21 novembre 2026, PR empilée sur PP3 : module `power_records.py`, branchement de fin de séance, contrat 1.35 complété, bilan de l'engine, tests du core et de l'engine. Aucune donnée réelle : séances fabriquées (modèle à 250 W).

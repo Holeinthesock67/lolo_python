@@ -5,8 +5,8 @@ extends PanelContainer
 ## entraînement colorés par zone), lignes de texte. Affiche une fiche de menu_flow.card() :
 ## {title, name, tiles [{label, value, unit, gold}] (gold : valeur en or), lines, profile (HudViewModel.profile), blocks ([durée,
 ## début, fin]), curve (courbe de puissance de « Ma puissance », power_view_model.gd, lot PP3), fitness (courbe de forme,
-## {ctl, atl, weeks, days}, lot FO1)} ; les clés absentes ne
-## montrent rien. `body` reçoit d'autres contenus (bilan, menu_view).
+## {ctl, atl, weeks, days}, lot FO1), table ([{place, name, style, points, ran, color, me}] : classement de la ligue,
+## ligne `me` encadrée)} ; les clés absentes ne montrent rien. `body` reçoit d'autres contenus (bilan, menu_view).
 ## Couleurs et tailles du thème commun (ui_theme.gd). Pas de class_name : charger par
 ## preload("res://scripts/detail_card.gd").
 
@@ -30,6 +30,7 @@ var name_label: Label
 var tiles_box: HBoxContainer
 var chart: Control
 var lines_label: Label
+var table_box: VBoxContainer
 var _tiles: Array[PanelContainer] = []
 var _sheet: Dictionary = {}
 var _shown_once := false
@@ -62,6 +63,9 @@ func _init() -> void:
 	chart.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chart.draw.connect(_draw_chart)
 	body.add_child(chart)
+	table_box = VBoxContainer.new()
+	table_box.add_theme_constant_override("separation", 2)
+	body.add_child(table_box)
 	# Lignes en taille de pastille : la carte tient à côté des pastilles des appareils (écran Prêt).
 	lines_label = UiTheme.label(UiTheme.CHIP_SIZE)
 	lines_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -77,6 +81,10 @@ func text() -> String:
 	for t in _tiles:
 		if t.visible:
 			parts.append(_tile_text(t))
+	if table_box.visible:
+		for row in _sheet.get("table", []):
+			parts.append("%s %s %s %s %s%s" % [row.get("place", ""), row.get("name", ""), row.get("style", ""),
+				row.get("points", ""), row.get("ran", ""), " (toi)" if bool(row.get("me", false)) else ""])
 	if lines_label.visible:
 		parts.append(lines_label.text.replace("\n", " | "))
 	return " | ".join(parts)
@@ -108,6 +116,7 @@ func update_display(sheet: Dictionary) -> void:
 		if _tiles[i].visible:
 			_set_tile(_tiles[i], tiles[i])
 	tiles_box.visible = not tiles.is_empty()
+	_set_table(sheet.get("table", []))
 	var lines: Array = sheet.get("lines", [])
 	lines_label.text = "\n".join(PackedStringArray(lines.map(func(l): return str(l))))
 	lines_label.visible = not lines.is_empty()
@@ -124,6 +133,56 @@ func _has_curve() -> bool:
 func _has_fitness() -> bool:
 	var f = _sheet.get("fitness", null)
 	return f is Dictionary and f.get("ctl", []) is Array and f.get("ctl", []).size() >= 2
+
+
+## Tableau du classement (ligue d'hiver, maquette CH0 02) : place, pastille du maillot, nom et caractère écrits,
+## points et manches courues ; la ligne du cycliste est encadrée (mot « Toi » écrit, pas la couleur seule).
+func _set_table(rows: Array) -> void:
+	for c in table_box.get_children():
+		table_box.remove_child(c)
+		c.queue_free()
+	table_box.visible = not rows.is_empty()
+	for r in rows:
+		if r is Dictionary:
+			table_box.add_child(_table_row(r))
+
+
+func _table_row(r: Dictionary) -> PanelContainer:
+	var me := bool(r.get("me", false))
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiTheme.table_row_style(me))
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(row)
+	var place := UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.TEXT if me else UiTheme.DIM, str(r.get("place", "")))
+	place.custom_minimum_size.x = 26
+	place.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(place)
+	var swatch := ColorRect.new()
+	swatch.custom_minimum_size = Vector2(10, 18)
+	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	swatch.color = UiTheme.jersey_color(str(r.get("color", "")))
+	row.add_child(swatch)
+	var who := UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.FOCUS if me else UiTheme.TEXT, str(r.get("name", "")))
+	who.custom_minimum_size.x = 150
+	who.clip_text = true
+	who.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(who)
+	var style := UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM, str(r.get("style", "")))
+	style.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	style.clip_text = true
+	style.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(style)
+	var pts := UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.TEXT, str(r.get("points", "")))
+	pts.custom_minimum_size.x = 64
+	pts.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(pts)
+	var ran := UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM, str(r.get("ran", "")))
+	ran.custom_minimum_size.x = 36
+	ran.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(ran)
+	return panel
 
 
 func _has_profile() -> bool:
