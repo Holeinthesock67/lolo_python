@@ -54,7 +54,7 @@ class BotPlan:
         self.profiles = dict(profiles)
         self.seed = int(seed)
         self._swing: dict[str, float] = {}   # relayeur → fin de sa remontée (temps de l'épreuve)
-        self._seen_journal = 0
+        self._seen_relays = 0
         self._reserve: dict[str, float] = {}
 
     # --- entrée ---
@@ -96,10 +96,11 @@ class BotPlan:
 
     def _pursuit(self, ev: Pursuit, hints: dict[str, RaceHint | None]) -> None:
         t = ev.elapsed_s
-        for line in ev.journal[self._seen_journal:]:   # relayeur qui vient de passer : il remonte
-            if line.get("event") == "relay":
-                self._swing[line["rider"]] = t + SWING_UP_S
-        self._seen_journal = len(ev.journal)
+        # relayeur qui vient de passer : il remonte. Liste des relais de l'épreuve, pas son journal : la séance
+        # vide le journal à chaque pas, avant que le plan le lise (revue C3-04).
+        for _, rider in ev.relays[self._seen_relays:]:
+            self._swing[rider] = t + SWING_UP_S
+        self._seen_relays = len(ev.relays)
         for tm in ev.teams.values():
             racing = [i for i in tm.order if ev.riders[i].out is None]
             for k, rid in enumerate(racing):
