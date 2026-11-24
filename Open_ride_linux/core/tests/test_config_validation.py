@@ -83,6 +83,16 @@ def test_unknown_key_warns_and_loads(caplog: pytest.LogCaptureFixture) -> None:
     assert "[rider] ftp" in caplog.text and "[riderr]" in caplog.text
 
 
+def test_retired_key_is_ignored_without_warning(caplog: pytest.LogCaptureFixture) -> None:
+    """Lot GPL1 : `[grandprix] distance_km`, réglage retiré (Grand Prix sur une boucle seulement), encore écrit dans
+    le config.toml d'un joueur : ignoré, noté au journal en information, jamais signalé comme une faute de frappe."""
+    with caplog.at_level(logging.INFO, logger="config"):
+        cfg = from_dict({"grandprix": {"distance_km": 12, "laps": 2}})
+    assert cfg.grandprix.laps == 2 and not hasattr(cfg.grandprix, "distance_km")
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert "réglage retiré" in caplog.text and "distance_km" in caplog.text
+
+
 def test_srs_example_loads_without_warning(caplog: pytest.LogCaptureFixture) -> None:
     text = SRS_PATH.read_text(encoding="utf-8")
     after = text[re.search(r"^## 11\..*$", text, flags=re.MULTILINE).end():]
