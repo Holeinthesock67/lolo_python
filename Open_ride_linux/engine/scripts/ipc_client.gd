@@ -155,6 +155,16 @@ var _gap_counts := PackedInt32Array()
 var _gap_n := 0
 var _gap_max_ms := 0.0
 var _gap_next_us := 0
+## Pertes de trames state (essai du 22 novembre, gels de 9 à 10 s à Biarritz) : compteurs de la minute, publiés
+## avec la ligne [gigue] dans une ligne « [ipc] state reçues … » (ipc_loss_line), et un trou de plus de
+## LONG_GAP_MS noté tout de suite avec les seq avant et après : seq qui avance = le core a envoyé et la trame
+## s'est perdue en route ; seq qui suit = le core n'a rien envoyé.
+const LONG_GAP_MS := 2000.0
+var _win_received := 0
+var _win_late := 0
+var _win_seq_skipped := 0
+var _win_max_bytes := 0
+var _win_long_gaps := 0
 var _core_reachable := true
 var _hb_thread: Thread
 var _hb_stop := false
@@ -282,6 +292,7 @@ func _process(delta: float) -> void:
 func _poll_incoming() -> void:
 	while _peer.get_available_packet_count() > 0:
 		var pkt := _peer.get_packet()
+		_win_max_bytes = maxi(_win_max_bytes, pkt.size())
 		var json_obj = JSON.parse_string(pkt.get_string_from_utf8())
 		if typeof(json_obj) != TYPE_DICTIONARY:
 			invalid_datagram_count += 1
@@ -395,6 +406,8 @@ func note_state_gap(gap_ms: float, now_us: int) -> void:
 	_gap_max_ms = maxf(_gap_max_ms, gap_ms)
 	if now_us >= _gap_next_us:
 		print(state_gap_line())
+		print(ipc_loss_line())
+		_reset_loss_window()
 		_gap_counts.fill(0)
 		_gap_n = 0
 		_gap_max_ms = 0.0
@@ -412,6 +425,36 @@ func state_gap_percentile(q: float) -> float:
 	return _gap_max_ms
 
 
+## Ligne de la minute sur les pertes de trames state (essai du 22 novembre).
+func ipc_loss_line() -> String:
+	return "[ipc] state reçues %d ; en retard %d ; seq sautés %d ; trous de plus de %d s %d ; plus gros datagramme %d o" % [
+		_win_received, _win_late, _win_seq_skipped, int(LONG_GAP_MS / 1000.0), _win_long_gaps, _win_max_bytes]
+
+
+func _reset_loss_window() -> void:
+	_win_received = 0
+	_win_late = 0
+	_win_seq_skipped = 0
+	_win_max_bytes = 0
+	_win_long_gaps = 0
+
+
+## Trame state acceptée : `prev_seq` dernier seq compté (-1 au premier), `seq` celui-ci, `gap_ms` écart en temps.
+## Renvoie la ligne d'un trou de plus de LONG_GAP_MS (vide sinon), déjà écrite au journal.
+func note_state_seq(prev_seq: int, seq: int, gap_ms: float) -> String:
+	_win_received += 1
+	var skipped := seq - prev_seq - 1 if prev_seq >= 0 else 0
+	_win_seq_skipped += maxi(skipped, 0)
+	if gap_ms < LONG_GAP_MS:
+		return ""
+	_win_long_gaps += 1
+	var line := "[ipc] trou de %d ms entre deux trames state : seq %d -> %d (%d trames du core manquantes : %s)" % [
+		int(gap_ms), prev_seq, seq, maxi(skipped, 0),
+		"perdues en route" if skipped > 0 else "le core n'a rien envoyé"]
+	print(line)
+	return line
+
+
 func state_gap_line() -> String:
 	return "[gigue] state : écart entre trames p50 %.1f p99 %.1f max %.1f ms (%d trames)" % [
 		state_gap_percentile(0.5), state_gap_percentile(0.99), _gap_max_ms, _gap_n]
@@ -422,14 +465,18 @@ func _on_state(msg: Dictionary) -> void:
 	if seq <= last_state_seq:
 		# Contrat §3 et §6 : seule la trame au seq le plus élevé compte.
 		late_state_count += 1
+		_win_late += 1
 		test_log("state_late seq=%d late=%d" % [seq, late_state_count])
 		return
 	if last_state_seq >= 0 and seq > last_state_seq + 1:
 		seq_gap_count += seq - last_state_seq - 1
+	var prev_seq := last_state_seq
 	last_state_seq = seq
 	var now_us := Time.get_ticks_usec()
 	if _core_reachable and _hello_acked:
-		note_state_gap((now_us - _last_state_us) / 1000.0, now_us)
+		var gap_ms := (now_us - _last_state_us) / 1000.0
+		note_state_seq(prev_seq, seq, gap_ms)
+		note_state_gap(gap_ms, now_us)
 	_last_state_us = now_us
 	if not _core_reachable:
 		_core_reachable = true
