@@ -76,7 +76,7 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     """Jeu de base : le tour des nouveaux paysages, le circuit, le récif et le volcan (lots O38, SM1, DB1 et DB2) ;
     recette : en plus les parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    assert names == ["demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
+    assert names == ["demo-biomes-forets.world", "demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
                      "demo-circuit.world", "demo-corniche.world", "demo-japon.world", "demo-recif.world",
                      "demo-vignes.world", "demo-volcan.world"]
     retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
@@ -151,7 +151,7 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
                       "demo-circuit": "Circuit des Prés", "demo-recif": "Récif des tortues",
                       "demo-volcan": "Volcan en flammes", "demo-biomes-sud": "Route du Sud",
                       "demo-biomes-nord": "Route du Grand Nord", "demo-corniche": "Boucle de la Corniche",
-                      "demo-vignes": "Route des Vignes"}
+                      "demo-vignes": "Route des Vignes", "demo-biomes-forets": "Route des Trois Forêts"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
     assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
@@ -236,7 +236,7 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
         kept[n] = f.read_bytes()
     assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and sorted(written) == ["demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-corniche",
+    assert note == "" and sorted(written) == ["demo-biomes-forets", "demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-corniche",
                                                  "demo-japon", "demo-recif", "demo-vignes", "demo-volcan"]
     assert not gravel.exists()
     assert _json(old)["name"] == "Circuit des Prés"
@@ -271,7 +271,8 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert "demo-biomes-sud (Route du Sud) : 12.1 km" in out
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
     assert "demo-corniche (Boucle de la Corniche) : 2.5 km" in out and "demo-vignes (Route des Vignes) : 5.0 km" in out
-    assert len(list(tmp_path.glob("*.world"))) == 9
+    assert "demo-biomes-forets (Route des Trois Forêts) : " in out
+    assert len(list(tmp_path.glob("*.world"))) == 10
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -613,7 +614,8 @@ def test_loop_blocks_must_fill_the_loop(mbw) -> None:
 
 # --- Parcours du Grand Prix des objets (lot GP13b) -------------------------------------------------------------
 
-GRAND_PRIX = ("demo-circuit", "demo-corniche", "demo-vignes")
+GRAND_PRIX = ("demo-circuit", "demo-corniche", "demo-vignes",
+              "demo-recif", "demo-volcan", "demo-biomes-nord")   # lot GPL1 : boucles restées libres, étiquette `libre`
 
 
 def _radius_min(route: dict) -> float:
@@ -631,12 +633,13 @@ def test_grand_prix_routes_are_wide_paved_and_without_hairpin(demo_set: Path, mb
     n'a pas d'épingle (rayon de virage d'au moins 25 m)."""
     from openride_core import mode_routes
 
-    tagged = sorted(n for n in mbw.GAME_DEMOS if mode_routes.mode_of(mbw.library_of(n)) == "grandprix")
+    tagged = sorted(n for n in mbw.GAME_DEMOS if mode_routes.mode_of(mbw.library_of(n), "loop") == "grandprix")
     assert tagged == sorted(GRAND_PRIX)
     for name in tagged:
         world = demo_set / f"{name}.world"
         route = _json(world / "route.json")
         manifest = _json(world / "manifest.json")
+        assert route["type"] == "loop", name   # lot GPL1 : le Grand Prix se court sur une boucle
         assert set(route.get("surface", ["paved"])) == {"paved"}, name
         assert not [g for n, *_, g, _sea, base in mbw.DEMO_SET if n == name and g], name
         assert 2.0 * manifest["layers"]["terrain"]["road_half_width_m"] >= 6.0, name

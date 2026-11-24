@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : bornes, panneau de col et portiques lisibles après un demi-tour | GDScript | N17 (aucun code de N17 requis) | Petite | Fait : fusionné le 9 novembre (#812), **version 1.x** |
+| 1.x série N : bornes, panneau de col et portiques lisibles après un demi-tour | GDScript | N17 (aucun code de N17 requis) | Petite | **Livré le 9 novembre** (PR #812, version 1.x) |
 
 ## 1. Objectif
 
@@ -34,3 +34,7 @@ du portique bleu « Départ ». Ce lot traite ces faces arrière ; les autres po
 
 Fenêtres d'affichage à rebours (N22), circulation et cyclistes du décor à rebours (N23), montées du retour (N24), arches
 de bonus à rebours (N25), ponts, tunnels, glissières et signalisation (nouvelle série).
+
+## 5. Livraison
+
+Fusionné le 9 novembre 2026 (PR #812). Détail des écarts et de la recette : description de la PR.

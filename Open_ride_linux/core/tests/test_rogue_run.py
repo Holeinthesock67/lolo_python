@@ -195,11 +195,14 @@ def fight_engine(first="grimpeur", objective="threshold", deck=(), relics=(), se
     return e
 
 
-def step_in_room(e, s, gear=6, cadence=85.0, power=200.0, buttons=(), v=8.0, n=1):
+def step_in_room(e, s, gear=6, cadence=85.0, power=200.0, buttons=(), v=8.0, n=1, judged="power"):
+    """`judged` : puissance jugée imposée ; « power » (défaut) : la puissance du pas, pour juger chaque pas sans
+    attendre la moyenne de 8 s (lot R26) ; None : la moyenne glissante du mode."""
     out = None
     for _ in range(n):
+        avg = power if judged == "power" else judged
         out = e.step(DT, RunInputs(power_w=power, cadence_rpm=cadence, gear=gear, ftp_w=250, s_m=s, v_mps=v,
-                                   buttons=frozenset(buttons)))
+                                   buttons=frozenset(buttons), power_avg_w=avg))
     return out
 
 
