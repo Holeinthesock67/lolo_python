@@ -338,13 +338,18 @@ def verdict(blocks: dict[str, Block], plain: Any, equipped: Any) -> tuple[bool, 
         ok &= same_feel
         lines.append(f"{'OK' if same_feel else 'ÉCHEC'} : pente envoyée au trainer au braquet {g} : {ga:.2f} % puis "
                      f"{gb:.2f} % (même résistance attendue).")
-    else:
-        lines.append("Pente envoyée non comparée : aucun braquet tenu 30 s dans les deux blocs.")
+    else:   # C7-10 : une mesure qui manque rend le verdict incomplet, donc pas réussi
+        ok = False
+        lines.append("INCOMPLET : pente envoyée non comparée (aucun braquet tenu 30 s dans les deux blocs, ou "
+                     "pente envoyée absente des relevés).")
     gain = equipment_time_gain(b.records, equipped, plain)
     if gain is not None:
         lines.append(f"{'OK' if gain < 0 else 'ÉCHEC'} : temps gagné par l'équipement sur le bloc 2 recalculé : "
                      f"{gain:+.0f} s (le bilan à l'écran doit dire la même chose).")
         ok &= gain < 0
+    else:
+        ok = False
+        lines.append("INCOMPLET : temps gagné par l'équipement non recalculé (relevés du bloc 2 insuffisants).")
     return ok, lines
 
 
