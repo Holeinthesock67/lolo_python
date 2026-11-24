@@ -2520,7 +2520,7 @@
         },
         "warmup": {
           "type": "object",
-          "description": "Révision 1.32 : échauffement sur place en ERG avant une course (Dernier survivant, Grand Prix, épreuves de piste hors séance libre ; `[depart] echauffement_min`) ; présent seulement quand la séance qui part en a un.",
+          "description": "Révision 1.33 : échauffement sur place en ERG avant une course (Dernier survivant, Grand Prix, épreuves de piste hors séance libre ; `[depart] echauffement_min`) ; présent seulement quand la séance qui part en a un.",
           "required": [
             "target_w",
             "left_s",
@@ -3060,7 +3060,7 @@
               "type": "number"
             }
           },
-          "description": "Révision 1.32 : coureur juste devant le cycliste et écart en temps de passage (s, positif), null sans voisin devant, cycliste sorti ou épreuve finie."
+          "description": "Révision 1.33 : coureur juste devant le cycliste et écart en temps de passage (s, positif), null sans voisin devant, cycliste sorti ou épreuve finie."
         },
         "behind": {
           "type": [
@@ -3080,12 +3080,12 @@
               "type": "number"
             }
           },
-          "description": "Révision 1.32 : coureur juste derrière et écart en temps de passage (s, négatif ou nul), null sans voisin derrière."
+          "description": "Révision 1.33 : coureur juste derrière et écart en temps de passage (s, négatif ou nul), null sans voisin derrière."
         },
         "every_laps": {
           "type": "integer",
           "minimum": 1,
-          "description": "Révision 1.32 : élimination, tours entre deux éliminations."
+          "description": "Révision 1.33 : élimination, tours entre deux éliminations."
         }
       }
     }

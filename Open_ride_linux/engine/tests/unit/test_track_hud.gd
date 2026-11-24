@@ -101,7 +101,7 @@ func _run() -> void:
 	v = m.view(_st(el))
 	_check(v["center"].is_empty() and v["list"]["rows"][2]["kind"] == "danger", "élimination : un bot dernier en rouge")
 
-	# Révision 1.32 (essai du 21 novembre) : tours entre deux éliminations, écarts aux voisins, victoire
+	# Révision 1.33 (essai du 21 novembre) : tours entre deux éliminations, écarts aux voisins, victoire
 	el.merge({"every_laps": 4, "bell": false, "ahead": {"id": "b3", "gap_s": 1.24}, "behind": {"id": "b4", "gap_s": -0.8}}, true)
 	v = m.view(_st(el))
 	_check(v["banner"]["sub"].begins_with("Le dernier sort tous les 4 tours"), "élimination : tous les 4 tours (%s)" % v["banner"]["sub"])

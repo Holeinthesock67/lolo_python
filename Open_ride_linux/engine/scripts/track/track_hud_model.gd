@@ -124,7 +124,7 @@ static func my_place(tr: Dictionary) -> int:
 	return 0
 
 
-## Épreuve finie (révision 1.32, montré FINISH_SHOW_S secondes, puis on continue à rouler) : « VICTOIRE ! » en or, ou « ARRIVÉE · 3e sur 8 ».
+## Épreuve finie (révision 1.33, montré FINISH_SHOW_S secondes, puis on continue à rouler) : « VICTOIRE ! » en or, ou « ARRIVÉE · 3e sur 8 ».
 func finish_center(tr: Dictionary) -> Dictionary:
 	var place := my_place(tr)
 	var of := (tr.get("ranking", []) as Array).size() if tr.get("ranking") is Array else 0
@@ -137,7 +137,7 @@ func finish_center(tr: Dictionary) -> Dictionary:
 		"color": BLUE_BG}
 
 
-## Écarts en temps aux voisins (révision 1.32, `track.ahead` / `track.behind`, signés comme `bots[].gap_s`) :
+## Écarts en temps aux voisins (révision 1.33, `track.ahead` / `track.behind`, signés comme `bots[].gap_s`) :
 ## {ahead: {name, text}, behind: {name, text}} ; une clé absente sans voisin ; {} sans aucun voisin.
 func gaps_block(tr: Dictionary) -> Dictionary:
 	var out := {}
