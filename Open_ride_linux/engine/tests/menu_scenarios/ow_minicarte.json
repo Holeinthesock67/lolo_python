@@ -1,0 +1,85 @@
+{
+  "description": "Lot W24 (mini-carte du monde ouvert), recette sur le PC : départ de Sevrier trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie la mini-carte en bas à gauche (route devant en trait plein, route roulée en pointillés, branches des carrefours proches, « N », échelle « 200 m »), le carrefour écrit dessous et le but « Départ : … à vol d'oiseau » épinglé au bord puis revenu dans la carte au retour. Captures à 0,5, 2, 5 et 8 km. À lancer en low, medium et high, cache du monde ouvert séparé (cache=\"separe\").",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "sevrier",
+        "contient": "Sevrier",
+        "cap": [
+          {
+            "note": "Ligne suivante (navigation), Balade -> Destination -> Boucle",
+            "touche": "Plus"
+          },
+          {
+            "touche": "Right"
+          },
+          {
+            "touche": "Right"
+          },
+          {
+            "note": "Ligne de la longueur : 30 km par défaut, ramenée à 10 km",
+            "touche": "Plus"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "monde": "setup",
+            "contient": [
+              "Boucle",
+              "Longueur : 10 km"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "note": "Lot W24 : la mini-carte s'affiche avec le but de la boucle (retour au départ)",
+      "journal": "engine",
+      "motif": "minimap shown goal=Départ",
+      "delai": 120
+    },
+    {
+      "distance_km": 0.5,
+      "delai": 300
+    },
+    {
+      "capture": "carte_0_5km"
+    },
+    {
+      "distance_km": 2,
+      "delai": 600
+    },
+    {
+      "capture": "carte_2km"
+    },
+    {
+      "distance_km": 5,
+      "delai": 900
+    },
+    {
+      "capture": "carte_5km"
+    },
+    {
+      "distance_km": 8,
+      "delai": 900
+    },
+    {
+      "capture": "carte_8km"
+    }
+  ]
+}

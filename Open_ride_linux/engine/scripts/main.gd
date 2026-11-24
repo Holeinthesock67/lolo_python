@@ -82,6 +82,8 @@ const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
 const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
+const MinimapView := preload("res://scripts/minimap_view.gd")
+const MinimapModel := preload("res://scripts/minimap_model.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
 
@@ -126,6 +128,10 @@ var _menu_perf := {"n": 0, "total_ms": 0.0, "max_ms": 0.0, "screen": ""}
 var live_world = LiveWorld.new()
 ## Panneau du carrefour et attributions (lot W12) ; null avant _ready.
 var junction_view = null
+var minimap_view = null          # mini-carte du monde ouvert (lot W24)
+var _ow_start_args = null         # arguments du dernier start_open_world envoyé (but de la mini-carte)
+var _minimap_goal := {}           # but de la mini-carte dans le repère du monde, recalculé à chaque route
+var _minimap_goal_route: Array = []
 ## Menu « Monde ouvert » (lot W11) : globe, carte, préchargement ; caché hors de ce menu.
 var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
@@ -484,6 +490,8 @@ func _ready() -> void:
 	hud.add_child(chart_sim)
 	junction_view = JunctionView.new()
 	hud.add_child(junction_view)
+	minimap_view = MinimapView.new()
+	hud.add_child(minimap_view)
 	world_menu_view = WorldMenuView.new()
 	hud.add_child(world_menu_view)
 	# Compteur d'images/s sur sa propre couche, au niveau du HUD : il reste affiché pendant une run Cyber-Rogue,
@@ -966,6 +974,7 @@ func _run_world_action(act: Dictionary) -> void:
 		"world_pin":
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
+			_ow_start_args = act["args"]
 			ipc.send_command("start_open_world", act["args"])
 		"set_setting":   # ligne « Biome » de l'écran du cap (lot W17) : même réglage que le menu des réglages
 			ipc.set_setting(str(act["key"]), act["value"])
@@ -1242,6 +1251,7 @@ func _process(delta: float) -> void:
 	# l'horloge des personnages et des animaux ci-dessus.
 	if banner.has_message("core_lost"):
 		return
+	_update_minimap(s_disp)
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
@@ -1444,6 +1454,68 @@ func _poll_live_world() -> void:
 		ipc.test_log("world_revision_error rev=%d" % upd["revision"])
 	if follow.has_frame():
 		streamer.set_previews(live_world.previews(float(follow.last_frame["s"])))
+
+## Mini-carte du monde ouvert (lot W24) : visible en séance de monde ouvert (champ `open_world` reçu), en bas à
+## gauche sous la colonne gauche du HUD (vent et abri compris), au-dessus du bandeau ERG s'il est là.
+func _update_minimap(s_disp: float) -> void:
+	if minimap_view == null:
+		return
+	var shown: bool = not ipc.open_world.is_empty() and route != null and hud.visible \
+		and session_state in ["READY", "RUNNING", "PAUSED"]
+	if not shown:
+		minimap_view.visible = false
+		return
+	var q: Dictionary = MinimapModel.quality(_quality_name)
+	minimap_view.redraw_ms = int(q["redraw_ms"])
+	var nxt = ipc.open_world.get("next")
+	var goal := _minimap_goal_for(route)
+	var lines := 0
+	if typeof(nxt) == TYPE_DICTIONARY and float(nxt.get("d_m", INF)) <= MinimapModel.JUNCTION_MAX_M:
+		lines += 1
+	if not goal.is_empty():
+		lines += 1
+	var viewport := get_viewport().get_visible_rect().size
+	var erg_on: bool = _last_state.get("erg", null) is Dictionary
+	var bottom: float = viewport.y - (HudView.ERG_RESERVE if erg_on else HudView.SCREEN_BOTTOM)
+	var top_limit: float = hud.panel_left.get_global_rect().end.y
+	for c in [hud.panel_wind, hud.draft_label, hud.draft_w_label]:
+		if c != null and c.is_visible_in_tree():
+			top_limit = maxf(top_limit, c.get_global_rect().end.y)
+	var was_visible: bool = minimap_view.visible
+	var old_rect: Rect2 = minimap_view.get_rect()
+	if not minimap_view.place(HudView.TOP_MARGIN, top_limit + HudView.BLOCK_GAP, bottom, lines):
+		minimap_view.visible = false
+		return
+	minimap_view.visible = true
+	if not was_visible:
+		ipc.test_log("minimap shown goal=%s lines=%d quality=%s" % [str(goal.get("label", "aucun")), lines, _quality_name])
+	var aspect: float = minimap_view.map.size.y / maxf(minimap_view.map.size.x, 1.0)
+	var opts := {"stride": int(q["stride"]), "previews": live_world.previews(s_disp) if live_world.route != null else [],
+		"next": nxt, "goal": goal, "aspect": aspect}
+	var force: bool = not was_visible or old_rect != minimap_view.get_rect()
+	minimap_view.show_view(MinimapModel.build(route, s_disp, follow.direction, opts), force)
+
+
+## But de la mini-carte (destination ou retour au départ de la boucle) dans le repère de `r`, d'après le dernier
+## départ envoyé, sinon le dernier départ du profil (`last_choices.open_world`, reprise après relance) ; {} en
+## balade libre. Recalculé seulement quand la route change (nouvelle révision du monde vivant).
+func _minimap_goal_for(r) -> Dictionary:
+	var args = _ow_start_args
+	if args == null:
+		var last = ipc.core_config.get("last_choices", {})
+		args = last.get("open_world") if last is Dictionary else null
+	var key := [r, str(args)]
+	if key == _minimap_goal_route:
+		return _minimap_goal
+	_minimap_goal_route = key
+	var g := MinimapModel.goal_from_start(args)
+	_minimap_goal = {}
+	if not g.is_empty():
+		var p := MinimapModel.geo_to_world(r, float(g["lat"]), float(g["lon"]))
+		if is_finite(p.x) and is_finite(p.y):
+			_minimap_goal = {"kind": g["kind"], "label": g["label"], "x": p.x, "z": p.y}
+	return _minimap_goal
+
 
 ## Monde ouvert (lot W21) : portiques et panneaux des montées et sprints trouvés en roulant, arches de bonus
 ## jusqu'au bout de la route connue, jingles des lignes ; `from_s` : début de la route réécrite (nœuds refaits).
@@ -1847,6 +1919,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"gear": hud.gear_val, "time": hud.time_val,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_direction": hud.wind_dir_label,
 		"draft": hud.draft_label, "draft_w": hud.draft_w_label,
+		"minimap": minimap_view,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -1923,6 +1996,8 @@ func _widget_text(key: String) -> String:
 				menu_view.collection.view_text() if menu_view.collection.visible else "",
 				menu_view.devices.text() if menu_view.devices.visible else "",
 				(menu_view.summary.text() + " || " + menu_view.summary.progress_text()) if menu_view.summary.visible else "", menu_view.card.text() if menu_view.card.visible else ""]
+	if key == "minimap":
+		return minimap_view.describe()
 	return ""
 
 
@@ -2359,6 +2434,10 @@ func _on_state_received(state: Dictionary) -> void:
 		_update_feedback(state)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
+	# Mini-carte : _process la suit à chaque image (s lissé) ; ici, l'apparition et la disparition suivent la trame
+	# même sans image de rendu (caméra du menu, core figé).
+	if minimap_view != null and follow.has_frame() and (not minimap_view.visible or ipc.open_world.is_empty()):
+		_update_minimap(float(follow.last_frame["s"]))
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)

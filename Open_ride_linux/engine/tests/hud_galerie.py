@@ -100,6 +100,14 @@ GP_SUMMARY = {"duration_s": 1455.0, "distance_m": 15200.0, "avg_power_w": 246.0,
                      "distance_km": 15.2}}
 
 
+# Monde ouvert (lot W24) : champ `open_world` de la trame (prochain carrefour à 240 m, trois branches) et départ en
+# destination du profil (`last_choices.open_world`) ; coordonnées du parcours de démonstration (demo_world.py).
+OW_FIELD = {"rev": 1, "data": "cached", "next": {"id": "j1", "d_m": 240.0, "default": 1, "chosen": 1, "locked": False,
+                                                  "b": [[-80, "m", 3.2], [0, "t", 0.5], [75, "c", -1.0]]}}
+OW_DESTINATION = {"open_world": {"lat": 45.09, "lon": 6.06, "heading_deg": 0, "nav": "destination",
+                                 "target": {"lat": 45.105, "lon": 6.075}, "loop_km": None}}
+
+
 # Cas : nom, valeurs de la trame `state` (par-dessus SIM), textes attendus des widgets, zones attendues des
 # teintes (zones, de 1 à 7), widgets visibles ou cachés, taille des courbes (chart, None : courbes cachées)
 # et attente avant la capture.
@@ -176,6 +184,14 @@ CAS: list[dict[str, Any]] = [
      "expect": {"warn": "Orage vers le premier", "outline": False, "hint": "← → : changer de voie"}},
     {"name": "gp_12_coureurs", "gp": {"place": 9, "of": 12, "gap_s": 3.0, "held": "homing", "n": 1, "lap": None},
      "gp_count": 11, "expect": {"place": "9e / 12", "key": "Z : Musette guidée"}},
+    # Monde ouvert (lot W24) : mini-carte en bas à gauche, prochain carrefour écrit dessous ; puis destination
+    # (derniers choix du profil : cible à ~2 km du départ du parcours de démonstration) épinglée avec sa distance.
+    {"name": "monde_ouvert_carte", "state": {"open_world": OW_FIELD},
+     "texts_contains": {"minimap": "Carrefour dans 240 m"}, "shown": ["minimap"]},
+    {"name": "monde_ouvert_destination", "state": {"open_world": OW_FIELD}, "last_choices": OW_DESTINATION,
+     "texts_contains": {"minimap": "Arrivée : "}, "shown": ["minimap"]},
+    {"name": "monde_ouvert_erg", "state": {"open_world": OW_FIELD, "mode": "ERG", "erg": _erg(230.0, 100)},
+     "last_choices": OW_DESTINATION, "texts_contains": {"minimap": "Arrivée : "}, "shown": ["minimap", "erg_target"]},
     {"name": "gp_bilan", "state": {"session_state": "FINISHED", "summary": GP_SUMMARY},
      "texts_contains": {"menu": "Grand Prix des objets : 2e sur 5"}},
 ]
@@ -201,6 +217,12 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
         if chart != core.chart:
             core.chart = chart
             core.send_hello_ack()
+        if cas.get("last_choices") != core.last_choices:
+            core.last_choices = cas.get("last_choices")
+            core.send_hello_ack()
+        if "open_world" not in cas.get("state", {}):
+            with core.lock:   # hors monde ouvert, pas de champ `open_world` (mini-carte et carrefour cachés)
+                core.fields.pop("open_world", None)
         state = dict(SIM) | cas.get("state", {})
         if cas.get("bots"):
             state["bots"] = _bots(core.current_s())
@@ -238,6 +260,7 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
         s.check_layout(cas["name"], info)
         s.check_hud_pixels(cas["name"], img, info)
     core.chart = None
+    core.last_choices = None
     core.send_hello_ack()
 
 

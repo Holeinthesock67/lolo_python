@@ -111,6 +111,7 @@ class FakeCore:
     auto_hello_ack: bool = False
     chart: str | None = None      # hello_ack.config.chart (lot O14) ; None : champ absent
     progression: dict[str, Any] | None = None   # hello_ack.config.progression (série V, lot V6) ; None : absent
+    last_choices: dict[str, Any] | None = None  # hello_ack.config.last_choices (lot O32) ; None : absent
     garage: list[dict[str, Any]] | None = None  # éléments du message `garage` (lot V7) ; None : pas de réponse
     # Message `collection` (série BC, lot BC5) sans request_cmd_id ; None : pas de réponse à list_collection.
     collection: dict[str, Any] | None = None
@@ -344,6 +345,8 @@ class FakeCore:
             config["chart"] = self.chart
         if self.progression is not None:
             config["progression"] = self.progression
+        if self.last_choices is not None:   # derniers choix du profil (mini-carte du monde ouvert, lot W24)
+            config["last_choices"] = self.last_choices
         self.send({"type": "hello_ack", "v": CONTRACT_VERSION, "core_version": "fake", "config": config})
 
     def messages(self, kind: str, since: float = 0.0, name: str | None = None) -> list[Received]:
