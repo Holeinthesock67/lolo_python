@@ -321,7 +321,7 @@ def _check_progression(rep: Report, camp: Campaign) -> None:
     ctx, svc = camp.ctx, camp.session.progress_svc
     table = load_table(ctx.table_path)
     progress = recompute(ctx.journal_dir, table, workout_duration_finder(camp.work / "workouts"),
-                         counted=ctx.counted_sources, owns=ctx.owns)
+                         counted=ctx.counted_sources, owns=ctx.owns, since=ctx.stats_since)
     last = camp.xp_results[-1] if camp.xp_results else {}
     rep.add(last.get("xp_total") == progress.total_xp, "expérience du dernier xp_result = recalcul du journal",
             f"{last.get('xp_total')} contre {progress.total_xp} (openride-core xp)")
