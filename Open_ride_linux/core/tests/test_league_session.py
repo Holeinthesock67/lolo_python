@@ -335,3 +335,27 @@ def test_missed_weeks_are_now_simulated(env):
     s._on_command("league_status", {}, 3)
     season = league.load(tmp_path / "ligue.json")
     assert [season.results[i].source for i in range(4)] == ["simule"] * 4
+
+
+def test_round_cut_by_mode_error_stays_open(env, short_round):
+    """Filet de la boucle (lot FB1) : une erreur du mode pendant la manche termine la séance avec son bilan, sans
+    arrivée ; aucun résultat n'est écrit et la manche se recourt dans la semaine."""
+    from openride_core.session import MODE_FAILED_SAVED
+
+    make, run, _, tmp_path = env
+    s, _, errors = make(7370)
+    s._on_command("league_new", {}, 2)
+    s._on_command("start", {"mode": "race", "league": True}, 3)
+    run(s, 20)
+
+    def boom(*_a, **_k):
+        raise RuntimeError("panne du mode")
+
+    s.grandprix.step = boom
+    s._safe_step(0.02, 1.0)
+    assert s.state.session_state == "FINISHED" and s.state.summary["mode_error"]["mode"] == "grandprix"
+    assert "league" not in s.state.summary and errors[-1] == ("mode_failed", MODE_FAILED_SAVED)
+    assert league.load(tmp_path / "ligue.json").results == {}
+    s2, sent2, errors2 = make(7380)
+    s2._on_command("league_status", {}, 2)
+    assert _status(sent2)["season"]["round"]["playable"]

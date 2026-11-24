@@ -135,6 +135,11 @@ START_MODES = ("ride", "wtf", "survivor", "grandprix", "race", "track")   # `sta
 MODE_OPTIONS = ("wtf", "grandprix")   # modes à options (`list_mode_options`, `set_mode_option`, lot GP2)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
+# Filet de la boucle (audit du 22 novembre, R3) : erreur d'un mode de jeu, séance terminée, core vivant.
+MODE_FAIL_GAP_S = 1.0       # deux erreurs à moins d'une seconde : même suite (un seul message, une seule pile)
+MODE_FAIL_LIMIT_S = 5.0     # suite d'erreurs hors séance plus longue : l'erreur remonte, le lanceur relance le core
+MODE_FAILED_SAVED = "Le mode a rencontré une erreur, ta séance est enregistrée."
+MODE_FAILED_TEXT = "Le mode a rencontré une erreur, le jeu continue."
 
 
 class LoopStats:
@@ -463,6 +468,10 @@ class CoreSession:
         self.plan_state_path: Path | None = None
         self.activities_dir: Path | None = None
         self._frame_count = 0
+        self._mode_fail_since: float | None = None   # filet de la boucle : première erreur de mode d'une suite
+        self._mode_fail_last: float | None = None    # dernière erreur de mode
+        self._mode_error: dict[str, Any] | None = None   # dernière erreur de mode (journal, bilan)
+        self._polling_trainer = False   # vrai pendant `driver.poll` : ses erreurs ne passent pas par le filet
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
         self._contents = None   # contenus du menu (lot O25), créés à la première commande
@@ -761,6 +770,12 @@ class CoreSession:
         if game_mode == "track":
             self._start_track()
         self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ (lot AS2)
+        if self._rec is not None and self._rec.failed:
+            # Journal impossible à ouvrir (disque plein, dossier protégé) : jamais de séance sans journal ;
+            # elle attend en pause, `resume` rouvre le journal ou refuse (revue de code du 22 novembre).
+            log.error("Départ en pause : journal de la séance impossible à ouvrir.")
+            self._set_state("PAUSED", "recording_failed")
+            return
         self._set_state("RUNNING")
         if self._rec is not None and self._rec.failed:
             # Journal impossible à ouvrir au départ (revue du 22 novembre, S1-01) : l'erreur est partie en
@@ -4181,7 +4196,9 @@ class CoreSession:
     # --- pas de simulation ---------------------------------------------------------------
 
     def _step(self, dt: float, now_mono: float) -> None:
+        self._polling_trainer = True   # une erreur du trainer remonte telle quelle (le lanceur relance le core)
         m = self.driver.poll(self._t_session)
+        self._polling_trainer = False
         self.state.trainer_status = getattr(self.driver, "status", "MOCK")
         self._journal_devices()
         if self.hr is not None and self.hr.bpm is not None:
@@ -5107,6 +5124,112 @@ class CoreSession:
         finally:
             await self._shutdown(tasks)
 
+    # --- filet de la boucle : erreur d'un mode de jeu (audit du 22 novembre, R3 et L10) -------------
+
+    def _safe_step(self, dt: float, now_mono: float) -> None:
+        """`_step` sous filet : une erreur d'un mode termine la séance avec son bilan, le core continue."""
+        self._polling_trainer = False
+        try:
+            self._step(dt, now_mono)
+        except Exception as exc:
+            self._mode_failed(exc, "pas", now_mono)
+
+    def _fill_mode_frames(self, now_mono: float) -> None:
+        """Bots et parties de la trame propres aux modes, sous le même filet que le pas (audit du 22 novembre, R3)."""
+        try:
+            if self.bots:
+                self.state.bots = [b.to_dict() for b in self.bots]
+                if self._track is not None:   # hauteur sur la piste (plan VD §4.2)
+                    self.state.bots = [{**b, "lane_m": round(self._lane_out(b["lane_m"]), 2)}
+                                       if b.get("lane_m") is not None else b for b in self.state.bots]
+            else:
+                self.state.bots = None
+            self._fill_race_frame()
+            self._fill_wind_frame()
+            self._fill_vehicles_frame()
+            self._fill_riders_frame()
+            self._fill_wtf_frame()
+            self._fill_survivor_frame()
+            self._fill_grandprix_frame()
+            self._fill_track_frame()
+            self._fill_rogue_frame()
+            self._lighten_bots_frame()
+        except Exception as exc:
+            self._mode_failed(exc, "trame", now_mono)
+
+    def _active_mode(self) -> str:
+        """Nom du mode en cours, pour le journal : le plus particulier d'abord."""
+        for name, obj in (("rogue", self.rogue), ("grandprix", self.grandprix), ("survivor", self.survivor),
+                          ("wtf", self.wtf), ("track", self.track_event), ("race", self.race),
+                          ("open_world", self.openworld)):
+            if obj is not None:
+                return name
+        return "erg" if self.erg is not None else "sim"
+
+    def _mode_failed(self, exc: Exception, where: str, now_mono: float) -> None:
+        """Erreur levée par un mode pendant le pas ou la trame.
+
+        Erreur du trainer (`driver.poll`) : remontée telle quelle, le lanceur relance le core (rien ne change).
+        Sinon : journal du core avec la pile, ligne `mode_error` au journal de la séance, séance terminée par
+        `_finish(True)` (FIT, bilan, expérience : une séance normale ; une manche de ligue sans arrivée n'est pas
+        comptée et se recourt), erreur `mode_failed` à l'engine, core vivant. Une erreur qui revient à chaque pas
+        hors séance pendant MODE_FAIL_LIMIT_S remonte : mieux vaut un core relancé qu'un core vivant et bloqué.
+        """
+        if self._polling_trainer:
+            raise exc
+        last, self._mode_fail_last = self._mode_fail_last, now_mono
+        first = last is None or now_mono - last > MODE_FAIL_GAP_S or self._mode_fail_since is None
+        if first:   # nouvelle suite d'erreurs : un seul message et une seule pile au journal
+            self._mode_fail_since = now_mono
+        elif self._rec is None and now_mono - self._mode_fail_since >= MODE_FAIL_LIMIT_S:
+            log.error("Erreur de mode répétée depuis %.0f s hors séance : le core s'arrête.", MODE_FAIL_LIMIT_S)
+            raise exc
+        mode = self._active_mode()
+        if first:
+            log.exception("Erreur dans le mode %s (%s) : la séance se termine, le core continue.", mode, where)
+        else:
+            log.debug("Erreur de mode répétée (%s, %s) : %r", mode, where, exc)
+        info = {"mode": mode, "where": where, "error": type(exc).__name__, "message": str(exc)[:200]}
+        self._mode_error = info
+        saved = self._rec is not None
+        if saved:
+            try:
+                self._rec.game({"kind": "mode_error", "ts": round(time.time(), 3), **info})
+                self._finish(True)   # la séance n'est jamais perdue
+            except Exception:
+                log.exception("Fin de séance impossible après l'erreur du mode %s : modes vidés.", mode)
+                self._drop_modes()
+                saved = False
+            else:
+                if isinstance(self.state.summary, dict):
+                    self.state.summary["mode_error"] = {"mode": mode, "error": info["error"]}
+        elif self.openworld is not None or self.state.session_state in ("READY", "RUNNING", "PAUSED"):
+            self._drop_modes()
+        if first:
+            self.server.send_error("mode_failed", MODE_FAILED_SAVED if saved else MODE_FAILED_TEXT)
+
+    def _drop_modes(self) -> None:
+        """Dernier recours quand `_finish` échoue : plus aucun mode, plus d'enregistrement, état ERROR."""
+        rec, self._rec = self._rec, None
+        if rec is not None:
+            try:
+                rec.finish(True)
+            except Exception:
+                log.exception("Journal de la séance non fermé après l'erreur de mode.")
+        self.race = self.wtf = self.survivor = self.grandprix = self.track_event = self.rogue = None
+        self.state.wtf = self.state.survivor = self.state.gp = self.state.track = self.state.rogue = None
+        self.erg = None
+        self._ramp_watch = None
+        self._start_gate = None
+        try:
+            self._close_open_world()
+        except Exception:
+            log.exception("Monde ouvert non fermé après l'erreur de mode.")
+        self.openworld = None
+        self.state.open_world = None
+        self.physics.p = self._base_params
+        self._set_state("ERROR")
+
     def _services(self) -> list[Any]:
         """Tâches de fond : trainer, entrées, ceinture, puis le déroulé du Bluetooth simulé."""
         return [self.driver, *self.inputs, *([self.hr] if self.hr else []),
@@ -5127,7 +5250,7 @@ class CoreSession:
             self._drain_inputs()
             dt = min(now - last, MAX_STEP_S)
             last = now
-            self._step(dt, now)
+            self._safe_step(dt, now)
             step_s = mono() - t0
             self.stats.add(step_s, lag)
 
@@ -5147,23 +5270,7 @@ class CoreSession:
                     self._last_devices = curr_dev
                 else:
                     self.state.devices = None
-                if self.bots:
-                    self.state.bots = [b.to_dict() for b in self.bots]
-                    if self._track is not None:   # hauteur sur la piste (plan VD §4.2)
-                        self.state.bots = [{**b, "lane_m": round(self._lane_out(b["lane_m"]), 2)}
-                                           if b.get("lane_m") is not None else b for b in self.state.bots]
-                else:
-                    self.state.bots = None
-                self._fill_race_frame()
-                self._fill_wind_frame()
-                self._fill_vehicles_frame()
-                self._fill_riders_frame()
-                self._fill_wtf_frame()
-                self._fill_survivor_frame()
-                self._fill_grandprix_frame()
-                self._fill_track_frame()
-                self._fill_rogue_frame()
-                self._lighten_bots_frame()
+                self._fill_mode_frames(now)
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
