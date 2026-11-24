@@ -137,6 +137,14 @@ func _test_fog() -> void:
 	RenderQuality.apply_fog(env, "high", true, horizon, 0.035)
 	_check(absf(env.volumetric_fog_density - 0.035) < 1e-6, "high : un thème plus brumeux l'emporte (0,035)")
 	_check(RenderQuality.volumetric_density("low", 0.035) == 0.0, "low : pas de brume volumétrique")
+	# Lot BH1 (23 novembre) : brume et halo allégés en medium et high (voile et ciel laiteux), sans toucher au low.
+	_check(float(RenderQuality.VOLUMETRIC["light"]["density"]) <= 0.002 + 1e-9
+		and float(RenderQuality.VOLUMETRIC["full"]["density"]) <= 0.003 + 1e-9,
+		"brume volumétrique allégée : light <= 0,002, full <= 0,003")
+	_check(float(RenderQuality.GLOW["intensity"]) <= 0.4 + 1e-9 and float(RenderQuality.GLOW["bloom"]) == 0.0,
+		"halo commun allégé : intensité <= 0,4, sans bloom")
+	_check(QualityPresets.image("low")["fog_volumetric"] == "off" and QualityPresets.image("low")["glow"] == false,
+		"low inchangé : ni brume volumétrique ni halo")
 
 	# Avant le chargement du parcours, la scène garde aussi un brouillard à pleine opacité (revue E2, R2).
 	var scene: PackedScene = load("res://scenes/main.tscn")
