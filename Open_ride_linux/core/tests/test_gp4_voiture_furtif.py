@@ -265,15 +265,17 @@ def test_team_car_never_meets_road_users(env, monkeypatch, watts):
     """Banc rGP4v du 16 novembre (contacts « car_a / core ») : la voiture d'équipe d'un bot ne touche ni un cycliste
     du décor (lot AS7) ni un véhicule de la circulation. Sa carrosserie reste sur la chaussée permise à un vélo
     (`draft.lane_target`, bornes au gabarit du bloc) : un bot remorqué qui double ne la pousse plus sur un
-    cycliste venant en face ; elle n'apparaît pas sur un usager de la route. Parcours demo (circulation et
-    cyclistes du décor), tous les coureurs remorqués dès que possible. Avant : 14 à 16 trames de contact avec un
-    cycliste venant en face à 190, 200 et 210 W."""
+    cycliste venant en face ; elle n'apparaît pas sur un usager de la route. Boucle de 5 km d'un tour (circulation
+    et cyclistes du décor ; parcours demo en ligne jusqu'au lot GPL1, le Grand Prix se court sur une boucle), tous
+    les coureurs remorqués dès que possible. Avant : 14 à 16 trames de contact avec un cycliste venant en face à
+    190, 200 et 210 W."""
     import test_grandprix_session as tgs
     from openride_core import demo_world
     monkeypatch.setattr(tgs, "POWER_W", float(watts))
     make, run, _, tmp = env
-    demo_world.write_demo_world(tmp / "routes")
-    s, _, errors = make(6970, route_id="demo", distance_km=5)
+    world = demo_world.write_world(tmp / "routes", "boucle", 5000.0)
+    (world / "route.json").write_text(json.dumps(tgs.loop_route(5000.0)), encoding="utf-8")
+    s, _, errors = make(6970, route_id="boucle", laps=1)
     s.cfg.grandprix.chaos, s.cfg.grandprix.box_every_m = "wild", 1000
     s.cfg.ride.vehicle_draft = "on"
     s._on_command("start", {"mode": "grandprix"}, 2)

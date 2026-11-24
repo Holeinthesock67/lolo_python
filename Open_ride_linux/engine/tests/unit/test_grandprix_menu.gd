@@ -1,8 +1,8 @@
 extends SceneTree
 
 ## Tests sans écran du menu du Grand Prix des objets (série GP, lot GP9) : entrée de l'accueil selon `modes`,
-## écran Prêt du mode (réglages `grandprix.*` et niveau des bots modifiés en place, tours sur un circuit ou
-## distance en ligne au plus le parcours, lot GP14), ligne « Objets » et écran des objets (list_mode_options,
+## écran Prêt du mode (réglages `grandprix.*` et niveau des bots modifiés en place, tours du circuit : le mode se
+## court sur une boucle, lot GPL1, liste du mode sans la trace en ligne étiquetée), ligne « Objets » et écran des objets (list_mode_options,
 ## set_mode_option, réponse `mode_options`), `start` avec `mode` « grandprix » sans `bots`, retour à l'accueil.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_grandprix_menu.gd
 
@@ -42,14 +42,16 @@ const SETTINGS := {"type": "settings", "v": 1, "items": [
 	{"key": "bots.objective", "label": "Objectif des bots", "type": "choice", "value": "tempo", "choices": ["recovery", "endurance", "tempo", "threshold", "max"], "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.opponents", "label": "Grand Prix : adversaires", "type": "int", "value": 4, "min": 2, "max": 11, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.laps", "label": "Grand Prix : tours du circuit", "type": "int", "value": 3, "min": 1, "max": 5, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
-	{"key": "grandprix.distance_km", "label": "Grand Prix : distance en ligne", "type": "int", "value": 10, "min": 5, "max": 30, "step": 1, "unit": "km", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.chaos", "label": "Grand Prix : chaos", "type": "choice", "value": "normal", "choices": ["soft", "normal", "wild"], "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.box_every_m", "label": "Grand Prix : écart des boîtes", "type": "int", "value": 1500, "min": 500, "max": 3000, "step": 500, "unit": "m", "group": "ride", "applies": "next_session"}]}
 
-const ROUTES := [{"id": "long", "name": "Longue", "status": "ready", "length_m": 25000.0, "route_type": "point_to_point"},
-	{"id": "court", "name": "Courte", "status": "ready", "length_m": 7000.0, "route_type": "point_to_point"},
-	{"id": "mini", "name": "Mini", "status": "ready", "length_m": 3000.0, "route_type": "point_to_point"},
-	{"id": "boucle", "name": "Boucle", "status": "ready", "length_m": 3000.0, "route_type": "loop"}]
+## Lot GPL1 : « Longue », trace en ligne étiquetée « grandprix », reste un parcours libre (pas dans la liste du mode).
+const ROUTES := [{"id": "long", "name": "Longue", "status": "ready", "length_m": 25000.0, "route_type": "point_to_point",
+		"library": {"tags": ["grandprix"]}},
+	{"id": "libre", "name": "Libre", "status": "ready", "length_m": 7000.0, "route_type": "loop"},
+	{"id": "boucle", "name": "Boucle", "status": "ready", "length_m": 3000.0, "route_type": "loop", "library": {"tags": ["grandprix"]}},
+	{"id": "grande", "name": "Grande boucle", "status": "ready", "length_m": 4000.0, "route_type": "loop",
+		"library": {"tags": ["grandprix"]}}]
 
 
 func _run() -> void:
@@ -62,6 +64,7 @@ func _run() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.menu.set_modes(["ride", "erg", "survivor", "grandprix"])
+	f.menu.set_mode_routes({"grandprix": "grandprix"})
 	f.on_settings(SETTINGS.duplicate(true))
 	f.set_routes(ROUTES.duplicate(true))
 	f.on_state({"session_state": "IDLE"})
@@ -71,18 +74,23 @@ func _run() -> void:
 	_check(_ids(f).find("grandprix") == _ids(f).find("survivor") + 1, "après le Dernier survivant")
 	f.menu.focus_item("grandprix")
 	var act: Dictionary = f.handle("A_LONG")
-	_check(act == {"action": "sequence", "list": [{"action": "select_workout", "workout_id": null},
-		{"action": "list_mode_options", "mode": "grandprix"}]}, "entrée : SIM seulement et objets demandés au core")
-	_check(f.state()["screen"] == "routes", "sans parcours choisi : la liste des parcours d'abord")
-	f.menu.focus_item("long")
+	_check(act == {"action": "sequence", "list": [{"action": "sequence", "list": [{"action": "select_workout", "workout_id": null},
+		{"action": "list_mode_options", "mode": "grandprix"}]}, {"action": "select_route", "route_id": "boucle"}]},
+		"entrée : SIM seulement, première boucle du mode, objets demandés au core (%s)" % str(act))
+	_check(f.state()["screen"] == "ready", "écran Prêt sur la première boucle du mode")
+	f.menu.focus_item("change_route")
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "routes" and "boucle" in _ids(f) and "grande" in _ids(f) and not "long" in _ids(f)
+		and not "libre" in _ids(f), "liste du mode : les boucles étiquetées seulement (%s)" % str(_ids(f)))
+	f.menu.focus_item("grande")
 	act = f.handle("A_LONG")
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
-	_check(str(f.state()["title"]) == "Prêt : Grand Prix des objets — Longue", "titre du mode (%s)" % f.state()["title"])
-	_check(_ids(f) == ["start", "change_route", "set:grandprix.opponents", "set:grandprix.distance_km", "set:bots.level_pct",
+	_check(str(f.state()["title"]) == "Prêt : Grand Prix des objets — Grande boucle", "titre du mode (%s)" % f.state()["title"])
+	_check(_ids(f) == ["start", "change_route", "set:grandprix.opponents", "set:grandprix.laps", "set:bots.level_pct",
 		"set:grandprix.chaos", "set:grandprix.box_every_m", "gp_items"],
-		"parcours en ligne : Lancer, parcours, réglages avec la distance, Objets (%s)" % str(_ids(f)))
-	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "course de 10 km" and _item(f, "start")["enabled"],
-		"Lancer : distance de la course")
+		"Lancer, parcours, réglages avec les tours (plus de distance en ligne), Objets (%s)" % str(_ids(f)))
+	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "3 tours, 12,0 km" and _item(f, "start")["enabled"],
+		"Lancer : tours et longueur de la course (%s)" % _item(f, "start")["detail"])
 	# Lot GP-niv : effort des bots en watts demandé au core, ligne « Bots » grisée en dernier (contrat 1.22)
 	_check(f.wanted_bots_preview() == {"mode": "grandprix"}, "écran Prêt : bots_preview demandé (%s)" % str(f.wanted_bots_preview()))
 	_check(f.wanted_bots_preview().is_empty(), "même course : pas de nouvelle demande")
@@ -121,13 +129,13 @@ func _run() -> void:
 	_check(_item(f, "gp_items")["label"] == "Objets : tous", "Objets : tous activés par défaut")
 
 	# Réglage modifié en place puis enregistré (set_setting), repris dans la ligne Lancer
-	f.menu.focus_item("set:grandprix.distance_km")
+	f.menu.focus_item("set:grandprix.laps")
 	act = f.handle("A_LONG")
-	_check(act.is_empty() and bool(_item(f, "set:grandprix.distance_km").get("editing", false)), "A long : modification en place")
+	_check(act.is_empty() and bool(_item(f, "set:grandprix.laps").get("editing", false)), "A long : modification en place")
 	f.handle("PLUS_SHORT")
 	act = f.handle("A_LONG")
-	_check(act == {"action": "set_setting", "key": "grandprix.distance_km", "value": 11}, "A long : set_setting envoyé (%s)" % str(act))
-	_check(_item(f, "start")["detail"] == "course de 11 km", "distance relue : 11 km")
+	_check(act == {"action": "set_setting", "key": "grandprix.laps", "value": 4}, "A long : set_setting envoyé (%s)" % str(act))
+	_check(_item(f, "start")["detail"] == "4 tours, 16,0 km", "tours relus : 4 tours (%s)" % _item(f, "start")["detail"])
 	_check(f.wanted_bots_preview() == {"mode": "grandprix"}, "réglage de la course changé : bots_preview redemandé")
 	f.menu.focus_item("set:grandprix.chaos")
 	f.handle("A_LONG")
@@ -173,26 +181,24 @@ func _run() -> void:
 	f.on_error("bad_args", "Grand Prix : parcours trop court")
 	_check(str(f.state()["status"]).begins_with("Échec : Grand Prix"), "refus du core sur la ligne d'état")
 
-	# Parcours en ligne plus court que la distance : la course suit le parcours (lot GP14) ; circuit : tours
-	f.menu.set_world("court", "Courte")
+	# Parcours en ligne imposé à l'écran Prêt (le core n'en accepte pas) : Lancer grisé et conseil (lot GPL1)
+	f.menu.set_world("long", "Longue")
 	f.handle("MINUS_SHORT")
-	_check(_item(f, "start")["enabled"] and str(_item(f, "start")["detail"]) == "course de 7,0 km (tout le parcours)",
-		"parcours en ligne plus court : course sur tout le parcours (%s)" % _item(f, "start")["detail"])
-	_check(not f.state().has("status_error") or not f.state()["status_error"], "pas d'erreur sur la ligne d'état")
+	_check(not _item(f, "start")["enabled"] and str(_item(f, "start")["detail"]) == "parcours en ligne",
+		"parcours en ligne : Lancer grisé (%s)" % _item(f, "start")["detail"])
+	_check(str(f.state().get("status", "")).contains("se court sur une boucle"), "conseil sur la ligne d'état (%s)" % f.state().get("status", ""))
 	f.menu.set_world("boucle", "Boucle")
 	f.handle("MINUS_SHORT")
-	_check("set:grandprix.laps" in _ids(f) and not "set:grandprix.distance_km" in _ids(f), "circuit : tours, pas de distance")
-	_check(_item(f, "start")["enabled"] and _item(f, "start")["detail"] == "3 tours, 9,0 km", "circuit : tours et longueur (%s)" % _item(f, "start")["detail"])
+	_check(_item(f, "start")["enabled"] and _item(f, "start")["detail"] == "4 tours, 12,0 km", "circuit : tours et longueur (%s)" % _item(f, "start")["detail"])
 
 	f.menu.reset()
 	_check(f.menu.mode == "free", "retour à l'accueil : le mode ne reste pas collé")
 
-	_check(MenuFlow.grandprix_launch(3, 10, {}) == {"enabled": true, "detail": "", "advice": ""}, "parcours inconnu : Lancer actif")
-	_check(MenuFlow.grandprix_keys({}) == ["grandprix.opponents", "grandprix.laps", "grandprix.distance_km", "bots.level_pct",
-		"grandprix.chaos", "grandprix.box_every_m"], "parcours inconnu : tours et distance")
-	_check(MenuFlow.grandprix_launch(1, 10, {"length_m": 4000.0, "route_type": "loop"})["detail"] == "1 tour, 4,0 km", "un tour au singulier")
-	_check(not MenuFlow.grandprix_launch(3, 10, {"length_m": 800.0, "route_type": "point_to_point"})["enabled"],
-		"parcours de moins de 1 km : Lancer désactivé")
+	_check(MenuFlow.grandprix_launch(3, {}) == {"enabled": true, "detail": "", "advice": ""}, "parcours inconnu : Lancer actif")
+	_check(not "grandprix.distance_km" in MenuFlow.GRANDPRIX_KEYS, "plus de distance en ligne (lot GPL1)")
+	_check(MenuFlow.grandprix_launch(1, {"length_m": 4000.0, "route_type": "loop"})["detail"] == "1 tour, 4,0 km", "un tour au singulier")
+	_check(not MenuFlow.grandprix_launch(3, {"length_m": 25000.0, "route_type": "point_to_point"})["enabled"],
+		"parcours en ligne : Lancer désactivé")
 	_check(MenuFlow.mode_label("Grand Prix : écart des boîtes", MenuFlow.GP_PREFIX) == "Écart des boîtes", "libellé court")
 	print("test_grandprix_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
