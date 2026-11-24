@@ -3391,6 +3391,9 @@ class CoreSession:
         plan = survivor_mod.plan_field(n, float(self.cfg.bots.level_pct), "normal",
                                        CONFIG_BOUNDS[("bots", "level_pct")]) if n else []
         plan = self._elo_levels(plan, "track", event)
+        size = track_mod.EVENTS[event].team_size
+        if size > 1:   # coéquipiers et adversaires de force égale (revue C3-07), pas les plus forts avec le cycliste
+            plan = [plan[i] for i in track_mod.team_order([lv for _, lv in plan], size)]
         names = self._rival_names([p for p, _ in plan])
         params = PhysicsParams.from_config(self.cfg)
         self._set_bots([ProfileBot(p, bot_id=f"bot{i + 1}", name=nm, params=params,
