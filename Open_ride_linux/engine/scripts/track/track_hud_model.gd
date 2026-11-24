@@ -386,6 +386,11 @@ func laps_block(tr: Dictionary) -> Dictionary:
 		return {"label": "TOURS", "value": str(int(lap) - 1 if lap != null else 0),
 			"extra": ("meilleur %s s" % fr2(float(best))) if best != null else "", "bar": -1.0}
 	var shown := str(tr.get("sub", ev)) if ev == "omnium" else ev
+	if shown == "elimination" and bool(tr.get("finished", false)):   # classement figé (essai du 22 novembre)
+		var place := my_place(tr)
+		var of := (tr.get("ranking", []) as Array).size()
+		return {"label": "CLASSEMENT", "value": ("1er" if place == 1 else "%de" % place) if place > 0 else "–",
+			"extra": "sur %d" % of, "bar": -1.0}
 	if shown == "elimination":
 		var alive := int(tr.get("alive", (tr.get("ranking", []) as Array).size() - (tr.get("eliminated", []) as Array).size()))
 		var total := (tr.get("ranking", []) as Array).size()
@@ -432,6 +437,9 @@ func list_block(tr: Dictionary, bots = null) -> Dictionary:
 			if _team.has(str(id)) or str(id) == ME:
 				mine.append(id)
 		out_ids = mine     # les sortis de l'autre équipe ne sont pas dans la liste
+	if shown == "elimination" and bool(tr.get("finished", false)):   # classement final, places figées (essai du 22/11)
+		title = "CLASSEMENT FINAL"
+		out_ids = []
 	var rows: Array = []
 	var racing: Array = []
 	for id in ranking:
