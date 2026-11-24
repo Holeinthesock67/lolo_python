@@ -4653,7 +4653,10 @@ class CoreSession:
                 cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
                 # Lot AS10 : à la vraie place du cycliste en travers (repère du décor, lot N23 : à droite de son sens)
-                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places, rider_lane=self._lane.m)
+                # revue C5-06 : sans les bots arrivés, arrêtés sur la ligne et hors du jeu (comme `_road_space_step`)
+                running = [p for b, p in zip(self.bots, bot_places)
+                           if length is None or is_loop or b.s < length]
+                cyclists.update(rider_u, self.physics.v, dt, bots=running, rider_lane=self._lane.m)
                 riders_m = cyclists.near(rider_u)
                 riders = [cyclists.on_route(r) for r in riders_m]
             others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
