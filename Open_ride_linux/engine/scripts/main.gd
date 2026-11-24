@@ -1253,7 +1253,6 @@ func _process(delta: float) -> void:
 	# l'horloge des personnages et des animaux ci-dessus.
 	if banner.has_message("core_lost"):
 		return
-	_update_minimap(s_disp)
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
@@ -1323,6 +1322,7 @@ func _process(delta: float) -> void:
 		t_step = Time.get_ticks_usec()
 		segment_markers.update(s_route, _last_state.has("powerup"))
 		PerfProbe.mark_since("arches", "", t_step)
+	_update_minimap(s_disp)   # mini-carte (lot W24), figée elle aussi quand le core ne répond pas
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
