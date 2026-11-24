@@ -7,11 +7,14 @@ Un essai vélo de 10 min ne fait qu'une ou deux courses : il ne dit rien de la c
 courses. Ce banc joue des campagnes entières sans vélo ni engine, avec la vraie séance (`CoreSession`) : Grand
 Prix des objets (ou Course, `--mode race`, lot CR1) sur un anneau synthétique, bots à profil, cote lue et écrite dans `elo.json` d'un dossier
 temporaire (rien n'est écrit dans le profil réel). Pour chaque force, le cycliste roule à puissance constante :
-force × la puissance que visent les bots à la cote de départ (1 500), 1,08 = 8 % plus fort que le peloton.
+force × la puissance que visent les bots à la cote de départ (1 500), 1,08 = 8 % plus fort que le peloton. Au
+Grand Prix, il joue ses objets comme un bot (`brain.wants`, sans délai de réaction) : depuis le lot GPO1, un
+cycliste qui ne s'en sert jamais perd trop contre des objets qui durent pour que sa cote suive sa force.
 
 Contrôles (code 1 si l'un échoue, code 2 pour un appel invalide) :
 - la cote finale suit l'ordre des forces (plus fort : cote plus haute) ;
-- un cycliste plus fort voit sa cote monter (au-dessus de 1 500), un plus faible la voit descendre ;
+- un cycliste plus fort voit sa cote monter (au-dessus de 1 500), un plus faible la voit descendre (d'au moins
+  40 points, 25 au Grand Prix des objets, où la chance des objets compte plus depuis le lot GPO1) ;
 - sur le dernier tiers de la campagne, la place moyenne revient vers le milieu du peloton (juste part, entre
   la 2e et l'avant-dernière place) et la cote est stable (écart type sous 60 points) ;
 - les écarts propres des bots restent dans leurs bornes (± 100 points).
@@ -35,6 +38,7 @@ from unittest import mock
 from .. import bot_elo, fit_export, profile
 from ..config import Config
 from ..demo_world import write_world
+from ..grandprix import brain as gp_brain
 from ..input_providers import NullProvider
 from ..mock_driver import MockDriver
 from ..session import CoreSession
@@ -49,6 +53,9 @@ MAX_RACE_S = 3 * 3600.0
 T0_WALL = 1_790_000_000.0
 STABLE_STD = 60.0
 MIN_DELTA = 40.0               # une force à ± 8 % doit déplacer la cote d'au moins 40 points
+# Grand Prix : depuis le lot GPO1 (objets qui durent, coup ≈ 7 s), la chance des objets pèse autant qu'une force
+# de ± 8 % sur une course de 2 km : la cote suit la force deux fois moins vite (20 courses : + 32 au lieu de + 93).
+MIN_DELTA_BY_MODE = {"grandprix": 25.0}
 
 
 class CampaignError(Exception):
@@ -73,6 +80,15 @@ def _session(tmp: Path, cfg: Config, power_w: float) -> CoreSession:
     s.server.send_error = lambda code, msg: None
     s.server.send_input_event = lambda ev: None
     return s
+
+
+def _play_item(s: CoreSession) -> None:
+    """Objet en réserve du cycliste joué quand un bot le jouerait (Z au bon moment), Grand Prix seulement."""
+    gp = s.grandprix
+    me = gp.racers.get("me") if gp is not None and gp.table.items else None
+    if me is not None and me.held is not None and me.finished is None:
+        if gp_brain.wants(gp, me, gp.table.items[me.held]):
+            gp.use("me")
 
 
 def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m: float = 2000.0,
@@ -115,10 +131,12 @@ def campaign(force: float, races: int, opponents: int = 4, laps: int = 1, lap_m:
                     raise CampaignError("effort des bots inconnu")
             s.driver.base_power_w = force * target_w
             t = 0.0
-            while s.state.session_state == "RUNNING" and t < MAX_RACE_S:
+            # Lot RT2 : l'arrivée ne finit plus la séance (on continue au calme) ; la course est jouée à `arrival`.
+            while s.state.session_state == "RUNNING" and s.state.arrival is None and t < MAX_RACE_S:
                 wall[0] += DT
                 s._step(DT, wall[0])
                 t += DT
+                _play_item(s)
             if s.state.session_state == "RUNNING":
                 s._finish(save=True)
             elo = (s.state.summary or {}).get("elo")
@@ -145,10 +163,11 @@ def checks(runs: list[dict]) -> list[tuple[bool, str]]:
                 "cote finale dans l'ordre des forces : " + ", ".join(f"{r['force']:g} → {r['final']}" for r in by)))
     for r in by:
         tag = f"force {r['force']:g}"
+        min_delta = MIN_DELTA_BY_MODE.get(str(r.get("mode", "")), MIN_DELTA)
         if r["force"] > 1.0:
-            out.append((r["final"] >= bot_elo.START + MIN_DELTA, f"{tag} : la cote monte ({r['final']})"))
+            out.append((r["final"] >= bot_elo.START + min_delta, f"{tag} : la cote monte ({r['final']})"))
         elif r["force"] < 1.0:
-            out.append((r["final"] <= bot_elo.START - MIN_DELTA, f"{tag} : la cote descend ({r['final']})"))
+            out.append((r["final"] <= bot_elo.START - min_delta, f"{tag} : la cote descend ({r['final']})"))
         of = r["of"]
         out.append((2.0 <= r["tail_place"] <= of - 1.0,
                     f"{tag} : place moyenne du dernier tiers {r['tail_place']} sur {of} (juste part : 2 à {of - 1})"))

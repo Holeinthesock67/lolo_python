@@ -21,7 +21,7 @@ Idées du §8.1 du plan `docs/6.0/PLAN_SERIE_PP.md`, retenues par le propriétai
 - **Record vieillissant** : record des 6 mois le plus ancien, s'il a plus de 120 jours, et le temps avant qu'il sorte de la courbe.
 - **Trous** : plages de durées sans effort libre depuis 6 semaines (une séance ERG n'est pas un effort à fond), 3 au plus.
 
-Contrat : objet facultatif `profile` du message `power_curve` (même révision 1.29, `power_curve.schema.json`, `ipc_v1.md`).
+Contrat : objet facultatif `profile` du message `power_curve` (même révision 1.35, `power_curve.schema.json`, `ipc_v1.md`).
 
 ### 2.2 Engine
 
