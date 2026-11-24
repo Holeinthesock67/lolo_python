@@ -37,7 +37,7 @@ import shutil
 import tomllib
 import unicodedata
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import IO, Any
 
@@ -105,6 +105,7 @@ class ProfileContext:
     name: str = ""
     counted_sources: tuple[str, ...] = ("live",)   # sources du journal qui rapportent expérience et pièces
     created: str = ""
+    stats_since: float | None = None   # remise à zéro des statistiques (lot RZ1) : séances comptées à partir de là
 
     @classmethod
     def for_id(cls, profile_id: str, base: Path | None = None) -> "ProfileContext":
@@ -116,6 +117,7 @@ class ProfileContext:
         activities = root / "Activities"
         return cls(id=profile_id, root=root, type=desc["type"], name=desc["nom"],
                    counted_sources=tuple(desc["seances_comptees"]), created=desc["cree"],
+                   stats_since=read_stats_since(root),
                    profile_path=root / "profile.json",
                    records_path=root / "records.json",
                    plan_state_path=root / "plan_state.toml",
@@ -459,6 +461,167 @@ def restore(entry: Any, base: Path | None = None) -> ProfileContext:
         raise ProfileContextError(f"{MAX_PROFILES} profils au plus : en supprimer un d'abord")
     os.replace(src, base / profile_id)
     return ProfileContext.for_id(profile_id, base)
+
+
+# --- remise à zéro des statistiques d'un profil de joueur (lot RZ1) ---------------------------
+
+RESETS_DIRNAME = ".remises_a_zero"   # dans `Profils/` : statistiques mises de côté, une remise par dossier
+RESETS_SHOWN = 3                     # remises proposées à l'annulation (message `profiles`)
+RESET_MANIFEST = "remise.toml"       # description de la remise, dans son dossier
+RESET_KEPT_COPY = "_gardes"          # copie des fichiers gardés au moment de la remise (lecture seule)
+STATS_SINCE_FILE = "remise_stats.toml"   # dans le profil : `[remise] depuis` = date de la remise (horodatage)
+ELO_NAME = "elo.json"
+# Gardés (choix du propriétaire du 22 novembre, « garder coach, FIT et mon Elo ») : description et réglages du
+# joueur (nom, FTP, poids, FC max), surcharge de la progression, verrou, derniers choix du menu, plan actif, les
+# séances elles-mêmes (`Activities/` : FIT et journaux, l'historique du coach et sa charge des 4 dernières
+# semaines), les caches recalculables et le conseil du jour. Les séances d'avant la remise restent sur le disque
+# mais ne rapportent plus rien : niveau, expérience, pièces, défis et cartes repartent de la date de la remise
+# (`ProfileContext.stats_since`, lue par `progression.recompute`). Mis de côté : records, profil V4 (équipement
+# acheté, vies), cartes vues, ligue, segments du monde ouvert et tout fichier ajouté plus tard au profil ; la cote
+# Elo garde celle du cycliste (et son nombre de courses), celles des bots repartent de zéro (`ELO_KEEPS_RIDER`).
+KEPT_ON_RESET = (FILE_NAME, "progression.toml", LOCK_NAME, "derniers_choix.json", "plan_state.toml",
+                 "Activities", ".cache", "conseil.json", STATS_SINCE_FILE)
+ELO_KEEPS_RIDER = True
+
+
+def read_stats_since(root: Path) -> float | None:
+    """Date de la dernière remise à zéro du profil (`remise_stats.toml`) ; None sans remise ou fichier illisible."""
+    try:
+        data = tomllib.loads((root / STATS_SINCE_FILE).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+        return None
+    value = data.get("remise", {}).get("depuis") if isinstance(data.get("remise"), dict) else None
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def _write_stats_since(root: Path, when: datetime) -> None:
+    path = root / STATS_SINCE_FILE
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text("# Remise à zéro des statistiques (OpenRide, lot RZ1) : les séances d'avant ne comptent plus.\n"
+                   f"[remise]\ndepuis = {when.timestamp():.0f}   # {when.isoformat(timespec='seconds')}\n",
+                   encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _reset_entries_of(ctx: ProfileContext) -> list[Path]:
+    if not ctx.root.is_dir():
+        return []
+    return [e for e in sorted(ctx.root.iterdir()) if e.name not in KEPT_ON_RESET and not e.name.endswith(".tmp")]
+
+
+def _check_player(ctx: ProfileContext) -> None:
+    if ctx.id is None:
+        raise ProfileContextError("remise à zéro impossible sans profil de joueur")
+    if ctx.is_trial:
+        raise ProfileContextError("le profil d'essai ne se remet pas à zéro : il se vide")
+
+
+def _stash(ctx: ProfileContext, base: Path, when: datetime, kind: str) -> tuple[Path, list[str]]:
+    """Sauvegarde datée : copie des fichiers gardés (`_gardes/`, `remise_stats.toml` compris), puis DÉPLACEMENT
+    de tout le reste du profil ; rien n'est effacé."""
+    dest = base / RESETS_DIRNAME / f"{ctx.id}_{when:%Y%m%d-%H%M%S}"
+    while dest.exists():   # deux sauvegardes dans la même seconde : la seconde prend la suivante
+        when += timedelta(seconds=1)
+        dest = base / RESETS_DIRNAME / f"{ctx.id}_{when:%Y%m%d-%H%M%S}"
+    entries = _reset_entries_of(ctx)
+    keep = dest / RESET_KEPT_COPY
+    keep.mkdir(parents=True)
+    for name in KEPT_ON_RESET:
+        src = ctx.root / name
+        if name != LOCK_NAME and src.is_file():
+            shutil.copy2(src, keep / name)
+    moved = [e.name for e in entries]
+    since = read_stats_since(ctx.root)
+    manifest = ("# Remise à zéro des statistiques (OpenRide, lot RZ1). Annulable depuis « Gérer un profil ».\n"
+                "[remise]\n"
+                f"profil = {_toml_str(ctx.id)}\n"
+                f"nom = {_toml_str(ctx.name)}\n"
+                f"faite = {_toml_str(when.isoformat(timespec='seconds'))}\n"
+                f"type = {_toml_str(kind)}\n"
+                f"stats_depuis_avant = {_toml_str('' if since is None else str(int(since)))}\n"
+                f"deplaces = [{', '.join(_toml_str(n) for n in moved)}]\n")
+    (dest / RESET_MANIFEST).write_text(manifest, encoding="utf-8")
+    for e in entries:
+        os.replace(e, dest / e.name)
+    return dest, moved
+
+
+def reset_stats(ctx: ProfileContext, base: Path | None = None, now: datetime | None = None) -> tuple[Path, list[str]]:
+    """Remet à zéro les statistiques du profil de joueur `ctx` (voir `KEPT_ON_RESET`) : sauvegarde datée dans
+    `Profils/.remises_a_zero/<id>_AAAAMMJJ-HHMMSS/` (fichiers mis de côté DÉPLACÉS, fichiers gardés copiés), puis
+    `remise_stats.toml` (date de la remise) et cote Elo du cycliste seule. Refusé pour le profil d'essai (il se
+    vide) et hors profil. Le verrou du profil doit être tenu par l'appelant. Renvoie la sauvegarde et les noms
+    déplacés."""
+    _check_player(ctx)
+    base = base if base is not None else ctx.root.parent
+    when = now or datetime.now()
+    ctx.root.mkdir(parents=True, exist_ok=True)
+    dest, moved = _stash(ctx, base, when, "remise")
+    _write_stats_since(ctx.root, when)
+    if ELO_KEEPS_RIDER and ELO_NAME in moved:
+        from . import bot_elo
+
+        old = bot_elo.load(dest / ELO_NAME)
+        bot_elo.save(ctx.root / ELO_NAME, bot_elo.EloBook(rating=old.rating, races=old.races))
+    return dest, moved
+
+
+def reset_entries(ctx: ProfileContext, base: Path | None = None, all_kinds: bool = False) -> list[dict[str, str]]:
+    """Remises à zéro du profil `ctx`, les plus récentes d'abord : `{id, date, time}` (`id` = dossier de la
+    sauvegarde, `date` AAAA-MM-JJ, `time` HH:MM). Les sauvegardes faites par une annulation (fichiers de la période
+    d'après la remise) ne sont listées qu'avec `all_kinds` (ligne de commande), pas au menu."""
+    if ctx.id is None:
+        return []
+    folder = (base if base is not None else ctx.root.parent) / RESETS_DIRNAME
+    out: list[dict[str, str]] = []
+    if not folder.is_dir():
+        return out
+    for d in sorted(folder.iterdir(), key=lambda p: p.name.rsplit("_", 1)[-1], reverse=True):
+        m = _TRASH_RE.match(d.name)
+        if not m or m["id"] != ctx.id or not d.is_dir():
+            continue
+        if not all_kinds and 'type = "annulation"' in _read_text(d / RESET_MANIFEST):
+            continue
+        s = m["stamp"]
+        out.append({"id": d.name, "date": f"{s[:4]}-{s[4:6]}-{s[6:8]}", "time": f"{s[9:11]}:{s[11:13]}"})
+    return out
+
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return ""
+
+
+def undo_reset(ctx: ProfileContext, entry: Any, base: Path | None = None,
+               now: datetime | None = None) -> tuple[list[str], Path | None]:
+    """Annule une remise à zéro du profil `ctx` : ce qui a été mis de côté depuis (records, Elo… de la période
+    d'après) est d'abord sauvegardé à son tour (nouvelle sauvegarde, annulable), puis ce que la remise `entry`
+    avait mis de côté revient et la date de départ des statistiques redevient celle d'avant la remise (copie de
+    `_gardes/`). Les séances, réglages et FTP ne bougent pas. Le verrou doit être tenu. Renvoie les noms remis et
+    la sauvegarde des fichiers d'après la remise (None s'il n'y en avait pas)."""
+    _check_player(ctx)
+    base = base if base is not None else ctx.root.parent
+    m = _TRASH_RE.match(entry) if isinstance(entry, str) else None
+    src = base / RESETS_DIRNAME / entry if m and m["id"] == ctx.id else None
+    if src is None or not src.is_dir():
+        raise ProfileContextError(f"remise à zéro introuvable pour « {ctx.name or ctx.id} » : « {entry} »")
+    saved: Path | None = None
+    when = now or datetime.now()
+    if _reset_entries_of(ctx):
+        saved, _ = _stash(ctx, base, when, "annulation")
+    back = [e for e in sorted(src.iterdir())
+            if e.name not in (RESET_MANIFEST, RESET_KEPT_COPY) and e.name not in KEPT_ON_RESET]
+    for e in back:
+        os.replace(e, ctx.root / e.name)
+    old_since = src / RESET_KEPT_COPY / STATS_SINCE_FILE
+    if old_since.is_file():
+        shutil.copy2(old_since, ctx.root / STATS_SINCE_FILE)
+    else:
+        (ctx.root / STATS_SINCE_FILE).unlink(missing_ok=True)
+    shutil.rmtree(src)   # ne restent que remise.toml, la copie des fichiers gardés et d'éventuels fichiers gardés
+    return [e.name for e in back], saved
 
 
 def _existing(profile_id: Any, existing: list[ProfileContext]) -> ProfileContext:

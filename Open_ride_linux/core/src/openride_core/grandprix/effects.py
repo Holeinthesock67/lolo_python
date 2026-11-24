@@ -1,12 +1,11 @@
 """Effets des objets du Grand Prix sur la vitesse virtuelle (lot GP1, série GP).
 
 Une ligne d'effet = (effet, facteur, durée). Les effets ne touchent que la vitesse virtuelle d'un
-coureur, jamais la pente envoyée au trainer ni la puissance mesurée :
+coureur, jamais la pente envoyée au trainer ni la puissance mesurée. Depuis le lot GPO1, **tout effet
+dure** (plus d'impulsion d'une image, invisible au HUD et sur le coureur) :
 
-- `kick` : impulsion, v × facteur d'un coup (coup de fouet) ;
-- `slip` : glissade, v × facteur d'un coup (bidon, musette) ;
-- `speed_floor` : v ≥ facteur × v_éq pendant la durée (super-forme, voiture d'équipe) ;
-- `cap` : v ≤ facteur × v_éq pendant la durée (averse du nuage d'orage) ;
+- `speed_floor` : v ≥ facteur × v_éq pendant la durée (coup de fouet, super-forme, voiture d'équipe) ;
+- `cap` : v ≤ facteur × v_éq pendant la durée (glissade du bidon et des musettes, averse du nuage d'orage) ;
 - `immune` : aucun coup reçu pendant la durée ;
 - `wind` : vent de face virtuel de `facteur` m/s pendant la durée, sans ressenti (vent contraire) ;
 - `breakaway` : marque de l'Échappée de la série TT (lot TT4) : le coureur n'abrite plus ceux qui le suivent
@@ -22,9 +21,9 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from ..physics import PhysicsParams, RiderPhysics, steady_speed
-from ..powerups import DURATIONS, EFFECTS, HITS, IMPULSES, MULTIPLIERS, EffectSpec
+from ..powerups import DURATIONS, EFFECTS, HITS, MULTIPLIERS, EffectSpec
 
-__all__ = ["CHAOS", "DURATIONS", "EFFECTS", "GAIN_HORIZON_S", "HITS", "IMPULSES", "MULTIPLIERS", "Active",
+__all__ = ["CHAOS", "DURATIONS", "EFFECTS", "GAIN_HORIZON_S", "HITS", "MULTIPLIERS", "Active",
            "EffectSpec", "apply_speed", "gain_s", "is_immune", "is_unseen", "wind_of"]
 
 CHAOS = {"soft": 0.7, "normal": 1.0, "wild": 1.3}      # doux, normal, fou (plan §4.4)
@@ -41,10 +40,8 @@ class Active:
     by: str | None
 
 
-def apply_speed(v: float, v_eq: float, impulses: list[EffectSpec], active: list[Active]) -> float:
-    """Vitesse virtuelle après les impulsions du pas et les bornes des effets en cours."""
-    for e in impulses:
-        v *= e.factor
+def apply_speed(v: float, v_eq: float, active: list[Active]) -> float:
+    """Vitesse virtuelle bornée par les effets en cours (plancher, plafond)."""
     floors = [a.spec.factor for a in active if a.spec.effect == "speed_floor"]
     caps = [a.spec.factor for a in active if a.spec.effect == "cap"]
     if floors:
@@ -74,9 +71,8 @@ def gain_s(effects: tuple[EffectSpec, ...] | list[EffectSpec], power_w: float = 
     p = params or PhysicsParams()
     v_eq = steady_speed(power_w, grade_pct, p)
     a, b = RiderPhysics(p, 0.0, v_eq), RiderPhysics(replace(p), 0.0, v_eq)
-    impulses = [e for e in effects if e.effect in IMPULSES]
     active = [Active(e, e.duration_s, "", None) for e in effects if e.effect in DURATIONS]
-    a.v = apply_speed(a.v, v_eq, impulses, active)
+    a.v = apply_speed(a.v, v_eq, active)
     t = 0.0
     while t < horizon_s - 1e-9:
         t += dt
@@ -84,5 +80,5 @@ def gain_s(effects: tuple[EffectSpec, ...] | list[EffectSpec], power_w: float = 
         a.p = replace(p, wind_mps=p.wind_mps + wind_of(live))
         a.step(power_w, grade_pct, dt=dt)
         b.step(power_w, grade_pct, dt=dt)
-        a.v = apply_speed(a.v, v_eq, [], live)
+        a.v = apply_speed(a.v, v_eq, live)
     return (a.s - b.s) / v_eq

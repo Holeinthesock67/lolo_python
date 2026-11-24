@@ -529,12 +529,15 @@ def recompute(journal_dir: Path, table: Table,
               workout_durations: WorkoutDurations = None,
               cache: FactsCache | None = None,
               counted: Iterable[str] = DEFAULT_COUNTED,
-              owns: Callable[[str | None], bool] = _unmarked_only) -> Progress:
+              owns: Callable[[str | None], bool] = _unmarked_only,
+              since: float | None = None) -> Progress:
     """Expérience, niveau, statistiques et défis depuis tous les journaux de `journal_dir`.
 
     `cache` (lot V11) évite de relire les journaux qui n'ont pas changé. `counted` : sources du
     journal qui rapportent ; `owns` : le journal de ce `profile_id` est-il du profil (série MJ,
     `ProfileContext.owns`) ? Défaut : contexte historique, séances réelles, journaux non marqués.
+    `since` (lot RZ1, `ProfileContext.stats_since`) : les séances commencées avant cette date (remise à zéro
+    des statistiques) ne rapportent plus rien (`before_reset`) ; les journaux restent en place.
     """
     counted = tuple(counted)
     lookup = _duration_lookup(workout_durations)
@@ -572,6 +575,8 @@ def recompute(journal_dir: Path, table: Table,
     total = 0
     for facts in facts_list:
         reason = "other_profile" if not owns(facts.profile_id) else ineligible_reason(facts, table, counted)
+        if reason is None and since is not None and (facts.start_ts is None or facts.start_ts < since):
+            reason = "before_reset"   # avant la remise à zéro des statistiques (lot RZ1)
         if reason is not None:
             results.append(SessionResult(facts, None, reason))
             continue
