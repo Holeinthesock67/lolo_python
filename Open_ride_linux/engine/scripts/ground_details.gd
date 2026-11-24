@@ -394,6 +394,13 @@ func rock_color(biome: String, x: float, z: float) -> Color:
 	return _rock_colors[key]
 
 
+## Autre chaussée à tenir dégagée en plus de la route (monde ouvert : branches non suivies des carrefours, 24/11).
+## Effacée au prochain `configure`.
+func avoid_line(line: PackedVector2Array) -> void:
+	if _road != null:
+		_road.add_polyline(line)
+
+
 ## Distance horizontale du point à l'axe de la route, exacte jusqu'à GRID_M (au-delà : INF ou plus),
 ## toute la route comprise (road_clearance.gd).
 func road_distance(x: float, z: float) -> float:

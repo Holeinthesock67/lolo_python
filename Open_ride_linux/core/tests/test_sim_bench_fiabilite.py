@@ -131,6 +131,20 @@ def test_speed_check_on_journal_records():
     assert sb.speed_check([], 35.0) == (False, "aucun échantillon de vitesse au journal")
 
 
+def test_speed_check_ignores_coasting_downhill():
+    # Banc rOWlh (24/11) : le cycliste à vitesse imposée ne freine pas ; en descente il roule à 0 W et va plus vite.
+    recs = []
+    for i in range(200):
+        downhill = 60 <= i < 140
+        speed = 48.0 if downhill else (40.0 if 140 <= i < 150 else 30.0)
+        recs.append({"ts": 1000.0 + i, "speed": speed / 3.6, "power": 0.0 if downhill else 180.0})
+    ok, msg = sb.speed_check(recs, 30.0)
+    assert ok is True, msg
+    assert "100 s en roue libre" in msg
+    # Sans puissance au journal (anciens journaux) : rien n'est écarté
+    assert sb.speed_check([{k: v for k, v in r.items() if k != "power"} for r in recs], 30.0)[0] is False
+
+
 def _args(**kw):
     base = dict(world="demo", workout=None, difficulty=None, duration=40.0, every=None, probe=False, speed_kmh=None)
     base.update(kw)

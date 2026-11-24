@@ -31,6 +31,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
+const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
@@ -153,6 +154,11 @@ var _manifest: Variant = null
 ## Monde vivant (lot W10) : amorces des branches non suivies des carrefours, clé "<carrefour>:<branche>" -> MeshInstance3D.
 const PREVIEW_FADE_M := 100.0
 var _previews: Dictionary = {}
+## Axes des branches non suivies des carrefours connus (clé "<carrefour>:<branche>" -> PackedVector2Array, x, z) :
+## pas d'arbre dessus (24/11, arbres sur les amorces des rues de Biarritz). Les carrefours sont connus avec la route,
+## jusqu'à 3 km devant (horizon du générateur), avant la plupart des tuiles proches qu'ils traversent ; une tuile
+## déjà affichée qu'une nouvelle branche traverse est refaite.
+var _preview_lines: Dictionary = {}
 var _preview_material: Material = null
 ## Talus des bords de la route (road_builder.gd build_skirt_arrays), couleur du sol : second matériau des tronçons.
 var _skirt_material: StandardMaterial3D = null
@@ -316,9 +322,24 @@ func _get_buildings(t: Vector2i) -> Array:
 	return _get_osm_items(t, "buildings")
 
 
-func _get_osm_items(t: Vector2i, layer: String) -> Array:
+## Plans d'eau de la tuile (mer comprise) : pas d'arbre dedans (24/11, arbre dans la mer à Biarritz).
+func _get_water_areas(t: Vector2i) -> Array:
+	return _get_osm_items(t, "water", "areas")
+
+
+## Objets de la couche `layer` (liste `list_key`, par défaut `items`) qui servent aux arbres de la tuile proche `t`.
+## Monde vivant : le fichier du carré `t` lui-même (24/11). Avant, on passait par les tronçons de route à moins de
+## 100 m de la tuile, alors qu'un carré n'est lu que par le premier tronçon qui le touche à 300 m
+## (osm_layers.chunk_tiles) : une tuile prise par un tronçon plus éloigné, ou à plus de 100 m de la route mais
+## affichée, avait ses maisons dessinées sans que les arbres le sachent (arbres dans les maisons, zones de forêt
+## ignorées).
+func _get_osm_items(t: Vector2i, layer: String, list_key: String = "items") -> Array:
 	if not _has_layer(layer) or world_dir == "":
 		return []
+	if route != null and route.live:
+		var one := OsmLayers._load_file(OsmLayers.tile_path(world_dir, layer, t.x, t.y), layer,
+			Vector2(t.x * OsmLayers.TILE_M, t.y * OsmLayers.TILE_M))
+		return one.get(list_key, []) if one.get("ok", false) else []
 	var areas := []
 	var tile_rect := Rect2(t.x * 1000.0, t.y * 1000.0, 1000.0, 1000.0)
 	var count := RoadBuilder.chunk_count(route) if route != null else 0
@@ -331,7 +352,7 @@ func _get_osm_items(t: Vector2i, layer: String) -> Array:
 		if r_bounds.intersects(tile_rect):
 			var res := OsmLayers.load_chunk(world_dir, layer, k, route)
 			if res.get("ok", false):
-				areas.append_array(res.get("items", []))
+				areas.append_array(res.get(list_key, []))
 	return areas
 
 
@@ -465,6 +486,48 @@ func set_previews(items: Array) -> void:
 		_previews[key] = mi
 
 
+## Branches non suivies des carrefours connus (`live_world.branch_lines()` : {key, xs, zs}) : pas d'arbre à moins
+## du couloir de la route de leur axe. Une branche nouvelle refait les tuiles proches affichées qu'elle traverse ;
+## une branche oubliée (carrefour passé) ne refait rien.
+func set_avoid_lines(items: Array) -> void:
+	var keep := {}
+	for it in items:
+		var key: String = it["key"]
+		keep[key] = true
+		if not _preview_lines.has(key):
+			_add_preview_line(key, it["xs"], it["zs"])
+	for key in _preview_lines.keys():
+		if not keep.has(key):
+			_preview_lines.erase(key)
+
+
+## Axe d'une nouvelle branche : gardé pour les arbres des tuiles à construire, et tuiles proches déjà affichées
+## qu'il traverse refaites (arbres posés avant que la branche soit connue).
+func _add_preview_line(key: String, xs: Array, zs: Array) -> void:
+	var line := PackedVector2Array()
+	for i in range(mini(xs.size(), zs.size())):
+		line.append(Vector2(float(xs[i]), float(zs[i])))
+	if line.size() < 2:
+		return
+	_preview_lines[key] = line
+	var size: float = TerrainTiles.LEVELS["near"]["size"]
+	var grow := VegetationPlacer.DEFAULT_ROAD_WIDTH_M * 0.5 + VegetationPlacer.ROAD_MARGIN_M
+	var touched := {}
+	for p in line:
+		for dx in [-grow, grow]:
+			for dz in [-grow, grow]:
+				touched[Vector2i(floori((p.x + dx) / size), floori((p.y + dz) / size))] = true
+	for t in touched:
+		var tkey := "near:%d:%d" % [t.x, t.y]
+		if _instances.has(tkey):
+			_stale_near[tkey] = true
+
+
+## Axes des branches tenues à l'écart des arbres (tests).
+func preview_lines() -> Array:
+	return _preview_lines.values()
+
+
 func preview_count() -> int:
 	return _previews.size()
 
@@ -497,6 +560,7 @@ func clear() -> void:
 		_free_instance(key)
 	for key in _previews.keys():
 		_free_preview(key)
+	_preview_lines.clear()
 	if tree_renderer != null:
 		tree_renderer.clear()
 	if forest_impostors != null:
@@ -675,7 +739,8 @@ func _start_jobs() -> void:
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
 			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
 			"gravel": {"mode": gravel_mode, "surfaces": _surfaces, "look": _road_look()},
-			"near_index": _near_index, "far_index": _far_index, "rebuild": _instances.has(key)}
+			"near_index": _near_index, "far_index": _far_index, "rebuild": _instances.has(key),
+			"avoid_lines": _preview_lines.values()}
 		_stale_near.erase(key)
 		job["task"] = BgTasks.add(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
@@ -735,7 +800,8 @@ func _build_job(job: Dictionary) -> void:
 				var t_trees := Time.get_ticks_usec()
 				# Hauteurs réelles : pente et limite des arbres jugées sur le vrai relief, arbres posés à la hauteur affichée.
 				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
-					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t))
+					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t), _get_water_areas(t),
+					job.get("avoid_lines", []))
 				PerfProbe.task("arbres", "%d:%d" % [t.x, t.y], (Time.get_ticks_usec() - t_trees) / 1000.0)
 		"flat":
 			var t: Vector2i = spec["tile"]

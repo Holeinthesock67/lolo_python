@@ -1444,6 +1444,10 @@ func _poll_live_world() -> void:
 		ipc.test_log("world_revision_error rev=%d" % upd["revision"])
 	if follow.has_frame():
 		streamer.set_previews(live_world.previews(float(follow.last_frame["s"])))
+	var branches: Array = live_world.branch_lines()
+	streamer.set_avoid_lines(branches)
+	if living_world != null:
+		living_world.set_avoid_lines(branches)
 
 ## Monde ouvert (lot W21) : portiques et panneaux des montées et sprints trouvés en roulant, arches de bonus
 ## jusqu'au bout de la route connue, jingles des lignes ; `from_s` : début de la route réécrite (nœuds refaits).

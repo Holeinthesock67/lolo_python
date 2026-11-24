@@ -262,6 +262,27 @@ func previews(s_pos: float) -> Array:
 	return out
 
 
+## Branches non suivies de tous les carrefours connus, sans borne de distance (arbres tenus à l'écart de leur axe,
+## world_streamer.set_avoid_lines, 24/11) : mêmes clés et mêmes points que `previews`.
+func branch_lines() -> Array:
+	var out := []
+	for j in junctions:
+		if typeof(j) != TYPE_DICTIONARY:
+			continue
+		var chosen := int(j.get("chosen", j.get("default", 0)))
+		var branches = j.get("branches", [])
+		if typeof(branches) != TYPE_ARRAY:
+			continue
+		for b in branches:
+			if typeof(b) != TYPE_DICTIONARY or int(b.get("index", -1)) == chosen:
+				continue
+			var pv = b.get("preview", {})
+			if typeof(pv) != TYPE_DICTIONARY or typeof(pv.get("x")) != TYPE_ARRAY or typeof(pv.get("z")) != TYPE_ARRAY:
+				continue
+			out.append({"key": "%s:%d" % [str(j.get("id", "")), int(b["index"])], "xs": pv["x"], "zs": pv["z"]})
+	return out
+
+
 # --- recentrage de l'origine -------------------------------------------------------------
 
 ## Nouvelle origine de rendu pour une caméra en (cam_x, cam_z) : inchangée tant que la caméra reste à
