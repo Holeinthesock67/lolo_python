@@ -28,6 +28,15 @@ class RampModel extends "res://scripts/biome_model.gd":
 		return {from_biome: 1.0 - t, to_biome: t}
 
 
+## Côte partout, tuiles en fjord pour x > 1 km (lot U25-p2).
+class FjordModel extends "res://scripts/biome_model.gd":
+	func weights_at(_x: float, _z: float) -> Dictionary:
+		return {"coast": 1.0}
+
+	func variant_at(x: float, _z: float) -> Variant:
+		return {"ground": null, "roofs": null, "landscape": "fjord"} if x > 1000.0 else null
+
+
 var _failures := 0
 var _checked := 0
 var _theme: Dictionary
@@ -185,6 +194,25 @@ func _test_underwater() -> void:
 	_check(is_equal_approx(AtmosphereModel.route_underwater(null, null), 0.0), "sans modèle : pas sous l'eau")
 
 
+## Ciel des paysages (lot U25-p2) : clés « biome|paysage », passage en douceur sur WINDOW_M comme entre deux biomes.
+func _test_landscapes() -> void:
+	var m := FjordModel.new(_theme, null)
+	var am := AtmosphereModel.new(m, func(s: float) -> Vector2: return Vector2(s, 0.0))
+	var day := AtmosphereModel.daylight_from_theme(_theme)
+	var before: Dictionary = am.at(0.0, day, CLEAR, "medium")
+	var after: Dictionary = am.at(3000.0, day, CLEAR, "medium")
+	var mid: Dictionary = am.at(1000.0, day, CLEAR, "medium")
+	var fj_fog := float(m.params_of("coast|fjord")["sky"]["fog_density"])
+	_check(is_equal_approx(float(before["fog_density"]), float(m.params("coast")["sky"]["fog_density"]))
+		and is_equal_approx(float(after["fog_density"]), fj_fog) and fj_fog != float(before["fog_density"]),
+		"fjord : brume du fjord (%.5f) au lieu de celle de la côte (%.5f)" % [fj_fog, float(before["fog_density"])])
+	_check(float(mid["fog_density"]) > minf(float(before["fog_density"]), fj_fog) and float(mid["fog_density"]) < maxf(float(before["fog_density"]), fj_fog),
+		"fjord : passage en douceur à l'entrée du paysage")
+	_check(am.smoothed_weights(3000.0).keys() == ["coast"] and am.smoothed_keyed_weights(3000.0).keys() == ["coast|fjord"],
+		"smoothed_weights : biomes seuls (saisons) ; smoothed_keyed_weights : clés de paysage")
+	_check(not (after["light_tint"] as Color).is_equal_approx(before["light_tint"] as Color), "fjord : lumière plus froide")
+
+
 func _init() -> void:
 	_theme = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	_test_underwater()
@@ -192,6 +220,7 @@ func _init() -> void:
 	_test_transition()
 	_test_heat_haze()
 	_test_humidity_and_polar()
+	_test_landscapes()
 	_test_cost()
 	print("test_atmosphere_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -277,6 +277,22 @@
         "null"
       ],
       "properties": {
+        "mode_error": {
+          "type": "object",
+          "description": "Facultatif (filet de la boucle, audit du 22 novembre, R3) : séance terminée parce qu'un mode de jeu a levé une erreur ; `mode` : mode en cours (rogue, grandprix, survivor, wtf, track, race, open_world, erg, sim), `error` : type de l'erreur. Le reste du bilan est celui d'une séance normale.",
+          "required": [
+            "mode",
+            "error"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            }
+          }
+        },
         "duration_s": {
           "type": "number"
         },
