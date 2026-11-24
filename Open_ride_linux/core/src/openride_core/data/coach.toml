@@ -139,3 +139,19 @@ tactics = "classic"
 rider_pct = 70
 sprint_pct = 160         # sprint de l'arche
 sprint_s = 20
+
+[fitness]
+# Courbe de forme de « Ma puissance » (lot FO1) : condition (CTL, ctl_days) et fatigue (ATL, atl_days) des
+# `days` derniers jours, un point tous les `step_days` jours ; points de charge (TSS), jamais de watts.
+days = 84
+step_days = 2
+trend_min_pts = 2        # écart de condition sur 7 jours au-delà duquel elle monte ou baisse
+# Mots de la fraîcheur (condition − fatigue), du plus frais au plus fatigué : seuil bas de chaque mot.
+# « tres_fatigue » reprend la borne de R1, « fatigue » celle de R3.
+labels = [
+  { key = "frais", min = 5, text = "frais, prêt pour un gros effort" },
+  { key = "en_forme", min = -10, text = "en forme" },
+  { key = "fatigue", min = -20, text = "un peu fatigué, une séance légère aide" },
+  { key = "tres_fatigue", min = -30, text = "fatigué, roule tranquille" },
+  { key = "epuise", min = -1000, text = "très fatigué, récupère" },
+]

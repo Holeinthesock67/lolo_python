@@ -295,6 +295,55 @@ def build_signals(facts: Iterable[SessionFacts], ftp_w: float, today: date, tabl
     }
 
 
+# --- courbe de forme (lot FO1, pur) ----------------------------------------------------------------
+
+def fitness_series(facts: Iterable[SessionFacts], today: date, table: dict[str, Any]) -> dict[str, Any] | None:
+    """Courbe de forme de « Ma puissance » (lot FO1) : condition (CTL) et fatigue (ATL) jour par jour, mêmes
+    constantes et même amorce que `build_signals`, un point tous les `step_days` jours sur les `days` derniers
+    jours (le dernier point est `today`). Points de charge (TSS) seulement : aucune puissance ni FTP. None
+    sans aucune séance sur la fenêtre d'amorce."""
+    win, cfg = table["window"], table.get("fitness") or {}
+    days, step = max(int(cfg.get("days", 84)), 7), max(int(cfg.get("step_days", 2)), 1)
+    span = max(int(win["history_days"]), days)
+    start = today - timedelta(days=span - 1)
+    by_day: dict[date, float] = {}
+    sessions: dict[date, int] = {}
+    for f in facts:
+        if start <= f.day <= today:
+            by_day[f.day] = by_day.get(f.day, 0.0) + f.tss
+            sessions[f.day] = sessions.get(f.day, 0) + 1
+    if not by_day:
+        return None
+    ctl_k, atl_k = int(win["ctl_days"]), int(win["atl_days"])
+    ctl = atl = 0.0
+    ctls: list[float] = []
+    atls: list[float] = []
+    for i in range(span):
+        tss = by_day.get(start + timedelta(days=i), 0.0)
+        ctl += (tss - ctl) / ctl_k
+        atl += (tss - atl) / atl_k
+        ctls.append(ctl)
+        atls.append(atl)
+    idx = list(range(span - 1, span - days - 1, -step))[::-1]
+    first = today - timedelta(days=days - 1)
+    weeks = [sum(n for d, n in sessions.items() if d >= first and (d - first).days // 7 == w)
+             for w in range(-(-days // 7))]
+    form = ctl - atl
+    label = next((lab for lab in cfg.get("labels", []) if form >= float(lab["min"])), None)
+    trend_pts = float(cfg.get("trend_min_pts", 2))
+    delta = ctl - ctls[-8] if span >= 8 else 0.0
+    trend = "up" if delta >= trend_pts else ("down" if delta <= -trend_pts else "flat")
+    weeks_up = 0   # semaines de suite où la condition a monté
+    for w in range(1, days // 7 + 1):
+        if span - 1 - 7 * w < 0 or ctls[span - 1 - 7 * (w - 1)] - ctls[span - 1 - 7 * w] <= 0:
+            break
+        weeks_up = w
+    return {"days": days, "step_days": step, "ctl": [round(ctls[i]) for i in idx], "atl": [round(atls[i]) for i in idx],
+            "weeks": weeks, "ctl_now": round(ctl, 1), "atl_now": round(atl, 1), "form": round(form, 1),
+            "trend": trend, "weeks_up": weeks_up,
+            "label": label["key"] if label else None, "label_text": label["text"] if label else None}
+
+
 # --- règles (pur) ---------------------------------------------------------------------------------
 
 @dataclass
