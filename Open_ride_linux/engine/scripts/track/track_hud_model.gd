@@ -119,7 +119,7 @@ static func my_place(tr: Dictionary) -> int:
 	return 0
 
 
-## Résultat de l'épreuve finie (révision 1.32), moment RÉSULTAT de feedback_model.gd (lot RT1) : « VICTOIRE ! » en
+## Résultat de l'épreuve finie (révision 1.33), moment RÉSULTAT de feedback_model.gd (lot RT1) : « VICTOIRE ! » en
 ## or, « ARRIVÉE · 3e sur 8 », ou « ÉPREUVE TERMINÉE » sans classement ; puis on continue à rouler (choix du 21/11).
 func finish_moment(tr: Dictionary) -> Dictionary:
 	var place := my_place(tr)
@@ -300,7 +300,7 @@ func goal(state) -> String:
 	return d.get_slice(" · ", 0).trim_prefix("Objectif : ") if d != "" else ""
 
 
-## Écarts en temps aux voisins (révision 1.32, `track.ahead` / `track.behind`, signés comme `bots[].gap_s`) :
+## Écarts en temps aux voisins (révision 1.33, `track.ahead` / `track.behind`, signés comme `bots[].gap_s`) :
 ## {ahead: {name, text}, behind: {name, text}} ; une clé absente sans voisin ; {} sans aucun voisin.
 func gaps_block(tr: Dictionary) -> Dictionary:
 	var out := {}

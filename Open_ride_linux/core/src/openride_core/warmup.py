@@ -85,7 +85,7 @@ class Warmup:
         self.skipped = True
 
     def to_dict(self) -> dict:
-        """Objet `warmup` de `start_wait` (révision 1.32) : cible et suite en watts directs."""
+        """Objet `warmup` de `start_wait` (révision 1.33) : cible et suite en watts directs."""
         d = self.erg.to_dict()
         return {"target_w": self.target_w, "left_s": round(self.left_s, 1), "total_s": round(self.total_s, 1),
                 "block": d["block_type"], "block_left_s": round(d["block_remaining_s"], 1),
