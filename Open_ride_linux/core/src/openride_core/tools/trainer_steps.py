@@ -647,6 +647,17 @@ def model_checks(results: list[StepResult], model: Any, frame_s: float = 0.25,
     return out
 
 
+def model_verdict(checks: list[tuple[bool | None, str]]) -> tuple[int, str]:
+    """Code de sortie du banc contre le modèle : 1 si un palier s'en écarte, et aussi si aucun palier n'a été
+    comparé (aucun t63, ou tous « pas comparé ») : un banc qui n'a rien comparé ne passe pas (C7-09)."""
+    if any(ok is False for ok, _ in checks):
+        return 1, ""
+    if not any(ok is True for ok, _ in checks):
+        return 1, (f"[ÉCHEC] aucun palier comparé au modèle ({len(checks)} palier(s) sans comparaison) : "
+                   "banc sans verdict")
+    return 0, ""
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Banc de latence du trainer par paliers (lot X5, essai R0).")
     ap.add_argument("--mode", default="sim", help="protocole : " + ", ".join(PROTOCOLS)
@@ -780,7 +791,10 @@ def main(argv: list[str] | None = None) -> int:
         checks = model_checks(results, model, 1.0 / world.trainer.ibd_hz, skip)
         for ok, msg in checks:
             print(f"[{'—' if ok is None else 'OK' if ok else 'ÉCHEC'}] {msg}")
-        return 0 if all(ok is not False for ok, _ in checks) else 1
+        code, msg = model_verdict(checks)
+        if msg:
+            print(msg)
+        return code
     return 0
 
 
