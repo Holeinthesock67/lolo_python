@@ -87,6 +87,7 @@ sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
 from e2e_check import Proc, free_udp_ports, now, send_cmd, snapshot_home  # noqa: E402
+import bancs_processus  # noqa: E402
 import perf_probe  # noqa: E402
 import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
@@ -557,6 +558,9 @@ class Bench:
         finally:
             for p in (engine,):
                 if p is not None:
+                    # xvfb-run ne transmet pas SIGTERM à Godot : Godot et Xvfb d'abord (revue vague 5, O3-05).
+                    if p.p.poll() is None:
+                        bancs_processus.arreter_descendants(p.p.pid)
                     p.stop(signal.SIGTERM, timeout=5.0)
             if self.sampler is not None:
                 self.sampler.stop()
@@ -1282,6 +1286,7 @@ if __name__ == "__main__":
     sys.path.insert(0, str(REPO / "scripts"))
     from isolation_tests import verrou_suite   # une seule suite de tests ou banc à la fois
 
+    bancs_processus.signaux_en_exception()   # SIGTERM, SIGHUP : nettoyage des `finally` (O3-08)
     with verrou_suite("sim_bench"):
         code = main()
     sys.exit(code)

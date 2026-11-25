@@ -226,3 +226,17 @@ def test_cli_execution(tmp_path):
     data = json.loads(res_json.stdout)
     assert data["total_expected"] == 42
     assert "missing" in data
+
+
+def test_dossier_absent_est_un_echec(tmp_path):
+    """Revue de code vague 5, O3-15 : une faute de chemin ne donne plus « SUCCÈS » avec zéro image contrôlée."""
+    rep = cv.check_collection(assets_dir=tmp_path / "absent")
+    assert rep["ok"] is False and rep["dossier_absent"] is True
+    res = subprocess.run([sys.executable, str(SCRIPT), "--dir", str(tmp_path / "absent")], capture_output=True, text=True)
+    assert res.returncode == 2 and "introuvable" in res.stdout
+
+
+def test_pillow_absent_est_dit(tmp_path, monkeypatch):
+    monkeypatch.setattr(cv, "pillow_available", lambda: False)
+    rep = cv.check_collection(assets_dir=tmp_path)
+    assert "transparence effective non vérifiée (Pillow absent)" in rep["avertissements"]
