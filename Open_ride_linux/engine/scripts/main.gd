@@ -1530,7 +1530,7 @@ func _warmup_steps() -> Array:
 	if streamer.forest_impostors != null:
 		steps.append(["forets", func(): streamer.forest_impostors.warm_up(camera)])
 	if streamer.osm_streamer != null:   # bâtiments, eau, mer, côte et ponts des tronçons à venir (lot AC2)
-		steps.append(["osm", func(): streamer.osm_streamer.warm_up(camera)])
+		steps.append_array(streamer.osm_streamer.warm_steps(camera))   # une sorte par image (banc rJ25J du 25/11)
 	return steps
 
 

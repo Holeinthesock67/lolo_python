@@ -24,8 +24,18 @@ Fil global « Supprimer les à-coups récurrents de main » (21/11). Analyse : `
   (`_casts_shadow`, partagé avec `integrate`), posé devant la caméra pendant 5 images puis retiré.
 - Le format compte : un pipeline dépend du matériau, du format des sommets et de la passe (ombre ou non).
 
+## Correction du 25/11 : une sorte par image
+- Banc rJ25J (pile #1066 + #953 + #985, monde ouvert medium, shaders froids, GTX 1060) : l'image qui suit l'étape
+  « préchauffage osm » dure **6,2 s** et compile 29 pipelines : les sept sortes dessinées pour la première fois dans
+  la même image (eau, mer, écume et plages ont des shaders lourds).
+- `osm_streamer.gd warm_steps(camera)` : une étape du plan par sorte (« préchauffage osm buildings », « osm water_lines »…),
+  donc une sorte par image ; `warm_up(camera, sorte)` pose cette sorte seule, chaque sorte garde ses propres
+  `WARM_FRAMES` images (`_warm_tick` dans `integrate`). `warm_up(camera)` sans sorte pose toujours tout (tests).
+- `main.gd _warmup_steps` prend ces étapes à la place de l'étape « osm » unique.
+
 ## Tests
-`engine/tests/unit/test_osm_warm.gd` : pour chaque sorte, le format du préchauffage est celui que produit le vrai
+`engine/tests/unit/test_osm_warm.gd` (complété le 25/11 : une étape par sorte, une seule sorte posée par étape,
+retrait de chaque sorte au bout de ses images, sorte inconnue ignorée) : pour chaque sorte, le format du préchauffage est celui que produit le vrai
 constructeur (building_mesh, water_mesh, sea_mesh dont l'horizon, bridge_mesh) ; warm_up pose 7 nœuds avec matériau et
 ombres des vrais nœuds, les retire après 5 images, et un nouveau préchauffage remplace l'ancien.
 
@@ -35,4 +45,5 @@ Récif low : 3,9 images lentes par minute (50 à 100 ms, scripts ~35 ms non not�
 ## Recette PC
 Catégorie : rendu. Low, medium et high, **shaders à froid** (`--shaders froid` de PI1) : DB1 `demo-biomes-paysages`
 (nominal, 50 km/h) ; attendu : plus d'image de plus de 200 ms vers 1,9 km, étape « préchauffage osm » au chargement,
-budgets GPU 8/13/16 ms inchangés.
+budgets GPU 8/13/16 ms inchangés. Depuis le 25/11 : étapes « préchauffage osm <sorte> », aucune image de plus
+de 1 s juste après elles (monde ouvert `ea1_lac` medium, shaders froids, cache séparé).
