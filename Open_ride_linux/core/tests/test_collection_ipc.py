@@ -446,7 +446,7 @@ def test_session_finish_attaches_summary_collection(tmp_path, monkeypatch):
         workout_id = None
         records = []
         events = []
-        def finish(self, save=True, ts=None):
+        def finish(self, save=True, ts=None, private_start_m=0.0):   # zone privée (lot PZ1)
             class S:
                 timer_s = 1800.0
                 distance_m = 15000.0

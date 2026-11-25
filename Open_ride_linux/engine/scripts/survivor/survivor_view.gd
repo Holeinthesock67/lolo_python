@@ -13,6 +13,7 @@ extends Control
 
 const Model := preload("res://scripts/survivor/survivor_hud_model.gd")
 const UiTheme := preload("res://scripts/ui_theme.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")
 
 const BLOCK_W := 243.0          # largeur des colonnes du HUD (hud_view.gd COLUMN_W)
 const MARGIN := 20.0            # hud_view.gd TOP_MARGIN
@@ -35,7 +36,8 @@ var _block_last: Label
 var _block_ahead: Label
 var _block_ahead_w: Label
 var _list: PanelContainer
-var _rows: Array = []           # [HBoxContainer, nom (RichTextLabel), détail (Label), fond (StyleBoxFlat), {appliqué}]
+var _rows: Array = []           # [ligne, nom (RichTextLabel), détail (Label), fond (StyleBoxFlat), {appliqué}, jauge W′]
+var _reserve_legend: Label      # « Trait bleu : réserve des bots » sous la liste (lot RW)
 var _block_border := -1         # épaisseur du cadre du bloc déjà posée (-1 : aucune)
 
 
@@ -108,10 +110,20 @@ func _build() -> void:
 		d.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		h.add_child(n)
 		h.add_child(d)
-		row.add_child(h)
+		var rcol := VBoxContainer.new()   # nom et écart, puis jauge de réserve du bot (lot RW)
+		rcol.add_theme_constant_override("separation", -int(BotReserve.HEIGHT))   # sous le texte, sans grandir la ligne
+		rcol.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bar := BotReserve.make_bar()
+		rcol.add_child(h)
+		rcol.add_child(bar)
+		row.add_child(rcol)
 		row.visible = false
 		lcol.add_child(row)
-		_rows.append([row, n, d, bg, {}])
+		_rows.append([row, n, d, bg, {}, bar])
+	_reserve_legend = _label(ROW_SIZE - 5, UiTheme.DIM)
+	_reserve_legend.text = BotReserve.LEGEND
+	_reserve_legend.visible = false
+	lcol.add_child(_reserve_legend)
 
 	for p in [_block, _list]:
 		add_child(p)
@@ -153,6 +165,9 @@ func update_view(view: Dictionary) -> void:
 		if not shown:
 			continue
 		_apply_row(r, rows[i])
+	var legend := BotReserve.any_shown(rows)
+	if _reserve_legend.visible != legend:
+		_reserve_legend.visible = legend
 
 
 ## Ligne `r` de la liste d'après `it` (survivor_hud_model.gd list_rows) : seul ce qui a changé depuis l'image
@@ -184,6 +199,7 @@ func _apply_row(r: Array, it: Dictionary) -> void:
 	if done.get("bg") != bg:
 		(r[3] as StyleBoxFlat).bg_color = bg
 		done["bg"] = bg
+	BotReserve.set_bar(r[5] as Control, float(it.get("wbal", -1.0)))
 
 
 ## Pour les tests graphiques et le banc des menus : textes affichés.
@@ -192,11 +208,21 @@ func test_info() -> Dictionary:
 	for r in _rows:
 		if (r[0] as Control).visible:
 			names.append((r[1] as RichTextLabel).get_parsed_text())
-	return {"visible": visible, "block": _block_arch.text if visible and _block.visible else "",
+	return {"reserve": _reserve_info(), "reserve_legend": visible and _list.visible and _reserve_legend.visible,
+		"visible": visible, "block": _block_arch.text if visible and _block.visible else "",
 		"rank": _block_rank.text if visible and _block.visible else "",
 		"danger": _block_danger.text if visible and _block.visible and _block_danger.visible else "",
 		"ahead": (_block_ahead.text + " · " + _block_ahead_w.text) if visible and _block.visible and _block_ahead.visible else "",
 		"list": names, "block_top": _block.offset_top}
+
+
+## Réserves dessinées des lignes visibles (−1 : pas de barre), pour les tests (lot RW).
+func _reserve_info() -> Array:
+	var out: Array = []
+	for r in _rows:
+		if (r[0] as Control).visible:
+			out.append(float((r[5] as Control).get_meta("frac", -1.0)))
+	return out
 
 
 static func _style(fill: Color) -> StyleBoxFlat:

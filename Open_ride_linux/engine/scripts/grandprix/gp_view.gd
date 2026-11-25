@@ -17,6 +17,7 @@ extends Control
 
 const Model := preload("res://scripts/grandprix/gp_hud_model.gd")
 const Items := preload("res://scripts/grandprix/gp_items.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")
 
 const INK := Items.INK
 const PAPER := Items.PAPER
@@ -57,7 +58,8 @@ var _place_of: Label
 var _place_lap: Label
 var _place_gap: Label
 var _strip: PanelContainer
-var _rows: Array = []           # [PanelContainer, place, nom, écart, pastille (Control), fond, {appliqué}]
+var _rows: Array = []           # [PanelContainer, place, nom, écart, pastille (Control), fond, {appliqué}, jauge W′]
+var _reserve_legend: Label      # « Trait bleu : réserve des bots » sous la bande (lot RW)
 var _lanes: Control
 var _hint: Label
 var _warn: PanelContainer
@@ -169,10 +171,20 @@ func _build() -> void:
 		badge.draw.connect(_draw_row_badge.bind(badge))
 		for c in [p, n, g, badge]:
 			h.add_child(c)
-		row.add_child(h)
+		var rcol := VBoxContainer.new()   # place, nom et écart, puis jauge de réserve du bot (lot RW)
+		rcol.add_theme_constant_override("separation", -int(BotReserve.HEIGHT))   # sous le texte, sans grandir la ligne
+		rcol.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bar := BotReserve.make_bar(BotReserve.BG_LIGHT)
+		rcol.add_child(h)
+		rcol.add_child(bar)
+		row.add_child(rcol)
 		row.visible = false
 		scol.add_child(row)
-		_rows.append([row, p, n, g, badge, bg, {}])
+		_rows.append([row, p, n, g, badge, bg, {}, bar])
+	_reserve_legend = _label(ROW_SIZE - 4, INK)
+	_reserve_legend.text = BotReserve.LEGEND
+	_reserve_legend.visible = false
+	scol.add_child(_reserve_legend)
 	add_child(_strip)
 
 	# Avertissement, au-dessus des voies
@@ -267,6 +279,9 @@ func update_view(view: Dictionary) -> void:
 		(r[0] as Control).visible = shown
 		if shown:
 			_apply_row(r, rows[i])
+	var legend := BotReserve.any_shown(rows)
+	if _reserve_legend.visible != legend:
+		_reserve_legend.visible = legend
 
 	var w: Dictionary = view.get("warn", {})
 	_warn.visible = not w.is_empty()
@@ -307,6 +322,7 @@ func _apply_row(r: Array, it: Dictionary) -> void:
 	if badge.get_meta("row", {}) != key:
 		badge.set_meta("row", key)
 		badge.queue_redraw()
+	BotReserve.set_bar(r[7] as Control, float(it.get("wbal", -1.0)))
 
 
 func _draw_row_badge(badge: Control) -> void:
@@ -421,11 +437,21 @@ func test_info() -> Dictionary:
 	var it: Dictionary = _view.get("item", {})
 	return {"visible": visible, "item": str(it.get("kind", "")) if visible else "",
 		"key": _item_key.text if visible else "", "place": (_place_big.text + " " + _place_of.text) if visible and _place.visible else "",
-		"gap": _place_gap.text if visible and _place.visible else "", "strip": names,
+		"gap": _place_gap.text if visible and _place.visible else "", "strip": names, "reserve": _reserve_info(),
+		"reserve_legend": visible and _strip.visible and _reserve_legend.visible,
 		"warn": _warn_text.text if visible and _warn.visible else "",
 		"outline": visible and bool(_view.get("warn", {}).get("outline", false)),
 		"hint": _hint.text if visible and _hint.visible else "", "place_top": _place.offset_top,
 		"strip_bottom": _strip.offset_top + _strip.get_combined_minimum_size().y}
+
+
+## Réserves dessinées des lignes visibles (−1 : pas de barre), pour les tests (lot RW).
+func _reserve_info() -> Array:
+	var out: Array = []
+	for r in _rows:
+		if (r[0] as Control).visible:
+			out.append(float((r[7] as Control).get_meta("frac", -1.0)))
+	return out
 
 
 func _canvas(draw_fn: Callable) -> Control:

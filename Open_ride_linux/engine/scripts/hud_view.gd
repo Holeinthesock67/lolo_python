@@ -44,6 +44,7 @@ const UiIcons := preload("res://scripts/ui_icons.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotHudModel := preload("res://scripts/bot_hud_model.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 
 const COLOR_DESCENT := UiTheme.GRADE_DESCENT
@@ -96,8 +97,8 @@ const BLOCK_SCALE := COLUMN_W / BLOCK_W
 const ERG_RESERVE := ErgView.BOTTOM_OFFSET + ErgView.PANEL_HEIGHT
 const JERSEY_COLORS := {"sprint": UiTheme.JERSEY_SPRINT, "kom": UiTheme.JERSEY_KOM}
 const KOM_DOT := UiTheme.KOM_DOT
-const WBAL_BG := UiTheme.TRACK
-const WBAL_COLOR := UiTheme.WBAL
+const WBAL_BG := BotReserve.BG_DARK       # jauge W′ des bots : même dessin dans les modes (bot_reserve.gd, lot RW)
+const WBAL_COLOR := BotReserve.COLOR
 
 const GRADE_COLORS := {
 	"descent": COLOR_DESCENT,

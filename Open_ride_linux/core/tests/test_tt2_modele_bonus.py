@@ -231,8 +231,11 @@ def _trace(tmp: Path, monkeypatch: pytest.MonkeyPatch, mode: str, toml: str = ""
 # Lot AS11 (19 novembre) : recalées pour les deux modes à la fois (règle commune de dépassement et de rabattement,
 # cyclistes du décor en file devant un véhicule : abri un peu différent, 0,18 m de plus en 10 min) ; avant :
 # dd659da1…, 4125.925359 et 40c4ebb5…, 4140.108.
-GOLDEN_OFF = ("5e46be3eb9d9781bfcdffe39f3f012539641c9b2e496a3fd9d9351c964ce42a4", 4126.102643)
-GOLDEN_ON = ("821abd10adf169ddbb1908576f96bd63fd6263b93c7ceba77909695191ef90ab", 4140.2793)
+# Revue RC12 (23 novembre) : recalées pour les deux modes à la fois (C5-02 : un véhicule ne sort plus de la route, il
+# reste à 3,75 m de l'axe au plus, carrosserie comprise ; aspiration un peu différente, 0,05 m de plus en 10 min) ;
+# avant : 5e46be3e…, 4126.102643 et 821abd10…, 4140.2793.
+GOLDEN_OFF = ("9f5fe252e1d8a47c6f1ff9159238304977582a15a9fcd826681cdf8e5499376e", 4126.151729)
+GOLDEN_ON = ("12a7e27f9041c4186291e21cad681da23089427ec6326394279b173375531979", 4140.325492)
 
 
 def test_off_session_identical_to_2_0(tmp_path, monkeypatch):

@@ -277,6 +277,22 @@
         "null"
       ],
       "properties": {
+        "mode_error": {
+          "type": "object",
+          "description": "Facultatif (filet de la boucle, audit du 22 novembre, R3) : séance terminée parce qu'un mode de jeu a levé une erreur ; `mode` : mode en cours (rogue, grandprix, survivor, wtf, track, race, open_world, erg, sim), `error` : type de l'erreur. Le reste du bilan est celui d'une séance normale.",
+          "required": [
+            "mode",
+            "error"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            }
+          }
+        },
         "duration_s": {
           "type": "number"
         },
@@ -1495,8 +1511,8 @@
           "lane_m": {
             "type": "number",
             "minimum": -3,
-            "maximum": 3,
-            "description": "Facultatif, révision 1.5 (lot AS2) : écart du bot à l'axe de la route en m, positif à droite, au centimètre."
+            "maximum": 7,
+            "description": "Facultatif, révision 1.5 (lot AS2) : écart du bot à l'axe de la route en m, positif à droite, au centimètre. Vélodrome (révision 1.33) : hauteur sur la piste depuis la ligne de mesure, de 0 à 7 m (coureur sorti rangé en haut, 5,5 m)."
           },
           "profile": {
             "type": [
