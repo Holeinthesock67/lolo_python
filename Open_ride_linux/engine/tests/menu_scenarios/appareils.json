@@ -9,7 +9,7 @@
     {"choisir": "devices"},
     {"ecran": "pairing", "titre": "Appareils"},
     {"journal": "engine", "motif": "scan_results done=true items=([3-9])", "delai": 20},
-    {"ecran": "pairing", "contient": ["Trainer — HomeTrainer", "Ceinture —", "appareil(s) trouvé(s)"], "elements": ["scan", "trainer", "identify", "forget_click", "hr", "save", "back"]},
+    {"ecran": "pairing", "contient": ["Trainer — HomeTrainer", "Ceinture —", "appareil(s) trouvé(s)"], "elements": ["scan", "trainer", "identify", "forget_click", "hr", "save", "sim", "back"]},
     {"choisir": "save"},
     {"ecran": "confirm", "focus": "no", "elements": ["no", "yes"]},
     {"note": "Non : rien n'est écrit", "choisir": "no"},

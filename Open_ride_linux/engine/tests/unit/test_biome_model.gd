@@ -199,9 +199,12 @@ func _init() -> void:
 		fj_kinds.append(sp["kind"])
 	_check(fj_kinds.has("birch") and not fj_kinds.has("palm") and float(coast_fj["vegetation"]["treeline_m"]) == 700.0,
 		"paysage fjord : côte en bouleaux et épicéas, sans palmier, limite des arbres 700 m")
-	_check(coast_fj["water"] == coast_plain["water"] and coast_fj["terrain"]["grass_color"] == Color.html("#5f7a44")
-		and coast_fj["terrain"]["rock_color"] == Color.html("#4a4d50"),
-		"paysage fjord : herbe verte et gneiss sombre au lieu du sable, eau du biome gardée")
+	_check(coast_fj["terrain"]["grass_color"] == Color.html("#5f7a44") and coast_fj["terrain"]["rock_color"] == Color.html("#4a4d50"),
+		"paysage fjord : herbe verte et gneiss sombre au lieu du sable")
+	# Partie 2 (lot U25-p2) : eau et ciel du paysage
+	_check(coast_fj["water"]["color"] == Color.html("#1d4f52") and coast_plain["water"]["color"] != coast_fj["water"]["color"]
+		and float(coast_fj["sky"]["fog_density"]) > float(coast_plain["sky"]["fog_density"]),
+		"paysage fjord : eau verte et profonde, air plus humide que la côte")
 	_check(md.params("savanna", "", 0.0, fj_var)["vegetation"] == md.params("savanna")["vegetation"],
 		"paysage fjord : biome qui n'est pas une base du paysage inchangé")
 	_check(md.params("coast", "", 0.0, {"ground": "schiste_sombre", "roofs": null})["vegetation"] == coast_plain["vegetation"],
@@ -221,12 +224,37 @@ func _init() -> void:
 	for l in BiomeIds.LANDSCAPES:
 		_check(typeof(default_theme.get("landscapes", {}).get(l, null)) == TYPE_DICTIONARY, "défaut 2.0 : paysage " + l + " décrit")
 
+	# Aspect du sol et de l'eau (lot U25-p2) : strates, gradins, cascades
+	var lk_canyon: Dictionary = md.surface_look("rock_desert", {"landscape": "canyon"})
+	var lk_rice: Dictionary = md.surface_look("farmland", {"landscape": "rizieres"})
+	var lk_fjord: Dictionary = md.surface_look("temperate_forest", {"landscape": "fjord"})
+	_check((lk_canyon["strata"]["colors"] as Array).size() >= 2 and float(lk_canyon["strata"]["band_m"]) > 0.0
+		and lk_canyon["terraces"].is_empty() and lk_canyon["falls"].is_empty(), "canyon : strates colorées, ni gradins ni cascades")
+	_check(float(lk_rice["terraces"]["step_m"]) > 0.0 and lk_rice["strata"].is_empty()
+		and lk_rice["water_color"] == md.params("farmland", "", 0.0, {"landscape": "rizieres"})["water"]["color"],
+		"rizières : gradins inondés de l'eau du paysage")
+	_check(float(lk_fjord["falls"]["density"]) > 0.0 and lk_fjord["falls"].has("color"), "fjord : cascades (valeurs par défaut complétées)")
+	var lk_plain: Dictionary = md.surface_look("rock_desert")
+	_check(lk_plain["strata"].is_empty() and lk_plain["terraces"].is_empty() and lk_plain["falls"].is_empty()
+		and md.surface_look("savanna", {"landscape": "canyon"})["strata"].is_empty(),
+		"hors paysage, ou biome qui n'est pas une base du paysage : ni strates, ni gradins, ni cascades")
+	# Clés de rendu (ciel et mer des paysages)
+	_check(md.landscape_key("coast", fj_var) == "coast|fjord" and md.landscape_key("savanna", fj_var) == "savanna"
+		and md.landscape_key("coast", null) == "coast" and BiomeModel.base_of("coast|fjord") == "coast"
+		and BiomeModel.landscape_of("coast|fjord") == "fjord" and BiomeModel.landscape_of("coast") == "",
+		"landscape_key : « biome|paysage » pour une base du paysage seulement")
+	_check(md.params_of("coast|fjord")["water"] == coast_fj["water"] and md.params_of("coast")["water"] == coast_plain["water"],
+		"params_of : paramètres du biome dans son paysage")
+
 	# Variante d'un point : tuile proche, forçage --biome= qui l'ignore
 	var tile_l := _flat_tile(["coast"], [255])
 	tile_l["variant"] = fj_var
 	var ml = BiomeModel.new(default_theme, _layer_with({Vector2i(0, 0): tile_l}))
 	_check(ml.variant_at(500.0, 500.0)["landscape"] == "fjord" and ml.building_style_at(500.0, 500.0) == "bois_peint",
 		"variant_at : paysage et toit bois_peint de la tuile")
+	var kw: Dictionary = ml.keyed_weights_at(500.0, 500.0)
+	_check(kw.size() == 1 and is_equal_approx(float(kw.get("coast|fjord", 0.0)), 1.0),
+		"keyed_weights_at : côte d'une tuile en fjord rangée sous « coast|fjord »")
 	ml.set_forced("coast")
 	_check(ml.variant_at(500.0, 500.0) == null and ml.building_style_at(500.0, 500.0) == "ardoise",
 		"forçage --biome= : variante ignorée")

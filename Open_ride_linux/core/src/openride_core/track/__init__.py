@@ -7,8 +7,9 @@ plateau (adversaires) ; `make` construit une épreuve depuis ces réglages. Plan
 
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Sequence
 
 from ..bot_tactics import LEVELS as TACTIC_LEVELS
 from .base import LAP_M, ME, Entrant, TrackError, TrackEvent
@@ -133,6 +134,29 @@ def make(event_id: str, entrants: list[Entrant], settings: dict, **kw) -> TrackE
     return spec.cls(entrants, **spec.fixed, **args, **kw)
 
 
+def team_order(levels: Sequence[float], size: int) -> list[int]:
+    """Ordre des bots qui équilibre les équipes de `teams` (revue C3-07) : indices dans `levels` (niveaux des bots,
+    % de la FTP), les `size − 1` premiers avec le cycliste (« home »), puis `size` par équipe adverse.
+
+    Le plateau est étalé du plus fort au plus faible autour du niveau du cycliste : il compte pour la médiane
+    des niveaux. Chaque bot, du plus fort au plus faible, va à l'équipe non pleine dont la somme des niveaux
+    est la plus basse (première équipe à égalité) : niveaux tous égaux, l'ordre reste celui des bots."""
+    n = len(levels)
+    if size <= 1 or n == 0:
+        return list(range(n))
+    if (n + 1) % size:
+        raise TrackError(f"équipes de {size} : {n} bots ne complètent pas les équipes")
+    k = (n + 1) // size
+    slots = [size - 1] + [size] * (k - 1)
+    sums = [float(statistics.median(levels))] + [0.0] * (k - 1)
+    members: list[list[int]] = [[] for _ in range(k)]
+    for i in sorted(range(n), key=lambda i: (-float(levels[i]), i)):
+        tm = min((j for j in range(k) if len(members[j]) < slots[j]), key=lambda j: (sums[j], j))
+        members[tm].append(i)
+        sums[tm] += float(levels[i])
+    return [i for m in members for i in sorted(m)]
+
+
 def teams(entrants: list[Entrant], size: int, place: int = 1) -> list[Entrant]:
     """Équipes de `size` dans l'ordre des engagés : le cycliste et ses `size − 1` premiers bots forment
     « home », les suivants « t2 », « t3 »… ; le cycliste se range à `place` dans son équipe."""
@@ -148,4 +172,4 @@ def teams(entrants: list[Entrant], size: int, place: int = 1) -> list[Entrant]:
 
 
 __all__ = ["EVENTS", "TACTIC_LEVELS", "has_bots", "menu_options", "LAP_M", "ME", "Entrant", "EventSpec", "Option", "TrackError", "TrackEvent",
-           "check", "field_size", "make", "options", "teams"]
+           "check", "field_size", "make", "options", "team_order", "teams"]
