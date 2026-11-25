@@ -31,7 +31,7 @@ CARDS = {c.id: c for c in (
     Card("cursed", "Maudit", "module",
          "Au-dessus de {cursed_w} W : dégâts ×1,35, mais Z ne marche plus."),
     Card("shifter", "Shifter électronique pro", "module",
-         "Perfect Shift plus facile : 2 fois plus de temps pour changer de vitesse. +3 de bouclier à chaque réussite."),
+         "Changement parfait plus facile : 2 fois plus de temps pour changer de vitesse. +3 de bouclier à chaque réussite."),
     Card("siphon", "Siphon d'aspiration", "module", "Contre le Puncheur : chaque parade réussie (Z) donne +50 d'adrénaline."),
     Card("polarity", "Inversion polaire", "active",
          "Maintiens Z, une fois par salle : pendant 8 s, la montée devient une descente douce (−3 % au plus)."),
@@ -39,7 +39,7 @@ CARDS = {c.id: c for c in (
 RELICS = {c.id: c for c in (
     Card("relic_shield", "Blindage de départ", "relic", "Bouclier plus grand : +20 pour toute la run."),
     Card("relic_gold", "Marché noir", "relic", "+25 % d'or gagné pour toute la run."),
-    Card("relic_window", "Réflexes affûtés", "relic", "Perfect Shift plus facile : +0,3 s pour changer de vitesse, toute la run."),
+    Card("relic_window", "Réflexes affûtés", "relic", "Changement parfait plus facile : +0,3 s pour changer de vitesse, toute la run."),
 )}
 ALL = {**CARDS, **RELICS}
 

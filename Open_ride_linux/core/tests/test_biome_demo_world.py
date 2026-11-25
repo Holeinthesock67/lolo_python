@@ -76,8 +76,9 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     """Jeu de base : le tour des nouveaux paysages, le circuit, le récif et le volcan (lots O38, SM1, DB1 et DB2) ;
     recette : en plus les parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    assert names == ["demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
-                     "demo-circuit.world", "demo-japon.world", "demo-recif.world", "demo-volcan.world"]
+    assert names == ["demo-biomes-forets.world", "demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
+                     "demo-circuit.world", "demo-corniche.world", "demo-japon.world", "demo-recif.world",
+                     "demo-vignes.world", "demo-volcan.world"]
     retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
                "demo-biomes-tour.world"]
     assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + retired)
@@ -149,7 +150,8 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
     assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-japon": "Route des Érables",
                       "demo-circuit": "Circuit des Prés", "demo-recif": "Récif des tortues",
                       "demo-volcan": "Volcan en flammes", "demo-biomes-sud": "Route du Sud",
-                      "demo-biomes-nord": "Route du Grand Nord"}
+                      "demo-biomes-nord": "Route du Grand Nord", "demo-corniche": "Boucle de la Corniche",
+                      "demo-vignes": "Route des Vignes", "demo-biomes-forets": "Route des Trois Forêts"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
     assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
@@ -234,8 +236,8 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
         kept[n] = f.read_bytes()
     assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and sorted(written) == ["demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-japon",
-                                                 "demo-recif", "demo-volcan"]
+    assert note == "" and sorted(written) == ["demo-biomes-forets", "demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-corniche",
+                                                 "demo-japon", "demo-recif", "demo-vignes", "demo-volcan"]
     assert not gravel.exists()
     assert _json(old)["name"] == "Circuit des Prés"
     assert _json(mine / "manifest.json")["name"] == "Mes paysages"
@@ -268,7 +270,9 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert "demo-japon (Route des Érables) : 6.1 km" in out
     assert "demo-biomes-sud (Route du Sud) : 12.1 km" in out
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
-    assert len(list(tmp_path.glob("*.world"))) == 7
+    assert "demo-corniche (Boucle de la Corniche) : 2.5 km" in out and "demo-vignes (Route des Vignes) : 5.0 km" in out
+    assert "demo-biomes-forets (Route des Trois Forêts) : " in out
+    assert len(list(tmp_path.glob("*.world"))) == 10
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -606,3 +610,132 @@ def test_nord_loop(demo_set: Path, mbw) -> None:
 def test_loop_blocks_must_fill_the_loop(mbw) -> None:
     with pytest.raises(ValueError, match="2 km par bloc"):
         mbw.Plan(("tundra", "polar"), False, False, loop="nord")
+
+
+# --- Parcours du Grand Prix des objets (lot GP13b) -------------------------------------------------------------
+
+GRAND_PRIX = ("demo-circuit", "demo-corniche", "demo-vignes",
+              "demo-recif", "demo-volcan", "demo-biomes-nord")   # lot GPL1 : boucles restées libres, étiquette `libre`
+
+
+def _radius_min(route: dict) -> float:
+    """Plus petit rayon de virage (m) de la route compilée, mesuré sur 20 m."""
+    import numpy as np
+    h = np.unwrap(np.radians(np.asarray(route["heading_deg"], dtype=float)))
+    k = max(1, int(round(10.0 / float(route["ds_m"]))))
+    turn = np.abs(h[2 * k:] - h[:-2 * k])
+    return float(2 * k * float(route["ds_m"]) / max(float(turn.max()), 1e-9))
+
+
+def test_grand_prix_routes_are_wide_paved_and_without_hairpin(demo_set: Path, mbw) -> None:
+    """Lot GP13 §2.1 : chaque parcours du Grand Prix du jeu de base (étiquette `grandprix`) est revêtu de bout en
+    bout (aucune portion gravel ou terre, où le core resserre les vélos), sa chaussée fait 6 m (trois voies) et il
+    n'a pas d'épingle (rayon de virage d'au moins 25 m)."""
+    from openride_core import mode_routes
+
+    tagged = sorted(n for n in mbw.GAME_DEMOS if mode_routes.mode_of(mbw.library_of(n), "loop") == "grandprix")
+    assert tagged == sorted(GRAND_PRIX)
+    for name in tagged:
+        world = demo_set / f"{name}.world"
+        route = _json(world / "route.json")
+        manifest = _json(world / "manifest.json")
+        assert route["type"] == "loop", name   # lot GPL1 : le Grand Prix se court sur une boucle
+        assert set(route.get("surface", ["paved"])) == {"paved"}, name
+        assert not [g for n, *_, g, _sea, base in mbw.DEMO_SET if n == name and g], name
+        assert 2.0 * manifest["layers"]["terrain"]["road_half_width_m"] >= 6.0, name
+        assert _radius_min(route) >= 25.0, (name, _radius_min(route))
+
+
+def test_corniche_loop(demo_set: Path, mbw) -> None:
+    """Boucle de la Corniche (lot GP13b) : boucle fermée de 2,5 km dans le méditerranéen, pente de −6 à +6 %, 30 à
+    45 m de montée par tour, l'autre rive à plus de 400 m ; la mer à gauche le long du côté est : côte rocheuse
+    sans plage, aires `sea` jusqu'à 1 600 m (au-delà du trou de l'anneau d'horizon), falaise sous la route, terrain
+    sous la mer seulement dans les aires `sea`."""
+    import numpy as np
+    from openride_compiler.fake_osm import LoopRoad
+
+    world = demo_set / "demo-corniche.world"
+    route = _json(world / "route.json")
+    manifest = _json(world / "manifest.json")
+    assert route["type"] == "loop" and route["length_m"] == pytest.approx(mbw.CORNICHE_M, abs=5.0)
+    assert (route["x"][0], route["z"][0], route["alt_m"][0]) == (route["x"][-1], route["z"][-1], route["alt_m"][-1])
+    assert -6.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 6.0
+    climb = sum(max(b - a, 0.0) for a, b in zip(route["alt_m"], route["alt_m"][1:]))
+    assert 30.0 <= climb <= 45.0, climb
+    assert min(route["alt_m"]) > 15.0                     # la route reste en haut de la falaise
+    assert manifest["layers"]["biome"]["shares"] == {"mediterranean": 100.0}
+    road = LoopRoad(mbw.CORNICHE_M, mbw.CORNICHE_LOBES)
+    pts = np.column_stack((road._x[:-1], road._z[:-1]))
+    far = [np.hypot(*(pts[i] - pts[j])) for i in range(0, len(pts), 25) for j in range(0, len(pts), 25)
+           if min(abs(i - j), len(pts) - abs(i - j)) * road.STEP > 600.0]
+    assert min(far) > 400.0
+    coast = manifest["layers"]["coast"]
+    assert coast["present"] and coast["lines_count"] >= 2 and coast["beaches_count"] == 0
+    for f in sorted((world / "coast").glob("chunk_*.json")):
+        jsonschema.validate(_json(f), _schema("coast"))
+        assert all(line["shore"] == "rock" for line in _json(f)["lines"])
+    seas = [a for f in (world / "water").glob("chunk_*.json") for a in _json(f)["areas"] if a["kind"] == "sea"]
+    assert seas and manifest["layers"]["water"]["areas_count"] == len(seas)
+    reach = max(float(np.hypot(*np.subtract(p, (route["x"][k], route["z"][k])))) for a in seas for p in a["outer"]
+                for k in range(0, route["n"], 5))
+    assert reach > 1500.0
+    # Relief : la mer à gauche du tronçon `sea` (sous 0 à 300 m de la route), la terre partout ailleurs près de la
+    # route, à gauche avant le tronçon et à droite (l'intérieur de la boucle).
+    plan = mbw.Plan(("mediterranean",), False, True, loop="corniche")
+    terrain = mbw.make_terrain(plan)
+    s0, s1 = mbw.CORNICHE_SEA
+    mid = (s0 + s1) / 2.0
+    for s, off, below in ((mid, -300.0, True), (mid, -150.0, True), (mid, 150.0, False), (mid, -20.0, False),
+                          (s0 - 100.0, -150.0, False), (s1 + 300.0, -150.0, False)):
+        h = float(terrain(*map(np.asarray, plan.road.point(s, off))))
+        assert (h < 0.0) == below, (s, off, h)
+    assert _json(demo_set / "demo-corniche.json")["generated"]["poi"] >= 2
+
+
+def test_vignes_loop(demo_set: Path, mbw) -> None:
+    """Route des Vignes (lot GP13b, en boucle depuis la remarque du propriétaire du 19 novembre) : boucle fermée et
+    sinueuse de 5 km dans le biome `farmland` (rangs de vigne du thème) : au moins huit virages francs (cap qui tourne
+    de plus de 40° sur 100 m) mais aucun sous 25 m de rayon, l'autre rive à plus de 200 m ; vallonnée (pente de −6 à
+    +6 %, 50 à 80 m de montée par tour) ; vignes des deux côtés, village, hameau, clos, trois domaines et trois
+    belvédères."""
+    import numpy as np
+    from openride_compiler.fake_osm import LoopRoad
+
+    world = demo_set / "demo-vignes.world"
+    route = _json(world / "route.json")
+    assert route["type"] == "loop" and route["length_m"] == pytest.approx(mbw.VIGNES_M, abs=5.0)
+    assert (route["x"][0], route["z"][0], route["alt_m"][0]) == (route["x"][-1], route["z"][-1], route["alt_m"][-1])
+    assert _json(world / "manifest.json")["layers"]["biome"]["shares"] == {"farmland": 100.0}
+    assert -6.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 6.0
+    climb = sum(max(b - a, 0.0) for a, b in zip(route["alt_m"], route["alt_m"][1:]))
+    assert 50.0 <= climb <= 80.0, climb
+    road = LoopRoad(mbw.VIGNES_M, mbw.VIGNES_LOBES, mbw.VIGNES_WIGGLES)
+    assert road.radius_min() >= 25.0
+    h = np.degrees(np.unwrap(np.arctan2(road._hx, -road._hz)))
+    k = int(round(100.0 / road.STEP))
+    turns = np.abs(h[k:] - h[:-k]) > 40.0
+    bends = int(np.count_nonzero(turns[1:] & ~turns[:-1]))   # débuts de virage franc
+    assert bends >= 8, bends
+    pts = np.column_stack((road._x[:-1], road._z[:-1]))
+    far = [np.hypot(*(pts[i] - pts[j])) for i in range(0, len(pts), 25) for j in range(0, len(pts), 25)
+           if min(abs(i - j), len(pts) - abs(i - j)) * road.STEP > 700.0]
+    assert min(far) > 200.0
+    generated = _json(demo_set / "demo-vignes.json")["generated"]
+    assert generated["vegetation"] >= 8 and generated["poi"] >= 6
+    for f in (world / "biome" / "near").glob("*.json"):
+        assert _json(f)["variant"] is None, f.name
+
+
+def test_loop_wiggles_keep_the_loop_closed() -> None:
+    """Lot GP13b : les lacets d'une boucle (`wiggles`) gardent la longueur et la fermeture, avec à peu près l'amplitude
+    voulue de part et d'autre de la boucle sans lacets."""
+    import numpy as np
+    from openride_compiler.fake_osm import LoopRoad
+
+    plain = LoopRoad(3000.0, ((2, 0.2, 0.0),))
+    wavy = LoopRoad(3000.0, ((2, 0.2, 0.0),), ((10, 30.0, 0.0),))
+    assert wavy.length_m == plain.length_m == 3000.0
+    assert np.hypot(*np.subtract(wavy.xz(0.0), wavy.xz(2999.9))) < 1.0
+    _, dx = plain.locate(wavy._x[:-1], wavy._z[:-1])
+    assert 20.0 < float(dx.max() - dx.min()) / 2.0 < 40.0   # amplitude des lacets (la remise à la longueur resserre un peu la boucle)
+    assert wavy.radius_min() < plain.radius_min()

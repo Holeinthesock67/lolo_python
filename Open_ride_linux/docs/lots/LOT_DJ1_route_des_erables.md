@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Parcours de démonstration du biome Japon livré avec le jeu, en plus de Hakone et du Fuji du pack Cols célèbres | Python | DB1, JP1–JP8, O37 | Petite | Fait (fusionné le 16 novembre, #877 ; relu par le lot NT1) |
+| Parcours de démonstration du biome Japon livré avec le jeu, en plus de Hakone et du Fuji du pack Cols célèbres | Python | DB1, JP1–JP8, O37 | Petite | **Livré le 16 novembre** (PR #877, relu par le lot NT1) |
 
 Décision du propriétaire du 13 novembre 2026 à 22 h 26 (« Oui je veux un parcours demo en plus des cols ») : le jeu livre aussi une démonstration du Japon. Le plan de la série JP (lot JP8) disait « pas de monde démo Japon », puisque Hakone et le Fuji sont dans le pack ; le propriétaire a tranché le contraire.
 
@@ -59,5 +59,7 @@ done
 À relever par qualité : GPU moyen et p99 par bloc (budgets **8 / 13 / 16 ms**), pire image (< 100 ms) ; contacts des cyclistes du décor sur la route : 0 attendu. Repère : le bloc Japon du tour des nouveaux paysages et Hakone (r855 : 5,37 / 8,61 / 10,39 ms). La planche `$OUT/planche.html` et les captures de menus vont au propriétaire.
 
 ## 6. Livraison
+
+**Fusionné le 16 novembre 2026 (PR #877).** Les points « Reste » ci-dessous décrivent l'état d'avant la fusion.
 
 PR du 13 novembre (branche `claude/project-thread-lruwjz`), d'abord partie de la branche de DB1 (#866) dont elle reprend le décor et le relief Japon ; #866 fusionnée le 16 novembre, main remise dans la branche (récif SM1, volcan DB2, Circuit des Prés ouvert par le Grand Prix, GP13) et base de la PR passée sur `main`. Banc rDJ1d sur l'ancienne tête (bbce94e9), à rejouer sur la nouvelle. Reste : recette PC (section 5), validation de la planche par le propriétaire, puis go de fusion.

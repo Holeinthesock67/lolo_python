@@ -62,7 +62,8 @@ func view(xp, summary: Dictionary = {}, names: Dictionary = {}) -> Dictionary:
 	var coins := int(xp.get("coins_gained", 0))
 	lines.append({"label": "Pièces", "value": "+%d (solde %d)" % [coins, int(xp.get("coins_total", 0))]})
 	var gain = xp.get("equipment_gain_s", null)
-	if gain is float or gain is int:
+	# Ligne cachée quand le gain arrondi au dixième est nul (« −0,0 s » parasite, retour d'essai du 22/11).
+	if (gain is float or gain is int) and absf(float(gain)) >= 0.05:
 		lines.append({"label": "Équipement", "value": signed_seconds(float(gain)) + " sur la séance"})
 	var level_before := int(xp.get("level_before", 1))
 	var level_after := int(xp.get("level_after", level_before))

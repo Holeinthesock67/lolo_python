@@ -14,8 +14,9 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
   du carré (arêtes canoniques de W4, profils de W5), ponts et tunnels exceptés ; abaissé sous les lacs,
   étangs et réservoirs qui touchent le carré (lot EA1, `water_terrain.py`) et sous les grandes rivières
   (lot EA3, `river_surface.py` : morceaux découpés au carré, niveau qui descend le long du cours),
-  chaussée gardée ; puis abaissé sous toutes les chaussées à ciel ouvert, ponts compris, pas dans les tunnels
-  (`clear_square_road`, règle bornée des circuits) ;
+  chaussée gardée ; puis réglé sur la route telle que l'engine la dessine (règle unique sol / route,
+  `road_ground.py` : sol sous les chaussées à ciel ouvert, ponts compris, pas dans les tunnels ; pieds des talus
+  appuyés hors ponts et tunnels) ;
 - `buildings.json`, `vegetation.json`, `water.json`, `poi.json`, `coast.json` : mêmes schémas que
   les `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
   z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre, sauf la mer et
@@ -47,20 +48,33 @@ from .. import constants as C
 from .. import osm_layers as L
 from ..elevation import ElevationProvider
 from ..frame import LocalFrame, utm_transformer
-from ..terrain import blend, road_samples
+from ..terrain import blend
 from .. import river_surface as RS
+from .. import road_ground as RG
 from .. import water_terrain as WT
-from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile
+from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile, with_turnaround
 from .graph import RoadGraph
 from .osmdb import OsmDb, WATERWAY_KINDS
 from .square_coast import COAST_SQUARE_VERSION, square_coast
 from .store import WorldCache
 
 # 2 : niveau des lacs et sol abaissé sous l'eau (lot EA1) ; 3 : ponts dessinés (EA4) ; 4 : grandes rivières (EA3) ;
-# 5 (20/11) : garde-fou de la chaussée (#936), ponts compris, sur la largeur du ruban de l'engine. Un même numéro pour
+# 5 (20/11) : garde-fou de la chaussée (#936), ponts compris, sur la largeur du ruban de l'engine ; 8 (21/11) : règle
+# unique sol / route (road_ground.py : route de l'engine, talus appuyés). Un même numéro pour
 # deux contenus différents garderait un carré périmé en cache : à chaque fusion, garder un numéro plus grand que tous
-# ceux déjà dans main. Carrés recalculés.
-WORLDGEN_VERSION = 5
+# ceux déjà dans main. Carrés recalculés. 6 réservé (EA5) ; 7 (20/11) : fond des lacs fondu avec la route (rive en
+# pente douce au lieu d'une chute de 7 m sous la chaussée) ; 9 (21/11) : garde-fou d'altitude du profil des arêtes
+# (altitude_guard.py : trous et pics du relief, pente et changement de pente bornés, pente des nœuds).
+WORLDGEN_VERSION = 9
+# Règle sol / route du carré (road_ground.fit) en SQUARE_ROUNDS paires de passes ; chaque passe ne lit que le relief à
+# deux cases d'un sommet : relief proche calculé avec RING_CELLS cases de plus tout autour, bords communs identiques.
+# Marges du carré (21/11) : la balade, rééchantillonnée tous les 10 m sur ses arêtes, s'écarte de quelques cm de la
+# route de l'arête ; le carré dégage donc un peu plus large et un peu plus bas, la séance réglant ensuite le sol sur sa
+# propre route (session_ground.py) tant que l'engine n'a pas la tuile.
+SQUARE_ROUNDS = 3
+RING_CELLS = 4 * SQUARE_ROUNDS + 1
+SQUARE_WIDTH_MARGIN_M = 0.25
+SQUARE_SINK_MARGIN_M = 0.03
 FAR_WATER_VERSION = 1         # eau des tuiles lointaines (lot EA2)
 SQUARE_M = 1000
 FAR_M = 5000
@@ -407,9 +421,9 @@ def far_water_grid(key: "FarKey", y: np.ndarray, lakes: list[dict]) -> np.ndarra
 
 def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
                    provider: ElevationProvider, frame: LocalFrame, water: list[dict] | None = None) -> np.ndarray:
-    """Relief du carré fondu avec ses routes, abaissé sous les lacs (EA1), puis garde-fou de la chaussée
-    (clear_square_road) ; calculé sur une case de plus tout autour : les sommets des bords communs reçoivent la même
-    valeur dans les deux carrés."""
+    """Relief du carré fondu avec ses routes, abaissé sous les lacs (EA1), puis réglé sur la route (règle sol / route,
+    `road_ground.py`) ; calculé sur RING_CELLS cases de plus tout autour : les sommets des bords communs reçoivent la
+    même valeur dans les deux carrés."""
     return square_relief(key, graph, profiles, provider, frame, water)[1]
 
 
@@ -419,96 +433,76 @@ def square_relief(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProf
     """(relief avant le garde-fou de la chaussée, relief final) du carré, 101 × 101 chacun. Le premier sert à poser
     les bâtiments (20/11) : une maison du bord de route garde le pied qu'elle avait, au lieu de descendre au fond de
     l'entaille du garde-fou et de disparaître dans le talus (banc #936, lac d'Annecy)."""
-    gx, gz = grid_xz(key, NEAR_STEP_M, ring=1)
+    gx, gz = grid_xz(key, NEAR_STEP_M, ring=RING_CELLS)
     lat, lon = frame.to_latlon(gx.ravel(), gz.ravel())
     y = np.asarray(provider.elevations(lat, lon), dtype=float)
-    pieces, roads = [], []
+    pieces = []
     for k in sorted(profiles):
         e = graph.edges[k]
         pieces += axis_pieces(profiles[k], half_width(e.road_class), e.spans)
-        roads += axis_pieces(profiles[k], max(half_width(e.road_class), C.ROAD_HALF_WIDTH_M),
-                             [sp for sp in e.spans if sp[2] == "tunnel"])
     dist, y_road = RoadsAxis(pieces).nearest(gx.ravel(), gz.ravel(), C.BLEND_OUTER_M)
     y = blend(y, dist, y_road, half_width=0.0).reshape(gx.shape)
-    if water:   # lot EA1 : sol sous les lacs, chaussée gardée (hors ponts : ils ne sont pas dans l'axe)
-        WT.sink_grid(gx, gz, y, WT.inland_areas(water), protect=(np.isfinite(dist) & (dist < C.BLEND_INNER_M)).reshape(gx.shape))
+    if water:   # lot EA1 : sol sous les lacs ; près d'une route (hors ponts : ils ne sont pas dans l'axe), fond fondu
+        # avec la route comme le relief : chaussée gardée, puis rive en pente douce (20/11, route en surplomb d'une
+        # chute de 7 m au bord d'un lac)
+        WT.sink_grid(gx, gz, y, WT.inland_areas(water), road=(dist, y_road))
     # Fondu hors ponts et tunnels (la vallée reste sous un pont), garde-fou sur toute la chaussée à ciel ouvert, ponts
     # compris (20/11, « herbe au-dessus de la route »). Pas dans les tunnels : sous 40 m de colline, l'entaille faisait
     # une gorge aux parois grises (banc #936, Sevrier) ; un tunnel se dessinera (lot à venir) au lieu d'être taillé.
     # Largeur dégagée : au moins la chaussée de l'engine (ROAD_HALF_WIDTH_M, ruban de 6 m du thème par défaut), même
     # pour une piste ou un chemin fondus sur 2 m : la route engagée est dessinée à la largeur du thème quelle que soit
     # sa classe, et le talus d'une piste cyclable passait sur le bord du ruban.
-    ground = y[1:-1, 1:-1].astype("<f4")
-    y = clear_square_road(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, roads, (dist <= 0.0).reshape(gx.shape))
-    return ground, y[1:-1, 1:-1].astype("<f4")
+    # Règle unique sol / route (21/11, road_ground.py) : route telle que l'engine la dessine (Catmull-Rom, cap
+    # interpolé), sol sous la chaussée et les bas-côtés à ciel ouvert (ponts compris, pas dans les tunnels : la colline
+    # reste, choix du 20/11), pieds des talus appuyés où la route repose sur le sol (hors ponts et tunnels). Largeur
+    # au moins celle du ruban de l'engine, quelle que soit la classe de la route.
+    upper, lower = [], []
+    for k in sorted(profiles):
+        e, p = graph.edges[k], profiles[k]
+        up, lo = RG.corridor_s(p.x, p.z, p.alt_m, p.heading_deg, s=p.s,
+                             open_spans=[sp for sp in e.spans if sp[2] == "tunnel"], ground_spans=e.spans,
+                             half_width=half_width(e.road_class) + SQUARE_WIDTH_MARGIN_M,
+                             sink=C.ROAD_SINK_M + SQUARE_SINK_MARGIN_M)
+        upper.append(up)
+        lower.append(lo)
+    for up, lo in turnaround_corridors(graph, profiles, provider, frame):
+        upper.append(up)
+        lower.append(lo)
+    s = RING_CELLS
+    ground = y[s:-s, s:-s].astype("<f4")
+    # abscisses des points, décalées de 1e7 m par route (arête ou boucle) : pieds de talus au bord d'une autre route
+    for n, (u, lo) in enumerate(zip(upper, lower)):
+        upper[n] = (*u[:3], u[3] + 1e7 * n)
+        lower[n] = (*lo[:3], lo[3] + 1e7 * n)
+    up_all = [np.concatenate([u[c] for u in upper]) if upper else np.empty(0) for c in range(4)]
+    lo_all = [np.concatenate([lo[c] for lo in lower]) if lower else np.empty(0) for c in range(4)]
+    RG.fit_grid(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, up_all[:3],
+                RG.drop_covered_feet(up_all, lo_all, up_all[3], lo_all[3]), rounds=SQUARE_ROUNDS)
+    return ground, y[s:-s, s:-s].astype("<f4")
 
 
-def clear_square_road(y: np.ndarray, x0: float, z0: float, step: float, pieces: list,
-                      on_road: np.ndarray | None = None) -> np.ndarray:
-    """Garde-fou de la chaussée du monde ouvert (13/11, comme `terrain.clear_road` des circuits) : aucun triangle
-    du maillage (découpage de terrain_tiles.gd) ne dépasse la chaussée moins ROAD_SINK_M. Pour chaque point de
-    chaussée sous un triangle trop haut, les coins au-dessus de la limite descendent juste assez, en proportion de
-    leur dépassement, jamais sous la limite ; chaque sommet garde le plus bas des abaissements demandés. Tout est
-    calculé sur le relief d'origine : la valeur d'un sommet ne dépend que du relief et des routes autour de lui, pas
-    de l'ordre des calculs ni de l'emprise du carré (bords communs identiques au bit près). `y` : grille [j, i] dont l'échantillon (0, 0) est en
-    (x0, z0) ; rendue abaissée."""
-    n_j, n_i = y.shape
-    if on_road is None:
-        on_road = np.zeros(y.shape, dtype=bool)
-    clamp = np.full(y.shape, np.inf)
-    for px_axis, pz_axis, alt_axis, hw in pieces:
-        px, pz, pa = road_samples(px_axis, pz_axis, alt_axis, hw)
-        if len(px) == 0:
+def turnaround_corridors(graph: RoadGraph, profiles: dict[str, EdgeProfile], provider: ElevationProvider,
+                         frame: LocalFrame):
+    """Points de la règle sol / route des boucles de retournement (21/11) : au bout de chaque impasse du carré, la
+    balade tourne dans une boucle (`edge_profile.with_turnaround`) qu'aucune arête ne décrit. Même boucle, même
+    altitude que celle que la séance tracera, si bien que le sol du carré la porte déjà (la séance la reprend sur la
+    route qu'elle dessine, `session_ground.py`)."""
+    out = []
+    for k in sorted(profiles):
+        e, p = graph.edges[k], profiles[k]
+        if len(p.s) < 2:
             continue
-        # Case et position dans la case calculées dans la grille de la zone (x / step), indépendamment du coin du carré :
-        # un point de chaussée sur un bord commun tombe dans la même case, au bit près, pour les deux carrés.
-        ax, az = px / step, pz / step
-        cx, cz = np.floor(ax), np.floor(az)
-        gi = cx.astype(np.int64) - int(round(x0 / step))
-        gj = cz.astype(np.int64) - int(round(z0 / step))
-        fx, fz = gi + (ax - cx), gj + (az - cz)
-        inside = (gi >= 0) & (gi < n_i - 1) & (gj >= 0) & (gj < n_j - 1)
-        if not inside.any():
-            continue
-        fx, fz, gi, gj, pa = fx[inside], fz[inside], gi[inside], gj[inside], pa[inside]
-        u, v = fx - gi, fz - gj
-        low = u + v <= 1.0
-        # coins (di, dj) et poids : bas (a, b, c) ou haut (d, c, b), comme terrain._triangles
-        ci = np.where(low[:, None], np.array([[0, 1, 0]]), np.array([[1, 0, 1]]))
-        cj = np.where(low[:, None], np.array([[0, 0, 1]]), np.array([[1, 1, 0]]))
-        w = np.where(low[:, None], np.column_stack((1.0 - u - v, u, v)),
-                     np.column_stack((u + v - 1.0, 1.0 - u, 1.0 - v)))
-        vi, vj = gi[:, None] + ci, gj[:, None] + cj
-        hv = y[vj, vi]
-        h = (w * hv).sum(axis=1)
-        limit = pa - C.ROAD_SINK_M
-        bad = np.isfinite(h) & (h > limit + 1e-4)
-        if not bad.any():
-            continue
-        hb, wb = hv[bad], w[bad]
-        top = limit[bad, None]
-        lim = top - 1e-3
-        # Règle de `terrain.clear_road` des circuits (chaque coin au-dessus de la limite descend en proportion de son
-        # dépassement, jamais sous la limite), en commençant par les coins hors de la chaussée : ceux de la chaussée
-        # sont à sa hauteur (fondu), et les abaisser ferait léviter la route sur une pente. Si les coins hors chaussée
-        # ne suffisent pas, ils vont à la limite et ceux de la chaussée font le reste. L'ancienne règle (13/11 : une
-        # même hauteur besoin / Σ w pour les coins hors chaussée) divisait par un poids presque nul au ras d'un coin
-        # de la chaussée : sommets enfoncés de centaines de mètres, falaises grises au bord de la route (banc #936,
-        # lac d'Annecy, 20/11).
-        need = h[bad] - lim[:, 0]
-        above = (hb > top) & (wb > 0)
-        road_v = on_road[vj[bad], vi[bad]]
-        excess = np.where(above, wb * (hb - lim), 0.0)
-        over_off = np.where(~road_v, excess, 0.0).sum(axis=1)
-        over_on = np.where(road_v, excess, 0.0).sum(axis=1)
-        a_off = np.minimum(need / np.where(over_off > 0, over_off, 1.0), 1.0)
-        a_off = np.where(over_off > 0, a_off, 0.0)
-        rest = np.maximum(need - a_off * over_off, 0.0)
-        a_on = np.minimum(rest / np.where(over_on > 0, over_on, 1.0), 1.0)
-        alpha = np.where(road_v, a_on[:, None], a_off[:, None])
-        cand = hb - alpha * (hb - lim)
-        np.minimum.at(clamp, (vj[bad][above], vi[bad][above]), cand[above])
-    return np.minimum(y, clamp)
+        for node, forward in ((e.b, True), (e.a, False)):
+            n = graph.nodes.get(node)
+            if n is None or n.frontier or len(graph._adj.get(node, [])) != 1 or e.a == e.b:
+                continue
+            arrive = p if forward else p.reversed()
+            loop = with_turnaround(arrive.reversed(), (float(arrive.x[-2]), float(arrive.z[-2])), provider, frame)
+            m = int(np.searchsorted(loop.s, loop.length_m - arrive.length_m + 30.0))   # la boucle et 30 m d'arête
+            out.append(RG.corridor_s(loop.x[:m + 1], loop.z[:m + 1], loop.alt_m[:m + 1], loop.heading_deg[:m + 1],
+                                     s=loop.s[:m + 1], half_width=C.ROAD_HALF_WIDTH_M + SQUARE_WIDTH_MARGIN_M,
+                                     sink=C.ROAD_SINK_M + SQUARE_SINK_MARGIN_M))
+    return out
 
 
 def _ring_xz(frame: LocalFrame, coords, outer: bool) -> list[list[float]] | None:

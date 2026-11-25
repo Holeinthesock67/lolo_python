@@ -135,6 +135,12 @@ const BIOME_SPECIES := {
 	"high_plateau": {"cow": "yak", "sheep": "llama", "horse": "llama", "deer": "llama", "hare": ""},
 	# Lot SM1 : sous l'eau, aucune bête au sol ni oiseau ; bancs de poissons, tortues et raies (BIOME_GROUPS)
 	"reef": {"cow": "", "sheep": "", "horse": "", "deer": "", "hare": "", "birds": "", "crows": "", "vee": "", "raptor": ""},
+	# Lot V6-r4 : perroquets et singes de la forêt de nuages, vaches des fincas plus bas ; kangourous du bush (rôle
+	# `deer`), moutons des stations australiennes, cacatoès (perroquets) ; cerfs (wapitis) et grands corbeaux de la
+	# forêt pluviale tempérée, sans troupeau de pré.
+	"cloud_forest": {"sheep": "", "horse": "", "hare": "", "birds": "parrot", "vee": ""},
+	"eucalypt_woodland": {"cow": "sheep", "horse": "sheep", "deer": "kangaroo", "hare": "", "birds": "parrot"},
+	"temperate_rainforest": {"cow": "", "sheep": "", "horse": "", "hare": ""},
 }
 ## Groupes propres à un biome ; `key` : densité du thème qui règle la chance `share` du groupe.
 const BIOME_GROUPS := {
@@ -186,6 +192,14 @@ const BIOME_GROUPS := {
 	"high_plateau": [
 		{"species": "llama", "kind": "herd", "n": Vector2i(4, 12), "road_m": Vector2(30.0, 240.0), "min_m": 20.0, "share": 0.8, "key": "livestock", "max_slope": 0.7},
 		{"species": "yak", "kind": "herd", "n": Vector2i(3, 8), "road_m": Vector2(50.0, 300.0), "min_m": 30.0, "share": 0.5, "key": "livestock", "max_slope": 0.6},
+	],
+	# Lot V6-r4 : perroquets et singes en lisière de la forêt de nuages ; bandes de kangourous du bush
+	"cloud_forest": [
+		{"species": "parrot", "kind": "birds", "n": Vector2i(4, 10), "road_m": Vector2(25.0, 110.0), "min_m": 0.0, "share": 0.8, "key": "birds"},
+		{"species": "monkey", "kind": "herd", "n": Vector2i(3, 7), "road_m": Vector2(12.0, 50.0), "min_m": 10.0, "share": 0.5, "key": "deer"},
+	],
+	"eucalypt_woodland": [
+		{"species": "kangaroo", "kind": "herd", "n": Vector2i(3, 10), "road_m": Vector2(30.0, 220.0), "min_m": 20.0, "share": 0.9, "key": "deer", "max_slope": 0.6},
 	],
 	# Lot SM1 : bancs de poissons, tortues et raies qui tournent en cercle (trajectoires des bandes d'oiseaux) près
 	# du fond (`agl` : hauteur du centre au-dessus du sol, `min_agl` : écart au sol le plus haut sous l'orbite) et

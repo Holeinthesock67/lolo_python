@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
 import logging
 import socket
@@ -25,12 +26,12 @@ CONTRACT_VERSION = 1
 # du 27 octobre ; 127.0.0.1, sans fragmentation). Une trame state plus grande est allégée, les autres jetées.
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.20"   # 1.20 : usagers de la route tous envoyés par parties, `road_part` (lot AS11) ; 1.19 : parcours propres à un mode et boîtes prises (lots GP13, GP14) ; 1.18 : liste `riders` de 10 cyclistes (lot AS10) ; 1.17 : retours du Cyber-Rogue (lot R23, fusionnée après la 1.18) ; 1.16 : lisibilité du Cyber-Rogue (lot R22) ; 1.15 : import d'entraînements retiré (12 novembre) ; 1.14 : fin du Cyber-Rogue (lot R21) ; 1.13 : bonus tactiques (lot TT1, 4.0) ; 1.12 : séance conseillée (CO3, sans changement de rev annoncée jusqu'ici) ; 1.11 : Y maintenu : demi-tour en roulant ; 1.10 : bilan en tuiles (lot N20, #788) ; 1.9 : demi-tour depuis la pause (lot N17) et bots changés en pause, `set_bots` (lot N18) ; 1.8 : collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) et épreuves de piste (lot VD6, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
+CONTRACT_REV = "1.34"   # 1.34 : fin de séance commune, `arrival` de `state` et du bilan (lot RT2) ; 1.33 : échauffement avant une course, écarts aux voisins et fin des épreuves de piste (lot EL1, essai du 21/11) ; 1.32 : `gp_event`, boîtes de famille par voie, effets d'objets tous à durée (lot GPO1) ; 1.31 : remise à zéro des statistiques du profil, `reset_profile_stats`, `undo_profile_reset`, `profiles.resets` (lot RZ1) ; 1.30 : ligue d'hiver, `league_status`, `league_new`, `start.league`, `summary.league` (lot CH3) ; 1.28 : puissance jugée et plage du Cyber-Rogue, adrénaline à l'échauffement (lot R26) ; 1.24 : `free_route_tag`, parcours de mode resté libre (lot GPL1, fusionnée après la 1.31)  ; 1.23 : mode « race », Course classique contre les bots (lot CR1) ; 1.22 : effort des bots en watts et cote Elo, `bots_preview`, `summary.elo` (lots GP-niv, BOT-elo) ; 1.21 : voiture d'équipe `team_car` dans `vehicles` (lot GP-voiture-modele) ; 1.20 : usagers de la route tous envoyés par parties, `road_part` (lot AS11) ; 1.19 : parcours propres à un mode et boîtes prises (lots GP13, GP14) ; 1.18 : liste `riders` de 10 cyclistes (lot AS10) ; 1.17 : retours du Cyber-Rogue (lot R23, fusionnée après la 1.18) ; 1.16 : lisibilité du Cyber-Rogue (lot R22) ; 1.15 : import d'entraînements retiré (12 novembre) ; 1.14 : fin du Cyber-Rogue (lot R21) ; 1.13 : bonus tactiques (lot TT1, 4.0) ; 1.12 : séance conseillée (CO3, sans changement de rev annoncée jusqu'ici) ; 1.11 : Y maintenu : demi-tour en roulant ; 1.10 : bilan en tuiles (lot N20, #788) ; 1.9 : demi-tour depuis la pause (lot N17) et bots changés en pause, `set_bots` (lot N18) ; 1.8 : collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) et épreuves de piste (lot VD6, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
 # Modes de jeu proposés au joueur (hello_ack.config.modes, révision 1.3) : l'accueil de l'engine n'affiche que
 # ceux-là. Monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2 ; track : révision 1.7,
 # lot VD6, proposé par l'écran Prêt du vélodrome (lot VD10, pas d'entrée à l'accueil) ; grandprix : révision 1.7,
 # lot GP2, annoncé au lot GP9 avec son entrée à l'accueil.
-CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor", "track", "grandprix")
+CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor", "track", "grandprix", "race")
 # Modes que le core sait lancer (`start` avec `mode`) mais pas encore annoncés, avec le lot qui les annoncera
 # en même temps que leur entrée à l'accueil (même règle que `config.PENDING_KEYS`) ; ce lot les passe dans
 # CORE_MODES. Aucun depuis le lot GP9 (Grand Prix des objets annoncé).
@@ -105,6 +106,8 @@ class IpcState:
     gp: dict[str, Any] | None = None        # révision 1.7 (lot GP2) : présent seulement en Grand Prix des objets
     dir: int | None = None                  # révision 1.9 (lot N17) : -1 à rebours après un demi-tour, absent dans le sens du parcours
     track: dict[str, Any] | None = None     # révision 1.7 (lot VD6) : présent seulement pendant une épreuve de piste
+    # Révision 1.34 (lot RT2, fin commune) : issue connue, la séance continue au calme jusqu'à « Terminer ».
+    arrival: dict[str, Any] | None = None
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -140,7 +143,7 @@ class IpcState:
             d.pop("draft_w", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
-        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done", "start_wait", "survivor", "gp", "track", "dir"):
+        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done", "start_wait", "survivor", "gp", "track", "dir", "arrival"):
             if d[key] is None:
                 d.pop(key)
         if self.bots is None:
@@ -180,6 +183,17 @@ class IpcServer:
         self._invalid_logged_at: float | None = None
         self._trimmed_logged_at: float | None = None   # dernier avertissement « trame allégée »
         self._invalid_since_log: int = 0
+        # Émission de la minute (essai du 22 novembre : gels de 9 à 10 s, trames state absentes côté engine) :
+        # trames state envoyées, taille max, autres messages, erreurs d'envoi par cause (EAGAIN, EMSGSIZE…),
+        # ligne `IPC émis : …` (tx_line) écrite par la session avec la ligne Gigue.
+        self.tx_state: int = 0
+        self.tx_state_max: int = 0
+        self.tx_other: int = 0
+        self.tx_other_max: int = 0
+        self.tx_trimmed: int = 0
+        self.tx_dropped: int = 0
+        self.tx_errors: dict[str, int] = {}
+        self._tx_error_logged_at: float | None = None
 
         self._running: bool = False
         self._rx_sock: socket.socket | None = None
@@ -237,17 +251,48 @@ class IpcServer:
             # Trame allégée plutôt que jetée (lot X25) : l'écran garde position et puissance.
             msg_dict, dropped = fit_state(msg_dict, limit)
             payload = encode(msg_dict)
+            self.tx_trimmed += 1
             now = time.monotonic()
             if self._trimmed_logged_at is None or now - self._trimmed_logged_at >= INVALID_LOG_PERIOD_S:
                 self._trimmed_logged_at = now
                 log.warning("Trame state trop grande, allégée (%s) : %d octets", ", ".join(dropped), len(payload))
         if len(payload) > limit:
+            self.tx_dropped += 1
             log.warning("Datagramme IPC trop grand (%d octets > %d), ignoré", len(payload), limit)
             return
         try:
             self._tx_sock.sendto(payload, (self.host, self.port_state))
         except OSError as err:
-            log.debug("Erreur lors de l'envoi UDP : %s", err)
+            self._note_tx_error(err, msg_type, len(payload))
+            return
+        if msg_type == "state":
+            self.tx_state += 1
+            self.tx_state_max = max(self.tx_state_max, len(payload))
+        else:
+            self.tx_other += 1
+            self.tx_other_max = max(self.tx_other_max, len(payload))
+
+    def _note_tx_error(self, err: OSError, msg_type: Any, size: int) -> None:
+        """Envoi UDP refusé (file d'émission pleine, datagramme trop grand…) : compté par cause, et un
+        avertissement au plus par INVALID_LOG_PERIOD_S (avant : journal de débogage seulement)."""
+        name = errno.errorcode.get(err.errno, type(err).__name__) if err.errno is not None else type(err).__name__
+        self.tx_errors[name] = self.tx_errors.get(name, 0) + 1
+        now = time.monotonic()
+        if self._tx_error_logged_at is None or now - self._tx_error_logged_at >= INVALID_LOG_PERIOD_S:
+            self._tx_error_logged_at = now
+            log.warning("Envoi UDP refusé (%s, message %s de %d octets) : %s", name, msg_type, size, err)
+
+    def tx_line(self, clear: bool = True) -> str:
+        """Ligne de la minute sur l'émission IPC, puis remise à zéro des compteurs."""
+        errors = ", ".join(f"{k} {v}" for k, v in sorted(self.tx_errors.items())) or "aucune"
+        line = (f"IPC émis : state {self.tx_state} (max {self.tx_state_max} o, allégées {self.tx_trimmed},"
+                f" ignorées {self.tx_dropped}) ; autres {self.tx_other} (max {self.tx_other_max} o) ;"
+                f" erreurs d'envoi : {errors}")
+        if clear:
+            self.tx_state = self.tx_state_max = self.tx_other = self.tx_other_max = 0
+            self.tx_trimmed = self.tx_dropped = 0
+            self.tx_errors = {}
+        return line
 
     def send_state(self, state: IpcState) -> None:
         self.seq += 1
@@ -378,7 +423,7 @@ class IpcServer:
                                 "world_search", "world_map", "world_regions", "list_contents",
                                 "list_history", "history_session", "get_coach", "set_next_race",
                                 "clear_next_race", "set_watch_advice", "clear_watch_advice",
-                                "list_collection")
+                                "list_collection", "league_status")   # league_status : lecture seule (revue F1-14)
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

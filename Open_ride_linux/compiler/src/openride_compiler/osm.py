@@ -4,11 +4,16 @@
   regroupées par paquets pour limiter le nombre d'appels HTTP.
 - Cache brut : ``~/.cache/openride/osm/<sha256_de_la_requete>.json`` (ou ``OPENRIDE_OSM_CACHE``).
 - Une requête présente en cache n'appelle jamais le réseau ; ``--offline`` interdit tout appel.
+- Revue de code K1-03 et K4-04 (24 novembre) : une réponse servie en 200 mais incomplète côté serveur
+  (« runtime error » ou « timed out » dans ``remark``) n'entre pas dans le cache et est redemandée ; une
+  copie de ce genre déjà en cache est redemandée hors ``--offline`` ; une réponse coupée en cours de
+  lecture est redemandée au lieu d'arrêter la compilation.
 """
 
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import os
 import time
@@ -27,7 +32,8 @@ from .frame import LocalFrame
 
 OSM_CACHE_ENV = "OPENRIDE_OSM_CACHE"
 DEFAULT_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-USER_AGENT = "OpenRideCompiler/0.1 (+https://github.com/Holeinthesock67/lolo_python)"
+# Nom de client générique, sans lien vers le dépôt ni le compte (audit du 22/11, V4).
+USER_AGENT = "OpenRideCompiler/0.1"
 CHUNKS_PER_PACKET = 10
 
 
@@ -153,6 +159,18 @@ def query_hash(query: str) -> str:
     return hashlib.sha256(query.encode("utf-8")).hexdigest()
 
 
+class IncompleteOverpassAnswer(ValueError):
+    """Réponse Overpass servie en 200 mais tronquée par le serveur (champ ``remark``)."""
+
+
+def incomplete_remark(parsed: dict[str, Any]) -> str | None:
+    """Texte de ``remark`` si Overpass signale une réponse incomplète (erreur d'exécution, délai), sinon None."""
+    remark = parsed.get("remark")
+    if isinstance(remark, str) and ("runtime error" in remark.lower() or "timed out" in remark.lower()):
+        return remark
+    return None
+
+
 class OverpassClient:
     """Client Overpass avec cache sur disque et reprises à délai croissant (429 respecté)."""
 
@@ -185,9 +203,13 @@ class OverpassClient:
         dest = self.cache_path_for(query)
         if dest.is_file():
             try:
-                return json.loads(dest.read_text(encoding="utf-8"))
+                cached = json.loads(dest.read_text(encoding="utf-8"))
             except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
                 raise CompileError(f"cache OSM illisible ({dest}) : {exc}") from exc
+            remark = incomplete_remark(cached) if isinstance(cached, dict) else None
+            if remark is None or self.offline:
+                return cached
+            self.log(f"réponse Overpass incomplète dans le cache ({remark[:80]}) : redemandée")
 
         if self.offline:
             raise CompileError(
@@ -218,6 +240,9 @@ class OverpassClient:
                 parsed = json.loads(raw.decode("utf-8"))
                 if not isinstance(parsed, dict) or "elements" not in parsed:
                     raise CompileError("réponse Overpass invalide (champ 'elements' absent)")
+                remark = incomplete_remark(parsed)
+                if remark is not None:
+                    raise IncompleteOverpassAnswer(f"réponse incomplète : {remark[:120]}")
                 tmp.write_bytes(raw)
                 os.replace(tmp, dest)
                 self.downloads += 1
@@ -234,7 +259,8 @@ class OverpassClient:
                                 self.sleep(wait_s)
                         except ValueError:
                             pass
-            except (urllib.error.URLError, OSError, TimeoutError, json.JSONDecodeError) as exc:
+            except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException,
+                    json.JSONDecodeError, UnicodeDecodeError, IncompleteOverpassAnswer) as exc:
                 tmp.unlink(missing_ok=True)
                 last_error = exc
 

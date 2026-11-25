@@ -17,7 +17,11 @@ extends RefCounted
 
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 
-## Étapes restantes : [nom, Callable] ; jouées dans l'ordre, une par image.
+## Étapes restantes : [nom, Callable] ou [nom, Callable, ATTENTE] ; jouées dans l'ordre, une par image.
+## Une étape d'attente (lot AC4) appelle son Callable, qui renvoie vrai quand ce qu'elle attend est prêt (travail des
+## fils de fond, par exemple) : tant qu'il renvoie faux, elle reste en tête du plan et repasse à l'image suivante,
+## sans bloquer le fil principal. Les étapes suivantes attendent leur tour, et le départ la fin du plan.
+const ATTENTE := "attente"
 var _steps: Array = []
 ## Étapes jouées depuis le dernier `start` : [nom, ms].
 var done: Array = []
@@ -34,6 +38,11 @@ func add(step_name: String, call: Callable) -> void:
 	_steps.append([step_name, call])
 
 
+## Étape d'attente ajoutée à la fin du plan : `ready` renvoie vrai quand c'est prêt (voir ATTENTE).
+func add_wait(step_name: String, ready: Callable) -> void:
+	_steps.append([step_name, ready, ATTENTE])
+
+
 ## Étapes encore à jouer.
 func pending() -> int:
 	return _steps.size()
@@ -47,9 +56,12 @@ func step() -> String:
 		if not call.is_valid():   # nœud libéré entre-temps (parcours changé, mode quitté)
 			continue
 		var t0 := Time.get_ticks_usec()
-		call.call()
+		var ready = call.call()
 		var ms := (Time.get_ticks_usec() - t0) / 1000.0
 		PerfProbe.mark("préchauffage", str(st[0]), ms)
+		if st.size() > 2 and str(st[2]) == ATTENTE and not bool(ready):
+			_steps.push_front(st)   # pas encore prêt : la même étape à l'image suivante
+			return str(st[0])
 		done.append([str(st[0]), ms])
 		return str(st[0])
 	return ""

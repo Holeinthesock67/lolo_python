@@ -34,6 +34,46 @@ func _focused(f) -> String:
 	return str(st["items"][st["focus"]]["id"]) if st["focus"] >= 0 else ""
 
 
+## Lot RC3 : course interrompue depuis moins de 2 h : « Reprendre la course » en tête, avec place et tour écrits.
+func _race_resume() -> void:
+	var race_item := {"id": "2026-11-28_10-12-00.jsonl", "start": "2026-11-28T10:12", "route_id": "vosges",
+		"distance_m": 9000, "duration_s": 900, "resumable": true,
+		"race": {"mode": "race", "place": 4, "of": 12, "lap": [3, 6], "alive": null, "league": true}}
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	f.set_routes([{"id": "vosges", "name": "Vosges", "status": "ready", "length_m": 30000}])
+	f.on_hello_interrupted([race_item])
+	var home: Dictionary = f.state()
+	_check(home["items"][0]["label"] == "Course interrompue à reprendre"
+		and home["items"][0]["detail"] == "Course de la ligue · tour 3 sur 6 · tu étais 4e sur 12",
+		"accueil : course à reprendre, en mots")
+	f.menu.focus_item("interrupted")
+	f.handle("A_LONG")
+	_check(_ids(f.state()) == ["resume", "save", "discard"] and f.state()["items"][0]["label"] == "Reprendre la course"
+		and f.state()["items"][1]["label"] == "Enregistrer sans finir", "écran : reprendre, enregistrer, ne pas enregistrer")
+	_check(_focused(f) == "resume", "focus sur « Reprendre la course »")
+	_check(f.handle("A_LONG") == {"action": "recover_session", "id": race_item["id"], "resume": true},
+		"Reprendre : recover_session avec resume")
+	f.on_interrupted({"type": "interrupted", "id": race_item["id"], "saved": false, "fit_path": null, "resumed": true,
+		"items": []})
+	f.on_state({"session_state": "PAUSED", "pause_reason": "core_restarted", "route_id": "vosges",
+		"gp": {"place": 4, "of": 12, "mode": "race"}})
+	_check(f.state()["screen"] == MenuModel.PAUSE
+		and f.state()["status"] == "OpenRide a redémarré : course retrouvée, tout le monde repart arrêté",
+		"pause de la course reprise, en mots")
+	_check(f.menu.mode == "race" and not f.menu.pause_bots_shown(), "pause d'une course : pas de lignes de bots")
+	_check(MenuFlow.interrupted_race_detail({"mode": "survivor", "place": null, "of": 8, "alive": 5}) ==
+		"Dernier survivant · 5 coureurs encore en course", "Dernier survivant : coureurs encore en course")
+	_check(MenuFlow.interrupted_race_detail({"mode": "grandprix", "place": 1, "of": 5, "lap": null}) ==
+		"Grand Prix · tu étais 1er sur 5", "Grand Prix en ligne, premier")
+	var old := race_item.duplicate(true)
+	old["resumable"] = false
+	f.on_hello_interrupted([old])
+	_check(f.menu.state()["items"][0]["label"] == "Séance interrompue à enregistrer" or f.menu.current_screen() != MenuModel.HOME,
+		"trop ancienne : seulement à enregistrer")
+
+
 func _init() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
@@ -73,5 +113,6 @@ func _init() -> void:
 	f.on_hello_interrupted(null)
 	_check(not "interrupted" in _ids(f.menu.state()) or f.menu.current_screen() != MenuModel.HOME,
 		"nouveau profil sans séance interrompue : ligne retirée")
+	_race_resume()
 	print("test_interrupted_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

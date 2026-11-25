@@ -2,7 +2,7 @@
 """Parcours d'essai des virages serrés (lot CY1) : `essai-virages.world`, plat, couche terrain synthétique.
 
 Usage :
-    make_corner_world.py [--out DOSSIER]     (défaut : ~/.local/share/openride/routes)
+    make_corner_world.py --out DOSSIER     (obligatoire : jamais le dossier des parcours du joueur)
 
 Escalier de cinq côtés de 200 m à angles droits, alternativement à droite et à gauche, avec 3 points par coin
 (le coin et un point à 3 m de part et d'autre), comme un parcours dessiné à la main tel que « essai-vent-carre ».
@@ -113,7 +113,9 @@ def write(out_dir: Path) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--out", type=Path, default=Path.home() / ".local/share/openride/routes")
+    # Dossier obligatoire, comme les autres make_* : par défaut, le parcours d'essai entrait dans la liste
+    # des parcours du joueur (revue de code vague 5, O3-15).
+    ap.add_argument("--out", type=Path, required=True, help="dossier où écrire essai-virages.world")
     args = ap.parse_args(argv)
     print(write(args.out))
     return 0

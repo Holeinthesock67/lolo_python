@@ -10,11 +10,18 @@ set -eu
 VERSION=4.7.2
 DOSSIER=$HOME/.cache/godot-$VERSION
 BIN=$DOSSIER/Godot_v${VERSION}-stable_linux.x86_64
+# Empreinte de SHA512-SUMS.txt de la publication, la même que dans .github/workflows/openride.yml (revue vague 5, O2-19).
+SHA512=9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
 racine=$(git rev-parse --show-toplevel)
 if [ ! -x "$BIN" ]; then
   mkdir -p "$DOSSIER"
   curl -fsSL -o "$DOSSIER/godot.zip" \
     "https://github.com/godotengine/godot/releases/download/${VERSION}-stable/Godot_v${VERSION}-stable_linux.x86_64.zip"
+  if ! echo "$SHA512  $DOSSIER/godot.zip" | sha512sum -c - >/dev/null; then
+    rm -f "$DOSSIER/godot.zip"
+    echo "Godot $VERSION : empreinte SHA-512 différente de celle attendue, archive refusée" >&2
+    exit 1
+  fi
   (cd "$DOSSIER" && python3 -m zipfile -e godot.zip . && rm godot.zip)
   chmod +x "$BIN"
 fi

@@ -26,7 +26,8 @@ Format de la file :
     branche = "claude/project-thread-xxxxxx"
     tete = "602eaf1b"            # facultatif : la tête attendue ; la file refuse une autre tête
     risque = 1                   # 1 jamais tourné / cache / départ / format, 2 déjà échoué, 3 confirmation
-    cache = "separe"             # "reel" (défaut) ou "separe" : copie du cache du monde ouvert, propre à la PR
+    cache = "separe"             # "separe" (défaut) : cache du monde ouvert propre à la PR (brut/ seul) ; "reel"
+                                 # seulement écrit en toutes lettres (vrai ~/OpenRide/Cache/monde, voir plus bas)
     assemblage = []              # facultatif : branches fusionnées par-dessus, en local (essai assemblé, ex. essai-ow)
     assemblage_strategie = "ours"   # facultatif : option -X de ces fusions (« ours » ou « theirs »)
     fumee = "python3 engine/tests/menu_bench.py --native --scenario w23_mer --qualite low --voies clavier --out {sortie}"
@@ -79,10 +80,16 @@ FILE_ETAPE et FILE_DUREE_MIN (délai de l'étape, pour ne pas déborder sur la f
 - ÉCHEC : une vérification du jeu ; DÉLAI : étape arrêtée au bout de `delai_min` ;
 - ENVIRONNEMENT : le PC, pas la PR (code 2 des bancs, cache au mauvais schéma, réseau, disque plein) ;
 - BLOQUÉ : non jouée car la fumée de la PR n'est pas passée ; REFUSÉ : paquet mal composé (rien n'est lancé) ;
-- SCINDÉ : étape d'un paquet en échec, rejouée PR par PR (le verdict est celui des PR séparées).
-Têtes relues (git fetch) avant les étapes de chaque PR ; une tête différente de `tete` donne ENVIRONNEMENT.
-Une PR dont le `SCHEMA_VERSION` du cache diffère de main ne tourne jamais sur le cache réel : sans `cache = "separe"`,
-ses étapes sont refusées (ENVIRONNEMENT) sans être lancées.
+- SCINDÉ : étape d'un paquet en échec, rejouée PR par PR. Si chaque PR seule passe, c'est un défaut d'assemblage :
+  compté en échec (code 1, revue O2-02). Une fumée de paquet en échec fait rejouer PR par PR toutes ses étapes.
+CONTACTS et À-COUPS ne valent que pour un banc allé au bout (code 1 et ligne de fin « Rapport : ») ; un banc planté
+(trace Python, processus tué, signal) est en ÉCHEC même après des lignes de contacts (revue O2-03).
+Têtes relues (git fetch) avant les étapes de chaque PR ; une tête différente de `tete`, une branche disparue ou un
+réseau coupé donnent ENVIRONNEMENT pour les étapes de cette PR seule, la file continue (revue O2-04).
+Cache (revue O2-05, 24 novembre) : par défaut, chaque PR a son cache séparé ; la file ne touche jamais
+~/OpenRide/Cache/monde sauf `cache = "reel"` écrit en toutes lettres, et même alors une PR qui change le schéma du
+cache (`SCHEMA_VERSION`) ou le code de génération (`compiler/src/openride_compiler/worldgen/`) depuis main est refusée
+(ENVIRONNEMENT) sans être lancée.
 Reprise : `lancer` rejoue tout ce qui n'est pas OK, CONTACTS ou À-COUPS sur la tête actuelle ; `relancer` rejoue seulement
 les étapes en échec (les OK d'une tête précédente restent acquises et sont marquées « sur tête X »).
 Pause : un fichier `PAUSE` dans le dossier de sortie arrête la file avant l'étape suivante (« PC libre ») ;
@@ -100,7 +107,9 @@ import json
 import os
 import re
 import shlex
+import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import time
@@ -118,6 +127,9 @@ FUMEE = "fumee"
 CACHES = ("reel", "separe")
 CODE_ENV_BANCS = 2                            # menu_bench, sim_bench, recette_pc : Godot ou xvfb-run absent
 LIGNE_ECHEC = re.compile(r"^\[ÉCHEC\] (.*)$", re.M)
+# Ligne de fin des bancs (menu_bench, sim_bench, perf_probe…) : le banc est allé au bout et a écrit son rapport.
+FIN_BANC = re.compile(r"^Rapport : ", re.M)
+CODE_BANC_ECHEC = 1                           # code d'un banc terminé avec des vérifications en échec
 CONTACT = re.compile(r"contact", re.I)
 # À-coups connus (pire image, images lentes, périodicité) : défaut commun suivi par un fil global (lot PI1), non bloquant.
 ACOUP = re.compile(r"à-coups|pire image|images lentes", re.I)
@@ -188,7 +200,7 @@ class PR:
     pr: int | None = None
     tete: str | None = None
     risque: int = 2
-    cache: str = "reel"
+    cache: str = "separe"                      # "reel" seulement écrit en toutes lettres (revue O2-05)
     etapes: list[Etape] = field(default_factory=list)
     rang: int = 0                              # ordre d'écriture dans la file, à risque égal
     assemblage: list[str] = field(default_factory=list)   # branches fusionnées par-dessus (essai assemblé)
@@ -253,7 +265,7 @@ def _categorie(nom: str, valeur: Any) -> str:
 
 
 def _commun(nom: str, d: dict[str, Any]) -> tuple[str, str]:
-    cache = d.get("cache", "reel")
+    cache = d.get("cache", "separe")
     if cache not in CACHES:
         raise FileInvalide(f"{nom} : cache « {cache} » inconnu ({', '.join(CACHES)})")
     strategie = str(d.get("assemblage_strategie", ""))
@@ -369,11 +381,15 @@ def classer(code: int, journal: str, lieu: str = "pc") -> tuple[str, str]:
         echecs = [ligne for ligne in echecs if not DELAI_CAPTURE_CLOUD.search(ligne)]
         if lents and not echecs:
             return OK, f"{len(lents)} délai(s) de capture du rendu logiciel ignoré(s) (cloud)"
-    if echecs and all(CONTACT.search(ligne) for ligne in echecs):
+    # Non bloquant seulement pour un banc terminé : un plantage après une ligne de contacts reste un ÉCHEC (O2-03).
+    termine = code == CODE_BANC_ECHEC and FIN_BANC.search(journal) is not None
+    if echecs and termine and all(CONTACT.search(ligne) for ligne in echecs):
         return CONTACTS, f"{len(echecs)} vérification(s) de contacts (non bloquant, AS11)"
-    if echecs and all(CONTACT.search(ligne) or ACOUP.search(ligne) for ligne in echecs):
+    if echecs and termine and all(CONTACT.search(ligne) or ACOUP.search(ligne) for ligne in echecs):
         n = sum(1 for ligne in echecs if ACOUP.search(ligne))
         return ACOUPS, f"{n} à-coup(s) connu(s), {len(echecs) - n} contact(s) (non bloquant, PI1 et AS11) : {echecs[0]}"[:300]
+    if echecs and not termine and all(CONTACT.search(ligne) or ACOUP.search(ligne) for ligne in echecs):
+        return ECHEC, f"banc non terminé (code {code}, pas de ligne « Rapport : ») après : {echecs[0]}"[:300]
     if echecs:
         return ECHEC, f"{len(echecs)} échec(s), d'abord : {echecs[0]}"[:300]
     return ECHEC, f"code {code}"
@@ -427,6 +443,7 @@ def worktree(f: File, nom: str, tete: str, strategie: str = "") -> Path:
 
 
 SCHEMA_SRC = "Open_ride_linux/compiler/src/openride_compiler/worldgen/osmdb.py"
+WORLDGEN_SRC = "Open_ride_linux/compiler/src/openride_compiler/worldgen/"
 SCHEMA_RE = re.compile(r"^SCHEMA_VERSION\s*=\s*(\d+)", re.M)
 
 
@@ -521,7 +538,7 @@ def scissions(f: File, etat: Etat) -> list[PR]:
         echecs = [e for e in pr.etapes if (faits.get(e.id) or {}).get("verdict") == SCINDE]
         if not echecs:
             continue
-        fum = [e for e in pr.etapes if e.id == FUMEE]
+        fum = [e for e in pr.etapes if e.id == FUMEE and e not in echecs]
         for m in pr.membres:
             out.append(PR(f"{pr.id}.{m.id}", m.branche, m.pr, m.tete, pr.risque, pr.cache, [*fum, *echecs], pr.rang,
                           categorie=m.categorie, paquet=pr.id))
@@ -532,18 +549,75 @@ def toutes(f: File, etat: Etat) -> list[PR]:
     return sorted([*f.prs, *scissions(f, etat)], key=lambda p: (p.risque, p.rang, p.id))
 
 
-def cache_separe(f: File, pr: PR) -> Path:
-    """Dossier OPENRIDE_BANC_CACHES de la PR ; amorcé une fois par copie du cache réel du monde ouvert."""
+def defauts_assemblage(f: File, etat: Etat, prs: list[PR] | None = None, lieu: str | None = None) -> list[str]:
+    """Étapes SCINDÉ d'un paquet que chaque PR seule a passées : l'assemblage qui sera fusionné échoue alors que
+    chaque PR passe (revue O2-02). Compté en échec (code 1), jamais un code 0."""
+    out = []
+    separees = [p for p in toutes(f, etat) if p.paquet]
+    for pr in prs if prs is not None else f.prs:
+        if not pr.est_paquet:
+            continue
+        for e in pr.etapes:
+            if (lieu and e.lieu != lieu) or (etat.get(pr, e) or {}).get("verdict") != SCINDE:
+                continue
+            verdicts = [(etat.get(s, e) or {}).get("verdict") for s in separees if s.paquet == pr.id]
+            if verdicts and all(v in ACQUIS for v in verdicts):
+                out.append(f"{pr.id}/{e.id}")
+    return out
+
+
+AMORCE = ".file_bancs_amorce"
+AMORCE_VERSION = "2 brut seul"        # 1 (19 novembre) : copie de tout le cache, balades du user comprises
+
+
+def cache_separe(f: File, pr: PR, log=print) -> Path:
+    """Dossier OPENRIDE_BANC_CACHES de la PR, amorcé une fois depuis le cache réel du monde ouvert avec les seules
+    données téléchargées (`brut/` : OSM, tuiles, relief) et leurs lignes de l'index. Jamais `seances/` (balades du
+    user), `genere/` (carrés d'autres zones), ni `mesures/` : signalement du 21 novembre, 107 balades anciennes du
+    user dans un cache « séparé ». Un cache amorcé par l'ancienne copie complète est refait."""
     racine = f.sortie / "caches" / pr.id
     monde = racine / "monde"
-    reel = Path.home() / "OpenRide" / "Cache" / "monde"
+    marque = monde / AMORCE
+    if monde.exists() and not (marque.is_file() and marque.read_text(encoding="utf-8").strip() == AMORCE_VERSION):
+        log(f"  cache séparé de {pr.id} amorcé par une copie complète : refait avec les données brutes seules")
+        shutil.rmtree(monde)
     if not monde.exists():
         racine.mkdir(parents=True, exist_ok=True)
-        if reel.is_dir():
-            subprocess.run(["cp", "-a", "--reflink=auto", str(reel), str(monde)], check=True)
-        else:
-            monde.mkdir()
+        tmp = racine / "monde.amorce"
+        shutil.rmtree(tmp, ignore_errors=True)
+        tmp.mkdir()
+        reel = Path.home() / "OpenRide" / "Cache" / "monde"
+        if (reel / "brut").is_dir():
+            subprocess.run(["cp", "-a", "--reflink=auto", str(reel / "brut"), str(tmp / "brut")], check=True)
+        index = reel / "index.sqlite"
+        if index.is_file():
+            amorcer_index(index, tmp / "index.sqlite")
+        (tmp / AMORCE).write_text(AMORCE_VERSION + "\n", encoding="utf-8")
+        os.replace(tmp, monde)
     return racine
+
+
+def amorcer_index(reel: Path, dest: Path) -> None:
+    """Copie de l'index du cache réel réduite aux entrées de `brut/` ; les régions installées (nom, emprise,
+    épinglage) sont gardées. Les fichiers (`index.sqlite` et son journal `-wal`) sont copiés d'abord, puis seule la
+    copie est ouverte : sqlite n'ouvre jamais l'index réel, qui est en mode WAL et recevrait sinon `-shm` et `-wal`
+    (revue O2-13 : aucune écriture dans ~/OpenRide/Cache/monde). Index illisible : pas d'index, le cache le
+    reconstruit depuis le disque."""
+    try:
+        for suffix in ("-wal", "-shm", "-journal"):
+            Path(f"{dest}{suffix}").unlink(missing_ok=True)
+        shutil.copyfile(reel, dest)
+        wal = Path(f"{reel}-wal")
+        if wal.is_file():
+            shutil.copyfile(wal, f"{dest}-wal")
+        dst = sqlite3.connect(dest)
+        with contextlib.closing(dst):
+            dst.execute("DELETE FROM entries WHERE path NOT LIKE 'brut/%'")
+            dst.commit()
+            dst.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    except (sqlite3.Error, OSError):
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            Path(f"{dest}{suffix}").unlink(missing_ok=True)
 
 
 # --- exécution -----------------------------------------------------------------------------------
@@ -652,7 +726,7 @@ class Runner:
             return True
         try:
             sha = self.tete("main") if e.sur == "main" else self.tete_pr(pr)
-        except TeteChangee:
+        except (TeteChangee, RuntimeError):         # tête changée, branche disparue, réseau : executer le note
             return True
         if v.get("tete") == sha and v.get("empreinte", e.empreinte) == e.empreinte:
             return False
@@ -689,19 +763,26 @@ class Runner:
             self.log(f"  après l'étape : code {p.returncode} {(p.stdout + p.stderr).strip()[-200:]}")
         return p.returncode == 0
 
-    def schema_refuse(self, pr: PR, wt: Path) -> str | None:
-        """Règle du 19 novembre : jamais le HOME réel pour une PR qui change le schéma du cache."""
+    def schema_refuse(self, pr: PR, wt: Path, sha: str = "") -> str | None:
+        """`cache = "reel"` écrit en toutes lettres : refusé si la PR change le schéma du cache (règle du 19 novembre)
+        ou le code de génération des carrés depuis son départ de main (merge-base ; revue O2-05 : des carrés d'une PR écrits sous la même
+        WORLDGEN_VERSION seraient relus par le jeu de main). Doute (main illisible, réseau) : refusé aussi."""
         if pr.cache == "separe":
             return None
-        with contextlib.suppress(OSError):
-            branche = schema_cache((wt / SCHEMA_SRC).read_text(encoding="utf-8"))
-            try:
-                main = schema_cache(git(self.f.depot, "show", f"{self.tete('main')}:{SCHEMA_SRC}"))
-            except RuntimeError:
-                return None
-            if branche and main and branche != main:
-                return (f"PR qui change le schéma du cache ({main} → {branche}) : cache = \"separe\" obligatoire, "
-                        "jamais le HOME réel")
+        conseil = "cache = \"separe\" obligatoire, jamais le cache réel du user"
+        try:
+            main = self.tete("main")
+            src = wt / SCHEMA_SRC
+            branche = schema_cache(src.read_text(encoding="utf-8")) if src.is_file() else None
+            schema_main = lire_version(self.f.depot, main, SCHEMA_SRC, SCHEMA_RE)
+            tetes = [x for x in (sha or "").split("+") if x] or [git(wt, "rev-parse", "HEAD")]
+            change = [t for t in tetes if git(self.f.depot, "diff", "--name-only", f"{main}...{t}", "--", WORLDGEN_SRC)]
+        except (OSError, RuntimeError) as exc:
+            return f"cache réel non vérifiable ({str(exc)[:120]}) : {conseil}"
+        if branche and schema_main and branche != schema_main:
+            return f"PR qui change le schéma du cache ({schema_main} → {branche}) : {conseil}"
+        if change:
+            return f"PR qui change la génération du monde ouvert ({WORLDGEN_SRC}) : {conseil}"
         return None
 
     def noter(self, pr: PR, e: Etape, verdict: str, detail: str, sha: str | None) -> str:
@@ -716,19 +797,19 @@ class Runner:
             return None
         try:
             sha = self.tete("main") if e.sur == "main" else self.tete_pr(pr)
-        except TeteChangee as exc:
-            return self.noter(pr, e, ENV, str(exc), None)
-        if pr.est_paquet and e.sur == "branche":
-            refus = self.refus_paquet(pr, sha)
-            if refus:
-                return self.noter(pr, e, REFUSE, refus, sha)
-        nom = "main" if e.sur == "main" else pr.id
+        except (TeteChangee, RuntimeError) as exc:   # RuntimeError : git fetch (branche supprimée, réseau), O2-04
+            return self.noter(pr, e, ENV, str(exc)[:300], None)
         try:
+            if pr.est_paquet and e.sur == "branche":
+                refus = self.refus_paquet(pr, sha)
+                if refus:
+                    return self.noter(pr, e, REFUSE, refus, sha)
+            nom = "main" if e.sur == "main" else pr.id
             wt = worktree(self.f, nom, sha, "" if e.sur == "main" else pr.strategie)
-        except Assemblage as exc:
-            return self.noter(pr, e, ENV, str(exc), sha)
+        except (Assemblage, RuntimeError) as exc:
+            return self.noter(pr, e, ENV, str(exc)[:300], sha)
         if e.sur == "branche":
-            refus = self.schema_refuse(pr, wt)
+            refus = self.schema_refuse(pr, wt, sha)
             if refus:
                 return self.noter(pr, e, ENV, refus, sha)
         dossier = self.f.sortie / ("main" if e.sur == "main" else pr.id) / (e.empreinte if e.sur == "main" else e.id)
@@ -738,7 +819,7 @@ class Runner:
                                 projet=shlex.quote(str(projet)), depot=shlex.quote(str(self.f.depot)))
         env = environnement_etape(self.f.depot, projet)
         if pr.cache == "separe" and e.sur == "branche":
-            env["OPENRIDE_BANC_CACHES"] = str(cache_separe(self.f, pr))
+            env["OPENRIDE_BANC_CACHES"] = str(cache_separe(self.f, pr, self.log))
         self.log(f"→ {pr.id}/{e.id} sur {'main' if e.sur == 'main' else pr.branche} {sha[:8]} "
                  f"(délai {e.delai_min:.0f} min)")
         t0 = time.monotonic()
@@ -832,6 +913,15 @@ class Runner:
                     self.etat.put(pr, e, {**v, "verdict": SCINDE, "avant": v["verdict"],
                                           "detail": f"{v['verdict']} en paquet, rejouée PR par PR : {v.get('detail', '')}"[:300]})
                     self.log(f"  {pr.id}/{e.id} : {v['verdict']} en paquet, séparé PR par PR")
+            # Fumée du paquet en échec : ses longues étapes, BLOQUÉES, sont rejouées PR par PR elles aussi (O2-02),
+            # sinon la matrice ne tournerait pour personne.
+            fum = next((e for e in self.etapes(pr) if e.id == FUMEE), None)
+            if fum is not None and (self.etat.get(pr, fum) or {}).get("verdict") == SCINDE:
+                for e in self.etapes(pr):
+                    v = self.etat.get(pr, e)
+                    if e.sur == "branche" and e.lieu == "pc" and v and v["verdict"] == BLOQUE:
+                        self.etat.put(pr, e, {**v, "verdict": SCINDE, "avant": BLOQUE,
+                                              "detail": "fumée du paquet en échec, rejouée PR par PR"})
         return [p for p in scissions(self.f, self.etat) if p.id not in avant and p.paquet in {q.id for q in paquets}]
 
     def code(self, prs: list[PR]) -> int:
@@ -840,6 +930,8 @@ class Runner:
                 v = self.etat.get(pr, e)
                 if v is not None and v["verdict"] in EN_ECHEC:
                     return 1
+        if defauts_assemblage(self.f, self.etat, prs, self.lieu):
+            return 1
         return 0
 
 
@@ -885,6 +977,8 @@ def ecrire_tableau(f: File, etat: Etat, tetes: dict[str, str] | None = None) -> 
             v = etat.get(pr, e)
             if v and v["verdict"] not in (OK,) and v.get("detail"):
                 details.append(f"- {pr.id}/{e.id} : {v['verdict']}, {v['detail']}")
+    for x in defauts_assemblage(f, etat):
+        details.append(f"- {x} : DÉFAUT D'ASSEMBLAGE, en échec en paquet mais passée par chaque PR seule (compté en échec)")
     md = f"# File des bancs : {f.sortie.name}\n\n{txt}" + ("\n" + "\n".join(details) + "\n" if details else "")
     f.sortie.mkdir(parents=True, exist_ok=True)
     (f.sortie / "etat.md").write_text(md, encoding="utf-8")

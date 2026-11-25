@@ -13,7 +13,7 @@ import pytest
 
 from openride_core import bot_tactics, draft, traffic
 from openride_core.grandprix import ME
-from openride_core.grandprix.items import DEFAULT_ITEMS
+from openride_core.grandprix.items import DEFAULT_ITEMS, LONG_S
 from openride_core.session import ESCORT_GAP_M
 
 from test_grandprix import V_EQ, Sim
@@ -22,21 +22,21 @@ from test_grandprix_session import DT, STATE_LIMIT_BYTES, T0_WALL, env, validato
 
 # --- règles du mode (module pur) -----------------------------------------------------------------
 
-def test_team_car_escort_lasts_its_six_seconds():
-    assert DEFAULT_ITEMS["team_car"].escort == "car_a" and "car_a" in traffic.KINDS
+def test_team_car_escort_lasts_its_effect():
+    assert DEFAULT_ITEMS["team_car"].escort == "team_car" and "team_car" in traffic.KINDS
     assert all(not s.escort for k, s in DEFAULT_ITEMS.items() if k != "team_car")   # donnée, pas de branche
     sim = Sim({ME: 250.0, "b": 250.0})
     assert sim.mode.escorts() == []
     sim.give("b", "team_car")
     assert sim.mode.use("b")
     sim.run(1.0)
-    assert sim.mode.escorts() == [("b", "car_a")]
+    assert sim.mode.escorts() == [("b", "team_car")]
     assert sim.phys["b"].v == pytest.approx(1.5 * V_EQ, rel=1e-6)
-    sim.run(5.1)
+    sim.run(LONG_S - 0.9)                                    # effet de LONG_S (12 s, lot GPO1)
     assert sim.mode.escorts() == []
 
 
-def test_stealth_unseen_ten_seconds_and_steal_within_50_m():
+def test_stealth_unseen_for_its_effect_and_steal_within_reach():
     sim = Sim({"a": 250.0, ME: 250.0}, gap_m=40.0)          # « a » 40 m devant
     sim.give(ME, "stealth")
     sim.give("a", "homing")
@@ -45,12 +45,12 @@ def test_stealth_unseen_ten_seconds_and_steal_within_50_m():
     assert sim.mode.racers[ME].held == "homing" and sim.mode.racers["a"].held is None
     sim.run(1.0)
     assert sim.mode.unseen(ME) and not sim.mode.unseen("a")
-    sim.run(9.1)
+    sim.run(LONG_S - 0.9)
     assert not sim.mode.unseen(ME)
 
 
-def test_steal_refused_without_rider_within_50_m():
-    sim = Sim({"a": 250.0, ME: 250.0}, gap_m=60.0)          # « a » 60 m devant : trop loin
+def test_steal_refused_without_rider_within_reach():
+    sim = Sim({"a": 250.0, ME: 250.0}, gap_m=110.0)         # « a » 110 m devant : trop loin (vol à 100 m, lot GPO1)
     sim.give(ME, "stealth")
     sim.give("a", "star")
     assert sim.mode.use(ME)                                  # le Furtif part quand même
@@ -106,13 +106,13 @@ def test_team_car_drawn_and_felt_as_shelter_only(env, monkeypatch):
     me = gp.racers[ME]
     me.held, me.charges = "team_car", 1
     assert s._grandprix_press("Z_SHORT")
-    run(s, 12.0)
-    # 6 s de voiture au plus : elle attend que la place devant soit libre pendant BLOCK_LOOK_S (ici, un bot à
+    run(s, LONG_S + 6.0)
+    # LONG_S de voiture au plus (12 s, lot GPO1) : elle attend que la place devant soit libre pendant BLOCK_LOOK_S (ici, un bot à
     # rattraper la retient moins d'une seconde : 0,66 s avec l'échelle des bots de #900), puis reste jusqu'à la fin
     # de l'effet
-    assert vehicles and 6.0 / DT - 50 <= len(vehicles) <= 6.0 / DT + 3
+    assert vehicles and LONG_S / DT - 50 <= len(vehicles) <= LONG_S / DT + 3
     car = vehicles[0][0]
-    assert (car["id"], car["kind"], car["dir"]) == ("tc0", "car_a", 1)
+    assert (car["id"], car["kind"], car["dir"]) == ("tc0", "team_car", 1)
     state_v = validator("state")
     d = frame(s)
     d["vehicles"] = vehicles[0]
@@ -174,7 +174,7 @@ def test_stealth_in_session_unseen_and_no_shelter(env):
     run(s, 1.0)
     assert s._unseen_ids() == {bot_tactics.RIDER_ID, bot.id}
     assert bot.shelters is False and all(b.shelters for b in s.bots[1:])
-    run(s, 10.0)
+    run(s, LONG_S)
     assert s._unseen_ids() == frozenset() and bot.shelters is True
 
 
@@ -265,15 +265,17 @@ def test_team_car_never_meets_road_users(env, monkeypatch, watts):
     """Banc rGP4v du 16 novembre (contacts « car_a / core ») : la voiture d'équipe d'un bot ne touche ni un cycliste
     du décor (lot AS7) ni un véhicule de la circulation. Sa carrosserie reste sur la chaussée permise à un vélo
     (`draft.lane_target`, bornes au gabarit du bloc) : un bot remorqué qui double ne la pousse plus sur un
-    cycliste venant en face ; elle n'apparaît pas sur un usager de la route. Parcours demo (circulation et
-    cyclistes du décor), tous les coureurs remorqués dès que possible. Avant : 14 à 16 trames de contact avec un
-    cycliste venant en face à 190, 200 et 210 W."""
+    cycliste venant en face ; elle n'apparaît pas sur un usager de la route. Boucle de 5 km d'un tour (circulation
+    et cyclistes du décor ; parcours demo en ligne jusqu'au lot GPL1, le Grand Prix se court sur une boucle), tous
+    les coureurs remorqués dès que possible. Avant : 14 à 16 trames de contact avec un cycliste venant en face à
+    190, 200 et 210 W."""
     import test_grandprix_session as tgs
     from openride_core import demo_world
     monkeypatch.setattr(tgs, "POWER_W", float(watts))
     make, run, _, tmp = env
-    demo_world.write_demo_world(tmp / "routes")
-    s, _, errors = make(6970, route_id="demo", distance_km=5)
+    world = demo_world.write_world(tmp / "routes", "boucle", 5000.0)
+    (world / "route.json").write_text(json.dumps(tgs.loop_route(5000.0)), encoding="utf-8")
+    s, _, errors = make(6970, route_id="boucle", laps=1)
     s.cfg.grandprix.chaos, s.cfg.grandprix.box_every_m = "wild", 1000
     s.cfg.ride.vehicle_draft = "on"
     s._on_command("start", {"mode": "grandprix"}, 2)
