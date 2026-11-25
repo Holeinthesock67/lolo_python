@@ -67,7 +67,13 @@
             "start": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$"},
             "route_id": {"type": ["string", "null"]},
             "distance_m": {"type": "number", "minimum": 0},
-            "duration_s": {"type": "number", "minimum": 0}
+            "duration_s": {"type": "number", "minimum": 0},
+            "resumable": {"type": "boolean", "description": "Facultatif (lot RC3) : la séance peut être reprise (recover_session avec resume)."},
+            "race": {"type": "object", "description": "Facultatif (lot RC3) : course du journal, d'après son dernier instantané.", "required": ["mode"],
+              "properties": {"mode": {"enum": ["race", "grandprix", "survivor"]}, "place": {"type": ["integer", "null"], "minimum": 1},
+                "of": {"type": ["integer", "null"], "minimum": 1},
+                "lap": {"type": ["array", "null"], "items": {"type": "integer", "minimum": 0}, "minItems": 2, "maxItems": 2},
+                "alive": {"type": ["integer", "null"], "minimum": 0}, "league": {"type": "boolean"}}}
           }
         }
         },
@@ -243,6 +249,11 @@
           "type": "object",
           "description": "Facultatif, révision 1.19 (lot GP13) : modes qui ont leurs propres parcours, mode → étiquette de la fiche des parcours (`library.tags`).",
           "additionalProperties": {"type": "string", "minLength": 1}
+        },
+        "free_route_tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Facultatif, révision 1.24 (lot GPL1) : étiquette d'un parcours de mode resté aussi dans la liste générale (« libre »)."
         },
         "track": {
           "type": "object",

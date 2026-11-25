@@ -18,6 +18,7 @@ from . import profiles
 from .config import GPX_DIR, OpenWorldConfig
 from .journal import read_journal
 from .live_route import LiveRoute
+from .privacy_zone import trim_points
 from .route import WorldError
 
 log = logging.getLogger("open_world_save")
@@ -54,13 +55,20 @@ def gpx_text(points: list[tuple[float, float, float]], name: str, ts: float) -> 
 
 
 def save_ride(route: Any, s_end: float, ride_id: str, gpx_dir: Path = GPX_DIR,
-              ts: float | None = None) -> Path | None:
-    """Écrit `<gpx_dir>/<ride_id>.gpx` ; rien (None) si la balade ne dépasse pas 500 m."""
+              ts: float | None = None, private_start_m: float = 0.0) -> Path | None:
+    """Écrit `<gpx_dir>/<ride_id>.gpx` ; rien (None) si la balade ne dépasse pas 500 m. `private_start_m` > 0
+    (lot PZ1) : début et fin de la trace coupés tant qu'ils restent à moins de cette distance du départ ; rien
+    si la balade ne sort jamais de la zone."""
     if s_end <= MIN_SAVE_M:
         log.info("Balade de %.0f m : pas de parcours enregistré (minimum %.0f m).", s_end, MIN_SAVE_M)
         return None
     ts = time.time() if ts is None else ts
     points = ride_points(route, s_end)
+    if private_start_m > 0:
+        points = trim_points(points, private_start_m)
+        if len(points) < 2:
+            log.info("Balade restée dans la zone privée du départ : pas de parcours enregistré.")
+            return None
     gpx_dir.mkdir(parents=True, exist_ok=True)
     path = gpx_dir / f"{ride_id}.gpx"
     tmp = path.with_name(path.name + ".tmp")
@@ -92,9 +100,11 @@ def journal_distance(ride_id: str, journal_dir: Path | None = None) -> float | N
 
 
 def save_from_folder(ride_id: str, cfg: OpenWorldConfig, gpx_dir: Path = GPX_DIR,
-                     journal_dir: Path | None = None, length_m: float | None = None) -> tuple[Path | None, float]:
+                     journal_dir: Path | None = None, length_m: float | None = None,
+                     private_start_m: float = 0.0) -> tuple[Path | None, float]:
     """Après coup, depuis `<cache_dir>/seances/<id>.world`. Distance : `length_m`, sinon celle du journal,
-    sinon toute la route engagée. Lève `WorldError` si le dossier manque ou est illisible."""
+    sinon toute la route engagée. `private_start_m` : zone privée au départ (lot PZ1). Lève `WorldError` si le
+    dossier manque ou est illisible."""
     folder = Path(cfg.cache_dir).expanduser() / "seances" / f"{ride_id}.world"
     if not folder.is_dir():
         raise WorldError("route_not_found", f"dossier de séance absent : {folder}")
@@ -103,5 +113,5 @@ def save_from_folder(ride_id: str, cfg: OpenWorldConfig, gpx_dir: Path = GPX_DIR
     s_end = length_m if length_m is not None else journal_distance(ride_id, journal_dir)
     if s_end is None:
         s_end = route.length_m
-    path = save_ride(route, min(s_end, route.length_m), ride_id, gpx_dir)
+    path = save_ride(route, min(s_end, route.length_m), ride_id, gpx_dir, private_start_m=private_start_m)
     return path, s_end

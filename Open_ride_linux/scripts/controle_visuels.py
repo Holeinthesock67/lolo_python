@@ -133,6 +133,14 @@ def check_image(path: Path | str) -> list[str]:
     return errors
 
 
+def pillow_available() -> bool:
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def get_expected_visuals(catalog_path: Path | str = DEFAULT_CATALOG) -> list[str]:
     """Extrait la liste ordonnée et dédupliquée des identifiants `visual` du catalogue TOML."""
     cat = Path(catalog_path)
@@ -167,6 +175,7 @@ def check_collection(
     invalid: dict[str, list[str]] = {}
 
     if not directory.is_dir():
+        # Dossier absent (faute de chemin) : jamais un succès, même sans --strict (revue vague 5, O3-15).
         return {
             "total_expected": len(expected),
             "expected": expected,
@@ -174,7 +183,9 @@ def check_collection(
             "missing": expected,
             "invalid": {},
             "extra": [],
-            "ok": False if strict else True,
+            "ok": False,
+            "dossier_absent": True,
+            "avertissements": [f"dossier des visuels introuvable : {directory}"],
             "assets_dir": str(directory),
         }
 
@@ -194,6 +205,9 @@ def check_collection(
     extra = sorted(present_pngs - set(expected))
 
     ok = (len(invalid) == 0) and (not strict or len(missing) == 0)
+    avertissements = []
+    if not pillow_available():
+        avertissements.append("transparence effective non vérifiée (Pillow absent)")
 
     return {
         "total_expected": len(expected),
@@ -203,6 +217,8 @@ def check_collection(
         "invalid": invalid,
         "extra": extra,
         "ok": ok,
+        "dossier_absent": False,
+        "avertissements": avertissements,
         "assets_dir": str(directory),
     }
 
@@ -324,7 +340,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json:
         print(json.dumps(report, indent=2))
-        return 0 if report["ok"] else 1
+        return 2 if report["dossier_absent"] else 0 if report["ok"] else 1
+    if report["dossier_absent"]:
+        print(f"ÉCHEC : dossier des visuels introuvable : {args.dir}")
+        return 2
+    for w in report["avertissements"]:
+        print(f"[ATTENTION] {w}")
 
     print("=== Contrôle des visuels de la Collection (Lot BC4) ===")
     print(f"Catalogue : {args.catalog}")

@@ -170,11 +170,11 @@ class RunEngine:
     def _begin(self, inp, messages) -> None:
         """Démarre l'étape courante : salle, boss ou couloir."""
         if self.phase == ROOM:
-            messages += self._start_room(self._step, self._take_room_id(), None, inp.gear, inp.s_m)
+            messages += self._start_room(self._step, self._take_room_id(), None, inp.gear)
         elif self.phase == BOSS:
             self._fit_boss_to_time_left()
             n = sum(1 for s in self.sc.steps[:self.idx + 1] if s.kind == "boss")
-            messages += self._start_room(self._step, self._take_room_id(), n, inp.gear, inp.s_m)
+            messages += self._start_room(self._step, self._take_room_id(), n, inp.gear)
         elif self.phase == CORRIDOR:
             self._enter_corridor(inp, messages)
 
@@ -220,7 +220,7 @@ class RunEngine:
     def _gold_mult(self) -> float:
         return self.b.gold_mult * (self.b.relic_gold_mult if "relic_gold" in self.relics else 1.0)
 
-    def _start_room(self, spec: Step, room_id: int, boss_phase: int | None, gear: int, s_m: float) -> list:
+    def _start_room(self, spec: Step, room_id: int, boss_phase: int | None, gear: int) -> list:
         self.room = self._previews.pop(room_id, None) or generate_room(
             spec.archetype, spec.variant, spec.objective, spec.nominal_s, self.rider,
             self.sc.seed * 1000 + room_id, self.b)
@@ -228,7 +228,10 @@ class RunEngine:
         bx = self._eff_balance()
         self.combat = replace(combat_start(self.room, self.sc.seed * 1000 + room_id, bx, shield=self.shield, gear=gear),
                               adrenaline=max(getattr(self, "adrenaline", 0.0), bx.adrenaline_start))
-        self.firewall = Firewall(self.room, self.rider, bx, player_s=s_m)
+        # revue de code C4-01 : une salle commence toujours à 0 m (`RogueMode.step` remet la distance à zéro au
+        # changement de salle) ; créé à la distance de fin de la salle d'avant (phases 2 et 3 du boss), le mur
+        # partait collé au joueur au lieu de `start_gap_m` derrière lui.
+        self.firewall = Firewall(self.room, self.rider, bx, player_s=0.0)
         self.gold_lost_seen = 0.0
         self.inversion_used = False
         self.inversion_until = 0.0
@@ -451,7 +454,7 @@ class RunEngine:
                 spec, rid = step.doors[self.door_pick], self.door_ids[self.door_pick]
                 self.phase, self.t_phase = ROOM, 0.0
                 self.door_steps, self.door_ids = (), ()
-                messages += self._start_room(spec, rid, None, inp.gear, inp.s_m)
+                messages += self._start_room(spec, rid, None, inp.gear)
                 self._previews.clear()
             else:
                 self._enter(self.idx + 1)
@@ -503,9 +506,11 @@ class RunEngine:
             self.inversion_used, self.inversion_until = True, t + b.inversion_s
             self._card_fired("polarity", t, events, rearm=False)
         self.prev_raw = raw
-        g = raw
+        # revue de code C4-02 : bosse « aspirée » du Puncheur (parade réussie) : pente de l'ennemi multipliée par
+        # `grade_scale` (0,5 pendant `hook_s`), avant les cartes ; avant, la valeur n'était lue par personne.
+        g = raw * cs.grade_scale
         if "roller" in self.deck:
-            if raw > b.roller_cap_grade:
+            if g > b.roller_cap_grade:
                 g, self.roller_hold_until = b.roller_cap_grade, t + b.roller_hold_s
             elif t < self.roller_hold_until:
                 g = b.roller_cap_grade

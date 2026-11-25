@@ -32,7 +32,19 @@ def _home(tmp_path: Path) -> Path:
 def test_retired_keys_are_not_in_the_menu_and_still_known_to_config():
     for section, key, _ in migration_reglages.RETIRED:
         assert f"{section}.{key}" not in settings.KEYS
-        assert hasattr(getattr(config_mod.Config(), section), key)
+        assert hasattr(getattr(config_mod.Config(), section), key) or (section, key) in config_mod.RETIRED_KEYS
+
+
+def test_retired_draft_gauge_lot_ni1(tmp_path: Path):
+    """Lot NI1 : la jauge d'abri est retirée du jeu ; même règle que les réglages retirés du menu."""
+    home = tmp_path / "OpenRide"
+    home.mkdir()
+    (home / "config.toml").write_text('[render]\nquality = "low"\ndraft_gauge = "on"\n', encoding="utf-8")
+    done = migration_reglages.migrate(home, date(2026, 11, 22))
+    assert len(done) == 1 and "render.draft_gauge" in done[0]
+    text = (home / "config.toml").read_text(encoding="utf-8")
+    assert '# draft_gauge = "on"   # jauge d\'abri retirée (lot NI1)' in text and 'quality = "low"' in text
+    assert config_mod.load(home / "config.toml", None).render.quality == "low"
 
 
 def test_migration_comments_the_retired_lines_once_and_keeps_the_rest(tmp_path: Path):
@@ -58,3 +70,17 @@ def test_launcher_runs_the_migration(tmp_path: Path, capsys):
     assert len(launcher.migrate_settings(home)) == 2
     assert "retiré du menu" in capsys.readouterr().out
     assert launcher.migrate_settings(tmp_path / "absent") == []
+
+
+def test_lot_ni4_living_off_is_put_back_on(tmp_path: Path):
+    """Lot NI4 (R10) : « Décor vivant : non » retiré du menu ; un `living = false` choisi avant est mis en
+    commentaire, le décor vivant repart (son coût suit la Qualité graphique)."""
+    home = tmp_path / "OpenRide"
+    home.mkdir()
+    (home / "config.toml").write_text('[render]\nquality = "low"\nliving = false\n', encoding="utf-8")
+    done = migration_reglages.migrate(home, date(2026, 11, 21))
+    assert len(done) == 1 and "render.living" in done[0]
+    text = (home / "config.toml").read_text(encoding="utf-8")
+    assert "# living = false   # réglage retiré du menu (lot NI4)" in text
+    cfg = config_mod.load(home / "config.toml", None)
+    assert cfg.render.living is True and cfg.render.quality == "low"

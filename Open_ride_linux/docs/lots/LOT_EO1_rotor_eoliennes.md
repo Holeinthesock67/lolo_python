@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Rotor des éoliennes jugé au vent à hauteur du moyeu (loi de puissance 1/7), avec inertie et hystérésis : les éoliennes tournent au vent du thème par défaut | GDScript | P12, P4 | Petite | En revue |
+| Rotor des éoliennes jugé au vent à hauteur du moyeu (loi de puissance 1/7), avec inertie et hystérésis : les éoliennes tournent au vent du thème par défaut | GDScript | P12, P4 | Petite | **Livré le 21 novembre** (PR #951) |
 
 Demande du propriétaire du 21 novembre 2026 à 10 h 12 : « Il y a moyen de faire tourner éolienne ? »
 

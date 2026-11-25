@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -74,6 +75,16 @@ _BEACH = {"beach": "beach", "sand": "sand"}       # sous-classe du sable de `lan
 
 
 # --- identifiants -------------------------------------------------------------------------------
+
+def _tile_template(data: bytes) -> str | None:
+    """Modèle d'URL des tuiles lu dans un TileJSON, ou None s'il est invalide (page d'erreur, JSON coupé)."""
+    try:
+        tiles = json.loads(data)["tiles"]
+        template = tiles[0]
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None
+    return template if isinstance(template, str) and template else None
+
 
 def node_id(lon: float, lat: float) -> int:
     """Identifiant négatif d'un nœud : coordonnées quantifiées à 1e-7° (unique, stable)."""
@@ -594,6 +605,8 @@ class TileSource:
         cached = self.cache.root / "brut" / "tuiles" / "tilejson.json"
         fresh = cached.is_file() and self.clock() - cached.stat().st_mtime < TILEJSON_MAX_AGE_S
         data = cached.read_bytes() if fresh else None
+        if data is not None and _tile_template(data) is None:
+            data = None        # copie invalide (revue de code K1-06) : redemandée comme une copie trop vieille
         if data is None:
             if not self.network:
                 if not cached.is_file():
@@ -604,8 +617,13 @@ class TileSource:
                     if not self.due(TILEJSON_KEY):
                         raise CompileError("nouvelle demande après le recul")
                     data = self.net.get(self.tilejson_url)
+                    if _tile_template(data) is None:
+                        # page d'erreur servie en 200 : la bonne copie du cache n'est pas écrasée
+                        raise CompileError("TileJSON reçu invalide (champ 'tiles' absent)")
                     cached.parent.mkdir(parents=True, exist_ok=True)
-                    cached.write_bytes(data)
+                    tmp = cached.with_name(f".{cached.name}.tmp-{os.getpid()}")
+                    tmp.write_bytes(data)
+                    os.replace(tmp, cached)
                     self._succeeded(TILEJSON_KEY)
                 except CompileError as exc:
                     if self.due(TILEJSON_KEY):

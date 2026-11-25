@@ -214,6 +214,12 @@ func _init() -> void:
 		{"version": "2.0", "landscapes": {"fjord": {"biomes": {}}}},
 		{"version": "2.0", "landscapes": {"fjord": {"biomes": {"lune": {}}}}},
 		{"version": "2.0", "landscapes": {"fjord": {"biomes": {"coast": {"vegetation": {"species": [{"kind": "banana", "weight": 1}]}}}}}},
+		# Aspect du sol et de l'eau (lot U25-p2) : strates sans couleurs, couleur invalide, nombre hors bornes, clé inconnue
+		{"version": "2.0", "landscapes": {"canyon": {"biomes": {"rock_desert": {"ground": {"strata": {"band_m": 8}}}}}}},
+		{"version": "2.0", "landscapes": {"canyon": {"biomes": {"rock_desert": {"ground": {"strata": {"colors": ["rouge"]}}}}}}},
+		{"version": "2.0", "biomes": {"farmland": {"ground": {"terraces": {"step_m": 0.0}}}}},
+		{"version": "2.0", "landscapes": {"fjord": {"biomes": {"coast": {"water": {"falls": {"density": 2.0}}}}}}},
+		{"version": "2.0", "landscapes": {"fjord": {"biomes": {"coast": {"water": {"falls": {"debit": 1}}}}}}},
 		{"version": "3.0"},
 	]
 	for idx in range(v2_bad.size()):
