@@ -25,6 +25,7 @@ extends RefCounted
 
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")   # règle de la jauge W′, commune aux modes (lot RW)
 
 const PROFILE_NAMES := {"climber": "Grimpeur", "rouleur": "Rouleur", "sprinter": "Sprinteur", "diesel": "Diesel"}
 const JERSEY_NAMES := {"sprint": "Vert", "kom": "Pois"}
@@ -59,11 +60,10 @@ static func row(b: Dictionary, dir := "") -> Dictionary:
 	var prof := profile_name(b.get("profile", null))
 	if prof != "" and prof != name:
 		name += " · " + prof
-	var wbal = b.get("wbal_pct", null)
 	var jersey = b.get("jersey", null)
 	return {"name": name, "detail": ftp_text(b.get("cp_w", null), b.get("mass_kg", null)),
 		"gap_text": SegmentHudModel.gap_text(float(b.get("gap_s", 0.0))), "color": b.get("color", Color.WHITE),
-		"wbal": clampf(float(wbal) / 100.0, 0.0, 1.0) if (wbal is float or wbal is int) else -1.0,
+		"wbal": BotReserve.fraction(b),
 		"jersey": str(jersey) if JERSEY_NAMES.has(str(jersey)) else "", "dir": dir}
 
 

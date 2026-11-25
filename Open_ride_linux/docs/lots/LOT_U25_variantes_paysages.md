@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Paysages célèbres posés en variantes des biomes existants (canyons, fjords, îles volcaniques, rizières), partie 1 : contrat, pose, sol et arbres | Python, GDScript | U4, U14, U24 | Moyenne | Partie 1 **livrée le 12 novembre** (PR #851) ; partie 2 (U25-p2) à venir, **version 6.0** |
+| Paysages célèbres posés en variantes des biomes existants (canyons, fjords, îles volcaniques, rizières) : contrat, pose, sol et arbres (partie 1), strates, gradins, cascades, ciel et eau (partie 2) | Python, GDScript | U4, U14, U24 | Moyenne | Partie 1 **livrée le 12 novembre** (PR #851) ; partie 2 (U25-p2) en PR le 19 novembre, captures et bancs PC à faire, **version 6.0** |
 
 ## 1. Objectif
 
@@ -89,15 +89,47 @@ construites par code du lot U7. Rien à attribuer.
    propriétaire, banc GPU en low, medium et high (budgets 8, 13 et 16 ms) : la côte de fjord passe de 80 à
    250 arbres/ha, la pinède du Teide de 10 à 120.
 
-## 5. Partie 2 (lot suivant, rendu)
+## 5. Partie 2 (lot U25-p2, rendu : sol, eau, ciel)
 
-- Canyons : strates colorées dans la couche de pente (bandes d'altitude).
-- Rizières : plans d'eau en gradins dans le relief (le plus coûteux de la série).
-- Fjords : cascades sur les falaises.
-- Ciel, eau, ambiance et faune des paysages : le contrat les accepte déjà (`landscapes` a la forme d'un bloc
-  de biome) ; l'engine les appliquera quand chaque section passera par la variante de la tuile.
+Lancée par le propriétaire le 19 novembre. Principe « pas d'exception » : rien n'est propre à un paysage dans
+le code. Trois membres facultatifs de l'**aspect** d'un bloc de biome (thème §9), valables dans un paysage comme
+dans `biomes.<id>`, lus par `biome_model.surface_look` et appliqués par le shader des terrains
+(`terrain_biomes.gdshader`, une entrée par emplacement de sol, `biome_textures.gd _fill_looks`) :
+
+| Membre | Effet | Thème par défaut |
+| --- | --- | --- |
+| `ground.strata` `{colors, band_m, strength}` | strates d'altitude qui ondulent en grand, teinte de la couche `steep` ; teinte moyenne quand une strate devient plus fine qu'un pixel | canyon (désert de roche, steppe) : grès rouge, orange, ocre, brun ; strates de 7 m, force 0,75 |
+| `ground.terraces` `{step_m, max_slope_deg, flooded}` | gradins sur la couche `flat` jusqu'à la pente donnée : faux relief qui aplanit chaque casier (miroir du ciel, rugosité 0,06) avec un mur à chaque marche, diguettes de la couche `steep`, part des marches en eau (`water.color`), le reste en riz | rizières : cultures 2,5 m, zone humide 1,8 m ; 21° ; 65 et 85 % en eau |
+| `water.falls` `{density, min_slope_deg, width_m, color}` | cascades sur les parois plus raides que la pente donnée : une au plus par tranche de 34 m de paroi, sur une partie de sa hauteur, écume qui coule vers le bas, roche mouillée autour ; au moins un pixel de large au loin, plus pâle d'autant | fjord (six biomes de base) : densité 0,45, dès 46°, 7 m |
+
+- **Emplacements** : un couple paysage × biome a un emplacement de sol dès qu'il décrit `ground` **ou**
+  `water` (14 dans le thème par défaut, 16 au plus).
+- **Ciel et eau** : `biome_model.keyed_weights_at` range les poids au point sous des clés de rendu
+  « biome » ou « biome|paysage » (mêmes noms que les emplacements), `params_of` donne les paramètres du biome
+  dans son paysage. `atmosphere_model.gd` lisse ces clés sur 500 m de route comme des biomes (le ciel passe en
+  douceur à l'entrée d'un paysage) ; `smoothed_weights` (saisons) reste par biome. `sea_mesh.gd` colore la mer
+  de la même façon.
+
+  | Paysage | Ciel (`sky`) | Eau (`water`) |
+  | --- | --- | --- |
+  | canyon | brume sèche et chaude, lumière `#ffe9d0` | rivière boueuse `#7a5236` |
+  | fjord | air humide, lumière froide `#e8eff8` | eau verte et profonde `#1d4f52` |
+  | rizières | air chaud et humide, lumière `#f6f8ea` | eau limoneuse `#5a7468` |
+
+- **Validation** : `theme_loader.gd _validate_look` et le schéma refusent strates sans couleur, couleur invalide,
+  nombre hors bornes et clé inconnue.
+- **Coût** : quelques opérations par pixel des seuls emplacements concernés (pas de texture lue en plus) ; bancs
+  low, medium et high à faire sur le PC.
+- **Vitrine** : `engine/tests/vitrine_paysages.gd` (canyon, rizières, fjord, avec et sans paysage).
+- Reste pour plus tard : ambiance sonore et faune des paysages (le contrat les accepte déjà).
 
 ## Livraison
+
+Partie 2 le 19 novembre 2026 (branche `claude/project-thread-ty0nlm`) : aspect (strates, gradins, cascades),
+ciel et eau des paysages, schéma et validation, vitrine, tests `test_biome_model.gd`, `test_biome_textures.gd`,
+`test_atmosphere_model.gd`, `test_sea_mesh.gd`, `test_theme_loader.gd`. Captures cloud :
+`/mnt/project-files/captures/u25p2-paysages-2026-11-19/`. Reste : planche et bancs PC en low, medium et high
+sur « Tour des nouveaux paysages », validés par le propriétaire avant fusion.
 
 Partie 1 le 12 novembre 2026 (branche `claude/project-thread-ugu7bi`, PR #851) : contrat, table, thème par
 défaut, engine (sol, végétation, toits), tests compilateur et engine. Captures cloud :

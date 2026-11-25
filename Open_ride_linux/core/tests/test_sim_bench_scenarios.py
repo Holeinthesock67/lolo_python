@@ -196,36 +196,46 @@ def test_survivor_bench_scenario_writes_a_valid_config_and_mode(name: str, oppon
 @pytest.mark.parametrize("name,opponents", [("grand_prix", 4), ("grand_prix_onze", 11)])
 def test_grandprix_bench_scenario_writes_a_valid_config_and_mode(name: str, opponents: int) -> None:
     """Série GP (lots GP7 et GP8) : le scénario `grand_prix` lance le mode (`--mode grandprix` du core et du banc)
-    avec un plateau et un format de course dans les bornes du réglage, et une course qui tient sur la démonstration ;
-    `grand_prix_onze` (lot GP10) de même à 11 adversaires, annoncés au journal du core."""
+    avec un plateau et un format de course dans les bornes du réglage, sur le Circuit des Prés (lot GPL1 : le Grand
+    Prix se court sur une boucle) ; `grand_prix_onze` (lot GP10) de même à 11 adversaires, annoncés au journal du core."""
     from openride_core.__main__ import build_parser
     from openride_core.config import BOUNDS as CONFIG_BOUNDS, CHOICES as CONFIG_CHOICES
-    from openride_core.demo_world import DEMO_RECETTE_LENGTH_M as DEMO_LENGTH_M   # bancs : 5 km (lot DL1)
 
     _, _, settings, _ = sim_bench.resolve_scenario(name)
-    assert settings["mode"] == "grandprix"
+    assert settings["mode"] == "grandprix" and settings["world"] == "circuit"
     gp = tomllib.loads(sim_bench.toml_text(settings["config"]))["grandprix"]
-    for key in ("opponents", "distance_km", "box_every_m"):
+    assert "distance_km" not in gp
+    for key in ("opponents", "laps", "box_every_m"):
         lo, hi = CONFIG_BOUNDS[("grandprix", key)]
         assert lo <= gp[key] <= hi, key
     assert gp["opponents"] == opponents
     assert any(f"Grand Prix des objets : {opponents} adversaires" in e["motif"] for e in settings["expect"])
     assert gp["chaos"] in CONFIG_CHOICES[("grandprix", "chaos")]
-    assert gp["distance_km"] * 1000 <= DEMO_LENGTH_M
     assert build_parser().parse_args(["run", "--autostart", "--mode", "grandprix"]).mode == "grandprix"
+
+
+def test_circuit_world_of_the_benches_is_the_base_game_circuit() -> None:
+    """Lot GPL1 : le monde `circuit` des bancs est le Circuit des Prés du jeu de base (même identifiant, même tour)."""
+    demo_biomes = pytest.importorskip("openride_compiler.demo_biomes")
+    assert sim_bench.CIRCUIT_M == demo_biomes.CIRCUIT_M and "demo-circuit" in demo_biomes.GAME_DEMOS
+    assert sim_bench.CIRCUIT_NAME == "demo-circuit"
 
 
 @pytest.mark.parametrize("name", ["grand_prix", "grand_prix_onze"])
 def test_grandprix_bench_captures_fall_just_before_each_box_row_and_after_each_z(name: str) -> None:
-    """Lot GP7 : les captures en distance tombent juste avant chaque rangée de boîtes (dans la fenêtre envoyée par
-    le core), et des appuis sur Z lancent les objets pendant la course."""
-    from openride_core.grandprix.boxes import FIRST_ROW_M
+    """Lot GP7 : les captures en distance tombent 35 m avant chaque rangée de boîtes (dans la fenêtre envoyée par le
+    core), rangées du circuit et du chaos choisis comptées sur les deux tours (lot GPL1), et des appuis sur Z lancent
+    les objets pendant la course."""
+    from openride_core.grandprix.boxes import row_positions
+    from openride_core.grandprix.effects import CHAOS
     from openride_core.grandprix.mode import FRAME_AHEAD_M
 
     _, _, settings, _ = sim_bench.resolve_scenario(name)
-    every = settings["config"]["grandprix"]["box_every_m"]
-    assert settings["every_m"] == every
-    assert 0 < FIRST_ROW_M - settings["first_m"] <= min(60.0, FRAME_AHEAD_M)
+    gp = settings["config"]["grandprix"]
+    rows = row_positions(gp["laps"] * sim_bench.CIRCUIT_M, gp["box_every_m"] / CHAOS[gp["chaos"]], sim_bench.CIRCUIT_M)
+    assert len(settings["at_m"]) >= 4 and not settings.get("every_m")
+    for at, row in zip(settings["at_m"], rows):
+        assert 0 < row - at <= min(60.0, FRAME_AHEAD_M)
     z = [x for x in settings["inputs"] if x.get("key") == "Z"]
     assert len(z) >= 10 and all(float(x["t"]) < settings["duration_s"] for x in z)
 
@@ -246,7 +256,7 @@ def test_grandprix_gp4_bench_plays_only_its_item(tmp_path: Path, scenario: str, 
     assert table.enabled == {item}
     assert all(table.weights[b][item] > 0 for b in gp_items.BRACKETS)
     gp = settings["config"]["grandprix"]
-    rows = row_positions(gp["distance_km"] * 1000.0, gp["box_every_m"] / CHAOS[gp["chaos"]], None)
+    rows = row_positions(gp["laps"] * sim_bench.CIRCUIT_M, gp["box_every_m"] / CHAOS[gp["chaos"]], sim_bench.CIRCUIT_M)   # lot GPL1
     assert [round(r) for r in rows[:4]] == [round(m - 30) for m in settings["at_m"][::2]]
     z = [x["t"] for x in settings["inputs"] if x.get("key") == "Z"]
     assert len(z) >= 30 and max(z) < settings["duration_s"]

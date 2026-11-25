@@ -253,6 +253,38 @@ def bluetooth_block(address: str, block: bool) -> bool:
                           timeout=10, check=False).returncode == 0
 
 
+def block_all(addresses: list[str]) -> list[str]:
+    """Bloque chaque adresse ; toutes ou aucune (revue de code C6-04).
+
+    Rend les adresses bloquées, ou une liste vide si une adresse manque ou si un blocage échoue :
+    les boîtiers déjà bloqués sont alors débloqués aussitôt, rien ne reste coupé dans BlueZ.
+    """
+    if not addresses or not all(addresses):
+        return []
+    done: list[str] = []
+    try:
+        for x in addresses:
+            done.append(x)   # compté avant l'appel : un Ctrl+C pendant `bluetoothctl block` le débloque aussi
+            if not bluetooth_block(x, True):
+                break
+        else:
+            return done
+    except BaseException:
+        unblock_all(done)
+        raise
+    unblock_all(done)
+    return []
+
+
+def unblock_all(addresses: list[str]) -> None:
+    """Débloque chaque adresse, même si un déblocage échoue ou lève une exception."""
+    for x in addresses:
+        try:
+            bluetooth_block(x, False)
+        except Exception:   # un boîtier qui ne répond pas ne doit pas laisser l'autre bloqué
+            pass
+
+
 def live(chosen: list[Action], cfg: Any, guide: Guide, out: Path, gap_s: float) -> list[dict[str, Any]]:
     done: list[dict[str, Any]] = []
     blocks = {"click_droit": [cfg.drivers.click_address],
@@ -271,13 +303,16 @@ def live(chosen: list[Action], cfg: Any, guide: Guide, out: Path, gap_s: float) 
                           ok=bool(pids))
             end = start
         else:
-            addrs = [x for x in blocks.get(a.key, []) if x]
-            auto = bool(addrs) and all(bluetooth_block(x, True) for x in addrs)
-            guide.step(a.title if auto else manual[a.key][0], a.seconds, "par l'outil (bluetoothctl)" if auto else "")
-            guide.wait(a.seconds)
-            if auto:
-                for x in addrs:
-                    bluetooth_block(x, False)
+            # Toutes les adresses de l'action, ou la consigne à la main (C6-04) : avec une seule adresse
+            # connue, « clicks » ne coupe pas un seul boîtier en annonçant les deux.
+            blocked = block_all(list(blocks.get(a.key, [])))
+            auto = bool(blocked)
+            try:
+                guide.step(a.title if auto else manual[a.key][0], a.seconds,
+                           "par l'outil (bluetoothctl)" if auto else "")
+                guide.wait(a.seconds)
+            finally:   # Ctrl+C pendant la coupure : boîtiers débloqués quand même
+                unblock_all(blocked)
             end = time.time()
             if a.key.startswith("click"):
                 guide.step("Appuie sur un bouton de chaque boîtier coupé pour le réveiller", 10.0)

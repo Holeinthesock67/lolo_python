@@ -37,7 +37,26 @@ func _run() -> void:
 	c.note_state_gap(700.0, 1_000_000 + 61_000_000)
 	_check(c._gap_n == 0 and c._gap_max_ms == 0.0, "remise à zéro après la ligne de la minute")
 	_check(c.state_gap_percentile(0.99) == 0.0, "aucun écart : quantile nul")
+	# Pertes de trames (essai du 22 novembre) : seq sautés, trous longs, ligne [ipc] de la minute.
+	var d = IpcClientScript.new()
+	d.note_state_seq(-1, 10, 33.0)
+	d.note_state_seq(10, 11, 33.0)
+	_check(d._win_received == 2 and d._win_seq_skipped == 0, "trames qui se suivent : rien de sauté")
+	var lost: String = d.note_state_seq(11, 311, 10000.0)
+	_check(d._win_seq_skipped == 299 and d._win_long_gaps == 1, "trou de 10 s, seq 11 -> 311 : 299 trames sautées, un trou long")
+	_check(lost == "[ipc] trou de 10000 ms entre deux trames state : seq 11 -> 311 (299 trames du core manquantes : perdues en route)",
+		"trou noté tout de suite, trames perdues en route : « %s »" % lost)
+	var quiet: String = d.note_state_seq(311, 312, 2500.0)
+	_check(quiet.ends_with("(0 trames du core manquantes : le core n'a rien envoyé)"), "trou sans seq sauté : le core n'a rien envoyé : « %s »" % quiet)
+	_check(d.note_state_seq(312, 313, 1999.0) == "", "écart sous 2 s : pas de ligne")
+	d._win_late = 1
+	d._win_max_bytes = 3200
+	_check(d.ipc_loss_line() == "[ipc] state reçues 5 ; en retard 1 ; seq sautés 299 ; trous de plus de 2 s 2 ; plus gros datagramme 3200 o",
+		"ligne [ipc] de la minute : « %s »" % d.ipc_loss_line())
+	d._reset_loss_window()
+	_check(d._win_received == 0 and d._win_seq_skipped == 0 and d._win_long_gaps == 0 and d._win_max_bytes == 0, "compteurs de la minute remis à zéro")
 	c.free()
+	d.free()
 
 
 func _initialize() -> void:

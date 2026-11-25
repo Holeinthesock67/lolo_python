@@ -230,6 +230,9 @@ CORNICHE_SEA_BAND_M = (BEACH_M[1], 1600.0)
 # description s'affiche sur la carte du parcours au menu ; mêmes textes que le guide d'utilisation. Une seule table
 # pour la fiche entière (description et étiquettes) ; une démonstration écrite avec une autre fiche est remplacée
 # par les contenus de départ (`openride_core.demo_world.biome_demo_outdated`).
+# Lot GPL1 (demande du propriétaire du 21 novembre) : les boucles du Récif, du Volcan et du Grand Nord passent la
+# règle des routes du Grand Prix ; étiquetées `grandprix` et `libre` (`mode_routes.FREE_TAG`), elles sont au Grand
+# Prix et restent dans la liste générale.
 DEMO_LIBRARY = {
     "demo-biomes-paysages": {"description": "{km} km du fjord aux hauts plateaux, par les landes atlantiques, les "
                                             "rizières, le Japon, une île volcanique et un canyon rouge."},
@@ -238,12 +241,15 @@ DEMO_LIBRARY = {
     "demo-circuit": {"description": "Boucle de 3 km dans les prés, pour les courses en tours.",
                      "tags": ["grandprix"]},
     "demo-recif": {"description": "Boucle de 8 km sous la mer, du lagon au tombant, entre laminaires et coraux, "
-                                  "jusqu'à une épave."},
+                                  "jusqu'à une épave.",
+                   "tags": ["grandprix", "libre"]},
     "demo-volcan": {"description": "Boucle de 8 km dans un volcan en éruption, entre coulées de lave, braises et "
-                                   "fumées, jusqu'à la crête du cratère."},
+                                   "fumées, jusqu'à la crête du cratère.",
+                    "tags": ["grandprix", "libre"]},
     "demo-biomes-sud": {"description": "{km} km des oliviers au delta, par la steppe, les dunes, la savane et la "
                                        "jungle."},
-    "demo-biomes-nord": {"description": "Boucle de 10 km de la taïga à la banquise par la toundra, et retour."},
+    "demo-biomes-nord": {"description": "Boucle de 10 km de la taïga à la banquise par la toundra, et retour.",
+                         "tags": ["grandprix", "libre"]},
     "demo-biomes-forets": {"description": "{km} km de montée du bush à eucalyptus à la forêt de nuages, par la forêt "
                                           "pluviale tempérée."},
     # Lot GP13b : les deux parcours propres au Grand Prix des objets, avec le Circuit des Prés.
