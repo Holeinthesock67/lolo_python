@@ -30,7 +30,7 @@ const MARKER_TAGS := {"strike_target": "Z !", "purge": "DÉBLOQUER : Z", "rock":
 ## Légende montrée la première fois que le joueur croise chaque sorte d'objet (et le Firewall).
 const LEGENDS := {
 	"strike_target": ["Nouveau : cible Z", "Appuie sur Z quand ta roue passe sur l'anneau rouge. Coûte 50 d'adrénaline et retire 6 % des PV de l'ennemi (Diesel : utilise tes charges de tunnel)."],
-	"arch": ["Nouveau : arche de Perfect Shift", "La flèche et le signe disent le sens. Passe une vitesse dans ce sens quand l'anneau touche l'arche (± 0,75 s). Réussi : +10 d'adrénaline."],
+	"arch": ["Nouveau : arche de changement parfait", "La flèche et le signe disent le sens. Passe une vitesse dans ce sens quand l'anneau touche l'arche (± 0,75 s). Réussi : +10 d'adrénaline."],
 	"tunnel": ["Nouveau : tunnel de cadence", "Tiens la cadence affichée (± 3 rpm) dans le tunnel vert : chaque 10 s donne une charge pour la prochaine cible Z."],
 	"pad": ["Nouveau : pavé de sprint", "En vitesse 10 ou plus, au-dessus de la puissance affichée, tes dégâts sont multipliés sur le pavé."],
 	"parry_zone": ["Nouveau : zone de parade", "Relance fort la puissance puis appuie sur Z dans la zone. Sinon, le coup te retire du bouclier."],
@@ -40,7 +40,7 @@ const LEGENDS := {
 	"firewall": ["Le Firewall", "Un mur roule derrière toi à la puissance de la salle. S'il te touche, ton bouclier fond et tu perds de l'or. Tiens la consigne pour garder ton avance."],
 }
 const Z_REASON_TEXT := {
-	"adrenaline": ["Z refusé : adrénaline %d / 50", "Tiens la puissance cible pour remplir la jauge (+0,5 par seconde, +10 par Perfect Shift)"],
+	"adrenaline": ["Z refusé : adrénaline %d / 50", "Tiens la puissance cible pour remplir la jauge (+0,5 par seconde, +10 par changement parfait)"],
 	"overheat": ["Z refusé : surchauffe", "Baisse la puissance pour refroidir"],
 	"no_target": ["Z : rien à frapper ici", "Attends un objet marqué « Z »"],
 	"no_charge": ["Z refusé : aucune charge", "Tiens la cadence dans les tunnels verts pour charger"],
@@ -72,7 +72,7 @@ const RULES := [
 	"Z frappe l'ennemi quand ta roue passe sur l'anneau rouge, avec 50 d'adrénaline ou plus",
 	"Le Firewall te poursuit : roule au-dessus de la consigne pour garder ton avance, sinon ton bouclier fond",
 	"Endurance : reste dans la plage ; au-dessus du plafond pendant 5 s, c'est la surchauffe (adrénaline qui fond, Z bloqué)",
-	"Arche : change de vitesse dans le sens de la flèche quand l'anneau touche l'arche (Perfect Shift : +10 d'adrénaline)",
+	"Arche : change de vitesse dans le sens de la flèche quand l'anneau touche l'arche (changement parfait : +10 d'adrénaline)",
 	"Zone de parade : relance la puissance puis Z, sinon tu perds du bouclier",
 	"Rocher : roule en Roc (cadence basse, en force) pour charger, puis Z",
 	"Couloir : A pour choisir une carte puis une porte, Z pour relancer les cartes contre de l'or",
@@ -369,7 +369,7 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 				"arch":
 					var sign := "+" if str(u["param"]) == "up" else "−"
 					hint = ("Arche : passe %s maintenant" % sign) if now else ("Arche %s dans %d m : prépare %s" % ["▲" if sign == "+" else "▼", d, sign])
-					keys.insert(0, [sign, "Perfect Shift", "on"])
+					keys.insert(0, [sign, "Changement parfait", "on"])
 				"tunnel":
 					hint = ("Tunnel : tiens %d rpm" % int(round(float(u["param"] if u["param"] != null else 90.0)))) + ("" if now else " (dans %d m)" % d)
 				"pad":
@@ -547,7 +547,7 @@ func _feedback(rogue: Dictionary, events: Array, adr: int) -> void:
 						_:
 							_toasts.append({"title": "Arche manquée", "sub": "Passe une vitesse sous l'arche, dans le sens de la flèche", "tone": "warn"})
 			"perfect_shift":
-				_toasts.append({"title": "PERFECT SHIFT +10", "sub": "", "tone": "ok"})
+				_toasts.append({"title": "CHANGEMENT PARFAIT +10", "sub": "", "tone": "ok"})
 			"firewall_contact":
 				_toasts.append({"title": "TOUCHÉ PAR LE FIREWALL", "sub": "Ton bouclier fond : passe au-dessus de la consigne pour le distancer · Roc protège (−30 %)", "tone": "danger", "now": true})
 			"parry_miss":

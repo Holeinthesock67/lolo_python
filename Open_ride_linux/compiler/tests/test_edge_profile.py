@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 
 from openride_compiler.elevation import SyntheticProvider
+from openride_compiler.worldgen import altitude_guard as AG
 from openride_compiler.worldgen.edge_profile import NodeAltitudes, concat, edge_profile, split_parts
 from openride_compiler.worldgen.graph import Edge
 
@@ -38,7 +39,7 @@ def test_inclined_plane_gives_constant_grade() -> None:
     assert p.s[0] == 0 and p.s[-1] == pytest.approx(1000.0) and np.allclose(np.diff(p.s)[:-1], 10.0)
     assert np.allclose(p.grade_pct[2:-2], 5.0, atol=0.05)
     assert np.allclose(p.heading_deg, 90.0, atol=1e-6) and p.clamped_points == 0
-    assert p.versions == {"edge_profile": 1, "relief": "synthetic"}
+    assert p.versions == {"edge_profile": 3, "altitude_guard": 1, "relief": "synthetic"}
 
 
 def test_bridge_over_valley_stays_straight() -> None:
@@ -52,7 +53,10 @@ def test_bridge_over_valley_stays_straight() -> None:
     line = np.interp(p.s[on], [400.0, 600.0], np.interp([400.0, 600.0], p.s, p.alt_m))
     assert np.max(np.abs(p.alt_m[on] - line)) <= 0.5
     without = edge_profile(straight(1000.0), prov, prov.frame)
-    assert without.alt_m[50] < 270.0                                   # sans pont, la route descend
+    # Sans pont, la route descend dans la vallée ; ses flancs à 70 % sont ramenés par le garde-fou d'altitude à
+    # 15 % de pente au plus et 4 % de changement de pente par pas de 10 m (21/11) : fond à environ 285 m.
+    assert without.alt_m[50] < 290.0
+    assert not AG.check(without.alt_m, without.s)
 
 
 def test_shared_node_has_one_altitude() -> None:
@@ -121,6 +125,6 @@ def test_deterministic_and_fast() -> None:
 
 
 def test_short_edge_and_grade_limit() -> None:
-    prov = provider(lambda x, z: 100.0 + 0.4 * np.asarray(x))                 # 40 % : bornée à 25 %
+    prov = provider(lambda x, z: 100.0 + 0.4 * np.asarray(x))                 # 40 % : bornée à 15 %
     p = edge_profile(straight(60.0), prov, prov.frame)
-    assert len(p.s) == 7 and np.all(np.abs(p.grade_pct) <= 25.0) and p.clamped_points > 0
+    assert len(p.s) == 7 and np.all(np.abs(p.grade_pct) <= 15.0) and p.clamped_points > 0

@@ -1,0 +1,22 @@
+{
+  "description": "Zone privée au départ (lot PZ1) : ligne « Zone privée au départ — non » du sous-écran Avancé, légende écrite sous le focus, passage à « oui » écrit dans le profil (privacy.hide_start = on). Captures pz1_avance_non et pz1_avance_oui pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "voies": ["clavier"],
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "settings"},
+    {"ecran": "settings", "titre": "Réglages"},
+    {"choisir": "group:advanced"},
+    {"ecran": "settings_group", "groupe": "advanced", "titre": "Réglages › Avancé", "contient": ["Zone privée au départ — non"]},
+    {"aller": "set:privacy.hide_start"},
+    {"ecran": "settings_group", "focus": "set:privacy.hide_start", "contient": ["aucune position à moins de 500 m du départ"]},
+    {"capture": "pz1_avance_non"},
+    {"choisir": "set:privacy.hide_start"},
+    {"ecran": "settings_group", "edition": true},
+    {"appui": ["PLUS_SHORT", "A_LONG"]},
+    {"ecran": "settings_group", "edition": false, "contient": ["Zone privée au départ — oui"]},
+    {"config": {"privacy.hide_start": "on"}},
+    {"capture": "pz1_avance_oui"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "settings", "titre": "Réglages"}
+  ]
+}
