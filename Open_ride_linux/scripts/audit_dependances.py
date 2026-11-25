@@ -44,6 +44,8 @@ class Rapport:
     actions: list[dict] = field(default_factory=list)          # {"action", "utilise", "derniere", "fichiers", "en_retard"}
     anciens: list[dict] = field(default_factory=list)          # {"paquet", "version", "publie", "jours"}
     sautes: list[str] = field(default_factory=list)
+    # Éléments que l'audit n'a pas pu vérifier (revue de code vague 5, O1-10) : jamais comptés comme sains.
+    non_verifies: list[str] = field(default_factory=list)
 
 
 def read_constraints(path: Path = CONSTRAINTS) -> dict[str, str]:
@@ -81,6 +83,13 @@ def compare_actions(used: dict[str, dict], latest: dict[str, int | None]) -> lis
         rows.append({"action": name, "utilise": f"v{oldest}", "derniere": f"v{last}" if last else "?",
                      "fichiers": entry["fichiers"], "en_retard": last is not None and oldest < last})
     return rows
+
+
+def pip_audit_skipped(text: str) -> list[str]:
+    """Paquets que pip-audit n'a pas pu auditer (entrée avec `skip_reason`), avec la raison."""
+    data = json.loads(text)
+    deps = data.get("dependencies", []) if isinstance(data, dict) else data
+    return [f"{d.get('name', '?')} (pip-audit : {d['skip_reason']})" for d in deps if d.get("skip_reason")]
 
 
 def parse_pip_audit(text: str) -> list[dict]:
@@ -148,15 +157,26 @@ def format_report(rep: Rapport, when: datetime) -> str:
     lines += [f"  {v['paquet']} {v['version']} : {v['id']}, corrigé en {v['corrige']}" for v in rep.vulnerabilites]
     late = [a for a in rep.actions if a["en_retard"]]
     if "actions" not in rep.sautes:
-        lines.append(f"Actions GitHub : {len(rep.actions)}, {len(late)} en retard")
+        unknown = sum(1 for a in rep.actions if a["derniere"] == "?")
+        lines.append(f"Actions GitHub : {len(rep.actions)}, {len(late)} en retard"
+                     + (f", {unknown} non vérifiée{'s' if unknown > 1 else ''}" if unknown else ""))
         lines += [f"  {a['action']} : {a['utilise']} utilisée, {a['derniere']} publiée ({', '.join(a['fichiers'])})"
                   for a in late]
     if "anciens" not in rep.sautes:
         lines.append(f"Paquets publiés il y a plus de {OLD_DAYS} jours : {len(rep.anciens)}")
         lines += [f"  {o['paquet']} {o['version']} : publié le {o['publie']} ({o['jours']} jours)" for o in rep.anciens]
+    if rep.non_verifies:
+        lines.append(f"Non vérifiés : {len(rep.non_verifies)}")
+        lines += [f"  {n}" for n in rep.non_verifies]
     if rep.sautes:
         lines.append("Sautés : " + ", ".join(rep.sautes))
-    lines += ["", "Verdict : " + ("vulnérabilité à corriger" if rep.vulnerabilites else "aucune vulnérabilité connue")]
+    if rep.vulnerabilites:
+        verdict = "vulnérabilité à corriger"
+    elif any("pip-audit" in n for n in rep.non_verifies):
+        verdict = "aucune vulnérabilité connue parmi les paquets audités (certains n'ont pas pu l'être)"
+    else:
+        verdict = "aucune vulnérabilité connue"
+    lines += ["", "Verdict : " + verdict]
     return "\n".join(lines)
 
 
@@ -170,16 +190,21 @@ def audit(offline: bool, constraints: Path = CONSTRAINTS, workflows: Path = WORK
         print(f"audit_dependances : pip-audit a échoué (code {rc}) : {err.strip()[-300:]}")
         return 2, rep
     rep.vulnerabilites = parse_pip_audit(out)
+    rep.non_verifies += pip_audit_skipped(out)
     if offline:
         rep.sautes += ["actions", "anciens"]
     else:
         used = read_workflows(workflows)
         rep.actions = compare_actions(used, {name: fetch_latest(name) for name in used})
+        rep.non_verifies += [f"action {a['action']} (dernière version illisible)" for a in rep.actions
+                             if a["derniere"] == "?"]
         published = {}
         for name, version in read_constraints(constraints).items():
             when = fetch_published(name, version)
             if when is not None:
                 published[name] = (version, when)
+            else:
+                rep.non_verifies.append(f"âge de {name} {version} (PyPI illisible)")
         rep.anciens = old_packages(published, datetime.now(timezone.utc))
     return (1 if rep.vulnerabilites else 0), rep
 

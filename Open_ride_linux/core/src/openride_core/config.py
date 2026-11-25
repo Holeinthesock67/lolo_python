@@ -86,6 +86,7 @@ class RenderConfig:
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
+    auto_photos: str = "on"   # photos automatiques à l'arrivée et aux records, dans ~/OpenRide/Captures/ : on ou off
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des biomes de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
@@ -257,6 +258,7 @@ class RaceConfig:
 class AudioConfig:
     """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
     suite par l'engine sur ses bus audio (audio_mix.gd)."""
+    enabled: bool = True           # son coupé d'un seul choix (lot NI4), volumes gardés
     master_pct: int = 100          # volume général (bus Master)
     ride_pct: int = 100            # vélo : vent dans les oreilles, roue libre, « clac » de reprise
     ambience_pct: int = 100        # ambiance : fonds, cloches, points sonores, véhicules, foule, passants
@@ -301,6 +303,13 @@ class LogConfig:
 
 
 @dataclass
+class PrivacyConfig:
+    """Zone privée au départ (lot PZ1, audit du 22 novembre) : aucune position à moins de 500 m du départ
+    dans les FIT et le GPX du monde ouvert (`privacy_zone.py`) ; coupée par défaut."""
+    hide_start: str = "off"        # "on" ou "off"
+
+
+@dataclass
 class ProfilsConfig:
     dernier: str = ""   # dernier profil de joueur choisi, profil par défaut au lancement (série MJ, lot MJ7)
 
@@ -333,6 +342,7 @@ class Config:
     coach: CoachConfig = field(default_factory=CoachConfig)
     log: LogConfig = field(default_factory=LogConfig)
     profils: ProfilsConfig = field(default_factory=ProfilsConfig)
+    privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -449,6 +459,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "texture_level"): ("auto", "low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
+    ("render", "auto_photos"): ("on", "off"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("render", "day_night"): ("off", "theme", "real", "accelerated"),
@@ -474,6 +485,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
     ("bots", "objective"): ("recovery", "endurance", "tempo", "threshold", "max"),   # bot_effort.OBJECTIVES
     ("bots", "elo"): ("on", "off"),   # lot BOT-elo
+    ("privacy", "hide_start"): ("on", "off"),   # lot PZ1
 }
 
 
@@ -498,6 +510,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),
     ("drivers", "hr"), ("drivers", "hr_address"), ("drivers", "hr_name"),
+    ("privacy", "hide_start"),
 )
 PROFILE_SECTION = "profil"   # identité du profil dans `profil.toml` (profiles.py), pas un réglage
 
@@ -536,6 +549,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gearing", "step_pct"): "boîte de vitesses virtuelle",
     ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
+    ("render", "living"): "décor vivant coupé pour les bancs, retiré du menu au lot NI4 (coût réglé par la qualité)",
     ("render", "texture_level"): "niveau des textures imposé pour les bancs, retiré du menu au lot NI2 (auto suit la qualité)",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
