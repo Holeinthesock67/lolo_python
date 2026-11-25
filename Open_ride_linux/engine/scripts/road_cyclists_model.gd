@@ -688,7 +688,8 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		elif blocking or not faster:
 			spd_now = minf(spd_now, slowest - FALL_BACK_MPS)
 	spd_now = _yield_to_core(g, spd_now, rider_s, bots)
-	spd_now = _behind_vehicles(g, spd_now)
+	# jamais à reculons derrière un usager arrêté (revue C5-06, comme road_cyclists.py)
+	spd_now = maxf(0.0, _behind_vehicles(g, spd_now))
 	g["s"] = float(g["s"]) + float(dir) * spd_now * dt_s
 	g["step_mps"] = spd_now
 	var rel := float(g["s"]) - rider_s

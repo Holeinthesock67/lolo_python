@@ -1,0 +1,6 @@
+[Unit]
+Description=OpenRide : rappel de la manche de la ligue d'hiver
+
+[Service]
+Type=oneshot
+ExecStart=@PYTHON@ -m openride_core.league_reminder
