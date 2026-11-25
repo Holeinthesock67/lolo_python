@@ -52,10 +52,13 @@ CLOSE_TIMEOUT_S = 20.0
 MIN_RETRY_GAP_S = 1.5           # plus court recul admis entre deux demandes d'un même chemin
 MAX_SCENARIO_S = 60.0           # critère 1 du cahier X28
 TRIP_DEFAULTS: dict[str, Any] = {
-    "duree_s": 25.0,            # trajet de la première séance, en secondes réelles
-    "retour_s": 5.0,            # seconde séance au même départ
+    # 1 000 s simulées (12 km) en 20 s réelles : le temps fixe du trajet laisse au générateur (départs,
+    # fermetures) une marge sous `MAX_SCENARIO_S` même sur une CI chargée (25 s à ×40 jusqu'au 25/11 :
+    # 58 à 61 s une fois les départs alourdis par la règle sol / route du 21/11)
+    "duree_s": 20.0,            # trajet de la première séance, en secondes réelles
+    "retour_s": 2.0,            # seconde séance au même départ (vérifie seulement : aucun téléchargement)
     "vitesse_mps": 12.0,        # vitesse simulée du cycliste
-    "acceleration": 40.0,       # temps simulé / temps réel
+    "acceleration": 50.0,       # temps simulé / temps réel
     "cache_max_mo": 20.0,       # plafond du cache de la séance
     "remplissage_mo": 18.0,     # vieilles entrées d'une séance passée, évincées en premier
     "seed": 3,
