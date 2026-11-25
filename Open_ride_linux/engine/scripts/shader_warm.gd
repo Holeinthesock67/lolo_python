@@ -25,8 +25,9 @@ extends Node3D
 ## dessinés. Le départ attend la fin (`pending`, compté dans `world_streamer.pending_count`), l'écran de chargement
 ## ou le menu restent animés entre deux images. Shaders déjà en cache : une image ordinaire par doublure. En
 ## séance, rien n'est retiré (une tuile retardée pourrait se voir apparaître).
-## Hors de ce nœud : préchauffage des spectateurs et des passants un MultiMesh par image (AC5, #985), tronçons OSM
-## (AC2, #953) ; sans eux, leurs images de 5 à 6 s restent au départ à froid (banc du 25 novembre).
+## Les tronçons OSM (`osm_streamer.gd`) passent aussi par `hold`. Hors de ce nœud : préchauffage des spectateurs
+## et des passants un MultiMesh par image (AC5, #985), étape « préchauffage osm » de #953 ; sans eux, leurs images
+## de 4 à 6 s restent au départ à froid (bancs du 25 novembre).
 ## Pas de class_name : charger par preload("res://scripts/shader_warm.gd").
 
 const PerfProbe := preload("res://scripts/perf_probe.gd")

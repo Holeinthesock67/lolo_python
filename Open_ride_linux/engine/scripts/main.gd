@@ -341,6 +341,7 @@ func _ready() -> void:
 	if streamer.shader_warm == null and bool(cfg.get("shader_warm", true)):
 		var warm = ShaderWarm.new()   # premier affichage à froid (lot AC6) : une doublure de shader par image
 		warm.name = "ShaderWarm"
+		warm.active = session_state != "RUNNING"   # séance déjà partie (reprise, tour visuel) : rien de retenu
 		streamer.add_child(warm)
 		streamer.shader_warm = warm
 	if streamer.osm_streamer == null:
@@ -348,6 +349,7 @@ func _ready() -> void:
 		osm_st.name = "OsmStreamer"
 		streamer.add_child(osm_st)
 		streamer.osm_streamer = osm_st
+		osm_st.shader_warm = streamer.shader_warm   # lot AC6 : tronçons OSM comme les tuiles
 	if sound_player == null:
 		sound_player = SoundPlayer.new()
 		sound_player.name = "SoundPlayer"

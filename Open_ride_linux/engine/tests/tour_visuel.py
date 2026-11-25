@@ -370,7 +370,9 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
                                "tag": p["id"]})
                 hit = core.log.wait_for(r"^screenshot (\{.*\})$", 15.0, mark)
                 info = json.loads(hit[1].group(1)) if hit else None
-                if info is None or int(info.get("streaming_pending", 0)) == 0:
+                # Sans réponse : redemandée. Au premier point, shaders froids, le rendu CPU (lavapipe) fige
+                # l'engine 10 à 20 s et la demande, en UDP, se perd derrière les trames d'état (CI de #1066).
+                if info is not None and int(info.get("streaming_pending", 0)) == 0:
                     break
                 time.sleep(1.0)
             ok = bool(info and info.get("ok")) and png.is_file()

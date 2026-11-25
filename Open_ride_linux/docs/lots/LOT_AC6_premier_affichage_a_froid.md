@@ -39,6 +39,15 @@ Banc du correctif (12 MultiMesh d'arbres + 12 maillages, ombres, caches vidés) 
   si bien que la première doublure n'a été dessinée que 13 s après la première tuile (DB1 medium, t = 26,5 s puis
   39,8 s).
 
+### Banc PC du 25 novembre, matin (tête de3ca5b4 + #953 + #985 + #1072, rJ25J)
+
+- DB1 medium à froid : 8,5 s avant le premier mètre. L'image de 8,5 s porte les tuiles proches **et** « osm 0 »
+  et « spectateurs 0 » (53 pipelines) ; une autre de 3,8 s porte « osm 4 », « osm 5 » et « spectateurs 3 ».
+- Monde ouvert : 6,2 s (29 pipelines) dans l'image qui suit l'étape « préchauffage osm » de #953, qui dessine toutes
+  les sortes d'objets OSM dans la même image ; 2,15 s plus tôt pour les tronçons « osm 0 » à « osm 4 ».
+- Correction v3 : les tronçons OSM (`osm_streamer.gd`) passent aussi par `hold`, comme les tuiles. Reste hors lot
+  le préchauffage OSM de #953 (à faire une sorte par image) et le premier dessin des foules (#985).
+
 ## 3. Spécification
 
 | # | Règle |
@@ -46,16 +55,18 @@ Banc du correctif (12 MultiMesh d'arbres + 12 maillages, ombres, caches vidés) 
 | AC6-1 | `shader_warm.gd` : `keys_of(objet)` donne un couple par surface (MeshInstance3D ou MultiMeshInstance3D, format des sommets, shader, ombres). Deux ShaderMaterial du même shader (un matériau dupliqué par tuile) donnent la même clé. |
 | AC6-2 | `hold(objets)` : si un couple n'a jamais été dessiné, les objets sont **retirés de la scène** (leur parent est gardé), et une **doublure** est préparée hors de la scène par couple nouveau (même maillage et matériaux, une instance pour un MultiMesh, mêmes ombres, sans plage de visibilité). |
 | AC6-3 | `step(caméra)` : chaque image, au plus une doublure entre dans la scène, cachée (étape « shaders entrée N »), et au plus une autre, entrée deux images plus tôt, est dessinée, minuscule (échelle 0,001), 2 m devant la caméra (étape « shaders doublure N »). L'attente de chaque doublure lui est propre : des tuiles nouvelles à chaque image ne retardent pas les autres. Les objets reviennent sous leur parent quand tous leurs couples sont dessinés (parent disparu : objet libéré). `world_streamer._free_instance` accepte une tuile hors de la scène. |
-| AC6-4 | `world_streamer.integrate` passe à `hold` chaque tuile ou tronçon créé et les MultiMesh de ses arbres (`tree_renderer.tile_nodes`). `pending()` s'ajoute à `pending_count()` : le départ attend la fin (start_wait_model, PI2-4). |
-| AC6-5 | En séance (`session_state` RUNNING, `main.gd`) : `set_active(false)` remet tout dans la scène et plus rien n'est retiré (une tuile retardée pourrait se voir). Les couples jetés sont repris au chargement suivant. |
+| AC6-4 | `world_streamer.integrate` passe à `hold` chaque tuile ou tronçon créé et les MultiMesh de ses arbres (`tree_renderer.tile_nodes`). `pending()` s'ajoute à `pending_count()` : le départ attend la fin (start_wait_model, PI2-4). `osm_streamer` passe de même chaque tronçon OSM créé (même nœud `shader_warm`, posé par `main.gd`). |
+| AC6-5 | En séance (`session_state` RUNNING, `main.gd`) : `set_active(false)` remet tout dans la scène et plus rien n'est retiré (une tuile retardée pourrait se voir). Créé pendant une séance déjà partie (reprise, tour visuel) : inactif d'emblée. Les couples jetés sont repris au chargement suivant. |
 | AC6-6 | Garde-fou : sans caméra, tout revient dans la scène après 3 600 images. Réglage de test `shader_warm` (défaut vrai) pour couper le lot. |
-| AC6-7 | Hors lot : spectateurs et passants (AC5, #985), tronçons OSM (AC2, #953), cyclistes du décor (« cyclistes affichage », AC4), forêts lointaines (préchauffées par PI2), image du chargement lui-même (13 s à froid : écran de chargement, ciel, portiques), arbres « ombre seule ». |
+| AC6-7 | Hors lot : spectateurs et passants (AC5, #985), étape « préchauffage osm » de #953 (toutes les sortes dans une image), cyclistes du décor (« cyclistes affichage », AC4), forêts lointaines (préchauffées par PI2), image du chargement lui-même (13 s à froid : écran de chargement, ciel, portiques), arbres « ombre seule ». |
 
 ## 4. Fichiers
 
 - `engine/scripts/shader_warm.gd`, `engine/tests/unit/test_shader_warm.gd` ;
 - `engine/scripts/world_streamer.gd` (`shader_warm`, `integrate`, `pending_count`), `engine/scripts/tree_renderer.gd`
-  (`tile_nodes`), `engine/scripts/main.gd` (création, séance).
+  (`tile_nodes`), `engine/scripts/main.gd` (création, séance), `engine/scripts/osm_streamer.gd` (`shader_warm`) ;
+- `engine/tests/tour_visuel.py` : capture redemandée quand l'engine ne répond pas (premier point à shaders froids
+  sur le rendu CPU de la CI, la demande UDP se perdait ; le même échec se reproduit sur main au cloud).
 
 ## 5. Critères d'acceptation
 
