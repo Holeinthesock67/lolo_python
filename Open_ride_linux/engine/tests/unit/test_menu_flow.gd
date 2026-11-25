@@ -935,7 +935,8 @@ func _test_bots_menu() -> void:
 	var act: Dictionary = f.handle("A_LONG")
 	_check(act == {"action": "start", "args": {"bots": [{"kind": "ghost"}]}}, "start avec le fantôme (%s)" % str(act))
 	f.on_error("bot_invalid", "aucune séance passée sur le parcours « vosges » pour le fantôme")
-	_check(f.state()["status"].begins_with("Échec : aucune séance passée"), "refus du core sur la ligne d'état")
+	_check(f.state()["status"] == "× REFUSÉ · Départ impossible : pas encore de fantôme sur ce parcours\nÀ faire : roule-le une fois en entier, ou retire la ligne « Fantôme »",
+		"refus du core expliqué : pourquoi et quoi faire (lot RT4, %s)" % str(f.state()["status"]))
 	f.handle("PLUS_SHORT")
 	_check(f.state()["status"] == "", "ligne d'état effacée à l'appui suivant")
 	# Un peloton de 4, avec un test de FTP préparé : les deux arguments partent ensemble.
