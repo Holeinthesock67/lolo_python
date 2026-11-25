@@ -10,9 +10,19 @@ set -u
 FENETRE=${FENETRE:-$HOME/mesures-2026-11-01-auto/fenetre.txt}
 dur=${FILE_DUREE_MIN:-120}
 if [ -f "$FENETRE" ]; then
-  read -r FD FF FM < "$FENETRE"
+  FD= FF= FM=
+  read -r FD FF FM < "$FENETRE" || true
+  # Fichier mal formé (vide, un seul champ, dates non entières) : passage fermé, jamais ouvert par erreur
+  # (revue de code vague 5, O2-18).
+  case "$FD$FF" in
+    *[!0-9]*) ok=0 ;;
+    *) ok=1 ;;
+  esac
+  if [ -z "$FD" ] || [ -z "$FF" ] || [ "$ok" -ne 1 ]; then
+    echo "fenêtre du user illisible dans $FENETRE (attendu : DEBUT_EPOCH FIN_EPOCH MARQUEUR)"; exit 1
+  fi
   now=$(date +%s)
-  if [ ! -f "$(dirname "$FENETRE")/$FM" ] && [ "$now" -lt "$FF" ] && [ $((now + dur * 60)) -ge "$FD" ]; then
+  if { [ -z "$FM" ] || [ ! -f "$(dirname "$FENETRE")/$FM" ]; } && [ "$now" -lt "$FF" ] && [ $((now + dur * 60)) -ge "$FD" ]; then
     echo "fenêtre du user jusqu'à $(date -d "@$FF" +%H:%M) (étape de $dur min)"; exit 1
   fi
 fi

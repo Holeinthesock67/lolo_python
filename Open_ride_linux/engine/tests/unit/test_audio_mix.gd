@@ -81,6 +81,15 @@ func _test_apply_settings() -> void:
 		"chaque réglage audio.* règle son bus")
 	_check(AudioMix.apply_settings([_volume_item("audio.master_pct", "fort")]) == 0, "valeur non numérique ignorée")
 	AudioMix.apply_settings([_volume_item("audio.master_pct", 100), _volume_item("audio.ambience_pct", 100)])
+	# Lot NI4 : « Son : non » coupe tout (bus Master) sans toucher aux volumes ; « oui » rend le volume Général.
+	var sound := {"key": "audio.enabled", "type": "choice", "value": "off", "choices": ["on", "off"]}
+	AudioMix.apply_settings([sound, _volume_item("audio.master_pct", 70), _volume_item("audio.ride_pct", 60)])
+	var m := AudioServer.get_bus_index(AudioMix.MASTER)
+	_check(AudioServer.is_bus_mute(m) and AudioMix.volume_pct(AudioMix.RIDE) == 60,
+		"Son : non, Master coupé, volume Vent et roue libre gardé")
+	AudioMix.apply_settings([sound.merged({"value": "on"}, true), _volume_item("audio.master_pct", 70)])
+	_check(not AudioServer.is_bus_mute(m) and AudioMix.volume_pct(AudioMix.MASTER) == 70, "Son : oui, Général rendu à 70 %")
+	AudioMix.apply_settings([_volume_item("audio.master_pct", 100), _volume_item("audio.ride_pct", 100)])
 
 
 func _test_players_on_buses() -> void:

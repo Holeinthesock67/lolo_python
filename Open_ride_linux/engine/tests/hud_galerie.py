@@ -71,6 +71,7 @@ GP_BOTS = [("G. Lagrimpe", 60.0, 6.4, "bell", []), ("A. Asphalte", 40.0, 4.3, No
            ("V. Vitesse", -6.0, -0.6, "bottle", []), ("G. Lentrain", -60.0, -6.4, None, ["musette"])]
 GP_NAMES_12 = ["G. Lagrimpe", "A. Asphalte", "V. Vitesse", "G. Lentrain", "A. Altitude", "H. Rouleau",
                "K. Lafusée", "H. Tracteur", "S. Perché", "O. Lebidon", "É. Endurant"]
+GP_WBAL = [74.0, 92.0, 38.0, 100.0]   # réserve W' des bots de la scène 6 (lot RW)
 GP_BASE = {"place": 3, "of": 5, "gap_s": 2.1, "held": "musette_x3", "n": 3, "roll_s": 0.0, "lane": 1, "auto": False,
            "fx": [], "warn": None, "obj": [], "boxes": [], "pick": True, "lap": [2, 3]}
 
@@ -79,10 +80,17 @@ def _gp_bots(s_now: float, count: int = 0) -> list[dict[str, Any]]:
     """Bots du Grand Prix : ceux de la scène 6, ou `count` bots en file (cas des 12 coureurs)."""
     if count:
         items = ["gel", "bottle", None, "musette", "bell", None, "homing", "star", None, "storm", "team_car"]
-        return [{"id": f"g{i}", "name": GP_NAMES_12[i % len(GP_NAMES_12)], "s": s_now + 120.0 - 30.0 * i, "v": 0.0, "kind": "constant",
+        # Peloton (lot PL1) : seuls les 5 bots les plus proches portent `wbal_pct` et `gap_s` (bots.light_frame).
+        out = []
+        for i in range(count):
+            b = {"id": f"g{i}", "name": GP_NAMES_12[i % len(GP_NAMES_12)], "s": s_now + 120.0 - 30.0 * i, "v": 0.0, "kind": "constant",
                  "gap_s": (120.0 - 30.0 * i) / 10.0, "item": items[i % len(items)], "fx": ["bottle"] if i == 9 else []}
-                for i in range(count)]
-    return [{"id": f"g{i}", "name": n, "s": s_now + ds, "v": 0.0, "kind": "constant", "gap_s": gap, "item": item, "fx": fx}
+            if 2 <= i <= 6:
+                b["wbal_pct"] = 20.0 + 15.0 * (i - 2)
+            out.append(b)
+        return out
+    return [{"id": f"g{i}", "name": n, "s": s_now + ds, "v": 0.0, "kind": "constant", "gap_s": gap, "item": item, "fx": fx,
+             "wbal_pct": GP_WBAL[i]}
             for i, (n, ds, gap, item, fx) in enumerate(GP_BOTS)]
 
 
@@ -155,6 +163,17 @@ CAS: list[dict[str, Any]] = [
         "ranking": ["b1", "me", "b2", "b3"], "points": [14, 11, 8, 5], "eliminated": [], "finished": False,
         "laps_up": 0, "my_lap": 23, "next_sprint_lap": 25}},
      "hidden": ["profile", "panel", "grade"]},
+    # Réserve W' des bots sur la liste du vélodrome (lot RW) : bots à profil de l'encart de la session libre
+    {"name": "piste_points_reserve", "bots": True, "state": {"track": {
+        "event": "points", "t_s": 412.0, "lap": 23, "laps": 40, "laps_to_go": 17, "bell": False,
+        "ranking": ["b1", "me", "b2", "b3", "b4"], "points": [14, 11, 8, 5, 2], "eliminated": [], "finished": False,
+        "laps_up": 0, "my_lap": 23, "next_sprint_lap": 25}},
+     "reserve": "track", "hidden": ["profile", "panel", "grade", "bots_panel"]},
+    # Dernier survivant (lot RW) : liste des coureurs avec la réserve des bots
+    {"name": "ds_reserve", "bots": True, "state": {"survivor": {
+        "arch": 2, "arches": 4, "d_m": 650.0, "alive": ["b1", "b2", "me", "b3", "b4"], "last": "b4", "out": [],
+        "winner": None, "me_out": None}},
+     "reserve": "survivor", "hidden": ["bots_panel"]},
     {"name": "piste_elimination_dernier", "state": {"track": {
         "event": "elimination", "t_s": 200.0, "lap": 6, "laps": 24, "laps_to_go": 18, "bell": True,
         "ranking": ["b1", "b2", "me", "b3"], "points": None, "eliminated": ["b3"], "finished": False,
@@ -184,6 +203,9 @@ CAS: list[dict[str, Any]] = [
      "expect": {"warn": "Orage vers le premier", "outline": False, "hint": "← → : changer de voie"}},
     {"name": "gp_12_coureurs", "gp": {"place": 9, "of": 12, "gap_s": 3.0, "held": "homing", "n": 1, "lap": None},
      "gp_count": 11, "expect": {"place": "9e / 12", "key": "Z : Musette guidée"}},
+    # Course (lot CR1) : bande de course du Grand Prix sans objet, réserve des bots (lot RW)
+    {"name": "course_reserve", "gp": {"mode": "race", "held": None, "n": 0}, "reserve": "grandprix",
+     "expect": {"place": "3e / 5"}, "hidden": ["bots_panel"]},
     # Monde ouvert (lot W24) : mini-carte en bas à gauche, prochain carrefour écrit dessous ; puis destination
     # (derniers choix du profil : cible à ~2 km du départ du parcours de démonstration) épinglée avec sa distance.
     {"name": "monde_ouvert_carte", "state": {"open_world": OW_FIELD},
@@ -232,6 +254,10 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
             with core.lock:   # hors monde ouvert, pas de champ `open_world` (mini-carte et carrefour cachés)
                 core.fields.pop("open_world", None)
         state = dict(SIM) | cas.get("state", {})
+        with core.lock:   # trame d'un mode (piste, Dernier survivant) retirée hors de son cas (lot RW)
+            for key in ("track", "survivor"):
+                if key not in state:
+                    core.fields.pop(key, None)
         if cas.get("bots"):
             state["bots"] = _bots(core.current_s())
         if "gp" in cas:
@@ -258,6 +284,11 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
         gp_info = info.get("grandprix", {})
         for key, want in cas.get("expect", {}).items():
             s.check(cas["name"], f"Grand Prix : {key} = {want!r}", gp_info.get(key) == want, f"affiché {gp_info.get(key)!r}")
+        if cas.get("reserve"):   # lot RW : barres de réserve des bots et légende écrite sous la liste du mode
+            mode_info = info.get(cas["reserve"], {})
+            bars = [f for f in mode_info.get("reserve", []) if f >= 0.0]
+            s.check(cas["name"], "réserve des bots : barres dessinées", len(bars) >= 2, f"barres {mode_info.get('reserve')}")
+            s.check(cas["name"], "réserve des bots : légende écrite", bool(mode_info.get("reserve_legend")))
         for key, zone in cas.get("zones", {}).items():
             s.check(cas["name"], f"{key} teinté en zone {zone}", zone_color_ok(w[key]["color"], zone),
                     f"teinte #{w[key]['color']}")

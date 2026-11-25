@@ -6,7 +6,7 @@ extends RefCounted
 ## les fiches, menu_flow.card()). La ligne « Créer » de la liste montre aussi l'explication de son
 ## sujet. Textes alignés sur docs/GUIDE_UTILISATION.md §5 et sur le core
 ## (workout.py : ERG_MIN_W, biais 80–120 % ; workout_formats.py :
-## syntaxe QWKcode, lot O20 ; saisie au clavier, qwk_editor.gd, lot O21).
+## syntaxe QWKcode, lot O20 ; la saisie au clavier du lot O21 est retirée au lot NI4, le fichier .qwk reste lu).
 ## Pas de class_name : charger par preload("res://scripts/workout_help.gd").
 
 const SCREEN := "workout_help"
@@ -18,7 +18,7 @@ const TOPICS := [
 		"La liste montre les entraînements de ~/OpenRide/Workouts/, du plus court au plus long.",
 		"A maintenu (Entrée au clavier) choisit l'entraînement ; Démarrer, sur l'écran Prêt, lance la séance.",
 		"Un fichier invalide reste grisé, avec son erreur.",
-		"Trois façons d'en ajouter : Créer, QWKcode au clavier, ou un fichier déposé dans ~/OpenRide/Workouts/.",
+		"Deux façons d'en ajouter : Créer, ou un fichier déposé dans ~/OpenRide/Workouts/.",
 	]],
 	["create", "Créer des intervalles", [
 		"Échauffement, répétitions effort et récupération (durée et % de la FTP), retour au calme.",
@@ -26,12 +26,11 @@ const TOPICS := [
 		"« Enregistrer et choisir » écrit le fichier .zwo et le choisit.",
 		"Mêmes réglages : pas de doublon. Aucun entraînement n'est remplacé : un nom déjà pris reçoit _2, _3…",
 	]],
-	["qwk", "Saisie QWKcode (GoldenCheetah)", [
+	["qwk", "Fichier QWKcode (GoldenCheetah)", [
 		"Une ligne par segment : [Nx] durée@puissance[-puissance] [rdurée@puissance].",
 		"Durée en h, m ou s (1m30s). Puissance en watts, ou en % de la FTP avec % (50-75%).",
 		"10m@130-220 : rampe de 130 à 220 W.   4x 5m@280 r3m@140 : 4 × (5 min à 280 W, 3 min à 140 W).",
-		"Une ligne # en tête donne le nom. « Saisir du QWKcode » : tape au clavier, Entrée change de ligne, flèches ← → jusqu'à Enregistrer.",
-		"Ou écris un fichier .qwk directement dans ~/OpenRide/Workouts/.",
+		"Une ligne # en tête donne le nom. Écris ces lignes dans un fichier .qwk posé dans ~/OpenRide/Workouts/.",
 	]],
 	["write", "Déposer un fichier", [
 		"Un fichier .zwo, .erg, .mrc ou .qwk posé dans ~/OpenRide/Workouts/ apparaît dans la liste ; invalide, il reste grisé avec son erreur.",

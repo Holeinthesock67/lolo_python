@@ -79,7 +79,7 @@ static func choose(theme: Dictionary, preset: String, forced: String, maps: int)
 ## Chemin complet de la texture `rel` pour le niveau `choice` : dossier du niveau, puis des niveaux
 ## inférieurs, puis racine du thème ; "" si absente partout ou hors du dossier du thème.
 static func resolve(theme_dir: String, rel: String, choice: Dictionary) -> String:
-	var base := ProjectSettings.globalize_path(theme_dir).simplify_path()
+	var base := theme_dir.simplify_path()
 	var dirs: Array[String] = []
 	var px := int(choice.get("px", 0))
 	for l in choice.get("levels", []):
