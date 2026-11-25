@@ -13,12 +13,6 @@
       }
     },
     {
-      "note": "Route engagée prolongée par le générateur dans la zone",
-      "journal": "engine",
-      "motif": "world_revision rev=",
-      "delai": 180
-    },
-    {
       "attendre": 50
     },
     {
@@ -93,6 +87,12 @@
     },
     {
       "appui": "LEFT_SHORT"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade (première prolongation vers 1,7 km, banc rZONES25 du 25/11)",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 400
     }
   ]
 }
