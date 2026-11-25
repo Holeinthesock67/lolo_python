@@ -8,6 +8,10 @@ autres a pris un tour (+20 points quand l'épreuve en donne), un tour de retard,
 (−20). Le classement se lit alors à tours égaux : un coureur qui a pris un tour passe les lignes
 « avec » le peloton (distance ajustée = distance − tours d'avance × tour), et finit devant lui.
 
+L'écart se lit sur la distance ajustée des autres (un doublé compte avec le peloton qui l'a repris) et
+plus aucun tour n'est pris ni perdu après la première arrivée (revue C3-01). La ligne qu'un tour perdu
+fait sauter est créditée sans rang (revue C3-03) : le doublé passe ensuite les lignes avec le peloton.
+
 Cloche quand la tête de la course entame le dernier tour. Arrivée de chacun au passage de la ligne au
 bout des `laps` tours (distance ajustée) ; une minute après la première arrivée, l'épreuve se clôt.
 """
@@ -95,8 +99,13 @@ class MassRace(TrackEvent):
             if not self._active(u) or u.finish_t is not None:
                 continue
             a0, a1 = u.d_prev - u.net * self.lap_m, u.d - u.net * self.lap_m
-            while u.next_mark <= self.laps and a0 < u.next_mark * self.lap_m <= a1:
-                crossings.append((cross_time(t0, a0, t1, a1, u.next_mark * self.lap_m), u.next_mark, u.id))
+            # Un tour perdu avance la distance ajustée d'un tour d'un coup (revue C3-03) : la ligne sautée est
+            # créditée sans rang (ni sprint ni place : elle n'a pas été disputée) ; l'arrivée, elle, est passée.
+            while u.next_mark < self.laps and u.next_mark * self.lap_m <= a0:
+                u.next_mark += 1
+            while u.next_mark <= self.laps and u.next_mark * self.lap_m <= a1:
+                mark = u.next_mark * self.lap_m
+                crossings.append((cross_time(t0, a0, t1, a1, mark) if a0 < mark else t0, u.next_mark, u.id))
                 u.next_mark += 1
         for tc, k, uid in sorted(crossings, key=lambda c: (c[0], c[1], c[2] != ME, c[2])):
             self._line(k, uid, tc)
@@ -130,11 +139,17 @@ class MassRace(TrackEvent):
         pass
 
     def _lap_changes(self, t: float) -> None:
+        """Tours pris et perdus, d'après l'écart à la médiane des autres prise en distance ajustée (un doublé
+        compte avec le peloton qui l'a repris, revue C3-01) ; plus aucun après la première arrivée : le peloton
+        se vide des arrivés et la médiane des restants ne dit plus rien de la course."""
+        if self._first_finish is not None:
+            return
         active = [u for u in self.units.values() if self._active(u) and u.finish_t is None]
         if len(active) < 3:
             return
+        adj = {u.id: self.adjusted(u) for u in active}   # avant ce pas : l'ordre des unités ne change rien
         for u in active:
-            med = statistics.median(o.d for o in active if o is not u)
+            med = statistics.median(adj[o.id] for o in active if o is not u)
             diff = u.d - med
             while diff >= (u.gained + 1) * self.lap_m:
                 u.gained += 1

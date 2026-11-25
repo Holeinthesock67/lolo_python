@@ -786,7 +786,8 @@ class RoadCyclists:
                     spd_now = min(spd_now, slowest)
             elif blocking or not faster:
                 spd_now = min(spd_now, slowest - FALL_BACK_MPS)
-        spd_now = self._behind_vehicles(g, spd_now)
+        # jamais à reculons derrière un usager arrêté (revue C5-06) : `v` de `state` reste positive dans le sens `dir`
+        spd_now = max(0.0, self._behind_vehicles(g, spd_now))
         g.s += direction * spd_now * dt_s
         g.step_mps = spd_now
         rel = g.s - rider_s

@@ -484,7 +484,7 @@ func rogue_lines(rogue: Dictionary) -> Array:
 	out.append({"label": "Boss", "value": str(ROGUE_BOSS.get(str(rogue.get("boss", "")), "—")), "unit": ""})
 	out.append({"label": "Or", "value": str(int(rogue.get("gold", 0))), "unit": ""})
 	out.append({"label": "Cartes", "value": str((rogue.get("cards", []) as Array).size()), "unit": ""})
-	out.append({"label": "Perfect Shifts", "value": str(int(rogue.get("perfect_shifts", 0))), "unit": ""})
+	out.append({"label": "Changements parfaits", "value": str(int(rogue.get("perfect_shifts", 0))), "unit": ""})
 	var unlocks: Array = rogue.get("unlocks", [])
 	if not unlocks.is_empty():
 		out.append({"label": "Déblocages", "value": ", ".join(PackedStringArray(unlocks)), "unit": ""})
