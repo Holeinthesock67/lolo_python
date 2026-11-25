@@ -966,7 +966,7 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("end_session", {"save": false})
 			world_menu_view.vm.reset()
 		"world_search":
-			ipc.send_command("world_search", {"query": act["query"]})
+			world_menu_view.vm.search_request = ipc.send_command("world_search", {"query": act["query"]})
 		"world_map":
 			ipc.send_command("world_map", {"lat": act["lat"], "lon": act["lon"], "radius_m": act["radius_m"]})
 		"world_pin":
@@ -982,7 +982,7 @@ func _on_world_menu_received(kind: String, msg: Dictionary) -> void:
 	var vm = world_menu_view.vm
 	match kind:
 		"places":
-			vm.on_places(msg.get("items", []))
+			vm.on_places(msg.get("items", []), int(msg.get("request_cmd_id", -1)))
 		"world_map":
 			vm.on_map(msg)
 		"world_regions":

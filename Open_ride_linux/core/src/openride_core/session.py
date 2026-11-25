@@ -2171,7 +2171,8 @@ class CoreSession:
         wm.network = self.cfg.open_world.network   # réglage Avancé (lot O27) pris sans relancer
         try:
             if name == "world_search":
-                msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"))
+                # Numéro pris ici, dans l'ordre des commandes : seule la dernière saisie interroge Nominatim.
+                msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"), wm.new_search())
             elif name == "world_map":
                 msgs = await asyncio.to_thread(wm.world_map, cmd_id, args)
             else:

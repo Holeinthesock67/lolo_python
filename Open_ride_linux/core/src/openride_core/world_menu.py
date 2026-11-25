@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import subprocess
+import threading
 import time
 import unicodedata
 import urllib.parse
@@ -72,6 +73,12 @@ class WorldMenu:
         self.sleep = sleep
         self._last_nominatim = -1e9
         self.nominatim_requests = 0
+        # Recherches lancées chacune dans un fil (une par lettre tapée) : Nominatim est interrogé une requête à la
+        # fois (verrou), et seulement pour la dernière recherche demandée (`new_search`) ; les saisies déjà
+        # dépassées n'y vont pas (bancs du 25 novembre : réponses dans le désordre, politique de Nominatim qui
+        # exclut l'autocomplétion).
+        self._nominatim_lock = threading.Lock()
+        self._search_ticket = 0
         self._places: list[tuple[str, str, str, float, float]] = []   # (nom replié, nom, genre, lat, lon)
         try:
             doc = json.loads(Path(places_path).read_text(encoding="utf-8"))
@@ -106,13 +113,27 @@ class WorldMenu:
             return {}
         return out
 
-    def nominatim(self, text: str) -> list[dict[str, Any]]:
-        wait = self._last_nominatim + NOMINATIM_PERIOD_S - self.clock()
-        if wait > 0:
-            self.sleep(wait)
-        self._last_nominatim = self.clock()
-        self.nominatim_requests += 1
-        url = NOMINATIM_URL + "?" + urllib.parse.urlencode({"q": text, "format": "jsonv2", "limit": 10})
+    def new_search(self) -> int:
+        """Numéro de la recherche demandée, à prendre dans l'ordre d'arrivée des commandes (boucle du core) et à
+        passer à `search` : une recherche dont le numéro n'est plus le dernier ne demande rien à Nominatim."""
+        self._search_ticket += 1
+        return self._search_ticket
+
+    def nominatim(self, text: str, ticket: int | None = None) -> list[dict[str, Any]]:
+        with self._nominatim_lock:
+            if ticket is not None and ticket != self._search_ticket:
+                return []   # saisie dépassée : la réponse serait ignorée par l'engine
+            wait = self._last_nominatim + NOMINATIM_PERIOD_S - self.clock()
+            if wait > 0:
+                self.sleep(wait)
+                if ticket is not None and ticket != self._search_ticket:
+                    return []
+            self._last_nominatim = self.clock()
+            self.nominatim_requests += 1
+            url = NOMINATIM_URL + "?" + urllib.parse.urlencode({"q": text, "format": "jsonv2", "limit": 10})
+            return self._nominatim_fetch(url)
+
+    def _nominatim_fetch(self, url: str) -> list[dict[str, Any]]:
         try:
             rows = json.loads(self.fetch(url, {"User-Agent": USER_AGENT, "Accept-Language": "fr"}, 10.0))
             return [{"name": str(r["display_name"])[:120], "kind": place_kind(r.get("type", "")), "lat": round(float(r["lat"]), 5),
@@ -123,7 +144,7 @@ class WorldMenu:
 
     # --- commandes -----------------------------------------------------------------------------
 
-    def search(self, request_cmd_id: int, text: Any) -> list[dict[str, Any]]:
+    def search(self, request_cmd_id: int, text: Any, ticket: int | None = None) -> list[dict[str, Any]]:
         text = text.strip() if isinstance(text, str) else ""
         items: list[dict[str, Any]] = []
         if text:
@@ -131,7 +152,7 @@ class WorldMenu:
             items += [{**i, "kind": place_kind(i.get("kind"))}
                       for i in self.query("search", "--text", text, "--limit", str(MAX_PLACES)).get("items", [])]
             if self.network and len(items) < MAX_PLACES:
-                items += self.nominatim(text)
+                items += self.nominatim(text, ticket)
         seen: set[tuple[str, int, int]] = set()
         unique = []
         for it in items:
