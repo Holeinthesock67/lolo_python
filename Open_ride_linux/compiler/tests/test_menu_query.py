@@ -75,3 +75,62 @@ def test_cli_outputs_one_json_line(cache, tmp_path, capsys, monkeypatch) -> None
     assert json.loads(capsys.readouterr().out)["items"][0]["pinned"] is True
     assert menu_query.main(["--config", str(cfg), "map", "--lat", str(LAT), "--lon", str(LON), "--radius", "4000"]) == 0
     assert len(json.loads(capsys.readouterr().out)["roads"]) == 1
+
+
+# --- carte du départ sans tuiles sur le PC (25 novembre) -----------------------------------------------
+
+def _grid_net():
+    import re
+    from pathlib import Path
+
+    from openride_compiler.worldgen import mvt, vector_tiles as vt
+
+    def tile(_x: int, _y: int) -> bytes:
+        return mvt.encode_tile({"transportation": [
+            {"id": 1, "type": 2, "tags": {"class": "tertiary"}, "paths": [([(-64, 2048), (4160, 2048)], False)]},
+            {"id": 2, "type": 2, "tags": {"class": "minor"}, "paths": [([(2048, -64), (2048, 4160)], False)]}]})
+
+    class Net:
+        def __init__(self) -> None:
+            self.urls: list[str] = []
+
+        def get(self, url: str) -> bytes:
+            self.urls.append(url)
+            assert url == vt.TILEJSON_URL
+            return json.dumps({"tiles": ["https://tuiles.invalid/t/{z}/{x}/{y}.pbf"]}).encode()
+
+        def download(self, url: str, dest: Path) -> int:
+            self.urls.append(url)
+            _z, x, y = map(int, re.findall(r"/(\d+)/(\d+)/(\d+)\.pbf$", url)[0])
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(tile(x, y))
+            return dest.stat().st_size
+
+    return Net()
+
+
+def test_map_downloads_missing_tiles_so_the_map_is_not_empty(tmp_path) -> None:
+    """Lieu jamais visité : la carte du départ était vide (seul le curseur) ; les tuiles autour du point sont
+    téléchargées, la base `tuiles` devient une région, et la carte montre des routes."""
+    c = WorldCache(tmp_path / "monde", 10**9, dem_dir=tmp_path / "dem", log=lambda _: None)
+    assert menu_query.world_map(c, 43.0, 4.6, 8000.0) == []
+    net = _grid_net()
+    n = menu_query.map_tiles(c, 43.0, 4.6, True, net=net)
+    assert n > 0 and any(".pbf" in u for u in net.urls)
+    roads = menu_query.world_map(c, 43.0, 4.6, 8000.0)
+    assert len(roads) >= 4
+    asked = len(net.urls)
+    menu_query.map_tiles(c, 43.0, 4.6, True, net=net)     # deuxième ouverture : rien de retéléchargé
+    assert len(net.urls) == asked
+
+
+def test_map_offline_reads_tiles_already_there_and_creates_nothing_otherwise(tmp_path) -> None:
+    c = WorldCache(tmp_path / "monde", 10**9, dem_dir=tmp_path / "dem", log=lambda _: None)
+    assert menu_query.map_tiles(c, 43.0, 4.6, False) == 0
+    assert not c.osm_db_path("tuiles").exists() and c.regions() == []
+    menu_query.map_tiles(c, 43.0, 4.6, True, net=_grid_net())
+    c.osm_db_path("tuiles").unlink()                       # base refaite depuis les tuiles du PC, sans réseau
+    for suffix in ("-wal", "-shm"):
+        c.osm_db_path("tuiles").with_name(c.osm_db_path("tuiles").name + suffix).unlink(missing_ok=True)
+    assert menu_query.map_tiles(c, 43.0, 4.6, False) > 0
+    assert menu_query.world_map(c, 43.0, 4.6, 8000.0)
