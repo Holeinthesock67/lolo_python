@@ -1,0 +1,22 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+11.8;1;10;0;0;0;0;5;
+26.8;1;10;0;0;0;0;5;
+41.8;1;10;0;0;0;0;6;voice_allez=1
+56.8;1;10;0;0;1;0;6;raptor_cry=1 voice_allez=1
+71.8;1;10;0;0;1;1;6;airliner_rumble=1 raptor_cry=1 voice_allez=2
+86.8;1;15;0;0;1;1;6;airliner_rumble=1 raptor_cry=1 voice_allez=2
+101.8;0;15;0;0;1;2;6;airliner_rumble=2 raptor_cry=1 voice_allez=2
+116.8;0;15;0;0;0;2;6;airliner_rumble=2 raptor_cry=1 voice_allez=2
+131.8;0;15;0;0;1;2;6;airliner_rumble=2 raptor_cry=1 voice_allez=2
+146.8;0;15;0;0;1;2;6;airliner_rumble=2 raptor_cry=1 voice_allez=2
+161.8;0;15;0;0;1;2;6;airliner_rumble=2 raptor_cry=1 voice_allez=2
+176.8;0;15;0;0;4;2;4;airliner_rumble=2 raptor_cry=1 voice_allez=2
+191.8;0;15;0;0;4;2;4;airliner_rumble=2 raptor_cry=1 voice_allez=2
+206.8;0;15;0;0;6;2;3;airliner_rumble=2 raptor_cry=1 voice_allez=2
+221.8;9;15;1;0;4;2;3;airliner_rumble=2 raptor_cry=1 vehicle_pass=1 voice_allez=2 voice_bonjour=1
+236.8;48;21;1;0;4;2;0;airliner_rumble=2 raptor_cry=1 vehicle_pass=1 voice_allez=2 voice_bonjour=1
+251.8;48;21;1;0;4;2;0;airliner_rumble=2 raptor_cry=1 vehicle_pass=1 voice_allez=3 voice_bonjour=1
+266.8;48;21;0;0;4;2;0;airliner_rumble=2 raptor_cry=1 vehicle_pass=1 voice_allez=3 voice_bonjour=1
+281.8;48;21;0;1;7;2;0;airliner_rumble=2 raptor_cry=1 vehicle_pass=1 voice_allez=3 voice_bonjour=1
+296.8;48;21;1;1;6;2;0;airliner_rumble=2 raptor_cry=1 tractor_engine=1 vehicle_pass=1 voice_allez=3 voice_bonjour=1
+301.2;48;21;1;1;6;2;0;airliner_rumble=2 raptor_cry=1 tractor_engine=1 vehicle_pass=1 voice_allez=3 voice_bonjour=1
