@@ -17,6 +17,7 @@ from typing import Any, Mapping
 from ..bot_tactics import RaceView, draw
 from ..bots import RaceHint
 from ..draft import BIKE_LENGTH_M, LANE_MAX_M, LANE_MIN_M
+from ..velodrome import lane_for_height
 from .base import TrackEvent
 from .elimination import Elimination
 from .keirin import Keirin
@@ -28,7 +29,9 @@ from .pursuit import Pursuit
 from .tempo import FROM_LAP, Tempo
 
 POLE_LANE_M = LANE_MAX_M        # à la corde (ligne de mesure) : poursuites et relais en tête
-TOP_LANE_M = LANE_MIN_M         # en haut de la piste : repos de l'américaine, coureurs sortis, relayeur qui remonte
+TOP_LANE_M = LANE_MIN_M         # en haut de la piste : repos de l'américaine, relayeur qui remonte
+OUT_HEIGHT_M = 5.5              # coureur sorti (éliminé, déclassé, lâché, écarté) ou épreuve finie : rangé en haut de la piste de 7 m,
+OUT_LANE_M = lane_for_height(OUT_HEIGHT_M)   # loin de la ligne des stayers (2,45 m), hors de la course (essai du 22/11)
 EASY_CP = 0.55                  # coureur au repos ou sorti : allure libre
 NEUTRAL_CP = 0.75               # tour neutralisé de l'omnium
 SPRINT_FROM_M = {"sprinter": (200.0, 280.0), "rouleur": (350.0, 550.0), "climber": (300.0, 450.0),
@@ -54,7 +57,7 @@ class BotPlan:
         self.profiles = dict(profiles)
         self.seed = int(seed)
         self._swing: dict[str, float] = {}   # relayeur → fin de sa remontée (temps de l'épreuve)
-        self._seen_journal = 0
+        self._seen_relays = 0
         self._reserve: dict[str, float] = {}
 
     # --- entrée ---
@@ -68,9 +71,9 @@ class BotPlan:
             for b in self.profiles:
                 hints[b] = RaceHint(power_cp=NEUTRAL_CP)
             return hints, None, survival
-        if ev.finished:
+        if ev.finished:         # épreuve finie : tous rangés en haut, le cycliste continue de rouler (fil RT1)
             for b in self.profiles:
-                hints[b] = RaceHint(power_cp=EASY_CP, lane_m=TOP_LANE_M)
+                hints[b] = RaceHint(power_cp=EASY_CP, lane_m=OUT_LANE_M, parked=True)
             return hints, None, survival
         view = None
         if isinstance(ev, Pursuit):
@@ -80,9 +83,9 @@ class BotPlan:
             view = self._elimination_view(ev)
         elif isinstance(ev, MassRace):
             view = self._mass(ev, hints)
-        for rid, r in ev.riders.items():   # sortis (éliminé, déclassé, lâché, écarté) : allure libre en haut
+        for rid, r in ev.riders.items():   # sortis (éliminé, déclassé, lâché, écarté) : allure libre, rangés en haut
             if rid in hints and r.out is not None:
-                hints[rid] = RaceHint(power_cp=EASY_CP, lane_m=TOP_LANE_M)
+                hints[rid] = RaceHint(power_cp=EASY_CP, lane_m=OUT_LANE_M, parked=True)
                 survival.pop(rid, None)
         return hints, view, survival
 
@@ -96,10 +99,11 @@ class BotPlan:
 
     def _pursuit(self, ev: Pursuit, hints: dict[str, RaceHint | None]) -> None:
         t = ev.elapsed_s
-        for line in ev.journal[self._seen_journal:]:   # relayeur qui vient de passer : il remonte
-            if line.get("event") == "relay":
-                self._swing[line["rider"]] = t + SWING_UP_S
-        self._seen_journal = len(ev.journal)
+        # relayeur qui vient de passer : il remonte. Liste des relais de l'épreuve, pas son journal : la séance
+        # vide le journal à chaque pas, avant que le plan le lise (revue C3-04).
+        for _, rider in ev.relays[self._seen_relays:]:
+            self._swing[rider] = t + SWING_UP_S
+        self._seen_relays = len(ev.relays)
         for tm in ev.teams.values():
             racing = [i for i in tm.order if ev.riders[i].out is None]
             for k, rid in enumerate(racing):

@@ -86,6 +86,33 @@ func _run() -> void:
 		and int((wf["index"] as Vector4).y) == BiomeIds.BIOMES.find("savanna"),
 		"tuile en fjord : la côte prend le sol du fjord, la savane le sien")
 	_check(bt.material.get_shader_parameter("layer_color").size() == BiomeTextures.MAX_LAYERS, "matériau de base : %d couleurs de couche" % BiomeTextures.MAX_LAYERS)
+	# Partie 2 (lot U25-p2) : strates, gradins, cascades par emplacement ; un couple qui ne décrit que l'eau a un emplacement
+	var names := BiomeTextures.slot_names(theme)
+	var strata: Array = bt.material.get_shader_parameter("slot_strata")
+	var terr: Array = bt.material.get_shader_parameter("slot_terraces")
+	var falls: Array = bt.material.get_shader_parameter("slot_falls")
+	var water: Array = bt.material.get_shader_parameter("slot_water")
+	_check(strata.size() == BiomeTextures.MAX_SLOTS and terr.size() == BiomeTextures.MAX_SLOTS and falls.size() == BiomeTextures.MAX_SLOTS
+		and water.size() == BiomeTextures.MAX_SLOTS and (bt.material.get_shader_parameter("strata_color") as Array).size() == BiomeTextures.MAX_STRATA_COLORS
+		and code.contains("const int MAX_STRATA_COLORS = %d;" % BiomeTextures.MAX_STRATA_COLORS),
+		"aspect des emplacements : %d entrées, %d couleurs de strates (shader compris)" % [BiomeTextures.MAX_SLOTS, BiomeTextures.MAX_STRATA_COLORS])
+	var i_canyon := names.find("rock_desert|canyon")
+	var i_rice := names.find("farmland|rizieres")
+	var i_fjf := names.find("temperate_forest|fjord")
+	_check(i_canyon >= 0 and (strata[i_canyon] as Vector4).y > 0.0 and (strata[i_canyon] as Vector4).w >= 2.0
+		and (strata[BiomeIds.BIOMES.find("rock_desert")] as Vector4) == Vector4.ZERO,
+		"strates : désert de roche en canyon seulement")
+	var rice_water: Color = model.params("farmland", "", 0.0, {"landscape": "rizieres"})["water"]["color"]
+	_check(i_rice >= 0 and (terr[i_rice] as Vector4).x > 0.0 and (terr[BiomeIds.BIOMES.find("farmland")] as Vector4) == Vector4.ZERO
+		and Color((water[i_rice] as Vector4).x, (water[i_rice] as Vector4).y, (water[i_rice] as Vector4).z).is_equal_approx(rice_water),
+		"gradins : cultures en rizières, eau du paysage")
+	_check(i_fjf >= 0 and (falls[i_fjf] as Vector4).x > 0.0 and (falls[BiomeIds.BIOMES.find("temperate_forest")] as Vector4) == Vector4.ZERO
+		and BiomeTextures.slot_of(theme, "temperate_forest", "fjord") == i_fjf,
+		"cascades : forêt tempérée en fjord (emplacement ouvert par l'eau seule), pas hors du fjord")
+	var all_strata := 0
+	for v in strata:
+		all_strata += int((v as Vector4).w)
+	_check(all_strata <= BiomeTextures.MAX_STRATA_COLORS, "couleurs de strates du thème par défaut : %d (au plus %d)" % [all_strata, BiomeTextures.MAX_STRATA_COLORS])
 
 	# 3. Biomes en usage : forçage, parts du manifeste, sinon tous
 	_check(bt.biomes_in_use() == ["savanna"], "biome forcé : seul en usage")

@@ -71,7 +71,7 @@ bonus = { shield_max = 10.0 }
 [[chassis]]
 id = "conducteur"
 name = "Conducteur"
-text = "Fenêtre de Perfect Shift +0,15 s"
+text = "Fenêtre du changement parfait +0,15 s"
 unlock = "perfect_shifts"
 threshold = 50
 bonus = { ps_window_s = 0.15 }
