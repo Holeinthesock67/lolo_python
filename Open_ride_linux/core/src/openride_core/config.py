@@ -551,6 +551,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
     ("render", "living"): "décor vivant coupé pour les bancs, retiré du menu au lot NI4 (coût réglé par la qualité)",
     ("render", "texture_level"): "niveau des textures imposé pour les bancs, retiré du menu au lot NI2 (auto suit la qualité)",
+    ("bots", "level_pct"): "niveau des bots imposé pour les bancs et la séance conseillée, retiré du menu au lot NI3 "
+                           "(la ligne « Intensité » règle seule la force des bots)",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
     ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",

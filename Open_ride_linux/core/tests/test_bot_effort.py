@@ -30,6 +30,8 @@ def test_objectives_validated_on_15_november():
     assert CHOICES[("bots", "objective")] == tuple(be.OBJECTIVES)
     assert ("bots", "objective") in PROFILE_KEYS                 # réglage du joueur, gardé d'une séance à l'autre
     assert any(s.key == "bots.objective" for s in SETTINGS)
+    # Lot NI3 : sa seule place est la ligne « Intensité du jour » des écrans Prêt, plus « Réglages › Séance »
+    assert next(s for s in SETTINGS if s.key == "bots.objective").menu_group == "screen"
     assert be.share_pct("inconnu") == 80.0
 
 

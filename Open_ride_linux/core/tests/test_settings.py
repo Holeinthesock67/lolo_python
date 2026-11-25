@@ -438,7 +438,7 @@ def test_lot_ni2_one_place_per_setting_and_rule_for_useless_lines():
     items = settings.current(cfg)
     by_key = {it["key"]: it for it in items}
     screen = [k for k, it in by_key.items() if it["group"] == settings.SCREEN_GROUP]
-    assert screen and all(k.split(".")[0] in settings.SCREEN_SECTIONS for k in screen)
+    assert screen and all(k.split(".")[0] in settings.SCREEN_SECTIONS or k in settings.SCREEN_KEYS for k in screen)
     assert {"survivor.opponents", "grandprix.chaos", "coach.objectif"} <= set(screen)
     assert not [k for k, it in by_key.items() if k.split(".")[0] in settings.SCREEN_SECTIONS and k not in screen]
     assert "render.texture_level" not in by_key

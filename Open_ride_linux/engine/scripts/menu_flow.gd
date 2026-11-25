@@ -102,14 +102,14 @@ const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et surviv
 const SURVIVOR_SPACING_KM := [1, 3]
 ## Aide des touches sur une ligne de réglage de l'écran Prêt d'un mode (essai du 4 novembre).
 const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
-const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread",
-	"survivor.after_out"]
+## Lot NI3 : plus de « Niveau des bots » ; la force se choisit sur la ligne « Intensité du jour » seule.
+const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "survivor.spread", "survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
 ## Grand Prix des objets (lot GP9) : réglages de l'écran Prêt dans l'ordre du plan (§4.4), tours du circuit
 ## seulement (lot GPL1 : le Grand Prix se court sur une boucle), et préfixe des libellés du core.
-## Objectif des bots : ligne « Intensité » (lot R1).
-const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "bots.level_pct", "grandprix.chaos",
-	"grandprix.box_every_m"]
+## Objectif des bots : ligne « Intensité » (lot R1) ; lot NI3 : plus de « Niveau des bots », la force se choisit
+## sur la ligne « Intensité du jour » seule.
+const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "grandprix.chaos", "grandprix.box_every_m"]
 ## Course (lot CR1) en ligne la plus courte (`grandprix.boxes.MIN_COURSE_M` du core) ; le Grand Prix des objets
 ## se court sur une boucle (lot GPL1).
 const GP_MIN_COURSE_M := 1000.0
@@ -1658,7 +1658,7 @@ static func mode_label(label: String, prefix: String) -> String:
 
 # --- effort des bots en watts sur l'écran Prêt (lot GP-niv) et cote Elo (lot BOT-elo) ----------------------
 
-const PREVIEW_KEYS := ["bots.level_pct", "bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
+const PREVIEW_KEYS := ["bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
 	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps",
 	"race.opponents", "race.laps"]   # race.* : Course (lot CR1), la durée suit les tours et le plateau
 
@@ -1823,7 +1823,7 @@ static func grandprix_launch(laps: int, route: Dictionary) -> Dictionary:
 ## Réglages de l'écran Prêt de la Course (lot CR1) : tours sur une boucle ; en ligne, la course va jusqu'à l'arrivée.
 static func race_keys(route: Dictionary) -> Array:
 	var line := not route.is_empty() and str(route.get("route_type", "")) != "loop"
-	return ["race.opponents"] + ([] if line else ["race.laps"]) + ["bots.level_pct"]   # objectif : ligne « Intensité » (R1)
+	return ["race.opponents"] + ([] if line else ["race.laps"])   # force des bots : ligne « Intensité » seule (R1, NI3)
 
 
 ## Ligne « Lancer » de la Course (lot CR1) : {enabled, detail, advice}. Boucle : tours et longueur ; en ligne :

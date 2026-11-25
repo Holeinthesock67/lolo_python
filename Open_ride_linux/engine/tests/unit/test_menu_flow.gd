@@ -911,7 +911,7 @@ func _test_route_import(f) -> void:
 	f.handle("Y_SHORT")
 
 
-## Bots choisis sur l'écran Prêt (lot O7) : `start` avec l'argument `bots`.
+## Bots de l'écran Prêt (lots O7 et PL1 ; lot NI3 : plus de lignes « Bot n ») : `start` avec l'argument `bots`.
 func _test_bots_menu() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
@@ -919,92 +919,43 @@ func _test_bots_menu() -> void:
 	f.set_routes(ROUTES)
 	f.handle("PLUS_SHORT")   # Session libre
 	f.handle("A_LONG")
-	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot1", "ghost", "peloton", "records"],
-		"écran Prêt : bot, fantôme et peloton avant les records (%s)" % str(_ids(f)))
-	_check(f.state()["items"][3]["label"] == "Bot 1 : aucun" and f.state()["items"][4]["label"] == "Fantôme de la dernière séance : non",
-		"par défaut : aucun bot, pas de fantôme")
+	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "ghost", "peloton", "records"],
+		"écran Prêt : fantôme et peloton avant les records, plus de ligne « Bot 1 » (%s)" % str(_ids(f)))
+	_check(f.state()["items"][3]["label"] == "Fantôme de la dernière séance : non", "par défaut : pas de fantôme")
 	_check(f.handle("A_LONG") == {"action": "start"}, "sans bot : start sans argument (les bots de la ligne de commande restent)")
 	f.handle("MINUS_SHORT")   # Records (boucle depuis Démarrer)
 	f.handle("MINUS_SHORT")   # Peloton (lot PL1)
 	f.handle("MINUS_SHORT")   # Fantôme
 	_check(_focus_id(f) == "ghost", "focus sur le fantôme")
-	f.handle("MINUS_SHORT")   # Bot
-	for i in range(4):
-		f.handle("A_LONG")
-	_check(f.state()["items"][3]["label"] == "Bot 1 : 90 % de la FTP" and f.state()["screen"] == "ready", "A long : bot suivant (%s)" % f.state()["items"][3]["label"])
-	_check(_ids(f) == ["start", "workout", "change_route", "bot1", "bot2", "ghost", "peloton", "records"]
-		and f.state()["items"][4]["label"] == "Bot 2 : aucun", "lot O35 : un bot choisi ouvre la ligne « Bot 2 » (%s)" % str(_ids(f)))
-	f.handle("PLUS_SHORT")
-	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")
-	_check(f.state()["items"][5]["label"] == "Fantôme de la dernière séance : oui", "fantôme demandé")
-	for i in range(5):
+	_check(f.state()["items"][3]["label"] == "Fantôme de la dernière séance : oui", "fantôme demandé")
+	for i in range(3):
 		f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "start", "retour sur Démarrer")
 	var act: Dictionary = f.handle("A_LONG")
-	_check(act == {"action": "start", "args": {"bots": [{"kind": "constant", "ftp_pct": 90}, {"kind": "ghost"}]}},
-		"start avec bot à 90 %% de la FTP et fantôme (%s)" % str(act))
+	_check(act == {"action": "start", "args": {"bots": [{"kind": "ghost"}]}}, "start avec le fantôme (%s)" % str(act))
 	f.on_error("bot_invalid", "aucune séance passée sur le parcours « vosges » pour le fantôme")
 	_check(f.state()["status"].begins_with("Échec : aucune séance passée"), "refus du core sur la ligne d'état")
 	f.handle("PLUS_SHORT")
 	_check(f.state()["status"] == "", "ligne d'état effacée à l'appui suivant")
-	# Un bot de 250 W seul, avec un test de FTP préparé : les deux arguments partent ensemble.
+	# Un peloton de 4, avec un test de FTP préparé : les deux arguments partent ensemble.
 	var g = MenuFlow.new()
 	g.connect_done = true
 	g.on_state({"session_state": "IDLE", "route_id": "vosges"})
 	g.set_routes(ROUTES)
 	g.menu.prepare_start("test de FTP (rampe)", {"ftp_test": "ramp"})
-	g.menu.bot_choices.assign([2])
+	g.menu.peloton = 4
 	g.menu._refresh_home()
-	_check(g.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp", "bots": [{"kind": "constant", "power_w": 250}]}},
-		"test de FTP et bot : arguments réunis")
+	var ga: Dictionary = g.handle("A_LONG")
+	_check(ga.get("args", {}).get("ftp_test", "") == "ramp" and (ga["args"]["bots"] as Array).size() == 4,
+		"test de FTP et peloton : arguments réunis (%s)" % str(ga))
 	g.menu.reset()
-	_check(g.menu.bot_choices == [2] and not g.menu.ghost, "nouvelle séance : le bot de la séance lancée reste choisi (lot O32)")
-	# Bots à profil (lot T13) : après les bots constants, chaque profil à 90, 100 et 110 % de la FTP.
-	var labels: Array = []
-	for c in MenuModel.BOT_CHOICES:
-		labels.append(c[0])
-	_check(labels.slice(7) == ["Grimpeur 90 %", "Grimpeur 100 %", "Grimpeur 110 %", "Rouleur 90 %", "Rouleur 100 %",
-		"Rouleur 110 %", "Sprinteur 90 %", "Sprinteur 100 %", "Sprinteur 110 %", "Diesel 90 %", "Diesel 100 %", "Diesel 110 %"],
-		"profils et niveaux au menu (%s)" % str(labels))
-	g.menu.bot_choices.assign([9])
-	_check(g.menu._start_args() == {"bots": [{"kind": "profile", "profile": "climber", "level_pct": 110}]},
-		"start avec un grimpeur à 110 %% (%s)" % str(g.menu._start_args()))
-	_test_four_bots()
-
-
-## Quatre bots et le fantôme (lot O35) : la limite du core (MAX_CONSTANT_BOTS), une ligne par bot, « aucun »
-## retire le bot et remonte les suivants.
-func _test_four_bots() -> void:
-	var m = MenuModel.new()
-	m.set_world("vosges", "Vosges")
-	m.focus_item("ride")
-	m.handle("A_LONG")   # écran Prêt
-	for n in range(MenuModel.MAX_BOTS):
-		m.focus_item("bot%d" % (n + 1))
-		for i in range(n + 1):
-			m.handle("A_LONG")   # Bot n+1 : 200 W, 250 W, 300 W, 90 % de la FTP
-	var ids: Array = []
-	for it in m.state()["items"]:
-		ids.append(it["id"])
-	_check(ids == ["start", "workout", "change_route", "bot1", "bot2", "bot3", "bot4", "ghost", "peloton", "records"],
-		"quatre bots : pas de cinquième ligne (%s)" % str(ids))
-	_check(m.state()["items"][6]["label"] == "Bot 4 : 90 % de la FTP", "libellé du 4e bot (%s)" % m.state()["items"][6]["label"])
-	m.ghost = true
-	_check(m._start_args() == {"bots": [{"kind": "constant", "power_w": 200}, {"kind": "constant", "power_w": 250},
-		{"kind": "constant", "power_w": 300}, {"kind": "constant", "ftp_pct": 90}, {"kind": "ghost"}]},
-		"start avec quatre bots et le fantôme (%s)" % str(m._start_args()))
-	# Bot 2 remis à « aucun » (fin du cycle) : retiré, Bot 3 et Bot 4 remontent, une ligne vide revient.
-	m.focus_item("bot2")
-	for i in range(MenuModel.BOT_CHOICES.size() - 2):
-		m.handle("A_LONG")
-	_check(m.bot_choices == [1, 3, 4], "bot 2 retiré, les suivants remontent (%s)" % str(m.bot_choices))
-	_check(m.state()["items"][6]["label"] == "Bot 4 : aucun", "ligne « Bot 4 : aucun » revenue")
+	_check(g.menu.peloton == 4 and not g.menu.ghost, "nouvelle séance : le peloton de la séance lancée reste choisi (lot O32)")
 	_test_peloton_menu()
 
 
-## Peloton (lot PL1) : « Peloton : aucun », A long : 4, 8, 11 bots à profil sans niveau (celui du réglage), coupé
-## pour ne pas dépasser 11 bots avec ceux choisis un par un ; repris des derniers choix.
+## Peloton (lot PL1) : « Peloton : aucun », A long : 4, 8, 11 bots à profil sans niveau (réglés par l'Intensité du
+## jour et la cote, lot NI3) ; repris des derniers choix, sans les anciens bots choisis un par un.
 func _test_peloton_menu() -> void:
 	var m = MenuModel.new()
 	m.set_world("vosges", "Vosges")
@@ -1015,24 +966,23 @@ func _test_peloton_menu() -> void:
 	for i in range(3):
 		m.handle("A_LONG")   # 4, 8, 11
 	_check(m.state()["items"][m.state()["focus"]]["label"] == "Peloton : 11 bots", "A long : 4, 8 puis 11 bots")
-	var args: Dictionary = m._start_args()
-	_check(args["bots"].size() == 11 and args["bots"][0] == {"kind": "profile", "profile": "rouleur"}
-		and args["bots"][1] == {"kind": "profile", "profile": "climber"}, "onze bots à profil, en cycle (%s)" % str(args["bots"].slice(0, 2)))
-	m.bot_choices.assign([1, 2, 3, 4])
 	m.ghost = true
-	m._refresh_home()
-	args = m._start_args()
-	_check(args["bots"].size() == 12 and m.peloton_size() == 7 and args["bots"][-1] == {"kind": "ghost"},
-		"quatre bots choisis : peloton coupé à 7, fantôme en plus (%d)" % args["bots"].size())
+	var args: Dictionary = m._start_args()
+	_check(args["bots"].size() == 12 and args["bots"][0] == {"kind": "profile", "profile": "rouleur"}
+		and args["bots"][1] == {"kind": "profile", "profile": "climber"} and args["bots"][-1] == {"kind": "ghost"},
+		"onze bots à profil, en cycle, fantôme en plus (%s)" % str(args["bots"].slice(0, 2)))
 	m.focus_item("peloton")
 	m.handle("A_LONG")
 	_check(m.peloton == 0 and not m._start_args()["bots"].any(func(b): return MenuModel._is_peloton_bot(b)), "A long après 11 : plus de peloton")
-	# Derniers choix (lot O32) : 4 bots, 7 bots de peloton et le fantôme reviennent tels quels
+	# Derniers choix (lot O32) : peloton et fantôme repris ; un ancien bot choisi un par un (avant NI3) est sauté
 	var n = MenuModel.new()
 	n.set_last_choices({"bots": args["bots"]})
-	_check(n.bot_choices == [1, 2, 3, 4] and n.peloton_size() == 7 and n.ghost, "derniers choix : peloton repris (%d)" % n.peloton_size())
+	_check(n.peloton_size() == 11 and n.ghost, "derniers choix : peloton repris (%d)" % n.peloton_size())
+	n.set_last_choices({"bots": [{"kind": "constant", "power_w": 200}, {"kind": "profile", "profile": "climber", "level_pct": 110}]
+		+ (args["bots"] as Array).slice(0, 7)})
+	_check(n.peloton == 8 and not n.ghost, "ancien choix : bots un par un sautés, 7 bots de peloton : 8 (%d)" % n.peloton)
 	n.set_last_choices({"bots": [{"kind": "profile", "profile": "diesel"}]})
-	_check(n.peloton == 4 and n.bot_choices.is_empty(), "un seul bot de peloton : la plus petite taille, 4")
+	_check(n.peloton == 4, "un seul bot de peloton : la plus petite taille, 4")
 
 
 ## Lot NI4 : la saisie du QWKcode au clavier (lot O21) est retirée ; « Créer un entraînement » reste, et l'aide
