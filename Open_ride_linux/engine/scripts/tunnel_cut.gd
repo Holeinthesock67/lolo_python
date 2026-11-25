@@ -9,11 +9,18 @@ extends RefCounted
 ## (`tunnel_cut_data`, 3 texels RGBA float par tronçon), avec leur nombre (`tunnel_cut_count`) et la boîte qui les
 ## contient (`tunnel_cut_box`, test rapide du shader). Refait seulement si le registre change ou si la caméra a
 ## bougé de plus de MOVE_M. Variables statiques : un seul monde affiché à la fois. Pas de class_name.
+##
+## Le trou n'est compilé que dans la variante TUNNEL_CUT des shaders du terrain (`shader_for`) : seules les tuiles
+## de terrain qui touchent un tunnel enregistré la reçoivent (`touches`, world_streamer.gd). Un `discard` fait
+## exécuter tout le fragment dans les passes de profondeur et d'ombre : sur tout le terrain, il alourdissait chaque
+## image et la compilation des shaders, même loin de tout tunnel.
 
 const TunnelMesh := preload("res://scripts/tunnel_mesh.gd")
 
 const MAX_SEGMENTS := 64
 const MOVE_M := 4.0
+const TILE_MARGIN_M := 2.0     # marge autour de la boîte d'un tronçon pour choisir la variante d'une tuile
+const DEFINE := "#define TUNNEL_CUT\n"
 
 static var _chunks: Dictionary = {}          # clé -> PackedFloat32Array (TunnelMesh.CUT_FLOATS par tronçon)
 static var _dirty := true
@@ -21,26 +28,76 @@ static var _last_cam := Vector3(INF, INF, INF)
 static var _texture: ImageTexture = null
 static var _count := 0
 static var _box := Vector4.ZERO
+static var _version := 0                     # change à chaque modification du registre (variante des tuiles)
+static var _variants: Dictionary = {}        # Shader de base -> variante TUNNEL_CUT
 
 
 static func set_chunk(key, cut: PackedFloat32Array) -> void:
 	if cut.is_empty():
 		if _chunks.erase(key):
-			_dirty = true
+			_changed()
 		return
 	_chunks[key] = cut
-	_dirty = true
+	_changed()
 
 
 static func remove_chunk(key) -> void:
 	if _chunks.erase(key):
-		_dirty = true
+		_changed()
 
 
 static func clear() -> void:
 	if not _chunks.is_empty():
 		_chunks.clear()
-		_dirty = true
+		_changed()
+
+
+static func _changed() -> void:
+	_dirty = true
+	_version += 1
+
+
+## Numéro du registre : change à chaque tronçon ajouté ou retiré (les tuiles revoient alors leur variante).
+static func version() -> int:
+	return _version
+
+
+## Vrai si un tronçon enregistré (tous, pas seulement les MAX_SEGMENTS proches) touche le rectangle horizontal
+## `rect` (x, z) d'une tuile de terrain.
+static func touches(rect: Rect2) -> bool:
+	for key in _chunks:
+		var cut: PackedFloat32Array = _chunks[key]
+		for s in range(0, cut.size(), TunnelMesh.CUT_FLOATS):
+			var b := box_of(cut.slice(s, s + TunnelMesh.CUT_FLOATS))
+			var r := Rect2(b.x, b.y, b.z - b.x, b.w - b.y).grow(TILE_MARGIN_M)
+			if r.intersects(rect, true):
+				return true
+	return false
+
+
+## Shader du terrain avec (`cut` vrai) ou sans le trou des tunnels : variante TUNNEL_CUT de `base`, faite une
+## fois (même code, `#define TUNNEL_CUT` après la ligne `shader_type`).
+static func shader_for(base: Shader, cut: bool) -> Shader:
+	if base == null:
+		return base
+	for b in _variants:
+		if _variants[b] == base:          # variante passée : on retrouve sa base
+			base = b
+			break
+	if not cut:
+		return base
+	if not _variants.has(base):
+		var code := base.code
+		var eol := code.find("\n")
+		var v := Shader.new()
+		v.code = code.substr(0, eol + 1) + DEFINE + code.substr(eol + 1)
+		_variants[base] = v
+	return _variants[base]
+
+
+## Vrai si `shader` est une variante TUNNEL_CUT.
+static func is_variant(shader: Shader) -> bool:
+	return shader != null and _variants.values().has(shader)
 
 
 static func segment_count() -> int:

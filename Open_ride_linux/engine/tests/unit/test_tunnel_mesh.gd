@@ -9,6 +9,9 @@ extends SceneTree
 const TunnelMesh := preload("res://scripts/tunnel_mesh.gd")
 const TunnelCut := preload("res://scripts/tunnel_cut.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
+const TerrainMaterial := preload("res://scripts/terrain_material.gd")
+const BiomeShader := preload("res://shaders/terrain_biomes.gdshader")
+const WorldStreamer := preload("res://scripts/world_streamer.gd")
 
 var _failures := 0
 var _checked := 0
@@ -144,6 +147,73 @@ func _test_registry() -> void:
 	_check(TunnelCut.update(Vector3(1.0, 100.0, -60.0)) and TunnelCut.active_count() == 0, "registre vidé : plus de trou")
 
 
+## Variante TUNNEL_CUT : seules les tuiles qui touchent un tunnel ont le trou (le discard alourdit tout le terrain).
+func _test_variant() -> void:
+	TunnelCut.clear()
+	var v0 := TunnelCut.version()
+	var cut: PackedFloat32Array = TunnelMesh.build([_tunnel()])["cut"]
+	TunnelCut.set_chunk(1, cut)
+	_check(TunnelCut.version() != v0, "tunnel enregistré : numéro du registre changé")
+	_check(TunnelCut.touches(Rect2(-500.0, -1000.0, 1000.0, 1000.0)), "tuile qui contient le tunnel : touchée")
+	_check(TunnelCut.touches(Rect2(4.5, -60.0, 100.0, 10.0)), "tuile au ras de l'approche (marge) : touchée")
+	_check(not TunnelCut.touches(Rect2(1000.0, -1000.0, 1000.0, 1000.0)), "tuile voisine sans tunnel : pas touchée")
+	var mat := TerrainMaterial.create_material({})
+	var base: Shader = mat.shader
+	_check(not base.code.contains("#define TUNNEL_CUT"), "shader de base sans le trou")
+	var var_s := TunnelCut.shader_for(base, true)
+	_check(var_s != base and var_s.code.contains("#define TUNNEL_CUT") and var_s.code.begins_with("shader_type"),
+		"variante : #define après la ligne shader_type")
+	_check(TunnelCut.shader_for(base, true) == var_s and TunnelCut.shader_for(var_s, true) == var_s,
+		"variante faite une seule fois")
+	_check(TunnelCut.shader_for(var_s, false) == base and TunnelCut.is_variant(var_s) and not TunnelCut.is_variant(base),
+		"retour au shader de base depuis la variante")
+	var bv := TunnelCut.shader_for(BiomeShader, true)
+	_check(bv != var_s and bv.code.contains("#define TUNNEL_CUT"), "variante propre au shader des biomes")
+	mat.set_shader_parameter("snow_line_m", 1234.0)
+	mat.shader = var_s
+	_check(is_equal_approx(float(mat.get_shader_parameter("snow_line_m")), 1234.0), "paramètres gardés en changeant de variante")
+	TunnelCut.remove_chunk(1)
+	_check(not TunnelCut.touches(Rect2(-500.0, -1000.0, 1000.0, 1000.0)), "tunnel retiré : plus de tuile touchée")
+	TunnelCut.clear()
+
+
+## Tuiles affichées par world_streamer.gd : la variante suit le registre, sans refaire les maillages.
+func _test_streamer_tiles() -> void:
+	TunnelCut.clear()
+	var ws = WorldStreamer.new()
+	var tiles := {}
+	for key in ["near:0:-1", "near:3:3", "far:0:-1"]:
+		var arr := []
+		arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3.ZERO, Vector3(1, 0, 0), Vector3(0, 0, 1)])
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		mesh.surface_set_material(0, ws._terrain_material_for(key))
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		ws._instances[key] = mi
+		tiles[key] = mesh
+	var base: Material = ws._terrain_material
+	_check((tiles["near:0:-1"] as Mesh).surface_get_material(0) == base, "sans tunnel : matériau du thème")
+	TunnelCut.set_chunk(1, TunnelMesh.build([_tunnel()])["cut"])
+	ws._process(0.0)
+	var m0: Material = (tiles["near:0:-1"] as Mesh).surface_get_material(0)
+	_check(m0 != base and TunnelCut.is_variant((m0 as ShaderMaterial).shader), "tuile proche du tunnel : variante TUNNEL_CUT")
+	_check((tiles["near:3:3"] as Mesh).surface_get_material(0) == base, "tuile proche sans tunnel : matériau du thème")
+	_check((tiles["far:0:-1"] as Mesh).surface_get_material(0) == base, "tuile lointaine : jamais de trou")
+	(base as ShaderMaterial).set_shader_parameter("snow_line_m", 987.0)
+	ws._process(0.0)
+	_check(is_equal_approx(float((m0 as ShaderMaterial).get_shader_parameter("snow_line_m")), 987.0),
+		"réglage du thème recopié sur la variante")
+	TunnelCut.clear()
+	ws._process(0.0)
+	_check((tiles["near:0:-1"] as Mesh).surface_get_material(0) == base, "tunnel retiré : matériau du thème rendu")
+	for key in tiles:
+		(ws._instances[key] as MeshInstance3D).free()
+	ws._instances.clear()
+	ws.free()
+
+
 func _test_layer_reading() -> void:
 	var dir := OS.get_temp_dir().path_join("openride_ea5_%d" % Time.get_ticks_usec())
 	DirAccess.make_dir_recursive_absolute(dir.path_join("tunnels"))
@@ -181,6 +251,8 @@ func _init() -> void:
 	_test_geometry()
 	_test_cut()
 	_test_registry()
+	_test_variant()
+	_test_streamer_tiles()
 	_test_layer_reading()
 	_test_performance()
 	print("test_tunnel_mesh : %d vérifications, %d échecs" % [_checked, _failures])

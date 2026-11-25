@@ -40,7 +40,7 @@ func _tunnel_item() -> Dictionary:
 
 
 ## Image vue du sud (SIZE pixels pour 32 m), centrée sur (0, 102, 15).
-func _shot() -> Image:
+func _shot(cut: bool = true) -> Image:
 	var vp := SubViewport.new()
 	vp.size = Vector2i(SIZE, SIZE)
 	vp.debug_draw = Viewport.DEBUG_DRAW_UNSHADED
@@ -54,6 +54,7 @@ func _shot() -> Image:
 	plane.subdivide_depth = 24
 	ground.mesh = plane
 	var mat := TerrainMaterial.create_material({})
+	mat.shader = TunnelCut.shader_for(mat.shader, cut)   # variante TUNNEL_CUT des tuiles qui touchent un tunnel
 	mat.set_shader_parameter("detail_strength", 0.0)
 	ground.material_override = mat
 	ground.position = Vector3(0.0, 100.0 + SLOPE * 20.0, -20.0)
@@ -105,6 +106,10 @@ func _run() -> void:
 	_check(not _greenish(opening), "entrée du tunnel ouverte : pas d'herbe dans le portail (#%s)" % opening.to_html(false))
 	_check(_greenish(side), "flanc de la colline hors du tunnel dessiné (#%s)" % side.to_html(false))
 	_check(_greenish(above), "colline au-dessus du tunnel gardée (#%s)" % above.to_html(false))
+	# Shader de base (tuile loin de tout tunnel) : pas de trou, même tunnel enregistré
+	var plain: Image = await _shot(false)
+	var shut := plain.get_pixel(SIZE / 2, SIZE / 2)
+	_check(_greenish(shut), "shader de base sans le trou : le flanc reste dessiné (#%s)" % shut.to_html(false))
 	# Sans tunnel enregistré : le flanc ferme l'entrée (règle d'avant)
 	TunnelCut.clear()
 	var none: Image = await _shot()
