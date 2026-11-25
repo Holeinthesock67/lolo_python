@@ -145,13 +145,20 @@ SETTINGS: tuple[Setting, ...] = (
                  "d'efforts longs au seuil. Change seulement la répartition visée par la séance conseillée."),
     Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
     # Graphisme
-    Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
+    Setting("render.quality", "Qualité graphique", "graphics", applies="now",   # aide : lot QG1
+            # espaces insécables (\u00a0) : « 80 % » ou « GTX 1060 » jamais coupés en fin de ligne de la carte
+            help="Haute : on voit à 8\u00a0km, toute la végétation, brume complète, ombres jusqu'à 600\u00a0m. "
+                 "Moyenne : 5\u00a0km, 80\u00a0% de la végétation, brume légère, faite pour une GTX\u00a01060. "
+                 "Basse : 3\u00a0km, 30\u00a0% de la végétation, sans brume ni halo : à choisir si l'image saccade."),
     # « Textures du décor » (lot P20) retiré du menu au lot NI2 (R5) : « auto » suit la Qualité graphique ;
     # une valeur choisie avant est remise à « auto » par `migration_reglages.py`.
     Setting("render.theme", "Thème", "graphics", applies="now"),
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
+    Setting("render.auto_photos", "Photos automatiques", "graphics", applies="now",
+            help="Oui : une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus "
+                 "par séance, rangées dans ~/OpenRide/Captures/ ; le bilan dit combien et où. Elles restent sur le PC."),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
             help="Automatique : les biomes du parcours, ou de la région en monde ouvert (prairie tempérée sans "
@@ -197,6 +204,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("open_world.cache_max_gb", "Cache du monde", "advanced", 1, "Go"),
     Setting("render.theme_library_gb", "Place pour les thèmes", "advanced", 1, "Go"),
     Setting("progression.enabled", "Progression et Garage", "advanced", applies="relaunch"),
+    Setting("privacy.hide_start", "Zone privée au départ", "advanced",   # lot PZ1
+            help="Oui : les fichiers FIT et les balades du monde ouvert enregistrées ne gardent aucune position "
+                 "à moins de 500 m du départ. Temps, distance, puissance et totaux ne changent pas."),
 )
 BOOL_CHOICES = ("on", "off")
 # Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément), puis `screen`

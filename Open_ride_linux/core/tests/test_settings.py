@@ -43,6 +43,9 @@ def test_current_lists_the_settings_with_bounds_from_config():
     quality = next(it for it in items if it["key"] == "render.quality")
     assert quality["type"] == "choice" and quality["choices"] == ["low", "medium", "high"]
     assert quality["applies"] == "now"
+    # Lot QG1 : aide en mots des trois qualités (portée, végétation, brume)
+    assert all(m in quality["help"] for m in ("Haute : on voit à 8\u00a0km", "Moyenne : 5\u00a0km", "GTX\u00a01060",
+                                              "Basse : 3\u00a0km", "80\u00a0%", "si l'image saccade"))
     gear = next(it for it in items if it["key"] == "gearing.start_gear")
     assert (gear["min"], gear["max"]) == (1, 24)
     display = next(it for it in items if it["key"] == "render.display")
@@ -304,6 +307,21 @@ def test_draft_gauge_retired(tmp_path: Path, caplog):
     assert any("draft_gauge" in r.getMessage() and "NI1" in r.getMessage() for r in caplog.records)
 
 
+def test_auto_photos_setting(tmp_path: Path):
+    """Photos automatiques à l'arrivée et aux records (idée M9 de l'audit du 22 novembre) : choix on / off,
+    graphisme, appliqué tout de suite, actif par défaut, légende en mots."""
+    cfg = Config()
+    it = {i["key"]: i for i in settings.current(cfg)}["render.auto_photos"]
+    assert (it["value"], it["choices"], it["applies"], it["group"]) == ("on", ["on", "off"], "now", "graphics")
+    assert "~/OpenRide/Captures/" in it["help"]
+    path = tmp_path / "config.toml"
+    path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
+    settings.apply(cfg, {"render.auto_photos": "off"}, path)
+    assert config_mod.load(path).render.auto_photos == "off"
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "render.auto_photos", "non")
+
+
 def test_settings_groups_and_new_entries():
     """Sous-écrans de « Réglages » : chaque réglage a un groupe connu, groupes contigus dans l'ordre de
     `GROUPS` ; poids du vélo, direction et rafales du vent ajoutés (bornes de config.py)."""
@@ -364,7 +382,8 @@ def test_advanced_settings_and_settings_in_parts(tmp_path: Path):
     by_key = {it["key"]: it for it in settings.current(cfg)}
     assert [k for k, it in by_key.items() if it["group"] == "advanced"] == [
         "trainer.control", "wind.max_grade_offset_pct", "wind.feel",   # choix d'essai et plafond, lot NI2
-        "open_world.network", "open_world.cache_max_gb", "render.theme_library_gb", "progression.enabled"]
+        "open_world.network", "open_world.cache_max_gb", "render.theme_library_gb", "progression.enabled",
+        "privacy.hide_start"]   # zone privée au départ, lot PZ1
     assert by_key["open_world.network"]["choices"] == ["on", "off"] and by_key["open_world.network"]["value"] == "on"
     cache = by_key["open_world.cache_max_gb"]
     assert (cache["value"], cache["min"], cache["max"], cache["unit"]) == (5, 1, 500, "Go")   # 0,5 Go arrondi au-dessus

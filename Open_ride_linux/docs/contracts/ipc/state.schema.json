@@ -1425,8 +1425,8 @@
           "lane_m": {
             "type": "number",
             "minimum": -3,
-            "maximum": 3,
-            "description": "Facultatif, révision 1.5 (lot AS2) : écart du bot à l'axe de la route en m, positif à droite, au centimètre."
+            "maximum": 7,
+            "description": "Facultatif, révision 1.5 (lot AS2) : écart du bot à l'axe de la route en m, positif à droite, au centimètre. Vélodrome (révision 1.33) : hauteur sur la piste depuis la ligne de mesure, de 0 à 7 m (coureur sorti rangé en haut, 5,5 m)."
           },
           "profile": {
             "type": [

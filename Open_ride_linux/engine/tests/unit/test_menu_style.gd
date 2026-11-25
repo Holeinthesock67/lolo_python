@@ -282,7 +282,12 @@ func _test_settings() -> void:
 	var sheet: Dictionary = s.sheet("sound.master_pct")
 	_check(sheet["name"] == "Général" and sheet["tiles"].map(func(t): return t["label"]) == ["Valeur", "Plage", "Pas"]
 		and sheet["lines"] == ["S'applique tout de suite"], "carte d'un réglage numérique (%s)" % str(sheet["lines"]))
-	_check(s.sheet("render.quality")["lines"][0] == "Choix : low, medium, high" and s.sheet("absent").is_empty(), "carte d'un choix")
+	_check(s.sheet("render.quality")["lines"][0] == "Choix : basse, moyenne, haute" and s.sheet("absent").is_empty(), "carte d'un choix")
+	# Lot QG1 : qualité écrite en français, valeur du fichier inchangée
+	_check(s.menu_items("graphics")[0]["detail"] == "haute" and s.item("render.quality")["value"] == "high",
+		"qualité affichée « haute », valeur high gardée (%s)" % str(s.menu_items("graphics")[0]))
+	_check(SettingsViewModel.format_value(quality, "low") == "basse" and SettingsViewModel.format_value(quality, "medium") == "moyenne",
+		"qualité : basse et moyenne")
 	_check(SettingsViewModel.crumb("sound") == "Réglages › Son", "fil d'Ariane du sous-écran")
 	var edit := ButtonHelp.entries(ButtonHelp.EDIT)
 	_check(edit[0]["hold"] and edit[0]["text"] == "Enregistrer" and edit.size() == 4

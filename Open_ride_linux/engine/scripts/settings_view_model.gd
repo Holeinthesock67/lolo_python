@@ -39,6 +39,7 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
 ## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
+## Qualité graphique (lot QG1) : `render.quality` garde `low` / `medium` / `high` dans le fichier, affichée basse / moyenne / haute.
 ## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
 ## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des biomes de biome_ids.gd, noms du plan U §2.
 ## Lot O26 : ressenti et mode du vent, thème par défaut (le décor vivant est retiré du menu au lot NI4) ; « Son »
@@ -50,6 +51,7 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Dernier survivant (lot DS2) : écart de niveau des bots et suite donnée à l'élimination du cycliste.
 ## Séance conseillée (lot CO5) : `coach.objectif` ; champs des saisies du conseil (CoachViewModel.KEY_PREFIX).
 const CHOICE_TEXTS := {
+	"render.quality": {"low": "basse", "medium": "moyenne", "high": "haute"},   # lot QG1 : valeurs du fichier inchangées
 	"depart.mode": {"pedalage": "au pédalage", "immediat": "immédiat"},
 	"powerups.mode": {"off": "non", "classiques": "classiques", "tactiques": "tactiques"},   # contrat 1.13 (TT1)
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
@@ -58,6 +60,7 @@ const CHOICE_TEXTS := {
 	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"ride.vehicle_draft": {"on": "oui", "off": "non"},
 	"bots.elo": {"on": "oui", "off": "non"},   # lot BOT-elo : niveau automatique (Elo)
+	"privacy.hide_start": {"on": "oui", "off": "non"},   # lot PZ1 : zone privée au départ
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	"gravel.mode": {"off": "coupé", "auto": "chemins réels", "compacted": "chemin compact", "gravel": "gravier",
 		"dirt": "terre"},
