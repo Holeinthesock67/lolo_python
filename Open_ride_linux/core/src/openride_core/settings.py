@@ -71,7 +71,7 @@ class Setting:
     @property
     def menu_group(self) -> str:
         """Groupe envoyé à l'engine : `screen` pour un réglage qui a son propre écran (lot NI2), sinon `group`."""
-        return SCREEN_GROUP if self.section in SCREEN_SECTIONS else self.group
+        return SCREEN_GROUP if self.section in SCREEN_SECTIONS or self.key in SCREEN_KEYS else self.group
 
     @property
     def scope(self) -> str:
@@ -85,6 +85,9 @@ class Setting:
 # `settings` pour ces écrans et pour `set_setting`.
 SCREEN_GROUP = "screen"
 SCREEN_SECTIONS = ("survivor", "grandprix", "race", "coach")
+# Lot NI3 : réglages d'une ligne d'écran hors de ces sections ; `bots.objective` est la ligne « Intensité du
+# jour » des écrans Prêt à bots (lot R1), plus dans « Réglages › Séance ».
+SCREEN_KEYS = ("bots.objective",)
 
 SETTINGS: tuple[Setting, ...] = (
     # Cycliste
@@ -102,14 +105,16 @@ SETTINGS: tuple[Setting, ...] = (
             help="Non : aucun bonus. Classiques : Plume, Casque aéro, Puissance. Tactiques : les sept, "
                  "avec Enclume, Aspiration +, Échappée et Rouleau, tirés selon le terrain devant. "
                  "Z lance le bonus en réserve ; refusé en ERG."),
-    Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    # Lot NI3 (un seul réglage de difficulté des bots) : « Niveau des bots » (`bots.level_pct`) retiré du menu
+    # (`migration_reglages.RETIRED`) ; l'objectif se choisit sur la ligne « Intensité du jour » des écrans Prêt
+    # (lot R1), sa seule place (`SCREEN_KEYS`).
     Setting("bots.objective", "Objectif des bots", "ride",   # lot BT1
             help="Part de l'effort tenable sur la durée de la course que visent les bots : Tempo, une course "
                  "qu'on peut gagner sans se mettre dans le rouge. Au vélodrome, l'objectif suit l'épreuve."),
-    Setting("bots.elo", "Niveau automatique (Elo)", "ride",   # lot BOT-elo
+    Setting("bots.elo", "Bots selon ta cote", "ride",   # lot BOT-elo ; libellé court (lot NI3)
             help="Oui : ta cote et celle de chaque bot changent après chaque course à classement (Grand Prix, "
-                 "Dernier survivant, piste en groupe) ; le peloton gagne 2,5 % de puissance par 100 points de "
-                 "ta cote, et le perd quand tu perds. Non : niveau des bots seul."),
+                 "Course, Dernier survivant, piste en groupe) ; le peloton gagne 2,5 % de puissance par 100 points "
+                 "de ta cote, et le perd quand tu perds. Non : les bots suivent l'Intensité du jour seule."),
     # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
     Setting("gravel.mode", "Gravel", "ride",
             help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
