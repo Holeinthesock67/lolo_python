@@ -33,6 +33,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 O8 = ROOT / "docs" / "lots" / "LOT_O8_recette_1_0.md"
 N_LINES = 25
+MENU_SCENARIOS = ROOT / "engine" / "tests" / "menu_scenarios"
 STAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}$")
 REPORT_FILES = ("rapport.html", "index.html", "resume.txt", "rapport.txt", "steps.txt")
 
@@ -43,6 +44,8 @@ class Outil:
     dossier: str | None       # sous-dossier de ~/OpenRide/ ; None : l'outil n'écrit rien
     etape: str | None = None  # étape de `resume.json` à lire (recette du PC)
     contient: str | None = None   # sous-dossier exigé dans le rapport (scénario du banc simulé)
+    sonde: bool = False       # le passage doit avoir une sonde de performance (`<scénario>/sonde/`)
+    tous_les_menus: bool = False  # le passage doit couvrir tous les scénarios de `engine/tests/menu_scenarios/`
 
 
 # Ligne d'O8 → outil. Les lignes absentes sont « à la main ».
@@ -53,10 +56,11 @@ OUTILS: dict[int, Outil] = {
     6: Outil("python -m openride_core.tools.click_recette", "click_recette"),
     7: Outil("python -m openride_core.tools.fc_recette", "fc_recette"),
     10: Outil("python -m openride_core.tools.log_report --latence JOURNAL_CORE JOURNAL_ENGINE (n'écrit rien)", None),
-    17: Outil("engine/tests/sim_bench.py --native --probe", "sim_bench"),
+    17: Outil("engine/tests/sim_bench.py --native --probe", "sim_bench", sonde=True),
     18: Outil("engine/tests/sim_bench.py --native --scenario endurance", "sim_bench", contient="endurance"),
     19: Outil("python3 scripts/recette_pc.py (étape engine)", "recettes", etape="engine"),
-    20: Outil("python3 engine/tests/menu_bench.py --out ~/OpenRide/menu_bench/<date>", "menu_bench"),
+    20: Outil("python3 engine/tests/menu_bench.py --out ~/OpenRide/menu_bench/<date>", "menu_bench",
+              tous_les_menus=True),
     21: Outil("openride-core fit-check FICHIER.fit (n'écrit rien)", None),
     22: Outil("openride-compiler compare-garmin PARCOURS.world (n'écrit rien)", None),
 }
@@ -95,13 +99,24 @@ def read_o8(path: Path = O8) -> list[dict]:
     return lines
 
 
-def _runs(folder: Path, contient: str | None) -> list[Path]:
+def _runs(folder: Path, contient: str | None, sonde: bool = False) -> list[Path]:
+    """Passages datés de l'outil ; avec `contient` ou `sonde`, seulement ceux du bon scénario ou avec une
+    sonde de performance (revue de code vague 5, O2-20 : un passage court d'un autre scénario ne compte pas)."""
     if not folder.is_dir():
         return []
     runs = [p for p in folder.iterdir() if p.is_dir() and STAMP_RE.match(p.name)]
     if contient:
         runs = [p for p in runs if (p / contient).is_dir()]
+    if sonde:
+        runs = [p for p in runs if any(d.is_dir() for d in p.glob("*/sonde"))]
     return sorted(runs, key=lambda p: p.name)
+
+
+def menus_absents(run: Path, scenarios: Path = MENU_SCENARIOS) -> list[str]:
+    """Scénarios du banc des menus absents de `resultats.json` (passage partiel : `--scenario`, `--partie`)."""
+    data = _json(run / "resultats.json")
+    joues = {r.get("scenario") for r in data if isinstance(r, dict)} if isinstance(data, list) else set()
+    return sorted(p.stem for p in scenarios.glob("*.json") if p.stem not in joues)
 
 
 def _json(path: Path):
@@ -166,8 +181,18 @@ def build(home: Path, o8: Path = O8) -> list[Ligne]:
             out.append(Ligne(**item, outil=outil.nom if outil else "", resultat="à la main", date="", rapport="",
                              detail="aucun rapport écrit" if outil else "aucun outil"))
             continue
-        runs = [r for r in _runs(base / outil.dossier, outil.contient)
+        runs = [r for r in _runs(base / outil.dossier, outil.contient, outil.sonde)
                 if n not in (1, 2) or (r / f"resume_{'docker' if n == 1 else 'home'}.txt").is_file()]
+        if outil.tous_les_menus:
+            complets = [r for r in runs if not menus_absents(r)]
+            if runs and not complets:
+                run = runs[-1]
+                absents = menus_absents(run)
+                when = datetime.strptime(run.name, "%Y-%m-%d_%H%M%S").strftime("%d/%m/%Y %H:%M")
+                out.append(Ligne(**item, outil=outil.nom, resultat="à faire", date=when, rapport=str(_report_file(run, n)),
+                                 detail=f"passage partiel : {len(absents)} scénario(s) non joué(s)"))
+                continue
+            runs = complets
         if not runs:
             out.append(Ligne(**item, outil=outil.nom, resultat="à faire", date="", rapport="", detail="aucun rapport"))
             continue

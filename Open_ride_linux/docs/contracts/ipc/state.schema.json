@@ -277,6 +277,22 @@
         "null"
       ],
       "properties": {
+        "mode_error": {
+          "type": "object",
+          "description": "Facultatif (filet de la boucle, audit du 22 novembre, R3) : séance terminée parce qu'un mode de jeu a levé une erreur ; `mode` : mode en cours (rogue, grandprix, survivor, wtf, track, race, open_world, erg, sim), `error` : type de l'erreur. Le reste du bilan est celui d'une séance normale.",
+          "required": [
+            "mode",
+            "error"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            }
+          }
+        },
         "duration_s": {
           "type": "number"
         },
@@ -1117,7 +1133,7 @@
         },
         "league": {
           "type": "object",
-          "description": "Facultatif, révision 1.30 (lot CH3) : encart « Ligue d'hiver » du bilan d'une manche courue jusqu'à l'arrivée : manche, place et points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement autour du cycliste.",
+          "description": "Facultatif, révision 1.30 (lot CH3) : encart « Ligue d'hiver » du bilan d'une manche courue jusqu'à l'arrivée : manche, place et points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement autour du cycliste. Lignes réduites à place, nom, points et `me` (revue F1-04 : la trame d'arrivée tient sous 4 096 octets ; caractère, équipe et couleur viennent du message `league`).",
           "required": [
             "round",
             "of_rounds",
@@ -1177,14 +1193,8 @@
                 "type": "object",
                 "required": [
                   "place",
-                  "id",
                   "name",
-                  "style",
-                  "team",
-                  "color",
                   "points",
-                  "ran",
-                  "wins",
                   "me"
                 ],
                 "properties": {
@@ -1192,41 +1202,12 @@
                     "type": "integer",
                     "minimum": 1
                   },
-                  "id": {
-                    "type": "string"
-                  },
                   "name": {
                     "type": "string",
                     "maxLength": 32
                   },
-                  "style": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "team": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "color": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
                   "points": {
                     "type": "number",
-                    "minimum": 0
-                  },
-                  "ran": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "wins": {
-                    "type": "integer",
                     "minimum": 0
                   },
                   "me": {
@@ -1444,8 +1425,8 @@
           "lane_m": {
             "type": "number",
             "minimum": -3,
-            "maximum": 3,
-            "description": "Facultatif, révision 1.5 (lot AS2) : écart du bot à l'axe de la route en m, positif à droite, au centimètre."
+            "maximum": 7,
+            "description": "Facultatif, révision 1.5 (lot AS2) : écart du bot à l'axe de la route en m, positif à droite, au centimètre. Vélodrome (révision 1.33) : hauteur sur la piste depuis la ligne de mesure, de 0 à 7 m (coureur sorti rangé en haut, 5,5 m)."
           },
           "profile": {
             "type": [

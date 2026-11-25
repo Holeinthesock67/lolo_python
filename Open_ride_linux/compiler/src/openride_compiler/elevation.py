@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Callable, Protocol
 
@@ -67,6 +68,33 @@ def copernicus_tile_name(lat_sw: int, lon_sw: int) -> str:
     return f"Copernicus_DSM_COG_10_{ns}{abs(lat_sw):02d}_00_{ew}{abs(lon_sw):03d}_00_DEM"
 
 
+# Contrôles du contenu téléchargé (revue de code K1-01, 24 novembre) : une page d'erreur servie en 200
+# ou une liste coupée ne doivent pas entrer dans le cache, où elles resteraient pour toujours.
+TIFF_MAGIC = (b"II*\x00", b"MM\x00*", b"II+\x00", b"MM\x00+")
+TILE_NAME_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_DEM$")
+
+
+def check_tiff(path: Path) -> None:
+    """Lève ValueError si le fichier ne commence pas comme un GeoTIFF (TIFF ou BigTIFF)."""
+    with open(path, "rb") as f:
+        head = f.read(4)
+    if head not in TIFF_MAGIC:
+        raise ValueError(f"pas un fichier TIFF (début {head!r})")
+
+
+def check_tile_list(path: Path) -> None:
+    """Lève ValueError si `tileList.txt` est vide ou contient une ligne qui n'est pas un nom de tuile."""
+    try:
+        lines = [line.strip() for line in Path(path).read_text().splitlines() if line.strip()]
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"liste illisible ({exc})") from exc
+    if not lines:
+        raise ValueError("liste vide")
+    bad = next((line for line in lines if not TILE_NAME_RE.match(line)), None)
+    if bad is not None:
+        raise ValueError(f"ligne inattendue {bad[:60]!r} (liste coupée ou page d'erreur)")
+
+
 class _Tile:
     """Grille d'une tuile en mémoire ; pixels centrés (transformée affine de rasterio)."""
 
@@ -111,7 +139,7 @@ class CopernicusGlo30Provider:
     def _list(self) -> set[str]:
         if self._tile_list is None:
             path = self.downloader.fetch(f"{self.base_url}/tileList.txt", self.dir / "tileList.txt",
-                                         "liste des tuiles Copernicus")
+                                         "liste des tuiles Copernicus", validate=check_tile_list)
             self._tile_list = {line.strip() for line in path.read_text().splitlines() if line.strip()}
         return self._tile_list
 
@@ -128,11 +156,21 @@ class CopernicusGlo30Provider:
         if not path.is_file() and name not in self._list():
             tile = None                                   # mer : pas de tuile
         else:
+            url = f"{self.base_url}/{name}/{name}.tif"
             try:
-                self.downloader.fetch(f"{self.base_url}/{name}/{name}.tif", path, name)
+                self.downloader.fetch(url, path, name, validate=check_tiff)
+                try:
+                    tile = self._read(path)
+                except CompileError:
+                    if self.downloader.offline:
+                        raise
+                    # tuile qui commence bien mais illisible (coupée sans taille annoncée) : une reprise
+                    self.downloader.log(f"tuile {name} illisible dans le cache : supprimée, nouveau téléchargement")
+                    path.unlink(missing_ok=True)
+                    self.downloader.fetch(url, path, name, validate=check_tiff)
+                    tile = self._read(path)
             except NotFoundError as exc:
                 raise CompileError(f"tuile {name} annoncée par tileList.txt mais absente : {exc}") from exc
-            tile = self._read(path)
         self._tiles[key] = tile
         return tile
 

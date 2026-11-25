@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
 import logging
 import socket
@@ -182,6 +183,17 @@ class IpcServer:
         self._invalid_logged_at: float | None = None
         self._trimmed_logged_at: float | None = None   # dernier avertissement « trame allégée »
         self._invalid_since_log: int = 0
+        # Émission de la minute (essai du 22 novembre : gels de 9 à 10 s, trames state absentes côté engine) :
+        # trames state envoyées, taille max, autres messages, erreurs d'envoi par cause (EAGAIN, EMSGSIZE…),
+        # ligne `IPC émis : …` (tx_line) écrite par la session avec la ligne Gigue.
+        self.tx_state: int = 0
+        self.tx_state_max: int = 0
+        self.tx_other: int = 0
+        self.tx_other_max: int = 0
+        self.tx_trimmed: int = 0
+        self.tx_dropped: int = 0
+        self.tx_errors: dict[str, int] = {}
+        self._tx_error_logged_at: float | None = None
 
         self._running: bool = False
         self._rx_sock: socket.socket | None = None
@@ -239,17 +251,48 @@ class IpcServer:
             # Trame allégée plutôt que jetée (lot X25) : l'écran garde position et puissance.
             msg_dict, dropped = fit_state(msg_dict, limit)
             payload = encode(msg_dict)
+            self.tx_trimmed += 1
             now = time.monotonic()
             if self._trimmed_logged_at is None or now - self._trimmed_logged_at >= INVALID_LOG_PERIOD_S:
                 self._trimmed_logged_at = now
                 log.warning("Trame state trop grande, allégée (%s) : %d octets", ", ".join(dropped), len(payload))
         if len(payload) > limit:
+            self.tx_dropped += 1
             log.warning("Datagramme IPC trop grand (%d octets > %d), ignoré", len(payload), limit)
             return
         try:
             self._tx_sock.sendto(payload, (self.host, self.port_state))
         except OSError as err:
-            log.debug("Erreur lors de l'envoi UDP : %s", err)
+            self._note_tx_error(err, msg_type, len(payload))
+            return
+        if msg_type == "state":
+            self.tx_state += 1
+            self.tx_state_max = max(self.tx_state_max, len(payload))
+        else:
+            self.tx_other += 1
+            self.tx_other_max = max(self.tx_other_max, len(payload))
+
+    def _note_tx_error(self, err: OSError, msg_type: Any, size: int) -> None:
+        """Envoi UDP refusé (file d'émission pleine, datagramme trop grand…) : compté par cause, et un
+        avertissement au plus par INVALID_LOG_PERIOD_S (avant : journal de débogage seulement)."""
+        name = errno.errorcode.get(err.errno, type(err).__name__) if err.errno is not None else type(err).__name__
+        self.tx_errors[name] = self.tx_errors.get(name, 0) + 1
+        now = time.monotonic()
+        if self._tx_error_logged_at is None or now - self._tx_error_logged_at >= INVALID_LOG_PERIOD_S:
+            self._tx_error_logged_at = now
+            log.warning("Envoi UDP refusé (%s, message %s de %d octets) : %s", name, msg_type, size, err)
+
+    def tx_line(self, clear: bool = True) -> str:
+        """Ligne de la minute sur l'émission IPC, puis remise à zéro des compteurs."""
+        errors = ", ".join(f"{k} {v}" for k, v in sorted(self.tx_errors.items())) or "aucune"
+        line = (f"IPC émis : state {self.tx_state} (max {self.tx_state_max} o, allégées {self.tx_trimmed},"
+                f" ignorées {self.tx_dropped}) ; autres {self.tx_other} (max {self.tx_other_max} o) ;"
+                f" erreurs d'envoi : {errors}")
+        if clear:
+            self.tx_state = self.tx_state_max = self.tx_other = self.tx_other_max = 0
+            self.tx_trimmed = self.tx_dropped = 0
+            self.tx_errors = {}
+        return line
 
     def send_state(self, state: IpcState) -> None:
         self.seq += 1
@@ -380,7 +423,7 @@ class IpcServer:
                                 "world_search", "world_map", "world_regions", "list_contents",
                                 "list_history", "history_session", "get_coach", "set_next_race",
                                 "clear_next_race", "set_watch_advice", "clear_watch_advice",
-                                "list_collection")
+                                "list_collection", "league_status")   # league_status : lecture seule (revue F1-14)
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

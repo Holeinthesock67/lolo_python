@@ -12,6 +12,7 @@ from __future__ import annotations
 import gzip
 import math
 import struct
+import zlib
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -239,7 +240,7 @@ def decode_tile(data: bytes) -> dict[str, Layer]:
     if data[:2] == b"\x1f\x8b":
         try:
             data = gzip.decompress(data)
-        except OSError as exc:
+        except (OSError, EOFError, zlib.error) as exc:   # gzip coupé : EOFError (revue de code K1-02)
             raise MvtError(f"gzip illisible : {exc}") from exc
     layers: dict[str, Layer] = {}
     for number, _, v in _fields(data):
