@@ -13,6 +13,7 @@ fit-tool attend des horodatages en millisecondes Unix et des positions en degré
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +33,8 @@ from fit_tool.profile.profile_type import (
 
 from .config import OPENRIDE_HOME
 from .journal import read_journal
+
+log = logging.getLogger("fit_export")
 
 ACTIVITIES_DIR = OPENRIDE_HOME / "Activities"
 FIT_EPOCH_S = 631065600  # 1989-12-31 00:00:00 UTC
@@ -205,11 +208,20 @@ def lap_starts(lines: list[dict]) -> list[float]:
     return sorted(out)
 
 
-def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[float] | None = None) -> Summary:
-    """Écrit le fichier FIT et renvoie le résumé de la séance. `laps` : débuts de tours (un seul tour sinon)."""
+def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[float] | None = None,
+              private_start_m: float = 0.0) -> Summary:
+    """Écrit le fichier FIT et renvoie le résumé de la séance. `laps` : débuts de tours (un seul tour sinon).
+    `private_start_m` > 0 (lot PZ1, `privacy_zone.radius_m`) : aucune position à moins de cette distance du
+    départ ; totaux et résumé calculés sur les relevés complets, qui ne changent pas."""
     if not records:
         raise ValueError("aucun échantillon : rien à exporter")
     s = summarize(records, events)
+    if private_start_m > 0:
+        from .privacy_zone import mask_records
+
+        records, n_masked = mask_records(records, private_start_m)
+        if n_masked:
+            log.info("Zone privée au départ : %d relevés sans position (%.0f m).", n_masked, private_start_m)
     if not events:
         events = [{"event": "start", "ts": s.start_ts}, {"event": "stop", "ts": s.end_ts}]
 
@@ -348,8 +360,22 @@ def default_fit_path(start_ts: float, route_name: str | None) -> Path:
     return ctx.activities_dir / f"{stamp}_{route_name or 'seance'}{ctx.fit_suffix()}.fit"
 
 
-def journal_to_fit(journal_path: Path, out_path: Path | None = None) -> tuple[Path, Summary]:
-    """Convertit un journal JSONL en FIT (utilisé en fin de séance et par `recover`)."""
+def configured_private_start_m() -> float:
+    """Rayon de la zone privée selon la configuration du profil en cours (lot PZ1) ; 0 si elle est coupée."""
+    from . import config as config_mod
+    from .privacy_zone import radius_m
+
+    try:
+        return radius_m(config_mod.load())
+    except config_mod.ConfigError as exc:
+        log.warning("Zone privée au départ : configuration illisible (%s), positions gardées.", exc)
+        return 0.0
+
+
+def journal_to_fit(journal_path: Path, out_path: Path | None = None,
+                   private_start_m: float | None = None) -> tuple[Path, Summary]:
+    """Convertit un journal JSONL en FIT (utilisé en fin de séance et par `recover`). `private_start_m` :
+    zone privée au départ (lot PZ1) ; None : celle de la configuration en cours."""
     records, events, route_id, laps = [], [], None, []
     for line in read_journal(journal_path):
         kind = line.get("kind")
@@ -364,7 +390,9 @@ def journal_to_fit(journal_path: Path, out_path: Path | None = None) -> tuple[Pa
     if not records:
         raise ValueError(f"journal vide : {journal_path}")
     out_path = out_path or default_fit_path(records[0]["ts"], route_id)
-    return out_path, write_fit(records, events, out_path, lap_starts(laps))
+    if private_start_m is None:
+        private_start_m = configured_private_start_m()
+    return out_path, write_fit(records, events, out_path, lap_starts(laps), private_start_m)
 
 
 def iter_records(fit_path: Path) -> Iterable:

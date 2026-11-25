@@ -19,7 +19,7 @@ se comprennent pas seuls, montrée par l'engine sur la carte de détail (lot U16
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
 la séance suivante, sans relancer), `now` (qualité, thème, biome, mode d'affichage, courbes, images/s,
 jauge d'abri et volumes : l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le niveau des
-textures (retiré du menu au lot NI2, toujours lu dans le fichier), le thème, le biome, le gravel et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief :
+textures (retiré du menu au lot NI2, toujours lu dans le fichier), le thème, le biome, le gravel et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (relief ; décor vivant jusqu'au lot NI4 :
 passés par le lanceur à l'engine ;
 progression : lue au démarrage du core ; pris au prochain lancement, l'engine propose de relancer, lot O26).
 
@@ -121,6 +121,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("trainer.control", "Pilotage du trainer", "advanced"),
     Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
     Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
+    Setting("depart.echauffement_min", "Échauffement avant une course", "ride", 5, "min",   # demande du 21/11
+            help="Avant le Dernier survivant, le Grand Prix et les épreuves du vélodrome : échauffement sur place "
+                 "en ERG, en watts, montée douce puis deux accélérations. Z le passe ; 0 : aucun."),
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
     Setting("ride.vehicle_draft", "Abri derrière les véhicules", "ride"),   # lot AS6
     # Dernier survivant (série DS, lot DS2) ; écran du mode au lot DS7
@@ -131,7 +134,6 @@ SETTINGS: tuple[Setting, ...] = (
     # Grand Prix des objets (série GP, lot GP2) ; écran du mode et entrée à l'accueil au lot GP9
     Setting("grandprix.opponents", "Grand Prix : adversaires", "ride"),
     Setting("grandprix.laps", "Grand Prix : tours du circuit", "ride"),
-    Setting("grandprix.distance_km", "Grand Prix : distance en ligne", "ride", 1, "km"),
     Setting("grandprix.chaos", "Grand Prix : chaos", "ride"),
     Setting("grandprix.box_every_m", "Grand Prix : écart des boîtes", "ride", 500, "m"),
     # Course classique contre les bots (lot CR1) : écran du mode à l'accueil
@@ -143,14 +145,20 @@ SETTINGS: tuple[Setting, ...] = (
                  "d'efforts longs au seuil. Change seulement la répartition visée par la séance conseillée."),
     Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
     # Graphisme
-    Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
+    Setting("render.quality", "Qualité graphique", "graphics", applies="now",   # aide : lot QG1
+            # espaces insécables (\u00a0) : « 80 % » ou « GTX 1060 » jamais coupés en fin de ligne de la carte
+            help="Haute : on voit à 8\u00a0km, toute la végétation, brume complète, ombres jusqu'à 600\u00a0m. "
+                 "Moyenne : 5\u00a0km, 80\u00a0% de la végétation, brume légère, faite pour une GTX\u00a01060. "
+                 "Basse : 3\u00a0km, 30\u00a0% de la végétation, sans brume ni halo : à choisir si l'image saccade."),
     # « Textures du décor » (lot P20) retiré du menu au lot NI2 (R5) : « auto » suit la Qualité graphique ;
     # une valeur choisie avant est remise à « auto » par `migration_reglages.py`.
     Setting("render.theme", "Thème", "graphics", applies="now"),
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
-    Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
+    Setting("render.auto_photos", "Photos automatiques", "graphics", applies="now",
+            help="Oui : une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus "
+                 "par séance, rangées dans ~/OpenRide/Captures/ ; le bilan dit combien et où. Elles restent sur le PC."),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
             help="Automatique : les biomes du parcours, ou de la région en monde ouvert (prairie tempérée sans "
@@ -165,9 +173,12 @@ SETTINGS: tuple[Setting, ...] = (
                  "souvent) ou une saison au choix : feuillages d'automne, arbres nus et neige plus bas l'hiver."),
     Setting("render.month", "Mois", "graphics", applies="now",   # lot U13b
             help="Date du PC, ou un mois au choix (le 15) : saisons « selon la date » et longueur du jour."),
-    Setting("render.living", "Décor vivant", "graphics", applies="relaunch"),   # lot O26
+    # « Décor vivant » (lot O26) retiré du menu au lot NI4 (R10) : toujours actif, son coût réglé par la Qualité
+    # graphique ; « Son » (groupe Son) coupe tous les sons d'un seul choix.
     Setting("render.visual_grade_scale", "Relief exagéré", "graphics", 25, "%", "relaunch", 100),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
+    # Lot NI4 : « Son » coupe tout d'un seul choix (les volumes gardent leur valeur et se cachent, règle WHEN)
+    Setting("audio.enabled", "Son", "sound", applies="now"),
     Setting("audio.master_pct", "Général", "sound", 10, "%", "now"),
     Setting("audio.ride_pct", "Vent et roue libre", "sound", 10, "%", "now"),
     Setting("audio.ambience_pct", "Ambiance", "sound", 10, "%", "now"),
@@ -193,6 +204,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("open_world.cache_max_gb", "Cache du monde", "advanced", 1, "Go"),
     Setting("render.theme_library_gb", "Place pour les thèmes", "advanced", 1, "Go"),
     Setting("progression.enabled", "Progression et Garage", "advanced", applies="relaunch"),
+    Setting("privacy.hide_start", "Zone privée au départ", "advanced",   # lot PZ1
+            help="Oui : les fichiers FIT et les balades du monde ouvert enregistrées ne gardent aucune position "
+                 "à moins de 500 m du départ. Temps, distance, puissance et totaux ne changent pas."),
 )
 BOOL_CHOICES = ("on", "off")
 # Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément), puis `screen`
@@ -203,11 +217,12 @@ SETTINGS = tuple(sorted(SETTINGS, key=lambda s: GROUPS.index(s.menu_group)))
 # Règle commune des lignes sans effet (lot NI2, R3) : clé → ((clé dont elle dépend, valeurs du menu), …). La ligne
 # n'agit que si l'une de ces clés a une de ses valeurs ; l'engine la cache sinon, sa valeur gardée (champ `when`).
 # Une seule table pour tous les réglages : un réglage qui dépend d'un autre choix s'ajoute ici, sans exception.
-_WIND_SET = ("wind.mode", ("fixed", "gusty"))   # force et direction : vent constant ou en rafales seulement
+_WIND_SET = ("wind.mode", ("fixed", "gusty"))
+_SOUND_ON = ("audio.enabled", ("on",))   # volumes : sans effet quand le son est coupé (lot NI4)   # force et direction : vent constant ou en rafales seulement
 WHEN: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
     "depart.cadence_rpm": (("depart.mode", ("pedalage",)),),
-    "ride.vehicle_draft": (("render.living", ("on",)),),   # pas de circulation sans décor vivant (contrat, `vehicles`)
     "render.month": (("render.seasons", ("date",)), ("render.day_night", ("theme", "real", "accelerated"))),
+    **{f"audio.{k}_pct": (_SOUND_ON,) for k in ("master", "ride", "ambience", "events", "rogue_sfx", "rogue_music")},
     "wind.speed_kmh": (_WIND_SET,),
     "wind.from_deg": (_WIND_SET,),
     "wind.gust_pct": (("wind.mode", ("gusty",)),),

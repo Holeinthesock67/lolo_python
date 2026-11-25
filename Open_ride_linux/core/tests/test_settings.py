@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import tomllib
 from pathlib import Path
@@ -42,6 +43,9 @@ def test_current_lists_the_settings_with_bounds_from_config():
     quality = next(it for it in items if it["key"] == "render.quality")
     assert quality["type"] == "choice" and quality["choices"] == ["low", "medium", "high"]
     assert quality["applies"] == "now"
+    # Lot QG1 : aide en mots des trois qualités (portée, végétation, brume)
+    assert all(m in quality["help"] for m in ("Haute : on voit à 8\u00a0km", "Moyenne : 5\u00a0km", "GTX\u00a01060",
+                                              "Basse : 3\u00a0km", "80\u00a0%", "si l'image saccade"))
     gear = next(it for it in items if it["key"] == "gearing.start_gear")
     assert (gear["min"], gear["max"]) == (1, 24)
     display = next(it for it in items if it["key"] == "render.display")
@@ -290,18 +294,32 @@ def test_fps_counter_setting(tmp_path: Path):
         settings.check(cfg, "render.fps", "oui")
 
 
-def test_draft_gauge_setting(tmp_path: Path):
-    """Jauge d'abri au-dessus des bots (demande du 29 octobre) : choix off / on, graphisme, appliquée tout de
-    suite, coupée par défaut."""
+def test_draft_gauge_retired(tmp_path: Path, caplog):
+    """Jauge d'abri des bots retirée (lot NI1, 21/11) : plus au menu, et un config.toml d'avant qui la porte se lit
+    sans avertissement de faute de frappe."""
+    assert "render.draft_gauge" not in {i["key"] for i in settings.current(Config())}
+    path = tmp_path / "config.toml"
+    path.write_text("[render]\nquality = \"low\"\ndraft_gauge = \"on\"\n", encoding="utf-8")
+    with caplog.at_level(logging.INFO, logger=config_mod.log.name):
+        cfg = config_mod.load(path)
+    assert not hasattr(cfg.render, "draft_gauge")
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING and "draft_gauge" in r.getMessage()]
+    assert any("draft_gauge" in r.getMessage() and "NI1" in r.getMessage() for r in caplog.records)
+
+
+def test_auto_photos_setting(tmp_path: Path):
+    """Photos automatiques à l'arrivée et aux records (idée M9 de l'audit du 22 novembre) : choix on / off,
+    graphisme, appliqué tout de suite, actif par défaut, légende en mots."""
     cfg = Config()
-    it = {i["key"]: i for i in settings.current(cfg)}["render.draft_gauge"]
-    assert (it["value"], it["choices"], it["applies"], it["group"]) == ("off", ["off", "on"], "now", "graphics")
+    it = {i["key"]: i for i in settings.current(cfg)}["render.auto_photos"]
+    assert (it["value"], it["choices"], it["applies"], it["group"]) == ("on", ["on", "off"], "now", "graphics")
+    assert "~/OpenRide/Captures/" in it["help"]
     path = tmp_path / "config.toml"
     path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
-    settings.apply(cfg, {"render.draft_gauge": "on"}, path)
-    assert config_mod.load(path).render.draft_gauge == "on"
+    settings.apply(cfg, {"render.auto_photos": "off"}, path)
+    assert config_mod.load(path).render.auto_photos == "off"
     with pytest.raises(settings.SettingError):
-        settings.check(cfg, "render.draft_gauge", "oui")
+        settings.check(cfg, "render.auto_photos", "non")
 
 
 def test_settings_groups_and_new_entries():
@@ -323,12 +341,15 @@ def test_settings_groups_and_new_entries():
 
 
 def test_bool_and_scaled_settings_in_the_menu(tmp_path: Path):
-    """Lot O26 : décor vivant (booléen en on / off), relief (2,5 affiché 250 %), ressenti du vent."""
+    """Lot O26 : booléen en on / off, relief (2,5 affiché 250 %), ressenti du vent. Lot NI4 : « Décor vivant »
+    retiré du menu (clé gardée pour les bancs), « Son » (booléen `audio.enabled`) en tête du groupe Son."""
     cfg = Config()
     items = {it["key"]: it for it in settings.current(cfg)}
-    living = items["render.living"]
-    assert living == {"key": "render.living", "label": "Décor vivant", "group": "graphics", "value": "on",
-                      "applies": "relaunch", "type": "choice", "choices": ["on", "off"]}
+    assert "render.living" not in items and cfg.render.living is True
+    sound = items["audio.enabled"]
+    assert sound == {"key": "audio.enabled", "label": "Son", "group": "sound", "value": "on",
+                     "applies": "now", "type": "choice", "choices": ["on", "off"]}
+    assert [k for k in items if items[k]["group"] == "sound"][0] == "audio.enabled"
     relief = items["render.visual_grade_scale"]
     assert (relief["value"], relief["min"], relief["max"], relief["step"], relief["unit"]) == (250, 100, 300, 25, "%")
     assert relief["applies"] == "relaunch"
@@ -337,17 +358,19 @@ def test_bool_and_scaled_settings_in_the_menu(tmp_path: Path):
     with pytest.raises(settings.SettingError):
         settings.check(cfg, "render.visual_grade_scale", 310)
     with pytest.raises(settings.SettingError):
-        settings.check(cfg, "render.living", True)
+        settings.check(cfg, "audio.enabled", True)
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "render.living", "off")   # plus au menu (lot NI4)
     path = tmp_path / "config.toml"
     path.write_text(START, encoding="utf-8")
-    settings.apply(cfg, {"render.living": "off", "render.visual_grade_scale": 150, "wind.feel": "ftms"}, path)
+    settings.apply(cfg, {"audio.enabled": "off", "render.visual_grade_scale": 150, "wind.feel": "ftms"}, path)
     data = tomllib.loads(path.read_text(encoding="utf-8"))
-    assert data["render"]["living"] is False and data["render"]["visual_grade_scale"] == 1.5
+    assert data["audio"]["enabled"] is False and data["render"]["visual_grade_scale"] == 1.5
     assert data["wind"]["feel"] == "ftms"
-    assert cfg.render.living is False and cfg.render.visual_grade_scale == 1.5
+    assert cfg.audio.enabled is False and cfg.render.visual_grade_scale == 1.5
     again = config_mod.load(path, None)
-    assert (again.render.living, again.render.visual_grade_scale) == (False, 1.5)
-    assert {it["key"]: it["value"] for it in settings.current(again)}["render.living"] == "off"
+    assert (again.audio.enabled, again.render.visual_grade_scale) == (False, 1.5)
+    assert {it["key"]: it["value"] for it in settings.current(again)}["audio.enabled"] == "off"
 
 
 def test_advanced_settings_and_settings_in_parts(tmp_path: Path):
@@ -359,7 +382,8 @@ def test_advanced_settings_and_settings_in_parts(tmp_path: Path):
     by_key = {it["key"]: it for it in settings.current(cfg)}
     assert [k for k, it in by_key.items() if it["group"] == "advanced"] == [
         "trainer.control", "wind.max_grade_offset_pct", "wind.feel",   # choix d'essai et plafond, lot NI2
-        "open_world.network", "open_world.cache_max_gb", "render.theme_library_gb", "progression.enabled"]
+        "open_world.network", "open_world.cache_max_gb", "render.theme_library_gb", "progression.enabled",
+        "privacy.hide_start"]   # zone privée au départ, lot PZ1
     assert by_key["open_world.network"]["choices"] == ["on", "off"] and by_key["open_world.network"]["value"] == "on"
     cache = by_key["open_world.cache_max_gb"]
     assert (cache["value"], cache["min"], cache["max"], cache["unit"]) == (5, 1, 500, "Go")   # 0,5 Go arrondi au-dessus
@@ -421,8 +445,10 @@ def test_lot_ni2_one_place_per_setting_and_rule_for_useless_lines():
     assert by_key["wind.max_grade_offset_pct"]["label"] == "Pente ajoutée max"
     assert {by_key[k]["group"] for k in ("trainer.control", "wind.feel", "wind.max_grade_offset_pct")} == {"advanced"}
     whens = {k: it["when"] for k, it in by_key.items() if "when" in it}
-    assert set(whens) == {"depart.cadence_rpm", "ride.vehicle_draft", "render.month", "wind.speed_kmh",
-                          "wind.from_deg", "wind.gust_pct", "wind.feel"}
+    volumes = {f"audio.{k}_pct" for k in ("master", "ride", "ambience", "events", "rogue_sfx", "rogue_music")}
+    assert set(whens) == {"depart.cadence_rpm", "render.month", "wind.speed_kmh",
+                          "wind.from_deg", "wind.gust_pct", "wind.feel"} | volumes   # lot NI4 : volumes sous « Son »
+    assert all(whens[k] == [{"key": "audio.enabled", "in": ["on"]}] for k in volumes)
     for key, conds in whens.items():   # une dépendance porte sur un réglage du menu et sur ses vrais choix
         for c in conds:
             assert c["key"] != key and set(c["in"]) <= set(by_key[c["key"]]["choices"]), (key, c)

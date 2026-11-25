@@ -47,7 +47,13 @@ def test_three_laps_race_without_objects_full_ranking_and_bilan(env):
         assert len(d["bots"]) == 7 and all("s" in b for b in d["bots"])
         seen.append(g)
 
-    run(s, 900, check)
+    for _ in range(900):
+        run(s, 1.0, check, end_at_arrival=False)
+        if s.state.arrival is not None:
+            break
+    # lot RT2 : l'arrivée ne termine plus la séance, « Terminer et enregistrer » la termine
+    assert s.state.session_state == "RUNNING" and s.state.arrival["kind"] == "race"
+    s._on_command("end_session", {"save": True}, 3)
     assert s.state.session_state == "FINISHED" and not errors
     assert {f["of"] for f in seen} == {8} and {f["lap"][1] for f in seen} == {2}
     summary = s.state.summary["gp"]
@@ -64,12 +70,11 @@ def test_three_laps_race_without_objects_full_ranking_and_bilan(env):
 
 def test_line_route_runs_to_the_finish_of_the_route(env):
     """En ligne, la Course va jusqu'à l'arrivée du parcours (ligne 30 m avant le bout, file des bots arrivés),
-    sans réglage de distance : `grandprix.distance_km` ne la raccourcit pas."""
+    sans réglage de distance (le Grand Prix des objets, lui, se court sur une boucle seulement, lot GPL1)."""
     from openride_core.session import GP_RUNOUT_M
 
     make, run, _, _ = env
-    s, _, errors = make(6910, route_id="demo", distance_km=5)
-    s.cfg.grandprix.distance_km = 5
+    s, _, errors = make(6910, route_id="demo")
     s._on_command("start", {"mode": "race"}, 2)
     assert not errors and s.grandprix.lap_m is None
     assert s.grandprix.length_m == pytest.approx(s.route.length_m - s.physics.s - GP_RUNOUT_M)

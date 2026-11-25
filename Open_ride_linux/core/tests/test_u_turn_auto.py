@@ -1,6 +1,8 @@
 """Demi-tour automatique au bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP (lot N26) :
 l'entraînement n'est plus coupé par l'arrivée ; le cycliste repart dans l'autre sens sans s'arrêter, autant de
-fois qu'il le faut ; une fois l'entraînement fini (ou hors entraînement), le bout du parcours termine la séance."""
+fois qu'il le faut. Lot RT2 (fin commune, choix du propriétaire du 21 novembre) : une fois l'entraînement fini, ou
+hors entraînement, le bout du parcours ne termine plus la séance non plus : l'arrivée est annoncée (`state.arrival`)
+et le même demi-tour automatique laisse rouler au calme jusqu'à « Terminer et enregistrer »."""
 
 from __future__ import annotations
 
@@ -61,8 +63,13 @@ def test_workout_turns_at_each_end_then_finishes_after_the_workout(tmp_path, mon
     assert s.physics.distance > 2 * LENGTH_M - 2.0          # distance du journal toujours croissante
     ride_until(s, lambda: s.erg is None)                    # entraînement fini : retour au SIM
     assert s.state.workout_done is not None and s.state.session_state == "RUNNING"
-    ride_until(s, lambda: s.state.session_state == "FINISHED")   # bout suivant : arrivée ordinaire
+    assert s.state.arrival["kind"] == "workout"
+    d = s.physics.direction
+    ride_until(s, lambda: s.physics.direction != d)         # bout suivant : demi-tour aussi (lot RT2)
+    assert s.state.session_state == "RUNNING" and s.state.arrival["kind"] == "workout"
+    s._on_command("end_session", {"save": True}, 20)
     assert s.state.summary is not None and s.state.summary["distance_m"] > 3 * LENGTH_M
+    assert s.state.summary["arrival"]["kind"] == "workout"
 
 
 def test_ftp_ramp_turns_too(tmp_path, monkeypatch):
@@ -72,20 +79,21 @@ def test_ftp_ramp_turns_too(tmp_path, monkeypatch):
     assert s.state.session_state == "RUNNING" and s.state.dir == -1
 
 
-def test_sim_session_still_finishes_at_the_end(tmp_path, monkeypatch):
+def test_sim_session_turns_back_at_the_end_with_the_arrival(tmp_path, monkeypatch):
     s = make_session(tmp_path, monkeypatch, 7388, workout_id=None)
-    ride_until(s, lambda: s.state.session_state == "FINISHED")
-    assert s.physics.direction > 0 and s.physics.s >= LENGTH_M
+    ride_until(s, lambda: s.physics.direction < 0 or s.state.session_state != "RUNNING")
+    assert s.state.session_state == "RUNNING" and s.physics.s == pytest.approx(LENGTH_M, abs=1.0)
+    assert s.state.arrival == {"kind": "route", "place": None, "of": None}
 
 
-def test_free_erg_still_finishes_at_the_end(tmp_path, monkeypatch):
+def test_free_erg_turns_back_at_the_end_too(tmp_path, monkeypatch):
     s = make_session(tmp_path, monkeypatch, 7392, workout_id=None)
     s._on_command("pause", {}, 10)
     s._on_command("set_ride_mode", {"mode": "erg", "target_w": 200}, 11)
     s._on_command("resume", {}, 12)
     assert s.erg is not None and not isinstance(s.erg, ErgController)
-    ride_until(s, lambda: s.state.session_state == "FINISHED")
-    assert s.physics.direction > 0
+    ride_until(s, lambda: s.physics.direction < 0 or s.state.session_state != "RUNNING")
+    assert s.state.session_state == "RUNNING" and s.state.arrival["kind"] == "route"
 
 
 def test_journal_records_the_automatic_u_turn(tmp_path, monkeypatch):

@@ -41,7 +41,9 @@ from .route_stats import compute_stats
 
 TRACK_ID = "velodrome-250"
 CREATED = "2026-11-07T00:00:00+01:00"   # fixe : le parcours est reproductible octet pour octet
-FORMAT_VERSION = "1.7"
+# Version du format `.world` que la piste écrit : celle des fonctions qu'elle utilise (1.7), fixe pour que la
+# piste reste reproductible octet pour octet ; ce n'est pas `FORMAT_VERSION` du compilateur (audit du 22/11, C9).
+TRACK_FORMAT_VERSION = "1.7"
 VENUE_VERSION = "1.0"
 DS_M = 0.25                  # un point tous les 25 cm : relèvement continu (moins de 0,5° par point)
 ORIGIN_LAT = 46.0            # repère géographique neutre (salle fictive, aucune coordonnée réelle)
@@ -303,7 +305,7 @@ def build_manifest(spec: TrackSpec, route: dict) -> dict:
     stats_route = {k: route[k] for k in ("n", "ds_m", "length_m", "alt_m", "surface")}
     return {
         "format": "openride-world",
-        "format_version": FORMAT_VERSION,
+        "format_version": TRACK_FORMAT_VERSION,
         "name": spec.name,
         "created": CREATED,
         "compiler": {"name": "openride-velodrome", "version": "1.0.0"},

@@ -12,6 +12,8 @@
 # UNIT (ex. « test_route_vectors » : ne lance que ce test unitaire et saute les autres étapes),
 # UNIT_TIMEOUT (durée maximale d'un test unitaire en secondes, défaut 120 : une erreur de script dans
 # _init laisse Godot tourner sans quitter),
+# IPC_TIMEOUT (durée maximale du rendu par tronçons, de l'ERG et du menu face au faux core, défaut 300) et
+# SCENARIOS_TIMEOUT (scénarios IPC, défaut 900) : même raison (revue de code vague 5, O3-07),
 # VISUAL_CONFIGS (configurations des tests graphiques de la scène principale, défaut « 1280x720:low » ;
 # « none » pour les sauter ; matrice complète et rapport : run_visual_tests.sh),
 # OPENRIDE_PERF (budgets de temps, lot X2 : « report » par défaut, un dépassement est signalé sans
@@ -30,6 +32,28 @@ ENGINE_LOG_TEMP=$([ -z "${ENGINE_LOG:-}" ] && echo 1 || echo 0)   # journal temp
 ENGINE_LOG="${ENGINE_LOG:-$(mktemp -t openride-engine-test.XXXXXX.log)}"
 ROUTES_DIR="$(mktemp -d -t openride-routes.XXXXXX)"   # reçoit demo.world avec terrain synthétique
 UNIT_TIMEOUT="${UNIT_TIMEOUT:-120}"
+IPC_TIMEOUT="${IPC_TIMEOUT:-300}"
+SCENARIOS_TIMEOUT="${SCENARIOS_TIMEOUT:-900}"
+# Processus lancés en arrière-plan (faux core, Godot des scénarios IPC) : arrêtés sur Ctrl+C, SIGTERM ou toute
+# sortie du script, sinon ils restent sur les ports fixes et faussent le passage suivant (revue vague 5, O3-06).
+BG_PIDS=()
+arreter_fond() {
+  local p
+  for p in "${BG_PIDS[@]}"; do kill -TERM "$p" 2>/dev/null; done
+  for _ in $(seq 30); do
+    local vivant=0
+    for p in "${BG_PIDS[@]}"; do kill -0 "$p" 2>/dev/null && vivant=1; done
+    [ "$vivant" = 0 ] && break
+    sleep 0.1
+  done
+  for p in "${BG_PIDS[@]}"; do kill -KILL "$p" 2>/dev/null; done
+  BG_PIDS=()
+  rm -rf "${ROUTES_DIR:-}" "${HERBE_DIR:-}"
+  rm -f "${STREAM_LOG:-}" "${FAKE_OUT_FILE:-}" "${PERF_FILE:-}"
+}
+trap arreter_fond EXIT
+trap 'echo "Interrompu : arrêt du faux core et de Godot"; exit 130' INT
+trap 'exit 143' TERM
 CORE_SRC="$(cd "$ENGINE_DIR/../core/src" && pwd)"
 # Rendu du jeu (Forward+ sur Vulkan) pour toute image rendue, sous Xvfb compris : Vulkan logiciel de Mesa
 # (mesa-vulkan-drivers) au cloud et en CI. Mêmes arguments que tests/rendu_jeu.py.
@@ -262,12 +286,14 @@ if ! PYTHONPATH="$CORE_SRC" python3 -m openride_core.tools.fake_world --demo --t
   echo "Génération du terrain synthétique impossible"; status=1
 fi
 STREAM_LOG="$(mktemp -t openride-stream-test.XXXXXX.log)"
-"$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_world_streamer.gd -- "$ROUTES_DIR/demo.world" \
+timeout -k 5 "$IPC_TIMEOUT" "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_world_streamer.gd -- "$ROUTES_DIR/demo.world" \
   >"$STREAM_LOG" 2>&1
 stream_status=$?
 grep -v "^Godot Engine" "$STREAM_LOG"
 stream_ok=0
 if [ "$stream_status" -ne 0 ] || grep -q -E "SCRIPT ERROR|ERROR:|WARNING:" "$STREAM_LOG"; then stream_ok=1; fi
+# Code 0 sans sa ligne de compte finale : test arrêté avant la fin (O3-07).
+if ! grep -q -E "^Rendu par tronçons : " "$STREAM_LOG"; then stream_ok=1; echo "ligne finale « Rendu par tronçons » absente"; fi
 record "test_world_streamer (rendu E1)" "$stream_ok"
 rm -f "$STREAM_LOG"
 
@@ -331,10 +357,11 @@ elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
 fi
 
 echo "== ERG (lot I6) =="
-python3 "$ENGINE_DIR/tests/fake_core.py" --erg-workout --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
+timeout -k 5 "$IPC_TIMEOUT" python3 "$ENGINE_DIR/tests/fake_core.py" --erg-workout --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
 ERG_FAKE_PID=$!
+BG_PIDS+=("$ERG_FAKE_PID")
 sleep 0.2
-ERG_OUT="$("$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_erg_view_model.gd -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" 2>&1)"
+ERG_OUT="$(timeout -k 5 "$IPC_TIMEOUT" "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_erg_view_model.gd -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" 2>&1)"
 erg_rc=$?
 wait "$ERG_FAKE_PID"
 erg_fake_rc=$?
@@ -349,10 +376,11 @@ record "test_erg_view_model (ERG I6, faux core)" "$erg_ok" "$(echo "$ERG_OUT" | 
 for menu_variant in normal perte-et-parties; do
   if [ "$menu_variant" = normal ]; then MENU_FAKE_ARGS=(); else MENU_FAKE_ARGS=(--drop-first-catalog --split-catalog); fi
   echo "== Menu et listes v1.1 (lot N3, $menu_variant) =="
-  python3 "$ENGINE_DIR/tests/fake_core.py" --catalog "$ENGINE_DIR/tests/data/catalog_test.json" "${MENU_FAKE_ARGS[@]}" --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
+  timeout -k 5 "$IPC_TIMEOUT" python3 "$ENGINE_DIR/tests/fake_core.py" --catalog "$ENGINE_DIR/tests/data/catalog_test.json" "${MENU_FAKE_ARGS[@]}" --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
   MENU_FAKE_PID=$!
+  BG_PIDS+=("$MENU_FAKE_PID")
   sleep 0.2
-  MENU_OUT="$("$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_menu_ipc.gd -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" 2>&1)"
+  MENU_OUT="$(timeout -k 5 "$IPC_TIMEOUT" "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_menu_ipc.gd -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" 2>&1)"
   menu_rc=$?
   wait "$MENU_FAKE_PID"
   menu_fake_rc=$?
@@ -369,12 +397,14 @@ echo "== Scénarios IPC (journal de l'engine : $ENGINE_LOG) =="
 FAKE_ARGS=(--state-port "$STATE_PORT" --cmd-port "$CMD_PORT" --engine-log "$ENGINE_LOG")
 if [ -n "${SCENARIOS:-}" ]; then FAKE_ARGS+=(--scenarios "$SCENARIOS"); fi
 FAKE_OUT_FILE="$(mktemp -t openride-fake-core.XXXXXX.log)"
-python3 "$ENGINE_DIR/tests/fake_core.py" "${FAKE_ARGS[@]}" > >(tee "$FAKE_OUT_FILE") 2>&1 &
+timeout -k 5 "$SCENARIOS_TIMEOUT" python3 "$ENGINE_DIR/tests/fake_core.py" "${FAKE_ARGS[@]}" > >(tee "$FAKE_OUT_FILE") 2>&1 &
 FAKE_PID=$!
+BG_PIDS+=("$FAKE_PID")
 sleep 0.3
-"$GODOT" --headless --path "$ENGINE_DIR" -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" \
+timeout -k 5 "$SCENARIOS_TIMEOUT" "$GODOT" --headless --path "$ENGINE_DIR" -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" \
   --routes-dir="$ROUTES_DIR" --test-mode >"$ENGINE_LOG" 2>&1 &
 GODOT_PID=$!
+BG_PIDS+=("$GODOT_PID")
 
 wait "$FAKE_PID"
 fake_status=$?

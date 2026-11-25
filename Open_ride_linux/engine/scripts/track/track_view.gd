@@ -13,6 +13,7 @@ extends Control
 
 const Model := preload("res://scripts/track/track_hud_model.gd")
 const UiTheme := preload("res://scripts/ui_theme.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")
 
 const BLOCK_W := 243.0          # largeur des colonnes du HUD (hud_view.gd COLUMN_W)
 const MARGIN := 20.0            # hud_view.gd TOP_MARGIN
@@ -22,8 +23,6 @@ const ROW_SIZE := 16
 const BANNER_W := 560.0
 const BOTTOM_W := 540.0
 const BOTTOM_OFFSET := 24.0
-const CENTER_W := 640.0
-const CENTER_TOP_FRAC := 0.62
 const RING_W := 180.0
 const RING_H := 92.0
 const RING_COLOR := Color(0.78, 0.55, 0.27)
@@ -44,9 +43,12 @@ var _pacer: PanelContainer
 var _pacer_speed: Label
 var _pacer_text: Label
 var _pacer_hint: Label
+var _gaps: PanelContainer
+var _gap_rows: Array = []       # [ligne, nom (Label), écart (Label)] : devant, derrière
 var _list: PanelContainer
 var _list_title: Label
-var _rows: Array = []           # [ligne, place (Label), nom (RichTextLabel), valeur (Label), fond (StyleBoxFlat)]
+var _rows: Array = []           # [ligne, place (Label), nom (RichTextLabel), valeur (Label), fond (StyleBoxFlat), jauge W′]
+var _reserve_legend: Label      # « Trait bleu : réserve des bots » sous la liste (lot RW)
 var _pursuit: PanelContainer
 var _ring: Control
 var _gap_title: Label
@@ -56,9 +58,6 @@ var _chrono: PanelContainer
 var _chrono_label: Label
 var _chrono_big: Label
 var _chrono_line: Label
-var _center: PanelContainer
-var _center_title: Label
-var _center_sub: Label
 var _ring_me := 0.0
 var _ring_opp := 0.5
 var _ring_has_opp := false
@@ -127,6 +126,28 @@ func _build() -> void:
 	pcol.add_child(_pacer_text)
 	pcol.add_child(_pacer_hint)
 
+	# Écarts en temps aux voisins (révision 1.33, essai du 21 novembre), sous les tours et le derny.
+	_gaps = _right_panel()
+	var gcol0 := _vbox(_gaps)
+	var gt := _label(14, UiTheme.DIM)
+	gt.text = "ÉCARTS"
+	gcol0.add_child(gt)
+	for title in ["Devant", "Derrière"]:
+		var h := HBoxContainer.new()
+		var t := _label(15, UiTheme.DIM)
+		t.text = title
+		t.custom_minimum_size = Vector2(74, 0)
+		var n := _label(17, UiTheme.INK)
+		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		n.clip_text = true
+		var g := _label(20, UiTheme.INK)
+		g.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		h.add_child(t)
+		h.add_child(n)
+		h.add_child(g)
+		gcol0.add_child(h)
+		_gap_rows.append([h, n, g])
+
 	_list = _panel(UiTheme.PANEL_BG)
 	_list.offset_left = MARGIN
 	_list.offset_right = MARGIN + BLOCK_W
@@ -162,10 +183,20 @@ func _build() -> void:
 		h.add_child(p)
 		h.add_child(n)
 		h.add_child(d)
-		row.add_child(h)
+		var hcol := VBoxContainer.new()   # place, nom et valeur, puis jauge de réserve du bot (lot RW)
+		hcol.add_theme_constant_override("separation", -int(BotReserve.HEIGHT))   # sous le texte, sans grandir la ligne
+		hcol.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bar := BotReserve.make_bar()
+		hcol.add_child(h)
+		hcol.add_child(bar)
+		row.add_child(hcol)
 		row.visible = false
 		rcol.add_child(row)
-		_rows.append([row, p, n, d, bg])
+		_rows.append([row, p, n, d, bg, bar])
+	_reserve_legend = _label(ROW_SIZE - 5, UiTheme.DIM)
+	_reserve_legend.text = BotReserve.LEGEND
+	_reserve_legend.visible = false
+	rcol.add_child(_reserve_legend)
 
 	_pursuit = _bottom_panel()
 	var prow := HBoxContainer.new()
@@ -195,21 +226,7 @@ func _build() -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ccol.add_child(l)
 
-	_center = _panel(Model.RED)
-	_center.anchor_left = 0.5
-	_center.anchor_right = 0.5
-	_center.anchor_top = CENTER_TOP_FRAC
-	_center.anchor_bottom = CENTER_TOP_FRAC
-	_center.offset_left = -CENTER_W / 2.0
-	_center.offset_right = CENTER_W / 2.0
-	var mcol := _vbox(_center)
-	_center_title = _label(34, UiTheme.INK)
-	_center_sub = _label(18, UiTheme.INK)
-	for l in [_center_title, _center_sub]:
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		mcol.add_child(l)
-
-	for p in [_banner, _laps, _pacer, _list, _pursuit, _chrono, _center]:
+	for p in [_banner, _laps, _pacer, _gaps, _list, _pursuit, _chrono]:
 		add_child(p)
 
 
@@ -251,6 +268,21 @@ func update_view(view: Dictionary) -> void:
 		_pacer_hint.text = str(pc.get("hint", ""))
 		_pacer_hint.visible = _pacer_hint.text != ""
 
+	var gp: Dictionary = view.get("gaps", {})
+	_gaps.visible = not gp.is_empty()
+	_gaps.offset_top = _pacer.offset_top + (_pacer.get_combined_minimum_size().y + 10.0 if _pacer.visible else 0.0)
+	if _gaps.visible:
+		var keys := ["ahead", "behind"]
+		for i in 2:
+			var it = gp.get(keys[i], null)
+			var row: Array = _gap_rows[i]
+			(row[0] as Control).visible = it is Dictionary
+			if it is Dictionary:
+				(row[1] as Label).text = str(it.get("name", ""))
+				(row[2] as Label).text = str(it.get("text", ""))
+				# devant : écart à reprendre (or) ; derrière : avance sur lui (vert)
+				(row[2] as Label).add_theme_color_override("font_color", UiTheme.GOLD if i == 0 else GREEN)
+
 	var lst: Dictionary = view.get("list", {})
 	var rows: Array = lst.get("rows", [])
 	_list.visible = not rows.is_empty()
@@ -279,6 +311,10 @@ func update_view(view: Dictionary) -> void:
 		(r[3] as Label).text = str(it.get("value", ""))
 		(r[3] as Label).add_theme_color_override("font_color", color)
 		(r[4] as StyleBoxFlat).bg_color = Color(0.98, 0.78, 0.24, 0.94) if kind == "me" else Color(0, 0, 0, 0)
+		BotReserve.set_bar(r[5] as Control, float(it.get("wbal", -1.0)))
+	var legend := BotReserve.any_shown(rows)
+	if _reserve_legend.visible != legend:
+		_reserve_legend.visible = legend
 
 	var pu: Dictionary = view.get("pursuit", {})
 	_pursuit.visible = not pu.is_empty()
@@ -300,12 +336,6 @@ func update_view(view: Dictionary) -> void:
 		_chrono_big.text = str(ch.get("big", ""))
 		_chrono_line.text = str(ch.get("line", ""))
 
-	var ce: Dictionary = view.get("center", {})
-	_center.visible = not ce.is_empty()
-	if _center.visible:
-		_set_fill(_center, ce.get("color", Model.RED))
-		_center_title.text = str(ce.get("title", ""))
-		_center_sub.text = str(ce.get("sub", ""))
 
 
 ## Cloche du dernier tour (maquette VD8) : dôme, corps, rebord et battant, en or.
@@ -369,11 +399,23 @@ func test_info() -> Dictionary:
 		"sub": _banner_sub.text if visible and _banner.visible else "",
 		"bell": visible and _banner.visible and (_bells[0] as Control).modulate.a > 0.5,
 		"laps": _laps_value.text if visible and _laps.visible else "",
-		"list_title": _list_title.text if visible and _list.visible else "", "list": names,
+		"list_title": _list_title.text if visible and _list.visible else "", "list": names, "reserve": _reserve_info(),
+		"reserve_legend": visible and _list.visible and _reserve_legend.visible,
 		"pursuit": _gap.text if visible and _pursuit.visible else "",
 		"chrono": _chrono_big.text if visible and _chrono.visible else "",
 		"pacer": _pacer_text.text if visible and _pacer.visible else "",
-		"center": _center_title.text if visible and _center.visible else "", "laps_top": _laps.offset_top}
+		"laps_top": _laps.offset_top,
+		"gaps": [(_gap_rows[0][2] as Label).text if visible and _gaps.visible and (_gap_rows[0][0] as Control).visible else "",
+			(_gap_rows[1][2] as Label).text if visible and _gaps.visible and (_gap_rows[1][0] as Control).visible else ""]}
+
+
+## Réserves dessinées des lignes visibles (−1 : pas de barre), pour les tests (lot RW).
+func _reserve_info() -> Array:
+	var out: Array = []
+	for r in _rows:
+		if (r[0] as Control).visible:
+			out.append(float((r[5] as Control).get_meta("frac", -1.0)))
+	return out
 
 
 func _right_panel() -> PanelContainer:
