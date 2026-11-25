@@ -369,8 +369,12 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
                 core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot", "path": str(png),
                                "tag": p["id"]})
                 hit = core.log.wait_for(r"^screenshot (\{.*\})$", 15.0, mark)
-                info = json.loads(hit[1].group(1)) if hit else None
-                if info is None or int(info.get("streaming_pending", 0)) == 0:
+                if hit is None:
+                    # Réponse lente (préchauffage, tuiles en cours, rendu logiciel de la CI : plus de 15 s entre deux
+                    # captures du premier point le 25 novembre) : on redemande au lieu d'abandonner le point
+                    continue
+                info = json.loads(hit[1].group(1))
+                if int(info.get("streaming_pending", 0)) == 0:
                     break
                 time.sleep(1.0)
             ok = bool(info and info.get("ok")) and png.is_file()
