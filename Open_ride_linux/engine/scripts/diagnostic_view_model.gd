@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Écran « Réglages › Diagnostic » (lot DG1 ; contrat IPC révision 1.32, commande `create_diagnostic`, message
+## Écran « Réglages › Diagnostic » (lot DG1 ; contrat IPC révision 1.35, commande `create_diagnostic`, message
 ## `diagnostic`). Modèle sans nœud, relié par menu_flow.gd : le cycliste choisit le dossier où déposer le fichier
 ## (Téléchargements, Bureau ou dossier OpenRide), le core l'écrit sans donnée privée et répond par le chemin. Rien
 ## n'est envoyé : le fichier se joint à la main à un signalement. La ligne d'état dit ce qui se passe, en mots.

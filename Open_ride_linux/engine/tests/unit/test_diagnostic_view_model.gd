@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Tests sans écran de « Réglages › Diagnostic » (lot DG1, contrat 1.32) : modèle (diagnostic_view_model.gd) et
+## Tests sans écran de « Réglages › Diagnostic » (lot DG1, contrat 1.35) : modèle (diagnostic_view_model.gd) et
 ## déroulé (menu_flow.gd : ouverture, choix du dossier, réponse du core, échec).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_diagnostic_view_model.gd
 

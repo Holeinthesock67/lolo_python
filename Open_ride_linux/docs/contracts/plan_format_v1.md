@@ -2,7 +2,7 @@
 
 Rédigé le 26 octobre 2026. Un plan est un fichier TOML `~/OpenRide/Plans/<id>.toml` ; `<id>` est
 le nom du fichier sans extension (minuscules, chiffres, `-` et `_`). Lu par
-`core/src/openride_core/plans.py` ; plans de référence dans `core/plans/`.
+`core/src/openride_core/plans.py` ; plans de référence dans `core/src/openride_core/data/plans/`.
 
 ## 1. Contenu
 

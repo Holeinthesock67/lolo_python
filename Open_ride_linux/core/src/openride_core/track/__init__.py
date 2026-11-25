@@ -7,8 +7,9 @@ plateau (adversaires) ; `make` construit une épreuve depuis ces réglages. Plan
 
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Sequence
 
 from ..bot_tactics import LEVELS as TACTIC_LEVELS
 from .base import LAP_M, ME, Entrant, TrackError, TrackEvent
@@ -44,11 +45,12 @@ class EventSpec:
     options: tuple[Option, ...] = ()
     fixed: dict = field(default_factory=dict)
     erg: bool = False                    # la séance libre seule accepte l'ERG (plan §5)
+    race: bool = True                    # course : échauffement avant le départ (`warmup.py`) ; pas la séance libre
 
 
 _MASS = tuple(range(3, 12))
 EVENTS: dict[str, EventSpec] = {s.id: s for s in (
-    EventSpec("free", Free, tuple(range(0, 12)), erg=True),
+    EventSpec("free", Free, tuple(range(0, 12)), erg=True, race=False),
     EventSpec("pursuit", Pursuit, (0, 1), options=(Option("distance_m", (3000, 4000), 4000),)),
     EventSpec("kilo", TimeTrial, (0,), fixed={"variant": "kilo"}),
     EventSpec("500", TimeTrial, (0,), fixed={"variant": "500"}),
@@ -57,7 +59,9 @@ EVENTS: dict[str, EventSpec] = {s.id: s for s in (
     EventSpec("scratch", Scratch, _MASS, options=(Option("laps", (10, 15, 20, 30, 40, 60), 20),)),
     EventSpec("points", Points, _MASS, options=(Option("laps", (20, 30, 40, 60), 40),)),
     EventSpec("tempo", Tempo, _MASS, options=(Option("laps", (10, 20, 30), 10),)),
-    EventSpec("elimination", Elimination, _MASS),
+    # Tours entre deux éliminations (essai du 21 novembre : 2 tours, 8 minutes, séance trop courte) : 4 par défaut,
+    # 2 pour la règle olympique ; l'omnium garde 2 tours (`omnium.PROGRAM`).
+    EventSpec("elimination", Elimination, _MASS, options=(Option("every_laps", (2, 3, 4, 5, 6), 4),)),
     EventSpec("keirin", Keirin, (3, 4, 5, 6), options=(Option("laps", (6, 8), 8),)),
     EventSpec("omnium", Omnium, _MASS),
     EventSpec("team_sprint", TeamSprint, (0, 1), team_size=3, options=(Option("place", (1, 2, 3), 1),)),
@@ -130,6 +134,29 @@ def make(event_id: str, entrants: list[Entrant], settings: dict, **kw) -> TrackE
     return spec.cls(entrants, **spec.fixed, **args, **kw)
 
 
+def team_order(levels: Sequence[float], size: int) -> list[int]:
+    """Ordre des bots qui équilibre les équipes de `teams` (revue C3-07) : indices dans `levels` (niveaux des bots,
+    % de la FTP), les `size − 1` premiers avec le cycliste (« home »), puis `size` par équipe adverse.
+
+    Le plateau est étalé du plus fort au plus faible autour du niveau du cycliste : il compte pour la médiane
+    des niveaux. Chaque bot, du plus fort au plus faible, va à l'équipe non pleine dont la somme des niveaux
+    est la plus basse (première équipe à égalité) : niveaux tous égaux, l'ordre reste celui des bots."""
+    n = len(levels)
+    if size <= 1 or n == 0:
+        return list(range(n))
+    if (n + 1) % size:
+        raise TrackError(f"équipes de {size} : {n} bots ne complètent pas les équipes")
+    k = (n + 1) // size
+    slots = [size - 1] + [size] * (k - 1)
+    sums = [float(statistics.median(levels))] + [0.0] * (k - 1)
+    members: list[list[int]] = [[] for _ in range(k)]
+    for i in sorted(range(n), key=lambda i: (-float(levels[i]), i)):
+        tm = min((j for j in range(k) if len(members[j]) < slots[j]), key=lambda j: (sums[j], j))
+        members[tm].append(i)
+        sums[tm] += float(levels[i])
+    return [i for m in members for i in sorted(m)]
+
+
 def teams(entrants: list[Entrant], size: int, place: int = 1) -> list[Entrant]:
     """Équipes de `size` dans l'ordre des engagés : le cycliste et ses `size − 1` premiers bots forment
     « home », les suivants « t2 », « t3 »… ; le cycliste se range à `place` dans son équipe."""
@@ -145,4 +172,4 @@ def teams(entrants: list[Entrant], size: int, place: int = 1) -> list[Entrant]:
 
 
 __all__ = ["EVENTS", "TACTIC_LEVELS", "has_bots", "menu_options", "LAP_M", "ME", "Entrant", "EventSpec", "Option", "TrackError", "TrackEvent",
-           "check", "field_size", "make", "options", "teams"]
+           "check", "field_size", "make", "options", "team_order", "teams"]

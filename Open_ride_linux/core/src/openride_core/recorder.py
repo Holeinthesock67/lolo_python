@@ -215,8 +215,10 @@ class SessionRecorder:
     def events(self) -> list[dict]:
         return [ln for ln in self.lines if ln["kind"] == "event" and ln["event"] in TIMER_EVENTS]
 
-    def finish(self, save: bool, ts: float | None = None) -> tuple[Path | None, Summary, str | None]:
-        """Clôt la séance. Renvoie (chemin du FIT ou None, résumé, erreur éventuelle du FIT)."""
+    def finish(self, save: bool, ts: float | None = None,
+               private_start_m: float = 0.0) -> tuple[Path | None, Summary, str | None]:
+        """Clôt la séance. Renvoie (chemin du FIT ou None, résumé, erreur éventuelle du FIT).
+        `private_start_m` : zone privée au départ du FIT (lot PZ1), 0 si coupée."""
         self.event("stop", ts if ts is not None else time.time())
         if self._writer is not None:
             try:
@@ -234,7 +236,7 @@ class SessionRecorder:
             out = default_fit_path(records[0]["ts"], self.route_id)
             if self.fit_dir is not None:
                 out = self.fit_dir / out.name
-            write_fit(records, events, out, lap_starts(self.lines))
+            write_fit(records, events, out, lap_starts(self.lines), private_start_m)
             return out, summary, None
         except Exception as exc:   # le FIT ne doit jamais faire tomber le core
             log.error("Export FIT impossible : %s", exc)

@@ -25,8 +25,9 @@ extends RefCounted
 ##
 ## Accueil (menu principal, demande du 26 octobre) : « Parcours : … » (choix du parcours, retour à
 ## l'accueil), « Session libre » (SIM, sans entraînement), « Session ERG » (choix de l'entraînement),
-## « Session simulée » (OpenRide relancé sans matériel ; en session simulée : « Revenir au matériel
-## réel »), « Réglages », « Quitter ». Sans monde choisi, les sessions passent d'abord par les parcours.
+## « Réglages », « Quitter ». « Session simulée » (OpenRide relancé sans matériel ; en session simulée :
+## « Revenir au matériel réel ») est un outil d'essai : sortie de l'accueil au lot NI4, elle est dans
+## « Réglages › Appareils » (pairing_view_model.gd, menu_flow.gd). Sans monde choisi, les sessions passent d'abord par les parcours.
 ## « Session ERG » ouvre la liste des entraînements, qui finit par « Créer un entraînement » (lot N16,
 ## traité par menu_flow.gd ; « Importer un fichier » retiré le 12 novembre, révision 1.15).
 ## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
@@ -114,11 +115,14 @@ const SETTINGS_MODES := ["survivor", "grandprix", "race"]
 const INTENSITY_ID := "intensity"
 ## Ligne « Objets » de l'écran Prêt du Grand Prix (lot GP9) : ouvre l'écran des objets (menu_flow.gd).
 const GP_ITEMS_ID := "gp_items"
+## Dernière ligne de l'écran Prêt du Grand Prix (lot GPH1) : « Comment ça marche ? », résumé dans la carte de
+## droite, ouvre l'écran « Aide Grand Prix » (grandprix/gp_help.gd, menu_flow.gd).
+const GP_HELP_ID := "_gp_help"
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 ## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
-## « Saisir du QWKcode (clavier) » ouvre la saisie du QWKcode de GoldenCheetah (qwk_editor.gd, lot O21).
-const QWK_WORKOUT_ID := "_qwk"
+## Saisie du QWKcode au clavier (lot O21) retirée au lot NI4 : « Créer un entraînement » couvre le besoin, et un
+## fichier .qwk posé dans ~/OpenRide/Workouts/ reste lu par le core.
 const HELP_WORKOUT_ID := "_help"
 ## Lignes « Bot n » de l'écran Prêt, fantôme en plus (lot O35).
 const MAX_BOTS := 4
@@ -190,6 +194,9 @@ var track_ids: Array = []
 ## parcours changé par le menu à envoyer au core.
 var mode_routes: Dictionary = {}
 var mode_route_ids: Dictionary = {}
+## Étiquette d'un parcours de mode resté libre (hello_ack.config.free_route_tag, lot GPL1) et ces parcours.
+var free_route_tag := ""
+var shared_route_ids: Array = []
 var route_names: Dictionary = {}
 var route_mode := ""
 var routes_mode := ""
@@ -200,7 +207,8 @@ var _pending_route := ""
 var track_events: Dictionary = {}
 var track_event := "free"
 var track_values: Dictionary = {}
-## Engine lancé en session simulée (--sim-session) : l'accueil propose de revenir au matériel réel.
+## Engine lancé en session simulée (--sim-session) : le titre de l'accueil le dit, et « Réglages › Appareils »
+## propose de revenir au matériel réel (lot NI4).
 var sim_session := false
 var _routes_return := HOME
 ## Modes annoncés par le core (set_modes) ; les modes inconnus de HOME_MODES sont ignorés.
@@ -258,6 +266,8 @@ var coach_ready := ""
 var league_shown := false
 var league_detail := ""
 var league_ready: Dictionary = {"enabled": true, "detail": ""}
+## Mode de course de la manche (lot CH4c : race, survivor, grandprix ou track), envoyé dans `start.mode`.
+var league_mode := "race"
 
 
 func set_league_home(shown: bool, detail: String) -> void:
@@ -266,12 +276,13 @@ func set_league_home(shown: bool, detail: String) -> void:
 	_refresh_home()
 
 
-## Manche de la semaine (lot CH4a) : course du core (`mode` « race », `league` vrai) sur une boucle, libre ou
-## d'un mode (`rmode` : « grandprix » quand seuls les circuits du Grand Prix sont des boucles) ; ouvre l'écran
-## Prêt, ou les parcours d'abord sans boucle choisie.
-func prepare_league(ready: Dictionary, rmode := "") -> Dictionary:
+## Manche de la semaine (lot CH4a) : course du core (`mode` = `lmode`, lot CH4c : race, survivor, grandprix ou
+## track ; `league` vrai) sur un parcours libre ou d'un mode (`rmode` : « grandprix », « track » pour le vélodrome) ;
+## ouvre l'écran Prêt.
+func prepare_league(ready: Dictionary, rmode := "", lmode := "race") -> Dictionary:
 	_clear_start()
 	mode = "league"
+	league_mode = lmode
 	route_mode = rmode if mode_routes.has(rmode) else ""
 	league_ready = ready.duplicate()
 	_refresh_home()
@@ -356,8 +367,7 @@ func _build_home_and_ready() -> void:
 			items.append(_item(m, HOME_MODES[m], true, str(HOME_DETAILS.get(m, ""))))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
 		_item("history", "Historique", true, "séances, semaines, tests de FTP"),
-		_item("collection", "Collection", true, collection_detail),
-		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
+		_item("collection", "Collection", true, collection_detail)])
 	if garage:
 		items.append(_item("garage", "Garage"))
 	items.append_array([_item("settings", "Réglages"), _item("quit", "Quitter")])
@@ -387,7 +397,7 @@ func _build_home_and_ready() -> void:
 	if mode in SETTINGS_MODES:
 		_screens[READY]["items"] = [_item("start", "Lancer", bool(mode_launch.get("enabled", true)),
 			str(mode_launch.get("detail", "")))] + _intensity_items() + [_item("change_route", "Changer de parcours")] \
-			+ mode_rows + ([_item(GP_ITEMS_ID, gp_items_label)] if mode == "grandprix" else [])
+			+ mode_rows + ([_item(GP_ITEMS_ID, gp_items_label), _item(GP_HELP_ID, "Comment ça marche ?")] if mode == "grandprix" else [])
 		_screens[READY]["title"] = "Prêt : " + str(HOME_MODES[mode]) + ("" if world_name == "" else " — " + world_name)
 		return
 	if is_track():
@@ -439,13 +449,21 @@ func set_mode_routes(table) -> void:
 	_refresh_home()
 
 
-## Parcours de chaque mode (CatalogModel.mode_route_ids) et noms des parcours, à chaque liste des parcours.
-func set_mode_route_ids(by_mode: Dictionary, names = null) -> void:
+## Étiquette des parcours de mode restés libres (hello_ack.config.free_route_tag, lot GPL1) ; null : aucune.
+func set_free_route_tag(tag) -> void:
+	free_route_tag = str(tag) if tag is String else ""
+
+
+## Parcours de chaque mode (CatalogModel.mode_route_ids), noms des parcours et parcours de mode restés libres
+## (étiquette `free_route_tag`, lot GPL1), à chaque liste des parcours.
+func set_mode_route_ids(by_mode: Dictionary, names = null, shared = null) -> void:
 	mode_route_ids = by_mode.duplicate(true)
+	if shared is Array:
+		shared_route_ids = shared.duplicate()
 	track_ids = (mode_route_ids.get("track", []) as Array).duplicate()
 	if names is Dictionary:
 		route_names = names.duplicate()
-	if free_world_id != "" and route_mode_of(free_world_id) != "":   # parcours passé dans un mode
+	if free_world_id != "" and not is_free_route(free_world_id):   # parcours passé dans un mode
 		free_world_id = ""
 		free_world_name = ""
 	elif free_world_id != "" and route_names.has(free_world_id):
@@ -453,8 +471,21 @@ func set_mode_route_ids(by_mode: Dictionary, names = null) -> void:
 	_refresh_home()
 
 
-## Mode auquel appartient un parcours ("" : parcours libre).
+## Vrai si le parcours est dans la liste générale : d'aucun mode, ou d'un mode et resté libre (lot GPL1).
+func is_free_route(id: String) -> bool:
+	if id in shared_route_ids:
+		return true
+	for m in mode_route_ids:
+		if id in mode_route_ids[m]:
+			return false
+	return true
+
+
+## Mode d'un parcours de mode (ligue d'hiver, lot CH3), "" pour un parcours de la liste générale : libre, ou d'un
+## mode et resté libre (étiquette `free_route_tag`, lot GPL1), même règle que is_free_route().
 func route_mode_of(id: String) -> String:
+	if is_free_route(id):
+		return ""
 	for m in mode_route_ids:
 		if id in mode_route_ids[m]:
 			return str(m)
@@ -479,7 +510,7 @@ func _pick_route() -> void:
 			return
 		var last := str(last_mode_routes.get(route_mode, ""))
 		pick = last if last in ids else str(ids[0])
-	elif world_id != "" and route_mode_of(world_id) != "":
+	elif world_id != "" and not is_free_route(world_id):
 		pick = free_world_id
 	else:
 		return
@@ -495,7 +526,7 @@ func _needs_route() -> bool:
 		return true
 	if route_mode != "":
 		return not world_id in mode_route_ids.get(route_mode, [])
-	return route_mode_of(world_id) != ""
+	return not is_free_route(world_id)
 
 
 ## Écran Prêt de la séance préparée, ou la liste des parcours d'abord sans parcours qui convienne.
@@ -597,7 +628,7 @@ func _cycle_track_option(option_id: String) -> void:
 func set_world(id: String, name: String) -> void:
 	world_id = id
 	world_name = name if name != "" else id
-	if id != "" and route_mode_of(id) == "":   # dernier parcours libre, montré à l'accueil (lot GP13)
+	if id != "" and is_free_route(id):   # dernier parcours libre, montré à l'accueil (lot GP13)
 		free_world_id = id
 		free_world_name = world_name
 	_refresh_home()
@@ -745,7 +776,7 @@ func _start_args() -> Dictionary:
 			choice[str(o)] = int(v) if v is float and is_equal_approx(v, round(v)) else v   # 20 et non 20.0
 		return {"mode": "track", "track": choice}
 	if mode == "league":   # le core compose le plateau de la manche (11 rivaux de la saison)
-		return {"mode": "race", "league": true}
+		return {"mode": league_mode, "league": true}
 	if mode == "coach" and ghost:   # bots du format de la course conseillée, fantôme en plus (lot CO5)
 		out["bots"] = (out.get("bots", []) as Array) + [{"kind": "ghost"}]
 	if mode == "coach":
@@ -929,19 +960,21 @@ func reset() -> void:
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
-	if mode in ["rogue", "wtf", "coach", "league"] or mode in SETTINGS_MODES:
-		mode = "free"
+	mode = "free"   # le même accueil après tous les modes (20 novembre : plus de liste de modes à part)
 	route_mode = ""
 	_refresh_home()
 	_open(HOME, false)
 
 
-## « Rejouer » de la fin de séance : même parcours, même mode et mêmes choix (bots, fantôme, épreuve, réglages
-## du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours : l'accueil.
+## « Rejouer » d'une séance lancée par `start` : même parcours, même mode et mêmes choix (bots, fantôme, épreuve,
+## réglages du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours :
+## l'accueil. La séance du jour d'un plan est rejouée comme entraînement (le core l'a gardé choisi) : `plan_day`
+## demanderait la séance du jour suivante. Cyber-Rogue et monde ouvert : menu_flow.gd (`last_launch`).
 func replay() -> void:
 	_stack.clear()
 	_focus_stack.clear()
 	_pending = {}
+	start_args.erase("plan_day")
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
@@ -974,7 +1007,6 @@ func set_items(screen_id: String, items: Array) -> void:
 		if clean.size() == 1:
 			clean.append(_item("empty", "Aucun entraînement", false))
 		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
-		clean.append(_item(QWK_WORKOUT_ID, "Saisir du QWKcode (clavier)"))
 		clean.append(_item(HELP_WORKOUT_ID, "Comment ça marche ?"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
@@ -1072,8 +1104,12 @@ func current_screen() -> String:
 
 
 ## Demande de confirmation d'une action destructrice (focus sur « Non »), depuis l'écran courant.
-func confirm(title: String, action: Dictionary) -> Dictionary:
+## Confirmation, « Non » par défaut. `yes_label`, `no_label` et les détails : boutons qui disent ce qu'ils font
+## (lot RZ1, remise à zéro des statistiques) ; par défaut « Non » et « Oui ».
+func confirm(title: String, action: Dictionary, yes_label := "Oui", no_label := "Non", yes_detail := "",
+		no_detail := "") -> Dictionary:
 	_confirm(title, action)
+	_screens[CONFIRM]["items"] = [_item("no", no_label, true, no_detail), _item("yes", yes_label, true, yes_detail)]
 	return state()
 
 
@@ -1217,6 +1253,7 @@ func _confirm(title: String, action: Dictionary) -> void:
 	_confirm_back = _screen
 	_confirm_focus = _focus
 	_screens[CONFIRM]["title"] = title
+	_screens[CONFIRM]["items"] = [_item("no", "Non"), _item("yes", "Oui")]
 	_screen = CONFIRM
 	_focus = 0   # « Non » par défaut
 
@@ -1243,11 +1280,6 @@ func _validate() -> Dictionary:
 					_open(WORKOUTS)
 				"open_world":
 					return {"action": "open_world_menu"}
-				"sim":
-					if sim_session:
-						_confirm("Revenir au matériel réel ? OpenRide redémarre", {"action": "relaunch"})
-					else:
-						_confirm("Session simulée ? OpenRide redémarre sans matériel", {"action": "relaunch_sim"})
 				"settings":
 					_open(SETTINGS)
 				"quit":
@@ -1268,7 +1300,7 @@ func _validate() -> Dictionary:
 				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
-			if id in [CREATE_WORKOUT_ID, QWK_WORKOUT_ID, HELP_WORKOUT_ID]:
+			if id in [CREATE_WORKOUT_ID, HELP_WORKOUT_ID]:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
 			return choose_workout(null if id == NO_WORKOUT_ID else id)
 		READY:
@@ -1298,7 +1330,7 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open_routes()
-				"rogue_change", "wtf_rules", GP_ITEMS_ID, INTENSITY_ID:
+				"rogue_change", "wtf_rules", GP_ITEMS_ID, INTENSITY_ID, GP_HELP_ID:
 					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
 					return {"action": "item", "screen": READY, "id": id}
