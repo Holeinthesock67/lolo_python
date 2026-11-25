@@ -1,0 +1,30 @@
+{
+  "description": "Lot QG1 : Réglages › Graphisme › Qualité graphique écrite basse / moyenne / haute (valeurs low / medium / high du fichier inchangées), aide en mots des trois qualités sur la carte ; les trois valeurs parcourues en modification et capturées (qg1_*), puis Y annule. Marche quelle que soit la qualité de départ (--qualite).",
+  "voies": ["clavier"],
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "settings"},
+    {"ecran": "settings", "titre": "Réglages"},
+    {"choisir": "group:graphics"},
+    {"ecran": "settings_group", "groupe": "graphics", "titre": "Réglages › Graphisme", "contient": ["Qualité graphique —"]},
+    {"choisir": "set:render.quality"},
+    {"note": "carte de détail : choix en français et aide des trois qualités ; aucun mot anglais",
+     "ecran": "settings_group", "edition": true,
+     "contient": ["Choix : basse, moyenne, haute", "Haute : on voit à 8\u00a0km", "Moyenne : 5\u00a0km", "GTX\u00a01060",
+                  "Basse : 3\u00a0km", "si l'image saccade"],
+     "absent": ["low", "medium", "high"]},
+    {"capture": "qg1_qualite_1"},
+    {"appui": "PLUS_SHORT"},
+    {"ecran": "settings_group", "edition": true, "absent": ["low", "medium", "high"]},
+    {"capture": "qg1_qualite_2"},
+    {"appui": "PLUS_SHORT"},
+    {"ecran": "settings_group", "edition": true, "absent": ["low", "medium", "high"]},
+    {"capture": "qg1_qualite_3"},
+    {"appui": "Y_SHORT"},
+    {"note": "annulé : qualité de départ gardée, rien d'écrit",
+     "ecran": "settings_group", "edition": false, "contient": ["Qualité graphique —"], "absent": ["low", "medium", "high"]},
+    {"appui": "Y_SHORT"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "home"}
+  ]
+}

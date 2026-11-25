@@ -4,10 +4,15 @@ Les trois premières épreuves donnent des points de place (40 au premier, 2 de 
 `base.place_points`) ; la course aux points finale ajoute ses points (tours pris compris, négatifs
 aussi). Égalité : la place dans la course aux points. Entre deux épreuves, un tour neutralisé :
 la suivante part lancée quand la médiane du peloton a fait un tour de plus.
+
+Chaque épreuve repart des places sur la piste, pas des distances cumulées (revue C3-02) : au départ
+d'une épreuve, chacun repart de sa place sur la piste, à moins d'un tour du plus avancé (`_regroup`) :
+ses tours entiers de retard cumulés sont oubliés. Seuls les tours de l'épreuve comptent pour ses tours pris.
 """
 
 from __future__ import annotations
 
+import math
 import statistics
 
 from .base import ME, Entrant, TrackEvent, place_points
@@ -35,6 +40,7 @@ class Omnium(TrackEvent):
         self.totals: dict[str, int] = {e.id: 0 for e in entrants}
         self.results: list[dict] = []
         self._neutral_until: float | None = None
+        self._offset: dict[str, float] = {e.id: 0.0 for e in entrants}   # tours retirés pour l'épreuve en cours
         # chaque épreuve du programme vérifie le plateau dès maintenant (rien ne part à moitié)
         for _, cls, opts in PROGRAM:
             cls(entrants, **opts, **kw)
@@ -44,8 +50,20 @@ class Omnium(TrackEvent):
         kw = dict(self._kw)
         kw["seed"] = self.seed * 10 + self.index
         self.sub = cls(self._entrants, **opts, **kw)
-        self.sub.start(t, {r.id: (r.s, r.v) for r in self.riders.values()})
+        self._offset = self._regroup()
+        self.sub.start(t, self._sub_positions())
         self._emit("sub_start", sub=sid, index=self.index + 1)
+
+    def _regroup(self) -> dict[str, float]:
+        """Distance à retirer à chacun pour l'épreuve qui part : ses tours entiers de retard sur le coureur le
+        plus avancé (distance cumulée). Chacun repart à sa place sur la piste, à moins d'un tour de la tête, dans
+        l'ordre de la course : un coureur doublé dans l'épreuve d'avant repart avec le peloton."""
+        lead = max(r.s for r in self.riders.values())
+        return {rid: -math.floor((lead - r.s) / self.lap_m + 1e-9) * self.lap_m for rid, r in self.riders.items()}
+
+    def _sub_positions(self) -> dict[str, tuple[float, float]]:
+        """Positions données à l'épreuve en cours : distance cumulée moins les tours retirés à son départ."""
+        return {r.id: (r.s - self._offset[r.id], r.v) for r in self.riders.values()}
 
     def _on_start(self, t: float) -> None:
         self._new_sub(t)
@@ -57,7 +75,7 @@ class Omnium(TrackEvent):
                 self._neutral_until = None
                 self._new_sub(t1)
             return
-        for msg in self.sub.step(t1, {r.id: (r.s, r.v) for r in self.riders.values()}):
+        for msg in self.sub.step(t1, self._sub_positions()):
             if msg.get("event") not in ("lap", "start"):
                 self._emit(msg["event"], sub=PROGRAM[self.index][0],
                            **{k: v for k, v in msg.items() if k != "event"})
