@@ -165,7 +165,7 @@ def run(objective: str = "threshold", duration_min: int = 30, seed: int = 5, pro
         summ = rep.summary or {}
         rep.add(summ.get("result") in ("victory", "defeat"), "bilan de la run (summary.rogue)",
                 f"résultat {summ.get('result')}, boss {summ.get('boss')}, salles gagnées {summ.get('rooms_won')}"
-                f"/{summ.get('rooms_total')}, or {summ.get('gold')}, Perfect Shifts {summ.get('perfect_shifts')}")
+                f"/{summ.get('rooms_total')}, or {summ.get('gold')}, changements parfaits {summ.get('perfect_shifts')}")
         _check_journal(rep, tmp / "journal")
         rep.counts = {"state": frames, **{k: sum(1 for _, m in sent if m.get("type") == k)
                                           for k in ("room", "loot", "input", "error")}}
@@ -283,7 +283,7 @@ def _check_run(rep: Report, s: CoreSession, rg: Any, sent: list, pressed: dict, 
     summ = rg.engine.summary()
     rep.add(pressed["Z"] > 0 and pressed["A"] > 0 and summ["perfect_shifts"] > 0,
             "appuis du cycliste reçus par la run (Z, A, braquets)",
-            f"Z {pressed['Z']}, A {pressed['A']}, braquets {pressed['gear']} ; Perfect Shifts {summ['perfect_shifts']}, "
+            f"Z {pressed['Z']}, A {pressed['A']}, braquets {pressed['gear']} ; changements parfaits {summ['perfect_shifts']}, "
             f"cartes {len(summ['cards'])}")
     frames = [m["rogue"] for _, m in sent if m.get("type") == "state" and m.get("rogue")]
     ok_n = sum(r["events"].count("z_ok") for r in frames)

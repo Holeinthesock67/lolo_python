@@ -21,6 +21,7 @@ extends RefCounted
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const TrackNames := preload("res://scripts/track/track_names.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")   # jauge W′ des bots (lot RW)
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 
 const ME := "me"
@@ -97,7 +98,7 @@ func view(state) -> Dictionary:
 	var shown := ev
 	if ev == "omnium":
 		shown = str(tr.get("sub", "scratch"))
-	var out := {"visible": true, "event": ev, "banner": banner(tr), "laps": laps_block(tr), "list": list_block(tr),
+	var out := {"visible": true, "event": ev, "banner": banner(tr), "laps": laps_block(tr), "list": list_block(tr, state.get("bots", null)),
 		"pursuit": {}, "chrono": {}, "pacer": {}, "gaps": gaps_block(tr)}
 	if ev in ["pursuit", "team_pursuit", "team_sprint"]:
 		out["pursuit"] = pursuit_block(tr)
@@ -385,6 +386,11 @@ func laps_block(tr: Dictionary) -> Dictionary:
 		return {"label": "TOURS", "value": str(int(lap) - 1 if lap != null else 0),
 			"extra": ("meilleur %s s" % fr2(float(best))) if best != null else "", "bar": -1.0}
 	var shown := str(tr.get("sub", ev)) if ev == "omnium" else ev
+	if shown == "elimination" and bool(tr.get("finished", false)):   # classement figé (essai du 22 novembre)
+		var place := my_place(tr)
+		var of := (tr.get("ranking", []) as Array).size()
+		return {"label": "CLASSEMENT", "value": ("1er" if place == 1 else "%de" % place) if place > 0 else "–",
+			"extra": "sur %d" % of, "bar": -1.0}
 	if shown == "elimination":
 		var alive := int(tr.get("alive", (tr.get("ranking", []) as Array).size() - (tr.get("eliminated", []) as Array).size()))
 		var total := (tr.get("ranking", []) as Array).size()
@@ -399,8 +405,11 @@ func laps_block(tr: Dictionary) -> Dictionary:
 		"bar": clampf(float(lap) / maxf(float(laps), 1.0), 0.0, 1.0)}
 
 
-## Liste de gauche : {title, rows [{pos, name, value, kind}]} ; kind : me, ok, danger, out, team.
-func list_block(tr: Dictionary) -> Dictionary:
+## Liste de gauche : {title, rows [{pos, name, value, kind, wbal}]} ; kind : me, ok, danger, out, team ; `wbal` :
+## réserve W′ du bot de 0 à 1 d'après `bots` de la trame, −1 sans barre (cycliste, ton équipe, sorti, bot sans
+## `wbal_pct` ; lot RW, bot_reserve.gd).
+func list_block(tr: Dictionary, bots = null) -> Dictionary:
+	var reserve := BotReserve.by_id(bots)
 	var ev := str(tr.get("event", ""))
 	var shown := str(tr.get("sub", ev)) if ev == "omnium" else ev
 	var ranking: Array = tr.get("ranking", []) if tr.get("ranking") is Array else []
@@ -428,6 +437,9 @@ func list_block(tr: Dictionary) -> Dictionary:
 			if _team.has(str(id)) or str(id) == ME:
 				mine.append(id)
 		out_ids = mine     # les sortis de l'autre équipe ne sont pas dans la liste
+	if shown == "elimination" and bool(tr.get("finished", false)):   # classement final, places figées (essai du 22/11)
+		title = "CLASSEMENT FINAL"
+		out_ids = []
 	var rows: Array = []
 	var racing: Array = []
 	for id in ranking:
@@ -451,11 +463,12 @@ func list_block(tr: Dictionary) -> Dictionary:
 			value = "en tête"
 		if title == "DERRIÈRE LE DERNY" and i == 0:
 			value = "derny"
-		rows.append({"pos": "%d." % (i + 1), "name": name_of(rid), "value": value, "kind": kind})
+		rows.append({"pos": "%d." % (i + 1), "name": name_of(rid), "value": value, "kind": kind,
+			"wbal": float(reserve.get(rid, -1.0))})
 	var gone := out_ids.duplicate()
 	gone.reverse()
 	for id in gone:
-		rows.append({"pos": "", "name": name_of(str(id)), "value": "", "kind": "out"})
+		rows.append({"pos": "", "name": name_of(str(id)), "value": "", "kind": "out", "wbal": -1.0})
 	return {"title": title, "rows": rows.slice(0, MAX_LINES)}
 
 

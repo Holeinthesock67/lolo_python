@@ -3,7 +3,7 @@
 Le lanceur relance `openride-core run --resume JOURNAL` quand le core meurt pendant une séance.
 Ce module relit le journal JSONL (dernière ligne tronquée tolérée, comme `recover`) et en tire
 l'état à restaurer : temps chronométré, position et distance, sens après un demi-tour (lot N17), braquet,
-mode, bloc ERG et temps écoulé dans le bloc, biais du Click. La vitesse repart de zéro : le cycliste a dû s'arrêter de pédaler.
+mode, bloc ERG et temps écoulé dans le bloc, biais du Click, dernier instantané d'une course (lot RC1, `race_resume.py`). La vitesse repart de zéro : le cycliste a dû s'arrêter de pédaler.
 
 Un journal est « non terminé » quand son dernier événement du chronomètre n'est pas `stop`.
 """
@@ -41,6 +41,7 @@ class ResumeState:
     cadence_target_rpm: int | None = None  # cadence cible de l'ERG cadence (lot O18)
     distance: float | None = None     # distance parcourue (m), None : la position `s` (aucun demi-tour)
     direction: int = 1                # sens du dernier événement `u_turn` (lot N17), 1 sans demi-tour
+    race: dict | None = None          # dernier instantané `race_snapshot` d'une course (lot RC1)
 
 
 def _timer_events(lines: list[dict]) -> list[dict]:
@@ -87,7 +88,8 @@ def load_resume_state(path: Path) -> ResumeState:
         path=path, route_id=header.get("route_id"), workout_id=header.get("workout_id"),
         t=0.0, s=0.0, gear=None, mode="SIM", block=None,
         last_ts=float(events[-1]["ts"]), running=events[-1]["event"] in ("start", "resume"),
-        lines=lines, rogue=next((ln for ln in reversed(lines) if ln.get("kind") == "rogue_snapshot"), None))
+        lines=lines, rogue=next((ln for ln in reversed(lines) if ln.get("kind") == "rogue_snapshot"), None),
+        race=next((ln for ln in reversed(lines) if ln.get("kind") == "race_snapshot"), None))
     if not records:
         return state
     last = records[-1]
@@ -129,6 +131,7 @@ def load_resume_state(path: Path) -> ResumeState:
 
 INTERRUPTED_SCAN = 10   # journaux les plus récents examinés au démarrage (lecture complète de chacun)
 INTERRUPTED_MAX = 3     # séances proposées au plus
+RESUME_WINDOW_S = 2 * 3600.0   # lot RC3 : « Reprendre » proposé moins de 2 h après la dernière ligne du journal
 
 
 def _summary_of(lines: list[dict]):
@@ -142,11 +145,34 @@ def _summary_of(lines: list[dict]):
     return records, summarize(records, [*events, stop])
 
 
-def interrupted_sessions(journal_dir: Path, skip: Path | None = None) -> list[dict]:
+def _resume_offer(lines: list[dict], last_ts: float, now: float, version: str) -> tuple[bool, dict | None]:
+    """Lot RC3 : (reprise possible, course du journal). Possible moins de `RESUME_WINDOW_S` après la dernière ligne ;
+    une course seulement avec un instantané de ce format et de cette version du jeu (`race_resume.check`)."""
+    from . import race_resume
+
+    snap = next((ln for ln in reversed(lines) if ln.get("kind") == "race_snapshot"), None)
+    started = any(ln.get("kind") in ("gp_start", "survivor_start") for ln in lines)
+    recent = -60.0 <= now - last_ts <= RESUME_WINDOW_S   # horloge un peu en retard sur la ligne : tolérée
+    if snap is None:
+        return recent and not started, None
+    race = {"mode": snap.get("mode"), "place": snap.get("place"), "of": snap.get("of"), "lap": snap.get("lap"),
+            "alive": snap.get("alive"), "league": bool(snap.get("league"))}
+    try:
+        race_resume.check(snap, version)
+    except race_resume.SnapshotError:
+        return False, race
+    return recent, race
+
+
+def interrupted_sessions(journal_dir: Path, skip: Path | None = None, now: float | None = None) -> list[dict]:
     """Séances commencées que rien n'a terminées (arrêt brutal du PC ou du core), sans FIT, les plus
-    récentes d'abord : `{id, start, route_id, distance_m, duration_s}` (`id` = nom du journal).
-    `skip` : journal repris par la séance en cours (`--resume`), jamais proposé."""
+    récentes d'abord : `{id, start, route_id, distance_m, duration_s, resumable}` (`id` = nom du journal) et `race`
+    pour une course (lot RC3 : mode, place, tours, ligue). `skip` : journal repris par la séance en cours
+    (`--resume`), jamais proposé."""
+    import time
     from datetime import datetime
+
+    from . import __version__
 
     from .fit_export import default_fit_path
 
@@ -170,9 +196,15 @@ def interrupted_sessions(journal_dir: Path, skip: Path | None = None) -> list[di
         if summary is None or default_fit_path(records[0]["ts"], header.get("route_id")).exists():
             continue   # rien d'enregistré, ou déjà rattrapée par `recover` (lanceur, lot N8)
         last = records[-1]   # temps chronométré et distance du dernier relevé (comme la reprise, lot N8)
-        found.append({"id": path.name, "start": datetime.fromtimestamp(summary.start_ts).strftime("%Y-%m-%dT%H:%M"),
-                      "route_id": header.get("route_id"), "distance_m": round(float(last.get("distance") or 0.0)),
-                      "duration_s": round(float(last.get("t") or 0.0))})
+        item = {"id": path.name, "start": datetime.fromtimestamp(summary.start_ts).strftime("%Y-%m-%dT%H:%M"),
+                "route_id": header.get("route_id"), "distance_m": round(float(last.get("distance") or 0.0)),
+                "duration_s": round(float(last.get("t") or 0.0))}
+        resumable, race = _resume_offer(lines, max(float(ln.get("ts") or 0.0) for ln in lines if "ts" in ln),
+                                        time.time() if now is None else now, __version__)
+        item["resumable"] = resumable
+        if race is not None:
+            item["race"] = race
+        found.append(item)
         if len(found) >= INTERRUPTED_MAX:
             break
     return found
