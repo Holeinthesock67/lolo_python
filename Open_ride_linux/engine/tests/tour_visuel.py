@@ -325,8 +325,11 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
             "--test-mode", f"--quality={args.quality}", "--camera=subjective"]
     if args.visual_grade is not None:
         cmd.append(f"--visual-grade={args.visual_grade}")   # relief affiché ; défaut de l'engine sinon (2,5)
+    import bancs_processus
+    home_godot, home_env = bancs_processus.home_temporaire()   # revue vague 5, O3-09 : pas le vrai profil
     with log_path.open("w") as fh:
-        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
+        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True,
+                                env={**os.environ, **home_env})
     done: list[dict[str, Any]] = []
     try:
         t0 = now()
@@ -392,6 +395,7 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
                 os.killpg(proc.pid, 9)
             except ProcessLookupError:
                 pass
+        shutil.rmtree(home_godot, ignore_errors=True)
     return done
 
 
@@ -461,6 +465,8 @@ if __name__ == "__main__":
     sys.path.insert(0, str(ENGINE_DIR.parent / "scripts"))
     from isolation_tests import verrou_suite   # une seule suite de tests ou banc à la fois
 
+    import bancs_processus
+    bancs_processus.signaux_en_exception()   # SIGTERM, SIGHUP : nettoyage des `finally` (revue vague 5, O3-08)
     with verrou_suite("tour_visuel"):
         code = main()
     sys.exit(code)

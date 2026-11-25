@@ -10,6 +10,7 @@ from test_workout import make_session, run
 from openride_core import ipc_lists
 from openride_core.tools import workouts as tools
 from openride_core.workout import (
+    BUILTIN_WORKOUTS_DIR,
     ErgController,
     WorkoutError,
     list_workouts,
@@ -19,7 +20,7 @@ from openride_core.workout import (
 )
 from openride_core.workout_formats import parse_erg, to_mrc
 
-BUILTIN = Path(__file__).resolve().parents[1] / "workouts"
+BUILTIN = BUILTIN_WORKOUTS_DIR
 
 ERG_200 = """[COURSE HEADER]
 VERSION = 2

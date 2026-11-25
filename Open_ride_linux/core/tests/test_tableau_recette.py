@@ -50,9 +50,11 @@ def test_reports_are_found(tmp_path):
          {"resume.json": {"ok": False, "steps": [{"name": "engine", "status": "OK", "detail": "96 fichiers"},
                                                  {"name": "core", "status": "ÉCHEC"}]}, "resume.txt": "x"})
     _run(tmp_path, "sim_bench", "2026-10-28_060000", {"guide.jsonl": _verdict(True), "index.html": "x", "demo/x": "1"})
-    _run(tmp_path, "sim_bench", "2026-10-28_120000", {"guide.jsonl": _verdict(False), "index.html": "x"})
+    _run(tmp_path, "sim_bench", "2026-10-28_120000", {"guide.jsonl": _verdict(False), "index.html": "x",
+                                                      "demo/sonde/rapport.txt": "x"})
     _run(tmp_path, "sim_bench", "2026-10-27_120000", {"guide.jsonl": _verdict(True), "index.html": "x", "endurance/x": "1"})
-    _run(tmp_path, "menu_bench", "2026-10-28_110000", {"resultats.json": [{"echecs": 0}, {"echecs": 0}], "rapport.html": "x"})
+    tous = [{"scenario": p.stem, "echecs": 0} for p in tr.MENU_SCENARIOS.glob("*.json")]
+    _run(tmp_path, "menu_bench", "2026-10-28_110000", {"resultats.json": tous, "rapport.html": "x"})
     _run(tmp_path, "recettes_install", "2026-10-28_050000",
          {"resume_docker.txt": "Recette\ninstallation neuve OK\n", "install.log": "x"})
     rows = {ln.numero: ln for ln in tr.build(tmp_path)}
@@ -77,3 +79,18 @@ def test_html_and_json(tmp_path, capsys):
     assert tr.main(["--home", str(tmp_path), "--json"]) == 0
     data = json.loads(capsys.readouterr().out)
     assert len(data) == 25 and data[5]["resultat"] == "OK"
+
+
+def test_passage_court_ne_marque_pas_les_lignes_17_et_20(tmp_path):
+    """Revue de code vague 5, O2-20 : un passage sans sonde (ligne 17) ou partiel du banc des menus (ligne 20)
+    ne compte pas pour ces lignes."""
+    _run(tmp_path, "sim_bench", "2026-11-20_100000", {"guide.jsonl": _verdict(True), "index.html": "x", "demo/x": "1"})
+    _run(tmp_path, "menu_bench", "2026-11-20_110000",
+         {"resultats.json": [{"scenario": "appareils", "echecs": 0}], "rapport.html": "x"})
+    rows = {ln.numero: ln for ln in tr.build(tmp_path)}
+    assert rows[17].resultat == "à faire" and rows[17].detail == "aucun rapport"
+    assert rows[20].resultat == "à faire" and "passage partiel" in rows[20].detail
+    tous = [{"scenario": p.stem, "echecs": 0} for p in tr.MENU_SCENARIOS.glob("*.json")]
+    _run(tmp_path, "menu_bench", "2026-11-19_110000", {"resultats.json": tous, "rapport.html": "x"})
+    rows = {ln.numero: ln for ln in tr.build(tmp_path)}
+    assert rows[20].resultat == "OK" and rows[20].date == "19/11/2026 11:00"      # le dernier passage complet

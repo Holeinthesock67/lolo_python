@@ -63,6 +63,9 @@ Sous-commandes disponibles à ce stade :
     openride-core profil list [--json] | create NOM | rename ID NOM | delete ID
                                       profils de joueurs : liste, création, renommage, corbeille
                                       (série MJ, lot MJ7)
+    openride-core profil remise-a-zero | remises | annuler-remise SAUVEGARDE
+                                      statistiques du profil en cours remises à zéro
+                                      (sauvegarde horodatée), listées, annulées (lot RZ1)
     openride-core profil essai [--vider] [--json] [--config FICHIER]
                                       profil d'essai (séances simulées comptées) : dossier,
                                       progression ; --vider efface ses séances (série MJ, lot MJ2)
@@ -299,7 +302,8 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return run(args)
 
 
-PROFIL_ARGS = {"essai": 0, "list": 0, "create": 1, "rename": 2, "delete": 1}
+PROFIL_ARGS = {"essai": 0, "list": 0, "create": 1, "rename": 2, "delete": 1,
+               "remise-a-zero": 0, "remises": 0, "annuler-remise": 1}   # lot RZ1
 
 
 def cmd_profil(args: argparse.Namespace) -> int:
@@ -310,8 +314,10 @@ def cmd_profil(args: argparse.Namespace) -> int:
 
     if len(args.valeurs) != PROFIL_ARGS[args.action]:
         print("openride-core profil : usage : profil essai [--vider] | list [--json] | create NOM | "
-              "rename ID NOM | delete ID", file=sys.stderr)
+              "rename ID NOM | delete ID | remise-a-zero | remises | annuler-remise SAUVEGARDE", file=sys.stderr)
         return 2
+    if args.action in ("remise-a-zero", "remises", "annuler-remise"):
+        return _profil_reset(args)
     if args.action != "essai":
         return _profil_players(args)
     ctx = profiles.ProfileContext.for_id(profiles.TRIAL_ID)
@@ -326,6 +332,41 @@ def cmd_profil(args: argparse.Namespace) -> int:
         print(f"Profil d'essai : {ctx.root}")
         print(f"Séances comptées : {', '.join(ctx.counted_sources)}")
     return xp_run(None, args.json, args.config)
+
+
+def _profil_reset(args: argparse.Namespace) -> int:
+    """`profil remise-a-zero | remises | annuler-remise SAUVEGARDE` (lot RZ1) : statistiques du profil en cours
+    (`--profil ID`, sinon le profil par défaut) mises de côté, listées ou remises en place."""
+    from . import profiles
+
+    ctx = profiles.current()
+    try:
+        if args.action == "remises":
+            rows = profiles.reset_entries(ctx, all_kinds=True)
+            if args.json:
+                print(json.dumps({"profil": ctx.id, "remises": rows}, ensure_ascii=False, indent=2))
+            for r in [] if args.json else rows:
+                print(f"{r['id']}  remise du {r['date']} à {r['time']}")
+            if not rows and not args.json:
+                print(f"Aucune remise à zéro pour le profil « {ctx.label} ».")
+            return 0
+        if ctx.id is None:
+            raise profiles.ProfileContextError("aucun profil de joueur (migration pas faite) : --profil ID")
+        with profiles.ProfileLock(ctx):   # pas pendant une séance de ce profil
+            if args.action == "remise-a-zero":
+                dest, moved = profiles.reset_stats(ctx)
+                print(f"Statistiques de « {ctx.name} » remises à zéro. Sauvegarde : {dest}")
+                print(f"Mis de côté : {', '.join(moved)}")
+                print(f"Pour annuler : openride-core profil annuler-remise {dest.name} --profil {ctx.id}")
+            else:
+                back, saved = profiles.undo_reset(ctx, args.valeurs[0])
+                print(f"Remise à zéro annulée pour « {ctx.name} » : {', '.join(back) or 'rien'} remis en place.")
+                if saved is not None:
+                    print(f"Séances courues depuis la remise mises de côté : {saved}")
+    except profiles.ProfileContextError as exc:
+        print(f"openride-core profil {args.action} : {exc}", file=sys.stderr)
+        return 1
+    return 0
 
 
 def _profil_players(args: argparse.Namespace) -> int:
@@ -365,16 +406,21 @@ def cmd_open_world_save(args: argparse.Namespace) -> int:
     from . import config as config_mod
     from .config import GPX_DIR
     from .open_world_save import MIN_SAVE_M, save_from_folder
+    from .privacy_zone import radius_m
     from .route import WorldError
 
     cfg = config_mod.load(args.config)
     try:
         path, s_end = save_from_folder(args.ride_id, cfg.open_world, args.gpx_dir or GPX_DIR,
                                        args.journal_dir,
-                                       args.km * 1000.0 if args.km else None)
+                                       args.km * 1000.0 if args.km else None,
+                                       private_start_m=radius_m(cfg))
     except WorldError as exc:
         print(f"openride-core open-world-save : {exc}", file=sys.stderr)
         return 1
+    if path is None and s_end > MIN_SAVE_M:
+        print("Balade restée dans la zone privée du départ (500 m) : rien n'est enregistré.")
+        return 0
     if path is None:
         print(f"Balade de {s_end:.0f} m : au plus {MIN_SAVE_M:.0f} m, rien n'est enregistré.")
         return 0
@@ -584,9 +630,11 @@ def build_parser() -> argparse.ArgumentParser:
     vel.add_argument("--json", action="store_true", help="sortie JSON (pistes écrites)")
     prf = sub.add_parser("profil", help="profils de joueurs : liste, création, renommage, corbeille ; "
                                         "profil d'essai (série MJ)")
-    prf.add_argument("action", choices=["essai", "list", "create", "rename", "delete"])
+    prf.add_argument("action", choices=["essai", "list", "create", "rename", "delete", "remise-a-zero", "remises",
+                                        "annuler-remise"])
     prf.add_argument("valeurs", nargs="*", metavar="ARG",
-                     help="create NOM ; rename ID NOM ; delete ID")
+                     help="create NOM ; rename ID NOM ; delete ID ; annuler-remise SAUVEGARDE (lot RZ1 : "
+                          "remise-a-zero met de côté les statistiques du profil en cours, sauvegarde horodatée)")
     prf.add_argument("--vider", action="store_true",
                      help="efface séances, records, plan et équipement du profil d'essai (garde profil.toml)")
     prf.add_argument("--json", action="store_true", help="sortie JSON (progression)")

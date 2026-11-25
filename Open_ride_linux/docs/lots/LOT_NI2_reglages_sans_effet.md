@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série NI (éléments inutiles) : une seule place par réglage, règle commune des lignes sans effet (cachées), choix d'essai et plafond en Avancé, « Textures du décor » retiré avec migration des fichiers | Python, GDScript | O4, O27, MJ4 (livrés) | Moyenne | En revue (PR à valider : recette PC et captures des Réglages) |
+| Série NI (éléments inutiles) : une seule place par réglage, règle commune des lignes sans effet (cachées), choix d'essai et plafond en Avancé, « Textures du décor » retiré avec migration des fichiers | Python, GDScript | O4, O27, MJ4 (livrés) | Moyenne | **Livré le 22 novembre** (PR #962) |
 
 ## 1. Objectif
 
@@ -51,3 +51,7 @@ python3 engine/tests/menu_bench.py --scenario reglages --scenario persistance --
 ```
 
 Captures à valider : `ni2_seance`, `ni2_graphisme`, `ni2_vent_coupe`, `ni2_vent_rafales`, `ni2_avance`.
+
+## 6. Livraison
+
+Fusionné le 22 novembre 2026 (PR #962).
