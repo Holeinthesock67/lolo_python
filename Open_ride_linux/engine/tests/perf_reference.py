@@ -13,7 +13,8 @@ Les mondes : `village` (village simulé, montée et descente), `demo` (circuit d
 biome de démonstration (U19) s'ajoutera quand il existera.
 
 Sous Xvfb (sans `--native`), le rendu est logiciel : écarts en INFO, code 0. Sur l'écran réel, une alerte
-donne le code 1. Dossier : `~/OpenRide/perf/<date>_<heure>/` (`--out`). Bibliothèque standard seulement.
+donne le code 1. `update` refuse un passage dont un banc a échoué (`bench_rc` non nul) ou dont une mesure
+manque (revue de code vague 5, O3-14) ; `compare` signale les entrées sans pendant. Dossier : `~/OpenRide/perf/<date>_<heure>/` (`--out`). Bibliothèque standard seulement.
 """
 
 from __future__ import annotations
@@ -64,6 +65,9 @@ def alerts(result: dict[str, Any], reference: dict[str, Any]) -> list[str]:
         if ref is None:
             continue
         m, r = run["metrics"], ref["metrics"]
+        for metric in ("fps", "p99_ms"):    # mesure de la référence absente du passage : rien n'a été jugé
+            if metric in r and metric not in m:
+                out.append(f"{key} : {compare_bench.METRICS[metric][0]} absent du passage (présent dans la référence)")
         if "fps" in m and r.get("fps"):
             drop = (r["fps"] - m["fps"]) / r["fps"] * 100.0
             if drop > FPS_DROP_PCT:
@@ -73,6 +77,27 @@ def alerts(result: dict[str, Any], reference: dict[str, Any]) -> list[str]:
                        f"seuil +{P99_RISE_MS:g} ms)")
         if run.get("preset") and ref.get("preset") and run["preset"] != ref["preset"]:
             out.append(f"{key} : préréglage appliqué {run['preset']} contre {ref['preset']} dans la référence")
+    return out
+
+
+def unmatched(result: dict[str, Any], reference: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """(entrées de la référence absentes du passage, entrées du passage absentes de la référence)."""
+    runs, refs = set(result.get("runs", {})), set(reference.get("runs", {}))
+    return sorted(refs - runs), sorted(runs - refs)
+
+
+def update_refusals(result: dict[str, Any]) -> list[str]:
+    """Raisons de refuser un passage comme référence : banc en échec, mesure manquante, passage vide."""
+    runs = result.get("runs", {})
+    if not runs:
+        return ["aucune mesure dans le passage"]
+    out = []
+    for key, run in sorted(runs.items()):
+        if run.get("bench_rc") not in (None, 0):
+            out.append(f"{key} : banc en échec (code {run['bench_rc']})")
+        missing = [k for k in ("fps", "p99_ms") if k not in run.get("metrics", {})]
+        if missing:
+            out.append(f"{key} : mesure manquante ({', '.join(missing)})")
     return out
 
 
@@ -93,8 +118,18 @@ def report(result: dict[str, Any], reference_path: Path) -> int:
     tag = "ÉCHEC" if native and bool(reference.get("native")) else "INFO"
     for a in found:
         print(f"[{tag}] {a}")
+    absent, new = unmatched(result, reference)
+    if absent:
+        print(f"[INFO] non mesuré dans ce passage (présent dans la référence) : {', '.join(absent)}")
+    if new:
+        print(f"[INFO] sans pendant dans la référence : {', '.join(new)}")
+    compared = len(set(result.get("runs", {})) & set(reference.get("runs", {})))
     if not found:
-        print(f"[OK] dans la référence du {reference.get('date', '?')} (images/s −{FPS_DROP_PCT:g} %, p99 +{P99_RISE_MS:g} ms)")
+        if compared:
+            print(f"[OK] dans la référence du {reference.get('date', '?')} pour {compared} entrée(s) comparée(s) "
+                  f"(images/s −{FPS_DROP_PCT:g} %, p99 +{P99_RISE_MS:g} ms)")
+        else:
+            print("[INFO] aucune entrée commune avec la référence : rien n'a été comparé")
     return 1 if found and tag == "ÉCHEC" else 0
 
 
@@ -161,6 +196,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.cmd == "compare":
         return report(result, args.reference)
+    refus = update_refusals(result)
+    if refus:
+        for r in refus:
+            print(f"[ÉCHEC] {r}")
+        print("Référence inchangée : ce passage ne peut pas servir de référence.")
+        return 1
     args.reference.parent.mkdir(parents=True, exist_ok=True)
     if args.reference.is_file():
         shutil.copy2(args.reference, args.reference.with_name(f"reference-{time.strftime('%Y%m%d-%H%M%S')}.json"))

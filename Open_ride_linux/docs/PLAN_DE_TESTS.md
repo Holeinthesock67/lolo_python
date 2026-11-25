@@ -91,6 +91,8 @@ Une panne vue sur le vélo se rejoue : `python -m openride_core.tools.log_scenar
 
 Vrai core sur trainer `mock` et vrai engine, HOME temporaire. Attendu : `hello_ack` en moins de 3 s ; au moins 25 trames `state` par seconde ; `input_event` relayé (bip) ; engine arrêté puis `PAUSED (engine_lost)` en moins de 3 s ; braquet de 12 à 13 ; même longueur de parcours vue par le core et l'engine ; `FINISHED` avec un bilan conforme au schéma ; FIT écrit ; aucune erreur Godot, core sorti avec le code 0, vrai HOME inchangé, moins de 60 s au total.
 
+**Sur l'engine exporté (lot EX2, essai E1 du cadrage J9) :** `scripts/export_engine.sh` construit le binaire « release » de Godot et `openride.pck` dans `build/engine/` (préréglage `engine/export_presets.cfg`), puis `python3 engine/tests/e2e_check.py --exported build/engine/openride.x86_64` rejoue les mêmes vérifications sans `--path`. Job CI « Export de l'engine » (`.github/workflows/openride-export.yml`) sur les PR qui touchent `engine/` ou `core/`. Un fichier lu à l'exécution mais absent des filtres d'export le fait échouer. Cloud et CI ; la performance du binaire exporté se mesure au PC seulement.
+
 ### 3.7 Tests graphiques
 
 - **Scène principale** : `engine/tests/run_visual_tests.sh [--native]` lance `visual_check.py` face au faux core : captures du HUD, bandeau, menus, bilans (`bilan_complet`, `bilan_complet_detaille`), ERG (cible longue, palier de 50 W), contrôles de lisibilité (chiffres d'au moins 28 px ramenés à 1080 lignes, contraste 4,5:1 pour les valeurs et 3:1 pour les libellés) et de débordement (panneaux dans l'écran, sans chevauchement, textes dans leur colonne). Rapport dans `~/OpenRide/visual_tests/`.

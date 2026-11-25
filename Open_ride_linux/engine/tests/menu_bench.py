@@ -34,7 +34,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
   config.toml, `null` : absente), `journal` (`core` ou `engine`) + `motif`, `fichier` (chemin ou motif
   glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente », et "≠départ" « présente et différente de la valeur du lancement »
   (qualité changée au menu quand `--qualite` impose celle du départ) ;
-- autres : `commande` (+ `args`), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
+- autres : `commande` (+ `args` ; `end_session` attend d'abord que la séance du dernier départ soit partie,
+  `delai` 120 s par défaut), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
   route, `delai` 900 s par défaut), `capture` (nom), `relancer` (core et engine arrêtés proprement puis relancés sur le
   même HOME : persistance des réglages) ;
 - gabarit : `depart_monde_ouvert` ({`recherche` : texte tapé au clavier, `contient` : lieu attendu dans les résultats
@@ -55,6 +56,9 @@ HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil
 réseau, en quelques secondes : import de traces du lot O23).
 `seances_courbe` (dossier des journaux dans le HOME, ex. `OpenRide/Profils/cycliste-1/Activities/.journal` : séances
 fabriquées d'un cycliste fictif à FTP 250 W, `openride_core.tools.courbe_fictive`, écran « Ma puissance », lot PP3).
+`course_interrompue` ({`profil`, `mode` : `race`, `grandprix` ou `survivor`, `secondes`}, lot RC3) : course roulée en
+temps accéléré par le vrai core juste avant le lancement (`openride_core.tools.course_interrompue`), laissée sans fin
+comme après un arrêt brutal du PC : le menu propose « Reprendre la course ».
 `reseau` (vrai : le scénario a besoin d'Internet, recherche Nominatim et routes OpenStreetMap ; recette du PC,
 jouée seulement quand `--scenario` la nomme, jamais dans la liste par défaut ni en intégration continue, lot W17).
 `caches_reels` (vrai : le générateur du monde ouvert lit et complète les caches du vrai dossier personnel :
@@ -189,6 +193,7 @@ ENGINE_READY_ASK_S = 3.0   # délai de chaque demande d'état pendant cette atte
 ENGINE_SILENT_S = 60.0
 SILENCE_GAP_S = 1.0
 WAIT_SLICE_S = 0.5
+SESSION_START_S = 120.0   # `end_session` : attente de la séance partie (départ du dernier `start`, décor compris)
 COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 # Écart entre le relâchement d'un appui au Click et l'appui suivant : le core ignore un même événement
 # revenu dans les ClickPair.DEDUP_S (relais du boîtier « − », 5 à 40 ms plus tard) ; en dessous, deux
@@ -237,14 +242,24 @@ def config_matches(got: Any, want: Any, start: Any) -> bool:
         return got is not None and got != start
     return got == want
 
+
+def config_matches(got: Any, want: Any, start: Any) -> bool:
+    """Valeur lue dans config.toml pour une étape `config` : "*" présente, "≠départ" présente et différente de la
+    valeur écrite au lancement (`start`), sinon égale à `want`."""
+    if want == "*":
+        return got is not None
+    if want == "≠départ":
+        return got is not None and got != start
+    return got == want
+
 STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris", "element", "point", "click",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "distance_km", "capture", "relancer", "delai", "voies", "note",
              "depart_monde_ouvert"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels",
-             "seances_courbe", "etapes"}
+             "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels", "etapes",
+             "course_interrompue", "seances_courbe"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -558,6 +573,24 @@ class Run:
         self.shots.append(info)
         return info
 
+    def wait_session_started(self, timeout: float) -> None:
+        """Avant `end_session` : attend que la séance lancée par le dernier départ soit partie (RUNNING ou PAUSED, ou
+        déjà finie). Le core ignore `end_session` en READY et, pendant le départ au pédalage (lot O36), le prend pour
+        une annulation : retour à l'écran Prêt au lieu du bilan. Sur la CI, la préparation du décor peut tenir le
+        départ plus de 40 s (Grand Prix de `bots_elo`, trains #1050 et #1062) : une attente fixe ne suffit pas."""
+        assert self.core is not None
+        starts = self.core.matching(r"Commande (start|start_run|start_open_world) ")
+        if not starts:
+            return
+        t0 = starts[-1][0]
+        got = self.core.wait_for(r"Séance : \S+ -> (RUNNING|PAUSED|FINISHED|ERROR)\b", timeout, after=t0)
+        detail = got[1].group(0) if got else f"absente après {timeout:.0f} s"
+        if got is None:
+            depart = [line for _, line in list(self.core.lines) if "Départ" in line]
+            if depart:
+                detail += " ; " + depart[-1].split(" core ", 1)[-1]
+        self.check(got is not None, "séance partie avant end_session", detail)
+
     def check(self, ok: bool, label: str, measure: str) -> bool:
         self.report.check(ok, label, measure)
         if not ok and self.engine is not None and self.engine.p.poll() is None:
@@ -867,6 +900,17 @@ class Run:
         if self.doc.get("compilateur") == "doublure":
             env["OPENRIDE_COMPILER"] = shlex.join([sys.executable, str(REPO / "core" / "tests" / "data" / "stub_compiler.py")])
         suffix = f"_{n}" if n else ""
+        course = self.doc.get("course_interrompue")
+        if course and not n:   # lot RC3 : journal d'une course interrompue, aux heures de ce lancement
+            done = subprocess.run([sys.executable, "-m", "openride_core.tools.course_interrompue", "--config",
+                                   str(self.config), "--profil", str(course.get("profil", "cycliste-a")),
+                                   "--mode", str(course.get("mode", "race")),
+                                   "--secondes", str(course.get("secondes", 90))],
+                                  env=env, capture_output=True, text=True, timeout=300)
+            (self.out / "course_interrompue.log").write_text(done.stdout + done.stderr, encoding="utf-8")
+            if not self.report.check(done.returncode == 0, "course interrompue écrite", done.stdout.strip()
+                                     or done.stderr.strip()[-300:]):
+                return False
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(self.config), "--trainer", "sim",
                 "--input", "sim", "--hr", "sim", "--sim-scenario", str(self.tmp / "scenario.json")]
         self.core = BenchProc("core", argv, env, self.out / f"core{suffix}.log")
@@ -1008,6 +1052,8 @@ class Run:
             self.wait_exit(int(step["sortie"]), delay if "delai" in step else 10.0)
             return False
         elif "commande" in step:
+            if step["commande"] == "end_session":
+                self.wait_session_started(delay if "delai" in step else SESSION_START_S * self.slowdown())
             self._send({"type": "_test", "action": "command", "name": step["commande"], "args": step.get("args", {})})
             time.sleep(1.0)
         elif "attendre" in step:

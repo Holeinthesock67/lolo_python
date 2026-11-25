@@ -52,7 +52,9 @@ sys.path.insert(0, str(ENGINE_DIR.parent / "core" / "src"))
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
 from visual_check import (COACH_MSG, GODOT_ISSUE, GODOT_TOLERATED, Capture, Report, free_udp_ports, mean_abs_diff,  # noqa: E402
                           read_png, write_html)
+import bancs_processus  # noqa: E402
 import perf_probe  # noqa: E402
+import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
 
 HOLD_S = 1.5                     # trame figée avant chaque capture : lissage de la position, ennemi, HUD
@@ -364,8 +366,10 @@ def run(args, out: Path, report: Report) -> None:
         sampler = perf_probe.SystemSampler()
         sampler.start()
     print(f"== Run rejouée ×{args.speed:g} : {len(marks)} captures ==", flush=True)
+    home_godot, home_env = bancs_processus.home_temporaire()   # revue vague 5, O3-09 : pas le vrai profil
     with engine_log.open("w") as fh:
-        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
+        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True,
+                                env={**os.environ, **home_env})
     try:
         t0 = now()
         while now() - t0 < 30.0 and not core.messages("hello"):
@@ -384,6 +388,7 @@ def run(args, out: Path, report: Report) -> None:
                 os.killpg(proc.pid, 9)
             except ProcessLookupError:
                 pass
+        shutil.rmtree(home_godot, ignore_errors=True)
     if sampler is not None:
         rows = perf_probe.merge(perf_probe.read_engine_csv(out / "moteur.csv"), sampler.rows)
         summary = perf_probe.write_report(rows, out / "sonde", f"Sonde de performance : Cyber-Rogue {args.quality}",
@@ -408,6 +413,13 @@ def run(args, out: Path, report: Report) -> None:
         bench.check(b[0], "image différente de la salle précédente", d >= ROOM_DIFF_MIN, f"écart moyen {d:.1f} niveaux sur 255")
     resync = core.messages("cmd", name="rogue_resync")
     bench.check("run", "aucune demande rogue_resync", not resync, f"{len(resync)} demande(s)")
+    # Qualité réellement appliquée, comme sim_bench (lot X32) : le budget jugé est celui de la qualité demandée
+    # (revue de code vague 5, O3-12).
+    q_ok, q_msg = quality_guard.check(engine_log.read_text(errors="replace"), args.quality)
+    if q_ok is None:
+        report.notes.append(f"INFO qualité réellement appliquée : {q_msg}")
+    else:
+        bench.check("run", "qualité réellement appliquée", q_ok, q_msg)
     loads = classic_loads_during_run(engine_log.read_text(errors="replace"))
     bench.check("run", "monde classique gelé pendant la run (pause comprise)", loads is not None and not loads,
                 "départ ou sortie de la scène absent du journal" if loads is None
@@ -439,7 +451,7 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=5)
     ap.add_argument("--trace", help="trace d'une run du lot X40 (rogue_bout_en_bout --trace) au lieu d'en jouer une")
     ap.add_argument("--size", default="1280x720")
-    ap.add_argument("--quality", default="low")
+    ap.add_argument("--quality", default="low", choices=("low", "medium", "high"))
     ap.add_argument("--speed", type=float, default=20.0, help="accélération du rejeu (défaut ×20)")
     ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
     ap.add_argument("--probe", action="store_true",
@@ -465,4 +477,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    bancs_processus.signaux_en_exception()   # SIGTERM, SIGHUP : nettoyage des `finally` (revue vague 5, O3-08)
     sys.exit(main())
