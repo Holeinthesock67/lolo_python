@@ -17,6 +17,8 @@ const SCREEN := "pairing"
 const ROLES := ["trainer", "click_plus", "click_minus", "hr"]
 ## Choix « aucun » d'un rôle : l'appareil enregistré est oublié (lot O24).
 const FORGET := ""
+## Ligne « Session simulée » / « Revenir au matériel réel » (lot NI4, sortie de l'accueil).
+const SIM_ID := "sim"
 ## Raison connue du silence du boîtier gauche (« − »), dans la carte du Click (lot N19,
 ## docs/RECHERCHE_CLICK_GAUCHE.md) : verrou de Zwift, redémarrage automatique par le core.
 const CLICK_LEFT_LOCK_LINE := "Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − »)"
@@ -37,6 +39,8 @@ var message := ""
 var message_error := false
 var saved := false
 var _pair_failed := false
+## Engine lancé en session simulée (--sim-session), recopié de menu_model.gd par menu_flow.gd.
+var sim_session := false
 
 
 func reset() -> void:
@@ -154,6 +158,10 @@ func menu_items() -> Array:
 	out.append({"id": "save", "label": "Enregistrer", "enabled": has_changes() and not scanning and not identifying})
 	if saved:
 		out.append({"id": "relaunch", "label": "Relancer OpenRide maintenant"})
+	# Outil d'essai sorti de l'accueil au lot NI4 (audit des éléments inutiles, M2) : OpenRide relancé sans matériel,
+	# ou revenu au matériel réel ; menu_flow.gd demande la confirmation.
+	out.append({"id": SIM_ID, "label": "Revenir au matériel réel" if sim_session else "Session simulée (sans matériel)",
+		"enabled": not scanning and not identifying})
 	out.append({"id": "back", "label": "Retour"})
 	return out
 
@@ -258,6 +266,12 @@ func handle(item_id: String) -> Dictionary:
 			return {"action": "confirm_pair", "title": "Enregistrer %s ?" % ", ".join(parts), "args": c}
 		"relaunch":
 			return {"action": "relaunch"}
+		SIM_ID:
+			if sim_session:
+				return {"action": "confirm_sim", "title": "Revenir au matériel réel ? OpenRide redémarre",
+					"then": {"action": "relaunch"}}
+			return {"action": "confirm_sim", "title": "Session simulée ? OpenRide redémarre sans matériel",
+				"then": {"action": "relaunch_sim"}}
 		"back":
 			return {"action": "back"}
 	return {}

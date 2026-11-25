@@ -19,6 +19,8 @@ Décode le fichier en entier avec le SDK officiel de Garmin (`garmin-fit-sdk`, e
   locale de `activity` (Garmin Connect s'en sert pour dater la sortie), positions dans le globe ;
 - **totaux affichés** (lot X56, ATTENTION) : calories, travail, D+ et D-, cadence maximale, que les
   deux logiciels montrent tels quels sans les recalculer (absents des FIT d'avant la 3.0) ;
+- **positions** (lot PZ1, information) : quand une partie seulement des relevés porte une position, leur
+  nombre (zone privée au départ, réglage `privacy.hide_start`) ; ligne absente sinon ;
 - avec `--journal` : **distance et durée chronométrée** face au journal de la séance (± 1 %).
 
 Une ligne OK, ATTENTION ou ÉCHEC par contrôle ; code 0, 1 si un contrôle échoue, 2 si le fichier est
@@ -220,6 +222,10 @@ def check(messages: dict[str, list[dict[str, Any]]], errors: list[str], integrit
     absent = displayed_totals(messages, records)
     out.append(_line("totaux affichés", "ATTENTION" if absent else "OK",
                      "absents : " + ", ".join(absent) if absent else "calories, travail, cadence et dénivelé présents"))
+    placed = sum(1 for r in records if r.get("position_lat") is not None and r.get("position_long") is not None)
+    if 0 < placed < len(records):   # lot PZ1 : zone privée au départ
+        out.append(_line("positions", "OK", f"{len(records) - placed} relevé(s) sans position sur {len(records)} "
+                                             "(zone privée au départ)"))
     if journal is not None:
         out.append(against_journal(messages, journal))
     return out

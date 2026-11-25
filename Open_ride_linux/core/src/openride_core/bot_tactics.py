@@ -91,8 +91,8 @@ RACE_SIMPLE = Behaviours(durability=True, marking=True, standings=True, fatigue=
 RACE_FULL = Behaviours(relays=True, responses=True, durability=True, form=True, coalitions=True, marking=True,
                        bluff=True, standings=True, fatigue=True)
 
-# Table des modes. Les modes qui n'ont pas encore branché la table (Dernier survivant, WTF, monde ouvert,
-# vélodrome) restent à `none` jusqu'à leur propre lot. `essai` : le banc `bots_race` (lot X27), qui juge
+# Table des modes. Les modes qui n'ont pas encore branché la table (WTF, monde ouvert) restent à `none` jusqu'à
+# leur propre lot. `essai` : le banc `bots_race` (lot X27), qui juge
 # chaque bot à ± 2 % du cycliste, sans le facteur de forme qui l'en écarterait à dessein.
 MODE_TACTICS: dict[str, Behaviours] = {
     "none": NONE,
@@ -105,7 +105,16 @@ MODE_TACTICS: dict[str, Behaviours] = {
     "track_full": RACE_FULL,
     # poursuites (individuelle et par équipes) : allure et relais de l'épreuve, seule la fatigue se voit
     "track_paced": Behaviours(durability=True, fatigue=True),
+    # lot BR5 : gestes de base des deux modes à objectifs. L'abri (roue suivie, lots AS1 et AS2) marche déjà dans
+    # tous les modes ; on y ajoute ici ce qui leur manquait. Ce qui est propre au mode passe d'abord (voie
+    # d'esquive du Grand Prix, sprint de survie et économie du Dernier survivant) : tant que le mode tient le bot
+    # (`mode_speaks` du bot), ces gestes se taisent (`Tactics.yield_to_mode`).
+    "grandprix": Behaviours(responses=True),                 # répondre aux attaques ; pas de relais organisés
+    "survivor": Behaviours(attacks=True, responses=True),    # attaquer avant l'arche, répondre aux attaques
 }
+
+# Ligne de la table propre à un mode de jeu de la séance (`Session._new_race`) ; les autres modes : None.
+GAME_MODES = ("grandprix", "survivor")
 
 LEVELS = ("none", "simple", "full")   # réglage « Tactique des bots : aucune, simple, complète »
 
@@ -499,6 +508,12 @@ class Tactics:
             return power_w, True
         return power_w, tactical
 
+    def yield_to_mode(self) -> None:
+        """Lot BR5 (R5 de la stratégie des bots) : le mode tient le bot ce pas (voie d'esquive, sprint de survie, économie) : l'attaque et la
+        réponse en cours s'arrêtent, le geste de base ne reprend que quand le mode n'a plus rien à dire."""
+        self.attack_until = -1.0
+        self.respond_to = None
+
     # --- comportements de course (lot VD7) ----------------------------------------------------------------
 
     def race_power(self, bot: Any, power_w: float, tactical: bool, t: float,
@@ -626,6 +641,10 @@ def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | Non
             tac._now_bot = b.t
             if not tac.on.responses or t < RESPONSE_START_S:   # départ arrêté : les écarts se font tout seuls
                 continue
+            speaks = getattr(b, "mode_speaks", None)
+            if speaks is not None and speaks():   # lot BR5 : le mode tient le bot, il ne juge aucun départ
+                tac._gaps.clear()
+                continue
             climbing = grade_at is not None and grade_at(b.s) >= FLAT_MAX_GRADE_PCT
             seen = set()
             for o_s, _, o_id, _ in runners:
@@ -731,6 +750,8 @@ def start_race(bots: Iterable[Any], seed: int, mode: str) -> None:
         if tac is not None:
             tac.start(seed, mode)
             b.apply_form()
+            if hasattr(b, "mode_hold"):
+                b.mode_hold = False   # lot BR5 : aucune voie tenue d'une course à l'autre
 
 
 def seed_from(value: float) -> int:

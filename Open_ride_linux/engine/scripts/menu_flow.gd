@@ -89,7 +89,6 @@ const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const PlanBuilder := preload("res://scripts/plan_builder.gd")
 const WorkoutHelp := preload("res://scripts/workout_help.gd")
-const QwkEditor := preload("res://scripts/qwk_editor.gd")
 const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
@@ -136,7 +135,6 @@ const ROUTE_IMPORT := "route_import"
 ## Ligne d'état pendant la compilation d'une trace importée (lot O23) : secondes écoulées.
 const ROUTE_COMPILING := "Compilation de %s… %d s (la 1re fois dans une région, l'altitude se télécharge)"
 const WORKOUT_HELP := WorkoutHelp.SCREEN
-const WORKOUT_QWK := QwkEditor.SCREEN
 const ROUTE_HELP := RouteHelp.SCREEN
 ## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
 const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
@@ -166,6 +164,10 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
 	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
+## Lot RC3 : pause d'une course reprise après un plantage (même raison `core_restarted`, course en cours).
+const PAUSE_RACE_RESTORED := "OpenRide a redémarré : course retrouvée, tout le monde repart arrêté"
+## Noms des courses reprises (`race.mode` d'une séance interrompue, lot RC3).
+const RACE_MODE_NAMES := {"race": "Course", "grandprix": "Grand Prix", "survivor": "Dernier survivant"}
 ## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
 ## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
 const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
@@ -173,7 +175,7 @@ const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer e
 const PAUSE_ARRIVAL := "Arrivée passée : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create",
-	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
+	MenuModel.HELP_WORKOUT_ID: "choose"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -222,8 +224,6 @@ var route_names := {}
 var builder = WorkoutBuilder.new()
 ## Plan maison en cours de composition (lot O30).
 var plan_builder = PlanBuilder.new()
-## Texte QWKcode en cours de saisie (lot O21) : gardé en sortant de l'écran, vidé après l'enregistrement.
-var qwk = QwkEditor.new()
 ## Ligne d'état de la liste des entraînements (créé, erreur).
 var workout_message := ""
 var _focus_workout := ""
@@ -237,9 +237,8 @@ var route_message_error := false
 var _route_compiling := false
 var _route_import_done := -1
 var _focus_route := ""
-## Dernière demande au core (« create » ou « qwk ») et dernier request_cmd_id traité : le core
-## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
-var _workout_request := ""
+## Dernier request_cmd_id traité : le core répond à chaque copie renvoyée d'une commande, une seule
+## réponse compte.
 var _last_saved_cmd_id := -1
 ## Séances interrompues proposées (`hello_ack.config.interrupted`, puis réponse `interrupted`) et ligne d'état.
 var interrupted: Array = []
@@ -260,6 +259,10 @@ var _workouts_raw: Array = []
 ## Résultat du test de FTP du bilan (summary.ftp_test) tant qu'il reste à accepter ou garder ({} sinon).
 var ftp_offer: Dictionary = {}
 var summary_message := ""
+## Commande qui a lancé la dernière séance (20 novembre) : « start » (écran Prêt), « start_run » (Cyber-Rogue)
+## ou « start_open_world » (monde ouvert, note_launch depuis main.gd). Seule source de « Rejouer » : la fin de
+## séance rouvre l'écran par lequel ce lancement était passé, avec les mêmes choix, quel que soit le mode.
+var last_launch := ""
 ## Ligne d'état de l'écran Prêt (bots refusés par le core, lot O7).
 var ready_message := ""
 var _ftp_pending := false
@@ -282,6 +285,8 @@ var _record_segment := ""
 var _record_bonus := false
 ## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
 var pause_reason := ""
+## Lot RC3 : course en cours (objet `gp` ou `survivor` de la trame), pour la ligne d'état d'une pause `core_restarted`.
+var race_active := false
 ## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
 var workout_done := false
 ## Issue de la séance connue (`state.arrival`, révision 1.34, lot RT2) : sorte, "" sans arrivée.
@@ -326,8 +331,6 @@ func _init() -> void:
 	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
 	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
 		"items": WorkoutHelp.items()})
-	menu.add_screen({"id": WORKOUT_QWK, "title": QwkEditor.TITLE, "on_back": MenuModel.WORKOUTS,
-		"items": qwk.menu_items()})
 	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
 		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
@@ -429,6 +432,13 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	race_active = state.get("gp") is Dictionary or state.get("survivor") is Dictionary
+	if race_active and str(state.get("session_state", "")) in ["PAUSED", "RUNNING"] \
+			and not menu.mode in MenuModel.SETTINGS_MODES and menu.mode != "league":
+		# Lot RC3 : course reprise depuis l'accueil (séance interrompue) : la pause est celle d'une course à plateau
+		# composé par le core (pas de lignes de bots modifiables, `set_bots` refusé)
+		menu.mode = "survivor" if state.get("survivor") is Dictionary \
+			else ("race" if str(state["gp"].get("mode", "")) == "race" else "grandprix")
 	workout_done = state.get("workout_done", null) is Dictionary or state.get("arrival", null) is Dictionary
 	arrival_kind = str(state["arrival"].get("kind", "")) if state.get("arrival", null) is Dictionary else ""
 	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
@@ -550,6 +560,7 @@ func _leave_connect() -> void:
 
 
 func _refresh_pairing() -> void:
+	pairing.sim_session = menu.sim_session
 	menu.set_screen_items(PAIRING, pairing.menu_items())
 
 
@@ -600,7 +611,7 @@ func on_scan_results(msg: Dictionary) -> void:
 		menu.focus_item("save")
 
 
-## Erreur du core : écrans Créer un entraînement / QWKcode (bad_args, busy, workout_invalid,
+## Erreur du core : écran Créer un entraînement (bad_args, busy, workout_invalid,
 ## workout_write_failed), sinon écran Appareils (busy, scan_failed, pairing_failed).
 func on_error(code: String, text: String) -> void:
 	if _ftp_pending and code in ["ftp_result_missing", "ftp_result_doubtful", "setting_invalid", "busy"]:
@@ -662,7 +673,7 @@ func on_error(code: String, text: String) -> void:
 		route_message = "Échec : " + text
 		route_message_error = true
 		return
-	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_QWK] \
+	if menu.current_screen() == WORKOUT_CREATE \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
 		return
@@ -788,8 +799,6 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
 	if screen == WORKOUT_HELP:
 		return WorkoutHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
-	if screen == WORKOUT_QWK:
-		return WorkoutHelp.sheet("qwk")
 	if screen == PLANS:
 		return _plan_card(focused)
 	if screen == PLAN:
@@ -1204,9 +1213,6 @@ func on_workout_saved(msg: Dictionary) -> bool:
 		return false
 	_last_saved_cmd_id = rid
 	var name := str(msg.get("name", msg.get("workout_id", "")))
-	if _workout_request == "qwk":
-		qwk.clear()
-		_refresh_qwk()
 	var text := "Créé : " + name
 	if not msg.get("created", true):
 		text += " (déjà présent)"
@@ -1227,52 +1233,6 @@ func workout_added(workout_id: String, message: String) -> void:
 
 func workout_failed(message: String) -> void:
 	workout_message = message
-
-
-# --- saisie du QWKcode au clavier (lot O21) -----------------------------------------------------
-
-func _refresh_qwk() -> void:
-	menu.set_screen_items(WORKOUT_QWK, qwk.menu_items())
-
-
-## Élément choisi (A maintenu, Entrée sur « Enregistrer » ou « Tout effacer », clic) sur l'écran de saisie.
-func _qwk_item(item_id: String) -> Dictionary:
-	if item_id == QwkEditor.SAVE_ID and not qwk.is_empty():
-		workout_message = "Enregistrement…"
-		_workout_request = "qwk"
-		return {"action": "create_workout_qwk", "text": qwk.text()}
-	if item_id == QwkEditor.CLEAR_ID:
-		qwk.clear()
-		workout_message = ""
-		_refresh_qwk()
-		menu.focus_item(qwk.last_line_id())
-	return {}
-
-
-## Touche du clavier sur l'écran de saisie : vrai si elle a servi. Un caractère imprimable s'écrit (même
-## « + », « - », « a » ou « y », utiles au QWKcode) ; Entrée commence une ligne, ou choisit
-## « Enregistrer » ou « Tout effacer » sous le focus ; Retour arrière efface. Flèches et Échap restent
-## des boutons (key_map.gd).
-func qwk_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
-	if menu.current_screen() != WORKOUT_QWK:
-		return {"used": false}
-	var focused := _focused_id()
-	if enter and focused in [QwkEditor.SAVE_ID, QwkEditor.CLEAR_ID]:
-		return {"used": true, "action": _qwk_item(focused)}
-	var used := true
-	if enter:
-		qwk.new_line()
-	elif backspace:
-		qwk.backspace()
-	elif ch != "":
-		qwk.type_char(ch)
-	else:
-		used = false
-	if used:
-		workout_message = ""
-		_refresh_qwk()
-		menu.focus_item(qwk.last_line_id())
-	return {"used": used, "action": {}}
 
 
 ## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit ; pour le conseil,
@@ -1302,7 +1262,25 @@ func handle(event: String) -> Dictionary:
 		act = route_act if act.is_empty() else {"action": "sequence", "list": [act, route_act]}
 	if menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league":
 		_refresh_mode_ready()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
+	_note_launch_of(act)
 	return act
+
+
+## Lancement envoyé par le menu (seul ou dans une séquence) : retenu pour « Rejouer ». Le « Démarrer » du
+## Cyber-Rogue suit son `start_run` : la run reste le lancement à rejouer.
+func _note_launch_of(act: Dictionary) -> void:
+	for a in ([act] if act.get("action", "") != "sequence" else act.get("list", [])):
+		match str(a.get("action", "")) if a is Dictionary else "":
+			"start_run":
+				last_launch = "start_run"
+			"start":
+				if menu.mode != "rogue":
+					last_launch = "start"
+
+
+## Lancement fait hors de ce menu (monde ouvert : menu du globe, main.gd).
+func note_launch(command: String) -> void:
+	last_launch = command
 
 
 func _handle_event(event: String) -> Dictionary:
@@ -1538,20 +1516,12 @@ func _handle_event(event: String) -> Dictionary:
 		if str(act["id"]) == MenuModel.HELP_WORKOUT_ID:
 			menu.push_screen(WORKOUT_HELP)
 			return {}
-		if str(act["id"]) == MenuModel.QWK_WORKOUT_ID:
-			_refresh_qwk()
-			menu.push_screen(WORKOUT_QWK)
-			menu.focus_item(qwk.last_line_id())
-			return {}
 		return {}
-	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_QWK:
-		return _qwk_item(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
 		var item_id := str(act["id"])
 		if item_id == "save":
-			_workout_request = "create"
 			return {"action": "create_workout", "args": builder.values.duplicate()}
 		if item_id.begins_with("param:"):
 			settings.begin_with(builder.edit_item(item_id.substr(6)))
@@ -1574,6 +1544,9 @@ func _handle_event(event: String) -> Dictionary:
 			"confirm_pair":
 				menu.confirm(str(act["title"]), {"action": "pair_devices", "args": act["args"]})
 				act = {}
+			"confirm_sim":   # lot NI4 : session simulée rangée dans Appareils
+				menu.confirm(str(act["title"]), act["then"])
+				act = {}
 		_refresh_pairing()
 		return act
 	if act.get("action", "") == "item" and act.get("screen", "") == SUMMARY:
@@ -1593,24 +1566,48 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_garage()
 			menu.push_screen(GarageViewModel.SCREEN)
 			return {"action": "list_garage"}
-		act = summary_model.handle_action(str(act["id"]), menu)
+		var item_id := str(act["id"])
+		if item_id == "replay" and last_launch in ["start_run", "start_open_world"]:
+			menu.reset()   # l'accueil derrière l'écran de départ du mode, comme pour un lancement depuis l'accueil
+			_leave_summary()
+			if last_launch == "start_run":   # écran de départ du Cyber-Rogue, mêmes choix ; « Lancer » refait la run
+				_refresh_rogue()
+				menu.push_screen(RogueMenuModel.SCREEN)
+				return _reload_world()
+			# route du monde ouvert générée à la volée : pas de select_route, le globe en relance une
+			return {"action": "sequence", "list": [{"action": "list"}, {"action": "open_world_menu"}]}
+		act = summary_model.handle_action(item_id, menu)
 		match act.get("action", ""):
 			"new_session":
-				show_details = false
-				xp_result = {}
-				_xp_announced = true   # les copies du bilan encore envoyées par le core ne rouvrent rien
-				summary = {}
-				ftp_offer = {}
-				summary_message = ""
-				_refresh_summary()
-				# Le core reste en FINISHED jusqu'au prochain select_route : le monde choisi est rechargé.
-				if menu.world_id != "":
-					return {"action": "list", "route_id": menu.world_id}
-				return {"action": "list"}
+				_leave_summary()
+				if item_id == "replay":
+					return _reload_world()
+				# « Menu principal » : même accueil après tous les modes, sans entraînement gardé par le core
+				# (sinon un parcours choisi ensuite partirait en ERG sous un écran « session libre »).
+				return {"action": "sequence", "list": [{"action": "select_workout", "workout_id": null},
+					_reload_world()]}
 			"details":
 				show_details = not show_details
 				return {}
 	return act
+
+
+## Fin de séance quittée (Rejouer ou Menu principal) : bilan, expérience et FTP proposée oubliés.
+func _leave_summary() -> void:
+	show_details = false
+	xp_result = {}
+	_xp_announced = true   # les copies du bilan encore envoyées par le core ne rouvrent rien
+	summary = {}
+	ftp_offer = {}
+	summary_message = ""
+	_refresh_summary()
+
+
+## Le core reste en FINISHED jusqu'au prochain select_route : listes redemandées, monde choisi rechargé.
+func _reload_world() -> Dictionary:
+	if menu.world_id != "":
+		return {"action": "list", "route_id": menu.world_id}
+	return {"action": "list"}
 
 
 # --- Écran Prêt des modes à réglages : Dernier survivant (lot DS7), Grand Prix des objets (lot GP9) ---------
@@ -1914,6 +1911,8 @@ func on_interrupted(msg: Dictionary) -> void:
 	interrupted = rest.duplicate() if rest is Array else []
 	interrupted_message = "Séance enregistrée dans tes séances" if bool(msg.get("saved", false)) \
 		else "Séance non enregistrée"
+	if bool(msg.get("resumed", false)):   # lot RC3 : la séance repart en pause, l'écran de pause suit la trame
+		interrupted_message = "Séance reprise"
 	_refresh_interrupted()
 	if interrupted.is_empty() and menu.current_screen() in [INTERRUPTED, MenuModel.CONFIRM]:
 		menu.open_screen(MenuModel.HOME)
@@ -1925,12 +1924,45 @@ func _refresh_interrupted() -> void:
 		menu.set_interrupted("", "")
 		menu.set_screen_items(INTERRUPTED, [{"id": "none", "label": "Aucune séance à rattraper", "enabled": false}])
 		return
-	var detail := interrupted_detail(interrupted[0], route_names)
+	var item: Dictionary = interrupted[0]
+	var detail := interrupted_detail(item, route_names)
 	var more := interrupted.size() - 1
-	menu.set_interrupted("Séance interrompue à enregistrer" + ("" if more == 0 else " (+%d)" % more), detail)
-	menu.set_screen_items(INTERRUPTED, [
-		{"id": "save", "label": "Enregistrer la séance", "detail": detail},
-		{"id": "discard", "label": "Ne pas l'enregistrer"}])
+	var race = item.get("race", null)
+	var is_race: bool = race is Dictionary
+	var resumable := bool(item.get("resumable", false))
+	var title := "Séance interrompue à enregistrer"
+	if resumable:   # lot RC3 : moins de 2 h après l'arrêt, même version du jeu
+		title = "Course interrompue à reprendre" if is_race else "Séance interrompue à reprendre"
+	menu.set_interrupted(title + ("" if more == 0 else " (+%d)" % more),
+		interrupted_race_detail(race) if is_race else detail)
+	var rows: Array = []
+	if resumable:
+		rows.append({"id": "resume", "label": "Reprendre la course" if is_race else "Reprendre la séance",
+			"detail": interrupted_race_detail(race) if is_race else detail})
+	rows.append({"id": "save", "label": "Enregistrer sans finir" if is_race else "Enregistrer la séance",
+		"detail": detail})
+	rows.append({"id": "discard", "label": "Ne pas l'enregistrer"})
+	menu.set_screen_items(INTERRUPTED, rows)
+
+
+## « Course · tour 3 sur 6 · tu étais 4e sur 12 » de `race` {mode, place, of, lap, alive, league} (lot RC3).
+static func interrupted_race_detail(race: Dictionary) -> String:
+	var mode := str(race.get("mode", ""))
+	var name := str(RACE_MODE_NAMES.get(mode, "Course"))
+	if bool(race.get("league", false)):
+		name += " de la ligue"
+	var parts: Array = [name]
+	var lap = race.get("lap", null)
+	if lap is Array and lap.size() == 2:
+		parts.append("tour %d sur %d" % [int(lap[0]), int(lap[1])])
+	var place = race.get("place", null)
+	var of = race.get("of", null)
+	if (place is int or place is float) and (of is int or of is float):
+		var p := int(place)
+		parts.append("tu étais %s sur %d" % ["1er" if p == 1 else "%de" % p, int(of)])
+	elif mode == "survivor" and (race.get("alive", null) is int or race.get("alive", null) is float):
+		parts.append("%d coureurs encore en course" % int(race["alive"]))
+	return " · ".join(parts)
 
 
 ## « 30/10 à 18:05 · Vosges · 12,3 km · 32 min » d'un élément {start, route_id, distance_m, duration_s}.
@@ -1952,6 +1984,9 @@ func _handle_interrupted(item_id: String) -> Dictionary:
 		return {}
 	var sid := str(interrupted[0].get("id", ""))
 	interrupted_message = ""
+	if item_id == "resume":   # lot RC3
+		interrupted_message = "Reprise…"
+		return {"action": "recover_session", "id": sid, "resume": true}
 	if item_id == "save":
 		interrupted_message = "Enregistrement…"
 		return {"action": "recover_session", "id": sid, "save": true}
@@ -2592,7 +2627,7 @@ func state() -> Dictionary:
 	elif st["screen"] in [MenuModel.ROUTES, ROUTE_IMPORT]:
 		st["status"] = route_message
 		st["status_error"] = route_message_error
-	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_QWK]:
+	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN] or st["screen"] in PlanBuilder.SCREENS:
 		st["status"] = plan_message
@@ -2642,6 +2677,8 @@ func state() -> Dictionary:
 		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
+		if pause_reason == "core_restarted" and race_active:
+			st["status"] = PAUSE_RACE_RESTORED
 		if st["status"] == "" and workout_done:
 			st["status"] = PAUSE_WORKOUT_DONE if arrival_kind in ["", "workout"] else PAUSE_ARRIVAL
 	st["card"] = card(st)

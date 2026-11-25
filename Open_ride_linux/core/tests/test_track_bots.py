@@ -392,6 +392,41 @@ def test_elimination_uses_the_survivor_hints():
     s._mp.undo()
 
 
+def test_eliminated_bots_park_at_the_top_and_leave_the_race_line():
+    """Essai du 22 novembre : les bots éliminés gênaient la course ; rangés en haut de la piste (5,5 m), placement
+    coupé, hors de la ligne de course : le cycliste ne les suit ni ne les double (il ne monte pas les chercher)."""
+    from openride_core.track.bot_plan import OUT_HEIGHT_M, OUT_LANE_M
+
+    s, run = _session(6964, power_w=300.0)
+    s.cfg.bots.level_pct = 50
+    s._on_command("start", {"mode": "track", "track": {"event": "elimination", "opponents": 4, "every_laps": 2}}, 2)
+    ev = s.track_event
+    seen: list[tuple[float, float]] = []
+
+    def each(sess):
+        out = [b for b in sess.bots if ev.riders[b.id].out is not None]
+        for b in out:
+            if b.hint is not None:
+                assert b.hint.parked and b.hint.lane_m == OUT_LANE_M
+        seen.extend((b.lane.m, sess._lane.m) for b in out if abs(b.lane.m - OUT_LANE_M) < 0.01)
+
+    run(s, 400.0, each)
+    s._mp.undo()
+    assert velodrome.height_on_track(OUT_LANE_M) == pytest.approx(OUT_HEIGHT_M)
+    assert seen                                                        # des éliminés rangés en haut
+    assert all(velodrome.height_on_track(me) < 2.45 for _, me in seen)  # le cycliste reste sous la ligne des stayers
+
+
+def test_parked_rider_far_aside_is_neither_followed_nor_passed():
+    lane = draft_mod.Lane(1.2, 1.2)
+    parked = draft_mod.Lane(-2.9, -2.9, auto=False)
+    target, passing = draft_mod.lane_target(0.0, 12.0, lane, [(5.0, 6.0, parked)])
+    assert target == pytest.approx(1.2) and not passing
+    near = draft_mod.Lane(1.0, 1.0, auto=False)                        # rangé tout près (bas-côté du Dernier survivant)
+    _, passing = draft_mod.lane_target(0.0, 12.0, lane, [(5.0, 6.0, near)])
+    assert passing
+
+
 # --- courses simulées ---------------------------------------------------------------------------------------
 
 def _session(port: int, power_w: float = 330.0):

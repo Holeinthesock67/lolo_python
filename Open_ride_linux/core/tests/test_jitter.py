@@ -6,7 +6,7 @@ import pytest
 
 from openride_core.jitter import BIN_MS, JitterMeter, line
 from openride_core.tools import gigue_charge
-from openride_core.tools.log_report import PATTERNS, jitter_report
+from openride_core.tools.log_report import PATTERNS, format_jitter, jitter_report
 from openride_core.tools.log_report import main as log_report_main
 
 
@@ -93,3 +93,28 @@ def test_session_writes_the_whole_line(tmp_path):
 def test_fabricated_track(tmp_path):
     text = gigue_charge.write_track(tmp_path / "t.gpx", km=2.0).read_text(encoding="utf-8")
     assert text.count("<trkpt") == 200 and 'lat="45.' in text
+
+
+def test_jitter_report_pertes_de_trames(capsys):
+    """Essai du 22 novembre : lignes `[ipc]` de l'engine et `IPC émis` du core (mêmes textes que
+    ipc_client.gd, vérifiés par test_state_gap.gd, et IpcServer.tx_line) réunies dans le rapport."""
+    from openride_core.ipc_server import IpcServer
+    srv = IpcServer()
+    srv.tx_state, srv.tx_state_max, srv.tx_errors = 1800, 3100, {"EAGAIN": 4}
+    core_line = "2026-11-22 16:02:37,998 INFO    ipc_server " + srv.tx_line()
+    lines = LOG.splitlines() + [
+        core_line,
+        "[engine] [ipc] trou de 9140 ms entre deux trames state : seq 2000 -> 2274 "
+        "(273 trames du core manquantes : perdues en route)",
+        "[engine] [ipc] state reçues 1527 ; en retard 0 ; seq sautés 273 ; trous de plus de 2 s 1 ; "
+        "plus gros datagramme 3100 o",
+    ]
+    rep = jitter_report(lines)
+    assert rep["emission"][0]["state"] == 1800 and rep["emission"][0]["erreurs"] == "EAGAIN 4"
+    assert rep["pertes"] == [{"n": 1527, "late": 0, "skipped": 273, "long": 1, "bytes": 3100}]
+    assert rep["trous"][0] == {"ms": 9140, "seq_avant": 2000, "seq_apres": 2274, "manquantes": 273,
+                               "cause": "perdues en route"}
+    text = format_jitter(rep)
+    assert "envoyées par le core 1800, reçues par l'engine 1527, seq sautés 273" in text
+    assert "erreurs d'envoi du core : EAGAIN 4" in text
+    assert "trou de 9.1 s : seq 2000 -> 2274 (273 manquantes : perdues en route)" in text
