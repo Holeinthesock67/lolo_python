@@ -15,6 +15,8 @@ pour le reste). Les bancs sont résumés après `warmup_s` secondes (`perf_targe
 
 Écrit `comparaison.html` (préréglage appliqué de chaque côté, tableau des écarts, captures de même nom
 côte à côte avec un curseur glissant) et `ecarts.csv` dans `--out` (défaut : `APRÈS/comparaison`).
+Un scénario ou une vue présent avant et absent après compte comme « moins bien » ; une sonde plus courte que
+la chauffe est résumée sur toutes ses lignes et son préréglage le dit (revue de code vague 5, O3-11).
 Code de sortie : 0 si rien n'est « moins bien », 1 sinon, 2 si les dossiers sont illisibles ou de natures
 différentes. Bibliothèque standard seulement.
 """
@@ -75,13 +77,16 @@ def probe_entry(rows: list[dict[str, Any]], warmup_s: float) -> tuple[dict[str, 
     """Médianes d'une sonde après la chauffe, et préréglage(s) appliqué(s)."""
     ts = perf_probe.values(rows, "t_s")
     t0 = (min(ts) if ts else 0.0) + warmup_s
-    steady = [r for r in rows if not isinstance(r.get("t_s"), (int, float)) or r["t_s"] >= t0] or rows
+    steady = [r for r in rows if not isinstance(r.get("t_s"), (int, float)) or r["t_s"] >= t0]
+    in_warmup = not steady and bool(rows)
+    steady = steady or rows
     out = {}
     for col, key in PROBE_COLUMNS.items():
         m = _median(perf_probe.values(steady, col))
         if m is not None:
             out[key] = m
-    return out, ", puis ".join(perf_probe.presets_of(rows))
+    presets = ", puis ".join(perf_probe.presets_of(rows))
+    return out, presets + (" (mesure prise dans la chauffe)" if in_warmup else "")
 
 
 def load_side(root: Path, warmup_s: float) -> Side:
@@ -139,6 +144,11 @@ def compare(before: Side, after: Side, noise_pct: float = DEFAULT_NOISE_PCT) -> 
                 rows.append({"entree": key, "mesure": metric, "libelle": label, "avant": b[metric], "apres": a[metric],
                              "ecart_pct": pct, "verdict": v})
     return rows
+
+
+def missing_entries(before: Side, after: Side) -> list[str]:
+    """Scénarios ou vues mesurés avant et absents après (banc qui n'a pas tourné, vue perdue)."""
+    return sorted(set(before.entries) - set(after.entries))
 
 
 def write_csv(rows: list[dict[str, Any]], path: Path) -> None:
@@ -219,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ÉCHEC : natures différentes ({before.kind} avant, {after.kind} après)", file=sys.stderr)
         return 2
     rows = compare(before, after, args.seuil_bruit)
+    missing = missing_entries(before, after)
     if not rows:
         print("ÉCHEC : aucun scénario ni vue commun aux deux dossiers", file=sys.stderr)
         return 2
@@ -229,10 +240,17 @@ def main(argv: list[str] | None = None) -> int:
     for r in rows:
         pct = "" if r["ecart_pct"] is None else f" ({r['ecart_pct']:+.1f} %)"
         print(f"  {r['verdict']:<10} {r['entree']} : {r['libelle']} {r['avant']:.2f} → {r['apres']:.2f}{pct}")
+    for key in missing:
+        print(f"  {'moins bien':<10} {key} : absent après (mesuré avant)")
+    for key, preset in sorted(after.presets.items()):
+        if "chauffe" in preset:
+            print(f"  attention  {key} : mesure prise dans la chauffe ({preset})")
     worse = [r for r in rows if r["verdict"] == "moins bien"]
     print(f"Rapport : {out / 'comparaison.html'}")
-    print(f"RÉSULTAT : {'rien de moins bien' if not worse else f'{len(worse)} mesure(s) moins bien'}")
-    return 1 if worse else 0
+    n_worse = len(worse) + len(missing)
+    print(f"RÉSULTAT : {'rien de moins bien' if not n_worse else f'{n_worse} mesure(s) moins bien'}"
+          + (f" (dont {len(missing)} entrée(s) absente(s) après)" if missing else ""))
+    return 1 if n_worse else 0
 
 
 if __name__ == "__main__":

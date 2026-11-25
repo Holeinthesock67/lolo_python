@@ -4,9 +4,9 @@
   "etapes": [
     {"ecran": "home", "delai": 15},
     {"choisir": "erg"},
-    {"ecran": "workouts", "elements": ["erg_court", "_create", "_qwk", "_help"]},
+    {"ecran": "workouts", "elements": ["erg_court", "_create", "_help"]},
     {"choisir": "_help"},
-    {"ecran": "workout_help", "titre": "Aide ERG", "contient": ["Créer des intervalles", "Saisie QWKcode (GoldenCheetah)", "Déposer un fichier"]},
+    {"ecran": "workout_help", "titre": "Aide ERG", "contient": ["Créer des intervalles", "Fichier QWKcode (GoldenCheetah)", "Déposer un fichier"]},
     {"appui": "Y_SHORT"},
     {"ecran": "workouts"},
     {"choisir": "_create"},
