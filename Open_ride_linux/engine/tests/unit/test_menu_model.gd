@@ -100,7 +100,7 @@ func _test_scenarios() -> void:
 		["PLUS_SHORT", "routes", "alpe", null],
 		["PLUS_SHORT", "routes", "vercors", null],
 	])
-	_scenario("accueil : boucle sur les dix entrées", _routes(ROUTES_4), [
+	_scenario("accueil : boucle sur les neuf entrées (session simulée rangée dans Appareils, lot NI4)", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
 		["PLUS_SHORT", "home", "world", null],
 		["PLUS_SHORT", "home", "ride", null],
@@ -113,7 +113,6 @@ func _test_scenarios() -> void:
 		["A_LONG", "home", "history", {"action": "item", "screen": "home", "id": "history"}],
 		["PLUS_SHORT", "home", "collection", null],
 		["A_LONG", "home", "collection", {"action": "item", "screen": "home", "id": "collection"}],
-		["PLUS_SHORT", "home", "sim", null],
 		["PLUS_SHORT", "home", "settings", null],
 		["Y_SHORT", "home", "settings", null],
 	])
@@ -155,23 +154,6 @@ func _test_scenarios() -> void:
 		["MINUS_SHORT", "workouts", "_sim", null],
 		["A_LONG", "ready", "workout", {"action": "select_workout", "workout_id": null}],
 		["Y_SHORT", "home", "erg", null],
-	])
-	_scenario("session simulée : confirmation puis relance", _routes(ROUTES_4), [
-		["MINUS_SHORT", "home", "quit", null],
-		["MINUS_SHORT", "home", "settings", null],
-		["MINUS_SHORT", "home", "sim", null],
-		["A_LONG", "confirm", "no", null],
-		["PLUS_SHORT", "confirm", "yes", null],
-		["A_LONG", "home", "sim", {"action": "relaunch_sim"}],
-	])
-	var in_sim := func(m): _routes(ROUTES_4).call(m); m.set_sim_session(true)
-	_scenario("en session simulée : revenir au matériel réel", in_sim, [
-		["MINUS_SHORT", "home", "quit", null],
-		["MINUS_SHORT", "home", "settings", null],
-		["MINUS_SHORT", "home", "sim", null],
-		["A_LONG", "confirm", "no", null],
-		["PLUS_SHORT", "confirm", "yes", null],
-		["A_LONG", "home", "sim", {"action": "relaunch"}],
 	])
 	_scenario("quitter : annulé puis confirmé", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
@@ -268,10 +250,10 @@ func _test_lists_and_events() -> void:
 	w.handle("PLUS_SHORT")
 	w.handle("PLUS_SHORT")
 	var ws: Dictionary = w.handle("A_LONG")
-	_check(ws["items"].size() == 5 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
+	_check(ws["items"].size() == 4 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
 		"aucun entraînement : « Sans entraînement (SIM) » reste choisissable")
-	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_qwk" and ws["items"][4]["id"] == "_help",
-		"sous-menu ERG (N16) : Créer, QWKcode et Aide en fin de liste, sans import (révision 1.15)")
+	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_help" and ws["items"].size() == 4,
+		"sous-menu ERG (N16) : Créer et Aide en fin de liste, sans import (révision 1.15) ni QWKcode (lot NI4)")
 	w.handle("PLUS_SHORT")
 	var wc: Dictionary = w.handle("A_LONG")
 	_check(wc["action"] == {"action": "item", "screen": "workouts", "id": "_create"} and wc["screen"] == "workouts",
@@ -329,13 +311,13 @@ func _test_prepare_start() -> void:
 func _test_modes() -> void:
 	var m = MenuModel.new()
 	var ids: Array = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "ride", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"],
+	_check(ids == ["world", "ride", "erg", "plan", "ftp", "history", "collection", "settings", "quit"],
 		"modes par défaut : ride et erg, puis plans et test de FTP (lot O12) (%s)" % str(ids))
 	m.set_modes(["erg", "cyber_rogue"])
 	ids = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
+	_check(ids == ["world", "erg", "plan", "ftp", "history", "collection", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
 	m.set_modes(null)
-	_check(m.state()["items"].size() == 10, "modes absents : retour aux modes par défaut")
+	_check(m.state()["items"].size() == 9, "modes absents : retour aux modes par défaut")
 
 
 ## Plan des boutons sans exception (spécification générale §7.1, 27 octobre).

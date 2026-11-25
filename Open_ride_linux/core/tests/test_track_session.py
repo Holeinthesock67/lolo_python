@@ -237,3 +237,35 @@ def test_elimination_win_is_marked_and_frames_carry_gaps(env):
     s._fill_track_frame()
     assert s.state.session_state == "RUNNING" and s.state.track["finished"] and s.state.track["ranking"][0] == "me"
     assert s.state.track["ahead"] is None and s.state.track["behind"] is None
+
+
+def test_published_track_height_stays_inside_the_schema(env):
+    """Test instable du 24 novembre (élimination de la ligue, 2 fois sur 4) : un coureur qui déborde en dépassement
+    (écart jusqu'à -1,5 m) était publié à plus de 3 m de haut, hors du schéma de `state`. La hauteur publiée est
+    bornée ; sur la route, l'écart reste tel quel."""
+    from openride_core import draft
+    from openride_core.session import TRACK_HEIGHT_OUT_MAX_M
+
+    make, _, _ = env
+    s, errors = make(6990)
+    assert not errors and s._track is not None
+    assert s._lane_out(draft.PASS_LANE_MIN_M) == TRACK_HEIGHT_OUT_MAX_M == 3.0
+    assert s._lane_out(-2.5) == 3.0 and s._lane_out(draft.LANE_MAX_M) == 0.0
+    assert s._lane_out(draft.RIDER_LANE_M) == pytest.approx(draft.LANE_MAX_M - draft.RIDER_LANE_M)
+    s._on_command("start", {"mode": "track", "track": {"event": "elimination", "opponents": 7}}, 2)
+    assert not errors and s.state.session_state == "RUNNING"
+    s._lane.m = -1.4   # cycliste en dépassement, tout en haut de la piste
+    for b in s.bots:
+        if getattr(b, "lane", None) is not None:
+            b.lane.m = draft.PASS_LANE_MIN_M
+    wall_step = 1.0 / 30.0
+    for _ in range(3):
+        s._step(wall_step, time.time())
+    # trame comme la boucle d'envoi (`_run`) : bots en hauteur sur la piste
+    s.state.bots = [{**b, "lane_m": round(s._lane_out(b["lane_m"]), 2)} if b.get("lane_m") is not None else b
+                    for b in (x.to_dict() for x in s.bots)] or None
+    s._fill_track_frame()
+    frame = s.state.to_dict()
+    validator().validate(frame)
+    heights = [frame.get("lane_m")] + [b.get("lane_m") for b in frame.get("bots") or []]
+    assert all(h is None or 0.0 <= h <= 3.0 for h in heights), heights

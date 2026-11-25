@@ -53,5 +53,22 @@ func _init() -> void:
 	gone.free()
 	_check(plan.step() == "suite" and plan.pending() == 0, "étape d'un nœud libéré sautée")
 
+	# Lot AC4 : étape d'attente, rejouée à chaque image tant que ce qu'elle attend n'est pas prêt.
+	_calls.clear()
+	var tries := [0]
+	plan.start([["demande", _note.bind("d")]])
+	plan.add_wait("attente", func() -> bool:
+		tries[0] += 1
+		return tries[0] >= 3)
+	plan.add("suite", _note.bind("s"))
+	_check(plan.step() == "demande" and plan.pending() == 2, "attente : l'étape avant elle joue d'abord")
+	_check(plan.step() == "attente" and plan.pending() == 2 and plan.step() == "attente" and plan.pending() == 2,
+		"pas encore prêt : l'étape d'attente reste en tête, une fois par image")
+	_check(plan.step() == "attente" and plan.pending() == 1 and _calls == ["d"], "prêt à la 3e image : l'attente est finie")
+	_check(plan.step() == "suite" and plan.pending() == 0 and _calls == ["d", "s"], "l'étape suivante joue ensuite")
+	_check(plan.done.size() == 3, "résumé : l'attente compte une fois")
+	plan.start([["normale", func() -> bool: return false]])
+	_check(plan.step() == "normale" and plan.pending() == 0, "une étape normale qui renvoie faux n'est pas rejouée")
+
 	print("test_warmup_plan : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
