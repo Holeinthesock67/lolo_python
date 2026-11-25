@@ -39,7 +39,7 @@ import numpy as np
 from .. import __version__ as COMPILER_VERSION
 from .. import constants as C
 from ..cache import Log, stderr_log
-from ..elevation import CopernicusGlo30Provider, ElevationProvider
+from ..elevation import CopernicusGlo30Provider, ElevationProvider, FabdemProvider
 from ..errors import CompileError
 from ..frame import LocalFrame, utm_transformer, utm_zone_of
 from ..osm import USER_AGENT
@@ -365,7 +365,7 @@ class Measure:
         elif cfg.synthetic:
             self.provider = FrameRelief(self.frame)
         else:
-            self.provider = CopernicusGlo30Provider(offline=cfg.offline, log=log)
+            self.provider = FabdemProvider(offline=cfg.offline, log=log)   # relief du monde ouvert (lot RL1)
         self.confirm = confirm or _ask
         self.report: dict[str, Any] = {}
         self.points = path_points(self.start_xz, cfg.heading_deg, cfg.km * 1000.0)
@@ -414,7 +414,7 @@ class Measure:
     # -- 1. relief ------------------------------------------------------------------------------
 
     def measure_dem(self) -> dict[str, Any]:
-        if not isinstance(self.provider, CopernicusGlo30Provider):
+        if not isinstance(self.provider, (CopernicusGlo30Provider, FabdemProvider)):
             t0 = time.perf_counter()
             self.provider.elevations(np.array([self.cfg.lat]), np.array([self.cfg.lon]))
             return {"source": getattr(self.provider, "name", "synthetic"), "tuiles": [],

@@ -2,12 +2,16 @@
 
 - `CopernicusGlo30Provider` : MNT Copernicus GLO-30, tuiles COG de 1° × 1° du compartiment
   public AWS `copernicus-dem-30m`, mises en cache puis lues avec rasterio, interpolation bilinéaire.
+- `FabdemProvider` (lot RL1, 25 novembre) : FABDEM V1-2, le même GLO-30 sans bâtiments ni arbres (sol nu),
+  tuiles de 1° lues une à une dans les archives de 10° de l'université de Bristol (`remote_zip`), Copernicus en
+  repli pour une tuile que FABDEM n'a pas ou ne peut pas livrer. Relief du monde ouvert.
 - `SyntheticProvider` : altitude analytique dans le repère d'un parcours, pour les tests.
 - IGN RGE ALTI : emplacement réservé (`IgnRgeAltiProvider`), non implémenté en v1.
 """
 
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 from typing import Callable, Protocol
@@ -203,6 +207,179 @@ class CopernicusGlo30Provider:
         return out
 
 
+# --- FABDEM (sol nu) ----------------------------------------------------------------------------
+
+# Hawker et al. (2022), FABDEM V1-2, université de Bristol, CC BY-NC-SA 4.0 (usage non commercial : OpenRide est
+# un logiciel personnel). Archives `<bloc 10°>_FABDEM_V1-2.zip` contenant les tuiles `<coin SO>_FABDEM_V1-2.tif`.
+FABDEM_BASE_URL = "https://data.bris.ac.uk/datasets/s5hqmjcdj8yo2ibzi9b4ew3sn"
+FABDEM_VERSION = "V1-2"
+
+
+def _corner(lat: int, lon: int, lat_digits: int = 2) -> str:
+    return f"{'N' if lat >= 0 else 'S'}{abs(lat):0{lat_digits}d}{'E' if lon >= 0 else 'W'}{abs(lon):03d}"
+
+
+def fabdem_tile_name(lat_sw: int, lon_sw: int) -> str:
+    """Tuile d'un degré de coin sud-ouest (lat_sw, lon_sw) : `N43W002_FABDEM_V1-2`."""
+    return f"{_corner(lat_sw, lon_sw)}_FABDEM_{FABDEM_VERSION}"
+
+
+def fabdem_zip_names(lat_sw: int, lon_sw: int) -> list[str]:
+    """Archives de 10° candidates pour la tuile, la plus probable d'abord : `N40W010-N50W000_FABDEM_V1-2.zip`.
+
+    Le coin nord-est d'un bloc qui touche l'équateur ou le méridien d'origine peut s'écrire N00 ou S00, E000 ou
+    W000 : non vérifiable depuis le cloud (serveur hors de la liste du réseau), les deux graphies sont essayées.
+    """
+    la, lo = (lat_sw // 10) * 10, (lon_sw // 10) * 10
+    sw = _corner(la, lo)
+    ns = ["N"] if la + 10 > 0 else (["S"] if la + 10 < 0 else ["N", "S"])
+    ew = ["E"] if lo + 10 > 0 else (["W"] if lo + 10 < 0 else ["W", "E"])
+    return [f"{sw}-{a}{abs(la + 10):02d}{b}{abs(lo + 10):03d}_FABDEM_{FABDEM_VERSION}.zip" for a in ns for b in ew]
+
+
+class FabdemProvider:
+    """Relief au sol nu FABDEM, Copernicus GLO-30 en repli tuile par tuile.
+
+    GLO-30 est un modèle de SURFACE (toits, arbres) : en ville, la route y « monte » sur les maisons, d'où des
+    pentes de 20 % sur quelques dizaines de mètres (Biarritz, 22 novembre). FABDEM en retire bâtiments et forêts.
+    - Tuile en cache (`<cache>/fabdem_v1_2/<nom>.tif`) : lue telle quelle ; pixels sans valeur (mer) : repli.
+    - Tuile absente de son archive, archive absente (404) ou serveur sans requêtes partielles : marque
+      `<nom>.absent` dans le cache, et la tuile Copernicus sert à sa place (même maille de 30 m).
+    - Hors ligne sans la tuile : repli Copernicus (son propre cache), sans marque (réessayé avec le réseau).
+    """
+
+    name = "fabdem_v1_2"
+    native_resolution_m = 30.0
+
+    def __init__(self, cache_dir: Path | None = None, offline: bool = False, log: Log = stderr_log,
+                 base_url: str = FABDEM_BASE_URL, fallback: ElevationProvider | None = None,
+                 timeout_s: float = 60.0) -> None:
+        self.dir = Path(cache_dir or dem_cache_dir()) / self.name
+        self.offline = offline
+        self.log = log
+        self.base_url = base_url.rstrip("/")
+        self.timeout_s = timeout_s
+        self.fallback = fallback if fallback is not None else CopernicusGlo30Provider(cache_dir=cache_dir,
+                                                                                     offline=offline, log=log)
+        self._tiles: dict[tuple[int, int], _Tile | None] = {}
+        self._members: dict[str, dict | None] = {}   # None : archive absente (404)
+        self.downloads = 0
+
+    def tile_path(self, lat_sw: int, lon_sw: int) -> Path:
+        return self.dir / f"{fabdem_tile_name(lat_sw, lon_sw)}.tif"
+
+    def absent_path(self, lat_sw: int, lon_sw: int) -> Path:
+        return self.dir / f"{fabdem_tile_name(lat_sw, lon_sw)}.absent"
+
+    def tile_ready(self, lat_sw: int, lon_sw: int) -> bool:
+        """Tuile FABDEM sur le PC, ou connue absente (le repli décide alors)."""
+        return self.tile_path(lat_sw, lon_sw).is_file() or self.absent_path(lat_sw, lon_sw).is_file()
+
+    def has_data(self, lat: float, lon: float) -> bool:
+        """Le relief de ce point est-il sur le PC (sans réseau) ?"""
+        la, lo = math.floor(lat), math.floor(lon)
+        if self.tile_path(la, lo).is_file():
+            return True
+        fb = getattr(self.fallback, "has_data", None)
+        if fb is not None:
+            return bool(fb(lat, lon))
+        if isinstance(self.fallback, CopernicusGlo30Provider):
+            if self.fallback.tile_path(la, lo).is_file():
+                return True
+            listing = self.fallback.dir / "tileList.txt"
+            return listing.is_file() and copernicus_tile_name(la, lo) not in listing.read_text()
+        return True
+
+    def download_tile(self, lat_sw: int, lon_sw: int) -> bool:
+        """Télécharge la tuile si besoin (fil de préchargement compris). Vrai si elle est en cache ensuite."""
+        if self.tile_path(lat_sw, lon_sw).is_file():
+            return True
+        if self.absent_path(lat_sw, lon_sw).is_file() or self.offline:
+            return False
+        from . import remote_zip
+
+        tname = fabdem_tile_name(lat_sw, lon_sw)
+        try:
+            zname, members = self._archive(fabdem_zip_names(lat_sw, lon_sw))
+            url = f"{self.base_url}/{zname}"
+            member = members.get(f"{tname}.tif")
+            if member is None:
+                self._mark_absent(lat_sw, lon_sw, f"{tname} absente de {zname}")
+                return False
+            self.log(f"FABDEM : téléchargement de {tname}…")
+            got = remote_zip.fetch_member(url, member, self.tile_path(lat_sw, lon_sw), self.timeout_s)
+            check_tiff(self.tile_path(lat_sw, lon_sw))
+            self.downloads += 1
+            self.log(f"  {tname} : {got / 1e6:.1f} Mo")
+            return True
+        except (NotFoundError, remote_zip.RangeUnsupported) as exc:
+            self._mark_absent(lat_sw, lon_sw, str(exc))
+        except ValueError as exc:   # check_tiff
+            self.tile_path(lat_sw, lon_sw).unlink(missing_ok=True)
+            self.log(f"FABDEM : {tname} illisible ({exc}) : Copernicus pour cette séance")
+        except Exception as exc:  # noqa: BLE001 - réseau : Copernicus pour cette séance, réessayé ensuite
+            self.log(f"FABDEM : {tname} non téléchargée ({exc}) : Copernicus pour cette séance")
+        return False
+
+    def _archive(self, names: list[str]) -> tuple[str, dict]:
+        """(nom, sommaire) de la première archive candidate qui existe ; NotFoundError si aucune."""
+        from . import remote_zip
+
+        last: Exception | None = None
+        for zname in names:
+            if zname in self._members:
+                if self._members[zname] is not None:
+                    return zname, self._members[zname]
+                continue
+            try:
+                self.log(f"FABDEM : lecture du sommaire de {zname}…")
+                self._members[zname] = remote_zip.list_members(f"{self.base_url}/{zname}", self.timeout_s)
+                return zname, self._members[zname]
+            except NotFoundError as exc:
+                self._members[zname] = None
+                last = exc
+        raise NotFoundError(f"aucune archive FABDEM pour cette tuile ({last})")
+
+    def _mark_absent(self, lat_sw: int, lon_sw: int, why: str) -> None:
+        self.log(f"FABDEM : {why} : relief Copernicus pour cette tuile")
+        p = self.absent_path(lat_sw, lon_sw)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(why + "\n", encoding="utf-8")
+
+    def _load(self, lat_sw: int, lon_sw: int) -> _Tile | None:
+        key = (lat_sw, lon_sw)
+        if key in self._tiles:
+            return self._tiles[key]
+        tile = None
+        if self.download_tile(lat_sw, lon_sw):
+            try:
+                tile = CopernicusGlo30Provider._read(self.tile_path(lat_sw, lon_sw))
+            except CompileError as exc:
+                self.tile_path(lat_sw, lon_sw).unlink(missing_ok=True)
+                self.log(f"FABDEM : {exc} : Copernicus pour cette séance")
+        if tile is not None and tile.data.size:
+            tile.data[tile.data < -1000.0] = np.nan      # -9999 si la tuile ne déclare pas sa valeur vide
+        self._tiles[key] = tile
+        return tile
+
+    def elevations(self, lats, lons) -> np.ndarray:
+        lats = np.asarray(lats, dtype=float)
+        lons = np.asarray(lons, dtype=float)
+        out = np.full(lats.shape, np.nan)
+        lat_sw = np.floor(lats).astype(int)
+        lon_sw = np.floor(lons).astype(int)
+        keys = np.unique(np.stack((lat_sw.ravel(), lon_sw.ravel()), axis=1), axis=0)
+        for la, lo in keys:
+            mask = (lat_sw == la) & (lon_sw == lo)
+            tile = self._load(int(la), int(lo))
+            if tile is not None:
+                out[mask] = tile.bilinear(lats[mask], lons[mask])
+        miss = np.isnan(out)
+        if miss.any():   # tuile sans FABDEM, ou pixels sans valeur (mer, bord) : Copernicus
+            out[miss] = np.asarray(self.fallback.elevations(lats[miss], lons[miss]), dtype=float)
+        return out
+
+
 class IgnRgeAltiProvider:
     """Emplacement réservé : RGE ALTI de l'IGN (France, résolution plus fine). Non implémenté en v1."""
 
@@ -216,6 +393,8 @@ class IgnRgeAltiProvider:
 def provider_for(name: str, offline: bool = False, log: Log = stderr_log) -> ElevationProvider:
     if name == CopernicusGlo30Provider.name:
         return CopernicusGlo30Provider(offline=offline, log=log)
+    if name == FabdemProvider.name:
+        return FabdemProvider(offline=offline, log=log)
     raise CompileError(f"source d'altitude inconnue : {name}")
 
 

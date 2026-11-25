@@ -48,8 +48,9 @@ from .. import __version__
 from .. import constants as C
 from .. import koppen
 from ..cache import Downloader, Log
-from ..elevation import (COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider,
-                         check_tile_list, check_tiff, copernicus_tile_name)
+from ..elevation import (COPERNICUS_BASE_URL, FABDEM_BASE_URL, CopernicusGlo30Provider, ElevationProvider,
+                         FabdemProvider, SyntheticProvider, check_tile_list, check_tiff, copernicus_tile_name,
+                         fabdem_tile_name)
 from ..errors import CompileError
 from ..pipeline import sample_positions
 from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts, turnaround_points,
@@ -910,7 +911,7 @@ class WorldSession:
     # --- relief en avance -----------------------------------------------------------------------
 
     def _prefetch_relief(self) -> None:
-        if not self.network or not isinstance(self.provider, CopernicusGlo30Provider):
+        if not self.network or not isinstance(self.provider, (CopernicusGlo30Provider, FabdemProvider)):
             return
         end = self.legs[-1].profile
         lat, lon = float(end.lat[-1]), float(end.lon[-1])
@@ -918,9 +919,14 @@ class WorldSession:
         dlon = dlat / max(0.1, math.cos(math.radians(lat)))
         for la in {math.floor(lat - dlat), math.floor(lat), math.floor(lat + dlat)}:
             for lo in {math.floor(lon - dlon), math.floor(lon), math.floor(lon + dlon)}:
-                name = copernicus_tile_name(la, lo)
-                if name in self.relief_jobs or self.provider.tile_path(la, lo).is_file():
-                    continue
+                if isinstance(self.provider, FabdemProvider):   # lot RL1 : sol nu, Copernicus en repli
+                    name = fabdem_tile_name(la, lo)
+                    if name in self.relief_jobs or self.provider.tile_ready(la, lo):
+                        continue
+                else:
+                    name = copernicus_tile_name(la, lo)
+                    if name in self.relief_jobs or self.provider.tile_path(la, lo).is_file():
+                        continue
                 th = threading.Thread(target=self._download_tile, args=(la, lo), daemon=True)
                 self.relief_jobs[name] = th
                 self.log(f"relief en avance : {name}")
@@ -967,7 +973,19 @@ class WorldSession:
 
     def _download_tile(self, la: int, lo: int) -> None:
         prov = self.provider
+        if isinstance(prov, FabdemProvider):
+            name = fabdem_tile_name(la, lo)
+            if prov.download_tile(la, lo):
+                self.stats["downloads"] += 1
+            elif not prov.absent_path(la, lo).is_file():
+                self.relief_jobs.pop(name, None)              # échec réseau : réessayé au prochain passage
+            if isinstance(prov.fallback, CopernicusGlo30Provider) and not prov.tile_path(la, lo).is_file():
+                self._download_copernicus(prov.fallback, la, lo, name)   # repli prêt lui aussi
+            return
         assert isinstance(prov, CopernicusGlo30Provider)
+        self._download_copernicus(prov, la, lo, copernicus_tile_name(la, lo))
+
+    def _download_copernicus(self, prov: CopernicusGlo30Provider, la: int, lo: int, job: str) -> None:
         name = copernicus_tile_name(la, lo)
         dl = Downloader(log=self.log)
         try:
@@ -978,7 +996,7 @@ class WorldSession:
                 self.stats["downloads"] += 1
         except Exception as exc:  # noqa: BLE001 - réessayé au prochain passage
             self.log(f"relief {name} non téléchargé : {exc}")
-            self.relief_jobs.pop(name, None)
+            self.relief_jobs.pop(job, None)
 
     # --- cache et fermeture ---------------------------------------------------------------------
 
@@ -1092,6 +1110,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--synthetic-relief", metavar="LAT,LON", help="relief analytique (tests, sans réseau)")
     ap.add_argument("--tiles-url", metavar="URL", help="TileJSON d'un autre serveur de tuiles (tests, X28)")
     ap.add_argument("--dem-url", metavar="URL", help="autre serveur du relief Copernicus (tests, X28)")
+    ap.add_argument("--relief", choices=("fabdem", "copernicus"), default="fabdem",
+                    help="relief : FABDEM au sol nu, Copernicus en repli (défaut, lot RL1), ou Copernicus seul")
+    ap.add_argument("--fabdem-url", metavar="URL", help="autre serveur des archives FABDEM (tests, lot RL1)")
     ap.add_argument("--landcover-url", metavar="URL",
                     help="autre source de l'occupation du sol WorldCover, adresse ou dossier (tests, W17)")
     args = ap.parse_args(argv)
@@ -1111,9 +1132,14 @@ def main(argv: list[str] | None = None) -> int:
         send({"type": "error", "code": "world_unavailable", "message": str(exc)})
         return 2
     network = bool(cfg.get("network", True)) and not args.no_network
-    provider: ElevationProvider = (_synthetic(args.synthetic_relief) if args.synthetic_relief
-                                   else CopernicusGlo30Provider(offline=not network, log=log,
-                                                                base_url=args.dem_url or COPERNICUS_BASE_URL))
+    provider: ElevationProvider
+    if args.synthetic_relief:
+        provider = _synthetic(args.synthetic_relief)
+    else:
+        provider = CopernicusGlo30Provider(offline=not network, log=log, base_url=args.dem_url or COPERNICUS_BASE_URL)
+        if args.relief == "fabdem":   # lot RL1 : sol nu (sans toits ni arbres), Copernicus en repli par tuile
+            provider = FabdemProvider(offline=not network, log=log, fallback=provider,
+                                      base_url=args.fabdem_url or FABDEM_BASE_URL)
     fake = FakeClock() if args.fake_clock else None
     landcover = None
     if not args.synthetic_relief:   # relief analytique (tests) : biomes du climat et du relief seulement
