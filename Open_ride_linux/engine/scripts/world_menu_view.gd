@@ -169,7 +169,10 @@ func _build_globe() -> void:
 
 ## Image lue à l'exécution (le projet est lancé sans passage par l'éditeur : pas de fichiers .import).
 static func _load_texture(path: String) -> Texture2D:
-	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+	# Octets lus par FileAccess : marche dans le projet et dans le .pck exporté (importeur « keep »).
+	var img := Image.new()
+	if img.load_jpg_from_buffer(FileAccess.get_file_as_bytes(path)) != OK:
+		img = null
 	return ImageTexture.create_from_image(img) if img != null else null
 
 

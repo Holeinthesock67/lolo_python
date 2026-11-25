@@ -1,0 +1,19 @@
+{
+  "description": "Reprise d'une course après un arrêt brutal (lot RC3) : une Course coupée il y a moins de 2 h est proposée en tête de l'accueil, en mots (mode, tour, place) ; « Reprendre la course » la rend en pause, tout le monde arrêté.",
+  "course_interrompue": {"profil": "cycliste-a", "mode": "race", "secondes": 90},
+  "fichiers": {
+    "OpenRide/Profils/.migration": "fini\n",
+    "OpenRide/Profils/cycliste-a/profil.toml": "[profil]\nid = \"cycliste-a\"\nnom = \"Cycliste A\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n"
+  },
+  "etapes": [
+    {"ecran": "home", "delai": 20},
+    {"ecran": "home", "focus": "interrupted", "contient": ["Course interrompue à reprendre"]},
+    {"capture": "accueil_course_interrompue"},
+    {"choisir": "interrupted"},
+    {"ecran": "interrupted", "elements": ["resume", "save", "discard"]},
+    {"capture": "course_interrompue"},
+    {"choisir": "resume"},
+    {"ecran": "pause", "statut": "course retrouvée", "delai": 30},
+    {"capture": "pause_course_reprise"}
+  ]
+}

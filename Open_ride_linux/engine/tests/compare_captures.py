@@ -8,8 +8,9 @@ Les captures de même nom (`NNN_étiquette.png`, écrites par `sim_bench.py`) so
 paire : écart moyen de luminosité (0 à 255) et part des pixels qui changent nettement, mesurés par les
 fonctions de `image_diff.py` (lot X20) sur la moitié haute et le centre de l'image (le HUD, dont les images/s
 changent d'un essai à l'autre, est en bas et sur les côtés). Une image des écarts (rouge) est écrite
-dans `--out` pour chaque paire, avec `rapport.html` (avant, après, écarts, mesures). Code de sortie 0 si toutes les paires restent sous `--max-diff`, 1 sinon,
-2 si aucune paire n'est trouvée.
+dans `--out` pour chaque paire, avec `rapport.html` (avant, après, écarts, mesures). Une capture sans pendant de
+l'autre côté et une paire de deux images uniformes (noires, par exemple) sont des échecs (revue de code vague 5,
+O3-11). Code de sortie 0 si toutes les paires restent sous `--max-diff`, 1 sinon, 2 si aucune paire n'est trouvée.
 
 Bibliothèque standard seulement.
 """
@@ -30,6 +31,15 @@ def scene_box(img: vc.Image) -> tuple[int, int, int, int]:
     return (int(img.width * 0.15), 0, int(img.width * 0.85), int(img.height * 0.70))
 
 
+UNIFORM_SPREAD = 8.0   # écart de luminance (0 à 255) sous lequel une image est uniforme
+
+
+def uniform(img: vc.Image) -> bool:
+    """Image uniforme (noire, blanche ou d'une seule teinte) : rien à comparer."""
+    luma = vc._luma(img)
+    return not luma or max(luma) - min(luma) < UNIFORM_SPREAD
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("before", type=Path)
@@ -47,12 +57,24 @@ def main(argv: list[str] | None = None) -> int:
     worst = 0.0
     failed = 0
     rows: list[str] = []
+    before_names = {p.relative_to(a.before) for p in a.before.rglob("*.png")}
+    after_names = {p.relative_to(a.after) for p in a.after.rglob("*.png")}
+    for side, names in (("après", before_names - after_names), ("avant", after_names - before_names)):
+        for n in sorted(names):
+            print(f"[ÉCHEC] {n} : sans pendant {side}")
+            rows.append(f"<tr><td>{html.escape(str(n))}</td><td colspan=3>sans pendant {side}</td><td>ÉCHEC</td></tr>")
+            failed += 1
     for pb, pa in pairs:
         ib, ia = vc.read_png(pb), vc.read_png(pa)
         if (ib.width, ib.height) != (ia.width, ia.height):
             msg = f"tailles différentes {ib.width}x{ib.height} et {ia.width}x{ia.height}"
             print(f"[ÉCHEC] {pb.name} : {msg}")
             rows.append(f"<tr><td>{html.escape(pb.name)}</td><td colspan=3>{msg}</td><td>ÉCHEC</td></tr>")
+            failed += 1
+            continue
+        if uniform(ib) and uniform(ia):
+            print(f"[ÉCHEC] {pb.name} : deux images uniformes, rien à comparer")
+            rows.append(f"<tr><td>{html.escape(pb.name)}</td><td colspan=3>deux images uniformes</td><td>ÉCHEC</td></tr>")
             failed += 1
             continue
         box = scene_box(ib)
@@ -74,7 +96,8 @@ def main(argv: list[str] | None = None) -> int:
             f"<p>{len(pairs)} paires, écart moyen maximal {worst:.2f} / 255, seuil {a.max_diff}</p>"
             "<table border=1 cellspacing=0 cellpadding=4><tr><th>capture</th><th>avant</th><th>après</th>"
             "<th>écarts</th><th></th></tr>" + "".join(rows) + "</table>", encoding="utf-8")
-    print(f"compare_captures : {len(pairs)} paires, écart moyen maximal {worst:.2f}, {failed} au-dessus de {a.max_diff}")
+    print(f"compare_captures : {len(pairs)} paires, écart moyen maximal {worst:.2f}, {failed} échec(s) "
+          f"(seuil {a.max_diff}, captures sans pendant et images uniformes comprises)")
     return 1 if failed else 0
 
 

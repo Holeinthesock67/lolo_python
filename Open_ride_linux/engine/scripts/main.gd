@@ -79,6 +79,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const PhotoMomentsModel := preload("res://scripts/photo_moments_model.gd")
 const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
@@ -286,6 +287,8 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+## Photos automatiques à l'arrivée et aux records (photo_moments_model.gd, réglage `render.auto_photos`).
+var photo_moments = PhotoMomentsModel.new()
 var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
 var _beep_until_s := -INF
 ## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
@@ -430,7 +433,8 @@ func _ready() -> void:
 		if segment_hud.on_result(msg, Time.get_ticks_msec() / 1000.0):
 			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
 			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?"))
-			_play_event(event_sounds.on_segment_result(msg)))
+			_play_event(event_sounds.on_segment_result(msg))
+			photo_moments.on_segment_result(msg, Time.get_ticks_msec() / 1000.0))
 	ipc.gp_hit_received.connect(func(msg: Dictionary) -> void:
 		if gp_scene != null and gp_scene.on_hit(msg, Time.get_ticks_msec() / 1000.0):
 			ipc.test_log("gp_hit item=%s target=%s" % [msg.get("item", "?"), msg.get("target", "?")])
@@ -615,6 +619,7 @@ func _on_settings(msg: Dictionary) -> void:
 	AudioMix.apply_settings(menu_flow.settings.items)
 	fps_counter.measure_kept = _probe.is_open() or load_guard.enabled
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
+	photo_moments.enabled = str(menu_flow.settings.item(PhotoMomentsModel.SETTING_KEY).get("value", "on")) != "off"
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
@@ -887,8 +892,6 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
 			ipc.create_workout(act["args"])
-		"create_workout_qwk":
-			ipc.create_workout_qwk(str(act["text"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"set_ride_mode":   # session libre : SIM, ERG ou ERG cadence depuis la pause (lot O18)
@@ -938,7 +941,10 @@ func _run_menu_action(act: Dictionary) -> void:
 		"create_profile":
 			ipc.send_command("create_profile", {"name": str(act["name"])})
 		"recover_session":   # séance interrompue d'un lancement précédent (lot O34)
-			ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
+			if bool(act.get("resume", false)):   # lot RC3 : reprendre la séance ou la course
+				ipc.send_command("recover_session", {"id": str(act["id"]), "resume": true})
+			else:
+				ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
 		"rename_profile":
 			ipc.send_command("rename_profile", {"id": str(act["id"]), "name": str(act["name"])})
 
@@ -967,6 +973,7 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
 			ipc.send_command("start_open_world", act["args"])
+			menu_flow.note_launch("start_open_world")   # « Rejouer » de la fin de séance rouvre le globe
 		"set_setting":   # ligne « Biome » de l'écran du cap (lot W17) : même réglage que le menu des réglages
 			ipc.set_setting(str(act["key"]), act["value"])
 
@@ -1010,18 +1017,6 @@ func _profile_name_key(event: InputEventKey) -> bool:
 	var ch := char(event.unicode) if event.unicode > 31 else ""
 	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
 	var res: Dictionary = menu_flow.name_key(ch, enter, event.keycode == KEY_BACKSPACE)
-	if not res.get("used", false):
-		return false
-	_run_menu_action(res.get("action", {}))
-	_refresh_menu()
-	return true
-
-
-## QWKcode au clavier (lot O21) : la touche écrit au lieu d'agir comme un bouton du Click.
-func _qwk_key(event: InputEventKey) -> bool:
-	var ch := char(event.unicode) if event.unicode > 31 else ""
-	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
-	var res: Dictionary = menu_flow.qwk_key(ch, enter, event.keycode == KEY_BACKSPACE)
 	if not res.get("used", false):
 		return false
 	_run_menu_action(res.get("action", {}))
@@ -1104,6 +1099,10 @@ func _flush_menu() -> void:
 	if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
 		st["card"]["profile"] = _route_profile["profile"]
 	var t0 := Time.get_ticks_usec()
+	# Photos de la séance qui vient de finir (photo_moments_model.gd) dans l'encart du résultat ; pas dans le
+	# bilan d'une séance de l'Historique. Une autre source de lignes (ligue, CH4) s'ajoute à la suite.
+	menu_view.summary.result_lines = PhotoMomentsModel.photo_lines(photo_moments.photos, photo_moments.folder) \
+		if str(st["screen"]) == "summary" else []
 	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	PerfProbe.mark("menu", "affichage " + str(st["screen"]), ms)
@@ -1169,8 +1168,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			return   # saisie de la recherche du monde ouvert : la touche est une lettre, pas un bouton
 		if menu_flow.is_visible() and _profile_name_key(key):
 			return   # saisie du nom d'un profil (lot MJ8) : lettres, Entrée valide, Retour arrière efface
-		if menu_flow.is_visible() and _qwk_key(key):
-			return   # saisie du QWKcode (lot O21) : caractères, Entrée nouvelle ligne, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
 	if _test_hold_s.has(key.keycode):   # touche simulée (_test_key) : durée demandée, pas celle des images
@@ -1529,7 +1526,7 @@ func _warmup_steps() -> Array:
 		if living_decor.passersby_view != null:
 			steps.append(["passants", func(): living_decor.passersby_view.warm_up(camera)])
 		if living_decor.cyclists_view != null and int(living_decor.living.get("cyclists", 0)) > 0:
-			steps.append(["cyclistes", func(): living_decor.cyclists_view.warm_up(camera)])
+			steps.append_array(living_decor.cyclists_view.warm_steps(camera))   # un temps par image (lot AC4)
 	if streamer.forest_impostors != null:
 		steps.append(["forets", func(): streamer.forest_impostors.warm_up(camera)])
 	return steps
@@ -1816,6 +1813,33 @@ func _avatar_info() -> Dictionary:
 	return info
 
 
+## Photo automatique (photo_moments_model.gd) : image déjà rendue (celle du passage de la ligne pour
+## l'arrivée, avant que le bilan ne la couvre), écrite en JPEG en tâche de fond (bg_tasks.gd) sous
+## ~/OpenRide/Captures/<séance>/. Jamais sans écran, ni en mode test (bancs, CI) sauf si `OPENRIDE_CAPTURES_DIR`
+## donne un autre dossier (captures de validation), ni sous un menu plein écran (record).
+func _take_photo(req: Dictionary) -> void:
+	var base := OS.get_environment("OPENRIDE_CAPTURES_DIR")
+	if (ipc.test_mode and base == "") or DisplayServer.get_name() == "headless":
+		return
+	if str(req.get("kind", "")) != PhotoMomentsModel.KIND_FINISH and _full_screen_menu():
+		return
+	var shot_us := Time.get_ticks_usec()
+	var img := get_viewport().get_texture().get_image()
+	_probe.mark_capture((Time.get_ticks_usec() - shot_us) / 1000.0)
+	if img == null or img.is_empty():
+		return
+	var file: String = photo_moments.add_photo(req, Time.get_datetime_dict_from_system())
+	if base == "":
+		base = ThemeLoader._home_dir().path_join(PhotoMomentsModel.BASE_DIR)
+	var dir := base.path_join(photo_moments.folder)
+	BgTasks.add(func() -> void:
+		DirAccess.make_dir_recursive_absolute(dir)
+		var err := img.save_jpg(dir.path_join(file), 0.85)
+		if err != OK:
+			push_warning("Photo automatique non écrite (%s) : erreur %d" % [file, err]), false, "photo automatique")
+	print("Photo automatique : %s/%s" % [photo_moments.folder, file])
+
+
 func _test_screenshot(path: String, tag: String) -> void:
 	# Menu à jour de la dernière commande avant l'image (mise à jour une fois par image depuis le lot ML1) :
 	# sous Xvfb à 1 ou 2 images/s, la capture pouvait montrer l'écran d'avant (« Garage : avatar » au lieu de
@@ -2016,14 +2040,11 @@ func _on_garage(items: Array) -> void:
 	_refresh_menu()
 
 
-## `xp_result` de fin de séance (lot V9) : bilan dans le résumé, bandeau « Niveau N ! » une seule fois.
-const LEVEL_UP_S := 6.0
-
-
+## `xp_result` de fin de séance (lot V9) : bilan dans le résumé.
+## Retour d'essai du 22/11 : le bandeau du haut masquait le titre et « Rejouer » ; « Niveau N ! » reste écrit en
+## vert dans le bloc « Progression » du bilan, le bandeau n'est plus affiché sur la fin de séance.
 func _on_xp_result(msg: Dictionary) -> void:
-	var text := menu_flow.on_xp_result(msg)
-	if text != "":
-		banner.show_message("level_up", text, LEVEL_UP_S)
+	menu_flow.on_xp_result(msg)
 	menu_view.summary.animate = _quality_name != "low"
 	_refresh_menu()
 
@@ -2257,6 +2278,7 @@ func _on_state_received(state: Dictionary) -> void:
 	if waiting:
 		if not _was_start_waiting:
 			start_screen.set_route(_start_route_card(state.get("route_id", null)))
+		start_screen.set_goal(_start_goal(state))   # lot RT2 : objectif écrit avant le départ
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
 		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed() and not _wtf_warm_queued:
@@ -2399,6 +2421,8 @@ func _on_state_received(state: Dictionary) -> void:
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
 		_play_event(jingle)
+	for req in photo_moments.on_state(state, float(Time.get_ticks_msec()) / 1000.0):
+		_take_photo(req)
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
 		_play_event(jingle)
 
@@ -2553,6 +2577,22 @@ func _mode_goal(state: Dictionary) -> String:
 		return survivor_hud.goal(state)
 	if state.get("gp", null) is Dictionary:
 		return gp_hud.goal(state)
+	return ""
+
+
+## Objectif sur l'écran de départ (lot RT2) : celui du mode quand sa trame est là, sinon d'après le mode choisi
+## au menu ; "" pour une séance libre.
+func _start_goal(state: Dictionary) -> String:
+	var g := _mode_goal(state)
+	if g != "":
+		return g
+	match str(menu_flow.menu.mode):
+		"survivor":
+			return "être le dernier en course"
+		"grandprix", "race":
+			return "finir 1er"
+		"erg":
+			return "aller au bout de l'entraînement"
 	return ""
 
 

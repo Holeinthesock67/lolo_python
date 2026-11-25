@@ -25,8 +25,9 @@ extends RefCounted
 ##
 ## Accueil (menu principal, demande du 26 octobre) : « Parcours : … » (choix du parcours, retour à
 ## l'accueil), « Session libre » (SIM, sans entraînement), « Session ERG » (choix de l'entraînement),
-## « Session simulée » (OpenRide relancé sans matériel ; en session simulée : « Revenir au matériel
-## réel »), « Réglages », « Quitter ». Sans monde choisi, les sessions passent d'abord par les parcours.
+## « Réglages », « Quitter ». « Session simulée » (OpenRide relancé sans matériel ; en session simulée :
+## « Revenir au matériel réel ») est un outil d'essai : sortie de l'accueil au lot NI4, elle est dans
+## « Réglages › Appareils » (pairing_view_model.gd, menu_flow.gd). Sans monde choisi, les sessions passent d'abord par les parcours.
 ## « Session ERG » ouvre la liste des entraînements, qui finit par « Créer un entraînement » (lot N16,
 ## traité par menu_flow.gd ; « Importer un fichier » retiré le 12 novembre, révision 1.15).
 ## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
@@ -120,8 +121,8 @@ const GP_HELP_ID := "_gp_help"
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 ## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
-## « Saisir du QWKcode (clavier) » ouvre la saisie du QWKcode de GoldenCheetah (qwk_editor.gd, lot O21).
-const QWK_WORKOUT_ID := "_qwk"
+## Saisie du QWKcode au clavier (lot O21) retirée au lot NI4 : « Créer un entraînement » couvre le besoin, et un
+## fichier .qwk posé dans ~/OpenRide/Workouts/ reste lu par le core.
 const HELP_WORKOUT_ID := "_help"
 ## Lignes « Bot n » de l'écran Prêt, fantôme en plus (lot O35).
 const MAX_BOTS := 4
@@ -206,7 +207,8 @@ var _pending_route := ""
 var track_events: Dictionary = {}
 var track_event := "free"
 var track_values: Dictionary = {}
-## Engine lancé en session simulée (--sim-session) : l'accueil propose de revenir au matériel réel.
+## Engine lancé en session simulée (--sim-session) : le titre de l'accueil le dit, et « Réglages › Appareils »
+## propose de revenir au matériel réel (lot NI4).
 var sim_session := false
 var _routes_return := HOME
 ## Modes annoncés par le core (set_modes) ; les modes inconnus de HOME_MODES sont ignorés.
@@ -264,6 +266,8 @@ var coach_ready := ""
 var league_shown := false
 var league_detail := ""
 var league_ready: Dictionary = {"enabled": true, "detail": ""}
+## Mode de course de la manche (lot CH4c : race, survivor, grandprix ou track), envoyé dans `start.mode`.
+var league_mode := "race"
 
 
 func set_league_home(shown: bool, detail: String) -> void:
@@ -272,12 +276,13 @@ func set_league_home(shown: bool, detail: String) -> void:
 	_refresh_home()
 
 
-## Manche de la semaine (lot CH4a) : course du core (`mode` « race », `league` vrai) sur une boucle, libre ou
-## d'un mode (`rmode` : « grandprix » quand seuls les circuits du Grand Prix sont des boucles) ; ouvre l'écran
-## Prêt, ou les parcours d'abord sans boucle choisie.
-func prepare_league(ready: Dictionary, rmode := "") -> Dictionary:
+## Manche de la semaine (lot CH4a) : course du core (`mode` = `lmode`, lot CH4c : race, survivor, grandprix ou
+## track ; `league` vrai) sur un parcours libre ou d'un mode (`rmode` : « grandprix », « track » pour le vélodrome) ;
+## ouvre l'écran Prêt.
+func prepare_league(ready: Dictionary, rmode := "", lmode := "race") -> Dictionary:
 	_clear_start()
 	mode = "league"
+	league_mode = lmode
 	route_mode = rmode if mode_routes.has(rmode) else ""
 	league_ready = ready.duplicate()
 	_refresh_home()
@@ -362,8 +367,7 @@ func _build_home_and_ready() -> void:
 			items.append(_item(m, HOME_MODES[m], true, str(HOME_DETAILS.get(m, ""))))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
 		_item("history", "Historique", true, "séances, semaines, tests de FTP"),
-		_item("collection", "Collection", true, collection_detail),
-		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
+		_item("collection", "Collection", true, collection_detail)])
 	if garage:
 		items.append(_item("garage", "Garage"))
 	items.append_array([_item("settings", "Réglages"), _item("quit", "Quitter")])
@@ -772,7 +776,7 @@ func _start_args() -> Dictionary:
 			choice[str(o)] = int(v) if v is float and is_equal_approx(v, round(v)) else v   # 20 et non 20.0
 		return {"mode": "track", "track": choice}
 	if mode == "league":   # le core compose le plateau de la manche (11 rivaux de la saison)
-		return {"mode": "race", "league": true}
+		return {"mode": league_mode, "league": true}
 	if mode == "coach" and ghost:   # bots du format de la course conseillée, fantôme en plus (lot CO5)
 		out["bots"] = (out.get("bots", []) as Array) + [{"kind": "ghost"}]
 	if mode == "coach":
@@ -956,19 +960,21 @@ func reset() -> void:
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
-	if mode in ["rogue", "wtf", "coach", "league"] or mode in SETTINGS_MODES:
-		mode = "free"
+	mode = "free"   # le même accueil après tous les modes (20 novembre : plus de liste de modes à part)
 	route_mode = ""
 	_refresh_home()
 	_open(HOME, false)
 
 
-## « Rejouer » de la fin de séance : même parcours, même mode et mêmes choix (bots, fantôme, épreuve, réglages
-## du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours : l'accueil.
+## « Rejouer » d'une séance lancée par `start` : même parcours, même mode et mêmes choix (bots, fantôme, épreuve,
+## réglages du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours :
+## l'accueil. La séance du jour d'un plan est rejouée comme entraînement (le core l'a gardé choisi) : `plan_day`
+## demanderait la séance du jour suivante. Cyber-Rogue et monde ouvert : menu_flow.gd (`last_launch`).
 func replay() -> void:
 	_stack.clear()
 	_focus_stack.clear()
 	_pending = {}
+	start_args.erase("plan_day")
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
@@ -1001,7 +1007,6 @@ func set_items(screen_id: String, items: Array) -> void:
 		if clean.size() == 1:
 			clean.append(_item("empty", "Aucun entraînement", false))
 		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
-		clean.append(_item(QWK_WORKOUT_ID, "Saisir du QWKcode (clavier)"))
 		clean.append(_item(HELP_WORKOUT_ID, "Comment ça marche ?"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
@@ -1275,11 +1280,6 @@ func _validate() -> Dictionary:
 					_open(WORKOUTS)
 				"open_world":
 					return {"action": "open_world_menu"}
-				"sim":
-					if sim_session:
-						_confirm("Revenir au matériel réel ? OpenRide redémarre", {"action": "relaunch"})
-					else:
-						_confirm("Session simulée ? OpenRide redémarre sans matériel", {"action": "relaunch_sim"})
 				"settings":
 					_open(SETTINGS)
 				"quit":
@@ -1300,7 +1300,7 @@ func _validate() -> Dictionary:
 				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
-			if id in [CREATE_WORKOUT_ID, QWK_WORKOUT_ID, HELP_WORKOUT_ID]:
+			if id in [CREATE_WORKOUT_ID, HELP_WORKOUT_ID]:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
 			return choose_workout(null if id == NO_WORKOUT_ID else id)
 		READY:

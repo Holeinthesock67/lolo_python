@@ -49,6 +49,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
+import bancs_processus  # noqa: E402
 import hud_lisibilite  # noqa: E402
 import image_diff  # noqa: E402
 from image_diff import Image, luminance, mean_abs_diff, read_png, write_png  # noqa: E402
@@ -487,6 +488,14 @@ class Session:
             return
         ref_path = self.golden_dir / f"{cap.scene}.png"
         if self.update_golden and ("*" in self.update_golden or cap.scene in self.update_golden):
+            # Jamais de référence tirée d'une capture dont un contrôle a échoué (tuiles en attente, image de
+            # mauvaise taille…) : les passages suivants passeraient contre une image fausse (revue vague 5, O3-10).
+            echecs = [c.name for c in self.report.checks
+                      if c.config == self.name and c.scene == cap.scene and not c.ok]
+            if echecs:
+                self.check(cap.scene, "image de référence écrite", False,
+                           "non écrite : contrôle en échec (" + ", ".join(echecs[:3]) + ")")
+                return
             self.golden_dir.mkdir(parents=True, exist_ok=True)
             write_png(ref_path, image_diff.vignette(img))
             return
@@ -646,9 +655,12 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     # Références xvfb/ faites par la CI en Vulkan logiciel (llvmpipe) : la comparaison impose le même pilote, même
     # sur un PC où Xvfb prendrait la carte graphique (SSIM 0,959 à 0,966 sur la NVIDIA, 8 novembre).
     soft_env = rendu_jeu.software_vulkan_env() if gold is not None and not args.native else None
+    # HOME temporaire (revue vague 5, O3-09) : ni fichiers du joueur lus, ni cache de shaders dans son profil.
+    home_godot, home_env = bancs_processus.home_temporaire()
     with engine_log.open("w") as log_fh:
         proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True,
-                                env={**os.environ, **(soft_env or {}), "OPENRIDE_RECORDS_FILE": str(records_file)})
+                                env={**os.environ, **home_env, **(soft_env or {}),
+                                     "OPENRIDE_RECORDS_FILE": str(records_file)})
     try:
         (scenes or _scenes)(s)
     finally:
@@ -661,6 +673,7 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
                 os.killpg(proc.pid, 9)
             except ProcessLookupError:
                 pass
+        shutil.rmtree(home_godot, ignore_errors=True)
     issues = [ln for ln in engine_log.read_text(errors="replace").splitlines()
               if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
     s.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
@@ -1523,7 +1536,7 @@ def _menu_scenes(s: Session) -> None:
         m = info["widgets"]["menu"]
         s.check("menu_accueil", "menu en plein écran, HUD de séance caché", m["rect"][2] >= 0.99 * s.width
                 and m["rect"][3] >= 0.99 * s.height and not info["widgets"]["power"]["visible"], f"rectangle {m['rect']}")
-        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Garage"}, contains=True)   # session simulée rangée dans Appareils (lot NI4)
         focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
         s.check("menu_accueil", "sélection très visible (cadre cyan)", focus >= 0.003, f"{focus:.2%} de pixels cyan")
     # Appui long sur A du Click relayé par le core : liste des parcours.
@@ -2374,7 +2387,7 @@ XP_RESULT = {"type": "xp_result", "v": CONTRACT_VERSION, "eligible": True, "reas
 
 def _progress_scenes(s: Session) -> None:
     """Lot V9 : bilan de progression en fin de séance (xp_result répété par le core) : lignes, barre, niveau,
-    déblocage, bandeau « Niveau N ! » et accès au Garage ; séance refusée."""
+    déblocage, « Niveau N ! » dans le bilan (sans bandeau du haut) et accès au Garage ; séance refusée."""
     core = s.core
     for _ in range(3):   # le core répète le message une fois par seconde
         core.send(dict(XP_RESULT))
@@ -2386,11 +2399,12 @@ def _progress_scenes(s: Session) -> None:
         s.check_texts("progression", info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
         s.check_texts("progression", info, {"menu": "Niveau 10 : ■■■□□□□□□□ 100 / 400 XP"}, contains=True)
         s.check_texts("progression", info, {"menu": "Niveau 10 !"}, contains=True)
-        s.check_texts("progression", info, {"menu": "Aller au Garage"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Garage — nouveau"}, contains=True)
         s.check_layout("progression", info)
         banner = info["widgets"]["banner"]
-        s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
-                f"{banner.get('text')}")
+        # Retour d'essai du 22/11 : le bandeau du haut masquait le titre et « Rejouer » ; le niveau reste écrit dans le bilan.
+        s.check("progression", "pas de bandeau « Niveau 10 ! » sur la fin de séance",
+                not (banner["visible"] and "Niveau 10 !" in banner.get("text", "")), f"{banner.get('text')}")
     # Bilan complet (six tuiles et la ligne des autres chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du
     # bilan détaillé) et
     # progression : la carte tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
@@ -2684,4 +2698,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    bancs_processus.signaux_en_exception()   # SIGTERM, SIGHUP : nettoyage des `finally` (revue vague 5, O3-08)
     sys.exit(main())

@@ -203,7 +203,6 @@ class RogueMode:
         for ev, key in FRAME_FEEDBACK:
             if ev in out.rogue["events"]:
                 self._frame_feedback[key] = out.rogue.get(key)
-            self.shift_pending = True
         physics.step(power_w, out.grade_enemy, 0.0, dt)       # vitesse virtuelle sur la pente de l'ennemi
         new_room = e.room_id != self.room_id
         if new_room or not (e.room is not None and e.phase in FIGHT_PHASES):
