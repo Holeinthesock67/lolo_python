@@ -144,6 +144,9 @@ SETTINGS: tuple[Setting, ...] = (
             help="Endurance : surtout de l'aérobie léger. Courses : plus d'intensité. Grimpeur : plus "
                  "d'efforts longs au seuil. Change seulement la répartition visée par la séance conseillée."),
     Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
+    Setting("coach.seances_semaine", "Objectif de la semaine", "ride", 1, "séances",   # lot OS1
+            help="Séances d'au moins 20 min à rouler du lundi au dimanche, montrées à l'accueil : "
+                 "« Semaine : 1 séance sur 2 ». 0 : pas d'objectif, la ligne disparaît."),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now",   # aide : lot QG1
             # espaces insécables (\u00a0) : « 80 % » ou « GTX 1060 » jamais coupés en fin de ligne de la carte

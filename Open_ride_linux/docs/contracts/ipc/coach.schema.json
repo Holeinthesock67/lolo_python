@@ -539,6 +539,38 @@
           }
         }
       }
+    },
+    "week_goal": {
+      "description": "Facultatif, lot OS1 (révision numérotée à la fusion) : objectif de la semaine de l'accueil. target : séances visées (réglage coach.seances_semaine, 1 à 7) ; done : séances comptées d'au moins 20 min de la semaine ISO en cours (lundi à dimanche, heure locale) ; days_left : jours restants, aujourd'hui compris ; reached : objectif atteint. null quand le réglage vaut 0 (pas de ligne).",
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "target",
+        "done",
+        "days_left",
+        "reached"
+      ],
+      "properties": {
+        "target": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "done": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "days_left": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "reached": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }
