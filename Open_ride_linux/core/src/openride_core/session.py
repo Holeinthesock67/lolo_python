@@ -556,7 +556,14 @@ class CoreSession:
         self._grade_sent = 0.0
         if self.rogue is not None:
             self.rogue.grade_sent = 0.0
+        self._send_wind(0.0)   # vent FTMS remis à zéro en pause, au bilan et au menu (revue S2-02)
         self.driver.set_sim_grade(0.0)
+
+    def _send_wind(self, wind_mps: float) -> None:
+        """Champ vent de la commande 0x11 (`[wind] feel = "ftms"`) ; sans effet pour un pilote sans vent."""
+        setter = getattr(self.driver, "set_wind", None)
+        if setter:
+            setter(wind_mps)
 
     def _on_command(self, name: str, args: dict, cmd_id: int) -> None:
         log.info("Commande %s %s (id=%d)", name, args, cmd_id)
@@ -1100,6 +1107,21 @@ class CoreSession:
         log.info("Profil d'essai vidé : %s.", ", ".join(removed) or "déjà vide")
         self._send_profiles(cmd_id)
 
+    def _rebind_trainer_cfg(self, old_trainer: Any, cfg: Any) -> None:
+        """Redonne au pilote et aux braquets la configuration du nouveau profil (revue S1-05b) :
+        sans cela, « Pilotage du trainer » et les réglages `[trainer]` gardaient l'ancien objet
+        jusqu'au relancement. Le pilote du Bluetooth simulé garde son nom d'appareil."""
+        drv_cfg = getattr(self.driver, "cfg", None)
+        if drv_cfg is old_trainer:
+            self.driver.cfg = cfg.trainer
+        elif isinstance(drv_cfg, type(cfg.trainer)):
+            self.driver.cfg = replace(cfg.trainer, device_name=drv_cfg.device_name)
+        k = self.gearing.k
+        self.gearing = Gearing(cfg.gearing, cfg.trainer)
+        self.gearing.k = min(max(k, 1), self.gearing.n_gears)
+        self.state.gears_total = self.gearing.n_gears
+        self.server.hello_config["gears_total"] = self.gearing.n_gears
+
     def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int, reload: bool = False) -> None:
         """Change de profil sans relancer : configuration effective, progression, records, plan et
         dossier des séances rechargés ; liaison du trainer et du Click gardée ; `hello_ack` complet,
@@ -1128,6 +1150,7 @@ class CoreSession:
         self.profile_lock = lock
         self.profile_ctx = ctx
         old_hr = (self.cfg.drivers.hr, self.cfg.drivers.hr_address)
+        self._rebind_trainer_cfg(self.cfg.trainer, cfg)
         self.cfg = cfg
         self.journal_dir = ctx.journal_dir
         self.records_path = ctx.records_path
@@ -1138,6 +1161,7 @@ class CoreSession:
         self.physics.p = self._base_params
         self._build_wind()
         self.gearing.k = min(max(cfg.gearing.start_gear, 1), self.gearing.n_gears)
+        self.state.gear = self.gearing.k
         self.difficulty_pct = float(cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
         if (cfg.drivers.hr, cfg.drivers.hr_address) != old_hr:
@@ -4411,9 +4435,9 @@ class CoreSession:
             if ratio != 1.0:
                 self.physics.p = replace(self.physics.p, cda_m2=self.physics.p.cda_m2 * ratio)
             if wcfg.feel == "ftms":
-                setter = getattr(self.driver, "set_wind", None)
-                if setter:
-                    setter(self._head_mps)
+                self._send_wind(self._head_mps)
+        if not (self.wind.active and wcfg.feel == "ftms"):
+            self._send_wind(0.0)   # vent coupé ou ressenti en pente : plus de vent périmé (revue S2-02)
         self._wind_offset = 0.0
         traffic = self._traffic_for(route)
         self._suction = 0.0
@@ -5524,6 +5548,7 @@ class CoreSession:
     async def _stop_drivers(self, tasks: list[asyncio.Task]) -> None:
         """Annule la consigne, arrête les pilotes et leur laisse le temps de rendre le trainer."""
         try:
+            self._send_wind(0.0)
             self.driver.set_sim_grade(0.0)
         except Exception:
             log.exception("Consigne 0 % impossible")

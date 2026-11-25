@@ -16,6 +16,13 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - « Niveau des bots » est retiré des Réglages et des écrans Prêt du Dernier survivant, du Grand Prix et de la Course ; une valeur déjà choisie est mise en commentaire au lancement (niveau remis à 100 %).
 - « Objectif des bots » n’est plus dans Réglages › Séance : il se choisit sur la ligne « Intensité ». « Niveau automatique (Elo) » devient « Bots selon ta cote » (le libellé était coupé).
 - Les lignes « Bot 1 » à « Bot 4 » (19 choix) quittent l'écran Prêt et la pause ; « Peloton » et « Fantôme » restent.
+### Trainer et FIT : constats forts de la revue de code du 22 novembre (lot RC2)
+- Vent « ressenti par le trainer » (`[wind] feel = "ftms"`) : le vent n'est plus renvoyé au trainer en pause, au bilan, au menu, ni dans la séance suivante sans vent (vélodrome, Cyber-Rogue) ; remis à zéro aussi à l'arrêt (S2-02).
+- Pilotage « résistance calculée » : une consigne de niveau acceptée lève le bandeau « trainer occupé » et remet le compteur de refus à zéro ; trois pertes de contrôle espacées ne mettent plus la séance en erreur (S6-01).
+- Après un changement de profil, « Pilotage du trainer » et les réglages du trainer et des braquets du nouveau joueur prennent effet sans relancer (S1-05b).
+- Mesures invraisemblables ignorées, valeur précédente gardée, une ligne de journal par sorte toutes les 10 s au plus : puissance au-delà de 1,5 fois la plage annoncée (3 000 W au moins), cadence au-dessus de 250 tr/min, FC hors de 25 à 250 bpm, du trainer comme de la ceinture (S6-03).
+- Export FIT : une valeur hors des plages du format ne fait plus échouer tout le fichier (ni `recover`) : la mesure fautive est retirée de ce relevé, vitesse et distance bornées, le journal garde les valeurs brutes (S7-01).
+- Tours du FIT : la distance d'un tour part du dernier relevé du tour précédent (les tours s'additionnent à la séance) et le temps chronométré d'un tour ne compte plus ses pauses (S7-04).
 ### Remettre à zéro les statistiques d'un profil (lot RZ1)
 - « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : niveau, expérience, pièces, défis, cartes, records, équipement acheté et cotes des bots repartent de zéro (avant une saison de la ligue, par exemple). Séances et FIT (historique du coach), cote Elo du cycliste, nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
 - Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant. Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut), exigée aussi par le core ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
