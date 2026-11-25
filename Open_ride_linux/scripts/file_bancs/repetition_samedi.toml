@@ -1,0 +1,37 @@
+# Répétition du samedi 28/11 (ligue d'hiver), nuit du 25 au 26 novembre : une seule PR, en tête de la file du PC.
+# Scénario engine/tests/menu_scenarios/repetition_samedi.json : sauvegarde SV1 (copie « semaine » au lancement)
+# → restauration → remise à zéro RZ1 → « Commencer la saison 1 » → manche 1 jusqu'au bilan (Y puis A maintenu).
+#
+# Profil de TEST : le banc des menus donne au core et à l'engine un HOME temporaire (profil « principal » d'essai,
+# rempli par le scénario) ; le vrai ~/OpenRide (profils, sauvegardes, ligue) n'est jamais lu ni écrit. Le scénario
+# n'est pas `caches_reels` : ~/OpenRide/Cache/monde n'est pas touché ; `cache = "separe"` le redit pour la file.
+#
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux (le fil de fusion remplit `tete`) :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/repetition_samedi.toml
+# Sans la file (même chose à la main, ~20 min, ne pas toucher l'écran) :
+#   python3 engine/tests/menu_bench.py --native --scenario repetition_samedi --qualite medium --captures ecrans \
+#     --out ~/mesures-2026-11-01-auto/file/rREP/banc
+#
+# Réussite : verdict OK de l'étape « medium » (code 0 : toutes les vérifications du scénario passent ; voir la
+# description du scénario et la PR), planche r1 à r13 à montrer au user. Seul échec admis hors cloud : aucun.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rREP"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rREP-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rREP"
+branche = "claude/project-thread-o5n32a"
+cache = "separe"
+risque = 1
+# Fumée (~3 min) : remise à zéro et sauvegardes seules, au clavier, en low.
+fumee = "python engine/tests/menu_bench.py --native --scenario profils_remise_a_zero --scenario profils_sauvegardes --voies clavier --qualite low --out {sortie}"
+fumee_delai_min = 10
+
+[[pr.etape]]
+id = "medium"                            # PR de menus et de logique : medium seul (règle du user)
+commande = "python engine/tests/menu_bench.py --native --scenario repetition_samedi --qualite medium --captures ecrans --out {sortie}"
+delai_min = 40
