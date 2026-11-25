@@ -67,14 +67,15 @@ static func _theme_water(theme: Dictionary, biome: String) -> Variant:
 ## modèle actif, celle du biome `coast` du thème, puis DEFAULT_SEA_COLOR.
 static func sea_color(theme: Dictionary, biome_model, x: float, z: float) -> Color:
 	if biome_model != null:
-		var weights: Dictionary = biome_model.weights_at(x, z)
+		# Par clé de rendu (lot U25-p2) : l'eau d'un fjord est celle que le thème donne à la côte du fjord
+		var weights: Dictionary = biome_model.keyed_weights_at(x, z) if biome_model.has_method("keyed_weights_at") else biome_model.weights_at(x, z)
 		var acc := Color(0, 0, 0, 0)
 		var total := 0.0
 		for b in weights:
 			var w := float(weights[b])
 			if w <= 0.0:
 				continue
-			var c: Color = biome_model.params(str(b))["water"]["color"]
+			var c: Color = (biome_model.params_of(str(b)) if biome_model.has_method("params_of") else biome_model.params(str(b)))["water"]["color"]
 			acc += c * w
 			total += w
 		if total > 0.0:

@@ -95,3 +95,36 @@ def test_verrou_une_suite_a_la_fois(tmp_path, monkeypatch):
     assert "premiere, pid" in err and "attend sa fin" in err
     assert float(out.split()[-1]) >= 1.0
     assert VARIABLE_VERROU not in os.environ
+
+
+def test_variables_openride_du_shell_retirees(tmp_path):
+    """Revue de code vague 5, O2-17 : une variable `OPENRIDE_*` du shell ne vise pas le vrai dossier du joueur."""
+    (tmp_path / "conftest.py").write_text(
+        f"import sys\nsys.path.insert(0, {str(SCRIPTS)!r})\n"
+        "from isolation_tests import brancher_pytest\nglobals().update(brancher_pytest())\n")
+    (tmp_path / "test_env.py").write_text(
+        "import os\ndef test_env():\n    assert 'OPENRIDE_LANDCOVER_CACHE' not in os.environ\n"
+        "    assert os.environ.get('OPENRIDE_TESTS_VERROU') == '1'\n")
+    env = {**os.environ, "OPENRIDE_LANDCOVER_CACHE": "/home/joueur/.cache/openride/landcover",
+           "OPENRIDE_TESTS_VERROU": "1"}
+    r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tmp_path / "test_env.py"),
+                        "--rootdir", str(tmp_path)], capture_output=True, text=True, cwd=tmp_path, env=env, timeout=60)
+    assert "1 passed" in r.stdout, r.stdout + r.stderr
+
+
+def test_ecriture_dans_le_depot_signalee(tmp_path):
+    """O2-17 : un fichier du dépôt changé pendant la suite est listé (sous-processus compris)."""
+    sys.path.insert(0, str(SCRIPTS))
+    import isolation_tests
+
+    depot = tmp_path / "depot"
+    depot.mkdir()
+    subprocess.run(["git", "init", "-q", str(depot)], check=True)
+    (depot / "suivi.txt").write_text("a")
+    subprocess.run(["git", "-C", str(depot), "add", "suivi.txt"], check=True)
+    avant = isolation_tests.etat_depot(depot)
+    assert avant == {"suivi.txt": avant["suivi.txt"]}
+    subprocess.run([sys.executable, "-c", f"open({str(depot / 'nouveau.txt')!r}, 'w').write('x')"], check=True)
+    assert isolation_tests.changements_depot(avant, isolation_tests.etat_depot(depot)) == ["nouveau.txt"]
+    assert isolation_tests.etat_depot(tmp_path / "absent") is None
+    assert isolation_tests.changements_depot(None, {}) == []

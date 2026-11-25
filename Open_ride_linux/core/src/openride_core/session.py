@@ -37,7 +37,8 @@ from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from . import mode_routes as mode_routes_mod
-from . import bot_effort, bot_elo, config_edit, league, last_choices, latency_log, local_weather, rivals, seance_file
+from . import (bot_effort, bot_elo, config_edit, league, last_choices, latency_log, local_weather, privacy_zone,
+               rivals, seance_file)
 from . import route_stats as route_stats_mod
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
@@ -55,6 +56,7 @@ from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import DATE_FORMAT as RECORDS_DATE_FORMAT, RecordBook, RecordsError
 from .recorder import SessionRecorder
+from . import __version__, race_resume
 from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
 
@@ -135,6 +137,11 @@ START_MODES = ("ride", "wtf", "survivor", "grandprix", "race", "track")   # `sta
 MODE_OPTIONS = ("wtf", "grandprix")   # modes à options (`list_mode_options`, `set_mode_option`, lot GP2)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
+# Filet de la boucle (audit du 22 novembre, R3) : erreur d'un mode de jeu, séance terminée, core vivant.
+MODE_FAIL_GAP_S = 1.0       # deux erreurs à moins d'une seconde : même suite (un seul message, une seule pile)
+MODE_FAIL_LIMIT_S = 5.0     # suite d'erreurs hors séance plus longue : l'erreur remonte, le lanceur relance le core
+MODE_FAILED_SAVED = "Le mode a rencontré une erreur, ta séance est enregistrée."
+MODE_FAILED_TEXT = "Le mode a rencontré une erreur, le jeu continue."
 
 
 class LoopStats:
@@ -328,6 +335,8 @@ def escort_unblock(blocks: list[tuple[draft_mod.Lane, float, float]]) -> None:
         lane.length, lane.half_width = bike_length, bike_half
 
 
+TRACK_HEIGHT_OUT_MAX_M = 3.0   # hauteur sur la piste publiée au plus (`lane_m` de `state` : -3 à 3 m, lot VD4)
+
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path | None = None, routes_root: Path | None = None,
@@ -347,6 +356,9 @@ class CoreSession:
         self.bot_tactics_mode = "classic"
         self.bot_tactics_seed: int | None = None
         self._race_seed = 0   # graine de la séance en cours, tirée par `_new_race`
+        # Lot RC1 : départ de la course (abscisse du cycliste) et prochain instantané `race_snapshot` (temps de séance)
+        self._race_origin_m = 0.0
+        self._next_snapshot = 0.0
         self._field = bot_tactics.Field()
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
@@ -461,6 +473,10 @@ class CoreSession:
         self.plan_state_path: Path | None = None
         self.activities_dir: Path | None = None
         self._frame_count = 0
+        self._mode_fail_since: float | None = None   # filet de la boucle : première erreur de mode d'une suite
+        self._mode_fail_last: float | None = None    # dernière erreur de mode
+        self._mode_error: dict[str, Any] | None = None   # dernière erreur de mode (journal, bilan)
+        self._polling_trainer = False   # vrai pendant `driver.poll` : ses erreurs ne passent pas par le filet
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
         self._contents = None   # contenus du menu (lot O25), créés à la première commande
@@ -518,6 +534,7 @@ class CoreSession:
         if self._rec:
             if new == "PAUSED" and old == "RUNNING":
                 self._rec.event("pause", now, reason or "user")
+                self._journal_race_snapshot()   # lot RC1 : la course telle qu'elle est à la pause
             elif new == "RUNNING" and old == "PAUSED":
                 self._rec.event("resume", now)
         if self.erg:
@@ -739,6 +756,7 @@ class CoreSession:
         """Départ effectif : journal, ERG, mode WTF ou Dernier survivant, segments et bots, puis RUNNING."""
         if self.cfg.wind.mode == "local":
             self._build_wind()   # lecture du lanceur arrivée depuis le choix du parcours (lot P33)
+        self._race_origin_m, self._next_snapshot = self.physics.s, race_resume.SNAPSHOT_EVERY_S   # lot RC1
         self._open_journal()
         if self._workout:
             self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
@@ -750,7 +768,7 @@ class CoreSession:
             self._start_wtf()
         # la Course (lot CR1) garde tout le mode classique (segments, maillots, bonus, tactique des bots)
         self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"),
-                       tactics=self._track_tactics() if game_mode == "track" else None, game_mode=game_mode)
+                       tactics=self._mode_tactics(game_mode), game_mode=game_mode)
         if game_mode == "survivor":
             self._start_survivor()
         if game_mode in ("grandprix", "race"):
@@ -759,7 +777,17 @@ class CoreSession:
         if game_mode == "track":
             self._start_track()
         self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ (lot AS2)
+        if self._rec is not None and self._rec.failed:
+            # Journal impossible à ouvrir (disque plein, dossier protégé) : jamais de séance sans journal ;
+            # elle attend en pause, `resume` rouvre le journal ou refuse (revue de code du 22 novembre).
+            log.error("Départ en pause : journal de la séance impossible à ouvrir.")
+            self._set_state("PAUSED", "recording_failed")
+            return
         self._set_state("RUNNING")
+        if self._rec is not None and self._rec.failed:
+            # Journal impossible à ouvrir au départ (revue du 22 novembre, S1-01) : l'erreur est partie en
+            # `READY`, donc sans pause ; même règle qu'en cours de séance (contrat IPC §6), `resume` retente.
+            self._set_state("PAUSED", "recording_failed")
 
     def _on_command_more(self, name: str, args: dict, cmd_id: int, st: str) -> None:
         """Suite de `_on_command` : séance en cours, réglages, listes et menus."""
@@ -1109,10 +1137,13 @@ class CoreSession:
         if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
             self.server.send_error("busy", "Séance interrompue : à traiter hors séance.")
             return
-        known = [it["id"] for it in self.server.hello_config.get("interrupted", [])]
-        sid, save = args.get("id"), args.get("save")
-        if sid not in known or not isinstance(save, bool):
-            self.server.send_error("bad_args", "recover_session : 'id' d'une séance proposée et 'save' booléen")
+        offered = {it["id"]: it for it in self.server.hello_config.get("interrupted", [])}
+        sid, save, resume = args.get("id"), args.get("save"), args.get("resume") is True
+        if sid not in offered or not (isinstance(save, bool) or resume):
+            self.server.send_error("bad_args", "recover_session : 'id' d'une séance proposée et 'save' booléen ou 'resume'")
+            return
+        if resume:
+            self._resume_interrupted(sid, offered[sid], cmd_id)
             return
         try:
             fit = close_interrupted(self.journal_dir / sid, save)
@@ -1128,6 +1159,29 @@ class CoreSession:
         self.server.send_raw({"type": "interrupted", "v": 1, "request_cmd_id": cmd_id, "id": sid, "saved": fit is not None,
                               "fit_path": str(fit) if fit else None,
                               "items": self.server.hello_config.get("interrupted", [])})
+
+    def _resume_interrupted(self, sid: str, item: dict, cmd_id: int) -> None:
+        """`recover_session` avec `resume` (lot RC3) : reprend la séance (la course entière, lot RC1) comme après un
+        plantage du core, en `PAUSED` / `core_restarted` ; réponse `interrupted` avec `resumed`."""
+        if not item.get("resumable"):
+            self.server.send_error("bad_args", "Cette séance ne peut plus être reprise : enregistre-la ou laisse-la.")
+            return
+        path = self.journal_dir / sid
+        try:
+            self.resume_session(path)
+        except ResumeError as exc:
+            log.error("Séance interrompue %s non reprise : %s", sid, exc)
+            self._rec = None
+            self._set_state("IDLE")
+            self.server.send_error("bad_args", f"Séance non reprise : {exc}")
+            return
+        self._resumed_journal = path
+        log.info("Séance interrompue %s reprise depuis le menu.", sid)
+        self._publish_interrupted()
+        self.server.send_raw({"type": "interrupted", "v": 1, "request_cmd_id": cmd_id, "id": sid, "saved": False,
+                              "fit_path": None, "resumed": True,
+                              "items": self.server.hello_config.get("interrupted", [])})
+
     # --- derniers choix du menu, par profil (lot O32) ---------------------------------------------
 
     def _publish_last_choices(self) -> None:
@@ -1445,11 +1499,13 @@ class CoreSession:
         """`set_bots` (lot N18, révision 1.9) : bots changés sur l'écran de pause, même liste que `bots` de
         `start`. Un bot gardé garde sa place, un bot ajouté part à la hauteur du cycliste, un bot retiré
         disparaît, une puissance changée s'applique tout de suite ; ligne `bots` au journal. Hors `PAUSED`, en
-        Cyber-Rogue, en Dernier survivant et au Grand Prix (plateaux composés par le core) : `busy`."""
+        Cyber-Rogue, en Dernier survivant, au Grand Prix et en épreuve de piste (plateaux composés par le
+        core) : `busy`."""
         from .bots import BotError, bots_from_menu, merge_menu_bots
 
         st = self.state.session_state
-        if st != "PAUSED" or self.rogue is not None or self.survivor is not None or self.grandprix is not None:
+        if (st != "PAUSED" or self.rogue is not None or self.survivor is not None or self.grandprix is not None
+                or self.track_event is not None):   # épreuve de piste : plateau inscrit à l'épreuve (S1-07)
             self.server.send_error("busy", "Bots modifiables seulement sur l'écran de pause d'une séance libre, "
                                            "ERG ou WTF.")
             return
@@ -1518,12 +1574,19 @@ class CoreSession:
                         "bots": [bot_line(b) for b in self.bots]})
         log.info("Bots (%s) : %s.", reason, ", ".join(b.name for b in self.bots) or "aucun")
 
+    def _bot_cda_bases(self) -> dict[int, float]:
+        """CdA de base des bots en course. Un bot déjà suivi garde sa base connue : son `params.cda_m2` du
+        moment peut être réduit par la poussée de l'aspiration (`_update_draft`), et le relire en ferait
+        une base de plus en plus basse à chaque retrait d'un adversaire (revue du 22 novembre, S2-03)."""
+        known = self._bot_cda
+        return {id(b): known.get(id(b), b.params.cda_m2) for b in self.bots if getattr(b, "params", None)}
+
     def _set_bots(self, bots: list[Any]) -> None:
         if bots is self.bots:
             return
         self.bots = bots
         self._bot_ids_seen.update(b.id for b in bots)
-        self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
+        self._bot_cda = self._bot_cda_bases()
         self._draft = 0.0
         self._draft_w = None
         log.info("Bots de la séance : %s.", ", ".join(b.name for b in self.bots) or "aucun")
@@ -2438,6 +2501,8 @@ class CoreSession:
         if (self.survivor is not None or self.grandprix is not None) and self.state.arrival is None:
             # lot RT2 : une fois l'arrivée passée, la course est finie pour le cycliste, il repart au calme
             return "Pas de demi-tour pendant une course à élimination ou un Grand Prix."
+        if self.track_event is not None:   # la distance de l'épreuve ne se compte que dans le sens de la piste
+            return "Pas de demi-tour pendant une épreuve de piste."
         if not self.route.is_loop and self.physics.direction > 0 and self.physics.s <= 0.0:
             return "Déjà au départ du parcours."
         return None
@@ -2692,7 +2757,7 @@ class CoreSession:
                 rogue_summary = self.rogue.summary()
                 rec.game(self.rogue.run_line(time.time()))
                 self.progress_svc.use_lives(self.rogue.engine.lives_used)   # vies rattrapant une défaite (R9)
-            fit_path, s, fit_error = rec.finish(save, ts=ts)
+            fit_path, s, fit_error = rec.finish(save, ts=ts, private_start_m=privacy_zone.radius_m(self.cfg))
             records, events = rec.records, rec.events
             records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
             if fit_error and save:
@@ -2734,7 +2799,8 @@ class CoreSession:
         ow = self.openworld
         if ow is not None and save and ow.route is not None and ow.route.ready:
             try:   # lot W14 : la route parcourue devient un parcours de la bibliothèque
-                save_ride(ow.route, self.physics.s, ow.id, self.gpx_dir or GPX_DIR)
+                save_ride(ow.route, self.physics.s, ow.id, self.gpx_dir or GPX_DIR,
+                          private_start_m=privacy_zone.radius_m(self.cfg))
             except (OSError, WorldError) as exc:
                 log.warning("Balade du monde ouvert non enregistrée : %s", exc)
         self._close_open_world()
@@ -2861,9 +2927,17 @@ class CoreSession:
                            s=self.physics.s, level_pct=lv)
                 for i, ((p, lv), n) in enumerate(zip(plan, names))]
 
-    def _start_survivor(self) -> None:
-        """Arches et course de la séance qui commence (bots déjà calibrés par `_new_race`)."""
+    def _start_survivor(self, restore: dict | None = None) -> None:
+        """Arches et course de la séance qui commence (bots déjà calibrés par `_new_race`) ; `restore` : instantané
+        de la course reprise après un plantage (lot RC1), arches et éliminations comprises, sans ligne au journal."""
         sc = self.cfg.survivor
+        if restore is not None:
+            self.survivor = SurvivorRace([float(a) for a in restore["arches"]],
+                                         [(str(i), str(n), float(lv)) for i, n, lv in restore["bots"]],
+                                         float(restore["spacing_km"]), seed=int(restore["seed"]))
+            self.survivor.start(self._t_session, self._survivor_positions())
+            race_resume.apply_survivor_state(self.survivor, restore)
+            return
         length, loop = self._survivor_course()
         run = self._league_run   # lot CH3b : manche de la ligue, une arche par rival, écart réglé sur ~27 min
         opponents, spacing = (len(self.bots), run["spacing_km"]) if run is not None else (sc.opponents, sc.spacing_km)
@@ -2989,7 +3063,7 @@ class CoreSession:
         gone = {rid for rid, t0 in self._survivor_out.items() if self._t_session - t0 >= SURVIVOR_RETIRED_S}
         if gone:   # retirés sans toucher à l'abri en cours (pas de `_set_bots`, qui le remet à 0)
             self.bots = [b for b in self.bots if b.id not in gone]
-            self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
+            self._bot_cda = self._bot_cda_bases()
             for rid in gone:
                 self._survivor_out.pop(rid)
         for msg in sv.due_results(self._t_session):
@@ -3377,6 +3451,9 @@ class CoreSession:
         plan = survivor_mod.plan_field(n, float(self.cfg.bots.level_pct), "normal",
                                        CONFIG_BOUNDS[("bots", "level_pct")]) if n else []
         plan = self._elo_levels(plan, "track", event)
+        size = track_mod.EVENTS[event].team_size
+        if size > 1:   # coéquipiers et adversaires de force égale (revue C3-07), pas les plus forts avec le cycliste
+            plan = [plan[i] for i in track_mod.team_order([lv for _, lv in plan], size)]
         names = self._rival_names([p for p, _ in plan])
         params = PhysicsParams.from_config(self.cfg)
         self._set_bots([ProfileBot(p, bot_id=f"bot{i + 1}", name=nm, params=params,
@@ -3423,6 +3500,15 @@ class CoreSession:
             self._rec.game({"kind": "track_start", "ts": round(time.time(), 3), "event": event, **settings})
         self._league_start_line()
         log.info("Épreuve de piste : %s, %s.", event, ", ".join(f"{k} = {v}" for k, v in settings.items()) or "réglages par défaut")
+
+    def _mode_tactics(self, game_mode: str | None) -> str | None:
+        """Ligne de `bot_tactics.MODE_TACTICS` imposée par le mode de jeu : épreuve de piste (lot VD7), gestes de
+        base du Grand Prix et du Dernier survivant (lot BR5) ; None : celle du mode classique (ou « none »)."""
+        if game_mode == "track":
+            return self._track_tactics()
+        if game_mode in bot_tactics.GAME_MODES and self.wtf is None:
+            return game_mode
+        return None
 
     def _track_tactics(self) -> str:
         """Ligne de `bot_tactics.MODE_TACTICS` de l'épreuve choisie (réglage « Tactique des bots », lot VD7)."""
@@ -3588,20 +3674,30 @@ class CoreSession:
             return None
         return self._profile_field(opponents, "normal", mode)
 
-    def _start_grandprix(self, mode: str = "grandprix") -> None:
+    def _start_grandprix(self, mode: str = "grandprix", restore: dict | None = None) -> None:
         """Course de la séance qui commence (bots déjà calibrés par `_new_race`) ; la Course (lot CR1) est la même
-        course sans objet ni boîte."""
+        course sans objet ni boîte. `restore` : instantané de la course reprise après un plantage (lot RC1) : même
+        longueur, même départ, mêmes objets, sans ligne au journal."""
         gc = self.cfg.grandprix
         fmt = self.cfg.race if mode == "race" else gc
-        length, lap = self._grandprix_course(mode)
         table = self._grandprix_table()
-        objects = {} if mode == "race" else {"chaos": gc.chaos, "box_every_km": gc.box_every_m / 1000.0}
+        if restore is not None:
+            length, lap, origin = float(restore["length_m"]), restore["lap_m"], float(restore["origin_m"])
+            objects: dict[str, Any] = {} if mode == "race" else {"chaos": restore["chaos"],
+                                                                "enabled": list(restore["enabled"])}
+        else:
+            length, lap = self._grandprix_course(mode)
+            origin = self.physics.s
+            objects = {} if mode == "race" else {"chaos": gc.chaos, "box_every_km": gc.box_every_m / 1000.0}
+        seed = self._race_seed if restore is not None else int(time.time()) & 0xFFFFFFFF
         self.grandprix = GrandPrixMode([GP_ME, *(b.id for b in self.bots)], length, lap_m=lap, table=table, **objects,
-                                       seed=int(time.time()) & 0xFFFFFFFF, params=replace(self._base_params),
-                                       origin_m=self.physics.s,
+                                       seed=seed, params=replace(self._base_params), origin_m=origin,
                                        levels={b.id: float(b.level_pct or self.cfg.bots.level_pct) for b in self.bots},
                                        mode=mode)
         self.grandprix.start(self._t_session, self._grandprix_riders(0.0))
+        if restore is not None:
+            race_resume.apply_gp_state(self.grandprix, restore, seed)
+            return
         self._league_start_line()   # lot CH3 : manche de la ligue
         if self._rec:
             line = {"kind": "gp_start", "ts": round(time.time(), 3), "opponents": len(self.bots),
@@ -3680,6 +3776,9 @@ class CoreSession:
         lanes = [(GP_ME, self._lane, self.cfg.ride.auto_draft == "on", draft_mod.RIDER_LANE_M)]
         lanes += [(b.id, b.lane, True, draft_mod.BOT_LANE_M) for b in self.bots
                   if gp is not None and b.id in gp.racers]
+        for b in self.bots:   # lot BR5 : voie tenue (esquive du lot GP3) : le mode tient le bot
+            if hasattr(b, "mode_hold"):
+                b.mode_hold = gp is not None and b.id in gp.racers and gp.lane_target(b.id) is not None
         for rid, lane, auto, home in lanes:
             target = gp.lane_target(rid) if gp is not None else None
             if target is None:
@@ -4150,7 +4249,9 @@ class CoreSession:
     # --- pas de simulation ---------------------------------------------------------------
 
     def _step(self, dt: float, now_mono: float) -> None:
+        self._polling_trainer = True   # une erreur du trainer remonte telle quelle (le lanceur relance le core)
         m = self.driver.poll(self._t_session)
+        self._polling_trainer = False
         self.state.trainer_status = getattr(self.driver, "status", "MOCK")
         self._journal_devices()
         if self.hr is not None and self.hr.bpm is not None:
@@ -4252,7 +4353,10 @@ class CoreSession:
         if self.wind.active:   # vent figé en pause : son temps est celui de la séance
             self._wind_sample = self.wind.sample(self._t_session)
             self._head_mps = head_component(self._wind_sample, heading)
-            self.physics.p.wind_mps = self._head_mps + (wtf_eff.wind_add_mps if wtf_eff else 0.0)
+            # copie du pas : `self.physics.p` peut être `_base_params` lui-même, qui ne doit jamais garder
+            # le vent d'un pas (revue du 22 novembre, S2-01 : vent fantôme de la séance suivante)
+            self.physics.p = replace(self.physics.p,
+                                     wind_mps=self._head_mps + (wtf_eff.wind_add_mps if wtf_eff else 0.0))
             self._cross_mps = cross_component(self._wind_sample, here.heading_deg if here else 0.0)
             # Roue lenticulaire (lot P34) : gain de CdA réduit puis annulé par fort lacet du vent apparent ;
             # CdA du pas seulement (vitesse virtuelle et ressenti), jamais la puissance mesurée (A7).
@@ -4354,6 +4458,8 @@ class CoreSession:
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
                 params.wind_mps = head_component(self._wind_sample, route.sample(bot.s).heading_deg)
+            elif params is not None and params.wind_mps:   # bot gardé d'une séance ventée : vent coupé (S2-01)
+                params.wind_mps = 0.0
             bot_wind = self.grandprix.wind_mps(bot.id) if self.grandprix is not None and params is not None else 0.0
             if bot_wind:
                 params.wind_mps += bot_wind
@@ -4428,6 +4534,9 @@ class CoreSession:
                 erg_kind=free_erg.kind if free_erg else None,
                 cadence_target_rpm=free_erg.cadence_target if isinstance(free_erg, CadenceLock) else None,
                 pos=round(st.s, 2) if self.physics.distance != self.physics.s else None))
+            if self._t_session >= self._next_snapshot:   # lot RC1 : au même instant qu'un relevé
+                self._next_snapshot = max(self._next_snapshot + race_resume.SNAPSHOT_EVERY_S, self._t_session)
+                self._journal_race_snapshot()
 
         if route and not route.is_loop and self.openworld is None and \
                 (st.s >= route.length_m if d > 0 else st.s <= 0.0):   # ni une boucle, ni le monde ouvert
@@ -4512,8 +4621,13 @@ class CoreSession:
         return draft_mod.Lane(home, home, auto=self.cfg.ride.auto_draft == "on")
 
     def _lane_out(self, lane_m: float) -> float:
-        """`lane_m` publié : écart à l'axe sur une route, hauteur sur la piste d'un vélodrome (plan VD §4.2)."""
-        return velodrome.height_on_track(lane_m) if self._track is not None else lane_m
+        """`lane_m` publié : écart à l'axe sur une route, hauteur sur la piste d'un vélodrome (plan VD §4.2). Sur la
+        piste, la hauteur est bornée à `TRACK_HEIGHT_OUT_MAX_M` (borne `lane_m` du schéma de `state`) : un coureur
+        qui déborde en dépassement (écart jusqu'à -1,5 m, soit 4,1 m de haut) est dessiné en haut de la bande
+        publiable au lieu de rendre la trame invalide (test instable du 24 novembre, 3,11 m publiés)."""
+        if self._track is None:
+            return lane_m
+        return min(velodrome.height_on_track(lane_m), TRACK_HEIGHT_OUT_MAX_M)
 
     def _traffic_for(self, route: Route | None) -> traffic_mod.Traffic | None:
         """Circulation de la route (lot AS6), créée au premier pas sur une route ; aucune sans décor vivant
@@ -4595,7 +4709,10 @@ class CoreSession:
                 cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
                 # Lot AS10 : à la vraie place du cycliste en travers (repère du décor, lot N23 : à droite de son sens)
-                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places, rider_lane=self._lane.m)
+                # revue C5-06 : sans les bots arrivés, arrêtés sur la ligne et hors du jeu (comme `_road_space_step`)
+                running = [p for b, p in zip(self.bots, bot_places)
+                           if length is None or is_loop or b.s < length]
+                cyclists.update(rider_u, self.physics.v, dt, bots=running, rider_lane=self._lane.m)
                 riders_m = cyclists.near(rider_u)
                 riders = [cyclists.on_route(r) for r in riders_m]
             others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
@@ -4856,6 +4973,114 @@ class CoreSession:
 
     # --- boucle principale ---------------------------------------------------------------
 
+    # --- reprise d'une course après un plantage (lot RC1, race_resume.py) --------------------------------
+
+    def _journal_race_snapshot(self) -> None:
+        """Ligne `race_snapshot` : la course en cours (Course, Grand Prix, Dernier survivant), pour la reprendre."""
+        gp, sv = self.grandprix, self.survivor
+        if self._rec is None or (gp is None and sv is None):
+            return
+        line: dict[str, Any] = {
+            "kind": "race_snapshot", "format": race_resume.FORMAT, "version": __version__,
+            "ts": round(time.time(), 3), "t": round(self._t_session, 2),
+            "mode": gp.mode if gp is not None else "survivor", "seed": self._race_seed,
+            "origin_m": round(self._race_origin_m, 3), "objective": self._start_objective,
+            "bots": [race_resume.bot_state(b) for b in self.bots]}
+        if gp is not None:
+            line["gp"] = race_resume.gp_state(gp)
+            frame = gp.frame(GP_ME)   # lot RC3 : place et tour écrits au menu du lancement suivant
+            line.update({"place": frame["place"], "of": frame["of"], "lap": frame.get("lap")})
+        if sv is not None:
+            line["survivor"] = race_resume.survivor_state(sv)
+            line.update({"alive": len(sv.alive), "of": len(sv.racers), "place": sv.racers[SURVIVOR_ME].place})
+            line["survivor_out"] = {k: round(v, 2) for k, v in self._survivor_out.items()}
+        if self.race is not None:
+            line["standings"] = race_resume.standings_state(self.race.standings)
+        run = self._league_run
+        if run is not None:
+            line["league"] = {"number": run["number"], "index": run["index"]}
+        self._rec.game(line)
+
+    @staticmethod
+    def _race_started(lines: list[dict]) -> bool:
+        """Vrai si le journal a commencé une course reprise par le lot RC1 (sans instantané : coupée avant 5 s)."""
+        return any(ln.get("kind") in ("gp_start", "survivor_start") for ln in lines)
+
+    def _resume_race(self, rs: ResumeState) -> None:
+        """Reprend la course du journal ; la séance continue sans la course (bots de la ligne de commande, rien
+        compté à la ligue : la manche se recourt) si l'instantané est absent, d'une autre version ou refusé."""
+        try:
+            self._restore_race(rs)
+        except (race_resume.SnapshotError, KeyError, TypeError, ValueError) as exc:
+            log.warning("Course non reprise après le plantage : %s ; la séance reprend sans elle "
+                        "(une manche de la ligue n'est pas comptée et se recourt).", exc)
+            self.grandprix = self.survivor = None
+            self.state.gp = self.state.survivor = None
+            self._league_run = self._elo_race = None
+            self._survivor_out = {}
+            self._set_bots(list(self._cli_bots))
+            self._new_race()
+
+    def _restore_race(self, rs: ResumeState) -> None:
+        snap = race_resume.check(rs.race, __version__)
+        mode, route = snap["mode"], self.route
+        if route is None:
+            raise race_resume.SnapshotError("parcours absent")
+        ahead = max(rs.t - float(snap["t"]), 0.0)   # relevés écrits après l'instantané (5 s au plus)
+        here = (self.physics.s, self.physics.distance, self.physics.direction)
+        self._start_objective = snap.get("objective")
+        league_snap = snap.get("league")
+        args: dict[str, Any] = {"league": True} if league_snap else {}
+        refused: list[str] = []
+        send_error = self.server.send_error
+        self.server.send_error = lambda code, message: refused.append(message)   # type: ignore[method-assign]
+        self.physics.place(float(snap["origin_m"]))   # plateau recomposé comme au départ, à la place du départ
+        try:
+            self._league_run = None
+            if league_snap:
+                field = self._league_field(args, mode)
+            elif mode == "survivor":
+                field = self._survivor_field(args)
+            else:
+                field = self._grandprix_field(args, mode)
+        finally:
+            self.server.send_error = send_error   # type: ignore[method-assign]
+            self.physics.place(*here)
+        if field is None:
+            raise race_resume.SnapshotError("plateau refusé : " + (refused[0] if refused else "raison inconnue"))
+        run = self._league_run
+        if league_snap and (run is None or run["index"] != league_snap["index"] or run["number"] != league_snap["number"]):
+            raise race_resume.SnapshotError("la manche de la ligue n'est plus celle de l'instantané")
+        states = {d["id"]: d for d in snap["bots"]}
+        field = [b for b in field if b.id in states]   # Dernier survivant : bots éliminés déjà retirés
+        race_resume.check_field(field, snap["bots"])
+        self._set_bots(field)
+        end = None if route.is_loop else route.length_m
+        for b in field:   # places de la reprise avant `_new_race`, qui chronomètre les segments depuis là
+            race_resume.apply_bot_state(b, states[b.id], ahead, end)
+        saved = self.bot_tactics_seed
+        self.bot_tactics_seed = int(snap["seed"])   # même graine : même forme du jour des bots
+        try:
+            self._new_race(classic=mode == "race", game_mode=mode)
+        finally:
+            self.bot_tactics_seed = saved
+        for b in field:   # `_new_race` a recalibré les bots (réserve pleine) : l'état de l'instantané par-dessus
+            race_resume.apply_bot_state(b, states[b.id], ahead, end)
+        self._race_origin_m = float(snap["origin_m"])
+        if mode == "survivor":
+            self._survivor_out = {k: float(v) for k, v in snap.get("survivor_out", {}).items() if k in states}
+            self._start_survivor(restore=snap["survivor"])
+        else:
+            self._start_grandprix(mode, restore=snap["gp"])
+        if self.race is not None and snap.get("standings"):
+            race_resume.apply_standings_state(self.race.standings, snap["standings"])
+        self._lane = self._rider_lane()
+        self._next_snapshot = self._t_session + race_resume.SNAPSHOT_EVERY_S
+        self._journal_race_snapshot()   # la course reprise est à nouveau reprenable
+        place = self.grandprix.place(GP_ME) if self.grandprix is not None else None
+        log.info("Course reprise après un plantage : %s, %d bots%s%s.", mode, len(field),
+                 f", {place}e" if place else "", ", manche de la ligue" if league_snap else "")
+
     def resume_session(self, path: Path) -> ResumeState:
         """Reprend une séance après un plantage du core (lot N8), en `PAUSED` / `core_restarted`.
 
@@ -4908,7 +5133,10 @@ class CoreSession:
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
-        self._new_race()   # segments repris à la position du journal ; points et maillots repartent à zéro
+        if rs.race is not None or self._race_started(rs.lines):
+            self._resume_race(rs)   # lot RC1 : la course entière, ou la séance sans elle si l'instantané est refusé
+        else:
+            self._new_race()   # segments repris à la position du journal ; points et maillots repartent à zéro
         self.state.session_state = "PAUSED"   # la pause est déjà au journal
         self._set_state("PAUSED", "core_restarted")
         log.info("Séance reprise après un plantage du core : %s (t %.0f s, %.0f m%s).", path, rs.t, rs.s,
@@ -5063,6 +5291,112 @@ class CoreSession:
         finally:
             await self._shutdown(tasks)
 
+    # --- filet de la boucle : erreur d'un mode de jeu (audit du 22 novembre, R3 et L10) -------------
+
+    def _safe_step(self, dt: float, now_mono: float) -> None:
+        """`_step` sous filet : une erreur d'un mode termine la séance avec son bilan, le core continue."""
+        self._polling_trainer = False
+        try:
+            self._step(dt, now_mono)
+        except Exception as exc:
+            self._mode_failed(exc, "pas", now_mono)
+
+    def _fill_mode_frames(self, now_mono: float) -> None:
+        """Bots et parties de la trame propres aux modes, sous le même filet que le pas (audit du 22 novembre, R3)."""
+        try:
+            if self.bots:
+                self.state.bots = [b.to_dict() for b in self.bots]
+                if self._track is not None:   # hauteur sur la piste (plan VD §4.2)
+                    self.state.bots = [{**b, "lane_m": round(self._lane_out(b["lane_m"]), 2)}
+                                       if b.get("lane_m") is not None else b for b in self.state.bots]
+            else:
+                self.state.bots = None
+            self._fill_race_frame()
+            self._fill_wind_frame()
+            self._fill_vehicles_frame()
+            self._fill_riders_frame()
+            self._fill_wtf_frame()
+            self._fill_survivor_frame()
+            self._fill_grandprix_frame()
+            self._fill_track_frame()
+            self._fill_rogue_frame()
+            self._lighten_bots_frame()
+        except Exception as exc:
+            self._mode_failed(exc, "trame", now_mono)
+
+    def _active_mode(self) -> str:
+        """Nom du mode en cours, pour le journal : le plus particulier d'abord."""
+        for name, obj in (("rogue", self.rogue), ("grandprix", self.grandprix), ("survivor", self.survivor),
+                          ("wtf", self.wtf), ("track", self.track_event), ("race", self.race),
+                          ("open_world", self.openworld)):
+            if obj is not None:
+                return name
+        return "erg" if self.erg is not None else "sim"
+
+    def _mode_failed(self, exc: Exception, where: str, now_mono: float) -> None:
+        """Erreur levée par un mode pendant le pas ou la trame.
+
+        Erreur du trainer (`driver.poll`) : remontée telle quelle, le lanceur relance le core (rien ne change).
+        Sinon : journal du core avec la pile, ligne `mode_error` au journal de la séance, séance terminée par
+        `_finish(True)` (FIT, bilan, expérience : une séance normale ; une manche de ligue sans arrivée n'est pas
+        comptée et se recourt), erreur `mode_failed` à l'engine, core vivant. Une erreur qui revient à chaque pas
+        hors séance pendant MODE_FAIL_LIMIT_S remonte : mieux vaut un core relancé qu'un core vivant et bloqué.
+        """
+        if self._polling_trainer:
+            raise exc
+        last, self._mode_fail_last = self._mode_fail_last, now_mono
+        first = last is None or now_mono - last > MODE_FAIL_GAP_S or self._mode_fail_since is None
+        if first:   # nouvelle suite d'erreurs : un seul message et une seule pile au journal
+            self._mode_fail_since = now_mono
+        elif self._rec is None and now_mono - self._mode_fail_since >= MODE_FAIL_LIMIT_S:
+            log.error("Erreur de mode répétée depuis %.0f s hors séance : le core s'arrête.", MODE_FAIL_LIMIT_S)
+            raise exc
+        mode = self._active_mode()
+        if first:
+            log.exception("Erreur dans le mode %s (%s) : la séance se termine, le core continue.", mode, where)
+        else:
+            log.debug("Erreur de mode répétée (%s, %s) : %r", mode, where, exc)
+        info = {"mode": mode, "where": where, "error": type(exc).__name__, "message": str(exc)[:200]}
+        self._mode_error = info
+        saved = self._rec is not None
+        if saved:
+            try:
+                self._rec.game({"kind": "mode_error", "ts": round(time.time(), 3), **info})
+                self._finish(True)   # la séance n'est jamais perdue
+            except Exception:
+                log.exception("Fin de séance impossible après l'erreur du mode %s : modes vidés.", mode)
+                self._drop_modes()
+                saved = False
+            else:
+                if isinstance(self.state.summary, dict):
+                    self.state.summary["mode_error"] = {"mode": mode, "error": info["error"]}
+        elif self.openworld is not None or self.state.session_state in ("READY", "RUNNING", "PAUSED"):
+            self._drop_modes()
+        if first:
+            self.server.send_error("mode_failed", MODE_FAILED_SAVED if saved else MODE_FAILED_TEXT)
+
+    def _drop_modes(self) -> None:
+        """Dernier recours quand `_finish` échoue : plus aucun mode, plus d'enregistrement, état ERROR."""
+        rec, self._rec = self._rec, None
+        if rec is not None:
+            try:
+                rec.finish(True)
+            except Exception:
+                log.exception("Journal de la séance non fermé après l'erreur de mode.")
+        self.race = self.wtf = self.survivor = self.grandprix = self.track_event = self.rogue = None
+        self.state.wtf = self.state.survivor = self.state.gp = self.state.track = self.state.rogue = None
+        self.erg = None
+        self._ramp_watch = None
+        self._start_gate = None
+        try:
+            self._close_open_world()
+        except Exception:
+            log.exception("Monde ouvert non fermé après l'erreur de mode.")
+        self.openworld = None
+        self.state.open_world = None
+        self.physics.p = self._base_params
+        self._set_state("ERROR")
+
     def _services(self) -> list[Any]:
         """Tâches de fond : trainer, entrées, ceinture, puis le déroulé du Bluetooth simulé."""
         return [self.driver, *self.inputs, *([self.hr] if self.hr else []),
@@ -5083,7 +5417,7 @@ class CoreSession:
             self._drain_inputs()
             dt = min(now - last, MAX_STEP_S)
             last = now
-            self._step(dt, now)
+            self._safe_step(dt, now)
             step_s = mono() - t0
             self.stats.add(step_s, lag)
 
@@ -5103,23 +5437,7 @@ class CoreSession:
                     self._last_devices = curr_dev
                 else:
                     self.state.devices = None
-                if self.bots:
-                    self.state.bots = [b.to_dict() for b in self.bots]
-                    if self._track is not None:   # hauteur sur la piste (plan VD §4.2)
-                        self.state.bots = [{**b, "lane_m": round(self._lane_out(b["lane_m"]), 2)}
-                                           if b.get("lane_m") is not None else b for b in self.state.bots]
-                else:
-                    self.state.bots = None
-                self._fill_race_frame()
-                self._fill_wind_frame()
-                self._fill_vehicles_frame()
-                self._fill_riders_frame()
-                self._fill_wtf_frame()
-                self._fill_survivor_frame()
-                self._fill_grandprix_frame()
-                self._fill_track_frame()
-                self._fill_rogue_frame()
-                self._lighten_bots_frame()
+                self._fill_mode_frames(now)
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
@@ -5128,6 +5446,7 @@ class CoreSession:
                          " CPU %.1f %%", r["step_p50_ms"], r["step_p99_ms"], r["step_max_ms"],
                          r["lag_p99_ms"], r["lag_max_ms"], r["cpu_pct"])
                 log.info(jitter_line(physics, state))
+                log.info(self.server.tx_line())   # pertes de trames state (essai du 22 novembre)
                 physics_all.merge(physics)
                 state_all.merge(state)
                 physics.clear()

@@ -163,10 +163,14 @@ jobs:
 
       - name: Téléchargement de Godot 4.7
         if: steps.cache-godot.outputs.cache-hit != 'true'
+        env:
+          GODOT_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
         run: |
           mkdir -p ~/.cache/godot-4.7.2
           curl -fsSL -o /tmp/Godot_v4.7.2-stable_linux.x86_64.zip \
             https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          # Empreinte de SHA512-SUMS.txt de la publication 4.7.2-stable (revue de code vague 5, O2-19).
+          echo "$GODOT_SHA512  /tmp/Godot_v4.7.2-stable_linux.x86_64.zip" | sha512sum -c -
           unzip -q /tmp/Godot_v4.7.2-stable_linux.x86_64.zip -d ~/.cache/godot-4.7.2
           chmod +x ~/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
 
@@ -187,7 +191,9 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           git fetch -q --depth=1 origin "${{ github.base_ref }}"
-          if ! git diff --name-only FETCH_HEAD HEAD | grep -qE '^Open_ride_linux/engine/(scripts/(terrain_tiles|world_streamer|living_world)\.gd|shaders/|tests/tours/flancs\.json)'; then
+          # Liste lue à part : une erreur de git diff arrête l'étape au lieu de sauter les captures (O2-19).
+          changes="$(git diff --name-only FETCH_HEAD HEAD)"
+          if ! printf '%s\n' "$changes" | grep -qE '^Open_ride_linux/engine/(scripts/(terrain_tiles|world_streamer|living_world)\.gd|shaders/|tests/tours/flancs\.json)'; then
             echo "Terrain inchangé : captures sautées"; exit 0
           fi
           for q in low medium high; do
@@ -260,10 +266,14 @@ jobs:
 
       - name: Téléchargement de Godot 4.7
         if: steps.cache-godot.outputs.cache-hit != 'true'
+        env:
+          GODOT_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
         run: |
           mkdir -p ~/.cache/godot-4.7.2
           curl -fsSL -o /tmp/Godot_v4.7.2-stable_linux.x86_64.zip \
             https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          # Empreinte de SHA512-SUMS.txt de la publication 4.7.2-stable (revue de code vague 5, O2-19).
+          echo "$GODOT_SHA512  /tmp/Godot_v4.7.2-stable_linux.x86_64.zip" | sha512sum -c -
           unzip -q /tmp/Godot_v4.7.2-stable_linux.x86_64.zip -d ~/.cache/godot-4.7.2
           chmod +x ~/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
 
