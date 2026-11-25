@@ -888,13 +888,38 @@ JITTER_P99_LIMIT_MS = 5.0   # critère de la série W : gigue de la physique à 
 ENGINE_JITTER_RE = re.compile(
     r"\[gigue\] state : écart entre trames p50 (?P<p50>[0-9.]+) p99 (?P<p99>[0-9.]+) max (?P<max>[0-9.]+) ms "
     r"\((?P<n>\d+) trames\)")
+# Pertes de trames state (essai du 22 novembre) : ligne de la minute de l'engine, trou long noté tout de suite,
+# et émission de la minute côté core.
+ENGINE_LOSS_RE = re.compile(
+    r"\[ipc\] state reçues (?P<n>\d+) ; en retard (?P<late>\d+) ; seq sautés (?P<skipped>\d+) ; "
+    r"trous de plus de \d+ s (?P<long>\d+) ; plus gros datagramme (?P<bytes>\d+) o")
+ENGINE_HOLE_RE = re.compile(
+    r"\[ipc\] trou de (?P<ms>\d+) ms entre deux trames state : seq (?P<a>-?\d+) -> (?P<b>\d+) "
+    r"\((?P<missing>\d+) trames du core manquantes : (?P<why>[^)]*)\)")
+CORE_TX_RE = re.compile(
+    r"IPC émis : state (?P<n>\d+) \(max (?P<max>\d+) o, allégées (?P<trimmed>\d+), ignorées (?P<dropped>\d+)\)"
+    r" ; autres (?P<other>\d+) \(max (?P<other_max>\d+) o\) ; erreurs d'envoi : (?P<errors>.*)$")
 
 
 def jitter_report(lines: Iterable[str]) -> dict[str, Any]:
     """Lignes `Gigue` du core (une par minute, une pour la séance) et `[gigue]` de l'engine ; verdict
     « p99 de la physique < 5 ms » sur la séance entière, sinon sur la pire minute."""
     minutes, engine, whole = [], [], None
+    losses, holes, tx = [], [], []
     for line in lines:
+        if "[ipc] " in line or "IPC émis" in line:
+            if m := ENGINE_LOSS_RE.search(line):
+                losses.append({k: int(v) for k, v in m.groupdict().items()})
+                continue
+            if m := ENGINE_HOLE_RE.search(line):
+                holes.append({"ms": int(m["ms"]), "seq_avant": int(m["a"]), "seq_apres": int(m["b"]),
+                              "manquantes": int(m["missing"]), "cause": m["why"]})
+                continue
+            if m := CORE_TX_RE.search(line):
+                tx.append({"state": int(m["n"]), "max_o": int(m["max"]), "allegees": int(m["trimmed"]),
+                           "ignorees": int(m["dropped"]), "autres": int(m["other"]),
+                           "autres_max_o": int(m["other_max"]), "erreurs": m["errors"].strip()})
+                continue
         head = LINE_RE.match(line.rstrip("\n"))
         m = PATTERNS["jitter"].match(head["msg"]) if head else None
         if m:
@@ -912,7 +937,8 @@ def jitter_report(lines: Iterable[str]) -> dict[str, Any]:
                            "trames": int(e["n"])})
     ref = whole["p99_ms"] if whole else max((r["p99_ms"] for r in minutes), default=None)
     return {"minutes": minutes, "seance": whole, "engine": engine, "limite_p99_ms": JITTER_P99_LIMIT_MS,
-            "p99_ms": ref, "ok": ref is not None and ref < JITTER_P99_LIMIT_MS}
+            "p99_ms": ref, "ok": ref is not None and ref < JITTER_P99_LIMIT_MS,
+            "pertes": losses, "trous": holes, "emission": tx}
 
 
 def format_jitter(rep: dict[str, Any]) -> str:
@@ -924,6 +950,18 @@ def format_jitter(rep: dict[str, Any]) -> str:
     for r in rep["engine"]:
         out.append(f"  engine : écart entre trames state p50 {r['p50_ms']:.1f}, p99 {r['p99_ms']:.1f}, "
                    f"max {r['max_ms']:.1f} ms ({r['trames']} trames)")
+    if rep.get("emission") or rep.get("pertes") or rep.get("trous"):
+        sent = sum(r["state"] for r in rep.get("emission", []))
+        got = sum(r["n"] for r in rep.get("pertes", []))
+        errors = [r["erreurs"] for r in rep.get("emission", []) if r["erreurs"] != "aucune"]
+        out += ["", f"  trames state : envoyées par le core {sent}, reçues par l'engine {got}, "
+                    f"seq sautés {sum(r['skipped'] for r in rep.get('pertes', []))}, "
+                    f"en retard {sum(r['late'] for r in rep.get('pertes', []))}, "
+                    f"plus grosse trame {max((r['max_o'] for r in rep.get('emission', [])), default=0)} o"]
+        out.append(f"  erreurs d'envoi du core : {' | '.join(errors) if errors else 'aucune'}")
+        for h in rep.get("trous", []):
+            out.append(f"  trou de {h['ms'] / 1000:.1f} s : seq {h['seq_avant']} -> {h['seq_apres']} "
+                       f"({h['manquantes']} manquantes : {h['cause']})")
     if rep["p99_ms"] is None:
         out += ["", "Aucune ligne « Gigue » : journal d'un core antérieur au lot X17 ou séance de moins d'une minute."]
     else:

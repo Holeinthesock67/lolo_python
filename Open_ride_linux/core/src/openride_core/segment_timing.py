@@ -101,6 +101,11 @@ def _interp_t(t0: float, s0: float, t1: float, s1: float, s: float) -> float:
     return t0 + (t1 - t0) * (s - s0) / (s1 - s0)
 
 
+# Les bornes des segments sont écrites à 0,1 m près, la longueur du parcours au millimètre : une montée qui
+# finit au dernier point peut dépasser la longueur de l'arrondi. Même tolérance que `route.load_segments`.
+END_TOLERANCE_M = 0.1
+
+
 class SegmentTimer:
     """Chronomètre tous les segments d'un parcours, plusieurs à la fois s'ils se chevauchent."""
 
@@ -108,7 +113,7 @@ class SegmentTimer:
                  rider_mass_kg: float | None = None) -> None:
         self.segments = sorted(segments, key=lambda seg: seg.s_start)
         for seg in self.segments:
-            if not 0.0 <= seg.s_start < seg.s_end <= length_m + 0.01:
+            if not 0.0 <= seg.s_start < seg.s_end <= length_m + END_TOLERANCE_M:
                 raise ValueError(f"segment {seg.id} hors du parcours : {seg.s_start}–{seg.s_end}")
         self.length_m = float(length_m)
         self.loop = loop
@@ -198,7 +203,7 @@ class SegmentTimer:
 
     def add(self, seg: SegmentLike) -> None:
         """Segment ajouté en roulant (monde ouvert, lot W20) ; chronométré quand son départ est franchi."""
-        if not 0.0 <= seg.s_start < seg.s_end <= self.length_m + 0.01:
+        if not 0.0 <= seg.s_start < seg.s_end <= self.length_m + END_TOLERANCE_M:
             raise ValueError(f"segment {seg.id} hors du parcours : {seg.s_start}–{seg.s_end}")
         self.segments.append(seg)
         self.segments.sort(key=lambda x: x.s_start)

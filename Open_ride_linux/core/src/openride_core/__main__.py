@@ -461,16 +461,21 @@ def cmd_open_world_save(args: argparse.Namespace) -> int:
     from . import config as config_mod
     from .config import GPX_DIR
     from .open_world_save import MIN_SAVE_M, save_from_folder
+    from .privacy_zone import radius_m
     from .route import WorldError
 
     cfg = config_mod.load(args.config)
     try:
         path, s_end = save_from_folder(args.ride_id, cfg.open_world, args.gpx_dir or GPX_DIR,
                                        args.journal_dir,
-                                       args.km * 1000.0 if args.km else None)
+                                       args.km * 1000.0 if args.km else None,
+                                       private_start_m=radius_m(cfg))
     except WorldError as exc:
         print(f"openride-core open-world-save : {exc}", file=sys.stderr)
         return 1
+    if path is None and s_end > MIN_SAVE_M:
+        print("Balade restée dans la zone privée du départ (500 m) : rien n'est enregistré.")
+        return 0
     if path is None:
         print(f"Balade de {s_end:.0f} m : au plus {MIN_SAVE_M:.0f} m, rien n'est enregistré.")
         return 0
