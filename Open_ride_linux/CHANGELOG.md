@@ -11,9 +11,24 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - La consigne écrite est la vraie : la puissance qui bat l'ennemi à temps (au boss du seuil, 11,8 % de plus qu'avant), et l'adrénaline monte dès qu'on l'atteint (« affiche une vraie consigne », choix du propriétaire). La marge de 10 % ne sert plus qu'à rester dans la plage, et elle est écrite : « ✔ marge : remonte de 8 W ».
 - La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
 - L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.35 provisoire).
+### Remettre à zéro les statistiques d'un profil (lot RZ1)
+- « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : niveau, expérience, pièces, défis, cartes, records, équipement acheté et cotes des bots repartent de zéro (avant une saison de la ligue, par exemple). Séances et FIT (historique du coach), cote Elo du cycliste, nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
+- Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant. Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut), exigée aussi par le core ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
+- Contrat IPC révision 1.31 : `reset_profile_stats`, `undo_profile_reset`, `profiles.resets`.
+### Gels du monde ouvert : mesure des trames perdues (lot GL1)
+- Le journal dit maintenant, chaque minute, combien de trames de position le core a envoyées et combien le jeu en a reçues, avec les erreurs d'envoi ; un gel de plus de 2 s est noté avec la cause probable (`log_report --gigue`).
+### À-coups de main (lot AC4)
+- Plus d'image figée d'une demi-seconde à une seconde au chargement d'un parcours (départ du Cyber-Rogue, Grand Prix) : les cyclistes du décor se préparent sans bloquer l'affichage (lot AC4).
+### Photos automatiques de la séance
+- Une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus par séance, rangées dans `~/OpenRide/Captures/<date>_<heure>/` (JPEG, écrites hors de l'image) ; elles restent sur le PC. Le bilan dit combien de photos ont été prises et dans quel dossier. Réglages › Graphisme › « Photos automatiques » (oui par défaut). Jamais en Cyber-Rogue ni pendant les bancs.
 
 ### Moins de brouillard et de halo en medium et high (lot BH1)
 - En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
+### Paysages, partie 2 : canyons, rizières, fjords (lot U25-p2)
+- Canyons : strates de grès rouge, orange, ocre et brun sur les parois ; brume chaude, rivières boueuses.
+- Rizières : gradins inondés qui reflètent le ciel, diguettes de terre, marches en eau ou en riz ; air chaud et humide.
+- Fjords : cascades d'écume qui coulent sur les parois raides ; eau verte et profonde, lumière froide.
+- Le ciel et la mer suivent le paysage de la tuile, avec un passage en douceur ; nouveaux membres facultatifs du thème `ground.strata`, `ground.terraces` et `water.falls`.
 
 ### Cyber-Rogue sans voile en high (lot R27)
 - En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
@@ -58,6 +73,13 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - Après un demi-tour, le décor se charge dans le sens de la marche : portiques, herbe, détails du sol et gags du mode WTF (lot N22).
 - Voitures, camions, tracteurs et cyclistes du décor circulent aussi à rebours (lot N23) ; les montées du retour ont leurs panneaux d'approche, chiffres peints, spectateurs et parapentes (lot N24) ; les arches de bonus se comptent à rebours, une fois chacune par tour (lot N25).
 - Pendant un entraînement ERG ou un test de FTP, le bout d'un parcours en ligne fait demi-tour tout seul, sans arrêt (bandeau « Bout du parcours : demi-tour, l'entraînement continue ») ; une fois l'entraînement fini, le bout suivant termine la séance (lot N26).
+
+### Menus sans éléments inutiles (lot NI4)
+- « Session simulée » quitte l'accueil : elle se trouve en bas de Réglages › Appareils (« Revenir au matériel réel » en session simulée).
+- « Saisir du QWKcode (clavier) » est retiré de la liste des entraînements : « Créer un entraînement » couvre le besoin, et un fichier `.qwk` posé dans `~/OpenRide/Workouts/` est toujours lu.
+- « Décor vivant » est retiré de Réglages › Graphisme : le décor vivant est toujours actif, la Qualité graphique règle son coût ; un « non » choisi avant est remis par défaut au lancement (copie `config.toml.bak`).
+- Nouveau réglage « Son : oui / non » en tête de Réglages › Son : coupe tout le son d'un seul choix, les volumes sont gardés.
+- Cyber-Rogue : « Perfect Shifts » devient « Changements parfaits ».
 
 ### Réglages sans lignes inutiles (lot NI2)
 - Une seule place par réglage : les réglages du Dernier survivant, du Grand Prix, de la Course et de la séance conseillée ne se règlent plus que sur leur propre écran, plus dans Réglages › Séance.
