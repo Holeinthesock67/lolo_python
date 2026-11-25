@@ -26,17 +26,30 @@ famille existe sur main sans AC2 (r940b, pi2). Shaders en cache, elle disparaît
 Banc du correctif (12 MultiMesh d'arbres + 12 maillages, ombres, caches vidés) : pire image **4,7 à 6,1 s → 0,6 à
 0,7 s**, objets affichés au bout de 6,6 s au lieu de 6,1 s (27 images au lieu d'une).
 
+### Banc PC du 25 novembre (GTX 1060, tête 3061cc09, DB1 low/medium/high à froid, monde ouvert ea1_lac)
+
+- Monde ouvert : les images des tuiles proches passent de 3,7 s et 5,7 s (rACow) à 0,3 à 2,1 s (10 à 11 pipelines).
+- Restent 5 à 6,4 s au départ, dans les images qui portent **« spectateurs préchauffage »** (43 pipelines, avec ou
+  sans tuile : en monde ouvert, l'image ne porte que deux tronçons de route) et **« passants préchauffage »** avec
+  « osm 0 ». Ce sont les préchauffages du plan PI2, où tous les MultiMesh d'une foule sont dessinés dans la même
+  image, et le premier tronçon OSM. Ils sont corrigés ailleurs : spectateurs et passants un MultiMesh par image
+  (AC5, #985), tronçons OSM (AC2, #953). Aucune des deux PR n'était dans la tête du banc.
+- Deux défauts de la première version, corrigés : (1) une tuile seulement cachée compilait encore ses pipelines
+  dans l'image de sa création (0,9 à 2,1 s) ; (2) chaque doublure nouvelle relançait l'attente de toutes les autres,
+  si bien que la première doublure n'a été dessinée que 13 s après la première tuile (DB1 medium, t = 26,5 s puis
+  39,8 s).
+
 ## 3. Spécification
 
 | # | Règle |
 | --- | --- |
 | AC6-1 | `shader_warm.gd` : `keys_of(objet)` donne un couple par surface (MeshInstance3D ou MultiMeshInstance3D, format des sommets, shader, ombres). Deux ShaderMaterial du même shader (un matériau dupliqué par tuile) donnent la même clé. |
-| AC6-2 | `hold(objets)` : si un couple n'a jamais été dessiné, les objets sont cachés et une **doublure** est créée cachée par couple nouveau (même maillage et matériaux, une instance pour un MultiMesh, mêmes ombres, sans plage de visibilité). |
-| AC6-3 | `step(caméra)` : deux images d'attente après une création (pipelines de surface en fond), puis une doublure dessinée par image, minuscule (échelle 0,001), 2 m devant la caméra. Les objets réapparaissent avec leur visibilité d'avant quand tous leurs couples sont dessinés. Chaque doublure est notée dans la sonde (étape « shaders doublure N »). |
+| AC6-2 | `hold(objets)` : si un couple n'a jamais été dessiné, les objets sont **retirés de la scène** (leur parent est gardé), et une **doublure** est préparée hors de la scène par couple nouveau (même maillage et matériaux, une instance pour un MultiMesh, mêmes ombres, sans plage de visibilité). |
+| AC6-3 | `step(caméra)` : chaque image, au plus une doublure entre dans la scène, cachée (étape « shaders entrée N »), et au plus une autre, entrée deux images plus tôt, est dessinée, minuscule (échelle 0,001), 2 m devant la caméra (étape « shaders doublure N »). L'attente de chaque doublure lui est propre : des tuiles nouvelles à chaque image ne retardent pas les autres. Les objets reviennent sous leur parent quand tous leurs couples sont dessinés (parent disparu : objet libéré). `world_streamer._free_instance` accepte une tuile hors de la scène. |
 | AC6-4 | `world_streamer.integrate` passe à `hold` chaque tuile ou tronçon créé et les MultiMesh de ses arbres (`tree_renderer.tile_nodes`). `pending()` s'ajoute à `pending_count()` : le départ attend la fin (start_wait_model, PI2-4). |
-| AC6-5 | En séance (`session_state` RUNNING, `main.gd`) : `set_active(false)` rend tout visible et rien n'est plus caché (une tuile retardée pourrait se voir). Les couples jetés sont repris au chargement suivant. |
-| AC6-6 | Garde-fou : sans caméra, tout redevient visible après 3 600 images. Réglage de test `shader_warm` (défaut vrai) pour couper le lot. |
-| AC6-7 | Hors lot : tronçons OSM (AC2, #953), forêts lointaines (préchauffées par PI2), image du chargement lui-même (13 s à froid : écran de chargement, ciel, portiques), arbres « ombre seule ». |
+| AC6-5 | En séance (`session_state` RUNNING, `main.gd`) : `set_active(false)` remet tout dans la scène et plus rien n'est retiré (une tuile retardée pourrait se voir). Les couples jetés sont repris au chargement suivant. |
+| AC6-6 | Garde-fou : sans caméra, tout revient dans la scène après 3 600 images. Réglage de test `shader_warm` (défaut vrai) pour couper le lot. |
+| AC6-7 | Hors lot : spectateurs et passants (AC5, #985), tronçons OSM (AC2, #953), cyclistes du décor (« cyclistes affichage », AC4), forêts lointaines (préchauffées par PI2), image du chargement lui-même (13 s à froid : écran de chargement, ciel, portiques), arbres « ombre seule ». |
 
 ## 4. Fichiers
 
@@ -47,10 +60,11 @@ Banc du correctif (12 MultiMesh d'arbres + 12 maillages, ombres, caches vidés) 
 ## 5. Critères d'acceptation
 
 - Tests unitaires `test_shader_warm` et suite de l'engine verts en CI.
-- Recette PC (shaders froids, `--shaders froid`) : DB1 low, medium, high et monde ouvert ea1_lac medium : plus
-  d'image de plus de 1,5 s portant « tuile near » ou « arbres near » avant le premier mètre ; étapes « shaders
-  doublure » visibles dans saccades.csv ; départ pas plus tardif de plus de 2 s qu'avant. Shaders chauds : pas de
-  différence de départ notable.
+- Recette PC (shaders froids, `--shaders froid`), **avec #953 et #985** dans la pile (sans elles, les images des
+  foules et du premier tronçon OSM restent) : DB1 low, medium, high et monde ouvert ea1_lac medium. Avant le
+  premier mètre, plus aucune image de plus de 1,5 s portant « tuile near » ou « arbres near ». Les étapes
+  « shaders entrée » et « shaders doublure » se suivent dès la première tuile. Le départ n'arrive pas plus de 2 s
+  plus tard qu'avant. À shaders chauds, pas de différence notable au départ.
 
 ## 6. Livraison
 

@@ -13,14 +13,20 @@ extends Node3D
 ## - dessinés un par image, ces pipelines spécialisés ne coûtent plus qu'une image de 30 à 400 ms chacun, et le
 ##   premier vrai dessin ne compile plus rien.
 ##
-## Ce nœud applique ce remède aux tuiles du monde tant que la séance n'est pas partie (`active`) : la tuile (et
-## ses arbres) que `world_streamer.gd` vient de créer reste cachée si un de ses couples (format de sommets,
-## shader) n'a jamais été dessiné. Pour chaque couple nouveau, une doublure minuscule (même maillage, même
-## matériau, mêmes ombres) est créée cachée, puis montrée devant la caméra une à la fois, une image chacune.
-## La tuile réapparaît quand tous ses couples ont été dessinés. Le départ attend la fin (`pending`, compté
-## dans `world_streamer.pending_count`), l'écran de chargement ou le menu restent animés entre deux images.
-## Shaders déjà en cache : chaque doublure coûte une image ordinaire, la tuile réapparaît quelques images plus
-## tard, sous le menu. En séance, rien n'est caché (une tuile retardée pourrait se voir apparaître).
+## Banc PC du 25 novembre (GTX 1060, tête 3061cc09) : une tuile seulement cachée compile encore ses pipelines
+## dans l'image de sa création, et une doublure créée réinitialisait l'attente de toutes les autres (première
+## doublure dessinée 13 s après la première tuile). D'où la forme actuelle :
+##
+## Tant que la séance n'est pas partie (`active`), la tuile (et ses arbres) que `world_streamer.gd` vient de créer
+## est RETIRÉE de la scène si un de ses couples (format de sommets, shader, ombres) n'a jamais été dessiné. Pour
+## chaque couple nouveau, une doublure minuscule (même maillage, même matériau, mêmes ombres) est préparée hors de
+## la scène. Chaque image, au plus une doublure entre dans la scène, cachée, et au plus une autre, entrée deux
+## images plus tôt, est dessinée devant la caméra. La tuile revient dans la scène quand tous ses couples ont été
+## dessinés. Le départ attend la fin (`pending`, compté dans `world_streamer.pending_count`), l'écran de chargement
+## ou le menu restent animés entre deux images. Shaders déjà en cache : une image ordinaire par doublure. En
+## séance, rien n'est retiré (une tuile retardée pourrait se voir apparaître).
+## Hors de ce nœud : préchauffage des spectateurs et des passants un MultiMesh par image (AC5, #985), tronçons OSM
+## (AC2, #953) ; sans eux, leurs images de 5 à 6 s restent au départ à froid (banc du 25 novembre).
 ## Pas de class_name : charger par preload("res://scripts/shader_warm.gd").
 
 const PerfProbe := preload("res://scripts/perf_probe.gd")
@@ -28,7 +34,7 @@ const PerfProbe := preload("res://scripts/perf_probe.gd")
 ## Distance de la doublure devant la caméra (m) et échelle : dans le champ, plus petite qu'un pixel.
 const WARM_DIST_M := 2.0
 const PROXY_SCALE := 0.001
-## Images d'attente après la création de doublures cachées : leurs pipelines de surface se compilent en fond.
+## Images entre l'entrée d'une doublure cachée dans la scène (pipelines de surface) et son premier dessin.
 const SETTLE_FRAMES := 2
 ## Images où chaque doublure est dessinée.
 const SHOW_FRAMES := 1
@@ -39,12 +45,13 @@ const MAX_HOLD_FRAMES := 3600
 var active := true
 ## Couples déjà vus : clé -> vrai (dessiné) ou faux (doublure en file).
 var _known: Dictionary = {}
-## Doublures en attente : [{key, node}] ; la première est montrée.
+## Doublures en attente : [{key, node, ready}] ; ready : image où elle peut être dessinée (-1 : pas encore entrée
+## dans la scène). Dessinées dans l'ordre.
 var _queue: Array = []
 var _current: Dictionary = {}
 var _current_left := 0
-var _settle := 0
-## Nœuds cachés en attente de leurs couples : [{nodes: [[GeometryInstance3D, visible d'avant]], keys: Array}].
+var _frame := 0
+## Objets retirés de la scène en attente de leurs couples : [{nodes: [[GeometryInstance3D, parent]], keys: Array}].
 var _held: Array = []
 var _hold_frames := 0
 ## Doublures dessinées depuis le lancement (journal et tests).
@@ -102,8 +109,10 @@ static func material_key(mat: Material) -> String:
 	return k
 
 
-## Objets que le monde vient de créer (une tuile et ses arbres). Ceux dont un couple n'a jamais été dessiné
-## restent cachés jusqu'au passage de leurs doublures. Renvoie vrai si quelque chose est caché.
+## Objets que le monde vient de créer (une tuile et ses arbres). Ceux dont un couple n'a jamais été dessiné sont
+## retirés de la scène jusqu'au passage de leurs doublures : hors de la scène, ils ne compilent rien (banc PC du
+## 25 novembre : simplement cachés, ils compilaient encore leurs pipelines dans l'image de leur création).
+## Renvoie vrai si quelque chose est retiré.
 func hold(nodes: Array) -> bool:
 	if not active:
 		return false
@@ -114,22 +123,23 @@ func hold(nodes: Array) -> bool:
 		for k in keys_of(n):
 			if not _known.has(k):
 				_known[k] = false
-				_queue.append({"key": k, "node": _make_proxy(n)})
-				_settle = SETTLE_FRAMES
+				_queue.append({"key": k, "node": _make_proxy(n), "ready": -1})
 			if not bool(_known[k]) and not waiting.has(k):
 				waiting.append(k)
 	if waiting.is_empty():
 		return false
 	var held_nodes: Array = []
 	for n in nodes:
-		if is_instance_valid(n) and n is GeometryInstance3D:
-			held_nodes.append([n, (n as Node3D).visible])
-			(n as Node3D).visible = false
+		if is_instance_valid(n) and n is GeometryInstance3D and (n as Node).get_parent() != null:
+			var parent: Node = (n as Node).get_parent()
+			parent.remove_child(n)
+			held_nodes.append([n, parent])
 	_held.append({"nodes": held_nodes, "keys": waiting})
 	return true
 
 
-## Doublure cachée : même maillage et matériaux, une seule instance pour un MultiMesh, sans plage de visibilité.
+## Doublure (pas encore dans la scène) : même maillage et matériaux, une instance pour un MultiMesh, sans plage
+## de visibilité.
 func _make_proxy(n: GeometryInstance3D) -> GeometryInstance3D:
 	var p: GeometryInstance3D
 	if n is MultiMeshInstance3D:
@@ -164,12 +174,14 @@ func _make_proxy(n: GeometryInstance3D) -> GeometryInstance3D:
 	p.transparency = n.transparency
 	p.visible = false
 	p.name = "doublure"
-	add_child(p, true)   # nom lisible : doublure, doublure2…
 	return p
 
 
-## Une image (appelée par `_process`, ou par les tests avec la caméra voulue).
+## Une image (appelée par `_process`, ou par les tests avec la caméra voulue). Au plus une doublure entre dans la
+## scène, cachée (ses pipelines de surface), et au plus une autre, entrée SETTLE_FRAMES images plus tôt, est
+## dessinée (ses pipelines spécialisés) : chaque image ne compile que les pipelines d'un ou deux shaders.
 func step(camera: Node3D) -> void:
+	_frame += 1
 	if _held.is_empty() and _queue.is_empty() and _current.is_empty():
 		_hold_frames = 0
 		return
@@ -184,21 +196,25 @@ func step(camera: Node3D) -> void:
 		_current_left -= 1
 		if _current_left > 0:
 			_place(_current["node"], camera)
-			return
-		_finish_current()
-	if _settle > 0:
-		_settle -= 1
-		return
-	if _queue.is_empty():
-		return
-	var t0 := Time.get_ticks_usec()
-	_current = _queue.pop_front()
-	_current_left = SHOW_FRAMES
-	var p: Node3D = _current["node"]
-	p.visible = true
-	_place(p, camera)
-	shown += 1
-	PerfProbe.mark("shaders", "doublure %d" % shown, (Time.get_ticks_usec() - t0) / 1000.0)
+		else:
+			_finish_current()
+	if _current.is_empty() and not _queue.is_empty() and int(_queue[0]["ready"]) >= 0 \
+			and _frame >= int(_queue[0]["ready"]):
+		var t0 := Time.get_ticks_usec()
+		_current = _queue.pop_front()
+		_current_left = SHOW_FRAMES
+		var p: Node3D = _current["node"]
+		p.visible = true
+		_place(p, camera)
+		shown += 1
+		PerfProbe.mark("shaders", "doublure %d" % shown, (Time.get_ticks_usec() - t0) / 1000.0)
+	for q in _queue:
+		if int(q["ready"]) < 0:
+			var t1 := Time.get_ticks_usec()
+			add_child(q["node"], true)   # nom lisible : doublure, doublure2…
+			q["ready"] = _frame + SETTLE_FRAMES
+			PerfProbe.mark("shaders", "entrée %d" % (shown + 1), (Time.get_ticks_usec() - t1) / 1000.0)
+			break
 
 
 func _place(p: Node3D, camera: Node3D) -> void:
@@ -209,16 +225,23 @@ func _place(p: Node3D, camera: Node3D) -> void:
 
 func _finish_current() -> void:
 	_known[_current["key"]] = true
-	var p: Node = _current["node"]
-	if is_instance_valid(p):
-		p.queue_free()
+	_free_proxy(_current["node"])
 	_current = {}
 	_release_ready()
 	if _held.is_empty() and _queue.is_empty():
 		print("Préchauffage des shaders du monde : %d doublures dessinées (à %d ms)" % [shown, Time.get_ticks_msec()])
 
 
-## Rend visibles les objets dont tous les couples ont été dessinés.
+func _free_proxy(p) -> void:
+	if not is_instance_valid(p):
+		return
+	if (p as Node).is_inside_tree():
+		(p as Node).queue_free()
+	else:
+		(p as Node).free()
+
+
+## Remet dans la scène les objets dont tous les couples ont été dessinés.
 func _release_ready() -> void:
 	var still: Array = []
 	for h in _held:
@@ -234,13 +257,28 @@ func _release_ready() -> void:
 	_held = still
 
 
+## Chaque objet retourne sous son parent ; un objet dont le parent a disparu est libéré.
 func _show(h: Dictionary) -> void:
 	for pair in h["nodes"]:
-		if is_instance_valid(pair[0]):
-			(pair[0] as Node3D).visible = bool(pair[1])
+		var n = pair[0]
+		if not is_instance_valid(n) or (n as Node).get_parent() != null:
+			continue
+		if is_instance_valid(pair[1]):
+			(pair[1] as Node).add_child(n)
+		else:
+			(n as Node).free()
 
 
-## Tout ce qui attend redevient visible, les doublures restantes sont jetées (séance partie, garde-fou).
+## Vrai si l'objet est retiré de la scène en attendant ses doublures (world_streamer.gd, tree_renderer.gd).
+func is_held(n: Node) -> bool:
+	for h in _held:
+		for pair in h["nodes"]:
+			if pair[0] == n:
+				return true
+	return false
+
+
+## Tout ce qui attend retourne dans la scène, les doublures restantes sont jetées (séance partie, garde-fou).
 ## Leurs couples ne sont pas comptés comme dessinés : un prochain chargement les reprendra.
 func release_all() -> void:
 	for h in _held:
@@ -251,10 +289,8 @@ func release_all() -> void:
 		_current = {}
 	for q in _queue:
 		_known.erase(q["key"])
-		if is_instance_valid(q["node"]):
-			(q["node"] as Node).queue_free()
+		_free_proxy(q["node"])
 	_queue.clear()
-	_settle = 0
 	_hold_frames = 0
 
 
@@ -266,10 +302,17 @@ func set_active(on: bool) -> void:
 		release_all()
 
 
-## Objets cachés et doublures en attente : le départ attend zéro.
+## Objets retirés et doublures en attente : le départ attend zéro.
 func pending() -> int:
 	return _held.size() + _queue.size() + (0 if _current.is_empty() else 1)
 
 
 func _process(_delta: float) -> void:
 	step(get_viewport().get_camera_3d() if is_inside_tree() else null)
+
+
+func _exit_tree() -> void:
+	for q in _queue:   # doublures jamais entrées dans la scène : libérées avec ce nœud
+		if is_instance_valid(q["node"]) and not (q["node"] as Node).is_inside_tree():
+			(q["node"] as Node).free()
+	_queue.clear()
