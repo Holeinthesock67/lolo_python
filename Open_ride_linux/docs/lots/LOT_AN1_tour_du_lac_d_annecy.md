@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| « Tour du lac d'Annecy » (boucle d'environ 41 km depuis Sevrier, lac, villages et ponts dessinés) dans un pack « Tours célèbres » livré à côté des Cols : couches choisies par pack (`layers` du `pack.toml`), paquet et écran Contenus à plusieurs packs | Python + Bash | PK1, EA1, EA4 | Moyenne | **En PR le 20 novembre** |
+| « Tour du lac d'Annecy » (boucle de 38 km depuis Sevrier, lac, villages et ponts dessinés) dans un pack « Tours célèbres » livré à côté des Cols : couches choisies par pack (`layers` du `pack.toml`), paquet et écran Contenus à plusieurs packs | Python + Bash | PK1, EA1, EA4 | Moyenne | **En PR le 20 novembre** |
 
 ## 1. Objectif
 
@@ -15,7 +15,7 @@ Le parcours compilé ne dépend pas du générateur du monde ouvert : #936 (sol)
 
 | # | Règle |
 | --- | --- |
-| AN1-1 | **Recette** `route_packs/tours_celebres/tour_du_lac_d_annecy.toml` : boucle dans le sens des aiguilles d'une montre (lac à droite), départ et arrivée à Sevrier, par Annecy, Veyrier-du-Lac, Menthon-Saint-Bernard, Talloires, le Bout-du-Lac et Duingt ; premier point = dernier point, le compilateur en fait une boucle (`type loop`). Référence 41 km et 330 m de dénivelé, **à confirmer au premier build** (le refus donne les valeurs mesurées). |
+| AN1-1 | **Recette** `route_packs/tours_celebres/tour_du_lac_d_annecy.toml` : boucle dans le sens des aiguilles d'une montre (lac à droite), départ et arrivée à Sevrier, par Annecy, Veyrier-du-Lac, Menthon-Saint-Bernard, Talloires, le Bout-du-Lac et Duingt ; premier point = dernier point, le compilateur en fait une boucle (`type loop`). Référence 38,1 km et 265 m de dénivelé (mesurés le 25 novembre sur les réponses Overpass du banc du 24 novembre, MNT Copernicus ; point haut 556 m au-dessus de Talloires). Le point du Bout-du-Lac est sur la D 1508 (route d'Annecy) : au centre du hameau, il tombait sur une voie privée isolée, sans chemin vers Talloires ni Duingt (refus du banc du 24 novembre). |
 | AN1-2 | **Couches par pack** : clé facultative `layers` du `pack.toml` (noms de `constants.WORLD_LAYERS`, `route` obligatoire), contrôlée à l'installation du pack. `build` sans `--layers` prend les couches du pack de la trace, sinon celles par défaut ; `build-all` aussi, donc la construction par le réseau (Contenus sans paquet) dessine le lac comme le paquet. « Tours célèbres » : route, terrain, biome, segments, eau, maisons, végétation, routes, ponts. Les Cols gardent les couches par défaut. |
 | AN1-3 | **Paquet à plusieurs packs** : `scripts/build_pack_base.sh` construit tous les packs de `route_packs/` (variable `PACKS` pour en choisir), chacun dans `paquet/packs/<pack>/` ; `ONLY` saute un pack sans aucun des parcours demandés. `pack_bundle.load_all()` lit tous les packs du paquet. |
 | AN1-4 | **Contenus** : une ligne par pack de base (`routes:<pack>`, table `contents.BASE_PACKS` pour les mots du menu), installée depuis le paquet ou construite par le réseau ; les contenus de départ installent tous les packs du paquet (« 21 cols célèbres, 1 tour célèbre »). |
@@ -36,7 +36,7 @@ Aucun changement d'IPC : le message `contents` porte une ligne de plus (même fo
 
 Depuis `~/Games/lolo_python/Open_ride_linux`, branche du lot, `HOME` réel non touché (le script travaille dans un dossier temporaire et n'écrit que dans `paquet/`).
 
-1. **Construction** : `PACKS=tours_celebres scripts/build_pack_base.sh 2>&1 | tee <sortie>/construction.log`. Si la recette est refusée (« longueur X m au lieu de 41000 » ou « dénivelé Y m au lieu de 330 »), noter X et Y dans le compte rendu : la référence est corrigée dans la PR, puis on relance. Attendu : code 0, poids du pack (estimé 15 à 30 Mo).
+1. **Construction** : `PACKS=tours_celebres scripts/build_pack_base.sh 2>&1 | tee <sortie>/construction.log`. Si la recette est refusée (« longueur X m au lieu de 38100 » ou « dénivelé Y m au lieu de 265 »), noter X et Y dans le compte rendu : la référence est corrigée dans la PR, puis on relance. Attendu : code 0, poids du pack (estimé 15 à 30 Mo).
 2. **Contrôle** : `core/.venv/bin/python -m openride_core.pack_bundle verify paquet/packs/tours_celebres` puis `info`.
 3. **Sol sur la route** : `python3 scripts/controle_sol_route.py --out <sortie>/sol paquet/packs/tours_celebres/routes/tour-du-lac-d-annecy.world` (si présent sur main, #936).
 4. **Banc perf** low / medium / high (budgets GPU 8 / 13 / 16 ms, pire image < 100 ms), départ (Sevrier), Annecy (≈ 6 km) et Talloires (≈ 20 km) : `python3 engine/tests/sim_bench.py --world paquet/packs/tours_celebres/routes/tour-du-lac-d-annecy.world --quality <q> --probe --at-m <0, 6000, 20000>`.

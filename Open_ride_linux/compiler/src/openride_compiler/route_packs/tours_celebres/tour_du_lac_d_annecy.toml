@@ -1,14 +1,14 @@
 # Boucle du lac d'Annecy dans le sens des aiguilles d'une montre (lac à droite), départ et arrivée à Sevrier :
 # Annecy, Veyrier-du-Lac, Menthon-Saint-Bernard, Talloires, le Bout-du-Lac, Duingt. Points de passage publics
-# (centres des villages), le plus court chemin permis les relie. Référence à confirmer au premier build sur le PC
-# (le refus donne la longueur et le dénivelé mesurés).
+# (centres des villages ; au Bout-du-Lac, la D 1508 : le centre du hameau tombe sur une voie privée isolée), le plus
+# court chemin permis les relie. Référence mesurée le 25 novembre (Overpass du 24 novembre, MNT Copernicus).
 name = "Tour du lac d'Annecy"
 description = "Boucle du lac d'Annecy depuis Sevrier, lac à droite : Annecy, Veyrier, Menthon, Talloires, le Bout-du-Lac et Duingt."
 region = "Lac d'Annecy, Haute-Savoie"
 country = "France"
 side = "depuis Sevrier"
 waypoints = [[45.8645, 6.1400], [45.9020, 6.1340], [45.8830, 6.1720], [45.8590, 6.1950], [45.8410, 6.2120],
-             [45.7905, 6.2185], [45.8270, 6.2010], [45.8645, 6.1400]]
-ref_length_m = 41000
-ref_gain_m = 330
+             [45.7899, 6.2173], [45.8270, 6.2010], [45.8645, 6.1400]]
+ref_length_m = 38100
+ref_gain_m = 265
 tags = ["lac", "boucle", "classique"]
