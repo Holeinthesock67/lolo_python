@@ -211,7 +211,13 @@ var ride_mode := ""
 var erg_active := false
 ## Zoom de la mini-carte du monde ouvert (lot W24), texte de MinimapModel.ZOOM_TEXTS ; vide hors monde ouvert :
 ## pas de ligne « Zoom de la carte » à la pause. main.gd le pose à chaque trame et relit le choix enregistré.
-var minimap_zoom := ""
+## Le changer recalcule les lignes de la pause (sans cela, la ligne n'apparaissait jamais : banc PC du 25/11).
+var minimap_zoom := "":
+	set(value):
+		if value == minimap_zoom:
+			return
+		minimap_zoom = value
+		_refresh_pause_rows()
 var erg_target_w := 0
 var cadence_target_rpm := 0
 ## Dernier objet `devices` reçu (une trame sur 30 le porte, contrat §3) : gardé jusqu'au suivant.

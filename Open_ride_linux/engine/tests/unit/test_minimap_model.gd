@@ -7,6 +7,7 @@ extends SceneTree
 const Model := preload("res://scripts/minimap_model.gd")
 const MinimapView := preload("res://scripts/minimap_view.gd")
 const RouteData := preload("res://scripts/route_data.gd")
+const MenuFlow := preload("res://scripts/menu_flow.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 
 const LAT0 := 45.0
@@ -154,6 +155,26 @@ func _init() -> void:
 	svm.step(1)
 	_check(SettingsViewModel.row("minimap_zoom", it, svm.editing)["detail"] == "◀ 3 km ▶", "+ : 3 km, écrit entre les flèches")
 	_check(svm.commit() == {"action": "set_minimap_zoom", "zoom": "3 km"}, "A long : zoom enregistré")
+
+	# Ligne de la pause : main.gd pose menu_flow.minimap_zoom pendant la séance, la ligne doit apparaître
+	# sans autre changement de la pause (banc PC du 25/11 : elle restait absente).
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "RUNNING", "mode": "SIM", "erg": null, "difficulty_pct": 50})
+	f.on_state({"session_state": "PAUSED", "mode": "SIM", "erg": null, "difficulty_pct": 50})
+	var ids: Array = f.state()["items"].map(func(x): return x["id"])
+	_check(not ids.has("minimap_zoom"), "hors monde ouvert : pas de ligne de zoom")
+	f.minimap_zoom = "1,2 km"
+	ids = f.state()["items"].map(func(x): return x["id"])
+	_check(ids.has("minimap_zoom"), "monde ouvert : ligne « Zoom de la carte » à la pause (%s)" % str(ids))
+	f.minimap_zoom = ""
+	ids = f.state()["items"].map(func(x): return x["id"])
+	_check(not ids.has("minimap_zoom"), "fin du monde ouvert : ligne retirée")
+	f.minimap_zoom = "1,2 km"
+	f.on_state({"session_state": "RUNNING", "mode": "SIM", "erg": null, "difficulty_pct": 50})
+	f.on_state({"session_state": "PAUSED", "mode": "SIM", "erg": null, "difficulty_pct": 50})
+	ids = f.state()["items"].map(func(x): return x["id"])
+	_check(ids.has("minimap_zoom"), "ligne gardée à la pause suivante")
 
 	# Panneau : place suffisante ou non
 	var view = MinimapView.new()
