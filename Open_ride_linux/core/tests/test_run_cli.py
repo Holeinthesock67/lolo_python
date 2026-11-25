@@ -14,8 +14,9 @@ from openride_core.input_providers import NullProvider
 from openride_core.ipc_server import IpcServer
 from openride_core.mock_driver import MockDriver
 from openride_core.session import AutostartError, CoreSession
+from openride_core.workout import BUILTIN_WORKOUTS_DIR
 
-WORKOUTS_SRC = Path(__file__).resolve().parents[1] / "workouts"
+WORKOUTS_SRC = BUILTIN_WORKOUTS_DIR
 
 
 @pytest.fixture

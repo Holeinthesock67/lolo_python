@@ -231,6 +231,19 @@ Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1 ──► Y13 ;  Y1, X
 
 **Recette.** Le propriétaire (ou Claude) relit la demande, relance les tests, vérifie les critères et fait les essais réels. Un critère non tenu renvoie le lot.
 
+**Section « Recette PC » et catégorie (décision du propriétaire du 20 novembre, file PC par paquets).** Toute PR qui passe par la file du PC a, dans sa description et dans son cahier, une section `## Recette PC` dont la première ligne donne sa catégorie :
+- `Catégorie : rendu` : la PR touche l'image (shaders, modèles, décor, biomes, terrain, eau, végétation, caméra, HUD dessiné) ; banc en low, high et medium (règle des trois qualités, budgets GPU 8, 13 et 16 ms) ;
+- `Catégorie : logique` : la PR ne change rien à l'image (menu, gel du jeu, liste des parcours, réglages, IPC sans rendu, core, outils) ; une fumée et medium seulement.
+En cas de doute, ou sans ligne lisible, la PR est classée rendu. La section liste ensuite les contrôles sans GPU à faire en cloud (vitrine sans affichage, contrôle du sol sous la route, contacts, scénarios), la mesure GPU et la planche à faire sur le PC, et dit si la PR change `WORLDGEN_VERSION`, `SCHEMA_VERSION` ou la révision IPC (deux PR qui en changent une même ne vont jamais dans le même paquet). `python3 scripts/file_bancs.py categorie CORPS.md` lit la catégorie comme le fera la file. Exemple :
+
+```
+## Recette PC
+Catégorie : logique
+- Cloud : menu_bench --scenario sessions (sans GPU)
+- PC : fumée + medium ; planche du menu
+- Versions : aucune (WORLDGEN_VERSION, SCHEMA_VERSION et révision IPC inchangés)
+```
+
 ## 4. Modèle de message pour confier un lot
 
 ```text
@@ -242,6 +255,10 @@ puis ouvre une pull request avec la liste des critères d'acceptation cochés et
 Si un contrat te semble faux ou incomplet, arrête-toi et pose la question au lieu d'improviser.
 ```
 
+## 4 bis. Notes de changement : un fichier par lot (22 novembre)
+
+Une PR n'écrit plus dans `CHANGELOG.md` ni dans `docs/SUIVI_AVANCEMENT.md` : elle ajoute un seul fichier, `docs/changements/<LOT>.md`, avec ses lignes pour le CHANGELOG et le suivi (forme dans [docs/changements/README.md](../changements/README.md)). La passe de doc les recopie et les retire. Raison : ces deux fichiers étaient touchés par presque toutes les PR, si bien que chaque fusion créait un conflit dans toutes les autres (audit de cohérence et de qualité du 22 novembre, constat P3). Le cahier du lot garde son statut et sa section « Livraison ».
+
 ## 5. Partage des lots par issues GitHub
 
 Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M`, `série N`, `série O`, `série P`, `série Q`, `série R`, `série S` ou `série X`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
@@ -252,3 +269,24 @@ Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issu
 4. Le propriétaire fusionne ; l'IA ne fusionne pas.
 
 Un nouveau lot reçoit son issue au moment où son cahier est ajouté à `docs/lots/`.
+
+## 6. Séries en cours (22 novembre)
+
+État au 22 novembre 2026 (`main` 4386eef5). Ce tableau ne liste que les séries encore ouvertes ; le statut de chaque lot reste dans son cahier (§1). Révisions IPC : une PR prend la révision qui suit celle de `main` **au moment de sa fusion** (règle du 22 novembre, §6.1 de la [spécification générale](../SPECIFICATION_GENERALE.md#61-révisions-du-contrat-ipc) et §8 d'`ipc_v1.md`) ; le numéro noté ci-dessous est celui écrit dans la branche. Règle du propriétaire du 21 novembre : un lot n'est lancé qu'une fois fusionnées les PR dont il dépend, et l'installeur J9 vient en tout dernier.
+
+| Série | Sujet | En PR | Pas encore codés | Livrés depuis le 21 novembre | Abandonnés |
+| --- | --- | --- | --- | --- | --- |
+| RT | Retours et consignes communs à tous les modes | RT1 (#959), RT4 refus expliqués (#990, sur #959) | RT2 (fin de course commune, après #958 et #959) | — | RT3 (bots lisibles, 21 novembre) |
+| NI | Éléments inutiles retirés des menus, réglages et HUD | NI1 (#963), NI3 un seul réglage de difficulté (#988), NI4 menus (#974) | — | NI2 (#962) | — |
+| R (bots) | Effort, intensité, réserve et gestes des bots | RW réserve des bots (#967), R5 gestes de base (#969), R4 rivaux reconnaissables (#986) | — | Effort en watts et cote Elo (#941, IPC 1.22), R1 intensité du jour (#982) | R2 (plafond des jours faciles), R3 (fondu dans RT3) |
+| R (Cyber-Rogue) | Suite du mode Cyber-Rogue | R27 sans voile en high (#965) | — | R24 (#933), R25 (#956), R26 (#960, IPC 1.28) | — |
+| Modes | Course classique, Grand Prix, élimination | GPL1 (#942, écrit 1.24), GPO1 (#957, écrit 1.25), EL1 (#958, écrit 1.26), GPH1 (#952), fin de séance commune (#944) | — | Mode « Course » CR1 (#939, IPC 1.23) | — |
+| PP | Courbe de puissance par profil | Pile PP1 (#971) → PP2 (#973) → PP3 (#975, IPC 1.29) → PP4 (#976) → PP5 (#977) → PP7 (#978) → PP8 (#979) → PP7b (#980) | PP6 | — | — |
+| CH | Ligue d'hiver (mode championnat), plan [PLAN_SERIE_CH.md](../6.0/PLAN_SERIE_CH.md) | Pile CH1 (#972) → CH2 (#987) → CH3a (#989, IPC 1.30) | CH4 (écrans), CH5 | CH0, cahier (#968) | — |
+| RZ | Remise à zéro des statistiques d'un profil | RZ1 (#991, IPC 1.31) | — | — | — |
+| AC | À-coups de l'image | AC1 et AC2 (#953), AC3b (#964), AC4 (#981), AC5 (#985) | — | — | — |
+| EA | Eau du monde ouvert, plan [PLAN_SERIE_EA.md](../6.0/PLAN_SERIE_EA.md) | EA5 tunnels (#940) | — | — (EA1 à EA4 livrés) | — |
+| Monde ouvert et sol | Sol, relief et décor | Garde-fou d'altitude (#961), ponts au relief ×2,5 (#984), décor du monde ouvert (#947), démonstrations longues DL1 (#945), Tour du lac d'Annecy AN1 (#943) | — | Règle unique sol / route (#946) | — |
+| J9 | Installeur AppImage, notice et bilan final | — | J9a, J9b, J9c ([LOT_J9_installeur_fichier_unique.md](LOT_J9_installeur_fichier_unique.md)), puis le bilan | — | — |
+
+Autres PR ouvertes hors séries : essais physiques (#955), paysages U25-p2 (#931). Livrées hors séries depuis le 21 novembre : éoliennes EO1 (#951), toits des bâtiments (#954).

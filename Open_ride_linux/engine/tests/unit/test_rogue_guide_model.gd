@@ -48,7 +48,7 @@ func _run() -> void:
 	_check(o["next_lines"][0] == "Prochaine étape : relique à choisir dans 1:20", "prochaine étape : relique dans 1:20")
 	_check(o["next_lines"][1].begins_with("Puis : salle 1/9 · Diesel"), "puis : première salle Diesel")
 	_check(o["consigne"]["big"] == "55–65 % FTP" and o["consigne"]["ok"], "consigne 55–65 %, tenue à 58 %")
-	_check(o["fw"].is_empty() and o["hint"].begins_with("Roule souple"), "échauffement : pas de Firewall, consigne d'attente")
+	_check(o["fw"].is_empty() and o["hint"].begins_with("Tiens la consigne"), "échauffement : pas de Firewall, consigne qui charge l'adrénaline (R26)")
 	o = g.compute(st, _rogue({"phase": "WARMUP", "loot_stage": "card", "target_pct": {"lo": 55, "hi": 65}}), 58.0, [])
 	_check(o["hint"].begins_with("Relique") and o["keys"][1][0] == "A long", "relique : A long pour la prendre")
 
@@ -63,7 +63,7 @@ func _run() -> void:
 	# Salle : titre, distance restante, Firewall en secondes et ses couleurs.
 	o = g.compute(st, _rogue(), 92.0, [])
 	_check(o["title"] == "Salle 3/9 · Puncheur" and o["title_right"] == "620 m restants", "salle : titre et 620 m restants")
-	_check(o["fw"]["text"] == "12 s d'avance" and o["fw"]["level"] == "ok" and o["fw"]["sub"] == "Garde ≥ 95 % FTP", "Firewall à 12 s : vert")
+	_check(o["fw"]["text"] == "12 s d'avance" and o["fw"]["level"] == "ok" and o["fw"]["sub"] == "Garde ≥ 95 % FTP · tu es à 92 %", "Firewall à 12 s : vert, écart en direct (R26)")
 	o = g.compute(st, _rogue({"firewall_gap_s": 7.0}), 92.0, [])
 	_check(o["fw"]["level"] == "warn" and o["fw"]["sub"].begins_with("Accélère"), "Firewall à 7 s : orange, accélère")
 	o = g.compute(st, _rogue({"firewall_gap_m": 0.0, "firewall_gap_s": 0.0}), 92.0, [])
@@ -95,7 +95,7 @@ func _run() -> void:
 	g.compute(st, _rogue({"shift_miss": {"reason": "wrong_way", "dt_s": 0.1}}), 92.0, ["shift_missed"])
 	_check(g.take_toasts()[0]["title"] == "Mauvais sens", "arche : mauvais sens")
 	g.compute(st, _rogue(), 92.0, ["perfect_shift"])
-	_check(g.take_toasts()[0]["title"] == "PERFECT SHIFT +10", "Perfect Shift réussi")
+	_check(g.take_toasts()[0]["title"] == "CHANGEMENT PARFAIT +10", "changement parfait réussi")
 	g.compute(st, _rogue(), 92.0, [])
 	_check(g.take_toasts().is_empty(), "sans événement : aucun retour")
 	for reason in ["adrenaline", "overheat", "no_target", "no_charge", "no_roc_charge", "no_surge", "no_hack", "cursed", "recovery", "gold"]:
@@ -177,5 +177,21 @@ func _run() -> void:
 	_check(absf(p0.origin.y - (-p0.origin.z * 0.05 + 4.0 - SideDecor.PYLON_H * 0.5)) < 0.01, "pylônes posés sur le relief du ruban")
 	_check(absf(absf(p0.origin.x) - SideDecor.PYLON_X) < 0.001, "pylônes à %.1f m de l'axe" % SideDecor.PYLON_X)
 
+	_check_r26()
 	print("test_rogue_guide_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Lot R26 : écart en direct à la consigne, plage jugée par le core, adrénaline à l'échauffement.
+func _check_r26() -> void:
+	_check(GuideModel.live_gap(80.0, 80, null, 250.0, true) == "tu es à 200 W ✔", "dans la plage : ✔")
+	_check(GuideModel.live_gap(70.0, 80, null, 250.0, false) == "tu es à 175 W (−25 W)", "sous la consigne : écart en watts")
+	_check(GuideModel.live_gap(78.0, 80, null, 250.0, true) == "tu es à 195 W ✔", "tolérance du core : encore dans la plage")
+	_check(GuideModel.live_gap(90.0, 70, 80, 250.0, false) == "tu es à 225 W (+25 W)", "au-dessus du plafond : écart positif")
+	var g = GuideModel.new()
+	var rogue := {"phase": "WARMUP", "adrenaline": 30.0, "target_pct": {"lo": 55, "hi": 65}, "in_target": true,
+		"adrenaline_trend": {"rate_per_s": 0.5, "cause": "gain", "overheat_in_s": null}, "events": []}
+	var out: Dictionary = g.compute({"type": "state"}, rogue, 50.0, [])
+	_check(out["consigne"]["ok"], "échauffement : plage jugée par le core (in_target)")
+	_check(out["hint"].contains("adrénaline se charge"), "échauffement : la consigne charge l'adrénaline")
+	_check(out["adr_trend"] != "", "échauffement : tendance de l'adrénaline affichée")

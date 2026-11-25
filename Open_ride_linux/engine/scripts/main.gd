@@ -5,6 +5,7 @@ extends Node3D
 # Chargement explicite : sans passer par l'éditeur, Godot ne connaît pas encore les class_name.
 const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const WarmupPlan := preload("res://scripts/warmup_plan.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -38,6 +39,9 @@ const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
 const GpView := preload("res://scripts/grandprix/gp_view.gd")
 const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
 const TrackView := preload("res://scripts/track/track_view.gd")
+## Retours et consignes communs à tous les modes (lot RT1).
+const FeedbackModel := preload("res://scripts/feedback_model.gd")
+const FeedbackView := preload("res://scripts/feedback_view.gd")
 const GpScene := preload("res://scripts/grandprix/gp_scene.gd")
 const GpSoundModel := preload("res://scripts/grandprix/gp_sound_model.gd")
 const GpItems := preload("res://scripts/grandprix/gp_items.gd")
@@ -47,12 +51,8 @@ const LiveCue := preload("res://scripts/live_cue.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
-const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
 const StartWaitModel := preload("res://scripts/start_wait_model.gd")
 const StartScreen := preload("res://scripts/start_screen.gd")
-const DraftGauge := preload("res://scripts/draft_gauge.gd")
-const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot AS6, traffic.py du core)
-const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7, road_cyclists.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const BikeLights := preload("res://scripts/bike_lights.gd")
@@ -79,6 +79,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const PhotoMomentsModel := preload("res://scripts/photo_moments_model.gd")
 const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
@@ -130,6 +131,9 @@ var junction_view = null
 var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
+## Préchauffage unique (lot PI2) : une étape par image, dès le chargement du parcours.
+var _warmup = WarmupPlan.new()
+var _wtf_warm_queued := false
 var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
 var _quit_code := 0
 var _test_cam_last_us := 0
@@ -157,6 +161,8 @@ var gp_hud = GpHudModel.new()
 var gp_view = null
 var track_hud = TrackHudModel.new()
 var track_view = null
+var feedback = FeedbackModel.new()
+var feedback_view = null
 ## Grand Prix des objets en 3D (lot GP7) : boîtes, objets, effets sur les coureurs, onomatopées ; et ses sons.
 var gp_scene = null
 var gp_sounds = GpSoundModel.new()
@@ -234,16 +240,16 @@ var _live_cue = LiveCue.new()
 ## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd), plein écran sur une couche
 ## au-dessus du HUD, qui est caché pendant un menu (lot « présentation des menus »).
 var menu_flow = MenuFlow.new()
+## Touche simulée tenue (_test_key, lot ML2) : messages de test en attente de son relâchement, durée demandée par touche.
+var _test_key_held := false
+var _test_queue: Array = []
+var _test_hold_s := {}
 ## Clavier = Click (lot O17) : touche et durée d'appui vers événement du Click.
 var key_map = KeyMap.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
 var bots_model = BotsViewModel.new()
 var bots_view: Node3D
-## Jauge d'abri au-dessus du bot qui abrite le cycliste (réglage `render.draft_gauge`, coupée par défaut).
-var draft_gauge: Node3D
-var _draft_gauge_on := false
 var _bots_frame := -10             # dernière image où _process a placé les bots (s lissé de la caméra)
-var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bot` de la dernière trame en séance
 ## Avatar du cycliste (lot V6) : modèle sans nœud (pédalier, danseuse) et vue ; caché en vue subjective, la
 ## seule caméra du jeu avant le lot V12. `_avatar_cam` : caméra de contrôle du banc visuel (« follow »,
 ## « side » ou « » sans), qui montre l'avatar sans changer la caméra du jeu.
@@ -281,6 +287,8 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+## Photos automatiques à l'arrivée et aux records (photo_moments_model.gd, réglage `render.auto_photos`).
+var photo_moments = PhotoMomentsModel.new()
 var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
 var _beep_until_s := -INF
 ## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
@@ -380,8 +388,6 @@ func _ready() -> void:
 	bots_view = BotsView.new()
 	bots_view.set_quality(_quality_name)
 	add_child(bots_view)
-	draft_gauge = DraftGauge.new()
-	add_child(draft_gauge)
 	avatar_view = AvatarView.new()
 	add_child(avatar_view)
 	bike_lights = BikeLights.new()
@@ -427,13 +433,20 @@ func _ready() -> void:
 		if segment_hud.on_result(msg, Time.get_ticks_msec() / 1000.0):
 			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
 			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?"))
-			_play_event(event_sounds.on_segment_result(msg)))
+			_play_event(event_sounds.on_segment_result(msg))
+			photo_moments.on_segment_result(msg, Time.get_ticks_msec() / 1000.0))
 	ipc.gp_hit_received.connect(func(msg: Dictionary) -> void:
 		if gp_scene != null and gp_scene.on_hit(msg, Time.get_ticks_msec() / 1000.0):
 			ipc.test_log("gp_hit item=%s target=%s" % [msg.get("item", "?"), msg.get("target", "?")])
-			_play_event(GpSoundModel.on_hit(msg)))
+			_play_event(GpSoundModel.on_hit(msg))
+			_play_gp_bot_sound(GpSoundModel.bot_hit(msg), str(msg.get("target", ""))))
+	ipc.gp_event_received.connect(func(msg: Dictionary) -> void:   # révision 1.32 (lot GPO1) : tous les coureurs
+		if gp_scene != null and gp_scene.on_event(msg, Time.get_ticks_msec() / 1000.0):
+			ipc.test_log("gp_event kind=%s item=%s rider=%s" % [msg.get("kind", "?"), msg.get("item", "?"), msg.get("rider", "?")])
+			_play_gp_bot_sound(GpSoundModel.on_event(msg), str(msg.get("rider", ""))))
 	ipc.elimination_received.connect(func(msg: Dictionary) -> void:
-		var jingles: Array = survivor_hud.on_elimination(msg, Time.get_ticks_msec() / 1000.0)
+		var now_s := Time.get_ticks_msec() / 1000.0
+		var jingles: Array = feedback.push_all(survivor_hud.on_elimination(msg, now_s), now_s)   # lot RT1
 		if not jingles.is_empty():
 			print("Élimination : arche %s, %s" % [msg.get("arch", "?"), msg.get("rider", "?")])
 			ipc.test_log("elimination arch=%s rider=%s" % [msg.get("arch", "?"), msg.get("rider", "?")])
@@ -449,7 +462,7 @@ func _ready() -> void:
 	_beep_player.bus = AudioMix.bus(AudioMix.EVENTS)
 	add_child(_beep_player)
 	_beep_player.play()
-	# Le bandeau passe sous le panneau central du HUD (ERG, montée, état) pour ne jamais le recouvrir.
+	# Le bandeau passe sous le panneau central du HUD (montée, problème signalé) pour ne jamais le recouvrir.
 	var center: Control = hud.panel_center
 	var place_banner := func() -> void: banner.offset_top = center.get_global_rect().end.y + banner.MARGIN / 2.0
 	center.resized.connect(place_banner)
@@ -493,11 +506,12 @@ func _ready() -> void:
 	hud.add_child(gp_view)
 	track_view = TrackView.new()
 	hud.add_child(track_view)
+	feedback_view = FeedbackView.new()   # au-dessus des vues des modes (lot RT1)
+	hud.add_child(feedback_view)
 	wtf_scene = WtfScene.new()
 	add_child(wtf_scene)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
-	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
 	menu_layer = CanvasLayer.new()
 	menu_layer.name = "MenuLayer"
 	menu_layer.layer = hud.layer + 1
@@ -561,10 +575,15 @@ func _ready() -> void:
 		menu_flow.on_history_session(msg)
 		_refresh_menu())
 	ipc.collection_received.connect(func(msg: Dictionary) -> void:
-		_run_menu_action(menu_flow.on_collection(msg))
+		_run_menu_action(menu_flow.on_collection(msg)))
+	ipc.league_received.connect(func(msg: Dictionary) -> void:   # ligue d'hiver (lot CH4a)
+		menu_flow.on_league(msg)
 		_refresh_menu())
 	ipc.coach_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_coach(msg)
+		_refresh_menu())
+	ipc.bots_preview_received.connect(func(msg: Dictionary) -> void:   # lot GP-niv : ligne « Bots » de l'écran Prêt
+		menu_flow.on_bots_preview(msg)
 		_refresh_menu())
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
@@ -600,7 +619,7 @@ func _on_settings(msg: Dictionary) -> void:
 	AudioMix.apply_settings(menu_flow.settings.items)
 	fps_counter.measure_kept = _probe.is_open() or load_guard.enabled
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
-	_draft_gauge_on = str(menu_flow.settings.item(DraftGaugeModel.SETTING_KEY).get("value", "off")) == "on"
+	photo_moments.enabled = str(menu_flow.settings.item(PhotoMomentsModel.SETTING_KEY).get("value", "on")) != "off"
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
@@ -671,7 +690,7 @@ func _apply_theme(name: String) -> void:
 	_theme_dict = theme_dict
 	streamer.set_theme(theme_dict, theme_res.get("theme_dir", ""))
 	_apply_sky_params(theme_dict)
-	if route != null and _route_job.is_empty():
+	if _route_loaded_id != "" and _route_job.is_empty():   # monde vidé (run Cyber-Rogue) : rechargé au retour
 		streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le thème
 	print("Thème : ", name)
 
@@ -734,7 +753,9 @@ func _on_input_event(event_name: String) -> void:
 	if not BEEPS.has(event_name):
 		return
 	print("Bip : ", event_name)
+	var t_beep := Time.get_ticks_usec()
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
+	PerfProbe.mark_since("bip", event_name, t_beep)
 	var mark := HudViewModel.dropout_mark_text(event_name, session_state, rogue_host.is_active(), menu_flow.is_visible())
 	if mark == "":
 		mark = HudViewModel.u_turn_press_text(event_name, session_state, menu_flow.is_visible())
@@ -791,7 +812,9 @@ func _menu_event(event_name: String) -> void:
 		return
 	if not menu_flow.is_visible():
 		return
+	var t0 := Time.get_ticks_usec()
 	_run_menu_action(menu_flow.handle(event_name))
+	PerfProbe.mark_since("menu", "appui " + event_name, t0)
 	_refresh_menu()
 
 
@@ -807,6 +830,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_settings()
 			ipc.list_plans()
 			ipc.list_collection()   # ligne « Collection » de l'accueil (lot BC5)
+			ipc.league_status()   # ligne « Ligue d'hiver » de l'accueil (lot CH4a)
 			ipc.coach_command("get_coach", menu_flow.coach.request_args())   # ligne « Séance conseillée » de l'accueil
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
@@ -842,6 +866,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.history_session(str(act["id"]))
 		"list_collection":
 			ipc.list_collection()
+		"league_status":
+			ipc.league_status()
+		"league_new":
+			ipc.league_new()
 		"collection_seen":
 			ipc.collection_seen(act.get("keys", []))
 		"list_wtf_rules":
@@ -864,8 +892,6 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
 			ipc.create_workout(act["args"])
-		"create_workout_qwk":
-			ipc.create_workout_qwk(str(act["text"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"set_ride_mode":   # session libre : SIM, ERG ou ERG cadence depuis la pause (lot O18)
@@ -906,12 +932,19 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("list_profiles", {})
 		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
+		"undo_profile_reset":   # lot RZ1 : confirmation exigée aussi par le core
+			ipc.send_command(name, {"id": str(act["id"]), "confirmed": true})
+		"reset_profile_stats":
+			ipc.send_command(name, {"confirmed": true})
 		"clear_trial_profile":   # lot O33
 			ipc.send_command(name, {})
 		"create_profile":
 			ipc.send_command("create_profile", {"name": str(act["name"])})
 		"recover_session":   # séance interrompue d'un lancement précédent (lot O34)
-			ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
+			if bool(act.get("resume", false)):   # lot RC3 : reprendre la séance ou la course
+				ipc.send_command("recover_session", {"id": str(act["id"]), "resume": true})
+			else:
+				ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
 		"rename_profile":
 			ipc.send_command("rename_profile", {"id": str(act["id"]), "name": str(act["name"])})
 
@@ -940,6 +973,7 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
 			ipc.send_command("start_open_world", act["args"])
+			menu_flow.note_launch("start_open_world")   # « Rejouer » de la fin de séance rouvre le globe
 		"set_setting":   # ligne « Biome » de l'écran du cap (lot W17) : même réglage que le menu des réglages
 			ipc.set_setting(str(act["key"]), act["value"])
 
@@ -990,18 +1024,6 @@ func _profile_name_key(event: InputEventKey) -> bool:
 	return true
 
 
-## QWKcode au clavier (lot O21) : la touche écrit au lieu d'agir comme un bouton du Click.
-func _qwk_key(event: InputEventKey) -> bool:
-	var ch := char(event.unicode) if event.unicode > 31 else ""
-	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
-	var res: Dictionary = menu_flow.qwk_key(ch, enter, event.keycode == KEY_BACKSPACE)
-	if not res.get("used", false):
-		return false
-	_run_menu_action(res.get("action", {}))
-	_refresh_menu()
-	return true
-
-
 ## Profil en cours (`hello_ack.config.profile`, lot MJ8) : accueil, titre de la fenêtre, bandeau ESSAI ; la
 ## liste des profils est demandée pour « Qui roule ? ».
 func _apply_profile() -> void:
@@ -1038,7 +1060,7 @@ func _step_start_wait(delta: float) -> void:
 	# Cyber-Rogue : la scène du mode, préchauffée pendant l'attente (lot Y20), tient lieu de décor du départ.
 	var rogue_scene: bool = rogue_host.is_active()
 	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
-			0 if rogue_scene else streamer.pending_count(), delta * 1000.0):
+			_warmup.pending() + (0 if rogue_scene else streamer.pending_count()), delta * 1000.0):
 		print("Décor du départ prêt : %s (à %d ms)" % [_start_wait.route_id, Time.get_ticks_msec()])
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
@@ -1058,6 +1080,10 @@ func _refresh_menu() -> void:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
+	if shown:   # lot GP-niv : effort des bots de la course demandé au core quand la course change
+		var preview := menu_flow.wanted_bots_preview()
+		if not preview.is_empty():
+			ipc.send_command("bots_preview", preview)
 	_sync_hud(_full_screen_menu())
 	_menu_dirty = _menu_dirty or shown
 
@@ -1073,8 +1099,13 @@ func _flush_menu() -> void:
 	if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
 		st["card"]["profile"] = _route_profile["profile"]
 	var t0 := Time.get_ticks_usec()
+	# Photos de la séance qui vient de finir (photo_moments_model.gd) dans l'encart du résultat ; pas dans le
+	# bilan d'une séance de l'Historique. Une autre source de lignes (ligue, CH4) s'ajoute à la suite.
+	menu_view.summary.result_lines = PhotoMomentsModel.photo_lines(photo_moments.photos, photo_moments.folder) \
+		if str(st["screen"]) == "summary" else []
 	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	PerfProbe.mark("menu", "affichage " + str(st["screen"]), ms)
 	_menu_perf["n"] += 1
 	_menu_perf["total_ms"] += ms
 	_menu_perf["max_ms"] = maxf(_menu_perf["max_ms"], ms)
@@ -1089,6 +1120,22 @@ func _play_event(jingle: String) -> void:
 		sound_player.play_event(jingle)
 	print("Jingle : ", jingle)
 	ipc.test_log("event_sound kind=" + jingle)
+
+
+## Son d'un bot du Grand Prix (lot GPO1) : le même que celui du cycliste, plus bas, seulement s'il est proche.
+func _play_gp_bot_sound(jingle: String, rider: String) -> void:
+	if jingle.is_empty() or sound_player == null:
+		return
+	if rider == GpSoundModel.ME:   # parade du cycliste : son plein
+		_play_event(jingle)
+		gp_sounds.me_played(Time.get_ticks_msec() / 1000.0)
+		return
+	var at = bots_view.anchor_of(rider)
+	if not at is Vector3:
+		return
+	if gp_sounds.bot_sound(jingle, (at as Vector3).distance_to(avatar_view.global_position), Time.get_ticks_msec() / 1000.0):
+		sound_player.play_event(jingle, GpSoundModel.BOT_DB)
+		ipc.test_log("event_sound kind=%s rider=%s" % [jingle, rider])
 
 
 func _play_tones(notes: Array, level: float) -> void:
@@ -1121,10 +1168,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			return   # saisie de la recherche du monde ouvert : la touche est une lettre, pas un bouton
 		if menu_flow.is_visible() and _profile_name_key(key):
 			return   # saisie du nom d'un profil (lot MJ8) : lettres, Entrée valide, Retour arrière efface
-		if menu_flow.is_visible() and _qwk_key(key):
-			return   # saisie du QWKcode (lot O21) : caractères, Entrée nouvelle ligne, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
+	if _test_hold_s.has(key.keycode):   # touche simulée (_test_key) : durée demandée, pas celle des images
+		now_s = key_map.pressed_at(key.keycode) + float(_test_hold_s[key.keycode])
 	var ev: String = key_map.release(key.keycode, now_s)
 	if ev == "":
 		return
@@ -1155,6 +1202,8 @@ func _process(delta: float) -> void:
 	if Input.mouse_mode != mouse:
 		Input.mouse_mode = mouse
 	_poll_route_job()
+	if _warmup.step() != "" and _warmup.pending() == 0:
+		print("Préchauffage fini (ms) : %s (à %d ms)" % [_warmup.summary(), Time.get_ticks_msec()])
 	_poll_live_world()
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
@@ -1255,7 +1304,6 @@ func _process(delta: float) -> void:
 			_bots_frame = Engine.get_process_frames()
 			PerfProbe.mark_since("bots", "", t_step)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
-		_show_draft_gauge()
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
 		t_step = Time.get_ticks_usec()
 		segment_markers.update(s_route, _last_state.has("powerup"))
@@ -1435,6 +1483,7 @@ func _request_route(route_id) -> void:
 	_route_id_requested = route_id
 	if route_id == null or str(route_id) == "":
 		return
+	ipc.test_log("route_requested id=%s" % route_id)
 	var path := _route_path(str(route_id))
 	if path == "":
 		var missing := routes_dir.path_join(str(route_id) + ".world")
@@ -1456,6 +1505,33 @@ func _load_route_job(job: Dictionary) -> void:
 	job["ok"] = job["route"].load_world_dir(job["path"])      # un monde vivant (manifeste `live`) est reconnu par le manifeste
 
 
+## Phase du chargement d'un parcours (lot PI1) : durée depuis la phase précédente, étape « chargement » de la sonde
+## (cause nommée d'une saccade) et ligne « Phases du chargement » du journal de l'engine.
+func _load_phase(phases: Dictionary, name: String) -> void:
+	var now := Time.get_ticks_usec()
+	var ms := (now - int(phases["t"])) / 1000.0
+	PerfProbe.mark("chargement", name, ms)
+	(phases["list"] as Array).append("%s %.0f" % [name, ms])
+	phases["t"] = now
+
+
+## Étapes du préchauffage d'un parcours (lot PI2), jouées une par image par warmup_plan.gd : premier dessin des
+## portiques (et du portique d'élimination si le mode est préparé), des spectateurs, des passants et des
+## cyclistes du décor (lots Y21 et AS7), puis des forêts lointaines (lot Y5). Avant, toutes dans la même image.
+func _warmup_steps() -> Array:
+	var steps: Array = [["portiques", func(): segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")]]
+	if living_decor != null:
+		if living_decor.crowd_view != null:
+			steps.append(["spectateurs", func(): living_decor.crowd_view.warm_up(camera)])
+		if living_decor.passersby_view != null:
+			steps.append(["passants", func(): living_decor.passersby_view.warm_up(camera)])
+		if living_decor.cyclists_view != null and int(living_decor.living.get("cyclists", 0)) > 0:
+			steps.append_array(living_decor.cyclists_view.warm_steps(camera))   # un temps par image (lot AC4)
+	if streamer.forest_impostors != null:
+		steps.append(["forets", func(): streamer.forest_impostors.warm_up(camera)])
+	return steps
+
+
 func _poll_route_job() -> void:
 	if _route_job.is_empty() or not BgTasks.done(_route_job["task"]):
 		return
@@ -1467,6 +1543,7 @@ func _poll_route_job() -> void:
 	if not job["ok"]:
 		banner.show_message("route", "Parcours « %s » invalide : %s" % [job["id"], job["route"].load_error])
 		return
+	var phases := {"t": Time.get_ticks_usec(), "list": []}
 	route = job["route"]
 	_route_loaded_id = job["id"]
 	_random_season = ""   # saisons « au hasard » (lot U13b) : nouveau tirage pour ce parcours
@@ -1479,11 +1556,13 @@ func _poll_route_job() -> void:
 	bots_model.loop_length_m = follow.loop_length_m
 	follow.reset()
 	_menu_s = 0.0
+	_load_phase(phases, "debut")
 	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
 	streamer.set_world(route, job["path"])
 	if living_world != null:
 		living_world.set_route(route, float(streamer.get("_road_width_m")))
 		living_world.terrain_material = streamer.get("_terrain_material")
+	_load_phase(phases, "streamer")
 	# Piste du vélodrome (plan VD §7.2, lots VD4 et VD5) : salle couverte à la place du monde ouvert (ni ciel,
 	# météo, herbe, personnages, animaux ni engins du décor de route) ; ambiance de la salle posée par
 	# _apply_sky_params, celle d'avant rendue au parcours suivant.
@@ -1495,21 +1574,23 @@ func _poll_route_job() -> void:
 		else:
 			velodrome_hall.clear()
 			velodrome_hall.restore(world_env.environment, sun)
+	_load_phase(phases, "velodrome")
 	_apply_sky_params(streamer._theme_dict)
+	_load_phase(phases, "ciel")
 	if living_decor != null:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 		living_decor.visible = not track
 	if living_world != null:
 		living_world.visible = not track
+	_load_phase(phases, "decor")
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	gp_scene.set_route(route)
-	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
-	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
-	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
-		living_decor.warm_up(camera)
-	if streamer.forest_impostors != null:   # forêts lointaines (lot Y5) : pipeline compilé avant la première forêt
-		streamer.forest_impostors.warm_up(camera)
+	_load_phase(phases, "portiques_gp")
+	# Préchauffage unique (lot PI2) : une étape par image dès le menu, le départ attend la fin du plan.
+	_warmup.start(_warmup_steps())
+	_wtf_warm_queued = false
+	_load_phase(phases, "prechauffage_plan")
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1521,16 +1602,21 @@ func _poll_route_job() -> void:
 	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
 	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
+	_load_phase(phases, "segments")
 	_refresh_menu()
 	if route.segments_present:
 		print("Segments du parcours : %d" % route.segments.size())
+	_load_phase(phases, "menu")
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
+	_load_phase(phases, "fenetre")
 	banner.clear_message("route")
 	banner.clear_message("cue")
 	if _cues.load_for_route(job["id"]):
 		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
 	elif _cues.load_error != "":
 		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
+	_load_phase(phases, "fin")
+	print("Phases du chargement (ms) : ", ", ".join(PackedStringArray(phases["list"])))
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s) (à %d ms)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"], Time.get_ticks_msec()])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
@@ -1546,6 +1632,9 @@ func _poll_route_job() -> void:
 ## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py) ;
 ## « freeze » fige le décor (vent, nuages, herbe, personnages, animaux) à un instant donné.
 func _on_test_message(msg: Dictionary) -> void:
+	if _test_key_held:   # touche simulée tenue : ce message attend son relâchement (_test_key, lot ML2)
+		_test_queue.append(msg)
+		return
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
@@ -1584,8 +1673,10 @@ func _on_test_message(msg: Dictionary) -> void:
 
 ## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…, ou un caractère seul comme
 ## « @ », dont le code Godot est le code ASCII, lot O21) : appui, puis relâchement `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
-## Les deux événements sont traités tout de suite (flush_buffered_events) et l'attente bloque l'image en cours :
-## la durée mesurée par key_map.gd est celle demandée, même à 1 image/s sous Xvfb.
+## Lot ML2 : l'attente ne bloque plus l'image en cours (OS.delay_usec figeait le fil principal pendant tout l'appui,
+## d'où une image de 150 ms à chaque appui des bancs, rML2 du 17 novembre, absente du jeu). Les images continuent
+## pendant l'appui ; key_map.gd classe le relâchement avec la durée demandée (`_test_hold_s`), même à 1 image/s sous
+## Xvfb ; les messages de test reçus pendant l'appui attendent le relâchement (`_test_queue`), dans l'ordre.
 func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 	var code := OS.find_keycode_from_string(key_name)
 	if code == KEY_NONE and key_name.length() == 1:
@@ -1602,14 +1693,22 @@ func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 		down.unicode = (key_name.to_upper() if shift else key_name.to_lower()).unicode_at(0)
 	elif code == KEY_SPACE:
 		down.unicode = 32
+	_test_key_held = true
 	Input.parse_input_event(down)
 	Input.flush_buffered_events()
-	OS.delay_usec(maxi(hold_ms, 0) * 1000)
+	var release_us := Time.get_ticks_usec() + maxi(hold_ms, 0) * 1000
+	while Time.get_ticks_usec() < release_us:
+		await get_tree().process_frame
 	var up: InputEventKey = down.duplicate()
 	up.pressed = false
+	_test_hold_s[code] = maxi(hold_ms, 0) / 1000.0
 	Input.parse_input_event(up)
 	Input.flush_buffered_events()
+	_test_hold_s.erase(code)
 	ipc.test_log("key done=%s shift=%s hold_ms=%d" % [key_name, shift, hold_ms])
+	_test_key_held = false
+	while not _test_queue.is_empty() and not _test_key_held:   # messages arrivés pendant l'appui, dans l'ordre
+		_on_test_message(_test_queue.pop_front())
 
 
 ## Souris simulée : `kind` click (bouton gauche), right, wheel_up, wheel_down ou move ; sur la rangée de l'élément
@@ -1714,20 +1813,49 @@ func _avatar_info() -> Dictionary:
 	return info
 
 
+## Photo automatique (photo_moments_model.gd) : image déjà rendue (celle du passage de la ligne pour
+## l'arrivée, avant que le bilan ne la couvre), écrite en JPEG en tâche de fond (bg_tasks.gd) sous
+## ~/OpenRide/Captures/<séance>/. Jamais sans écran, ni en mode test (bancs, CI) sauf si `OPENRIDE_CAPTURES_DIR`
+## donne un autre dossier (captures de validation), ni sous un menu plein écran (record).
+func _take_photo(req: Dictionary) -> void:
+	var base := OS.get_environment("OPENRIDE_CAPTURES_DIR")
+	if (ipc.test_mode and base == "") or DisplayServer.get_name() == "headless":
+		return
+	if str(req.get("kind", "")) != PhotoMomentsModel.KIND_FINISH and _full_screen_menu():
+		return
+	var shot_us := Time.get_ticks_usec()
+	var img := get_viewport().get_texture().get_image()
+	_probe.mark_capture((Time.get_ticks_usec() - shot_us) / 1000.0)
+	if img == null or img.is_empty():
+		return
+	var file: String = photo_moments.add_photo(req, Time.get_datetime_dict_from_system())
+	if base == "":
+		base = ThemeLoader._home_dir().path_join(PhotoMomentsModel.BASE_DIR)
+	var dir := base.path_join(photo_moments.folder)
+	BgTasks.add(func() -> void:
+		DirAccess.make_dir_recursive_absolute(dir)
+		var err := img.save_jpg(dir.path_join(file), 0.85)
+		if err != OK:
+			push_warning("Photo automatique non écrite (%s) : erreur %d" % [file, err]), false, "photo automatique")
+	print("Photo automatique : %s/%s" % [photo_moments.folder, file])
+
+
 func _test_screenshot(path: String, tag: String) -> void:
 	# Menu à jour de la dernière commande avant l'image (mise à jour une fois par image depuis le lot ML1) :
 	# sous Xvfb à 1 ou 2 images/s, la capture pouvait montrer l'écran d'avant (« Garage : avatar » au lieu de
 	# « Taille », garage_modif de visual_check.py).
 	_flush_menu()
 	await RenderingServer.frame_post_draw
+	var shot_us := Time.get_ticks_usec()
 	var img := get_viewport().get_texture().get_image()
 	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
-	_probe.mark_capture()   # pic de la lecture et de l'écriture : hors p99 de la sonde (lot X35)
+	# Coût de la lecture et de l'écriture, retiré de l'image par la sonde (lots X35 et PI1).
+	_probe.mark_capture((Time.get_ticks_usec() - shot_us) / 1000.0)
 	var widgets := {}
 	var nodes := {
-		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
-		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
-		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
+		"panel": hud.panel_center, "power": hud.power_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
+		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val,
+		"notice": hud.notice_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
 		"menu_card": menu_view.card, "confirm_card": menu_view.confirm_card, "confirm_question": menu_view._confirm_question, "garage_preview": menu_view.preview, "button_bar": menu_view.button_bar,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
@@ -1740,9 +1868,9 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"power_caption": hud.power_val.get_meta("caption"), "speed_caption": hud.speed_val.get_meta("caption"),
 		"cadence_caption": hud.cadence_val.get_meta("caption"), "hr_caption": hud.hr_val.get_meta("caption"),
 		"grade_caption": hud.grade_val.get_meta("caption"),
-		"target_caption": hud.target_val.get_meta("caption"), "gear": hud.gear_val, "time": hud.time_val,
-		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
-		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label, "draft_w": hud.draft_w_label,
+		"gear": hud.gear_val, "time": hud.time_val,
+		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_direction": hud.wind_dir_label,
+		"draft": hud.draft_label, "draft_w": hud.draft_w_label,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -1769,6 +1897,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"tag": tag, "path": path, "ok": err == OK, "size": [img.get_width(), img.get_height()],
 		"fps": Engine.get_frames_per_second(), "meshes": meshes, "ticks_ms": Time.get_ticks_msec(),
 		"quality": _quality_name,
+		# État de la séance du core (RUNNING, PAUSED…) pour les bancs : plus écrit à l'écran depuis le lot NI1.
+		"session_state": str(_last_state.get("session_state", "")),
 		"menu_clipped": menu_view.clipped_labels() if menu_view.visible else [],
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
@@ -1781,7 +1911,6 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
-		"draft_gauge": draft_gauge.test_info(camera) if draft_gauge != null else {},
 		"start_screen": start_screen.test_info() if start_screen != null else {},
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
@@ -1792,6 +1921,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"grandprix_scene": gp_scene.test_info() if gp_scene != null else {},
 		"survivor_arches": segment_markers.survivor_arches().size() if segment_markers != null else 0,
 		"track": track_view.test_info() if track_view != null else {},
+		"feedback": feedback_view.test_info() if feedback_view != null else {},
 		"scoreboard": velodrome_hall.scoreboard_text() if velodrome_hall != null else "",
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
@@ -1910,14 +2040,11 @@ func _on_garage(items: Array) -> void:
 	_refresh_menu()
 
 
-## `xp_result` de fin de séance (lot V9) : bilan dans le résumé, bandeau « Niveau N ! » une seule fois.
-const LEVEL_UP_S := 6.0
-
-
+## `xp_result` de fin de séance (lot V9) : bilan dans le résumé.
+## Retour d'essai du 22/11 : le bandeau du haut masquait le titre et « Rejouer » ; « Niveau N ! » reste écrit en
+## vert dans le bloc « Progression » du bilan, le bandeau n'est plus affiché sur la fin de séance.
 func _on_xp_result(msg: Dictionary) -> void:
-	var text := menu_flow.on_xp_result(msg)
-	if text != "":
-		banner.show_message("level_up", text, LEVEL_UP_S)
+	menu_flow.on_xp_result(msg)
 	menu_view.summary.animate = _quality_name != "low"
 	_refresh_menu()
 
@@ -1967,6 +2094,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 	menu_flow.menu.set_track_events(ipc.core_config.get("track"))   # écran Prêt du vélodrome (lot VD10)
 	menu_flow.menu.set_mode_routes(ipc.core_config.get("mode_routes"))   # parcours propres aux modes (lot GP13)
+	menu_flow.menu.set_free_route_tag(ipc.core_config.get("free_route_tag"))   # parcours de mode restés libres (lot GPL1)
 	if not menu_flow.routes_raw.is_empty():
 		menu_flow.set_routes(menu_flow.routes_raw)   # table reçue après la liste : parcours des modes recalculés
 	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
@@ -1993,7 +2121,7 @@ func _apply_biome(id: String) -> void:
 	if id == "auto" or BiomeIds.is_biome(id):
 		if _biome_setting != "" and id != _biome_setting and id != streamer.forced_biome:
 			streamer.forced_biome = id
-			if route != null and _route_job.is_empty():
+			if _route_loaded_id != "" and _route_job.is_empty():   # monde vidé (run Cyber-Rogue) : rechargé au retour
 				streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le biome
 			_apply_sky_params(_theme_dict)
 			print("Biome : ", id)
@@ -2137,12 +2265,7 @@ func _on_state_received(state: Dictionary) -> void:
 		banner.show_message("trainer_busy", DevicesViewModel.TRAINER_BUSY_TEXT)
 	else:
 		banner.clear_message("trainer_busy")
-	# Invite de fin de séance (1er novembre) : entraînement fini, la séance continue jusqu'à Y puis A maintenu.
-	var done_text := HudViewModel.workout_done_text(state)
-	if done_text != "" and str(state.get("session_state", "")) == "RUNNING":
-		banner.show_message("workout_done", done_text)
-	else:
-		banner.clear_message("workout_done")
+	# Fin d'un entraînement (1er novembre) : RÉSULTAT et consigne de fin communs (feedback_model.gd, lot RT1).
 	var end_turn := HudViewModel.end_u_turn_text(_dir, state)
 	if end_turn != "":
 		banner.show_message("press", end_turn, PRESS_HINT_S)
@@ -2155,16 +2278,20 @@ func _on_state_received(state: Dictionary) -> void:
 	if waiting:
 		if not _was_start_waiting:
 			start_screen.set_route(_start_route_card(state.get("route_id", null)))
+		start_screen.set_goal(_start_goal(state))   # lot RT2 : objectif écrit avant le départ
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
-		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed():
-			wtf_scene.warm_up(camera)
+		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed() and not _wtf_warm_queued:
+			_wtf_warm_queued = true   # étape du préchauffage unique (lot PI2) : une image à elle, avant le départ
+			_warmup.add("wtf", func(): wtf_scene.warm_up(camera))
 	elif _was_start_waiting and str(state.get("session_state", "")) == "RUNNING":
 		start_screen.show_go()
 	else:
 		start_screen.show_wait(null, 0.0)
 		if str(state.get("session_state", "")) != "RUNNING":   # séance finie ou en pause : pas de feux sur le bilan
 			start_screen.cancel_go()
+	if not waiting:
+		_wtf_warm_queued = false
 	_was_start_waiting = waiting
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
@@ -2202,8 +2329,10 @@ func _on_state_received(state: Dictionary) -> void:
 			if ow_act["action"] == "start":
 				_run_menu_action(ow_act)
 			_refresh_menu()
-	if (route_id == null or str(route_id) == "") and menu_flow.is_visible():
-		route_id = DEMO_ROUTE_ID   # aucun parcours choisi : la démo tourne en fond des menus (lot N6)
+	# Aucun parcours choisi : la démo tourne en fond des menus (lot N6). Pendant une run Cyber-Rogue, pause
+	# comprise, le monde classique reste gelé et vide (lot R-gel) : la pause demandait la démo, construite en
+	# entier sous la scène du mode (images de 140 ms vers 104 s, passes PC r842b et r842c du 12 novembre).
+	route_id = RogueHost.classic_route_id(route_id, menu_flow.is_visible(), rogue_host.is_active(), DEMO_ROUTE_ID)
 	if route_id != _route_id_requested:
 		_request_route(route_id)
 	var running := session_state == "RUNNING"
@@ -2224,8 +2353,6 @@ func _on_state_received(state: Dictionary) -> void:
 	# Keirin (lot VD9) : le derny roule avec les bots (même extrapolation, même dessin), nommé « Derny ».
 	bots_model.push(TrackHudModel.bots_with_pacer(state) if in_session else null, t_frame_us)
 	bots_model.set_race(state if in_session else null)
-	_draft = {"draft": state.get("draft", null) if in_session else null,
-		"draft_bot": state.get("draft_bot", null) if in_session else null}
 
 	_feed_chart(state, running, previous_session_state)
 
@@ -2253,6 +2380,7 @@ func _on_state_received(state: Dictionary) -> void:
 		_update_survivor(state, in_session)
 		_update_grandprix(state, in_session)
 		_update_track(state, in_session)
+		_update_feedback(state)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
@@ -2283,6 +2411,8 @@ func _on_state_received(state: Dictionary) -> void:
 		ipc.request_rogue_resync()
 	if rogue_host.is_active() and not rogue_before:
 		_release_route_world()
+	elif rogue_before and not rogue_host.is_active():
+		ipc.test_log("rogue_scene_left")
 	if menu_view != null:
 		_sync_hud(_full_screen_menu())   # entrée et sortie de la run dans la même trame
 
@@ -2291,6 +2421,8 @@ func _on_state_received(state: Dictionary) -> void:
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
 		_play_event(jingle)
+	for req in photo_moments.on_state(state, float(Time.get_ticks_msec()) / 1000.0):
+		_take_photo(req)
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
 		_play_event(jingle)
 
@@ -2386,6 +2518,7 @@ func _update_grandprix(state: Dictionary, in_session: bool) -> void:
 	var t_step := Time.get_ticks_usec()
 	for snd in gp_sounds.on_state(gp):   # roulette, lancer, sonnette, klaxon (lot GP7)
 		_play_event(snd)
+		gp_sounds.me_played(Time.get_ticks_msec() / 1000.0)
 	gp_view.right_top = hud.free_right_top()
 	gp_view.update_view(gp_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	PerfProbe.mark_since("grand_prix", "", t_step)   # banc : une image lente nomme le mode
@@ -2410,6 +2543,57 @@ func _update_track(state: Dictionary, in_session: bool) -> void:
 		velodrome_hall.set_scoreboard(track_hud.board_text(state))
 	for j in track_hud.sounds(state):
 		_play_event(j)
+
+
+## Retours et consignes communs (lot RT1), à chaque trame : moments des modes (piste, Dernier survivant), départ et
+## fin d'un entraînement, puis bandeau du moment, résultat et zone de consigne. Les éliminations du Dernier survivant
+## arrivent par le message `elimination` (signal de ipc_client.gd).
+func _update_feedback(state: Dictionary) -> void:
+	var now_s := Time.get_ticks_msec() / 1000.0
+	var moments: Array = track_hud.moments(state) + survivor_hud.moments(state)
+	var sounds: Array = feedback.push_all(moments, now_s)
+	sounds += feedback.on_state(state, now_s, _mode_goal(state))
+	for j in sounds:
+		_play_event(j)
+	feedback_view.update_view(feedback.view(state, now_s, _mode_consigne(state)))
+
+
+## Consigne du mode en cours (lot RT1) : épreuve de piste, Dernier survivant, Grand Prix ; {} sinon.
+func _mode_consigne(state: Dictionary) -> Dictionary:
+	if state.get("track", null) is Dictionary:
+		return track_hud.consigne(state)
+	if state.get("survivor", null) is Dictionary:
+		return survivor_hud.consigne(state)
+	if state.get("gp", null) is Dictionary:
+		return gp_hud.consigne(state)
+	return {}
+
+
+## Objectif du mode en une ligne, annoncé au départ (bandeau « ▶ DÉPART », lot RT1) ; "" sans objectif.
+func _mode_goal(state: Dictionary) -> String:
+	if state.get("track", null) is Dictionary:
+		return track_hud.goal(state)
+	if state.get("survivor", null) is Dictionary:
+		return survivor_hud.goal(state)
+	if state.get("gp", null) is Dictionary:
+		return gp_hud.goal(state)
+	return ""
+
+
+## Objectif sur l'écran de départ (lot RT2) : celui du mode quand sa trame est là, sinon d'après le mode choisi
+## au menu ; "" pour une séance libre.
+func _start_goal(state: Dictionary) -> String:
+	var g := _mode_goal(state)
+	if g != "":
+		return g
+	match str(menu_flow.menu.mode):
+		"survivor":
+			return "être le dernier en course"
+		"grandprix", "race":
+			return "finir 1er"
+		"erg":
+			return "aller au bout de l'entraînement"
+	return ""
 
 
 ## Coureurs du Grand Prix pour gp_scene.gd (lot GP7) : le cycliste à sa place affichée `pos`, puis les bots à
@@ -2442,30 +2626,12 @@ func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 		living_decor.bot_places = bots_model.places()
 
 
-## Effets visibles du bonus actif (lot TT6, maquettes validées le 8 novembre) : Aspiration +, pastille et jauge
-## d'abri en violet ; Échappée, avatar du cycliste translucide. Sans bonus (ERG, option coupée), tout revient.
+## Effets visibles du bonus actif (lot TT6, maquettes validées le 8 novembre) : Aspiration +, pastille d'abri en
+## violet (la jauge au-dessus du bot est retirée au lot NI1) ; Échappée, avatar du cycliste translucide. Sans bonus (ERG, option coupée), tout revient.
 func _show_power_up_effects(active_kind: String) -> void:
 	hud.set_draft_boost(active_kind == "draft_plus")
-	if draft_gauge != null:
-		draft_gauge.set_boost(active_kind == "draft_plus")
 	if avatar_view != null:
 		avatar_view.set_breakaway(active_kind == "breakaway")
-
-
-## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste,
-## ou au-dessus du véhicule quand `draft_bot` vaut `veh:<id>` (lot AS6).
-func _show_draft_gauge() -> void:
-	var view := DraftGaugeModel.view(_draft_gauge_on, _draft["draft"], _draft["draft_bot"], _quality_name)
-	var anchor = null
-	if view["visible"]:
-		var who := str(view["bot"])
-		if who.begins_with(VEHICLE_PREFIX):
-			anchor = living_decor.vehicle_anchor(who.substr(VEHICLE_PREFIX.length())) if living_decor != null else null
-		elif who.begins_with(RIDER_PREFIX):
-			anchor = living_decor.cyclist_anchor(who.substr(RIDER_PREFIX.length())) if living_decor != null else null
-		else:
-			anchor = bots_view.anchor_of(who)
-	draft_gauge.update_view(view, anchor)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les

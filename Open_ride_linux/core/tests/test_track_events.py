@@ -297,13 +297,74 @@ def test_tempo_point_per_lap_from_the_fifth():
 
 
 def test_elimination_slowest_out_every_two_laps():
-    ev = build("elimination", {"opponents": 4})
+    ev = build("elimination", {"opponents": 4, "every_laps": 2})
     speeds = {ME: 13.0, "b0": 12.0, "b1": 12.2, "b2": 12.4, "b3": 12.6}
     msgs = run(ev, speeds)
     outs = kinds(msgs, "out")
     assert [m["rider"] for m in outs] == ["b0", "b1", "b2", "b3"]
     assert all(m["reason"] == "eliminated" for m in outs)
     assert ev.finished and ev.summary()["ranking"] == [ME, "b3", "b2", "b1", "b0"] and ev.frame()["laps"] == 8
+
+
+def test_elimination_every_laps_lengthens_the_race():
+    """Essai du 21 novembre : 8 minutes, trop court ; 4 tours entre deux éliminations par défaut."""
+    assert T.check("elimination", {})["every_laps"] == 4
+    speeds = {ME: 13.0, "b0": 12.0, "b1": 12.2, "b2": 12.4, "b3": 12.6}
+    for every in (2, 4, 6):
+        ev = build("elimination", {"opponents": 4, "every_laps": every})
+        msgs = run(ev, speeds)
+        assert [m["rider"] for m in kinds(msgs, "out")] == ["b0", "b1", "b2", "b3"]
+        assert ev.frame()["laps"] == 4 * every and ev.frame()["every_laps"] == every
+        assert ev.elapsed_s == pytest.approx(4 * every * LAP / 13.0, rel=0.05)
+    with pytest.raises(TrackError):
+        T.check("elimination", {"every_laps": 7})
+    with pytest.raises(TrackError):
+        T.Elimination(entrants(4), every_laps=0)
+
+
+def test_omnium_elimination_keeps_two_laps():
+    ev = build("omnium", {"opponents": 4})
+    run(ev, bunch(), until=600.0)
+    assert ev.index >= 2 or ev.sub is not None
+    from openride_core.track.omnium import PROGRAM
+    assert dict((sid, opts) for sid, _, opts in PROGRAM)["elimination"] == {}
+    assert T.Elimination(entrants(4)).every_laps == 2
+
+
+def test_neighbours_time_gaps_ahead_and_behind():
+    """Écart en temps aux coureurs juste devant et juste derrière le cycliste (signé, comme `bots[].gap_s`)."""
+    ev = build("scratch", {"opponents": 3, "laps": 10})
+    pos = {ME: (0.0, 12.0), "b0": (30.0, 12.0), "b1": (-12.0, 12.0), "b2": (60.0, 12.0)}
+    ev.start(0.0, pos)
+    t = 0.0
+    while t < 20.0:
+        t += DT
+        pos = {rid: (x + 12.0 * DT, 12.0) for rid, (x, _) in pos.items()}
+        ev.step(t, pos)
+    f = ev.frame()
+    assert f["ahead"]["id"] == "b0" and f["ahead"]["gap_s"] == pytest.approx(2.5, abs=0.1)
+    assert f["behind"]["id"] == "b1" and f["behind"]["gap_s"] == pytest.approx(-1.0, abs=0.1)
+
+
+def test_neighbours_none_alone_out_or_finished():
+    ev = build("kilo")
+    ev.start(0.0, {ME: (0.0, 0.0)})
+    assert ev.frame()["ahead"] is None and ev.frame()["behind"] is None
+    ev = build("elimination", {"opponents": 3, "every_laps": 2})
+    run(ev, {ME: 11.0, "b0": 12.0, "b1": 12.2, "b2": 12.4})
+    f = ev.frame()
+    assert f["ahead"] is None and f["behind"] is None
+
+
+def test_neighbours_skip_teammates():
+    ev = build("team_pursuit", {"opponents": 1})
+    ev.start(0.0, {rid: (x, 0.0) for rid, x in sides(ev).items()})
+    ev.step(1.0, {rid: (x + 10.0, 10.0) for rid, x in sides(ev).items()})
+    f = ev.frame()
+    mine = ev.riders[ME].team
+    for key in ("ahead", "behind"):
+        if f[key] is not None:
+            assert ev.riders[f[key]["id"]].team != mine
 
 
 def test_elimination_me_out_first():

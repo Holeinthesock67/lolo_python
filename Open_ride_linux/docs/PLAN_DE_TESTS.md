@@ -5,6 +5,7 @@ Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment 
 ## 1. Règles communes
 
 - **Trois lieux d'exécution.** *Cloud* : la CI GitHub (`.github/workflows/openride.yml`) passe chaque PR et chaque envoi sur `main` ; c'est elle qui dit si une PR est verte. *PC cible* : tout ce qui demande la GTX 1060, le Bluetooth réel ou une fenêtre (`--native`), dans l'ordre de la file des mesures du PC (un seul usage à la fois, étapes de 10 minutes au plus, `config.toml` sauvegardé puis restauré). *Vélo* : le ressenti et le matériel, par étapes de 10 minutes au plus, précédées du pré-vol (§4.2).
+- **Forme de la CI (22 novembre, audit P1).** Sur chaque PR et chaque fusion : analyse statique (ruff, si fusionnée), tests du core et du compilateur en Python 3.14 répartis en **3 parties** sur 3 machines (`OPENRIDE_TESTS_PARTIE=K/3`, fichiers de test répartis par durée mesurée dans `scripts/durees_tests.json`, réécrit par `python3 scripts/durees_tests.py` à partir des rapports JUnit ; le job « python (3.14) » réunit les parties), job engine (tests sans écran, bout en bout, banc du Cyber-Rogue) et banc des menus en **3 parties** (`menu_bench.py --rotation --partie K/3`). Compilation par Python 3.11 partout. Le lundi et sur demande seulement : colonne Python 3.11 complète, couverture du code (résumé du run et rapport HTML, sans seuil) et audit des dépendances. Une partie se rejoue seule en local : `OPENRIDE_TESTS_PARTIE=2/3 pytest -q`.
 - **Une suite à la fois.** pytest, `scripts/recette_pc.py`, `scripts/pre_vol.py`, `sim_bench.py`, `menu_bench.py` et `e2e_check.py` prennent le même verrou ; une deuxième suite attend la première, pour ne pas fausser les mesures.
 - **Isolation.** Les suites pytest tournent dans un HOME temporaire (`scripts/isolation_tests.py`) ; un test qui écrit hors de son `tmp_path` échoue en nommant le fichier. Les bancs travaillent aussi dans un HOME temporaire et vérifient que le vrai `~/OpenRide` n'a pas bougé.
 - **Aucun seuil de temps en dur** dans un test : il passe par `engine/tests/perf_budgets.json` (budget du PC et seuil de la CI) et `PerfBudget.check` ; `OPENRIDE_PERF=strict` fait échouer un dépassement.
@@ -90,6 +91,8 @@ Une panne vue sur le vélo se rejoue : `python -m openride_core.tools.log_scenar
 
 Vrai core sur trainer `mock` et vrai engine, HOME temporaire. Attendu : `hello_ack` en moins de 3 s ; au moins 25 trames `state` par seconde ; `input_event` relayé (bip) ; engine arrêté puis `PAUSED (engine_lost)` en moins de 3 s ; braquet de 12 à 13 ; même longueur de parcours vue par le core et l'engine ; `FINISHED` avec un bilan conforme au schéma ; FIT écrit ; aucune erreur Godot, core sorti avec le code 0, vrai HOME inchangé, moins de 60 s au total.
 
+**Sur l'engine exporté (lot EX2, essai E1 du cadrage J9) :** `scripts/export_engine.sh` construit le binaire « release » de Godot et `openride.pck` dans `build/engine/` (préréglage `engine/export_presets.cfg`), puis `python3 engine/tests/e2e_check.py --exported build/engine/openride.x86_64` rejoue les mêmes vérifications sans `--path`. Job CI « Export de l'engine » (`.github/workflows/openride-export.yml`) sur les PR qui touchent `engine/` ou `core/`. Un fichier lu à l'exécution mais absent des filtres d'export le fait échouer. Cloud et CI ; la performance du binaire exporté se mesure au PC seulement.
+
 ### 3.7 Tests graphiques
 
 - **Scène principale** : `engine/tests/run_visual_tests.sh [--native]` lance `visual_check.py` face au faux core : captures du HUD, bandeau, menus, bilans (`bilan_complet`, `bilan_complet_detaille`), ERG (cible longue, palier de 50 W), contrôles de lisibilité (chiffres d'au moins 28 px ramenés à 1080 lignes, contraste 4,5:1 pour les valeurs et 3:1 pour les libellés) et de débordement (panneaux dans l'écran, sans chevauchement, textes dans leur colonne). Rapport dans `~/OpenRide/visual_tests/`.
@@ -145,6 +148,7 @@ Séance complète sur Bluetooth simulé dans la vraie scène, captures réguliè
 | `dernier_survivant_onze` | Dernier survivant à 11 adversaires (lot DS8) sur `demo_long` (12 km) : départ groupé des 12 coureurs, pire cas GPU en low, medium et high ; course complète à 11 du core dans `core/tests/test_survivor_courses.py` |
 | `grand_prix` | Grand Prix des objets (GP7, GP8) : 4 bots, chaos fou, captures avant chaque rangée de boîtes et après chaque Z ; banc GPU en low, medium et high |
 | `grand_prix_onze` | Grand Prix des objets à 11 adversaires (lot GP10) : départ groupé des 12 coureurs, pire cas GPU en low, medium et high ; course complète à 11 du core dans `core/tests/test_grandprix_session.py` |
+| `course_onze` | Course classique contre les bots à 11 adversaires (lot CR1) : départ groupé des 12 coureurs, classement complet au HUD, pire cas GPU en low, medium et high ; courses complètes du core dans `core/tests/test_race_mode.py` |
 
 Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot ni exception du core, journal et FIT écrits, fin de séance, vrai HOME inchangé, qualité appliquée égale à la demande.
 
@@ -223,6 +227,7 @@ Rien de ce tableau n'est sur `main`. À la fusion, chaque PR met à jour le cata
 - **Budgets de temps des tests :** `engine/tests/perf_budgets.json` (budget du PC, seuil de la CI), remplaçables par machine dans `~/OpenRide/perf_budgets.json`.
 - **Comparer avant et après :** `vitrine_compare.py AVANT APRES` pour les vitrines (captures, comptes et planche), `compare_captures.py AVANT APRES --out ECARTS` pour les captures du banc ; pour les chiffres, `fps.csv` et `sonde.csv` des deux bancs.
 - Toujours vérifier la ligne de qualité appliquée (§3.7) : avant la PR #481, les bancs medium et high mesuraient du `low`.
+- **Matrice de la file du PC (20 novembre) :** une PR de rendu passe low, high et medium ; une PR de logique, une fumée et medium (ligne « Catégorie » de sa section « Recette PC », `docs/lots/00_INDEX.md` §3 ; en cas de doute, rendu). Les PR sans conflit de version passent par paquets de 2 à 4 ; captures sans mesure GPU et contrôles sans GPU en cloud (`scripts/file_bancs.py --lieu cloud`). Une seule référence main par jour.
 
 ## 8. Écrire un test
 

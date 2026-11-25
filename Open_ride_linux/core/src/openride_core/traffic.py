@@ -41,7 +41,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from . import draft
+from . import draft, road_ground
 from .route_mirror import MirroredRoute, flip_s
 
 MASK32 = 0xFFFFFFFF
@@ -88,6 +88,10 @@ LATERAL_MPS = 1.5
 CYCLIST_GAP_M = 0.5
 CYCLIST_LOOK_M = 40.0
 CYCLIST_HALF_LENGTH_M = 0.9
+# Bord extérieur qu'une carrosserie ne dépasse pas : demi-chaussée et accotement (RoadBuilder.ROAD_WIDTH_M / 2,
+# SHOULDER_WIDTH_M) plus VERGE_M d'herbe mordue au plus (traffic_model.gd VERGE_M)
+VERGE_M = 0.25
+ROAD_EDGE_M = road_ground.ROAD_HALF_WIDTH_M + road_ground.SHOULDER_WIDTH_M + VERGE_M
 LANE_FREE_M = 150.0
 HOLD_GAP_M = 5.0
 WHEEL_RADIUS_M = 0.33
@@ -95,7 +99,9 @@ COLORS = 8
 SEED_SALT = 0x7AFF1C
 
 # Sortes (lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd, part des tirages et plage de
-# vitesse (km/h). L'ordre compte (tirage cumulé de `pick_kind`), comme dans traffic_model.gd.
+# vitesse (km/h). L'ordre compte (tirage cumulé de `pick_kind`), comme dans traffic_model.gd. `team_car` (voiture
+# d'équipe du Grand Prix, lot GP-voiture-modele) : part nulle, jamais tirée, seulement placée devant un coureur
+# remorqué (`session._gp_escorts`).
 KINDS: dict[str, dict[str, Any]] = {
     "car_a": {"half_width": 1.03, "length": 4.6, "share": 0.3, "kmh": (50.0, 70.0)},
     "car_b": {"half_width": 1.0, "length": 4.1, "share": 0.25, "kmh": (50.0, 70.0)},
@@ -104,6 +110,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "bus": {"half_width": 1.44, "length": 12.2, "share": 0.04, "kmh": (45.0, 60.0)},
     "moto": {"half_width": 0.41, "length": 2.1, "share": 0.07, "kmh": (55.0, 80.0)},
     "tractor": {"half_width": 1.07, "length": 3.8, "share": 0.15, "kmh": (20.0, 30.0)},
+    "team_car": {"half_width": 1.04, "length": 4.8, "share": 0.0, "kmh": (50.0, 70.0)},
 }
 
 # Lot AS6 : budget fixe (celui du préréglage high), quel que soit le préréglage de l'engine
@@ -125,6 +132,7 @@ DRAFT: dict[str, tuple[float, float]] = {
     "bus": (0.60, 30.0),
     "moto": (0.15, 8.0),
     "tractor": (0.45, 20.0),
+    "team_car": (0.45, 20.0),
 }
 DRAFT_REF_GAP_M = 3.0
 DRAFT_TAIL = 0.02          # abri restant au bout de la portée, coupé à 0 au-delà
@@ -133,6 +141,7 @@ VEHICLE_PREFIX = "veh:"    # `draft_bot` d'un véhicule
 # Aspiration au dépassement
 SUCTION_PEAK: dict[str, float] = {
     "car_a": 0.15, "car_b": 0.15, "van": 0.18, "truck": 0.30, "bus": 0.30, "moto": 0.05, "tractor": 0.12,
+    "team_car": 0.15,
 }
 SUCTION_SIDE_FULL_M = 1.5     # pic entier jusqu'à 1,5 m entre carrosserie et cycliste...
 SUCTION_SIDE_M = 2.5          # ... plus rien au-delà de 2,5 m
@@ -186,13 +195,18 @@ def _move_toward(a: float, b: float, step: float) -> float:
 
 
 def pick_kind(u: float) -> str:
-    """Sorte tirée d'après `u` (0 à 1) et les parts de KINDS, dans l'ordre de la table."""
+    """Sorte tirée d'après `u` (0 à 1) et les parts de KINDS, dans l'ordre de la table ; au-delà de la somme des
+    parts (arrondis), la dernière sorte tirable (part non nulle)."""
     acc = 0.0
+    last = ""
     for k, info in KINDS.items():
+        if info["share"] <= 0.0:
+            continue
+        last = k
         acc += info["share"]
         if u < acc:
             return k
-    return list(KINDS)[-1]
+    return last
 
 
 def pass_zone(kind: str, closing_mps: float) -> tuple[float, float]:
@@ -497,7 +511,10 @@ class Traffic:
             spd = pass_mps
             # engagé derrière le cycliste qu'il suivait (FOLLOW_GAP_M, rapprochement nul), il déboîte d'abord
             target_lat = left if rel >= min(zone[0], -FOLLOW_GAP_M - 1.0) else RIGHT_LANE_M
-            if abs(v.lateral - left) > 0.05 and rel > -FOLLOW_GAP_M:
+            # Pas sur la voie de gauche à temps (ou plus à gauche, pour laisser la place aux bots et aux cyclistes
+            # du décor) : il ne s'approche pas plus du cycliste (revue C5-03, comme traffic_model.gd `minf(left, goal)`)
+            goal = self._clear_of_others(v, left)
+            if abs(v.lateral - min(left, goal)) > 0.05 and rel > -FOLLOW_GAP_M:
                 spd = min(spd, rider_v)
         elif not v.committed:
             if rel >= zone[0] - 40.0:
@@ -536,6 +553,25 @@ class Traffic:
                     self._hold_behind(v, o.s)
                     continue
                 out = o.lateral - room if out < o.lateral else o.lateral + room
+        # Jamais hors de la route (revue C5-02, bloc de traffic_model.gd `_clear_of_others`) : sans la place de passer
+        # sur la chaussée, il attend derrière (ou, en face, devant) le premier qu'il toucherait ; seul un dépassement
+        # déjà engagé à côté d'un cycliste qui s'écarte mord l'herbe
+        edge = ROAD_EDGE_M - v.half_width
+        if abs(out) > edge:
+            clamped = min(max(out, -edge), edge)
+            blocked: list[float] = []
+            for o in self._others:
+                ahead = (o.s - v.s) * v.dir
+                gap = LATERAL_CLEARANCE_M if o.dir == v.dir else CYCLIST_GAP_M
+                if ahead < -half_len or ahead > half_len + CYCLIST_LOOK_M \
+                        or abs(clamped - o.lateral) >= RIDER_HALF_WIDTH_M + gap + v.half_width:
+                    continue
+                if ahead <= half_len and v.dir == 1:
+                    return out
+                blocked.append(o.s)
+            for s_o in blocked:
+                self._hold_behind(v, s_o)
+            out = clamped
         return out
 
     @staticmethod

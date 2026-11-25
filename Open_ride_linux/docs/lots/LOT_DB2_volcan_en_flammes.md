@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Boucle de démonstration de 8 km dans un volcan en éruption : paysage `volcan_actif` (lave, braises, fumées, gerbes, lueur) et parcours `demo-volcan` | GDScript, Python | DB1, O38, U25, P35 | Moyenne | Fait (fusionné le 15 novembre, #879 ; relu par le lot NT1) |
+| Boucle de démonstration de 8 km dans un volcan en éruption : paysage `volcan_actif` (lave, braises, fumées, gerbes, lueur) et parcours `demo-volcan` | GDScript, Python | DB1, O38, U25, P35 | Moyenne | **Livré le 15 novembre** (PR #879, relu par le lot NT1) |
 
 Demande du propriétaire du 13 novembre 2026 à 22 h 29 : « un parcours démo exagéré feu et flammes dans un parcours volcanique ». Plan validé le même soir (carte, « plan complet ») : `/mnt/project-files/plans/PLAN_DEMO_VOLCAN_FLAMMES.md` hors dépôt. Précision à 22 h 31 : « un parcours en boucle si ça ne fait que 8 km ».
 
@@ -72,6 +72,8 @@ La lave au sol (shader seul) est à toutes les qualités. Décor vivant coupé :
 3. Planche validée par le propriétaire avant fusion.
 
 ## Livraison
+
+**Fusionné le 15 novembre 2026 (PR #879).** Les points « Reste » ci-dessous décrivent l'état d'avant la fusion.
 
 - 13 novembre : PR #879 ouverte (partie de la branche de #866, DB1).
 - 14 novembre : pas de neige dans un paysage en feu ; banc r879b : high allégé (800/6/2/6 → 500/4/1/4) après des images lentes.

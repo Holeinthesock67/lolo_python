@@ -48,16 +48,18 @@ from .. import __version__
 from .. import constants as C
 from .. import koppen
 from ..cache import Downloader, Log
-from ..elevation import COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider, copernicus_tile_name
+from ..elevation import (COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider,
+                         check_tile_list, check_tiff, copernicus_tile_name)
 from ..errors import CompileError
 from ..pipeline import sample_positions
 from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts, turnaround_points,
-                           with_turnaround)
+                           with_link, with_turnaround)
 from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
 from ..bridges import BRIDGES_VERSION
 from . import biome_tiles
+from . import session_ground as SG
 from .squares import (FAR_LAKE_SEARCH_M, FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox,
                       zone_frame)
 from .store import WorldCache, read_open_world_config
@@ -225,7 +227,13 @@ class WorldSession:
         self._landcover_queue: queue.Queue[tuple[int, int]] = queue.Queue()
         self._landcover_thread: threading.Thread | None = None
         self.stats = {"squares_generated": 0, "squares_cached": 0, "far_generated": 0, "downloads": 0,
-                      "bad_lines": 0, "biome_tiles": 0}
+                      "bad_lines": 0, "biome_tiles": 0, "sea_squares": 0,
+                      "ground_fits": 0, "ground_over": 0, "ground_short": 0}
+        # Sol des tuiles réglé sur la route engagée (21/11, session_ground.py) : tuiles de la séance, abscisse la
+        # plus loin de la route qui touchait chaque tuile à son dernier réglage, points de la règle en cache
+        self.ground: SG.SessionGround | None = None
+        self.ground_touch: dict[tuple[int, int], float] = {}
+        self._ground_cache: tuple[Any, Any] | None = None
         self._last_evict = -math.inf
         self.data_state = "cached"
 
@@ -353,8 +361,9 @@ class WorldSession:
         if self.session_dir is None:
             stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
             self.session_dir = self.cache.sessions_dir() / f"ow-{stamp}.world"
-        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges"):
+        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges", "coast"):
             (self.session_dir / sub).mkdir(parents=True, exist_ok=True)
+        self.ground = SG.SessionGround(self.session_dir)
 
     def _write_manifest(self) -> None:
         lat, lon = self.frame.to_latlon(np.array([self.e0]), np.array([-self.n0]))
@@ -379,6 +388,7 @@ class WorldSession:
                 "poi": {"present": True, "version": C.POI_VERSION},
                 "water": {"present": True, "version": C.WATER_VERSION},
                 "bridges": {"present": True, "version": BRIDGES_VERSION},   # lot EA4
+                "coast": {"present": True, "version": C.COAST_VERSION},     # lot W23 : mer et plages
                 "biome": biome_tiles.manifest_block(self._biome_sources()),
             },
             "live": True, "origin_kind": "utm_grid",
@@ -389,6 +399,19 @@ class WorldSession:
     def _biome_sources(self) -> list[str]:
         sources = [self.landcover.name] if self.landcover is not None else []
         return sources + ["osm", "dem", koppen.SOURCE]
+
+    def _log_coast(self, key: SquareKey) -> None:
+        """Ligne du journal pour un carré avec mer ou côte (W23), lue dans son `meta.json`."""
+        try:
+            meta = json.loads((self.cache.square_dir(key.zone, key.ix, key.i_n) / "meta.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        counts = meta.get("counts", {})
+        sea, lines = int(counts.get("sea", 0)), int(counts.get("coast_lines", 0))
+        if sea or lines:
+            self.stats["sea_squares"] += 1
+            self.log(f"carré {key.ix}_{key.i_n} : mer ({sea} aire(s)), {lines} tronçon(s) de côte, "
+                     f"{int(counts.get('beaches', 0))} plage(s)")
 
     def _biome(self, key: SquareKey) -> None:
         """Tuile de biome du carré ou de la tuile lointaine (W17) ; une erreur laisse le biome par défaut."""
@@ -497,6 +520,8 @@ class WorldSession:
             lat, lon = self.frame.to_latlon(np.array([far[0]]), np.array([far[1]]))
             if relief_has(self.provider, float(lat[0]), float(lon[0])):   # hors ligne au bord du relief : sur place
                 p = with_turnaround(p, prev, self.provider, self.frame)
+        if self.legs:          # arête courte fondue dans un nœud, rond-point : raccord au lieu d'un saut
+            p = with_link(self.legs[-1].profile, p)
         self.legs.append(Leg(edge_id, forward, to_node, p, self.length_m))
 
     def _extend(self) -> bool:
@@ -609,6 +634,7 @@ class WorldSession:
         """Parties de route, carrefours, puis `live.json` ; enfin le message `revision`."""
         self.rev += 1
         route = self._route_columns()
+        self._refit_ground(route, changed_from_part * SG.TILE_M)
         parts = split_parts(route)
         for k in range(changed_from_part, len(parts)):
             _write_json(self.session_dir / "route" / f"part_{k}.json", parts[k])
@@ -636,6 +662,89 @@ class WorldSession:
             "version": "1.0", "revision": self.rev,
             "route": {"parts": parts, "length_m": round(self.length_m, 2), "changed_from_part": changed_from_part},
             "tiles": {"near": near, "far": far}, "layer_tiles": near, "status": state})
+
+    # --- sol des tuiles sur la route engagée (21/11, session_ground.py) ---------------------------
+
+    def _ground_points(self, route: dict[str, Any] | None = None):
+        """Points de la règle sol / route de toute la route engagée (une tuile se règle de nouveau à partir de la tuile
+        du carré : la route déjà roulée qui la traverse compte aussi), mis en cache tant que la route ne change pas."""
+        sig = (tuple((leg.key, round(leg.s0, 3)) for leg in self.legs), round(self.length_m, 3))
+        if self._ground_cache is not None and self._ground_cache[0] == sig:
+            return self._ground_cache[1][:2]
+        cut = route if route is not None else self._route_columns()
+        pts = SG.route_corridor(cut, SG.route_spans(self.legs, self.graph.edges if self.graph else {}))
+        self._ground_cache = (sig, (cut, pts, SG.touched_tiles(pts)))
+        return cut, pts
+
+    def _fit_ground(self, todo: set[tuple[int, int]], route: dict[str, Any] | None = None) -> None:
+        if self.ground is None or not self.legs or not todo:
+            return
+        cut, (upper, lower) = self._ground_points(route)
+        touched = self._ground_cache[1][2]
+        # tuile que la route ne touche pas et jamais réglée : le lien vers le carré suffit
+        todo = {k for k in todo
+                if k in touched or (self.ground.path(k).is_file() and not self.ground.path(k).is_symlink())}
+        if not todo:
+            return
+        # Voisines encore modifiables dont le bord commun est dans le couloir de la route réglées avec : un bord figé
+        # sous la route empêcherait de tenir les deux bornes. Un seul rang (pas toute la route de proche en proche :
+        # chaque carré arrivé reprenait toutes les tuiles de la balade) ; les autres bords sont ceux de tuiles déjà
+        # réglées sur cette route.
+        x, z = (np.asarray(cut[k], dtype=float) for k in ("x", "z"))
+        m = SG.REACH_M + C.ROAD_HALF_WIDTH_M + 10.0
+
+        def box(k):
+            ix, iz = k
+            return ((x >= ix * SG.TILE_M - m) & (x <= (ix + 1) * SG.TILE_M + m)
+                    & (z >= iz * SG.TILE_M - m) & (z <= (iz + 1) * SG.TILE_M + m))
+
+        extra = set()
+        for k in todo:
+            ink = box(k)
+            if not ink.any():
+                continue
+            for dx in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    n = (k[0] + dx, k[1] + dz)
+                    if (n not in todo and n in touched and n in self.ground.sources
+                            and (ink & box(n)).any()):
+                        extra.add(n)
+        todo |= extra
+        res = self.ground.fit(todo, upper, lower)
+        x, z, s = (np.asarray(cut[k], dtype=float) for k in ("x", "z", "s"))
+        for k in todo:
+            ix, iz = k
+            m = SG.REACH_M + 10.0
+            near = ((x >= ix * SG.TILE_M - m) & (x <= (ix + 1) * SG.TILE_M + m)
+                    & (z >= iz * SG.TILE_M - m) & (z <= (iz + 1) * SG.TILE_M + m))
+            self.ground_touch[k] = float(s[near].max()) if near.any() else -math.inf
+        chk = res                 # contrôle du réglage lui-même (tous les points des tuiles), sans relire les tuiles
+        self.stats["ground_fits"] += res["tiles"]
+        self.stats["ground_over"] += chk["over"]
+        self.stats["ground_short"] += chk["short"]
+        if chk["over"] or chk["short"]:
+            self.log(f"sol / route : {chk['over']} point(s) de sol sur la chaussée (au plus {chk['over_max_m']} m), "
+                     f"{chk['short']} pied(s) de talus sans appui (au plus {chk['short_max_m']} m) dans "
+                     f"{sorted(todo)}")
+
+    def _refit_ground(self, route: dict[str, Any], s_change: float) -> None:
+        """Route engagée changée à partir de `s_change` : tuiles qu'elle touchait ou touche après ce point, réglées de
+        nouveau tout de suite, même près du cycliste (22/11) : l'engine refait une tuile proche déjà affichée dont le
+        fichier change (`world_streamer.gd`, empreinte du fichier lu). Attendre que le cycliste s'éloigne laissait le
+        sol de l'ancienne route sous la nouvelle (banc du lac d'Annecy : talus sans appui jusqu'à 3,2 m)."""
+        if self.ground is None or not self.ground.sources:
+            return
+        cut, _ = self._ground_points(route)
+        x, z, s = (np.asarray(cut[k], dtype=float) for k in ("x", "z", "s"))
+        sel = s >= s_change - REWRITE_BACK_M
+        todo = {k for k, smax in self.ground_touch.items() if smax >= s_change - REWRITE_BACK_M}
+        m = SG.REACH_M
+        for k in self.ground.sources:
+            ix, iz = k
+            if np.any(sel & (x >= ix * SG.TILE_M - m) & (x <= (ix + 1) * SG.TILE_M + m)
+                      & (z >= iz * SG.TILE_M - m) & (z <= (iz + 1) * SG.TILE_M + m)):
+                todo.add(k)
+        self._fit_ground(todo, route)
 
     # --- progression et choix -------------------------------------------------------------------
 
@@ -747,9 +856,14 @@ class WorldSession:
                 self.failed.add(key)
                 return True
             self.stats["squares_cached" if had else "squares_generated"] += 1
+            self._log_coast(key)
             self._biome(key)
             ix, iz = key.ix - int(self.e0) // 1000, int(self.n0) // 1000 - key.i_n - 1
             self.cache.link_square(self.session_dir, self.zone, self.e0, self.n0, ix, iz)
+            src = self.cache.square_dir(key.zone, key.ix, key.i_n) / "near.f32"
+            if self.ground is not None and src.is_file():
+                self.ground.add((ix, iz), src)
+                self._fit_ground({(ix, iz)})      # avant que l'engine ne voie la tuile
             self.ready.add(key)
             self.dirty_tiles = True
             return True
@@ -857,9 +971,10 @@ class WorldSession:
         name = copernicus_tile_name(la, lo)
         dl = Downloader(log=self.log)
         try:
-            listing = dl.fetch(f"{prov.base_url}/tileList.txt", prov.dir / "tileList.txt", "liste des tuiles")
+            listing = dl.fetch(f"{prov.base_url}/tileList.txt", prov.dir / "tileList.txt", "liste des tuiles",
+                               validate=check_tile_list)
             if name in listing.read_text():
-                dl.fetch(f"{prov.base_url}/{name}/{name}.tif", prov.tile_path(la, lo), name)
+                dl.fetch(f"{prov.base_url}/{name}/{name}.tif", prov.tile_path(la, lo), name, validate=check_tiff)
                 self.stats["downloads"] += 1
         except Exception as exc:  # noqa: BLE001 - réessayé au prochain passage
             self.log(f"relief {name} non téléchargé : {exc}")
@@ -891,6 +1006,8 @@ class WorldSession:
         self.log(f"bilan : carrés générés {self.stats['squares_generated']}, repris du cache "
                  f"{self.stats['squares_cached']}, tuiles lointaines générées {self.stats['far_generated']}, "
                  f"téléchargements {downloads}, lignes illisibles {self.stats['bad_lines']}, "
+                 f"tuiles réglées sur la route {self.stats['ground_fits']} (sol sur la chaussée "
+                 f"{self.stats['ground_over']}, talus sans appui {self.stats['ground_short']}), "
                  f"mémoire max {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024:.0f} Mo")
         self.closed = True
         self.send({"type": "closed"})

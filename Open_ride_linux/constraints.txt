@@ -2,6 +2,7 @@
 # Utilisé par l'intégration continue en Python 3.14 :
 #   pip install -c constraints.txt -e "core[dev]" -e "compiler[dev]"
 bleak==3.0.2
+coverage==7.17.4
 dbus-fast==5.2.0
 fit-tool==0.9.16
 garmin-fit-sdk==21.218.0

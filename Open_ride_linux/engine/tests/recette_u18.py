@@ -67,6 +67,7 @@ PURE_SHARE = 0.9             # une seconde compte pour un biome si sa part y dé
 TEXTURE_LIMIT_MB = 1024.0    # U18 §5.2 : textures du décor sous 1 Go en high
 U18_FPS_MIN, U18_P99_MAX = 55.0, 25.0   # U18 §5.1, en low, sur chaque biome
 PERSONAL = "trace personnelle"
+CODES_FILE = "codes_bancs.json"   # code de retour de chaque passage de sim_bench (O3-03)
 
 
 def default_out() -> Path:
@@ -127,15 +128,31 @@ def cmd_lancer(args: argparse.Namespace) -> int:
     length = route_length(out) or make_biome_world.Plan(make_biome_world.TOUR, False, False).length_m
     tour_s = length / (args.vitesse / 3.6) + 45.0     # départ au pédalage et chargement compris
     t0 = time.time()
+    codes: dict[str, int] = {}
+
+    def one(name: str, world: Path, q: str, duration: float, extra: list[str]) -> None:
+        codes[name] = bench(args, out / name, world, q, duration, extra)
+        (out / CODES_FILE).write_text(json.dumps(codes, indent=1), encoding="utf-8")
+
     for q in args.qualites:
         speed = ["--speed-kmh", f"{args.vitesse:g}"]
-        bench(args, out / q / "tour", tour, q, tour_s, speed + ["--every-m", f"{EVERY_M:g}"])
-        bench(args, out / q / "cote", coast, q, SHORT_S, speed + ["--every", "30"])
+        one(f"{q}/tour", tour, q, tour_s, speed + ["--every-m", f"{EVERY_M:g}"])
+        one(f"{q}/cote", coast, q, SHORT_S, speed + ["--every", "30"])
         if trace is not None:
             for b in FORCED:
-                bench(args, out / q / f"perso_{b}", trace, q, SHORT_S, ["--biome", b, "--every", "30"])
+                one(f"{q}/perso_{b}", trace, q, SHORT_S, ["--biome", b, "--every", "30"])
         print(f"Qualité {q} finie ({(time.time() - t0) / 60:.0f} min)", flush=True)
     return analyse(out)
+
+
+def bench_codes(out: Path) -> dict[str, int] | None:
+    """Codes de retour des passages de sim_bench notés par `lancer` (None si le fichier manque : dossier
+    d'avant O3-03, analysé sur ses seules mesures)."""
+    try:
+        data = json.loads((out / CODES_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return {str(k): int(v) for k, v in data.items() if isinstance(v, int)} if isinstance(data, dict) else None
 
 
 # --- analyse ----------------------------------------------------------------------------------------------
@@ -311,18 +328,26 @@ def analyse(out: Path) -> int:
     def add(ok: bool | None, label: str, detail: str) -> None:
         crit.append({"ok": ok, "critere": label, "mesure": detail})
 
+    # O3-03 : un banc en échec (Godot introuvable, plantage) rend la recette en échec, même avec des mesures ;
+    # « pas de mesure » sur un critère chiffré est un échec, pas une ligne neutre.
+    codes = bench_codes(out)
+    if codes is not None:
+        bad = {k: v for k, v in codes.items() if v != 0}
+        add(not bad, "bancs sim_bench sans erreur",
+            f"{len(codes)} passage(s), tous en code 0" if not bad
+            else "en échec : " + ", ".join(f"{k} (code {v}, voir {k}/sim_bench.txt)" for k, v in sorted(bad.items())))
     low = result["tour"].get("low", {})
     for b in make_biome_world.TOUR:
         s = low.get(b)
         if not s or s["fps"] is None:
-            add(None, f"U18 §5.1 low {b}", "pas de mesure")
+            add(False, f"U18 §5.1 low {b}", "pas de mesure")
             continue
         add(s["fps"] >= U18_FPS_MIN and (s["p99_ms"] or 99.0) < U18_P99_MAX, f"U18 §5.1 low {b}",
             f"{s['fps']} i/s, p99 {s['p99_ms']} ms ({s['secondes']} s)")
     high = result["tour"].get("high", {})
     tex = [v for v in [result["textures_sol_mb"].get("high")] + [s.get("textures_max_mb") for s in high.values()]
            if isinstance(v, (int, float))]
-    add(max(tex) < TEXTURE_LIMIT_MB if tex else None, "U18 §5.2 textures du décor en high < 1 Go",
+    add(max(tex) < TEXTURE_LIMIT_MB if tex else False, "U18 §5.2 textures du décor en high < 1 Go",
         f"{max(tex):.0f} Mo" if tex else "pas de mesure")
     for q in QUALITIES:
         for b, s in result["tour"].get(q, {}).items():

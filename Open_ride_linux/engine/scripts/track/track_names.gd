@@ -12,7 +12,7 @@ const EVENTS := {"free": "Séance libre", "pursuit": "Poursuite individuelle", "
 	"madison": "Américaine"}
 const TEAM_EVENTS := ["team_sprint", "team_pursuit", "madison"]
 const OPTIONS := {"opponents": "Adversaires", "laps": "Tours", "distance_m": "Distance", "place": "Ta place dans l'équipe",
-	"relay_laps": "Relais", "bot_tactics": "Tactique des bots"}
+	"relay_laps": "Relais", "bot_tactics": "Tactique des bots", "every_laps": "Élimination tous les"}
 const TACTICS := {"none": "aucune", "simple": "simple", "full": "complète"}
 
 
@@ -40,4 +40,6 @@ static func value_text(option_id: String, value) -> String:
 			return str(TACTICS.get(str(value), str(value)))
 		"opponents":
 			return "aucun" if int(value) == 0 else str(int(value))
+		"every_laps":
+			return "%d tours" % int(value)
 	return str(int(value)) if value is float and is_equal_approx(value, round(value)) else str(value)

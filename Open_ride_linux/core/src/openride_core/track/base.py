@@ -9,7 +9,8 @@ Interface commune de toutes les épreuves :
 
     ev.start(t, positions)            # départ (arrêté ou lancé : les coureurs roulent déjà ou non)
     messages = ev.step(t, positions)  # un pas en RUNNING ; rend les faits du pas (tour, cloche, arrivée…)
-    ev.frame()                        # objet `track` de la trame `state` (plan §7.1)
+    ev.frame()                        # objet `track` de la trame `state` (plan §7.1) ; `ahead` et `behind` :
+                                      # écarts en temps de passage aux voisins du cycliste (`gaps.py`, comme en course)
     ev.summary()                      # bilan ; ev.take_journal() : lignes `track` du journal
 
 Aucune épreuve ne touche à la pente : la piste est plate dans le sens de la marche, la séance garde
@@ -22,6 +23,8 @@ import math
 import time
 from dataclasses import dataclass, field
 from typing import Callable, Mapping, Sequence
+
+from ..gaps import RIDER_ID, GapTracker
 
 ME = "me"                       # le cycliste, comme dans `survivor` et `jerseys`
 LAP_M = 250.0                   # piste de référence (plan §3.1)
@@ -118,6 +121,9 @@ class TrackEvent:
         self.my_laps: list[float] = []
         self._my_line_t: float | None = None
         self._my_line_seen = False
+        # Écarts en temps de passage aux voisins (essai du 21 novembre : « il manque l'écart aux bots autour ») :
+        # même règle qu'en course (`gaps.py`, lot T16), sur la distance de course de chacun (`race_s`).
+        self._gaps = GapTracker()
 
     # --- état ---
 
@@ -150,6 +156,7 @@ class TrackEvent:
             self._prev[rid] = (self.t, r.s)
         self._my_line_t = self.t
         self._on_start(self.t)
+        self._record_gaps()
         self._emit("start", riders=len(self.riders))
 
     def step(self, t: float, positions: Positions) -> list[dict]:
@@ -169,6 +176,7 @@ class TrackEvent:
         self.t = t
         self._my_line(t_prev, t)
         self._advance(t_prev, t)
+        self._record_gaps()
         out, self._msgs = self._msgs, []
         return out
 
@@ -207,6 +215,33 @@ class TrackEvent:
             self._emit("finish", winner=ranking[0] if ranking else None,
                        place=ranking.index(ME) + 1 if ME in ranking else None)
 
+    # --- écarts aux voisins ---
+
+    def race_s(self, rid: str) -> float:
+        """Distance de course d'un coureur pour les écarts (une épreuve peut la recaler)."""
+        return self.riders[rid].s
+
+    def _record_gaps(self) -> None:
+        self._gaps.record(self.t, {(RIDER_ID if rid == ME else rid): self.race_s(rid) for rid in self.riders})
+
+    def _rivals(self) -> list[Rider]:
+        """Coureurs en course qui ne sont ni le cycliste ni ses coéquipiers."""
+        mine = self.riders[ME].team
+        return [r for r in self.racing() if r.id != ME and (mine is None or r.team != mine)]
+
+    def neighbours(self) -> dict:
+        """`ahead` et `behind` : voisins du cycliste ({id, gap_s}, écart signé en s : positif devant, négatif
+        derrière, comme `bots[].gap_s`), `None` sans voisin, cycliste sorti ou épreuve finie."""
+        me = self.riders[ME]
+        rivals = self._rivals()
+        if me.out is not None or self.finished or not self.started or not rivals:
+            return {"ahead": None, "behind": None}
+        rep = self._gaps.report(self.t, (self.race_s(ME), me.v), {r.id: (self.race_s(r.id), r.v) for r in rivals})
+        out = {}
+        for key, rid in (("ahead", rep.bot_ahead), ("behind", rep.bot_behind)):
+            out[key] = None if rid is None else {"id": rid, "gap_s": round(rep.gaps[rid].gap_s, 1)}
+        return out
+
     # --- à écrire par épreuve ---
 
     def _on_start(self, t: float) -> None:
@@ -214,6 +249,10 @@ class TrackEvent:
 
     def _advance(self, t0: float, t1: float) -> None:
         raise NotImplementedError
+
+    def full_ranking(self) -> list[str]:
+        """Classement complet (cote Elo, lot BOT-elo) : identifiants du premier au dernier."""
+        return self._ranking()
 
     def _ranking(self) -> list[str]:
         """Identifiants du premier au dernier (coureurs, ou équipes pour les épreuves par équipes)."""
@@ -254,7 +293,7 @@ class TrackEvent:
                "points": None if pts is None else [pts.get(k, 0) for k in ranking],
                "eliminated": [r.id for r in sorted(self.riders.values(), key=lambda r: (r.out_t or 0.0, r.id))
                               if r.out is not None],
-               "finished": self.finished}
+               "finished": self.finished, **self.neighbours()}
         out.update(self._frame_extra())
         return out
 

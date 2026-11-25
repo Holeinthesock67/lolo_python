@@ -139,8 +139,9 @@ def test_open_snaps_start_and_publishes(grid, tmp_path) -> None:
     assert part0["heading_deg"][1] == pytest.approx(90, abs=1)
     # Carrés à moins de 1 500 m de la route, liés dans la séance.
     assert len(live["tiles"]["near"]) >= 12 and live["layer_tiles"] == live["tiles"]["near"]
-    ix, iz = live["tiles"]["near"][0]
-    assert (d / "terrain" / "near" / f"tile_{ix}_{iz}.f32").is_symlink()
+    # tuile liée au carré du cache, ou copie réglée sur la route engagée (sol / route, 21/11)
+    near_files = [d / "terrain" / "near" / f"tile_{a}_{b}.f32" for a, b in live["tiles"]["near"]]
+    assert all(f.is_file() for f in near_files) and any(f.is_symlink() for f in near_files)
     assert len(live["tiles"]["far"]) >= 9
 
 
@@ -403,7 +404,7 @@ def test_ride_into_a_dead_end_turns_back_without_gap_or_pause(tmp_path) -> None:
     alt = np.asarray(route["alt_m"], dtype=float)
     k_same = int(np.argmin(np.abs(x[:k_end] - x[k_back])))          # même endroit, à l'aller
     assert alt[k_back] == pytest.approx(alt[k_same], abs=0.5)
-    assert float(np.max(np.abs(np.asarray(route["grade_pct"])[turn]))) <= 25.0   # la boucle suit le relief
+    assert float(np.max(np.abs(np.asarray(route["grade_pct"])[turn]))) <= 15.0   # la boucle suit le relief (garde-fou : 15 % au plus)
 
 
 def test_turnaround_loop_closes_on_the_dead_end() -> None:

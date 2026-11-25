@@ -4,17 +4,18 @@ extends RefCounted
 ## révision 1.3 §3 : `wind`, `draft`). Pas de class_name : preload("res://scripts/wind_view_model.gd").
 ## Le dessin vient avec P16 (vent) et P17 (abri).
 ##
-## `view(state, heading_deg, now_s)` rend `{visible, arrow_deg, speed_text, label, verdict, verdict_text,
-## tone, level, level_text, draft_text, draft_w_text}` :
+## `view(state, heading_deg, now_s)` rend `{visible, arrow_deg, speed_text, label, direction_text, verdict, tone,
+## draft_text, draft_w_text}` :
 ## - `arrow_deg` : direction d'où vient le vent par rapport au cap de la route, de 0 à 360 (0 = de face,
 ##   flèche vers le bas ; 90 = de droite ; 180 = de dos ; 270 = de gauche) ;
 ## - `label` : « face », « dos », « travers gauche », « travers droit » (secteurs de 45° autour de l'axe,
-##   hystérésis de `LABEL_HYSTERESIS_DEG`) ;
+##   hystérésis de `LABEL_HYSTERESIS_DEG`) ; `direction_text`, le même secteur écrit pour le HUD : « de face »,
+##   « de dos », « de gauche », « de droite » (lot NI1) ;
 ## - verdict d'après `head_mps` lissé (`HEAD_TAU_S`) : « défavorable » au-dessus de + 1 m/s, « favorable »
 ##   sous − 1 m/s, « neutre » entre les deux, hystérésis de 0,3 m/s (entrée à 1,15, sortie à 0,85 m/s) ;
-## - intensité `level` de 0 à 4 (calme sous 5 km/h, faible 5 à 15, modéré 15 à 25, fort 25 à 40, très
-##   fort au-delà), hystérésis de 2 km/h, et un niveau ne change qu'après `LEVEL_DWELL_S` (une rafale
-##   isolée de moins d'une seconde ne compte pas) ; `speed_text` est la vitesse lissée sur 2 s ;
+##   `tone` (good, bad, neutral) teinte la flèche ; les mots `direction_text` disent le sens, jamais la couleur
+##   seule ; `speed_text` est la vitesse lissée sur 2 s. Lot NI1 (21/11) : niveau d'intensité (calme à très
+##   fort, barres) et pastille « Vent défavorable » retirés du HUD, qui redisaient la vitesse et le sens ;
 ## - `draft_text` : « Abri 30 % » (`draft / 0,55` arrondi à 5 %, lot AS4), vide sous 5 % ;
 ## - `draft_w_text` (lot AS5) : « −48 W », watts économisés à l'abri (`draft_w`), vide sans pastille
 ##   d'abri, sans `draft_w` ou sous 1 W ; le HUD ne le montre qu'en medium et high ;
@@ -26,16 +27,9 @@ const HEAD_TAU_S := 1.0
 const LABEL_HYSTERESIS_DEG := 5.0
 const VERDICT_THRESHOLD_MPS := 1.0
 const VERDICT_HYSTERESIS_MPS := 0.3
-const LEVEL_THRESHOLDS_KMH := [5.0, 15.0, 25.0, 40.0]
-const LEVEL_HYSTERESIS_KMH := 2.0
-const LEVEL_DWELL_S := 1.0
-const LEVEL_TEXTS := ["calme", "faible", "modéré", "fort", "très fort"]
+const DIRECTION_TEXTS := {"face": "de face", "dos": "de dos", "travers gauche": "de gauche", "travers droit": "de droite"}
 const DRAFT_MAX := 0.55   # plafond de l'abri au cœur d'un groupe (lot AS4, choix du propriétaire du 31 octobre)
-const VERDICTS := {
-	"favorable": ["Vent favorable", "good"],
-	"defavorable": ["Vent défavorable", "bad"],
-	"neutre": ["Vent neutre", "neutral"],
-}
+const TONES := {"favorable": "good", "defavorable": "bad", "neutre": "neutral"}
 
 var _wire_at_s: float = -INF
 var _speed_kmh_raw: float = 0.0
@@ -47,9 +41,6 @@ var _speed_kmh: float = 0.0     # lissé
 var _head_mps: float = 0.0      # lissé
 var _label: String = ""
 var _verdict: String = "neutre"
-var _level: int = 0
-var _level_candidate: int = 0
-var _candidate_since_s: float = NAN
 
 
 static func _is_number(v: Variant) -> bool:
@@ -82,24 +73,6 @@ static func _sector_with_hysteresis(rel_deg: float, current: String) -> String:
 	return raw
 
 
-static func _raw_level(kmh: float) -> int:
-	var lvl := 0
-	for thr in LEVEL_THRESHOLDS_KMH:
-		if kmh >= thr:
-			lvl += 1
-	return lvl
-
-
-## Niveau avec hystérésis : on ne quitte `current` qu'à 1 km/h au-delà de ses bornes (bande de 2 km/h).
-static func _level_with_hysteresis(kmh: float, current: int) -> int:
-	var half := LEVEL_HYSTERESIS_KMH * 0.5
-	var lo: float = -INF if current == 0 else LEVEL_THRESHOLDS_KMH[current - 1] - half
-	var hi: float = INF if current == LEVEL_THRESHOLDS_KMH.size() else LEVEL_THRESHOLDS_KMH[current] + half
-	if kmh >= lo and kmh < hi:
-		return current
-	return _raw_level(kmh)
-
-
 func reset() -> void:
 	_wire_at_s = -INF
 	_last_s = NAN
@@ -107,9 +80,6 @@ func reset() -> void:
 	_head_mps = 0.0
 	_label = ""
 	_verdict = "neutre"
-	_level = 0
-	_level_candidate = 0
-	_candidate_since_s = NAN
 
 
 func view(state: Dictionary, heading_deg: float, now_s: float) -> Dictionary:
@@ -123,8 +93,6 @@ func view(state: Dictionary, heading_deg: float, now_s: float) -> Dictionary:
 		if first:   # premier vent reçu : pas de montée progressive depuis zéro
 			_speed_kmh = _speed_kmh_raw
 			_head_mps = _head_raw
-			_level = _raw_level(_speed_kmh_raw)
-			_level_candidate = _level
 			_last_s = now_s
 	var has_wind := now_s - _wire_at_s <= WIRE_TIMEOUT_S
 
@@ -133,19 +101,9 @@ func view(state: Dictionary, heading_deg: float, now_s: float) -> Dictionary:
 	if has_wind:
 		_speed_kmh += (_speed_kmh_raw - _speed_kmh) * (1.0 - exp(-dt / SPEED_TAU_S))
 		_head_mps += (_head_raw - _head_mps) * (1.0 - exp(-dt / HEAD_TAU_S))
-		var candidate := _level_with_hysteresis(_speed_kmh_raw, _level)
-		if candidate == _level:
-			_candidate_since_s = NAN
-		elif candidate != _level_candidate or is_nan(_candidate_since_s):
-			_level_candidate = candidate
-			_candidate_since_s = now_s
-		elif now_s - _candidate_since_s >= LEVEL_DWELL_S:
-			_level = candidate
-			_candidate_since_s = NAN
 	else:
 		_speed_kmh = 0.0
 		_head_mps = 0.0
-		_level = 0
 		_label = ""
 
 	var rel := _rel_deg(_from_deg, heading_deg)
@@ -180,17 +138,14 @@ func view(state: Dictionary, heading_deg: float, now_s: float) -> Dictionary:
 	if draft_text != "" and _is_number(dw) and roundi(float(dw)) >= 1:
 		draft_w_text = "−%d W" % roundi(float(dw))
 
-	var v: Array = VERDICTS[_verdict]
 	return {
 		"visible": has_wind or draft_text != "",
 		"arrow_deg": fposmod(rel, 360.0) if has_wind else 0.0,
 		"speed_text": ("%d km/h" % roundi(_speed_kmh)) if has_wind else "",
 		"label": _label,
+		"direction_text": str(DIRECTION_TEXTS.get(_label, "")),
 		"verdict": _verdict,
-		"verdict_text": v[0],
-		"tone": v[1],
-		"level": _level,
-		"level_text": LEVEL_TEXTS[_level],
+		"tone": str(TONES[_verdict]),
 		"draft_text": draft_text,
 		"draft_w_text": draft_w_text,
 	}
