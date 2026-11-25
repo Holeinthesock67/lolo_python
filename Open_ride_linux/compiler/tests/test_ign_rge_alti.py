@@ -107,6 +107,13 @@ def test_bil_byte_order_and_errors():
         ign_bil_to_grid(b"<html>erreur</html>")
     z[0, 0] = -99999.0
     assert np.isnan(ign_bil_to_grid(z.astype("<f4").tobytes())[0, 0])
+    # octets qui, lus dans le mauvais ordre, sont des NaN de signalisation : aucun avertissement (essai PC du 25/11)
+    sig = np.full(IGN_PIX * IGN_PIX, 0x0100807F, dtype="<u4").tobytes()   # 0x7F800001 en gros-boutiste
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with pytest.raises(ValueError):
+            ign_bil_to_grid(sig)
 
 
 @pytest.mark.parametrize("mode", ["ok", "grand"])

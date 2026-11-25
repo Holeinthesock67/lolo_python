@@ -417,7 +417,8 @@ def ign_bil_to_grid(raw: bytes) -> np.ndarray:
         raise ValueError(f"réponse de {len(raw)} octets, {want} attendus (page d'erreur ?)")
     best = None
     for dtype in ("<f4", ">f4"):
-        z = np.frombuffer(raw, dtype=dtype).astype(np.float64).reshape(IGN_PIX, IGN_PIX)
+        with np.errstate(invalid="ignore", over="ignore"):   # mauvais ordre des octets : NaN de signalisation
+            z = np.frombuffer(raw, dtype=dtype).astype(np.float64).reshape(IGN_PIX, IGN_PIX)
         # mauvais ordre : flottants minuscules (1e-38) ou énormes ; 0 exact (mer) et valeur vide restent permis
         ok = np.isfinite(z) & ((((z > -500.0) & (z < 5000.0)) & ((np.abs(z) >= 1e-3) | (z == 0.0)))
                                | (z <= -9999.0))
