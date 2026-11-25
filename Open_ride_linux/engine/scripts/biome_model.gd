@@ -15,7 +15,9 @@ extends RefCounted
 ## - `blend(weights, params_by_biome)` : mélange numérique des couleurs et des densités en un point, et des
 ##   paramètres de saison de chaque biome (`season_params`, chacun dans sa saison) ;
 ## - `building_style_at(x, z)` (lot U23) : style d'architecture d'un bâtiment (building_styles.gd) : variante
-##   `roofs` de la tuile si elle en a une, sinon style du biome dominant au point.
+##   `roofs` de la tuile si elle en a une, sinon style du biome dominant au point ;
+## - clés de rendu par paysage (lot U25-p2) : `keyed_weights_at`, `params_of`, `landscape_key` (ciel et mer
+##   des paysages) et `surface_look` (strates, gradins, cascades du shader des terrains).
 ## Pas de class_name : charger par preload("res://scripts/biome_model.gd").
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -334,6 +336,83 @@ func variant_at(x: float, z: float) -> Variant:
 	if t.is_empty():
 		t = layer.tile("far", floori(x / FAR_M), floori(z / FAR_M))
 	return t.get("variant", null)
+
+
+## Clés de rendu par paysage (lot U25-p2) : « biome », ou « biome|paysage » quand le paysage de la variante
+## décrit ce biome (`landscapes.<paysage>.biomes.<biome>`). Mêmes noms que les emplacements de sol de
+## biome_textures.gd. Le ciel (atmosphere_model.gd) et la mer (sea_mesh.gd) mélangent ces clés comme des biomes :
+## une seule règle, le paysage d'une tuile change le sol, l'eau et le ciel des biomes qu'il décrit.
+func landscape_key(biome: String, variant: Variant) -> String:
+	if typeof(variant) != TYPE_DICTIONARY or typeof(variant.get("landscape", null)) != TYPE_STRING:
+		return biome
+	var all_l = theme.get("landscapes", null)
+	var l: String = variant["landscape"]
+	if typeof(all_l) != TYPE_DICTIONARY or typeof(all_l.get(l, null)) != TYPE_DICTIONARY \
+			or typeof(all_l[l].get("biomes", null)) != TYPE_DICTIONARY or typeof(all_l[l]["biomes"].get(biome, null)) != TYPE_DICTIONARY:
+		return biome
+	return "%s|%s" % [biome, l]
+
+
+## Biome de base d'une clé de rendu (« coast|fjord » -> « coast »).
+static func base_of(key: String) -> String:
+	return key.get_slice("|", 0)
+
+
+## Paysage d'une clé de rendu ("" : aucun).
+static func landscape_of(key: String) -> String:
+	return key.get_slice("|", 1) if key.contains("|") else ""
+
+
+## Paramètres de rendu d'une clé (`params` du biome dans son paysage).
+func params_of(key: String) -> Dictionary:
+	var l := landscape_of(key)
+	return params(base_of(key), "", 0.0, {"landscape": l} if l != "" else null)
+
+
+## Poids au point (x, z) par clé de rendu (`weights_at` et paysage de la tuile, `variant_at`), de somme 1.
+func keyed_weights_at(x: float, z: float) -> Dictionary:
+	var w := weights_at(x, z)
+	var v = variant_at(x, z)
+	if typeof(v) != TYPE_DICTIONARY:
+		return w
+	var out := {}
+	for b in w.keys():
+		var k := landscape_key(b, v)
+		out[k] = float(out.get(k, 0.0)) + float(w[b])
+	return out
+
+
+## Aspect du sol et de l'eau d'un biome dans une variante (lot U25-p2), lu par le shader des terrains
+## (biome_textures.gd) : membres facultatifs `ground.strata` (strates colorées des parois, canyons),
+## `ground.terraces` (gradins inondés, rizières ; l'eau prend `water.color`, les diguettes la couche `steep`)
+## et `water.falls` (cascades sur les parois, fjords), complétés par les valeurs par défaut ; {} pour un membre absent.
+const STRATA_DEFAULTS := {"band_m": 8.0, "strength": 0.5}
+const TERRACES_DEFAULTS := {"step_m": 1.5, "max_slope_deg": 24.0, "flooded": 0.6}
+const FALLS_DEFAULTS := {"density": 0.4, "min_slope_deg": 48.0, "width_m": 2.5, "color": "#e8f0f2"}
+
+
+func surface_look(biome: String, variant: Variant = null) -> Dictionary:
+	var entry: Dictionary = {}
+	if typeof(theme.get("biomes", null)) == TYPE_DICTIONARY and typeof(theme["biomes"].get(biome, null)) == TYPE_DICTIONARY:
+		entry = theme["biomes"][biome]
+	entry = _with_landscape(entry, biome, variant)
+	var ground: Dictionary = entry.get("ground", {}) if typeof(entry.get("ground", null)) == TYPE_DICTIONARY else {}
+	var water: Dictionary = entry.get("water", {}) if typeof(entry.get("water", null)) == TYPE_DICTIONARY else {}
+	return {
+		"strata": _completed(ground.get("strata", null), STRATA_DEFAULTS),
+		"terraces": _completed(ground.get("terraces", null), TERRACES_DEFAULTS),
+		"falls": _completed(water.get("falls", null), FALLS_DEFAULTS),
+		"water_color": ThemeRenderParams._color_or_default(water.get("color", null), DEFAULT_WATER_HEX),
+	}
+
+
+static func _completed(d: Variant, defaults: Dictionary) -> Dictionary:
+	if typeof(d) != TYPE_DICTIONARY:
+		return {}
+	var out := defaults.duplicate()
+	for k in d:
+		out[k] = d[k]
+	return out
 
 
 ## Feu du paysage (démo « Volcan en flammes ») : section `landscapes.<paysage>.fire` du thème complétée par

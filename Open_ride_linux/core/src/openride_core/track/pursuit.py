@@ -54,6 +54,9 @@ class Pursuit(TrackEvent):
         self.mine = self._team_of(ME)
         self.winner: str | None = None
         self.record_id = self._record_id()
+        # Relais faits (équipe, relayeur), dans l'ordre : lus par le plan des bots (`bot_plan`), que la séance
+        # ne vide pas, au contraire du journal (`take_journal` à chaque pas, revue C3-04).
+        self.relays: list[tuple[str, str]] = []
 
     def _check_distance(self) -> None:
         if self.distance_m not in DISTANCES_M:
@@ -121,6 +124,7 @@ class Pursuit(TrackEvent):
             else:
                 self._out(lead, "swing", t)
             racing = [i for i in team.order if self.riders[i].out is None]
+            self.relays.append((team.id, lead.id))
             self._emit("relay", team=team.id, rider=lead.id, lead=racing[0])
             lead = self.riders[racing[0]]
 
@@ -190,9 +194,18 @@ class Pursuit(TrackEvent):
         return out
 
     def record(self) -> dict | None:
+        """Record du cycliste : seulement s'il a fait sa part (revue C3-06). Lâché, il n'en a pas ; en vitesse
+        par équipes (`leave`), chacun des coureurs de tête prévus doit avoir mené son tour et s'être écarté."""
         t = self.team_time_s(self.mine)
         if t is None:
             return None
+        if self.team_size > 1:
+            if self.riders[ME].out == "dropped":
+                return None
+            if self.relay_mode == "leave":
+                done = sum(1 for tid, _ in self.relays if tid == self.mine)
+                if done < self.team_size - 1:
+                    return None
         return {"id": self.record_id, "time_s": round(t, 3), "distance_m": self.distance_m}
 
     def _summary_extra(self) -> dict:

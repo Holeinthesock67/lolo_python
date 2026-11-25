@@ -18,6 +18,7 @@ extends RefCounted
 ## preload("res://scripts/survivor/survivor_hud_model.gd").
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")   # jauge W′ des bots (lot RW)
 
 const ME := "me"
 const ME_NAME := "Toi"
@@ -195,9 +196,11 @@ func ahead_lines(ahead, power_w: float) -> Array:
 	return [first, "%d W (%s%d) pour le rejoindre" % [int(need), "+" if delta >= 0 else "−", absi(delta)]]
 
 
-## Lignes de la liste des coureurs : [{name, detail, me, last, out}].
+## Lignes de la liste des coureurs : [{name, detail, me, last, out, wbal}] ; `wbal` : réserve W′ du bot de 0 à 1,
+## −1 sans barre (cycliste, éliminé, bot loin sans `wbal_pct` ; lot RW, bot_reserve.gd).
 func list_rows(sv: Dictionary, bots, rider_s := NAN, rider_v := 0.0) -> Array:
 	var gaps := {}
+	var reserve := BotReserve.by_id(bots)
 	if bots is Array:
 		for b in bots:
 			if not b is Dictionary:
@@ -222,7 +225,8 @@ func list_rows(sv: Dictionary, bots, rider_s := NAN, rider_v := 0.0) -> Array:
 		elif gaps.has(rid):
 			detail = signed_s(float(gaps[rid]))
 		rows.append({"name": name_of(rid), "detail": detail, "me": rid == ME,
-			"last": rid == last and alive.size() > 1 and winner == null, "out": false})
+			"last": rid == last and alive.size() > 1 and winner == null, "out": false,
+			"wbal": -1.0 if rid == ME else float(reserve.get(rid, -1.0))})
 	var gone: Array = []
 	if sv.get("out") is Array:
 		for o in sv["out"]:
@@ -232,7 +236,7 @@ func list_rows(sv: Dictionary, bots, rider_s := NAN, rider_v := 0.0) -> Array:
 		gone.append([int(sv["me_out"]), ME])
 	gone.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
 	for g in gone:
-		rows.append({"name": name_of(g[1]), "detail": "arche %d" % g[0], "me": g[1] == ME, "last": false, "out": true})
+		rows.append({"name": name_of(g[1]), "detail": "arche %d" % g[0], "me": g[1] == ME, "last": false, "out": true, "wbal": -1.0})
 	return rows.slice(0, MAX_LINES)
 
 

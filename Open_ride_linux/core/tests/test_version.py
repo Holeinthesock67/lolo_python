@@ -120,3 +120,33 @@ def test_command_line_versions(capsys):
     assert capsys.readouterr().out.strip() == f"openride-core {__version__}"
     assert launcher_main(["--version"]) == 0
     assert capsys.readouterr().out.strip() == f"openride {__version__}"
+
+
+def _bump(root: Path, version: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["bash", str(root / "scripts/bump-version.sh"), version], capture_output=True, text=True)
+
+
+def test_bump_twice_keeps_the_previous_release(tmp_path):
+    """Revue de code vague 5, O1-08 : sans « Non publié » en tête, la version précédente garde ses notes
+    et son titre ; une nouvelle section est insérée au-dessus."""
+    root = copy_tree(tmp_path)
+    assert _bump(root, "7.1.0").returncode == 0
+    log = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    first_notes = log.split("## 7.1.0", 1)[1].split("\n## ", 1)[0]
+    r = _bump(root, "7.1.1")
+    assert r.returncode == 0, r.stderr
+    check(root)
+    heads = [line for line in (root / "CHANGELOG.md").read_text(encoding="utf-8").splitlines() if line.startswith("## ")]
+    assert re.fullmatch(r"## 7\.1\.1 – \d{4}-\d{2}-\d{2}", heads[0])
+    assert re.fullmatch(r"## 7\.1\.0 – \d{4}-\d{2}-\d{2}", heads[1])
+    log = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert log.split("## 7.1.0", 1)[1].split("\n## ", 1)[0] == first_notes
+
+
+def test_bump_refuses_an_already_released_number(tmp_path):
+    root = copy_tree(tmp_path)
+    assert _bump(root, "7.2.0").returncode == 0
+    before = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    r = _bump(root, "7.2.0")
+    assert r.returncode == 2
+    assert (root / "CHANGELOG.md").read_text(encoding="utf-8") == before

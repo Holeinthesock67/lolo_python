@@ -5,11 +5,15 @@ import d'openride_core (les chemins du type `~/OpenRide/Activities` sont calcul�
 
 - `isoler_environnement()` : HOME, XDG_CONFIG_HOME, XDG_DATA_HOME, XDG_CACHE_HOME et XDG_STATE_HOME
   pointent vers un dossier temporaire neuf ; zenity, kdialog et notify-send sont remplacés, en tête
-  du PATH, par des programmes muets. Les sous-processus en héritent.
+  du PATH, par des programmes muets ; les variables `OPENRIDE_*` du shell (cache, paquet, profil…) sont
+  retirées, sauf celles de la suite elle-même (revue de code vague 5, O2-17). Les sous-processus en héritent.
 - `GardeEcriture` : un crochet d'audit (`sys.addaudithook`) relève toute écriture, création,
   suppression ou renommage hors du dossier temporaire du système, ou dans le HOME temporaire
   (un test écrit dans son `tmp_path`, jamais dans le HOME) ; après chaque test, le HOME temporaire
   est aussi comparé à son état d'avant, pour les écritures des sous-processus. Le test échoue.
+- `etat_depot()` : fichiers du dépôt modifiés ou nouveaux (`git status`) ; un fichier changé pendant la
+  suite est signalé dans le résumé de pytest (avertissement, pas un échec : un sous-processus qui écrit
+  dans le dépôt échappe au crochet d'audit, O2-17).
 - `verrou_suite()` : une seule suite de tests OpenRide à la fois sur la machine ; une deuxième
   attend la fin de la première (les mesures de performance ne sont plus faussées par une suite
   lancée en parallèle). `OPENRIDE_TESTS_VERROU` marque les sous-processus d'une suite qui le tient.
@@ -37,6 +41,9 @@ DIALOGUES = ("zenity", "kdialog", "notify-send")
 VARIABLE_VERROU = "OPENRIDE_TESTS_VERROU"
 VARIABLE_PARTIE = "OPENRIDE_TESTS_PARTIE"
 DUREES = Path(__file__).with_name("durees_tests.json")
+# Variables `OPENRIDE_*` gardées par `isoler_environnement` : celles de la suite elle-même.
+VARIABLES_GARDEES = frozenset({VARIABLE_VERROU, VARIABLE_PARTIE})
+DEPOT = Path(__file__).resolve().parents[1]      # Open_ride_linux/
 _ECRITURE = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND
 # événement d'audit → (position du chemin, position de son dir_fd ou None), pour chaque chemin écrit
 _EVENEMENTS = {"os.mkdir": ((0, 2),), "os.remove": ((0, 1),), "os.rmdir": ((0, 1),),
@@ -56,6 +63,8 @@ def _chemin(chemin, dir_fd) -> str:
 def isoler_environnement() -> tuple[Path, Path]:
     """HOME et XDG dans un dossier temporaire neuf, fenêtres de bureau muettes ; renvoie le HOME et
     le dossier des programmes muets."""
+    for var in [v for v in os.environ if v.startswith("OPENRIDE_") and v not in VARIABLES_GARDEES]:
+        del os.environ[var]     # un réglage du shell du joueur (OPENRIDE_LANDCOVER_CACHE…) ne vise pas son vrai dossier
     home = Path(tempfile.mkdtemp(prefix="openride-tests-home-")).resolve()
     for var, sub in (("XDG_CONFIG_HOME", ".config"), ("XDG_DATA_HOME", ".local/share"),
                      ("XDG_CACHE_HOME", ".cache"), ("XDG_STATE_HOME", ".local/state")):
@@ -75,6 +84,40 @@ def nettoyer_environnement(*dossiers: Path) -> None:
     """Supprime le HOME temporaire et le dossier des programmes muets (pas ceux d'une suite parente)."""
     for d in dossiers:
         shutil.rmtree(d, ignore_errors=True)
+
+
+def etat_depot(depot: Path = DEPOT) -> dict[str, tuple[int, int]] | None:
+    """Fichiers modifiés ou nouveaux du dépôt (hors fichiers ignorés), avec leur date et leur taille ;
+    None sans git ou hors d'un dépôt."""
+    import subprocess
+
+    try:
+        p = subprocess.run(["git", "--no-optional-locks", "-C", str(depot), "status", "--porcelain", "-z", "--untracked-files=all", "."],
+                           capture_output=True, timeout=60, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if p.returncode != 0:
+        return None
+    racine = subprocess.run(["git", "-C", str(depot), "rev-parse", "--show-toplevel"], capture_output=True,
+                            text=True, check=False).stdout.strip()
+    etat = {}
+    for entree in os.fsdecode(p.stdout).split("\0"):
+        if len(entree) < 4:
+            continue
+        chemin = os.path.join(racine, entree[3:])
+        with contextlib.suppress(OSError):
+            st = os.lstat(chemin)
+            etat[entree[3:]] = (st.st_mtime_ns, st.st_size)
+            continue
+        etat[entree[3:]] = (0, -1)      # supprimé
+    return etat
+
+
+def changements_depot(avant: dict | None, apres: dict | None) -> list[str]:
+    """Fichiers du dépôt apparus, modifiés ou supprimés entre deux `etat_depot`."""
+    if avant is None or apres is None:
+        return []
+    return sorted(k for k in set(avant) | set(apres) if avant.get(k) != apres.get(k))
 
 
 def _etat(home: Path) -> dict[str, tuple[int, int]]:
@@ -218,9 +261,19 @@ def brancher_pytest() -> dict:
     home, muets = isoler_environnement()
     garde = GardeEcriture(home)
     verrou = contextlib.ExitStack()
+    depot: dict = {}
 
     def pytest_configure(config) -> None:
         verrou.enter_context(verrou_suite(f"pytest {config.rootpath.name}"))
+        depot["avant"] = etat_depot()
+
+    def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
+        changes = changements_depot(depot.get("avant"), etat_depot())
+        if changes:
+            terminalreporter.write_sep("-", "isolation : fichiers du dépôt changés pendant la suite", yellow=True)
+            terminalreporter.write_line("(un test ou un sous-processus a écrit dans le dépôt ; ou une modification faite à la main)")
+            for k in changes[:20]:
+                terminalreporter.write_line(f"  {k}")
 
     def pytest_unconfigure(config) -> None:
         verrou.close()
@@ -265,7 +318,7 @@ def brancher_pytest() -> dict:
 
     return {f.__name__: f for f in (pytest_configure, pytest_unconfigure, pytest_runtest_setup,
                                     pytest_runtest_call, pytest_runtest_teardown,
-                                    pytest_collection_modifyitems)}
+                                    pytest_collection_modifyitems, pytest_terminal_summary)}
 
 
 def nom_fichier_test(chemin: Path) -> str:

@@ -7,6 +7,8 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_sea_mesh.gd
 
 const SeaMesh := preload("res://scripts/sea_mesh.gd")
+const BiomeModel := preload("res://scripts/biome_model.gd")
+const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
@@ -91,6 +93,21 @@ func _test_split_and_color() -> void:
 	var theme := {"biomes": {"coast": {"water": {"color": "#2a8a9a"}}}}
 	_check(SeaMesh.sea_color(theme, null, 0.0, 0.0).is_equal_approx(Color("#2a8a9a")), "sans biome : couleur `water` du biome coast")
 	_check(SeaMesh.sea_color({}, null, 0.0, 0.0).is_equal_approx(SeaMesh.DEFAULT_SEA_COLOR), "sans thème : couleur par défaut")
+	# Mer d'un fjord (lot U25-p2) : eau que le thème donne à la côte dans le paysage de la tuile
+	var fj_theme := {"version": "2.0", "biomes": {"coast": {"water": {"color": "#2a8a9a"}}},
+		"landscapes": {"fjord": {"biomes": {"coast": {"water": {"color": "#1d4f52"}}}}}}
+	var lay := BiomeLayer.new()
+	var g := PackedFloat32Array()
+	g.resize(289)
+	g.fill(1.0)
+	var bs: Array[String] = ["coast"]
+	var gs: Array[PackedFloat32Array] = [g]
+	lay.put_tile("near", 0, 0, {"biomes": bs, "weights": gs, "variant": {"ground": null, "roofs": null, "landscape": "fjord"}})
+	lay.put_tile("near", 1, 0, {"biomes": bs, "weights": gs, "variant": null})
+	var fj_model = BiomeModel.new(fj_theme, lay)
+	_check(SeaMesh.sea_color(fj_theme, fj_model, 500.0, 500.0).is_equal_approx(Color("#1d4f52"))
+		and SeaMesh.sea_color(fj_theme, fj_model, 1500.0, 500.0).is_equal_approx(Color("#2a8a9a")),
+		"mer d'un fjord : eau du fjord ; hors paysage : eau de la côte")
 	_check(SeaMesh.sand_color({"biomes": {"coast": {"ground": {"layers": [{"role": "flat", "color": "#c2ae86"}]}}}}) == Color("#c2ae86"),
 		"sable des plages : sol plat du biome coast")
 

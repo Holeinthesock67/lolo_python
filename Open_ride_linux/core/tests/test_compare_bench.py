@@ -119,3 +119,42 @@ def test_bench_command_is_the_simulated_bench_with_probe(tmp_path):
     cmd = ref.bench_command("godot", "village", "medium", 30, tmp_path, False)
     assert cmd[1].endswith("sim_bench.py") and "--probe" in cmd and "--native" not in cmd
     assert cmd[cmd.index("--quality") + 1] == "medium" and cmd[cmd.index("--world") + 1] == "village"
+
+
+def test_reference_refuses_failed_or_incomplete_runs(tmp_path, capsys):
+    """Revue de code vague 5, O3-14 : un banc en échec ou une mesure absente ne devient pas la référence ;
+    une mesure absente du passage est une alerte, une entrée sans pendant est dite."""
+    run = tmp_path / "passage"
+    run.mkdir()
+    reference = tmp_path / "perf" / "reference.json"
+    bad = {"date": "2026-11-24 10:00", "native": True,
+           "runs": {"demo/low": {"metrics": {"fps": 60.0, "p99_ms": 17.0}, "preset": "low", "bench_rc": 1},
+                    "demo/high": {"metrics": {"p99_ms": 20.0}, "preset": "high", "bench_rc": 0}}}
+    (run / "resultat.json").write_text(json.dumps(bad), encoding="utf-8")
+    assert ref.main(["--reference", str(reference), "update", str(run)]) == 1 and not reference.exists()
+    out = capsys.readouterr().out
+    assert "demo/low : banc en échec (code 1)" in out and "demo/high : mesure manquante (fps)" in out
+    good = {"date": "2026-11-24 11:00", "native": True,
+            "runs": {"demo/low": {"metrics": {"fps": 60.0, "p99_ms": 17.0}, "preset": "low", "bench_rc": 0},
+                     "demo/high": {"metrics": {"fps": 40.0, "p99_ms": 20.0}, "preset": "high", "bench_rc": 0}}}
+    (run / "resultat.json").write_text(json.dumps(good), encoding="utf-8")
+    assert ref.main(["--reference", str(reference), "update", str(run)]) == 0
+    capsys.readouterr()
+    partial = {"date": "2026-11-24 12:00", "native": True,
+               "runs": {"demo/low": {"metrics": {"p99_ms": 17.0}, "preset": "low", "bench_rc": 0}}}
+    (run / "resultat.json").write_text(json.dumps(partial), encoding="utf-8")
+    assert ref.main(["--reference", str(reference), "compare", str(run)]) == 1
+    out = capsys.readouterr().out
+    assert "demo/low : images/s absent du passage" in out and "non mesuré dans ce passage" in out and "demo/high" in out
+
+
+def test_compare_bench_counts_missing_scenario_and_flags_warmup(tmp_path, capsys):
+    """O3-11 : scénario disparu après = moins bien ; sonde plus courte que la chauffe signalée."""
+    before = bench(tmp_path / "avant", 60.0)
+    bench(before, 60.0, scen="village")
+    after = bench(tmp_path / "apres", 60.0)
+    assert cb.main([str(before), str(after)]) == 1
+    assert "village : absent après" in capsys.readouterr().out
+    rows = [{"t_s": float(i), "fps": 60.0, "preset": "low"} for i in range(5)]
+    _, preset = cb.probe_entry(rows, 20.0)
+    assert "chauffe" in preset
