@@ -139,7 +139,7 @@ var _load_plan = WarmupPlan.new()
 var _load_job: Dictionary = {}       # chargement dont les étapes sont en cours
 var _load_phases: Dictionary = {}    # durées des étapes pour la ligne « Phases du chargement »
 var _load_world_pending := false     # étapes en cours, monde du nouveau parcours pas encore posé (streamer)
-var _frame_t0_us := 0                # début du _process de l'image (travail déjà fait avant une étape)
+var _menu_frame_ms := 0.0             # affichage du menu dans l'image (_flush_menu) : image déjà chargée (lot AC5)
 var _wtf_warm_queued := false
 var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
 var _quit_code := 0
@@ -1112,6 +1112,7 @@ func _flush_menu() -> void:
 		if str(st["screen"]) == "summary" else []
 	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	_menu_frame_ms = ms
 	PerfProbe.mark("menu", "affichage " + str(st["screen"]), ms)
 	_menu_perf["n"] += 1
 	_menu_perf["total_ms"] += ms
@@ -1203,7 +1204,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
-	_frame_t0_us = Time.get_ticks_usec()
+	_menu_frame_ms = 0.0
 	_flush_menu()
 	var menu_shown: bool = menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible)
 	var mouse := DisplayMode.mouse_mode(menu_shown)
@@ -1576,10 +1577,12 @@ func _load_rest(job: Dictionary) -> void:
 
 
 ## Une image : une étape du chargement, sinon une étape du préchauffage, jamais les deux (lot AC5), et aucune si
-## l'image a déjà beaucoup travaillé (menu affiché, warmup_plan.gd BUSY_MS). Un chargement remplacé par une
+## l'affichage du menu a déjà pris plus de BUSY_MS dans l'image (warmup_plan.gd). Un chargement remplacé par une
 ## nouvelle demande de parcours (ou par une run Cyber-Rogue) est abandonné : le suivant refait tout.
 func _step_loading() -> void:
-	var busy_ms := (Time.get_ticks_usec() - _frame_t0_us) / 1000.0
+	# Seul l'affichage du menu compte (écran de bilan : 46 ms au banc #981) : sous un rendu lent, tout le début de
+	# l'image dépassait le seuil et le préchauffage allait deux fois moins vite (tour « flancs » de la CI).
+	var busy_ms := _menu_frame_ms
 	if _load_plan.pending() > 0:
 		if _load_job.is_empty() or str(_load_job["id"]) != str(_route_id_requested):
 			_load_plan.start([])

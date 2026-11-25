@@ -348,6 +348,11 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
         if loaded is None:
             print(f"[ÉCHEC] parcours {route_id} non chargé par l'engine en 60 s")
             return [{**p, "file": "", "mesures": {}} for p in points]
+        # Préchauffage du parcours fini avant la première capture (`scene_ready`, plan unique des lots PI2 et AC5) :
+        # sous Xvfb chaque étape prend une image de 1 à 2 s, et une capture prise pendant le plan attendait plus que
+        # la limite de 15 s (flanc_1500 et flanc_1750 sans capture, CI de la PR #985).
+        if core.log.wait_for(rf"^scene_ready id={route_id}", 180.0) is None:
+            print(f"[info] préchauffage de {route_id} pas fini en 180 s : captures prises quand même", flush=True)
         for k, p in enumerate(points):
             mark = core.log.mark()
             core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather",

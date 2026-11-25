@@ -28,7 +28,7 @@ Suite du lot AC4 (fil global « Supprimer les à-coups récurrents de main », 2
   essayée : sous Xvfb chaque image après le streamer prend plusieurs secondes, le parcours arrivait une minute plus
   tard et 6 vérifications des tests graphiques échouaient (CI de la tête 069e1444).
 - `_step_loading` : une image joue une étape du chargement, sinon une étape du préchauffage, jamais les deux.
-  `warmup_plan.gd may_step` : si le fil principal a déjà travaillé plus de 12 ms dans l'image (menu affiché), l'étape
+  `warmup_plan.gd may_step` : si l'affichage du menu a déjà pris plus de 12 ms dans l'image (seule mesure retenue : sous un rendu lent, compter tout le début de l'image ralentissait le préchauffage de moitié, tour « flancs » de la CI), l'étape
   attend l'image suivante, une fois au plus. Un chargement remplacé par une autre demande (ou une run
   Cyber-Rogue) est abandonné ; le départ attend aussi la fin du chargement (`_step_start_wait`).
 - `crowd_renderer.gd warm_steps(camera)` : une étape par MultiMesh (`spectateurs 0…`, `passants 0…`), chacune ne
