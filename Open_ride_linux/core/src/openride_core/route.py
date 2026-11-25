@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .config import ROUTES_DIR
@@ -309,6 +309,10 @@ def load_segments(path: Path, manifest: dict, route: Route) -> tuple:
             seg = Segment(**{k: item[k] for k in Segment.__dataclass_fields__})
             if seg.type not in ("sprint", "climb") or not 0.0 <= seg.s_start < seg.s_end <= route.length_m + 0.1:
                 raise ValueError(f"segment {seg.id} invalide")
+            if seg.s_end > route.length_m:
+                # Fin arrondie à 0,1 m au-delà du dernier point : ramenée à la longueur du parcours, sinon le
+                # segment ne se ferme jamais sur un parcours ouvert.
+                seg = replace(seg, s_end=route.length_m)
             out.append(seg)
         if len({s.id for s in out}) != len(out):
             raise ValueError("identifiants en double")

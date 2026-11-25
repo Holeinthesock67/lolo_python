@@ -20,3 +20,6 @@ htmlcov/
 
 # Paquet du jeu (lot PK1) : pack des cols construit sur le PC, livré par l'installateur, jamais versionné
 /paquet/
+
+# Engine exporté (lot EX2, scripts/export_engine.sh) : binaire « release » et .pck, jamais versionnés
+/build/
