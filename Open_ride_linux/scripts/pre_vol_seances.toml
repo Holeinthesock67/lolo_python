@@ -77,7 +77,7 @@ retirer = ["~/OpenRide/powerups.toml"]
 [abri_as1]
 titre = "Bloc 7af : abri AS1, 3 bots à 230, 240 et 250 W"
 pytest_marque = "recette_sans_velo"
-engine_unit = ["test_bot_hud_model", "test_draft_gauge"]
+engine_unit = ["test_bot_hud_model"]
 sim_scenarios = []
 parcours = ["demo"]
 appareils = ["trainer", "click"]

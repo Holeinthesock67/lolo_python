@@ -44,8 +44,11 @@ static func texture(visual: String) -> Texture2D:
 	if visual == "":
 		return null
 	if not _textures.has(visual):
-		var path := ProjectSettings.globalize_path(VISUALS_DIR + visual + ".png")
-		var img: Image = Image.load_from_file(path) if FileAccess.file_exists(path) else null
+		# Octets lus par FileAccess : marche dans le projet et dans le .pck exporté (importeur « keep »).
+		var path := VISUALS_DIR + visual + ".png"
+		var img: Image = Image.new() if FileAccess.file_exists(path) else null
+		if img != null and img.load_png_from_buffer(FileAccess.get_file_as_bytes(path)) != OK:
+			img = null
 		_textures[visual] = ImageTexture.create_from_image(img) if img != null else null
 	return _textures[visual]
 

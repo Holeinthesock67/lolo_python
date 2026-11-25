@@ -48,6 +48,9 @@ func _test_model() -> void:
 	_check(not _values(m.view(s)).has("Équipement"), "temps de l'équipement absent si null")
 	s["equipment_gain_s"] = 8.0
 	_check(_values(m.view(s))["Équipement"] == "+8,0 s sur la séance", "temps de l'équipement : perdu")
+	for tiny in [0.0, -0.02, 0.04]:
+		s["equipment_gain_s"] = tiny
+		_check(not _values(m.view(s)).has("Équipement"), "temps de l'équipement nul caché (pas de « −0,0 s ») : %s" % tiny)
 	# ERG terminé
 	var e := SIM.duplicate(true)
 	e["gains"] = [{"source": "erg", "points": 400}, {"source": "erg_bonus", "points": 50}]

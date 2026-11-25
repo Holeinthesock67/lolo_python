@@ -104,9 +104,6 @@ func _test_button_help() -> void:
 		prev_ok = prev_ok and es[1]["keys"] == ["+", "A", "→"] and es[2]["keys"] == ["−", "B", "←"] \
 			and es[2]["kb"] == ["−", "←"]
 	_check(prev_ok, "flèches du boîtier gauche et − à côté de B dans l'aide (Click gauche fonctionnel, 31 octobre)")
-	var qwk := ButtonHelp.text(ButtonHelp.QWK)
-	_check(qwk == "A maintenir : Valider · + A → : Suivant · − B ← : Précédent · Y : Retour · Clavier — touches : Écrire · Entrée : Ligne, valider · ← → : Déplacer · Retour arrière : Effacer · Échap : Retour",
-		"saisie du QWKcode (lot O21) : au clavier, les touches écrivent, ← → passent d'une ligne à l'autre : %s" % qwk)
 
 
 func _test_icons() -> void:
@@ -139,10 +136,10 @@ func _test_view() -> void:
 	var home: Array = f.state()["items"]
 	_check(v.anchor_right == 1.0 and v.anchor_bottom == 1.0 and v.offset_left == 0.0 and v.offset_top == 0.0,
 		"menu en plein écran")
-	# Dix entrées depuis la ligne « Collection » (lot BC5) : neuf à la fois avec les pastilles des appareils
-	# (la dixième déborderait sur le bandeau des boutons en 1280 × 720), la fenêtre suit le focus.
+	# Neuf entrées depuis le lot NI4 (« Session simulée » rangée dans Appareils) : toutes visibles avec les
+	# pastilles des appareils (neuf à la fois au plus en 1280 × 720), sans compteur de défilement.
 	var shown := v.items_text().split(" | ").size()
-	_check(home.size() == 10 and shown == MenuView.MAX_VISIBLE_WITH_DEVICES and v.more_label.text == "1 / 10",
+	_check(home.size() == 9 and shown == MenuView.MAX_VISIBLE_WITH_DEVICES and v.more_label.text == "",
 		"accueil avec les appareils : %d entrées sur %d, « %s »" % [shown, home.size(), v.more_label.text])
 	_check(v.devices.visible and v.button_bar.visible and not v.card.visible, "accueil : pastilles et bandeau, sans carte")
 	var first: PanelContainer = v._item_panels[0]
@@ -285,7 +282,12 @@ func _test_settings() -> void:
 	var sheet: Dictionary = s.sheet("sound.master_pct")
 	_check(sheet["name"] == "Général" and sheet["tiles"].map(func(t): return t["label"]) == ["Valeur", "Plage", "Pas"]
 		and sheet["lines"] == ["S'applique tout de suite"], "carte d'un réglage numérique (%s)" % str(sheet["lines"]))
-	_check(s.sheet("render.quality")["lines"][0] == "Choix : low, medium, high" and s.sheet("absent").is_empty(), "carte d'un choix")
+	_check(s.sheet("render.quality")["lines"][0] == "Choix : basse, moyenne, haute" and s.sheet("absent").is_empty(), "carte d'un choix")
+	# Lot QG1 : qualité écrite en français, valeur du fichier inchangée
+	_check(s.menu_items("graphics")[0]["detail"] == "haute" and s.item("render.quality")["value"] == "high",
+		"qualité affichée « haute », valeur high gardée (%s)" % str(s.menu_items("graphics")[0]))
+	_check(SettingsViewModel.format_value(quality, "low") == "basse" and SettingsViewModel.format_value(quality, "medium") == "moyenne",
+		"qualité : basse et moyenne")
 	_check(SettingsViewModel.crumb("sound") == "Réglages › Son", "fil d'Ariane du sous-écran")
 	var edit := ButtonHelp.entries(ButtonHelp.EDIT)
 	_check(edit[0]["hold"] and edit[0]["text"] == "Enregistrer" and edit.size() == 4

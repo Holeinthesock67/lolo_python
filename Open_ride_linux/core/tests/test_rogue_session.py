@@ -360,3 +360,27 @@ def test_config_rate_keys_are_bounded(tmp_path):
     p.write_text("[rogue]\ngrade_rate_up_pct_per_s = 5\ngrade_rate_down_pct_per_s = 9\n", encoding="utf-8")
     cfg = load(p)
     assert (cfg.rogue.grade_rate_up_pct_per_s, cfg.rogue.grade_rate_down_pct_per_s) == (5.0, 9.0)
+
+
+def test_ramp_applies_between_gear_changes():
+    """Revue de code S4-01 : sans changement de braquet, la pente envoyée suit la rampe du mode, pas à pas.
+    Depuis R23 (7ae11fcd), une ligne restée hors de son bloc marquait un changement de braquet à chaque pas :
+    la pente sautait de 3 à 4 points d'un coup aux transitions (fin d'échauffement, entrée de salle)."""
+    from openride_core.physics import RiderPhysics
+    cfg = Config()
+    up, down = cfg.rogue.grade_rate_up_pct_per_s, cfg.rogue.grade_rate_down_pct_per_s
+    mode = RogueMode(cfg, parse_start_run({"objective": "threshold", "duration_min": 30, "seed": 5}, cfg))
+    body = RiderPhysics(mode.rider.params)
+    dt, prev, gaps = 0.02, 0.0, []
+    for i in range(int(400 / dt)):
+        mode.step(dt, FTP, 90.0, body, False, T0_WALL + i * dt)
+        grade, shifted = mode.target_grade(up, down, dt)
+        assert not shifted                                      # aucun bouton de braquet pressé
+        assert grade - prev <= up * dt + 1e-9 and prev - grade <= down * dt + 1e-9
+        gaps.append(abs(mode.out.grade_sent - grade))
+        prev = grade
+    assert max(gaps) > 0.5                                      # la rampe a bien eu à rattraper une transition
+    mode.shift("PLUS_LONG")                                     # un vrai changement de braquet : tout de suite
+    mode.step(dt, FTP, 90.0, body, False, T0_WALL + 400)
+    grade, shifted = mode.target_grade(up, down, dt)
+    assert shifted and grade == mode.out.grade_sent
