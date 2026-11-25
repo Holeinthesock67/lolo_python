@@ -1409,7 +1409,7 @@ func _handle_event(event: String) -> Dictionary:
 		if str(act["id"]) == "ftp":
 			menu.push_screen(FTP_TEST)
 			return {}
-		if str(act["id"]) == "history":
+		if str(act["id"]) in ["history", "week"]:   # « Semaine : … » (lot OS1) ouvre aussi l'Historique
 			history.begin()
 			_refresh_history()
 			menu.push_screen(HistoryViewModel.SCREEN)
@@ -2656,6 +2656,7 @@ func on_coach(msg: Dictionary) -> void:
 
 func _refresh_coach() -> void:
 	menu.set_coach_home(coach.home_detail())
+	menu.set_week_home(coach.week_label(), coach.week_detail())   # lot OS1
 	var rows: Array = []
 	for key in CoachViewModel.SETTING_KEYS:
 		var it: Dictionary = settings.item(key)
