@@ -1,4 +1,4 @@
-"""Enchaînement de parcours en session libre (série EN, lot EN1, module pur).
+"""Enchaînement de parcours en session libre (série PE, lot PE1, module pur).
 
 Demande du propriétaire du 22 novembre 2026 : à l'arrivée d'un parcours en ligne en session libre, enchaîner
 sur un autre parcours sans s'arrêter ni repasser par l'accueil, avec un seul enregistrement pour toute la

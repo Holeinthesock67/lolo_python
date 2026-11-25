@@ -1,4 +1,4 @@
-# Lot EN1 : enchaîner plusieurs parcours en session libre, côté core
+# Lot PE1 : enchaîner plusieurs parcours en session libre, côté core
 
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
@@ -7,7 +7,7 @@
 
 Demande du propriétaire du 22 novembre 2026 : à l'arrivée d'un parcours en ligne en session libre, enchaîner sur un
 autre parcours sans s'arrêter ni repasser par l'accueil, avec une courte animation « hyperespace » pendant le
-changement de monde (lot EN2, engine) et un seul enregistrement pour toute la séance. Réponses du 22/11 : animation
+changement de monde (lot PE2, engine) et un seul enregistrement pour toute la séance. Réponses du 22/11 : animation
 de 3 s, saut sur la carte Garmin entre deux parcours accepté, et rien ne se décide sans le joueur (pas de fin
 automatique : il roule au calme tant qu'il ne choisit pas).
 

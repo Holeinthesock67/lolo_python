@@ -1,4 +1,4 @@
-"""Enchaînement de parcours en session libre (série EN, lot EN1) : qui peut enchaîner, liste du parcours
+"""Enchaînement de parcours en session libre (série PE, lot PE1) : qui peut enchaîner, liste du parcours
 suivant, phases de l'enchaînement, ligne de journal et tour du FIT par parcours, parcours d'un instant relu."""
 
 from __future__ import annotations

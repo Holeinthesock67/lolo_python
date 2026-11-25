@@ -195,13 +195,13 @@ def _event(ts: float, event_type: EventType) -> EventMessage:
 
 
 LAP_LINES = {"rogue": ("room_start", None), "track": ("lap", "me"),   # (événement, coureur) de chaque sorte
-             "chain": ("route_start", None)}   # parcours enchaîné en session libre (série EN, lot EN1)
+             "chain": ("route_start", None)}   # parcours enchaîné en session libre (série PE, lot PE1)
 
 
 def lap_starts(lines: list[dict]) -> list[float]:
     """Instants des tours : début de chaque salle et de chaque phase du boss d'une run Cyber-Rogue (lot R8),
     passage du cycliste sur la ligne d'arrivée d'une piste (épreuves du vélodrome, lot VD6), début de chaque
-    parcours enchaîné en session libre (série EN, lot EN1)."""
+    parcours enchaîné en session libre (série PE, lot PE1)."""
     out = []
     for ln in lines:
         want = LAP_LINES.get(ln.get("kind"))
