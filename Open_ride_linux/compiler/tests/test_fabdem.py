@@ -234,7 +234,7 @@ def test_open_world_uses_fabdem_by_default():
     from openride_compiler.worldgen import process, squares
 
     src = inspect.getsource(process.main)
-    assert 'default="fabdem"' in src and "FabdemProvider(" in src
+    assert "FabdemProvider(" in src and '"fabdem", "ign"' in src
     v = squares.far_versions(FabdemProvider(fallback=Flat(), offline=True, log=lambda m: None))
     assert v["relief"] == "fabdem_v1_2"
 

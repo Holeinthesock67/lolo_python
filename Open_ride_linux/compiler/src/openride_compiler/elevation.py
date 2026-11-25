@@ -6,12 +6,14 @@
   tuiles de 1° lues une à une dans les archives de 10° de l'université de Bristol (`remote_zip`), Copernicus en
   repli pour une tuile que FABDEM n'a pas ou ne peut pas livrer. Relief du monde ouvert.
 - `SyntheticProvider` : altitude analytique dans le repère d'un parcours, pour les tests.
-- IGN RGE ALTI : emplacement réservé (`IgnRgeAltiProvider`), non implémenté en v1.
+- `IgnRgeAltiProvider` (lot RL2) : RGE ALTI de l'IGN en France (carrés de 1 km au pas de 5 m, WMS de la
+  Géoplateforme), FABDEM puis Copernicus ailleurs et en repli. Relief du monde ouvert.
 """
 
 from __future__ import annotations
 
 import math
+import os
 import re
 from pathlib import Path
 from typing import Callable, Protocol
@@ -380,14 +382,184 @@ class FabdemProvider:
         return out
 
 
+# --- IGN RGE ALTI (France) -----------------------------------------------------------------------
+
+# RGE ALTI de l'IGN (relief au sol mesuré, lidar et photogrammétrie ; licence ouverte Etalab 2.0), servi par la
+# Géoplateforme en WMS raster : grille de flottants 32 bits (BIL) en Lambert 93, altitudes NGF-IGN69.
+IGN_WMS_URL = "https://data.geopf.fr/wms-r/wms"
+IGN_LAYER = "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES"
+IGN_TILE_M = 1000.0          # carré de 1 km en Lambert 93
+IGN_CELL_M = 5.0             # pas de la grille demandée (RGE ALTI 5 m ; 1 m inutile pour une maille de 10 m)
+IGN_PIX = int(IGN_TILE_M / IGN_CELL_M) + 1    # 201 : bords communs aux carrés voisins
+# Emprise grossière de la France métropolitaine et de la Corse (degrés) : hors de ce cadre, aucune demande. Dans le
+# cadre mais hors de France (Genève, Barcelone…), le service ne renvoie que des valeurs vides : repli et marque.
+IGN_BBOX = (41.2, -5.6, 51.2, 9.8)             # lat_min, lon_min, lat_max, lon_max
+IGN_NODATA_BELOW = -1000.0
+
+
+def ign_tile_key(e: float, n: float) -> tuple[int, int]:
+    return int(math.floor(e / IGN_TILE_M)), int(math.floor(n / IGN_TILE_M))
+
+
+def ign_tile_name(ke: int, kn: int) -> str:
+    """Carré de 1 km de coin sud-ouest (ke km, kn km) en Lambert 93 : `L93_0337_6262`."""
+    return f"L93_{ke:04d}_{kn:04d}"
+
+
+def ign_bil_to_grid(raw: bytes) -> np.ndarray:
+    """Grille IGN_PIX × IGN_PIX (ligne 0 au nord) d'une réponse BIL 32 bits ; ordre des octets deviné.
+
+    Les deux ordres sont lus ; on garde celui dont les valeurs sont des altitudes plausibles (−500 à 5 000 m, pas de
+    flottant minuscule, ou la valeur vide du service). Lève ValueError si la taille est fausse ou si aucun ordre n'est plausible.
+    """
+    want = IGN_PIX * IGN_PIX * 4
+    if len(raw) != want:
+        raise ValueError(f"réponse de {len(raw)} octets, {want} attendus (page d'erreur ?)")
+    best = None
+    for dtype in ("<f4", ">f4"):
+        z = np.frombuffer(raw, dtype=dtype).astype(np.float64).reshape(IGN_PIX, IGN_PIX)
+        # mauvais ordre : flottants minuscules (1e-38) ou énormes ; 0 exact (mer) et valeur vide restent permis
+        ok = np.isfinite(z) & ((((z > -500.0) & (z < 5000.0)) & ((np.abs(z) >= 1e-3) | (z == 0.0)))
+                               | (z <= -9999.0))
+        score = float(ok.mean())
+        if best is None or score > best[0]:
+            best = (score, z)
+    assert best is not None
+    if best[0] < 0.999:
+        raise ValueError("valeurs d'altitude invraisemblables dans la réponse")
+    z = best[1].copy()
+    z[z < IGN_NODATA_BELOW] = np.nan
+    return z
+
+
 class IgnRgeAltiProvider:
-    """Emplacement réservé : RGE ALTI de l'IGN (France, résolution plus fine). Non implémenté en v1."""
+    """Relief au sol IGN RGE ALTI en France (carrés de 1 km au pas de 5 m), un autre fournisseur ailleurs.
+
+    - Point hors du cadre de la France (IGN_BBOX) : repli direct, sans demande.
+    - Carré en cache (`<cache>/ign_rge_alti/<nom>.f32`) : lu tel quel ; carré entièrement vide (hors de France) :
+      marque `<nom>.absent`, repli sans nouvelle demande. Pixels vides (mer, frontière) : repli.
+    - Échec réseau : repli pour cette séance, sans marque ; hors ligne : repli, sans marque.
+    - Altitudes NGF-IGN69 ; FABDEM et Copernicus sont en EGM2008 : écart de quelques décimètres à la frontière,
+      que le garde-fou d'altitude du monde ouvert absorbe (changement de pente borné).
+    """
 
     name = "ign_rge_alti"
-    native_resolution_m = 1.0
+    native_resolution_m = IGN_CELL_M
 
-    def __init__(self, *args, **kwargs) -> None:
-        raise NotImplementedError("source IGN RGE ALTI non disponible en v1 (hors périmètre du lot B2)")
+    def __init__(self, cache_dir: Path | None = None, offline: bool = False, log: Log = stderr_log,
+                 base_url: str = IGN_WMS_URL, fallback: ElevationProvider | None = None,
+                 timeout_s: float = 30.0) -> None:
+        from pyproj import Transformer
+
+        self.dir = Path(cache_dir or dem_cache_dir()) / self.name
+        self.offline = offline
+        self.log = log
+        self.base_url = base_url
+        self.timeout_s = timeout_s
+        self.fallback = fallback if fallback is not None else FabdemProvider(cache_dir=cache_dir, offline=offline,
+                                                                            log=log)
+        self._to_l93 = Transformer.from_crs("EPSG:4326", "EPSG:2154", always_xy=True)
+        self._grids: dict[tuple[int, int], np.ndarray | None] = {}
+        self.downloads = 0
+
+    def tile_path(self, ke: int, kn: int) -> Path:
+        return self.dir / f"{ign_tile_name(ke, kn)}.f32"
+
+    def absent_path(self, ke: int, kn: int) -> Path:
+        return self.dir / f"{ign_tile_name(ke, kn)}.absent"
+
+    @staticmethod
+    def in_frame(lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
+        a0, o0, a1, o1 = IGN_BBOX
+        return (lats >= a0) & (lats <= a1) & (lons >= o0) & (lons <= o1)
+
+    def tile_url(self, ke: int, kn: int) -> str:
+        e0, n0 = ke * IGN_TILE_M, kn * IGN_TILE_M
+        h = IGN_CELL_M / 2.0     # centres des pixels sur la grille de 5 m, bords compris
+        bbox = f"{e0 - h:.1f},{n0 - h:.1f},{e0 + IGN_TILE_M + h:.1f},{n0 + IGN_TILE_M + h:.1f}"
+        return (f"{self.base_url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS={IGN_LAYER}&STYLES="
+                f"&CRS=EPSG:2154&BBOX={bbox}&WIDTH={IGN_PIX}&HEIGHT={IGN_PIX}&FORMAT=image/x-bil;bits=32")
+
+    def download_tile(self, ke: int, kn: int) -> bool:
+        """Carré en cache après l'appel ? (faux : hors de France, hors ligne ou échec réseau)."""
+        if self.tile_path(ke, kn).is_file():
+            return True
+        if self.absent_path(ke, kn).is_file() or self.offline:
+            return False
+        import urllib.request
+
+        name = ign_tile_name(ke, kn)
+        try:
+            with urllib.request.urlopen(self.tile_url(ke, kn), timeout=self.timeout_s) as resp:
+                raw = resp.read()
+            grid = ign_bil_to_grid(raw)
+        except ValueError as exc:
+            self.log(f"IGN : carré {name} illisible ({exc}) : relief de repli pour cette séance")
+            return False
+        except Exception as exc:  # noqa: BLE001 - réseau : repli pour cette séance, réessayé ensuite
+            self.log(f"IGN : carré {name} non téléchargé ({exc}) : relief de repli pour cette séance")
+            return False
+        self.dir.mkdir(parents=True, exist_ok=True)
+        if np.isnan(grid).all():
+            self.absent_path(ke, kn).write_text("hors de la couverture du RGE ALTI\n", encoding="utf-8")
+            return False
+        tmp = self.tile_path(ke, kn).with_suffix(f".tmp-{os.getpid()}")
+        grid.astype("<f4").tofile(tmp)
+        os.replace(tmp, self.tile_path(ke, kn))
+        self.downloads += 1
+        return True
+
+    def _grid(self, ke: int, kn: int) -> np.ndarray | None:
+        key = (ke, kn)
+        if key not in self._grids:
+            g = None
+            if self.download_tile(ke, kn):
+                raw = np.fromfile(self.tile_path(ke, kn), dtype="<f4")
+                if raw.size == IGN_PIX * IGN_PIX:
+                    g = raw.astype(np.float64).reshape(IGN_PIX, IGN_PIX)
+                else:
+                    self.tile_path(ke, kn).unlink(missing_ok=True)
+            self._grids[key] = g
+        return self._grids[key]
+
+    def elevations(self, lats, lons) -> np.ndarray:
+        lats = np.asarray(lats, dtype=float)
+        lons = np.asarray(lons, dtype=float)
+        out = np.full(lats.shape, np.nan)
+        inside = self.in_frame(lats, lons)
+        if inside.any():
+            e, n = self._to_l93.transform(lons[inside], lats[inside])
+            e, n = np.asarray(e, dtype=float), np.asarray(n, dtype=float)
+            ke = np.floor(e / IGN_TILE_M).astype(int)
+            kn = np.floor(n / IGN_TILE_M).astype(int)
+            vals = np.full(e.shape, np.nan)
+            for a, b in np.unique(np.stack((ke, kn), axis=1), axis=0):
+                g = self._grid(int(a), int(b))
+                if g is None:
+                    continue
+                m = (ke == a) & (kn == b)
+                col = (e[m] - a * IGN_TILE_M) / IGN_CELL_M
+                row = ((b + 1) * IGN_TILE_M - n[m]) / IGN_CELL_M
+                c0 = np.clip(np.floor(col).astype(int), 0, IGN_PIX - 2)
+                r0 = np.clip(np.floor(row).astype(int), 0, IGN_PIX - 2)
+                fc, fr = np.clip(col - c0, 0, 1), np.clip(row - r0, 0, 1)
+                top = g[r0, c0] * (1 - fc) + g[r0, c0 + 1] * fc
+                bot = g[r0 + 1, c0] * (1 - fc) + g[r0 + 1, c0 + 1] * fc
+                vals[m] = top * (1 - fr) + bot * fr          # un pixel vide voisin donne NaN : repli
+            out[inside] = vals
+        miss = np.isnan(out)
+        if miss.any():
+            out[miss] = np.asarray(self.fallback.elevations(lats[miss], lons[miss]), dtype=float)
+        return out
+
+    def has_data(self, lat: float, lon: float) -> bool:
+        """Relief de ce point sur le PC (sans réseau) : carré IGN en cache, sinon celui du repli."""
+        if self.in_frame(np.array([lat]), np.array([lon]))[0]:
+            e, n = self._to_l93.transform(lon, lat)
+            if self.tile_path(*ign_tile_key(float(e), float(n))).is_file():
+                return True
+        fb = getattr(self.fallback, "has_data", None)
+        return bool(fb(lat, lon)) if fb is not None else True
 
 
 def provider_for(name: str, offline: bool = False, log: Log = stderr_log) -> ElevationProvider:
@@ -395,6 +567,8 @@ def provider_for(name: str, offline: bool = False, log: Log = stderr_log) -> Ele
         return CopernicusGlo30Provider(offline=offline, log=log)
     if name == FabdemProvider.name:
         return FabdemProvider(offline=offline, log=log)
+    if name == IgnRgeAltiProvider.name:
+        return IgnRgeAltiProvider(offline=offline, log=log)
     raise CompileError(f"source d'altitude inconnue : {name}")
 
 

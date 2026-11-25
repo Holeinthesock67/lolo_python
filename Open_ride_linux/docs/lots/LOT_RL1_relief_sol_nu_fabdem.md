@@ -20,7 +20,7 @@
   requêtes `Range` ; taille et CRC32 vérifiés. Archive absente (404), tuile absente ou serveur sans `Range` :
   marque `<tuile>.absent`, la tuile Copernicus sert à sa place. Pixels sans valeur : Copernicus. Hors ligne :
   Copernicus, sans marque (réessayé avec le réseau).
-- `openride-worldgen --relief fabdem` par défaut (`--relief copernicus` : l'ancien relief ; `--fabdem-url` pour les
+- `openride-worldgen --relief fabdem` (défaut depuis RL2 : `--relief ign`, FABDEM en repli ; `--relief copernicus` : l'ancien relief ; `--fabdem-url` pour les
   tests). Préchargement de la balade, `world-prefetch` et `world-measure` prennent la même source.
 - Carrés et tuiles lointaines refaits d'eux-mêmes : le nom du relief (`fabdem_v1_2`) est dans leurs versions
   (`squares.square_versions`, `far_versions`) ; **pas de nouveau WORLDGEN_VERSION** (pas de renumérotation avec #940).
@@ -47,4 +47,5 @@ Puis banc multi-zones (#1057) en cache séparé, `controle_profil_altitude` : pe
 comparées à main.
 
 ## Suite
-- Lot RL2 (plus tard) : IGN RGE ALTI pour la France.
+- Lot RL2 : IGN RGE ALTI en France (même PR #1073, FABDEM devient le repli de l'IGN) ; RL3 essais ; RL4
+  parcours déjà générés.

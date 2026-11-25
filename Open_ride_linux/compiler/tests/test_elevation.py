@@ -35,9 +35,9 @@ def test_cache_dir_env(tmp_path, monkeypatch):
     assert str(dem_cache_dir()).endswith(".cache/openride/dem")
 
 
-def test_ign_is_a_placeholder():
-    with pytest.raises(NotImplementedError):
-        IgnRgeAltiProvider()
+def test_ign_provider_name():
+    """Lot RL2 : l'IGN n'est plus un emplacement réservé (tests complets : test_ign_rge_alti.py)."""
+    assert IgnRgeAltiProvider(offline=True, log=lambda m: None).name == "ign_rge_alti"
 
 
 # Téléchargements ----------------------------------------------------------------------------------
