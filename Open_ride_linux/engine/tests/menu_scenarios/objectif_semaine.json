@@ -1,0 +1,42 @@
+{
+  "description": "Objectif de la semaine (lot OS1) : ligne « Semaine : … sur 3 » de l'accueil sous la ligue, réponse du core au conseil (objet week_goal), état en mots ; la ligne ouvre l'Historique. Profil fictif sans séance (FTP 250 W) : « Semaine : 0 séance sur 3 ». Capture os1_accueil pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "voies": [
+    "click"
+  ],
+  "config": {
+    "rider.ftp_w": 250,
+    "coach.seances_semaine": 3
+  },
+  "fichiers": {
+    "OpenRide/Profils/.migration": "fini\n",
+    "OpenRide/Profils/cycliste-1/profil.toml": "[profil]\nid = \"cycliste-1\"\nnom = \"Cycliste 1\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n\n[coach]\nseances_semaine = 3\n"
+  },
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 30,
+      "elements": [
+        "week"
+      ],
+      "contient": [
+        "Semaine : 0 séance sur 3"
+      ]
+    },
+    {
+      "aller": "week"
+    },
+    {
+      "capture": "os1_accueil"
+    },
+    {
+      "choisir": "week"
+    },
+    {
+      "ecran": "history",
+      "delai": 15
+    },
+    {
+      "capture": "os1_historique"
+    }
+  ]
+}

@@ -42,6 +42,7 @@ const TrackView := preload("res://scripts/track/track_view.gd")
 ## Retours et consignes communs à tous les modes (lot RT1).
 const FeedbackModel := preload("res://scripts/feedback_model.gd")
 const FeedbackView := preload("res://scripts/feedback_view.gd")
+const RefusalModel := preload("res://scripts/refusal_model.gd")
 const GpScene := preload("res://scripts/grandprix/gp_scene.gd")
 const GpSoundModel := preload("res://scripts/grandprix/gp_sound_model.gd")
 const GpItems := preload("res://scripts/grandprix/gp_items.gd")
@@ -162,6 +163,7 @@ var gp_view = null
 var track_hud = TrackHudModel.new()
 var track_view = null
 var feedback = FeedbackModel.new()
+var refusals = RefusalModel.new()   # refus expliqués (lot RT4) : appui sans effet, bonus refusé, trainer perdu
 var feedback_view = null
 ## Grand Prix des objets en 3D (lot GP7) : boîtes, objets, effets sur les coureurs, onomatopées ; et ses sons.
 var gp_scene = null
@@ -765,6 +767,7 @@ func _on_input_event(event_name: String) -> void:
 	if mark != "":
 		banner.show_message("press", mark, PRESS_HINT_S)
 		return
+	_explain_press(event_name)
 	if _camera_event(event_name):
 		return
 	_menu_event(event_name)
@@ -2232,8 +2235,12 @@ func _on_core_error(code: String, message: String) -> void:
 	if world_menu_view != null and world_menu_view.visible:
 		world_menu_view.vm.on_error(code, message)
 		world_menu_view.update_display()
+	var explained: bool = menu_flow.explains_error(code)   # départ refusé, expliqué sur l'écran Prêt (lot RT4)
 	menu_flow.on_error(code, message)
 	_refresh_menu()
+	if explained:
+		print("Erreur du core (expliquée à l'écran Prêt) : ", code, " : ", message)
+		return
 	banner.show_message("error", "Erreur du core [%s] : %s" % [code, message], ERROR_MIN_S)
 	banner.set_sticky("error", session_state == "ERROR")
 
@@ -2555,12 +2562,24 @@ func _update_track(state: Dictionary, in_session: bool) -> void:
 ## arrivent par le message `elimination` (signal de ipc_client.gd).
 func _update_feedback(state: Dictionary) -> void:
 	var now_s := Time.get_ticks_msec() / 1000.0
-	var moments: Array = track_hud.moments(state) + survivor_hud.moments(state)
+	var moments: Array = track_hud.moments(state) + survivor_hud.moments(state) + refusals.on_state(state)
 	var sounds: Array = feedback.push_all(moments, now_s)
 	sounds += feedback.on_state(state, now_s, _mode_goal(state))
 	for j in sounds:
 		_play_event(j)
 	feedback_view.update_view(feedback.view(state, now_s, _mode_consigne(state)))
+
+
+## Appui sans effet en séance (lot RT4, refusal_model.gd) : bandeau « × REFUSÉ » commun, pourquoi et quoi faire.
+## La trame connue est celle d'avant l'appui : le core relaie l'appui à l'engine avant de le traiter.
+func _explain_press(event_name: String) -> void:
+	if feedback.is_done():
+		return   # course finie : la consigne de fin suffit
+	var m := RefusalModel.press(event_name, _last_state, rogue_host.is_active(), menu_flow.is_visible())
+	if m.is_empty():
+		return
+	for j in feedback.push_all([m], Time.get_ticks_msec() / 1000.0):
+		_play_event(j)
 
 
 ## Consigne du mode en cours (lot RT1) : épreuve de piste, Dernier survivant, Grand Prix ; {} sinon.

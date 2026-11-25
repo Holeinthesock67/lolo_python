@@ -11,6 +11,11 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - Les fichiers qui n'ont pas changé ne sont pas recopiés (liens durs) : une saison de 8 semaines tient dans un seul dossier. Gardées : 8 copies de la semaine, 3 avant mise à jour, 3 avant remise à zéro, 3 avant restauration.
 - « Gérer : <profil en cours> › Restaurer une sauvegarde » : liste des copies en mots, confirmation aux boutons écrits (« Non, garder mon profil » par défaut), profil actuel copié avant ; en ligne de commande : `openride-core profil sauvegarde | sauvegardes | restaurer`.
 - Contrat IPC (révision 1.36) : `list_profile_backups`, `restore_profile_backup`, message `profile_backups`.
+### Un seul réglage de difficulté des bots (lot NI3)
+- La ligne « Intensité » des écrans Prêt (facile, moyen, dur, avec les watts des bots) est la seule à régler leur force ; la cote Elo fait le reste.
+- « Niveau des bots » est retiré des Réglages et des écrans Prêt du Dernier survivant, du Grand Prix et de la Course ; une valeur déjà choisie est mise en commentaire au lancement (niveau remis à 100 %).
+- « Objectif des bots » n’est plus dans Réglages › Séance : il se choisit sur la ligne « Intensité ». « Niveau automatique (Elo) » devient « Bots selon ta cote » (le libellé était coupé).
+- Les lignes « Bot 1 » à « Bot 4 » (19 choix) quittent l'écran Prêt et la pause ; « Peloton » et « Fantôme » restent.
 ### Remettre à zéro les statistiques d'un profil (lot RZ1)
 - « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : niveau, expérience, pièces, défis, cartes, records, équipement acheté et cotes des bots repartent de zéro (avant une saison de la ligue, par exemple). Séances et FIT (historique du coach), cote Elo du cycliste, nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
 - Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant. Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut), exigée aussi par le core ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
