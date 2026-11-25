@@ -30,6 +30,7 @@ MAX_PLACES = 50
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_PERIOD_S = 1.0
 QUERY_TIMEOUT_S = 20.0
+MAP_TIMEOUT_S = 45.0     # carte : tuiles vectorielles absentes téléchargées d'abord (menu_query, 25 novembre)
 # Nom de client générique, sans lien vers le dépôt ni le compte (audit du 22/11, V4).
 USER_AGENT = f"OpenRide/{__version__}"
 MAX_RADIUS_M = 20_000.0
@@ -91,12 +92,12 @@ class WorldMenu:
         return [{"name": n, "kind": k, "lat": lat, "lon": lon, "cached": False, "source": "embedded"}
                 for _f, n, k, lat, lon in hits[:limit]]
 
-    def query(self, *args: str) -> dict[str, Any]:
+    def query(self, *args: str, timeout: float = QUERY_TIMEOUT_S) -> dict[str, Any]:
         """Lance `menu_query` ; {} en cas d'échec (compilateur absent, délai dépassé, sortie illisible)."""
         cmd = [*(self.query_cmd or worldmenu_command()), *(["--config", str(self.config_path)] if self.config_path else []),
                *args]
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=QUERY_TIMEOUT_S, check=False)   # noqa: S603
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)   # noqa: S603
             out = json.loads(res.stdout.strip().splitlines()[-1]) if res.stdout.strip() else {}
         except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
             log.warning("Requête du menu (%s) impossible : %s", args[0] if args else "?", exc)
@@ -151,7 +152,8 @@ class WorldMenu:
             lat = lon = radius = 0.0
             roads: list[dict[str, Any]] = []
         else:
-            roads = self.query("map", "--lat", repr(lat), "--lon", repr(lon), "--radius", repr(radius)).get("roads", [])
+            roads = self.query("map", "--lat", repr(lat), "--lon", repr(lon), "--radius", repr(radius),
+                               timeout=MAP_TIMEOUT_S).get("roads", [])
         return build_world_messages("world_map", request_cmd_id, "roads", roads,
                                     extra={"lat": lat, "lon": lon, "radius_m": radius})
 
