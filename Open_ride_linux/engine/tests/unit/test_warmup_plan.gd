@@ -82,6 +82,14 @@ func _init() -> void:
 	_check(not plan.may_step(plan.BUSY_MS + 30.0) and plan.may_step(1.0), "après une étape jouée, le compte des remises repart")
 	plan.start([])
 	_check(not plan.may_step(0.0), "plan vide : rien à jouer")
+	# Banc rJ25J du 25/11 : le plan attend que le décor du départ soit arrivé, au plus STREAM_WAIT_MS.
+	plan.start([["y", _note.bind("y")]])
+	_check(not plan.may_step(0.0, true, 1000), "décor du départ en route : pas d'étape")
+	_check(not plan.may_step(0.0, true, 1000 + int(plan.STREAM_WAIT_MS * 1000.0) - 1000), "toujours en attente avant la borne")
+	_check(plan.may_step(0.0, false, 2000), "décor arrivé : l'étape joue")
+	_check(plan.may_step(0.0, true, 1000 + int(plan.STREAM_WAIT_MS * 1000.0)), "borne atteinte : le plan avance quoi qu'il arrive")
+	plan.start([["z", _note.bind("z")]])
+	_check(not plan.may_step(0.0, true, 5_000_000_000), "nouveau plan : l'attente repart de zéro")
 	# Plan du chargement : même règle, étapes notées sous un autre type dans la sonde.
 	var load_plan = WarmupPlan.new()
 	load_plan.kind = "chargement"

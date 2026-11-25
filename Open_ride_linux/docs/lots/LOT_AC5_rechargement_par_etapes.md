@@ -36,7 +36,21 @@ Suite du lot AC4 (fil global « Supprimer les à-coups récurrents de main », 2
 - `world_streamer.gd` : sous-étapes notées dans la sonde (`streamer attente fils`, `vidage N`, `index`, `biome`,
   `osm`, `horizon`), pour nommer la partie en cause si l'étape streamer reste lente.
 
+## Correction du 25/11 : le préchauffage attend le décor du départ
+- Banc rJ25J (pile #1066 + #953 + #985, DB1 medium, shaders froids, GTX 1060) : les étapes « spectateurs 0 » à
+  « spectateurs 3 » jouaient dans les mêmes images que l'arrivée des premières tuiles, des arbres et des tronçons OSM
+  du départ (8,5 s et 53 pipelines, puis 1,1 s, 1,6 s et 3,8 s). Une étape par image ne suffit pas si l'image compile
+  déjà le décor.
+- `warmup_plan.gd may_step(busy_ms, streaming)` : tant que le décor du départ arrive (`streamer.pending_count() > 0`,
+  doublures de shaders du lot AC6 comprises), pas d'étape ; au plus `STREAM_WAIT_MS` (15 s) depuis la première attente
+  du plan, puis le plan avance quoi qu'il arrive. Pas d'attente en séance (`RUNNING`) ni dans la scène Cyber-Rogue.
+- `crowd_renderer.gd` : dès `warm_steps`, les vraies personnes sont retenues (MultiMesh vides) jusqu'à l'étape du
+  dernier MultiMesh, au plus `HOLD_MAX_MS` (30 s) : la foule du départ ne fait plus son premier dessin d'un coup, avec
+  les tuiles, pendant que le plan attend.
+
 ## Tests
+- 25/11 : `test_warmup_plan.gd` (attente du décor, borne, remise à zéro par un nouveau plan), `test_crowd_model.gd`
+  (foule retenue avant les étapes, relâchée à la dernière, retenue bornée).
 - `test_warmup_plan.gd` : `may_step` remet l'étape d'une image chargée au plus MAX_SKIPS fois, puis joue ; plan du
   chargement à part, type propre.
 - `test_crowd_model.gd` : une étape par MultiMesh, chacune ne montre que le sien, puis la sélection reprend.
@@ -46,3 +60,6 @@ Catégorie : logique. Medium : galerie Cyber-Rogue (`rogue_galerie.py --qualites
 attendu : aucune image de plus de 150 ms de cause « chargement », « shaders » (spectateurs) ou au retour de la run
 (bilan), délai jusqu'au départ à peu près le même. Si `chargement streamer` dépasse encore 100 ms, la sous-étape
 `streamer …` de la même image dit quoi découper ensuite.
+Depuis le 25/11 (avec #953 et #1066) : shaders froids, DB1 low, medium et high, monde ouvert `ea1_lac` medium, cache
+séparé ; attendu : aucune étape « préchauffage spectateurs N » dans une image qui a aussi « tuile », « arbres » ou
+« osm N », et aucune image de plus de 1 s après le chargement.

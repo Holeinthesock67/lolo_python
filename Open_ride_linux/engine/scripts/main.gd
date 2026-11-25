@@ -1593,7 +1593,10 @@ func _step_loading() -> void:
 			var name: String = _load_plan.step()
 			(_load_phases["list"] as Array).append("%s %.0f" % [name, (Time.get_ticks_usec() - t0) / 1000.0])
 		return
-	if _warmup.may_step(busy_ms) and _warmup.step() != "" and _warmup.pending() == 0:
+	# Décor du départ encore en route (tuiles, arbres, tronçons OSM et leurs doublures de shaders) : le préchauffage
+	# attend, pour ne pas compiler ses shaders dans les mêmes images (banc rJ25J du 25/11, warmup_plan.gd STREAM_WAIT_MS).
+	var streaming: bool = session_state != "RUNNING" and not rogue_host.is_active() and streamer.pending_count() > 0
+	if _warmup.may_step(busy_ms, streaming) and _warmup.step() != "" and _warmup.pending() == 0:
 		print("Préchauffage fini (ms) : %s (à %d ms)" % [_warmup.summary(), Time.get_ticks_msec()])
 
 
