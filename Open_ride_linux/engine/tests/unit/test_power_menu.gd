@@ -37,7 +37,9 @@ func _msg(proposal) -> Dictionary:
 		"confidence": "Indicative", "reason": null, "proposal_w": proposal, "review": false, "delta_pct": -0.4,
 		"monthly": [{"m": "2026-06", "ftp": null, "p5": null, "p20": null},
 			{"m": "2026-11", "ftp": 249, "p5": 300, "p20": 262}],
-		"warnings": ["L'estimation suppose des efforts à fond.", "Calibration du home trainer."]}
+		"warnings": ["L'estimation suppose des efforts à fond.", "Calibration du home trainer."],
+		"profile": {"kind": "rouleur", "strong": 1200, "weak": 60, "missing": [], "form_pct": 95,
+			"aging": {"s": 5, "age_d": 150, "left_d": 33}, "gaps": [[480, 720], [3600, 3600]]}}
 
 
 var _failures := 0
@@ -85,8 +87,26 @@ func _init() -> void:
 	st = f.state()
 	_check(st["title"] == "Ma puissance — Cycliste 1", "titre au nom du profil (%s)" % st["title"])
 	var ids := _ids(st)
-	_check(ids.slice(0, 4) == ["window", "accept", "ramp", "months"] and ids.size() == 17,
-		"période, proposition, rampe, évolution, puis 13 durées (%s)" % str(ids))
+	_check(ids.slice(0, 5) == ["window", "accept", "ramp", "months", "profile"] and ids.size() == 18,
+		"période, proposition, rampe, évolution, profil, puis 13 durées (%s)" % str(ids))
+	# lot PP5 : « Se connaître »
+	_check(_item(st, "profile")["label"] == "Ton profil : rouleur" and _item(st, "profile")["detail"] == "point fort : 20 min",
+		"profil en un mot et point fort")
+	f.menu.focus_item("profile")
+	var pl: Array = f.card(f.state())["lines"]
+	_check(pl.slice(0, 5) == ["Point fort : 20 min. À travailler : 1 min.", "Forme du moment : 95 % de ton niveau des 6 mois.",
+		"Record vieillissant : ton meilleur 5 s date de 5 mois ; il sort de la courbe dans 33 jours.",
+		"Trou : aucun effort libre de 8 min à 12 min depuis 6 semaines.", "Trou : aucun effort libre 60 min depuis 6 semaines."]
+		and "Tu n'es comparé qu'à toi-même." in pl, "carte du profil en mots (%s)" % str(pl))
+	var pv = Power.new()
+	pv.on_power_curve({"sessions": {"m6": 1}, "profile": {"kind": null, "strong": null, "weak": null, "missing": [1200],
+		"form_pct": null, "aging": null, "gaps": []}})
+	_check(pv.profile_row()["label"] == "Ton profil : pas encore de mot" and pv.profile_row()["detail"] == "il manque 20 min"
+		and pv.profile_lines()[0] == "Pour trouver ton profil, il manque un effort à fond de 20 min.", "profil sans mot : la durée qui manque")
+	var old_msg := _msg(249)
+	old_msg.erase("profile")
+	pv.on_power_curve(old_msg)
+	_check(not ("profile" in pv.items({}).map(func(it): return str(it["id"]))), "core sans profil : pas de ligne")
 	_check(_item(st, "accept")["label"] == "Utiliser 249 W comme FTP", "proposition en watts")
 	var r5 := _item(st, "d:5")
 	_check(r5["label"] == "5 s · 880 W · libre" and r5["detail"] == "28 oct. · Col du lacet",

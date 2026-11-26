@@ -26,6 +26,7 @@ const MONTH_NAMES := ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.",
 const MONTH_FULL := ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
 	"novembre", "décembre"]
 const NO_DATA := "Roule une première séance pour voir ta courbe"
+const PROFILE_ID := "profile"
 
 var loaded := false
 var data: Dictionary = {}
@@ -134,6 +135,8 @@ func items(names: Dictionary) -> Array:
 		out.append({"id": "accept", "label": "Utiliser %d W comme FTP" % proposal_w(), "detail": ""})
 	out.append({"id": "ramp", "label": "Faire un test de rampe", "detail": ""})
 	out.append({"id": "months", "label": "Évolution par mois", "detail": ""})
+	if not profile().is_empty():
+		out.append(profile_row())
 	for p in points():
 		if p is Dictionary:
 			out.append(row(p, names))
@@ -200,10 +203,14 @@ func card(focused: String, names: Dictionary) -> Dictionary:
 		lines.append("Source : %s." % str(est.get("source_text", "")))
 	if focused.begins_with(ROW_PREFIX):
 		lines.append_array(_focused_lines(int(focused.substr(ROW_PREFIX.length())), names))
+	elif focused == PROFILE_ID:
+		lines = profile_lines()   # « Se connaître » prend la place de la source de l'estimation
 	lines.append("● %s   ○ %s   - - FTP réglée" % [SHORT[window], SHORT["w6" if window == "m6" else "m6"]])
 	var warn = data.get("warnings", [])
 	var shown: Array = (warn if warn is Array else [])
-	if focused.begins_with(ROW_PREFIX) and shown.size() > 1:
+	if focused == PROFILE_ID:
+		shown = []
+	elif focused.begins_with(ROW_PREFIX) and shown.size() > 1:
 		shown = shown.slice(0, 1)   # la ligne de la durée prend la place : la carte ne déborde pas de l'écran
 	for w in shown:
 		lines.append(str(w))
@@ -228,3 +235,56 @@ func _focused_lines(seconds: int, _names: Dictionary) -> Array:
 					parts.append("aucun effort à fond sur %s" % span)
 			return ["%s : %s." % [duration_label(seconds), ", ".join(parts)]]
 	return []
+
+
+# --- « Se connaître » (lot PP5, objet `profile` du message `power_curve`) ------------------------------
+
+func profile() -> Dictionary:
+	return data["profile"] if data.get("profile") is Dictionary else {}
+
+
+static func _dur(x) -> String:
+	return duration_label(int(x)) if _num(x) else "—"
+
+
+## Ligne de la liste : « Ton profil : rouleur » et le point fort, ou la durée qui manque.
+func profile_row() -> Dictionary:
+	var pr := profile()
+	var kind = pr.get("kind")
+	if kind is String and kind != "":
+		var detail := ("point fort : " + _dur(pr["strong"])) if _num(pr.get("strong")) else "aucune durée ne domine"
+		return {"id": PROFILE_ID, "label": "Ton profil : " + str(kind), "detail": detail}
+	var miss: Array = (pr.get("missing", []) as Array) if pr.get("missing") is Array else []
+	return {"id": PROFILE_ID, "label": "Ton profil : pas encore de mot",
+		"detail": "il manque " + ", ".join(miss.map(func(x): return _dur(x)))}
+
+
+static func _span_days(days: int) -> String:
+	return ("%d jours" % days) if days < 45 else ("%d mois" % int(round(days / 30.0)))
+
+
+## Lignes de la carte quand « Ton profil » est choisi : tout en mots et en watts, le cycliste n'est comparé qu'à
+## lui-même.
+func profile_lines() -> Array:
+	var pr := profile()
+	var out: Array = []
+	if _num(pr.get("strong")) and _num(pr.get("weak")):
+		out.append("Point fort : %s. À travailler : %s." % [_dur(pr["strong"]), _dur(pr["weak"])])
+	elif str(pr.get("kind", "")) == "complet":
+		out.append("Profil complet : aucune durée ne domine.")
+	elif pr.get("missing") is Array and not (pr["missing"] as Array).is_empty():
+		out.append("Pour trouver ton profil, il manque un effort à fond de %s."
+			% ", ".join((pr["missing"] as Array).map(func(x): return _dur(x))))
+	if _num(pr.get("form_pct")):
+		out.append("Forme du moment : %d %% de ton niveau des 6 mois." % int(pr["form_pct"]))
+	var aging = pr.get("aging")
+	if aging is Dictionary:
+		out.append("Record vieillissant : ton meilleur %s date de %s ; il sort de la courbe dans %s."
+			% [_dur(aging.get("s")), _span_days(int(aging.get("age_d", 0))), _span_days(int(aging.get("left_d", 0)))])
+	var gaps = pr.get("gaps", [])
+	for g in (gaps if gaps is Array else []):
+		if g is Array and g.size() == 2:
+			var span := _dur(g[0]) if g[0] == g[1] else "de %s à %s" % [_dur(g[0]), _dur(g[1])]
+			out.append("Trou : aucun effort libre %s depuis 6 semaines." % span)
+	out.append("Tu n'es comparé qu'à toi-même.")
+	return out
