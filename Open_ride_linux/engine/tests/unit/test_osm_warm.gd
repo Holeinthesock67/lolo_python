@@ -11,6 +11,7 @@ const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const SeaMesh := preload("res://scripts/sea_mesh.gd")
 const BridgeMesh := preload("res://scripts/bridge_mesh.gd")
+const TunnelMesh := preload("res://scripts/tunnel_mesh.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 
 var _failures := 0
@@ -52,6 +53,8 @@ func _real_arrays() -> Dictionary:
 		pts.append([0.0, -10.0 * i, 100.0])
 	var bridge := {"id": "br", "kind": "bridge", "length_m": 120.0, "half_width_m": 3.0, "points": pts,
 		"piers": [[0.0, -40.0, 100.0, 68.5]]}
+	var tunnel := {"id": "t0", "kind": "tunnel", "length_m": 120.0, "half_width_m": 3.0, "points": pts}
+	var tu: Dictionary = TunnelMesh.build([tunnel])
 	var flat := func(_x: float, _z: float) -> float: return 0.0
 	var blue := func(_x: float, _z: float) -> Color: return Color(0.1, 0.5, 0.6)
 	return {
@@ -63,6 +66,8 @@ func _real_arrays() -> Dictionary:
 		"sea_foam": SeaMesh.build_foam(shore, 0.0),
 		"beach": SeaMesh.build_beaches([beach], flat, Color("#c2ae86")),
 		"bridges": BridgeMesh.build([bridge]),
+		"tunnels": tu["shell"],
+		"tunnel_lamps": tu["lamps"],
 	}
 
 
@@ -75,7 +80,7 @@ func _test_formats() -> void:
 		_check(_slots(arr) == _slots(OsmStreamer.warm_arrays(warm_kind)),
 			"%s : format du préchauffage = format du constructeur (%s / %s)" % [kind, _slots(arr),
 				_slots(OsmStreamer.warm_arrays(warm_kind))])
-	_check(OsmStreamer.WARM_FORMATS.size() == 7, "sept sortes de nœuds de tronçon préchauffées")
+	_check(OsmStreamer.WARM_FORMATS.size() == 9, "neuf sortes de nœuds de tronçon préchauffées")
 
 
 func _test_warm_up() -> void:
@@ -84,21 +89,21 @@ func _test_warm_up() -> void:
 	var cam := Camera3D.new()
 	root.add_child(cam)
 	_check(osm.warm_up(null) == 0 and not osm.is_warming(), "sans caméra : rien")
-	_check(osm.warm_up(cam) == 7 and osm.is_warming(), "une sorte par matériau posée devant la caméra")
+	_check(osm.warm_up(cam) == 9 and osm.is_warming(), "une sorte par matériau posée devant la caméra")
 	var warm: Node3D = cam.get_node("OsmWarm")
-	var ok := warm != null and warm.get_child_count() == 7
+	var ok := warm != null and warm.get_child_count() == 9
 	for mi in (warm.get_children() if warm != null else []):
 		var kind := str(mi.name).trim_prefix("warm_")
 		ok = ok and (mi as MeshInstance3D).material_override == osm._material_for(kind)
 		var shadow: bool = (mi as MeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		ok = ok and shadow == (kind == "buildings" or kind == "bridges")
+		ok = ok and shadow == (kind == "buildings" or kind == "bridges" or kind == "tunnels")
 	_check(ok, "matériau et ombres des vrais nœuds (bâtiments et ponts avec ombre)")
 	for i in OsmStreamer.WARM_FRAMES - 1:
 		osm.integrate(0)
 	_check(osm.is_warming(), "encore là avant WARM_FRAMES images")
 	osm.integrate(0)
 	_check(not osm.is_warming(), "retiré après WARM_FRAMES images")
-	_check(osm.warm_up(cam) == 7 and osm.warm_up(cam) == 7 and cam.get_children().filter(
+	_check(osm.warm_up(cam) == 9 and osm.warm_up(cam) == 9 and cam.get_children().filter(
 		func(n): return not n.is_queued_for_deletion()).size() == 1, "nouveau préchauffage : l'ancien est retiré")
 	osm.free()
 	cam.free()
@@ -127,7 +132,7 @@ func _test_warm_steps() -> void:
 	_check(counts_ok, "au plus WARM_FRAMES sortes en scène, la plus ancienne retirée au bout de ses images")
 	var mi := warm.get_node_or_null("warm_bridges") as MeshInstance3D
 	_check(mi != null and mi.material_override == osm._material_for("bridges")
-		and mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "dernière sorte : matériau et ombre des ponts")
+		and mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "ponts : matériau et ombre")
 	for i in OsmStreamer.WARM_FRAMES:
 		osm.integrate(0)
 	_check(not osm.is_warming(), "tout retiré après les images de la dernière sorte")
