@@ -417,6 +417,9 @@ class CoreSession:
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
         self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
+        # Courbe du cycliste en % de sa FTP (lot PP6), calculée hors de la boucle au lancement, au changement de
+        # profil et après chaque séance ; None : courbe type des bots.
+        self._rider_curve: tuple[tuple[float, float], ...] | None = None
         self._elo_race: tuple[str, dict[str, str]] | None = None   # (mode, id du bot -> identité Elo), lot BOT-elo
         self._league_run: dict[str, Any] | None = None   # manche de la ligue d'hiver en cours (lot CH3)
         self._league_seen: date | None = None   # dernier jour vu par la saison (horloge qui recule, CH3)
@@ -864,6 +867,8 @@ class CoreSession:
             self._recover_session(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_history", "history_session"):
             self._spawn(self._send_history(name, args if isinstance(args, dict) else {}, cmd_id))
+        elif name == "list_power_curve":
+            self._spawn(self._send_power_curve(cmd_id))
         elif name in COACH_COMMANDS:
             self._spawn(self._send_coach(name, args if isinstance(args, dict) else {}, cmd_id))
         elif name in CONTENT_COMMANDS:
@@ -1170,6 +1175,7 @@ class CoreSession:
                                         chart=cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
         self._publish_progression()
         self.w_prime_estimate_j = None
+        self._rider_curve = None
         self._publish_rogue()
         self._note_profile()
         log.info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root, " — PROFIL D'ESSAI" if ctx.is_trial else "")
@@ -1178,6 +1184,7 @@ class CoreSession:
         try:
             asyncio.get_running_loop()
             self._spawn(self._publish_w_prime_estimate())   # W' du nouveau profil, au hello_ack suivant
+            self._spawn(self._refresh_rider_curve())       # courbe du nouveau profil pour les bots (lot PP6)
         except RuntimeError:
             pass
 
@@ -1469,6 +1476,25 @@ class CoreSession:
         """W' estimé depuis les séances passées (FIT et journaux), `None` si l'historique ne suffit pas (lot R16)."""
         return estimate_w_prime(self.journal_dir, self.cfg.rider.ftp_w, self.mmp_cache_path)
 
+    def _compute_rider_curve(self) -> tuple[tuple[float, float], ...] | None:
+        from .ipc_lists import rider_curve
+
+        ctx = self.profile_ctx
+        return rider_curve(self.journal_dir.parent, self._curve_cache(ctx), ctx.counted_sources,
+                           float(self.cfg.rider.ftp_w))
+
+    async def _refresh_rider_curve(self) -> None:
+        """Courbe du cycliste pour l'effort des bots (série PP, lot PP6), hors de la boucle à 50 Hz ; une courbe
+        illisible laisse la courbe type."""
+        try:
+            curve = await asyncio.to_thread(self._compute_rider_curve)
+        except Exception:
+            log.exception("Courbe du cycliste illisible : les bots gardent la courbe type")
+            curve = None
+        self._rider_curve = curve
+        if curve:
+            log.info("Courbe du cycliste pour les bots : %s.", ", ".join(f"{d:.0f} s {p:.0f} %" for d, p in curve))
+
     async def _publish_w_prime_estimate(self) -> None:
         """Calcul hors de la boucle à 50 Hz ; publié dans `hello_ack` dès qu'il est prêt."""
         est = await asyncio.to_thread(self._estimate_w_prime)
@@ -1630,7 +1656,8 @@ class CoreSession:
         if eff is None or not targets:
             return
         ftp = self.cfg.rider.ftp_w
-        log.info("Effort des bots (%s) : %s.", eff.objective, ", ".join(
+        log.info("Effort des bots (%s, %s) : %s.", eff.objective,
+                 "courbe du cycliste" if eff.curve else "courbe type", ", ".join(
             f"{pct:.0f} % de la FTP ({ftp * pct / 100.0:.0f} W) sur ≈ {dur / 60.0:.0f} min" for pct, dur in targets))
 
     def _journal_bots(self, reason: str) -> None:
@@ -1639,8 +1666,12 @@ class CoreSession:
             return
         from .bots import bot_line
 
-        self._rec.bots({"ts": round(time.time(), 3), "t": round(self._t_session, 2), "reason": reason,
-                        "bots": [bot_line(b) for b in self.bots]})
+        line = {"ts": round(time.time(), 3), "t": round(self._t_session, 2), "reason": reason,
+                "bots": [bot_line(b) for b in self.bots]}
+        eff = self._bot_effort_now
+        if reason == "start" and eff is not None and eff.curve:
+            line["curve"] = [[d, p] for d, p in eff.curve]   # courbe du cycliste visée (lot PP6), pour rejouer
+        self._rec.bots(line)
         log.info("Bots (%s) : %s.", reason, ", ".join(b.name for b in self.bots) or "aucun")
 
     def _bot_cda_bases(self) -> dict[int, float]:
@@ -1740,6 +1771,38 @@ class CoreSession:
             msg = await asyncio.to_thread(build_history_session, cmd_id, sid, path, ftp_w)
         except HistoryError as exc:
             self.server.send_error("bad_args", f"Bilan impossible : {exc}")
+            return
+        self.server.send_raw(msg)
+
+    async def _send_power_curve(self, cmd_id: int) -> None:
+        """« Ma puissance » (série PP, lot PP3) : `list_power_curve` -> `power_curve`, calculé hors de la boucle à
+        50 Hz (cache des séances du profil). Refusé pendant une séance : rien ne s'affiche pendant qu'on roule."""
+        from . import profiles
+        from .ipc_lists import build_power_curve_message
+
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "« Ma puissance » s'ouvre au menu, pas pendant une séance.")
+            return
+        ctx = profiles.current()
+        activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
+        cache = self._curve_cache(ctx)
+        routes_root, gpx_dir = self.routes_root, self.gpx_dir or GPX_DIR
+
+        def build() -> dict:
+            from .catalog import list_routes
+
+            try:   # lot PP7 : parcours proposé pour le défi ; un catalogue illisible n'empêche pas la courbe
+                routes = list_routes(routes_root, gpx_dir)
+            except Exception:
+                log.exception("Catalogue des parcours illisible pour le défi de « Ma puissance »")
+                routes = []
+            return build_power_curve_message(cmd_id, self.cfg.rider.ftp_w, activities, cache, ctx.counted_sources,
+                                             ctx.id, routes=routes, since=getattr(ctx, "stats_since", None))
+
+        try:
+            msg = await asyncio.to_thread(build)
+        except Exception:
+            log.exception("Erreur lors du calcul de la courbe de puissance (cmd_id=%d)", cmd_id)
             return
         self.server.send_raw(msg)
 
@@ -1849,6 +1912,47 @@ class CoreSession:
                 self.state.summary["collection"] = col_ann
         except Exception:
             log.exception("Erreur lors du calcul de summary.collection")
+
+    def _after_session_power(self, journal_path: Path) -> None:
+        """Records de puissance et signal « FTP à revoir » au bilan (série PP, lot PP4) : `summary.power_records`
+        et `summary.ftp_review`, calculés hors de la boucle à 50 Hz, absents si rien à dire."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : calcul direct
+            self._attach_power_report(self._power_report(journal_path))
+            return
+        self._spawn(self._attach_summary_power(journal_path))
+
+    def _curve_cache(self, ctx: Any) -> Path:
+        """Cache de la courbe de puissance (série PP) : celui donné à la séance, sinon celui du profil quand la
+        séance écrit dans les journaux du profil, sinon un cache à côté des activités de la séance (dossier
+        donné à la séance : jamais le cache du profil pour d'autres séances)."""
+        from .ipc_lists import curve_cache
+
+        return curve_cache(ctx, self.journal_dir, self.mmp_cache_path)
+
+    def _power_report(self, journal_path: Path) -> dict | None:
+        from .ipc_lists import compute_summary_power
+
+        ctx = self.profile_ctx
+        return compute_summary_power(journal_path, float(self.cfg.rider.ftp_w), self.journal_dir.parent,
+                                     self._curve_cache(ctx), ctx.counted_sources,
+                                     since=getattr(ctx, "stats_since", None))   # remise à zéro (lot RZ1)
+
+    def _attach_power_report(self, report: dict | None) -> None:
+        if report is None or self.state.summary is None:
+            return
+        if report["records"]:
+            self.state.summary["power_records"] = report["records"]
+        if report["ftp_review"] is not None:
+            self.state.summary["ftp_review"] = report["ftp_review"]
+
+    async def _attach_summary_power(self, journal_path: Path) -> None:
+        try:
+            self._attach_power_report(await asyncio.to_thread(self._power_report, journal_path))
+        except Exception:
+            log.exception("Erreur lors du calcul des records de puissance du bilan")
+        await self._refresh_rider_curve()   # la séance finie compte pour la course suivante (lot PP6)
 
     def _setting_file(self, key: str) -> Path:
         """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),
@@ -2770,6 +2874,7 @@ class CoreSession:
     def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
         journal: str | None = None
+        journal_path: Path | None = None
         records_done: list[dict] | None = []
         race, self.race = self.race, None
         wtf, self.wtf = self.wtf, None
@@ -2820,6 +2925,7 @@ class CoreSession:
         if self._rec:
             rec, self._rec = self._rec, None
             journal = rec.path.name if rec.path is not None else None
+            journal_path = rec.path
             ftp_result = self._write_ftp_test(rec)
             if ftp_result is not None:
                 self._ftp_result = ftp_result
@@ -2888,6 +2994,8 @@ class CoreSession:
         if journal is not None and final_state == "FINISHED":
             self._after_session(journal, records_done)
             self._after_session_collection()
+            if journal_path is not None:
+                self._after_session_power(journal_path)
 
     # --- mode « What the fuck » (série WTF, lot WTF2) -----------------------------------
 
@@ -3986,14 +4094,15 @@ class CoreSession:
         if game_mode == "track" and track_choice is not None:
             event, settings = track_choice
             lap = self._track.length_m if self._track is not None else track_mod.LAP_M
-            return bot_effort.track_effort(event, settings, lap)
+            return replace(bot_effort.track_effort(event, settings, lap), curve=self._rider_curve)
         course_m = None
         if game_mode in ("grandprix", "race"):
             try:
                 course_m = self._grandprix_course(game_mode)[0]
             except GrandPrixError:
                 course_m = None
-        return bot_effort.Effort(objective or self._start_objective or self.cfg.bots.objective, course_m)
+        return bot_effort.Effort(objective or self._start_objective or self.cfg.bots.objective, course_m,
+                                 curve=self._rider_curve)
 
     def _new_race(self, classic: bool = True, tactics: str | None = None, game_mode: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
@@ -5323,6 +5432,7 @@ class CoreSession:
         # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
         # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
+        self._spawn(self._refresh_rider_curve())   # courbe du cycliste pour les bots (lot PP6)
         self._resumed_journal = resume
         self._publish_interrupted()   # lot O34 : dans le premier hello_ack
         profile_backups.start_weekly(self.profile_ctx, self.profiles_base)   # lot SV1 : copie de la semaine
