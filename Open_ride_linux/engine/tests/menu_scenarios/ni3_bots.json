@@ -1,0 +1,219 @@
+{
+  "description": "Un seul réglage de difficulté des bots (lot NI3) : ni « Niveau des bots » ni « Objectif des bots » dans Réglages › Séance (la cote Elo y reste) ; écran Prêt de la session libre sans lignes « Bot 1 » à « Bot 4 » (fantôme et peloton), peloton de 4 bots qui fait paraître la ligne « Intensité » ; écrans Prêt du Grand Prix, de la Course et du Dernier survivant sans « Niveau des bots », force réglée par la seule ligne « Intensité ». Captures ni3_reglages_seance, ni3_pret_libre, ni3_pret_gp, ni3_pret_course et ni3_pret_ds pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "voies": [
+    "clavier"
+  ],
+  "grand_prix_parcours": true,
+  "config": {
+    "survivor.opponents": 2,
+    "survivor.spacing_km": 1
+  },
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15,
+      "elements": [
+        "ride",
+        "grandprix",
+        "race",
+        "survivor"
+      ]
+    },
+    {
+      "choisir": "settings"
+    },
+    {
+      "choisir": "group:ride"
+    },
+    {
+      "ecran": "settings_group",
+      "groupe": "ride",
+      "titre": "Réglages › Séance",
+      "contient": [
+        "Bots selon ta cote — oui"
+      ],
+      "absent": [
+        "Niveau des bots",
+        "Objectif des bots"
+      ]
+    },
+    {
+      "capture": "ni3_reglages_seance"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "home"
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo"
+      ]
+    },
+    {
+      "choisir": "demo"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Parcours : Col du lacet"
+      ]
+    },
+    {
+      "choisir": "ride"
+    },
+    {
+      "ecran": "ready",
+      "elements": [
+        "start",
+        "ghost",
+        "peloton"
+      ],
+      "contient": [
+        "Peloton : aucun"
+      ],
+      "absent": [
+        "Bot 1",
+        "Intensité"
+      ],
+      "delai": 5
+    },
+    {
+      "choisir": "peloton"
+    },
+    {
+      "ecran": "ready",
+      "elements": [
+        "start",
+        "intensity",
+        "ghost",
+        "peloton"
+      ],
+      "contient": [
+        "Peloton : 4 bots",
+        "Intensité : moyen",
+        "bots ≈ "
+      ],
+      "absent": [
+        "Bot 1"
+      ],
+      "delai": 10
+    },
+    {
+      "capture": "ni3_pret_libre"
+    },
+    {
+      "choisir": "peloton"
+    },
+    {
+      "choisir": "peloton"
+    },
+    {
+      "choisir": "peloton"
+    },
+    {
+      "ecran": "ready",
+      "contient": [
+        "Peloton : aucun"
+      ]
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "home"
+    },
+    {
+      "choisir": "race"
+    },
+    {
+      "ecran": "ready",
+      "elements": [
+        "start",
+        "intensity",
+        "set:race.opponents"
+      ],
+      "contient": [
+        "Intensité : moyen",
+        "bots ≈ "
+      ],
+      "absent": [
+        "Niveau des bots",
+        "Bot 1"
+      ],
+      "delai": 10
+    },
+    {
+      "capture": "ni3_pret_course"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "home"
+    },
+    {
+      "choisir": "survivor"
+    },
+    {
+      "ecran": "ready",
+      "elements": [
+        "start",
+        "intensity",
+        "set:survivor.opponents",
+        "set:survivor.spread"
+      ],
+      "contient": [
+        "Intensité : moyen",
+        "bots ≈ "
+      ],
+      "absent": [
+        "Niveau des bots",
+        "Bot 1"
+      ],
+      "delai": 10
+    },
+    {
+      "capture": "ni3_pret_ds"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "home"
+    },
+    {
+      "choisir": "grandprix"
+    },
+    {
+      "ecran": "ready",
+      "elements": [
+        "start",
+        "intensity",
+        "set:grandprix.opponents",
+        "set:grandprix.chaos",
+        "gp_items"
+      ],
+      "contient": [
+        "Intensité : moyen",
+        "bots ≈ "
+      ],
+      "absent": [
+        "Niveau des bots",
+        "Bot 1"
+      ],
+      "delai": 10
+    },
+    {
+      "capture": "ni3_pret_gp"
+    }
+  ]
+}

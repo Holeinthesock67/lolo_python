@@ -600,7 +600,7 @@ class ProfileBot(ConstantPowerBot):
         d.update({"profile": self.profile, "cp_w": round(self.cp_w, 1), "mass_kg": self.mass_kg,
                   "wbal_pct": round(self.wbal_pct, 1)})
         move = self.move()
-        if move is not None:   # lot BA1 (révision 1.35) : absent sans geste en cours
+        if move is not None:   # lot BA1 (révision 1.38) : absent sans geste en cours
             d["move"] = move
         return d
 
