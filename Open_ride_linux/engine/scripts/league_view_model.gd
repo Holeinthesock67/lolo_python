@@ -20,7 +20,7 @@ const STYLES := {"climber": "grimpeur", "rouleur": "rouleur", "sprinter": "sprin
 ## Saison du dernier message `league` (null : pas de saison) ; `loaded` : un message est arrivé (sinon, core sans
 ## ligue : la ligne de l'accueil n'apparaît pas).
 var season = null
-## Palmarès (`history` du message `league`, révision 1.35, lot CH6) : saisons closes, la plus récente d'abord.
+## Palmarès (`history` du message `league`, révision 1.40, lot CH6) : saisons closes, la plus récente d'abord.
 var history: Array = []
 var loaded := false
 var message := ""

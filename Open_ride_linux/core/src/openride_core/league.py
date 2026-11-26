@@ -752,7 +752,7 @@ def standings_rows(season: Season, rows: list[dict[str, Any]] | None = None) -> 
 
 def status(season: Season | None, today: date, request_cmd_id: int = 0,
            past: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Message `league` (révision 1.30) : saison en cours ou None, manche de la semaine, classement ; révision 1.35
+    """Message `league` (révision 1.30) : saison en cours ou None, manche de la semaine, classement ; révision 1.40
     (lot CH6) : `history`, palmarès des saisons closes (`history()`), quand `past` est donné."""
     head: dict[str, Any] = {"type": "league", "v": 1, "request_cmd_id": int(request_cmd_id)}
     if past is not None:

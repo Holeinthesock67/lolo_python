@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideLeagueMessage",
-  "description": "Révision 1.30 (lot CH3, série CH) : réponse à `league_status` et `league_new` : saison de la ligue d'hiver du profil (null sans saison), manche de la semaine et classement général des 12 coureurs (le cycliste : `me`, nom « Toi »). Révision 1.35 (lot CH6) : `history` facultatif, palmarès des saisons closes, la plus récente d'abord (8 au plus).",
+  "description": "Révision 1.30 (lot CH3, série CH) : réponse à `league_status` et `league_new` : saison de la ligue d'hiver du profil (null sans saison), manche de la semaine et classement général des 12 coureurs (le cycliste : `me`, nom « Toi »). Révision 1.40 (lot CH6) : `history` facultatif, palmarès des saisons closes, la plus récente d'abord (8 au plus).",
   "type": "object",
   "required": [
     "type",

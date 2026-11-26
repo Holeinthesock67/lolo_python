@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : palmarès des saisons closes (place, points, vainqueur, trophée), ligne « Palmarès » de l'écran de la ligue, contrat IPC 1.35 | Python, GDScript | CH3c (#1020), CH4a | Petite | En revue |
+| Série CH : palmarès des saisons closes (place, points, vainqueur, trophée), ligne « Palmarès » de l'écran de la ligue, contrat IPC 1.40 | Python, GDScript | CH3c (#1020), CH4a | Petite | En revue |
 
 Ce lot répond au choix du propriétaire du 24 novembre 2026 : rappel d'abord (CH7), palmarès ensuite. Cadrage :
 `plans/ch-ligue/CADRAGE_PALMARES_RAPPEL_2026-11-23.md` (dossier du projet).
@@ -18,7 +18,7 @@ Ce lot répond au choix du propriétaire du 24 novembre 2026 : rappel d'abord (C
   - Chaque ligne donne : numéro, dates, fin (`fin` ou `pause`), ta place sur 12, tes points, le vainqueur et ses
     points, `winner_me`, et le trophée écrit ou null.
   - `archive_path` donne le nom du fichier d'une saison close.
-- **Contrat**, révision 1.35 (provisoire, prise à la fusion au-dessus de main) : la réponse `league` à
+- **Contrat**, révision 1.40 (train de protocole du 26 novembre, au-dessus des 1.37 à 1.39) : la réponse `league` à
   `league_status` et `league_new` porte un champ facultatif `history` (schéma `league`). Avec 8 saisons, le
   message tient sous 4 096 octets (test).
 - **Engine** (`league_view_model.gd`) :

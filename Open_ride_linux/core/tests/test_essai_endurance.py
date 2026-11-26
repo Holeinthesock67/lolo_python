@@ -61,3 +61,52 @@ def test_limits_documented() -> None:
     for text in ("≤ 20 Mo/h", "≤ 400 Mo", "≤ 100 Mo/h", "≤ + 300 Mo", "≤ 50 Mo/h", "≤ + 10 %", "≤ 6 par heure",
                  "≤ 15 Mo par heure", "≤ 1 500 Ko", "≤ 100 Ko", "≤ 200 Ko", "≤ 200 Mo"):
         assert text in doc, text
+
+
+def test_race_over_follows_arrival_rule_of_rt2() -> None:
+    """Depuis RT2, l'arrivée ne ferme plus la séance : le banc reconnaît l'issue et demande le bilan (essai rJ24D :
+    manche 1 jamais close, manches 2 et 3 sans READY)."""
+    arrival = "INFO core Arrivée (race), 4e sur 12 : la séance continue au calme jusqu'à « Terminer et enregistrer »."
+    assert ee.race_over("race", ["Course : 11 adversaires", arrival])
+    assert not ee.race_over("race", ["Course : 11 adversaires, 1.5 km"])
+    assert ee.race_over("grandprix", ["Arrivée (grandprix), 2e sur 12 : la séance continue"])
+    rival = "Dernier survivant : Rival éliminé à l'arche {}."
+    assert not ee.race_over("survivor", [rival.format(k) for k in range(1, 11)])
+    assert ee.race_over("survivor", [rival.format(k) for k in range(1, 12)])   # dernier en course
+    assert ee.race_over("survivor", ["Dernier survivant : cycliste éliminé à l'arche 3."])
+    assert ee.race_over("track", ["Épreuve de piste elimination : event = out, rider = me, reason = last."])
+    assert ee.race_over("track", ["Épreuve de piste elimination : event = finish, winner = bot3."])
+    assert not ee.race_over("track", ["Épreuve de piste elimination : event = out, rider = bot2, reason = last."])
+
+
+def test_each_round_terrain_has_a_route(tmp_path: Path) -> None:
+    from openride_core import league
+
+    assert {r.terrain for r in league.ROUNDS} <= set(ee.TERRAIN_ROUTES)
+    assert ee.FIELD == league.FIELD_SIZE
+    ee.write_line(tmp_path, ee.line_length_m(90.0))
+    line = load_world(tmp_path / f"{ee.LINE_ID}.world").route
+    assert not line.is_loop and line.length_m >= 2000.0 - 20.0
+    assert ee.line_length_m(None) >= 14_000.0   # ~27 min de course
+
+
+def test_closing_an_open_session_before_select_route() -> None:
+    class Core:
+        lines = [(0.0, "Séance : READY -> RUNNING")]
+
+        def wait_for(self, *_a, **_k):
+            return (1.0, "Séance : RUNNING -> FINISHED")
+
+    bench = ee.Endurance.__new__(ee.Endurance)
+    bench.core, bench.checks, sent = Core(), [], []
+    bench.cmd = lambda name, args=None: sent.append(name)
+    assert bench.session_state() == "RUNNING"
+    ee.time.sleep, real = (lambda _s: None), ee.time.sleep
+    try:
+        bench.close_open_session()
+    finally:
+        ee.time.sleep = real
+    assert sent == ["end_session"] and bench.checks[-1]["ok"]
+    bench.core.lines, sent[:] = [(0.0, "Séance : RUNNING -> FINISHED")], []
+    bench.close_open_session()
+    assert sent == []
