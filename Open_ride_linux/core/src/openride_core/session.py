@@ -3271,7 +3271,8 @@ class CoreSession:
     def _send_bots_preview(self, args: dict, cmd_id: int) -> None:
         """Réponse `bots_preview` (révision 1.22) : effort que viseront les bots de la course `mode` sur le parcours
         choisi, avec les réglages en cours (`objective` et `track` facultatifs), cote Elo comprise : objectif,
-        % de la FTP, watts, durée estimée ; `power_w` null sans parcours chargé."""
+        % de la FTP, watts, durée estimée ; `power_w` null sans parcours chargé. Lot PP6b : `hold_s` (durée tenable
+        à cette allure d'après la courbe du cycliste) et `my_time_s` (son temps à fond sur la course)."""
         from .bots import RefRider, RouteProfile, effort_target
 
         mode = args.get("mode", "ride")
@@ -3302,7 +3303,7 @@ class CoreSession:
             elo = {"rating": int(round(book.rating)), "races": book.races}
         msg: dict[str, Any] = {"type": "bots_preview", "v": 1, "request_cmd_id": cmd_id, "mode": mode,
                                "objective": effort.objective, "ftp_pct": None, "power_w": None,
-                               "duration_s": None, "elo": elo}
+                               "duration_s": None, "elo": elo, "hold_s": None, "my_time_s": None}
         route = self.route
         if route is not None and getattr(route, "length_m", None):
             if self._preview_prof is None or self._preview_prof[0] != id(route):
@@ -3311,6 +3312,13 @@ class CoreSession:
             pct, dur = effort_target(self._preview_prof[1], RefRider(ftp, self._base_params), level, effort)
             msg.update({"ftp_pct": round(pct, 1), "power_w": int(round(ftp * pct / 100.0)),
                         "duration_s": int(round(dur))})
+            # Lot PP6b : durée que tu tiens à l'allure des bots, et ton temps à fond sur cette course, lus sur ta
+            # courbe (`Effort.curve`, courbe type sans séance) ; une épreuve à durée fixe n'a pas de temps prévu.
+            msg["hold_s"] = int(round(bot_effort.hold_s(pct, effort.curve)))
+            if not effort.duration_s:
+                mine = replace(effort, objective="max")
+                msg["my_time_s"] = int(round(effort_target(self._preview_prof[1], RefRider(ftp, self._base_params),
+                                                           100.0, mine)[1]))
         self.server.send_raw(msg)
 
     # --- ligue d'hiver (série CH, lot CH3, révision 1.30) ---------------------------------------

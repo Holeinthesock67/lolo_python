@@ -1757,7 +1757,20 @@ static func bots_info_row(msg: Dictionary) -> Dictionary:
 		return {}
 	return {"watts": "≈ %d W" % int(msg["power_w"]),
 		"cote": ("%d" % int(msg["elo"].get("rating", 1500))) if msg.get("elo") is Dictionary else "",
-		"duration": ("≈ " + duration_text(float(msg["duration_s"]))) if msg.get("duration_s") != null else ""}
+		"duration": ("≈ " + duration_text(float(msg["duration_s"]))) if msg.get("duration_s") != null else "",
+		"hold": hold_text(msg), "mine": ("environ " + duration_text(float(msg["my_time_s"])))
+			if msg.get("my_time_s") != null else ""}
+
+
+## Lot PP6b (contrat 1.37) : durée que tu tiens à l'allure des bots, en mots (« environ 12 min », « jusqu'au
+## bout » quand elle dépasse la durée estimée) ; "" sans le champ (core plus ancien).
+static func hold_text(msg: Dictionary) -> String:
+	if msg.get("hold_s") == null:
+		return ""
+	var hold := float(msg["hold_s"])
+	if msg.get("duration_s") != null and hold >= float(msg["duration_s"]):
+		return "jusqu'au bout"
+	return ("environ %d s" % int(round(hold))) if hold < 60.0 else "environ " + duration_text(hold)
 
 
 # --- intensité du jour (lot R1) : la dose en mots, réglage commun `bots.objective` ---------------------------
@@ -1772,15 +1785,26 @@ const INTENSITY_HELP := "Intensité du jour : A pour facile, moyen ou dur. Les b
 
 
 ## Ligne d'état sur « Intensité du jour » : l'aide, puis la durée estimée de la course et ta cote quand le core
-## les a données (« Course estimée à ≈ 9 min. Ta cote : 1540. »).
+## les a données (« Course estimée à ≈ 9 min. Ta cote : 1540. ») ; avec la courbe (lot PP6b, contrat 1.37), la
+## durée que tu tiens à l'allure des bots et ton temps à fond, en une ligne qui tient sur l'écran (« Course ≈ 13 min :
+## allure tenue jusqu'au bout, toi à fond ≈ 11 min. Cote : 1500. »).
 func intensity_help() -> String:
 	var parts: Array = []
 	var d := str(menu.bots_info.get("duration", ""))
 	var c := str(menu.bots_info.get("cote", ""))
-	if d != "":
+	var h := str(menu.bots_info.get("hold", ""))
+	var m := str(menu.bots_info.get("mine", ""))
+	if d != "" and (h != "" or m != ""):   # lot PP6b : une ligne courte, la cote reste visible
+		var bits: Array = []
+		if h != "":
+			bits.append("allure tenue " + h)
+		if m != "":
+			bits.append("toi à fond " + m.replace("environ ", "≈ "))
+		parts.append("Course " + d + " : " + ", ".join(bits) + ".")
+	elif d != "":
 		parts.append("Course estimée à " + d + ".")
 	if c != "":
-		parts.append("Ta cote : " + c + ".")
+		parts.append(("Cote : " if h != "" or m != "" else "Ta cote : ") + c + ".")
 	return INTENSITY_HELP + ("" if parts.is_empty() else "\n" + " ".join(parts))
 
 
