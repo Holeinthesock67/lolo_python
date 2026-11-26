@@ -81,12 +81,17 @@ def ftp_review(kept: list[tuple[Path, dict]], ftp_set_w: float, now: float) -> d
 
 
 def session_report(journal: Path, ftp_set_w: float, directory: Path, cache_path: Path, sources: Iterable[str],
-                   now: float | None = None) -> dict[str, Any] | None:
+                   now: float | None = None, since: float | None = None) -> dict[str, Any] | None:
     """Records et signal de la séance `journal` (dans `directory` ou son sous-dossier `.journal/`) ; None si la
-    séance n'est pas comptée. Lit le cache commun des courbes (lot PP1)."""
+    séance n'est pas comptée. Lit le cache commun des courbes (lot PP1).
+
+    `since` (remise à zéro des statistiques, lot RZ1) : les records comparent la séance aux seules séances d'après
+    la remise à zéro ; le signal « FTP à revoir » lit toutes les séances, comme la FTP estimée."""
     now = time.time() if now is None else now
-    kept = pc.kept_sessions(pc.session_entries(Path(directory), Path(cache_path)), tuple(sources))
-    recs = records_from_sessions(kept, Path(journal), now)
+    found = pc.session_entries(Path(directory), Path(cache_path))
+    kept = pc.kept_sessions(found, tuple(sources))
+    stats = kept if since is None else pc.kept_sessions(found, tuple(sources), since)
+    recs = records_from_sessions(stats, Path(journal), now)
     if recs is None:
         return None
     return {"records": recs, "ftp_review": ftp_review(kept, ftp_set_w, now)}
@@ -121,7 +126,8 @@ def main(argv: list[str] | None = None) -> int:
         from .. import config
         ftp = float(config.load().rider.ftp_w)
     try:
-        r = session_report(a.journal, ftp, a.directory or ctx.activities_dir, ctx.mmp_cache, ctx.counted_sources)
+        r = session_report(a.journal, ftp, a.directory or ctx.activities_dir, ctx.mmp_cache, ctx.counted_sources,
+                           since=getattr(ctx, "stats_since", None))
     except Exception as exc:
         print(f"Records impossibles : {exc}", file=sys.stderr)
         return 2

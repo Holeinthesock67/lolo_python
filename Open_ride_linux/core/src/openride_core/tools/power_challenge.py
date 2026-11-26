@@ -95,7 +95,8 @@ def main(argv: list[str] | None = None) -> int:
         import time
         ctx = profiles.current()
         now = time.time()
-        kept = pc.kept_sessions(pc.session_entries(ctx.activities_dir, ctx.mmp_cache), ctx.counted_sources)
+        kept = pc.kept_sessions(pc.session_entries(ctx.activities_dir, ctx.mmp_cache), ctx.counted_sources,
+                                getattr(ctx, "stats_since", None))   # remise à zéro (lot RZ1)
         m6 = pc.window_curve(kept, pc.WINDOWS["months6"], now)
         w6 = pc.window_curve(kept, pc.WINDOWS["weeks6"], now)
         r = challenge(power_profile.profile_from_windows(m6, w6, now), m6["points"], list_routes())

@@ -267,10 +267,17 @@ def session_powers(directory: Path, cache_path: Path) -> dict[str, dict[int, flo
     return out
 
 
-def kept_sessions(found: list[tuple[Path, dict]], sources: Iterable[str]) -> list[tuple[Path, dict]]:
-    """Séances comptées : source du profil, jamais un rejeu ; FIT écarté quand son journal est là."""
+def kept_sessions(found: list[tuple[Path, dict]], sources: Iterable[str],
+                  since: float | None = None) -> list[tuple[Path, dict]]:
+    """Séances comptées : source du profil, jamais un rejeu ; FIT écarté quand son journal est là.
+
+    `since` (remise à zéro des statistiques, lot RZ1, `ProfileContext.stats_since`) : les séances commencées avant
+    sont écartées. Passé seulement à ce que le user voit comme ses statistiques (courbe, records du bilan, profil,
+    défi) ; le coach, la FTP estimée et la courbe des bots lisent toutes les séances (« garder coach, FIT et Elo »)."""
     sources = set(sources)
     ok = [(p, e) for p, e in found if e.get("start_ts") is not None and not e.get("error")]
+    if since is not None:
+        ok = [(p, e) for p, e in ok if e["start_ts"] >= since]
     journals = [e["start_ts"] for _, e in ok if e["fmt"] == "jsonl"]
     replays = [e["start_ts"] for _, e in ok if e["fmt"] == "jsonl" and e.get("source") == "replay"]
     kept = []
@@ -332,14 +339,16 @@ def window_curve(kept: list[tuple[Path, dict]], days: int, now: float) -> dict[s
 
 
 def compute(directory: Path | None = None, sources: Iterable[str] | None = None, cache_path: Path | None = None,
-            now: float | None = None) -> dict[str, Any]:
-    """Courbe du profil en cours (ou du dossier `directory`) pour les deux fenêtres."""
+            now: float | None = None, since: float | None = None) -> dict[str, Any]:
+    """Courbe du profil en cours (ou du dossier `directory`) pour les deux fenêtres, depuis la remise à zéro des
+    statistiques du profil (`since`, défaut : `ctx.stats_since`)."""
     ctx = profiles.current()
     act_dir = Path(directory) if directory is not None else ctx.activities_dir
     cpath = Path(cache_path) if cache_path is not None else ctx.mmp_cache
     srcs = tuple(sources) if sources is not None else tuple(ctx.counted_sources)
     now = time.time() if now is None else now
-    kept = kept_sessions(session_entries(act_dir, cpath), srcs)
+    since = getattr(ctx, "stats_since", None) if since is None else since
+    kept = kept_sessions(session_entries(act_dir, cpath), srcs, since)
     return {"profile_id": ctx.id, "directory": str(act_dir), "sources": list(srcs), "durations": list(DURATIONS_S),
             "windows": {name: window_curve(kept, days, now) for name, days in WINDOWS.items()},
             "warning": WARNING}
