@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Bots calés sur ta courbe selon la durée de la course, durée tenable annoncée, temps prévu sur un parcours, seuils d'attaque du Grand Prix et rythme de l'élimination | Python (+ GDScript pour les textes du menu) | PP1, BT1, Elo #941, mode Course #939, stratégie R1 #966 | Moyenne | Cahier ; à cadrer avec le fil « Coder niveau des bots et Elo » avant tout code |
+| Bots calés sur ta courbe selon la durée de la course, durée tenable annoncée, temps prévu sur un parcours, seuils d'attaque du Grand Prix et rythme de l'élimination | Python (+ GDScript pour les textes du menu) | PP1, BT1, Elo #941, mode Course #939, stratégie R1 #966 | Moyenne | PR ouverte le 23 novembre (série PP, 6.0) pour le branchement des bots et `hold_s` ; fiche de la course, temps prévu, Grand Prix et élimination en PP6b (cahier) |
 
 ## 1. Objectif
 
@@ -36,8 +36,22 @@ Idées du §8.2 du plan `docs/6.0/PLAN_SERIE_PP.md`, retenues par le propriétai
 8. Contrôle : option `--courbe` de `tools/elo_campagne.py` pour vérifier que la cote converge aussi avec une courbe de joueur ; le mode Course (#939) reçoit tout tel quel.
 9. Ordre : code après la fusion de #941, #939 et #966 (règle du 21/11) ; ligue d'hiver (série CH) : la manche utilise la courbe personnelle.
 
+## 4 bis. PP6b (cahier, à coder ensuite)
+
+Points 2 à 5 du §3, qui changent des écrans ou des modes : durée tenable sur la fiche de la course (« À ce niveau, tu tiens environ 12 min »), temps prévu pour toi sur la fiche d'un parcours, seuils des boîtes « ! ATTAQUE » du Grand Prix calés sur ton 15 s et ton 1 min, rythme de l'élimination au vélodrome. Tous lisent `bot_effort.hold_s` et `Effort.curve`, déjà livrés.
+
 ## 5. Critères d'acceptation
 
 1. Tests du core : courbe personnelle utilisée, repli générique sans point, bornes ± 15 %, durée tenable, temps prévu.
 2. Banc simulé `elo_campagne` (validation des bots sans essai vélo, décision du 21/11) toujours vert.
 3. Recette PC : logique, fumée + medium ; captures seulement si une fiche du menu change.
+
+## 6. Livraison
+
+23 novembre 2026, PR empilée sur PP7b, après la fusion de #941, #939 et #966 :
+
+- `bot_effort.py` : champ facultatif `Effort.curve`, `curve_pct_for` (courbe du cycliste entre sa plus courte et sa plus longue durée, ± 15 % de la courbe type, ailleurs la courbe type), `hold_s` (inverse), `personal_curve` (meilleur effort par durée, libre ou ERG, 6 semaines sinon 6 mois, rendue décroissante) ; `target_pct` la suit ;
+- `session.py` : `_rider_curve` calculée hors de la boucle (`ipc_lists.rider_curve`) au lancement, au changement de profil et après chaque séance ; `_bot_effort` la passe à tous les modes (Grand Prix, Course, ligue, vélodrome, aperçu des bots) ; ligne de log « courbe du cycliste » ou « courbe type » ; champ `curve` de la ligne `bots` du journal au départ (pour rejouer la course) ;
+- `tools/elo_campagne.py --courbe` : campagne avec la courbe d'un cycliste fictif (puncheur à FTP 250 W).
+
+Testé par `core/tests/test_bot_effort_courbe.py`. Recette PC : logique, fumée + medium ; aucun écran ne change.
