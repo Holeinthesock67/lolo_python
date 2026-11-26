@@ -178,6 +178,23 @@ def controle_versions(base: str, main: str, bilan: Bilan) -> None:
             bilan.note(OK, f"{nom} : {avant} → {apres} (main {sur_main})")
 
 
+REGISTRE_IPC = "core/src/openride_core/revisions_ipc"
+CONTRACT_REV_LITTERAL = re.compile(r"^CONTRACT_REV\s*=\s*[\"']", re.M)
+
+
+def controle_registre_ipc(base: str, branche: str, bilan: Bilan) -> None:
+    """Lot CF2 : une PR de protocole ajoute revisions_ipc/a_numeroter/LOT.txt ; seul un train numérote."""
+    if montrer("HEAD", f"{REGISTRE_IPC}/historique.txt") is None:
+        return                                                          # branche d'avant le registre
+    if CONTRACT_REV_LITTERAL.search(montrer("HEAD", VERSIONS["révision IPC"][0]) or ""):
+        bilan.note(ECHEC, "révision IPC écrite à la main dans ipc_server.py : remettre "
+                   "`CONTRACT_REV = revisions_ipc.revision_courante()` et ajouter revisions_ipc/a_numeroter/LOT.txt")
+    touche = git("diff", "--name-only", base, "HEAD", "--", f"{REGISTRE_IPC}/historique.txt").strip()
+    if touche and montrer(base, f"{REGISTRE_IPC}/historique.txt") is not None and not branche.startswith("train/"):
+        bilan.note(ECHEC, "revisions_ipc/historique.txt changé par une branche de lot : seul le fil de fusion "
+                   "numérote (scripts/numeroter_revisions.py) ; ajouter revisions_ipc/a_numeroter/LOT.txt à la place")
+
+
 def controle_assemblage(main: str, bilan: Bilan) -> None:
     p = subprocess.run(["git", "merge-tree", "--write-tree", "--name-only", main, "HEAD"], cwd=PROJET,
                        capture_output=True, text=True, check=False)
@@ -344,6 +361,7 @@ def main(argv: list[str] | None = None) -> int:
 
     controle_uid(PROJET / "engine", a.corriger, bilan)
     controle_versions(base, main_sha, bilan)
+    controle_registre_ipc(base, git("rev-parse", "--abbrev-ref", "HEAD").strip(), bilan)
     controle_assemblage(main_sha, bilan)
     controle_fraicheur(base, main_sha, changes, a.avant_fusion, bilan)
 
