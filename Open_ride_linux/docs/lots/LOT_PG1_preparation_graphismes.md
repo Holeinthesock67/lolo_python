@@ -63,3 +63,22 @@ l'engine), pas dans le profil du joueur.
 - Tests unitaires verts en CI.
 - Recette PC à froid : la préparation dure moins de 90 s, l'écran reste animé (aucune image de plus de 1 s), puis
   le départ DB1 passe sous 150 ms dès la séance qui suit.
+
+## 6. Livraison
+
+- `engine/scripts/graphics_catalog.gd` : clés stables (shader par chemin ou par son code, matériau standard par ses
+  options et ses emplacements de texture, format de sommets vu par le serveur de rendu, ombres), recette d'un
+  triangle par surface au même format de sommets, matériaux aux textures de 4 × 4 pixels, écriture en `.scn`
+  (quatre par image au plus), relecture du dossier livré puis de celui du joueur.
+- `engine/scripts/shader_warm.gd` : chaque objet dessiné qui entre dans l'arbre (`node_added`, lu à l'image suivante)
+  laisse sa recette au catalogue, en séance aussi ; `prime` met en file les doublures du catalogue ; `primed_left`,
+  `primed_shown`.
+- `engine/scripts/graphics_prep.gd` : clé `version du jeu | Godot | carte | API | pilote` dans
+  `user://graphismes/prepare.json`, cache `user://shader_cache` vide ; barre et texte « Préparation des graphismes :
+  première fois seulement (N sur M) » ; clé écrite seulement si tout est passé (séance partie avant : refaite au
+  lancement suivant).
+- `engine/scripts/engine_args.gd` : `--graphics-prep=on|off` (coupée avec `--test-mode` sauf demande, comme le
+  garde-fou de charge), `--graphics-catalog-dir=CHEMIN`.
+- `engine/tests/catalogue_graphismes.py` et `tour_visuel.py --engine-arg` : catalogue de départ.
+- Tests : `test_graphics_catalog.gd`, `test_graphics_prep.gd`.
+- Pas de changement IPC.

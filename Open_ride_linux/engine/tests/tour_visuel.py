@@ -324,7 +324,8 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes}",
             "--test-mode", f"--quality={args.quality}", "--camera=subjective"]
     if args.visual_grade is not None:
-        cmd.append(f"--visual-grade={args.visual_grade}")   # relief affiché ; défaut de l'engine sinon (2,5)
+        cmd.append(f"--visual-grade={args.visual_grade}")
+    cmd += list(getattr(args, "engine_arg", []) or [])   # lot PG1 : catalogue des graphismes de départ   # relief affiché ; défaut de l'engine sinon (2,5)
     import bancs_processus
     home_godot, home_env = bancs_processus.home_temporaire()   # revue vague 5, O3-09 : pas le vrai profil
     with log_path.open("w") as fh:
@@ -415,6 +416,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "tour_visuel" / time.strftime("%Y-%m-%d_%H%M%S"))
     ap.add_argument("--keep", action="store_true", help="garder le dossier temporaire du parcours")
+    ap.add_argument("--engine-arg", action="append", default=[],
+                    help="argument de plus pour l'engine, répétable (ex. --graphics-catalog-dir=…, lot PG1)")
     args = ap.parse_args(argv)
     if not args.auto and args.tour is None:
         ap.error("--auto ou --tour (ou les deux)")

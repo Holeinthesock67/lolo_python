@@ -508,7 +508,8 @@ class Bench:
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
                     f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
-                    f"--forest={a.forest}", f"--load-guard={a.load_guard}", f"--crowd={a.crowd}"]
+                    f"--forest={a.forest}", f"--load-guard={a.load_guard}", f"--crowd={a.crowd}",
+                    "--graphics-prep=on"]   # lot PG1 : le banc mesure le jeu tel quel, préparation comprise
             if a.camera_height is not None:   # vue follow_far plus haute (lot Y5 : voir les forêts lointaines)
                 cmd.append(f"--camera-height={a.camera_height:g}")
             if self.biome:

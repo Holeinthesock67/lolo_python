@@ -87,6 +87,8 @@ const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
 const ShaderWarm := preload("res://scripts/shader_warm.gd")
+const GraphicsCatalog := preload("res://scripts/graphics_catalog.gd")
+const GraphicsPrep := preload("res://scripts/graphics_prep.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const OW_PREFIX := "ow:"
@@ -118,6 +120,8 @@ var route
 var routes_dir: String = ""
 var follow = CameraFollowScript.new()
 var session_state: String = ""
+## Préparation des graphismes en cours (lot PG1, graphics_prep.gd) : la scène du parcours attend sa fin.
+var _graphics_prep = null
 var _first_state_logged := false
 var _route_id_requested = null
 ## Profil d'altitude du dernier parcours chargé, pour la carte de détail des menus : {id, profile}.
@@ -346,6 +350,18 @@ func _ready() -> void:
 		warm.active = session_state != "RUNNING"   # séance déjà partie (reprise, tour visuel) : rien de retenu
 		streamer.add_child(warm)
 		streamer.shader_warm = warm
+		var catalog = GraphicsCatalog.new()   # lot PG1 : recette de chaque objet vu, pour la préparation suivante
+		if str(cfg.get("graphics_catalog_dir", "")) != "":
+			catalog.dir = str(cfg["graphics_catalog_dir"])
+		catalog.load_index()
+		warm.catalog = catalog
+		if bool(cfg.get("graphics_prep", true)) and GraphicsPrep.needed():
+			var prep = GraphicsPrep.new()   # premier lancement (lot PG1) : tout le catalogue, une doublure par image
+			prep.name = "GraphicsPrep"
+			prep.warm = warm
+			add_child(prep)
+			prep.start(GraphicsCatalog.load_all())
+			_graphics_prep = prep
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
@@ -1551,6 +1567,8 @@ func _warmup_steps() -> Array:
 func _poll_route_job() -> void:
 	if _route_job.is_empty() or not BgTasks.done(_route_job["task"]):
 		return
+	if _graphics_prep != null and _graphics_prep.running:
+		return   # lot PG1 : décor construit après la préparation, ses shaders déjà passés
 	var job := _route_job
 	_route_job = {}
 	BgTasks.wait(job["task"])

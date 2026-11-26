@@ -19,6 +19,10 @@ extends RefCounted
 ##   --horizon=on|off         relief d'horizon jusqu'à 40 km, tuiles terrain/horizon (défaut : on ; off : banc avant/après, lot JP4)
 ##   --crowd=climbs|all       spectateurs sur les montées d'au moins 3 km (défaut) ou sur toutes (bancs, lot Y21)
 ##   --load-guard=on|off      garde-fou de charge (lot Y6, load_guard.gd) ; défaut : on, off avec --test-mode
+##   --graphics-prep=on|off   préparation des graphismes au premier lancement (lot PG1, graphics_prep.gd) ; défaut : on,
+##                            off avec --test-mode (les bancs la demandent)
+##   --graphics-catalog-dir=CHEMIN  dossier où le catalogue des graphismes est écrit (défaut : user://graphismes/catalogue ;
+##                            outil du catalogue de départ, lot PG1)
 ##   --display=windowed|borderless|fullscreen  mode d'affichage (défaut : windowed ; display_mode.gd)
 ##   --camera=subjective|follow_near|follow_far|side  vue de caméra de départ (défaut : follow_near ; camera_views.gd)
 ##   --camera-height=M        hauteur de la vue follow_far, de 2 à 300 m (défaut : 6 m ; bancs : voir loin, lot Y5)
@@ -50,7 +54,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, gravel, visual_grade, living, culling, forest, horizon, crowd_all_climbs, load_guard, display, camera, camera_height, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, gravel, visual_grade, living, culling, forest, horizon, crowd_all_climbs, load_guard, graphics_prep, graphics_catalog_dir, display, camera, camera_height, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -69,6 +73,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"horizon": true,
 		"crowd_all_climbs": false,
 		"load_guard": true,
+		"graphics_prep": true,
+		"graphics_catalog_dir": "",
 		"display": DisplayMode.DEFAULT,
 		"camera": CameraViews.DEFAULT_VIEW,
 		"camera_height": CameraViews.FAR_HEIGHT_M,
@@ -77,6 +83,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"perf_probe": "",
 	}
 	var guard_given := false
+	var prep_given := false
 	for arg in args:
 		if arg.begins_with("--ipc-state-port="):
 			out["state_port"] = _port(arg, DEFAULT_STATE_PORT)
@@ -117,6 +124,14 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		elif arg.begins_with("--load-guard="):
 			out["load_guard"] = _on_off(arg, true, "garde-fou de charge")
 			guard_given = true
+		elif arg.begins_with("--graphics-prep="):
+			out["graphics_prep"] = _on_off(arg, true, "préparation des graphismes")
+			prep_given = true
+		elif arg.begins_with("--graphics-catalog-dir="):
+			var cdir := arg.get_slice("=", 1).strip_edges()
+			if cdir.begins_with("~"):
+				cdir = _home() + cdir.substr(1)
+			out["graphics_catalog_dir"] = cdir
 		elif arg.begins_with("--camera="):
 			out["camera"] = _camera(arg, CameraViews.DEFAULT_VIEW)
 		elif arg.begins_with("--camera-height="):
@@ -130,6 +145,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 	# Les outils de test mesurent les préréglages tels quels : garde-fou coupé sauf demande explicite.
 	if out["test_mode"] and not guard_given:
 		out["load_guard"] = false
+	if out["test_mode"] and not prep_given:
+		out["graphics_prep"] = false
 	return out
 
 

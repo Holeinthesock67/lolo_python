@@ -57,6 +57,14 @@ var _held: Array = []
 var _hold_frames := 0
 ## Doublures dessinées depuis le lancement (journal et tests).
 var shown := 0
+## Catalogue des graphismes (graphics_catalog.gd, lot PG1, posé par main.gd) : chaque objet vu y laisse sa recette.
+var catalog = null
+## Doublures du catalogue confiées par `prime` (préparation des graphismes) pas encore dessinées, et dessinées.
+var _primed_left := 0
+var primed_shown := 0
+## Objets dessinés entrés dans l'arbre depuis la dernière image : leurs recettes vont au catalogue (tous, pas seulement
+## ceux passés par hold ou warm : cycliste, bots, ciel, foules, portiques…). Lus à l'image suivante, une fois réglés.
+var _seen: Array = []
 
 
 ## Couples (format de sommets, shader, ombres) d'un objet dessiné : MeshInstance3D ou MultiMeshInstance3D.
@@ -115,6 +123,7 @@ static func material_key(mat: Material) -> String:
 ## 25 novembre : simplement cachés, ils compilaient encore leurs pipelines dans l'image de leur création).
 ## Renvoie vrai si quelque chose est retiré.
 func hold(nodes: Array) -> bool:
+	_record(nodes)
 	if not active:
 		return false
 	var waiting: Array = []
@@ -145,6 +154,7 @@ func hold(nodes: Array) -> bool:
 ## seules les doublures de leurs couples nouveaux passent, une par image, comme pour `hold`. Renvoie les clés à
 ## attendre (`keys_done`), vide si tout est déjà dessiné ou en séance. Compté dans `pending` jusqu'à la fin.
 func warm(nodes: Array) -> Array:
+	_record(nodes)
 	if not active:
 		return []
 	var waiting: Array = []
@@ -160,6 +170,46 @@ func warm(nodes: Array) -> Array:
 	if not waiting.is_empty():
 		_held.append({"nodes": [], "keys": waiting})
 	return waiting
+
+
+## Recettes des objets vus pour le catalogue (lot PG1), en séance aussi : la préparation suivante les reprendra.
+func _record(nodes: Array) -> void:
+	if catalog == null:
+		return
+	for n in nodes:
+		if is_instance_valid(n):
+			catalog.record(n)
+
+
+## Préparation des graphismes (graphics_prep.gd, lot PG1) : doublures du catalogue, déjà construites, mises en file
+## comme celles des objets (une entre dans la scène par image, dessinée deux images plus tard). Les couples déjà
+## connus sont passés. Renvoie le nombre de doublures gardées.
+func prime(proxies: Array) -> int:
+	var kept := 0
+	for p in proxies:
+		var fresh := ""
+		for k in keys_of(p):
+			if not _known.has(k):
+				_known[k] = true if fresh != "" else false
+				if fresh == "":
+					fresh = k
+		if fresh == "" or not active:
+			if fresh != "":
+				_known.erase(fresh)
+			(p as Node).free()
+			continue
+		var g := p as GeometryInstance3D
+		g.visible = false
+		g.name = "doublure"
+		_queue.append({"key": fresh, "node": g, "ready": -1, "primed": true})
+		kept += 1
+	_primed_left += kept
+	return kept
+
+
+## Doublures de la préparation qui restent à passer (0 : finie, ou abandonnée au départ de la séance).
+func primed_left() -> int:
+	return _primed_left
 
 
 ## Vrai quand toutes ces clés ont été dessinées par leur doublure (ou abandonnées : séance partie, garde-fou).
@@ -257,6 +307,9 @@ func _place(p: Node3D, camera: Node3D) -> void:
 
 func _finish_current() -> void:
 	_known[_current["key"]] = true
+	if bool(_current.get("primed", false)):
+		_primed_left -= 1
+		primed_shown += 1
 	_free_proxy(_current["node"])
 	_current = {}
 	_release_ready()
@@ -323,6 +376,7 @@ func release_all() -> void:
 		_known.erase(q["key"])
 		_free_proxy(q["node"])
 	_queue.clear()
+	_primed_left = 0   # préparation abandonnée : graphics_prep.gd n'écrit pas sa clé (primed_shown incomplet)
 	_hold_frames = 0
 
 
@@ -339,8 +393,22 @@ func pending() -> int:
 	return _held.size() + _queue.size() + (0 if _current.is_empty() else 1)
 
 
+func _ready() -> void:
+	get_tree().node_added.connect(_on_node_added)
+
+
+func _on_node_added(n: Node) -> void:
+	if catalog != null and n is GeometryInstance3D and not String(n.name).begins_with("doublure"):
+		_seen.append(n)
+
+
 func _process(_delta: float) -> void:
 	step(get_viewport().get_camera_3d() if is_inside_tree() else null)
+	if catalog != null:
+		if not _seen.is_empty():
+			_record(_seen)
+			_seen.clear()
+		catalog.flush()   # quelques petits fichiers par image au plus
 
 
 func _exit_tree() -> void:
