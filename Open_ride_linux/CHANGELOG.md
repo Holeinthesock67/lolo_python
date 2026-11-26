@@ -6,6 +6,12 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 
 ## Non publié
 
+### Consignes du Cyber-Rogue (lot R28)
+- Moins de voile et de halo en medium et high : l'éclair d'une frappe n'assombrit plus tout l'écran (15 % au lieu de 45 %), et le halo des néons est plus court, sans bloom (retour du 23 novembre).
+- La consigne écrite est la vraie : la puissance qui bat l'ennemi à temps (au boss du seuil, 11,8 % de plus qu'avant), et l'adrénaline monte dès qu'on l'atteint (« affiche une vraie consigne », choix du propriétaire). La marge de 10 % ne sert plus qu'à rester dans la plage, et elle est écrite : « ✔ marge : remonte de 8 W ».
+- La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
+- L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.39 provisoire).
+
 ### Gestes des bots écrits et entendus (lot BA1)
 - Quand un bot proche attaque, suit une attaque ou lance son sprint, le bandeau l'écrit (« Grimpeur attaque, 40 m devant ») et un son court part : dans la Course, le Grand Prix, le Dernier survivant et la session libre avec un peloton.
 - Contrat IPC : champ facultatif `move` des bots (révision 1.38, numéro provisoire).

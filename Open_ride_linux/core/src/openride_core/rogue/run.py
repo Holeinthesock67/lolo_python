@@ -784,22 +784,21 @@ class RunEngine:
         return out[:2]
 
     def _target_pct(self, inp) -> dict | None:
-        """Consigne de puissance en % de FTP : `{lo, hi}` (`hi` nul : « au moins `lo` »)."""
+        """Plage de puissance en % de FTP : `{lo, hi}` (`hi` nul : « au moins `lo` »). Lot R28 : c'est la plage jugée,
+        tolérance comprise (`judged_band_pct`), la même que celle qui remplit l'adrénaline et déclenche la surchauffe."""
+        from .combat import judged_band_pct, overheat_limit, win_target
         b = self.b
         if self.phase == WARMUP:
             u = min(self.t_phase / max(self._step.nominal_s, 1e-9), 1.0)
             mid = b.warmup_frac_from + (b.warmup_frac_to - b.warmup_frac_from) * u
-            return {"lo": round(mid * 100 - 5), "hi": round(mid * 100 + 5)}
+            return judged_band_pct(mid - 0.05, mid + 0.05, inp.ftp_w, b)
         if self.phase == COOLDOWN:
             return {"lo": 0, "hi": round(b.cooldown_frac * 100)}
         if self.phase in (ROOM, BOSS) and self.room is not None:
-            from .combat import target_at
             # lot R23 : en endurance, le plafond est le seuil de surchauffe (au-delà, l'adrénaline fond)
-            from .combat import overheat_limit
-            tgt = target_at(self.room, max(inp.s_m, 0.0))
-            lo = round(tgt * 100)
-            hi = round(overheat_limit(tgt, self._eff_balance()) * 100) if self.cur_spec.objective == "endurance" else None
-            return {"lo": lo, "hi": hi}
+            tgt = win_target(self.room, max(inp.s_m, 0.0), self._eff_balance())   # lot R28 : la consigne qui gagne
+            hi = overheat_limit(tgt, self._eff_balance()) if self.cur_spec.objective == "endurance" else None
+            return judged_band_pct(tgt, hi, inp.ftp_w, self._eff_balance())
         return None
 
     def _firewall_gap_s(self, gap_m: float, inp) -> float | None:
