@@ -41,6 +41,7 @@ var forced := ""
 var season_date := {}   # {month, day, lat, snowy} (lot U13) ; vide : pas de saison par date
 var _params_cache := {}
 var _fire_cache := {}       # paysage -> feu (fire_of)
+var _neon_cache := {}       # paysage -> ambiance néon (neon_of)
 var _mutex := Mutex.new()   # params() appelé depuis les fils de préparation
 
 
@@ -462,6 +463,41 @@ func any_fire() -> Dictionary:
 		if not f.is_empty():
 			return f
 	return {}
+
+
+## Ambiance néon du paysage (lot NV1, ville néon) : section `landscapes.<paysage>.neon` du thème complétée par
+## NEON_DEFAULTS, {} si le paysage n'en a pas. Même règle que le feu : une tuile dont le paysage a une section
+## `neon` est en ville néon (ciel, lumière, néons et mobilier lumineux des lots NV2 à NV5).
+const NEON_DEFAULTS := {"pink": "#ff2a9e", "cyan": "#1ad9ff", "violet": "#8c40ff", "orange": "#ff8c1f",
+	"sky_top": "#0b0833", "sky_mid": "#80198a", "sky_horizon": "#ff7a38", "fog": "#f25a8c", "density": 1.0}
+
+
+func neon_of(landscape: String) -> Dictionary:
+	_mutex.lock()
+	var hit = _neon_cache.get(landscape, null)
+	_mutex.unlock()
+	if hit != null:
+		return hit
+	var out := {}
+	var all_l = theme.get("landscapes", null)
+	if landscape != "" and typeof(all_l) == TYPE_DICTIONARY and typeof(all_l.get(landscape, null)) == TYPE_DICTIONARY \
+			and typeof(all_l[landscape].get("neon", null)) == TYPE_DICTIONARY:
+		out = NEON_DEFAULTS.duplicate()
+		var n: Dictionary = all_l[landscape]["neon"]
+		for k in n:
+			out[k] = n[k]
+	_mutex.lock()
+	_neon_cache[landscape] = out
+	_mutex.unlock()
+	return out
+
+
+## Ambiance néon de la tuile qui contient (x, z) (`neon_of` de son paysage) ; {} hors ville néon.
+func neon_at(x: float, z: float) -> Dictionary:
+	var v = variant_at(x, z)
+	if typeof(v) != TYPE_DICTIONARY or typeof(v.get("landscape", null)) != TYPE_STRING:
+		return {}
+	return neon_of(v["landscape"])
 
 
 ## Entrées `variants` du thème pour le couple {ground, roofs} d'une tuile ({} si aucune).
