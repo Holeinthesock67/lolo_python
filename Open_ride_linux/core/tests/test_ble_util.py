@@ -199,7 +199,7 @@ def test_find_device_falls_back_to_bluez_and_logs_info(
 
     assert res == "C1:1C:00:00:00:01"
     infos = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
-    assert any("non annoncé" in m and "C1:1C:00:00:00:01" in m for m in infos)
+    assert any("non annoncé" in m and "…:00:00:01" in m for m in infos)   # adresse tronquée (revue S6-11)
 
 
 def test_find_device_returns_none_when_neither_scan_nor_bluez_finds_it(

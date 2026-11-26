@@ -25,7 +25,8 @@ from contextlib import AsyncExitStack
 from typing import Any, Awaitable, Callable
 
 from . import latency_log, zwift_click
-from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, last_trainer_write_at
+from .ble_util import (backoff_delays, ble_lock, default_client_factory, find_device, last_trainer_write_at,
+                       short_address)
 from .zwift_click import InputEvent, PressClassifier
 
 log = logging.getLogger("input")
@@ -55,14 +56,17 @@ class ClickPair:
 
     def __init__(self) -> None:
         self.claimed: set[str] = set()
-        self._seen: dict[InputEvent, list[float]] = {}
+        self._seen: dict[str, list[float]] = {}   # bouton -> heures de relâchement récentes
 
     def first_report(self, ev: InputEvent, t: float) -> bool:
         """`t` : heure du relâchement. Une rafale finie (R14) publie plusieurs tapes à la fois, dans
         le désordre entre les deux boîtiers : on compare donc à toutes les heures récentes."""
-        seen = [s for s in self._seen.get(ev, []) if abs(t - s) <= self.KEEP_S]
+        # Clé : le bouton, pas l'événement classé (revue S6-10) : vers 0,5 s ou 0,9 s, un boîtier
+        # classe PLUS_SHORT et l'autre PLUS_UNCLEAR ; les deux passaient. Le premier reçu l'emporte.
+        button = ev.name.rsplit("_", 1)[0]
+        seen = [s for s in self._seen.get(button, []) if abs(t - s) <= self.KEEP_S]
         relayed = any(abs(t - s) <= self.DEDUP_S for s in seen)
-        self._seen[ev] = seen + [t]
+        self._seen[button] = seen + [t]
         return not relayed
 
 
@@ -333,7 +337,7 @@ class ZwiftClickProvider:
             self._close_window(now, "arrêt" if self._stop.is_set() else "coupure")
         write_at = last_trainer_write_at()
         since_write = "jamais" if write_at is None else f"{max(time.monotonic() - write_at, 0.0):.1f} s"
-        log.warning(CLICK_DISCONNECTED_FMT, self._conn_address, connected, _ago(now, self._last_notify_at),
+        log.warning(CLICK_DISCONNECTED_FMT, short_address(self._conn_address), connected, _ago(now, self._last_notify_at),
                     _ago(now, self._last_press_at), self._notify_count, since_write, reason or "fin de session")
         if self.trace_raw:
             self._log_summary()
@@ -386,7 +390,7 @@ class ZwiftClickProvider:
                                              response=True)
             now = self._clock()
             self._conn_address = str(self._mine or getattr(dev, "address", dev))
-            log.info(CLICK_CONNECTED_FMT, self._conn_address, now - self._search_since, self._attempts)
+            log.info(CLICK_CONNECTED_FMT, short_address(self._conn_address), now - self._search_since, self._attempts)
             self._connected_at = self._rate_since = now
             self._last_notify_at = self._last_press_at = None
             self._notify_count = self._rate_count = 0
