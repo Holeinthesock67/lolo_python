@@ -249,3 +249,18 @@ def test_real_ign_service(tmp_path):
     p = IgnRgeAltiProvider(cache_dir=tmp_path, fallback=Flat(-1.0), log=logs.append)
     z = p.elevations(np.array([45.0]), np.array([5.0]))[0]
     assert z != -1.0 and 100.0 < z < 3000.0, "\n".join(logs)
+
+
+def test_source_at_names_the_real_source(tmp_path, wms):
+    """26/11 : une balade d'Almería annonçait « ign_rge_alti » dans son manifeste : la source réelle y est écrite."""
+    from openride_compiler.elevation import FabdemProvider, source_at
+
+    fab = FabdemProvider(cache_dir=tmp_path, offline=True, log=lambda m: None)
+    p = _prov(tmp_path, wms.url, fallback=fab)
+    assert source_at(p, 36.8, -2.4) == "copernicus_glo30"            # hors de France, sans FABDEM en cache
+    (tmp_path / "fabdem_v1_2").mkdir(parents=True, exist_ok=True)
+    fab.tile_path(36, -3).write_bytes(b"x")
+    assert source_at(p, 36.8, -2.4) == "fabdem_v1_2"                 # hors de France : FABDEM
+    q = _prov(tmp_path, wms.url, fallback=Flat())
+    q.elevations(LAT, LON)
+    assert source_at(q, float(LAT[0]), float(LON[0])) == "ign_rge_alti"   # en France, carré IGN lu

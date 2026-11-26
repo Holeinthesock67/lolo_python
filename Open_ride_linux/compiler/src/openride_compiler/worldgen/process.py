@@ -50,7 +50,7 @@ from .. import koppen
 from ..cache import Downloader, Log
 from ..elevation import (COPERNICUS_BASE_URL, FABDEM_BASE_URL, IGN_WMS_URL, CopernicusGlo30Provider,
                          ElevationProvider, FabdemProvider, IgnRgeAltiProvider, SyntheticProvider, check_tile_list,
-                         check_tiff, copernicus_tile_name, fabdem_tile_name)
+                         check_tiff, copernicus_tile_name, fabdem_tile_name, source_at)
 from ..errors import CompileError
 from ..pipeline import sample_positions
 from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts, turnaround_points,
@@ -371,6 +371,7 @@ class WorldSession:
     def _write_manifest(self) -> None:
         lat, lon = self.frame.to_latlon(np.array([self.e0]), np.array([-self.n0]))
         alt = float(np.nan_to_num(self.provider.elevations(lat, lon)[0]))
+        source = source_at(self.provider, float(lat[0]), float(lon[0]))   # source réelle au départ
         n = len(sample_positions(self.length_m))
         manifest = {
             "format": C.FORMAT_NAME, "format_version": C.FORMAT_VERSION, "name": "Monde ouvert",
@@ -380,10 +381,10 @@ class WorldSession:
                        "utm_zone": self.zone},
             "projection": "utm",
             "route": {"present": True, "version": C.ROUTE_VERSION, "file": "route/", "length_m": round(self.length_m, 3),
-                      "ds_m": C.DS_M, "n": n, "type": "open", "alt_source": getattr(self.provider, "name", "inconnu")},
+                      "ds_m": C.DS_M, "n": n, "type": "open", "alt_source": source},
             "layers": {
                 "terrain": {"present": True, "version": C.TERRAIN_VERSION,
-                            "sources": [getattr(self.provider, "name", "inconnu")],
+                            "sources": [source],
                             "near_cell_m": C.NEAR_CELL_M, "far_cell_m": C.FAR_CELL_M,
                             "road_half_width_m": C.ROAD_HALF_WIDTH_M},
                 "buildings": {"present": True, "version": C.BUILDINGS_VERSION},

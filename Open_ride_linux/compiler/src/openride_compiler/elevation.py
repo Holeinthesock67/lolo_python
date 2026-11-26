@@ -592,6 +592,23 @@ class IgnRgeAltiProvider:
         return bool(fb(lat, lon)) if fb is not None else True
 
 
+def source_at(provider: ElevationProvider, lat: float, lon: float) -> str:
+    """Nom de la source qui donne vraiment le relief de ce point dans une chaîne IGN → FABDEM → Copernicus (après
+    lecture : carrés et tuiles en cache). Le nom de la chaîne (`provider.name`) reste celui des versions du cache ;
+    celui-ci sert au manifeste (26/11 : une balade d'Almería annonçait « ign_rge_alti », hors de la France)."""
+    if isinstance(provider, IgnRgeAltiProvider):
+        if provider.in_frame(np.array([lat]), np.array([lon]))[0]:
+            e, n = provider._to_l93.transform(lon, lat)
+            if provider.tile_path(*ign_tile_key(float(e), float(n))).is_file():
+                return provider.name
+        return source_at(provider.fallback, lat, lon)
+    if isinstance(provider, FabdemProvider):
+        if provider.tile_path(math.floor(lat), math.floor(lon)).is_file():
+            return provider.name
+        return source_at(provider.fallback, lat, lon)
+    return getattr(provider, "name", "inconnu")
+
+
 def provider_for(name: str, offline: bool = False, log: Log = stderr_log) -> ElevationProvider:
     if name == CopernicusGlo30Provider.name:
         return CopernicusGlo30Provider(offline=offline, log=log)
