@@ -27,6 +27,7 @@ const MONTH_FULL := ["janvier", "février", "mars", "avril", "mai", "juin", "jui
 	"novembre", "décembre"]
 const NO_DATA := "Roule une première séance pour voir ta courbe"
 const PROFILE_ID := "profile"
+const CHALLENGE_ID := "challenge"
 
 var loaded := false
 var data: Dictionary = {}
@@ -135,6 +136,8 @@ func items(names: Dictionary) -> Array:
 		out.append({"id": "accept", "label": "Utiliser %d W comme FTP" % proposal_w(), "detail": ""})
 	out.append({"id": "ramp", "label": "Faire un test de rampe", "detail": ""})
 	out.append({"id": "months", "label": "Évolution par mois", "detail": ""})
+	if not challenge().is_empty():
+		out.append(challenge_row())
 	if not profile().is_empty():
 		out.append(profile_row())
 	for p in points():
@@ -205,10 +208,12 @@ func card(focused: String, names: Dictionary) -> Dictionary:
 		lines.append_array(_focused_lines(int(focused.substr(ROW_PREFIX.length())), names))
 	elif focused == PROFILE_ID:
 		lines = profile_lines()   # « Se connaître » prend la place de la source de l'estimation
+	elif focused == CHALLENGE_ID:
+		lines = challenge_lines()
 	lines.append("● %s   ○ %s   - - FTP réglée" % [SHORT[window], SHORT["w6" if window == "m6" else "m6"]])
 	var warn = data.get("warnings", [])
 	var shown: Array = (warn if warn is Array else [])
-	if focused == PROFILE_ID:
+	if focused in [PROFILE_ID, CHALLENGE_ID]:
 		shown = []
 	elif focused.begins_with(ROW_PREFIX) and shown.size() > 1:
 		shown = shown.slice(0, 1)   # la ligne de la durée prend la place : la carte ne déborde pas de l'écran
@@ -288,3 +293,50 @@ func profile_lines() -> Array:
 			out.append("Trou : aucun effort libre %s depuis 6 semaines." % span)
 	out.append("Tu n'es comparé qu'à toi-même.")
 	return out
+
+
+# --- défi « bats ton record » (lot PP7, objet `challenge` du message `power_curve`) --------------------
+
+func challenge() -> Dictionary:
+	var c = data.get("challenge")
+	return c if c is Dictionary and _num(c.get("s")) and _num(c.get("target_w")) else {}
+
+
+func _challenge_title() -> String:
+	var c := challenge()
+	return "%s à %d W" % [duration_label(int(c["s"])), int(c["target_w"])]
+
+
+## Ligne de la liste : « Défi : 5 min au-dessus de 310 W » et le parcours proposé.
+func challenge_row() -> Dictionary:
+	var c := challenge()
+	var where := str(c["route_name"]) if c.get("route_name") is String else \
+		("sur un sprint" if int(c["s"]) < 60 else "parcours au choix")
+	return {"id": CHALLENGE_ID, "label": "Défi : " + _challenge_title(), "detail": where}
+
+
+const CHALLENGE_WHY := {"weak": "ta durée à travailler", "aging": "ton record le plus ancien",
+	"default": "une durée de référence"}
+
+
+## Carte du défi : pourquoi cette durée, la cible en watts, le parcours, le fantôme.
+func challenge_lines() -> Array:
+	var c := challenge()
+	var out: Array = ["Défi : tiens %s à %d W ou plus, ton record + 1 W." % [duration_label(int(c["s"])), int(c["target_w"])],
+		"Pourquoi : c'est %s." % str(CHALLENGE_WHY.get(str(c.get("why", "")), CHALLENGE_WHY["default"]))]
+	if c.get("route_name") is String:
+		var climb := (" (montée principale d'environ %d min à cette puissance)" % maxi(1, int(round(float(c["climb_s"]) / 60.0)))) \
+			if _num(c.get("climb_s")) else ""
+		out.append("Parcours proposé : %s%s." % [str(c["route_name"]), climb])
+	elif int(c["s"]) < 60:
+		out.append("Parcours : au choix, n'importe quel sprint fait l'affaire.")
+	else:
+		out.append("Parcours : au choix, une montée d'au moins %s." % duration_label(int(c["s"])))
+	out.append("A : rouler ce défi, avec le fantôme de ton record (un bot à %d W)." % int(c["target_w"]))
+	return out
+
+
+## Détail de « Démarrer » sur l'écran Prêt du défi : le bot fantôme de ton record, en watts.
+func challenge_ready_text() -> String:
+	var c := challenge()
+	return "fantôme à %d W" % int(c.get("target_w", 0))   # titre « Prêt : défi : 1 min » ; le détail reste court

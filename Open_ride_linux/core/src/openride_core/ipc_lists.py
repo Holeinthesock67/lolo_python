@@ -610,10 +610,11 @@ def _curve_point(p: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir: Path, cache_path: Path,
-                              sources, profile_id: str | None = None, now: float | None = None) -> dict[str, Any]:
+                              sources, profile_id: str | None = None, now: float | None = None,
+                              routes: list | None = None) -> dict[str, Any]:
     """Réponse à `list_power_curve` : courbe du profil en cours (13 durées, 6 mois et 6 semaines, PP1), FTP estimée
     et sa proposition (PP2), évolution sur 6 mois ; un seul datagramme de moins de 4 096 octets."""
-    from .tools import ftp_estimate, power_curve, power_profile
+    from .tools import ftp_estimate, power_challenge, power_curve, power_profile
 
     now = time.time() if now is None else now
     kept = power_curve.kept_sessions(power_curve.session_entries(activities_dir, cache_path), tuple(sources))
@@ -634,6 +635,10 @@ def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir:
                        for x in est["monthly"]],
            "warnings": est["warnings"],
            "profile": power_profile.profile_from_windows(m6, w6, now)}   # lot PP5 : « Se connaître »
+    chal = power_challenge.challenge(msg["profile"], m6["points"], routes or [])   # lot PP7 : défi
+    if chal is not None and chal["route_name"]:
+        chal["route_name"] = str(chal["route_name"])[:40]
+    msg["challenge"] = chal
     if len(json.dumps(msg, ensure_ascii=False).encode("utf-8")) > POWER_CURVE_MAX_BYTES:   # noms très longs
         for pt in msg["points"]:
             for key in ("m6", "w6"):
