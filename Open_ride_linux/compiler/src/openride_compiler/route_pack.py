@@ -11,6 +11,7 @@ symbolique, taille maximale, fiches valides, aucun autre fichier. Le pack est co
 
 from __future__ import annotations
 
+import json
 import shutil
 import stat
 import tempfile
@@ -150,6 +151,26 @@ def _check_content(root: Path) -> tuple[list[Path], dict[str, str]]:
     return tracks, meta
 
 
+INSTALLED_FILE = ".fichiers_du_pack.json"    # fichiers posés par l'installation (revue de code K4-05)
+
+
+def _keep_user_files(old: Path, new: Path) -> None:
+    """Recopie dans `new` les fichiers de `old` que l'installation précédente n'avait pas posés (fiche de
+    segments écrite à la main, trace personnelle) : une réinstallation forcée ne les efface plus. Sans liste
+    de l'installation précédente, tout fichier absent du nouveau pack est gardé."""
+    try:
+        previous = set(json.loads((old / INSTALLED_FILE).read_text(encoding="utf-8")))
+    except (OSError, ValueError, TypeError):
+        previous = set()
+    for p in sorted(old.iterdir()):
+        if p.name == INSTALLED_FILE or p.name in previous or (new / p.name).exists():
+            continue
+        if p.is_dir() and not p.is_symlink():
+            shutil.copytree(p, new / p.name, symlinks=True)
+        elif p.is_file() or p.is_symlink():
+            shutil.copy2(p, new / p.name, follow_symlinks=False)
+
+
 def install_pack(source: Path, gpx_dir: Path, name: str | None = None,
                  force: bool = False) -> tuple[str, int, Path]:
     """Contrôle puis installe un pack ; renvoie son nom, son nombre de traces et son dossier."""
@@ -185,6 +206,10 @@ def install_pack(source: Path, gpx_dir: Path, name: str | None = None,
                     shutil.copy2(side, tmp_target / side.name)
             if (root / PACK_FILE).is_file():
                 shutil.copy2(root / PACK_FILE, tmp_target / PACK_FILE)
+            installed = sorted(p.name for p in tmp_target.iterdir())
+            if target.is_dir():
+                _keep_user_files(target, tmp_target)
+            (tmp_target / INSTALLED_FILE).write_text(json.dumps(installed, ensure_ascii=False), encoding="utf-8")
         except OSError as exc:
             shutil.rmtree(tmp_target, ignore_errors=True)
             raise CompileError(f"installation du pack impossible : {exc}") from exc

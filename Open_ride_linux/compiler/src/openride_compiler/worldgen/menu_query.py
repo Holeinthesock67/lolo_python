@@ -5,7 +5,8 @@ et lit une ligne JSON sur la sortie standard (`docs/contracts/ipc_v1.md`, messag
 et `world_regions`). Commandes :
 
     search  --text T [--limit N]            lieux des bases locales dont le nom contient T
-    map     --lat A --lon B --radius R      routes autour d'un point, simplifiées à 20 m
+    map     --lat A --lon B --radius R      routes autour d'un point, simplifiées à 20 m ; tuiles vectorielles
+                                            absentes autour du point téléchargées d'abord si le réseau est permis
     regions                                 régions du cache (taille, épinglage, boîte)
     pin     --region ID --pinned 0|1        épingle ou libère une région
 
@@ -17,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,12 +26,16 @@ from typing import Any, Sequence
 
 from ..errors import CompileError
 from .osmdb import OsmDb
-from .store import WorldCache
+from .store import WorldCache, read_open_world_config
 
 SIMPLIFY_M = 20.0
 M_PER_DEG = 111_320.0
 MAX_ROADS = 4000
 MAX_PLACES = 50
+# Carte du départ (25 novembre) : sans tuiles déjà sur le PC, la carte restait vide. Tuiles vectorielles
+# téléchargées dans ce rayon autour du point (une vingtaine au zoom 14), une passe sans relance : le
+# générateur les reprend au départ.
+MAP_TILES_RADIUS_M = 3000.0
 
 
 def to_xz(lat0: float, lon0: float, lat: float, lon: float) -> tuple[float, float]:
@@ -92,11 +98,33 @@ def search(cache: WorldCache, text: str, limit: int = MAX_PLACES) -> list[dict[s
     return items[:limit]
 
 
-def world_map(cache: WorldCache, lat: float, lon: float, radius_m: float) -> list[dict[str, Any]]:
-    """Routes de la base dans le rayon : `{c, xz}`, `xz` = suite plate x, z en mètres entiers depuis le point."""
+def _bbox(lat: float, lon: float, radius_m: float) -> tuple[float, float, float, float]:
     dlat = radius_m / M_PER_DEG
     dlon = radius_m / (M_PER_DEG * max(math.cos(math.radians(lat)), 0.01))
-    bbox = (lon - dlon, lat - dlat, lon + dlon, lat + dlat)
+    return (lon - dlon, lat - dlat, lon + dlon, lat + dlat)
+
+
+def map_tiles(cache: WorldCache, lat: float, lon: float, network: bool, net: Any | None = None,
+              log: Any = None) -> int:
+    """Tuiles vectorielles autour du point versées dans `tuiles.sqlite` (téléchargées si `network`, sinon
+    seulement celles déjà sur le PC) ; la base est déclarée comme région pour que la carte la lise."""
+    from .vector_tiles import DB_NAME, ZOOM, TileSource, tiles_for_bbox
+
+    box = _bbox(lat, lon, MAP_TILES_RADIUS_M)
+    if not network and not any(cache.vector_tile_path(x, y, ZOOM).is_file() for x, y in tiles_for_bbox(box)):
+        return 0      # hors ligne et rien sur le PC : aucune base créée
+    src = TileSource(cache, net, network, log=log or (lambda _m: None))
+    try:
+        n = src.ensure(box) if network else src.load_present(box)
+    finally:
+        src.db.close()
+    cache.set_region(DB_NAME)
+    return n
+
+
+def world_map(cache: WorldCache, lat: float, lon: float, radius_m: float) -> list[dict[str, Any]]:
+    """Routes de la base dans le rayon : `{c, xz}`, `xz` = suite plate x, z en mètres entiers depuis le point."""
+    bbox = _bbox(lat, lon, radius_m)
     roads: list[dict[str, Any]] = []
     for _region, path in _databases(cache, lat, lon):
         with OsmDb(path) as db:
@@ -144,6 +172,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.cmd == "search":
                 out: dict[str, Any] = {"items": search(cache, args.text, args.limit)}
             elif args.cmd == "map":
+                try:
+                    map_tiles(cache, args.lat, args.lon, bool(read_open_world_config(args.config).get("network", True)),
+                              log=lambda m: print(m, file=sys.stderr))
+                except (CompileError, OSError, ValueError, sqlite3.Error) as exc:   # la carte garde ce qui est là
+                    print(f"tuiles de la carte : {exc}", file=sys.stderr)
                 out = {"roads": world_map(cache, args.lat, args.lon, args.radius)}
             elif args.cmd == "pin":
                 cache.pin(args.region, bool(args.pinned))
