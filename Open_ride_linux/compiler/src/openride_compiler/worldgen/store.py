@@ -16,7 +16,12 @@ Arborescence sous `[open_world] cache_dir` (`~/OpenRide/Cache/monde` par défaut
 - Éviction au-delà du plafond : carrés et tuiles de biome générés d'abord (ils se recalculent sans réseau), puis
   tuiles lointaines, puis données brutes ; chaque fois la moins récemment utilisée d'abord ; les
   entrées préchargées (W-Q4) passent après toutes les autres ; une entrée épinglée ou utilisée par
-  la séance en cours n'est jamais supprimée.
+  la séance en cours n'est jamais supprimée. Les bases régionales OSM (`osm:`) ne sont jamais supprimées par le
+  plafond (revue de code K1-05, lot RC23) : des centaines de Mo et de longues minutes à refaire, et la séance
+  hors ligne suivante n'aurait plus de monde ; le dépassement est écrit au journal, `cache-clean --all` les retire.
+- Dossiers des séances (`seances/`, revue de code K1-12, lot RC23) : comptés dans le plafond ; les
+  SESSIONS_KEPT plus récents sont gardés entiers (GPX après coup, `open-world-save`), les plus anciens réduits au
+  point de départ (`route/part_0.json` d'un seul point, lu par le préchargement `past_starts`).
 - Index illisible ou absent : reconstruit depuis le disque, sans rien supprimer.
 """
 
@@ -37,6 +42,7 @@ from ..elevation import CopernicusGlo30Provider, copernicus_tile_name
 from ..errors import CompileError
 
 GB = 1_000_000_000
+SESSIONS_KEPT = 10       # séances du monde ouvert gardées entières (K1-12)
 KINDS = ("square", "far", "biome", "dem", "tile", "osm")
 EVICTION_RANK = {"square": 0, "biome": 0, "far": 1, "dem": 2, "tile": 2, "osm": 2}
 LAYER_FILES = ("buildings", "vegetation", "water", "poi", "bridges", "tunnels", "coast")   # bridges : EA4 ; tunnels : EA5 ; coast : W23
@@ -191,6 +197,12 @@ class WorldCache:
         """Une entrée préchargée qui sert pendant une séance redevient ordinaire."""
         self.db.execute("UPDATE entries SET last_used = ?, prefetch = 0 WHERE key = ?", (self.clock(), key))
 
+    def key_of(self, path: Path) -> str | None:
+        """Clé de l'entrée enregistrée pour ce fichier, ou None."""
+        rel = os.path.relpath(Path(path), self.root)
+        r = self.db.execute("SELECT key FROM entries WHERE path = ?", (rel,)).fetchone()
+        return r[0] if r else None
+
     def is_valid(self, key: str, versions: dict[str, Any]) -> bool:
         e = self.get(key)
         return e is not None and (self.root / e.path).exists() and e.versions == versions
@@ -313,13 +325,16 @@ class WorldCache:
                 path.with_suffix(".water").unlink(missing_ok=True)   # eau lointaine (lot EA2)
         self.db.execute("DELETE FROM entries WHERE key = ?", (e.key,))
 
-    def evict(self, in_use: Iterable[str] = ()) -> list[str]:
-        """Supprime des entrées jusqu'à passer sous le plafond ; renvoie les clés supprimées."""
-        total = self.total_bytes()
+    def evict(self, in_use: Iterable[str] = (), extra_bytes: int = 0) -> list[str]:
+        """Supprime des entrées jusqu'à passer sous le plafond ; renvoie les clés supprimées.
+
+        `extra_bytes` : place prise hors de l'index et comptée dans le plafond (dossiers des séances, K1-12). Les
+        bases OSM ne sont jamais candidates (K1-05)."""
+        total = self.total_bytes() + max(0, int(extra_bytes))
         if total <= self.max_bytes:
             return []
         keep = set(in_use)
-        candidates = [e for e in self.entries() if not e.pinned and e.key not in keep]
+        candidates = [e for e in self.entries() if not e.pinned and e.key not in keep and e.kind != "osm"]
         candidates.sort(key=lambda e: (e.prefetch, EVICTION_RANK[e.kind], e.last_used, e.key))
         removed = []
         for e in candidates:
@@ -330,8 +345,69 @@ class WorldCache:
             removed.append(e.key)
         if total > self.max_bytes:
             self.log(f"cache du monde : {total / GB:.2f} Go après éviction, au-dessus du plafond "
-                     f"de {self.max_bytes / GB:.2f} Go (entrées épinglées ou en cours d'usage)")
+                     f"de {self.max_bytes / GB:.2f} Go (bases régionales, entrées épinglées ou en cours d'usage ; "
+                     f"openride-compiler cache-clean --all pour retirer les régions)")
         return removed
+
+    # --- séances (K1-12) -------------------------------------------------------------------------
+
+    def session_dirs(self) -> list[Path]:
+        """Dossiers des séances, du plus ancien au plus récent (date de modification, puis nom)."""
+        root = self.sessions_dir()
+        if not root.is_dir():
+            return []
+        dirs = [d for d in root.glob("*.world") if d.is_dir() and not d.is_symlink()]
+        return sorted(dirs, key=lambda d: (d.stat().st_mtime, d.name))
+
+    def sessions_bytes(self) -> int:
+        """Place des dossiers de séance (hors liens vers les carrés, qui sont déjà comptés)."""
+        total = 0
+        for d in self.session_dirs():
+            for f in d.rglob("*"):
+                try:
+                    if f.is_file() and not f.is_symlink():
+                        total += f.stat().st_size
+                except OSError:
+                    continue
+        return total
+
+    def prune_sessions(self, keep: int = SESSIONS_KEPT, current: Path | None = None) -> list[Path]:
+        """Garde entiers les `keep` dossiers de séance les plus récents (et `current`) ; réduit les autres à leur
+        point de départ (`route/part_0.json` d'un seul point, pour `past_starts`). Renvoie les dossiers réduits."""
+        dirs = [d for d in self.session_dirs()
+                if current is None or d.resolve() != Path(current).resolve()]
+        old = dirs[:-keep] if keep > 0 else dirs
+        reduced = []
+        for d in old:
+            part = d / "route" / "part_0.json"
+            start = None
+            try:
+                p = json.loads(part.read_text(encoding="utf-8"))
+                start = {"lat": [float(p["lat"][0])], "lon": [float(p["lon"][0])]}
+            except (OSError, ValueError, KeyError, IndexError, TypeError):
+                start = None
+            if start is not None and _only_start(d):
+                continue                         # déjà réduit
+            mtime = part.stat().st_mtime if part.is_file() else None
+            for child in list(d.iterdir()):
+                if child.is_dir() and not child.is_symlink():
+                    shutil.rmtree(child, ignore_errors=True)
+                else:
+                    child.unlink(missing_ok=True)
+            if start is None:
+                shutil.rmtree(d, ignore_errors=True)   # sans départ lisible : rien à garder
+            else:
+                part.parent.mkdir(parents=True, exist_ok=True)
+                tmp = part.with_name(f".{part.name}.tmp-{os.getpid()}")
+                tmp.write_text(json.dumps(start), encoding="utf-8")
+                tmp.replace(part)
+                if mtime is not None:
+                    os.utime(part, (mtime, mtime))      # date du départ gardée (ordre du préchargement)
+                    os.utime(d, (mtime, mtime))
+            reduced.append(d)
+        if reduced:
+            self.log(f"cache du monde : {len(reduced)} séance(s) ancienne(s) réduite(s) au point de départ")
+        return reduced
 
     def clean(self, generated_only: bool = True, include_pinned: bool = False) -> list[str]:
         kinds = ("square", "far", "biome") if generated_only else KINDS
@@ -394,6 +470,12 @@ class WorldCache:
 
     def close(self) -> None:
         self.db.close()
+
+
+def _only_start(d: Path) -> bool:
+    """Dossier de séance déjà réduit : rien d'autre que `route/part_0.json`."""
+    files = [f for f in d.rglob("*") if not f.is_dir()]
+    return len(files) == 1 and files[0] == d / "route" / "part_0.json"
 
 
 def _symlink(target: Path, link: Path) -> Path:

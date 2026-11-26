@@ -254,11 +254,24 @@ def half_width(road_class: str) -> float:
 
 # --- génération -------------------------------------------------------------------------------
 
-def square_versions(db: OsmDb, provider: ElevationProvider) -> dict[str, Any]:
-    return {"worldgen": WORLDGEN_VERSION, "osm_schema": db.meta.get("schema_version"),
-            "osm_date": db.meta.get("osm_date") or None, "osm_region": db.meta.get("region"),
-            "relief": getattr(provider, "name", "inconnu"),
-            "coast": COAST_SQUARE_VERSION if db.has_coast else None}   # lot W23 : carré refait avec la mer
+def square_versions(db: OsmDb, provider: ElevationProvider, tiles_complete: bool = True) -> dict[str, Any]:
+    """Versions d'un carré. `tiles_complete` faux (revue de code K1-04, lot RC23) : des tuiles vectorielles de
+    l'emprise manquaient (coupure, 429, 503) ; le carré porte `"tiles": "partial"`, qu'une séance suivante, qui attend
+    un carré complet (sans la clé, donc sans changer les versions des carrés complets déjà en cache), refait."""
+    out = {"worldgen": WORLDGEN_VERSION, "osm_schema": db.meta.get("schema_version"),
+           "osm_date": db.meta.get("osm_date") or None, "osm_region": db.meta.get("region"),
+           "relief": getattr(provider, "name", "inconnu"),
+           "coast": COAST_SQUARE_VERSION if db.has_coast else None}   # lot W23 : carré refait avec la mer
+    if not tiles_complete:
+        out["tiles"] = "partial"
+    return out
+
+
+def square_bbox(key: SquareKey, frame: LocalFrame | None = None) -> tuple[float, float, float, float]:
+    """Emprise (lon, lat) des arêtes d'un carré, élargie de MARGIN_M (`square_edges`)."""
+    frame = frame or zone_frame(key.zone)
+    x0, z0 = key.corner
+    return lonlat_bbox(frame, x0 - MARGIN_M, z0 - MARGIN_M, x0 + key.size_m + MARGIN_M, z0 + key.size_m + MARGIN_M)
 
 
 def far_versions(provider: ElevationProvider, db: OsmDb | None = None,
@@ -283,9 +296,7 @@ def square_edges(key: SquareKey, db: OsmDb, provider: ElevationProvider,
     Les arêtes sans longueur n'ont pas de profil : ni terrain, ni liste d'arêtes.
     """
     frame = frame or zone_frame(key.zone)
-    x0, z0 = key.corner
-    bbox = lonlat_bbox(frame, x0 - MARGIN_M, z0 - MARGIN_M, x0 + key.size_m + MARGIN_M, z0 + key.size_m + MARGIN_M)
-    graph = RoadGraph.build(db, bbox, frame)
+    graph = RoadGraph.build(db, square_bbox(key, frame), frame)
     node_alt = NodeAltitudes(provider, frame)
     return graph, {k: edge_profile(graph.edges[k], provider, frame, node_alt) for k in sorted(graph.edges)
                    if not graph.edges[k].degenerate}
@@ -734,11 +745,16 @@ def _json(obj: Any) -> bytes:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
-def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cache: WorldCache) -> Path:
-    """Carré dans le cache ; rien n'est recalculé s'il y est déjà avec les mêmes versions."""
-    versions = square_versions(db, provider)
+def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cache: WorldCache,
+                    tiles_complete: bool = True) -> Path:
+    """Carré dans le cache ; rien n'est recalculé s'il y est déjà avec les mêmes versions.
+
+    `tiles_complete` faux (tuiles vectorielles manquantes, K1-04) : un carré complet déjà en cache est gardé ; sinon le
+    carré est écrit marqué partiel (`square_versions`)."""
+    versions = square_versions(db, provider, tiles_complete)
     final = cache.square_dir(key.zone, key.ix, key.i_n)
-    if cache.is_valid(key.cache_key, versions):
+    if cache.is_valid(key.cache_key, versions) or (
+            not tiles_complete and cache.is_valid(key.cache_key, square_versions(db, provider))):
         cache.touch(key.cache_key)
         return final
     frame = zone_frame(key.zone)
