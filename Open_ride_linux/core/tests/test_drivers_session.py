@@ -358,7 +358,8 @@ def test_ble_connections_are_serialized():
                          client_factory=make_factory(c1))
         click = ZwiftClickProvider(device_finder=slow_finder, client_factory=make_factory(c2))
         tasks = [asyncio.create_task(drv.run()), asyncio.create_task(click.run())]
-        await wait_for(lambda: click.status == "CONNECTED" and drv.status == "CONNECTED")
+        # Liaison du trainer établie (sans trame de mesures, il n'est pas encore « connecté », revue S6-05).
+        await wait_for(lambda: click.status == "CONNECTED" and drv._link_up)
         assert peak[0] == 1
         drv.stop()
         click.stop()
