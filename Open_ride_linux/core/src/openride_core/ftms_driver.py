@@ -17,7 +17,7 @@ import struct
 import re
 import time
 from contextlib import AsyncExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Awaitable, Callable
 
 from . import ftms, latency_log
@@ -43,6 +43,7 @@ RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (a
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
 MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
 DEFAULT_POWER_RANGE = (0.0, 2000.0)
+IMPLAUSIBLE_LOG_S = 10.0   # mesure invraisemblable : une ligne de journal par sorte au plus toutes les 10 s
 # Consigne de résistance (lot RC1, étude « résistance calculée par le core », 31 octobre) : exprimée en %
 # de la plage annoncée (0x2AD6), comme les « 32 % » de l'appli du fabricant ; plage FTMS par défaut
 # 0 à 100 au pas de 1 si le trainer n'en annonce pas.
@@ -319,6 +320,16 @@ class _Want:
     value: float = 0.0
 
 
+def _parse_optional(parser: Callable[[bytes], Any], data: bytes, what: str) -> Any:
+    """Information facultative du trainer : illisible (trame trop courte), valeurs par défaut gardées
+    avec un avertissement, au lieu d'une reconnexion sans fin sans aucune mesure (revue S6-07)."""
+    try:
+        return parser(data)
+    except (struct.error, ValueError) as exc:
+        log.warning("Trainer : %s illisible (%s : %s), valeurs par défaut gardées", what, data.hex(), exc)
+        return None
+
+
 class FtmsDriver:
     def __init__(
         self,
@@ -368,6 +379,8 @@ class FtmsDriver:
         self.control_refused = False
         self._refusals = 0
         self.power_range = DEFAULT_POWER_RANGE   # remplacée par la plage annoncée (0x2AD8)
+        self._data_since_link = False   # première trame Indoor Bike Data reçue sur cette liaison
+        self._implausible_logged: dict[str, float] = {}   # sorte de mesure -> heure de la dernière ligne
         self.power_increment = 1.0
         self.supports_sim = True
         self._cp: ControlPoint | None = None
@@ -401,7 +414,7 @@ class FtmsDriver:
     @property
     def status(self) -> str:
         """Valeur de `trainer_status` du contrat IPC."""
-        if self._link_up and self._fresh():
+        if self._link_up and self._data_since_link and self._fresh():
             return "CONNECTED"
         return "LOST" if self._ever_connected else "RECONNECTING"
 
@@ -409,6 +422,9 @@ class FtmsDriver:
         return self._last_data_at is not None and self._clock() - self._last_data_at <= STALE_S
 
     def set_target_power(self, watts: float) -> bool:
+        if not math.isfinite(float(watts)):
+            log.warning("Trainer : cible ERG non finie (%s) ignorée, consigne précédente gardée", watts)
+            return False   # NaN : math.floor levait dans la boucle à 50 Hz (revue S6-06)
         lo, hi = self.power_range
         watts = min(max(float(watts), lo), hi)
         if self.power_increment > 1.0:   # multiple du pas annoncé, sans sortir de la plage
@@ -579,6 +595,11 @@ class FtmsDriver:
     def set_sim_grade(self, grade_pct: float, immediate: bool = False) -> bool:
         """`immediate` : changement de braquet, envoyé même sous GRADE_EPSILON_PCT (sans attendre
         le renvoi de RESEND_S, qui retardait jusqu'à 2 s un petit braquet sur le plat)."""
+        if not math.isfinite(float(grade_pct)):
+            # NaN : `min`/`max` le laissaient passer et l'encodage levait, en boucle de reconnexion
+            # tant que la consigne restait NaN (revue S6-06).
+            log.warning("Trainer : pente non finie (%s) ignorée, consigne précédente gardée", grade_pct)
+            return False
         lo, hi = self.cfg.grade_min_pct, self.cfg.grade_max_pct
         self._want = _Want("sim", min(max(float(grade_pct), lo), hi))
         self._immediate = self._immediate or immediate
@@ -658,6 +679,18 @@ class FtmsDriver:
             log.warning("Indoor Bike Data illisible : %s", bytes(data).hex())
             return
         self._last_data_at = self._clock()
+        self._data_since_link = True
+        # Mesure invraisemblable : valeur précédente gardée, une ligne de journal par sorte et par
+        # IMPLAUSIBLE_LOG_S au plus (revue S6-03).
+        if d.power_w is not None and d.power_w > ftms.plausible_power_max(self.power_range[1]):
+            self._implausible("puissance", d.power_w)
+            d = replace(d, power_w=None)
+        if d.cadence_rpm is not None and d.cadence_rpm > ftms.PLAUSIBLE_CADENCE_MAX_RPM:
+            self._implausible("cadence", d.cadence_rpm)
+            d = replace(d, cadence_rpm=None)
+        if d.heart_rate_bpm and not ftms.plausible_hr(d.heart_rate_bpm):
+            self._implausible("FC relayée", d.heart_rate_bpm)
+            d = replace(d, heart_rate_bpm=None)
         if d.power_w is not None:
             self._raw_power = max(float(d.power_w), 0.0)
         if d.cadence_rpm is not None:
@@ -676,6 +709,13 @@ class FtmsDriver:
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
+
+    def _implausible(self, kind: str, value: Any) -> None:
+        now = self._clock()
+        last = self._implausible_logged.get(kind)
+        if last is None or now - last >= IMPLAUSIBLE_LOG_S:
+            self._implausible_logged[kind] = now
+            log.warning("Trainer : %s invraisemblable ignorée (%s), valeur précédente gardée", kind, value)
 
     def _emit(self, event: str, **fields: Any) -> None:
         """Ligne `ftms` du journal JSONL (statuts du trainer, perte de frein) ; jamais bloquante."""
@@ -743,6 +783,9 @@ class FtmsDriver:
         try:
             bpm = ftms.parse_hr_measurement(bytes(data))
         except Exception:
+            return
+        if bpm and not ftms.plausible_hr(bpm):
+            self._implausible("FC relayée", bpm)
             return
         self._hr_service = bpm or None
         self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
@@ -816,7 +859,9 @@ class FtmsDriver:
         if resp.ok:
             # Seule une consigne acceptée prouve que le contrôle est retrouvé : une prise de
             # contrôle acceptée suivie d'une consigne refusée ne doit pas remettre le compteur à 0.
-            if resp.request_op in (ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_POWER):
+            # Résistance calculée (0x04) comprise : sinon « occupé » et refus restaient posés (revue S6-01).
+            if resp.request_op in (ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_POWER,
+                                   ftms.OP_SET_TARGET_RESISTANCE):
                 self._refusals = 0
                 self.control_refused = False
                 if self.busy:
@@ -893,8 +938,11 @@ class FtmsDriver:
             services = client.services
             if services.get_characteristic(ftms.INDOOR_BIKE_DATA) is None:
                 raise ConnectionError("pas de service FTMS sur cet appareil")
+            feats = None
             if services.get_characteristic(ftms.FEATURE) is not None:
-                feats = ftms.parse_features(bytes(await client.read_gatt_char(ftms.FEATURE)))
+                feats = _parse_optional(ftms.parse_features,
+                                        bytes(await client.read_gatt_char(ftms.FEATURE)), "Fitness Machine Feature")
+            if feats is not None:
                 self.supports_sim, self.supports_erg = feats.supports_sim, feats.supports_erg
                 self.supports_resistance = feats.supports_resistance
                 if self.cfg.control == "resistance":
@@ -903,16 +951,17 @@ class FtmsDriver:
                 log.info("Trainer : fonctions FTMS : %s ; consignes : %s",
                          ", ".join(feats.machine) or "aucune", ", ".join(feats.target) or "aucune")
             if services.get_characteristic(ftms.SUPPORTED_RESISTANCE_RANGE) is not None:
-                rr = ftms.parse_resistance_range(
-                    bytes(await client.read_gatt_char(ftms.SUPPORTED_RESISTANCE_RANGE)))
-                if rr.max_level > rr.min_level:
+                rr = _parse_optional(ftms.parse_resistance_range, bytes(
+                    await client.read_gatt_char(ftms.SUPPORTED_RESISTANCE_RANGE)), "plage de résistance")
+                if rr is not None and rr.max_level > rr.min_level:
                     self.resistance_range = (rr.min_level, rr.max_level, max(rr.increment, 0.1))
-                log.info("Plage de résistance du trainer : %g à %g, pas de %g",
-                         rr.min_level, rr.max_level, rr.increment)
+                if rr is not None:
+                    log.info("Plage de résistance du trainer : %g à %g, pas de %g",
+                             rr.min_level, rr.max_level, rr.increment)
             if services.get_characteristic(ftms.SUPPORTED_POWER_RANGE) is not None:
-                pr = ftms.parse_power_range(
-                    bytes(await client.read_gatt_char(ftms.SUPPORTED_POWER_RANGE)))
-                if pr.max_w > pr.min_w:
+                pr = _parse_optional(ftms.parse_power_range, bytes(
+                    await client.read_gatt_char(ftms.SUPPORTED_POWER_RANGE)), "plage de puissance")
+                if pr is not None and pr.max_w > pr.min_w:
                     self.power_range = (float(max(pr.min_w, 0)), float(pr.max_w))
                     self.power_increment = float(max(pr.increment_w, 1))
                     log.info("Plage de puissance du trainer : %d à %d W, pas de %d W",
@@ -936,6 +985,9 @@ class FtmsDriver:
                 await client.start_notify(ftms.HR_MEASUREMENT, self._on_hr)
 
             self._last_data_at = self._clock()
+            # « Connecté » seulement à la première trame de mesures (revue S6-05) : un trainer endormi
+            # resservait 3 s l'ancienne puissance à chaque reconnexion.
+            self._data_since_link = False
             self._link_up = self._ever_connected = True
             self._last_sent = None
             self.busy, self._busy_streak, self._busy_retry_at = False, 0, 0.0
@@ -954,6 +1006,7 @@ class FtmsDriver:
                     await asyncio.sleep(0.05)
             finally:
                 self._link_up = False
+                self._raw_power, self._cadence = 0.0, 0.0   # rien de l'ancienne liaison (revue S6-05)
                 self._hr_ibd = None
                 self._hr_service = None
                 self._hr_relay_val = None
@@ -1036,6 +1089,12 @@ class FtmsDriver:
         changed = changed or (immediate and mode == "sim" and prev[1] != value)
         if not changed and now - self._last_sent_at < self.cfg.resend_s:
             return
+        if mode == "sim" and not self.supports_sim and self.supports_erg and prev is not None and prev[0] == "erg":
+            # Trainer sans SIM : la pente 0 % de la pause ou de la fin ne partait pas et la dernière cible
+            # ERG restait appliquée ; relâche par la cible ERG la plus basse annoncée (revue S6-08).
+            if prev[1] != self.power_range[0]:
+                log.info("Trainer sans SIM : cible ERG ramenée à %g W pour relâcher", self.power_range[0])
+            mode, value = "erg", self.power_range[0]
         supported = {"erg": self.supports_erg, "resistance": self.supports_resistance}.get(mode, self.supports_sim)
         if not supported:   # opcode exclu par Fitness Machine Feature (FTMS tableau 4.15)
             if prev != (mode, value):

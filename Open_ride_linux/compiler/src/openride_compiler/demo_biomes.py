@@ -102,6 +102,7 @@ import shutil
 import socket
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
 from . import fake_osm as sim   # Overpass fabriqué, route en S
@@ -1467,9 +1468,20 @@ def _offline_compiler(payload: bytes, terrain, cache: Path):
              {k: os.environ.get(k) for k in ("OPENRIDE_DEM_CACHE", "OPENRIDE_OSM_CACHE")})
     os.environ["OPENRIDE_DEM_CACHE"] = str(cache / "dem-cache")
     os.environ["OPENRIDE_OSM_CACHE"] = str(cache / "osm-cache")
-    socket.socket.connect = sim.no_network              # type: ignore[method-assign]
-    socket.create_connection = sim.no_network           # type: ignore[assignment]
-    urllib.request.urlopen = lambda *_a, **_k: io.BytesIO(payload)   # type: ignore[assignment]
+    # Revue de code K4-02 : la coupure du réseau ne vaut que pour le fil qui compile. Dans le core, cette
+    # génération tourne dans un fil à côté de la boucle : les autres fils (Bluetooth par D-Bus, recherche de
+    # lieu, météo) gardent leurs connexions.
+    owner = threading.get_ident()
+    real_connect, real_create, real_urlopen = saved[:3]
+
+    def scoped(blocked, real):
+        def call(*a, **k):
+            return blocked(*a, **k) if threading.get_ident() == owner else real(*a, **k)
+        return call
+
+    socket.socket.connect = scoped(sim.no_network, real_connect)             # type: ignore[method-assign]
+    socket.create_connection = scoped(sim.no_network, real_create)           # type: ignore[assignment]
+    urllib.request.urlopen = scoped(lambda *_a, **_k: io.BytesIO(payload), real_urlopen)   # type: ignore[assignment]
     cli.make_provider = lambda offline, log=None: SyntheticProvider(*ORIGIN, terrain)   # type: ignore[assignment]
     try:
         yield cli

@@ -33,7 +33,7 @@ def test_profile_keys_are_real_config_keys():
 def test_every_menu_setting_has_a_scope():
     scopes = {s.key: s.scope for s in settings.SETTINGS}
     assert scopes["rider.ftp_w"] == scopes["rider.hr_max_bpm"] == scopes["bike.mass_kg"] == "profil"
-    assert scopes["bots.level_pct"] == scopes["wind.mode"] == scopes["render.camera"] == "profil"
+    assert scopes["bots.objective"] == scopes["wind.mode"] == scopes["render.camera"] == "profil"
     assert scopes["render.quality"] == scopes["render.display"] == scopes["audio.master_pct"] == "machine"
     assert set(scopes.values()) == {"profil", "machine"}
 
