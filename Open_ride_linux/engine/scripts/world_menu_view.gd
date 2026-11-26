@@ -288,6 +288,9 @@ func _body_text() -> String:
 				lines.append("  aucun résultat")
 			return "\n".join(lines)
 		Model.MAP:
+			if vm.map_ready and vm.roads.is_empty():
+				# Carte vide (25 novembre) : le dire en mots plutôt qu'un fond muet.
+				return "Choisis le point de départ\nAucune route sur la carte ici : tuiles pas encore téléchargées (réseau coupé ?). Le départ prendra la route la plus proche."
 			return "Choisis le point de départ sur une route" + ("" if vm.map_ready else "\nChargement de la carte…")
 		Model.SETUP:
 			var rows := ["Cap : %d°" % int(vm.heading_deg), "Navigation : " + Model.NAV_LABELS[vm.nav], _extra_text(), biome_text()]

@@ -295,6 +295,7 @@ class CoachConfig:
     temps disponible par séance, réglés au menu ; seuils des règles dans `data/coach.toml`."""
     objectif: str = "endurance"    # endurance, courses (et championnat) ou grimpeur
     temps_disponible_min: int = 60  # durée conseillée quand la règle ne fixe pas la sienne (30 à 120 min)
+    seances_semaine: int = 2        # objectif de la semaine à l'accueil, en séances (lot OS1, 0 : aucun)
 
 
 @dataclass
@@ -438,6 +439,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("depart", "attente_decor_s"): (0, 600),
     ("depart", "echauffement_min"): (0, 20),
     ("coach", "temps_disponible_min"): (30, 120),
+    ("coach", "seances_semaine"): (0, 7),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -502,7 +504,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"), ("depart", "echauffement_min"),
     ("survivor", "opponents"), ("survivor", "spacing_km"), ("survivor", "spread"), ("survivor", "after_out"),
-    ("coach", "objectif"), ("coach", "temps_disponible_min"),
+    ("coach", "objectif"), ("coach", "temps_disponible_min"), ("coach", "seances_semaine"),
     ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "chaos"),
     ("grandprix", "box_every_m"),
     ("race", "opponents"), ("race", "laps"),
@@ -551,6 +553,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
     ("render", "living"): "décor vivant coupé pour les bancs, retiré du menu au lot NI4 (coût réglé par la qualité)",
     ("render", "texture_level"): "niveau des textures imposé pour les bancs, retiré du menu au lot NI2 (auto suit la qualité)",
+    ("bots", "level_pct"): "niveau des bots imposé pour les bancs et la séance conseillée, retiré du menu au lot NI3 "
+                           "(la ligne « Intensité » règle seule la force des bots)",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
     ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",

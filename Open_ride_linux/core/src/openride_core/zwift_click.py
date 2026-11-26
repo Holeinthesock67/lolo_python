@@ -198,11 +198,21 @@ def parse_async(data: bytes) -> tuple[int, dict[int, int]]:
     return data[0], decode_protobuf_varints(bytes(data[1:]))
 
 
+KEYPAD_MAX_PRESSED = 2   # au-delà, trame incohérente (masque à 0 ou tronqué) : ignorée (revue S6-09)
+
+
 def parse_click_buttons(data: bytes) -> ClickButtons | None:
+    """État des boutons ; None pour une trame d'un autre type, ou incohérente (revue S6-09) :
+    `0x23` au varint coupé (contenu sans champ 1) ou avec plus de `KEYPAD_MAX_PRESSED` boutons
+    appuyés à la fois, `0x37` vide."""
     msg_type, fields = parse_async(data)
     if msg_type == MSG_KEYPAD_STATUS:
         # Tableau de bits : un bit à 0 signifie « appuyé » ; champ absent = rien d'appuyé.
+        if 1 not in fields and len(data) > 1:
+            return None   # varint coupé : lu « tout relâché », il terminait un appui maintenu
         mask = fields.get(1, KEYPAD_ALL_RELEASED) & 0xFFFFFFFF
+        if sum(not (mask >> bit) & 1 for bit in KEYPAD_BITS.values()) > KEYPAD_MAX_PRESSED:
+            return None   # masque nul ou presque : les neuf boutons, dont Y, vus appuyés
         return ClickButtons(plus_pressed=not (mask >> KEYPAD_PLUS_BIT) & 1,
                             minus_pressed=not (mask >> KEYPAD_MINUS_BIT) & 1
                             or not (mask >> KEYPAD_B_BIT) & 1,
@@ -210,6 +220,8 @@ def parse_click_buttons(data: bytes) -> ClickButtons | None:
                                for name in ("Y", "A", "Z", "LEFT", "RIGHT", "UP", "DOWN")})
     if msg_type != MSG_CLICK_NOTIFICATION:
         return None
+    if len(data) < 2:
+        return None   # message vide : + et − à la fois, puis deux appuis courts fantômes
     # Sémantique proto3 : un champ absent vaut 0, c'est-à-dire « appuyé ».
     return ClickButtons(plus_pressed=fields.get(1, 0) == 0, minus_pressed=fields.get(2, 0) == 0)
 

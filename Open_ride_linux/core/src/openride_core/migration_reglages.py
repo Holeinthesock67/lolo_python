@@ -26,6 +26,8 @@ RETIRED: tuple[tuple[str, str, str], ...] = (
     ("render", "texture_level", "réglage retiré du menu (lot NI2), suit la Qualité graphique"),
     # R10 (lot NI4) : « Décor vivant : non (rendu de la 1.0) » ; décor vivant toujours actif, coût réglé par la qualité
     ("render", "living", "réglage retiré du menu (lot NI4), décor vivant toujours actif, coût réglé par la Qualité graphique"),
+    # Lot NI3 : « Niveau des bots » ; la dose se choisit avec l'Intensité du jour, la cote Elo règle le reste
+    ("bots", "level_pct", "réglage retiré du menu (lot NI3), la dose se choisit avec l'Intensité du jour"),
     # H7 : « Jauge d'abri des bots » ; la jauge est retirée du jeu (doublon de la pastille « Abri » du HUD) : la clé
     # n'est plus dans `config.py`, seulement dans `config.RETIRED_KEYS` (lue sans avertissement)
     ("render", "draft_gauge", "jauge d'abri retirée (lot NI1), la pastille « Abri » du HUD la remplace"),

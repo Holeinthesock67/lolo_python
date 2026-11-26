@@ -8,6 +8,31 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 
 ### Style graphique « dessin animé », première pierre (lot CS1)
 - Nouveau réglage **Style graphique** dans Réglages › Graphisme : « réaliste » (par défaut, l'image ne change pas) ou « dessin animé ». Pour l'instant, le dessin animé rend seulement les couleurs plus vives ; les aplats et les contours noirs arrivent avec les lots suivants. Cyber-Rogue garde son propre style.
+### Copies automatiques du profil (lot SV1)
+- Chaque profil de joueur est copié chaque semaine (au lancement, si la dernière copie a 7 jours), avant chaque mise à jour (« Mettre à jour » refuse de continuer si la copie échoue) et avant une remise à zéro, dans `~/OpenRide/Sauvegardes/profils/<profil>/`.
+- Les fichiers qui n'ont pas changé ne sont pas recopiés (liens durs) : une saison de 8 semaines tient dans un seul dossier. Gardées : 8 copies de la semaine, 3 avant mise à jour, 3 avant remise à zéro, 3 avant restauration.
+- « Gérer : <profil en cours> › Restaurer une sauvegarde » : liste des copies en mots, confirmation aux boutons écrits (« Non, garder mon profil » par défaut), profil actuel copié avant ; en ligne de commande : `openride-core profil sauvegarde | sauvegardes | restaurer`.
+- Contrat IPC (révision 1.36) : `list_profile_backups`, `restore_profile_backup`, message `profile_backups`.
+### Un seul réglage de difficulté des bots (lot NI3)
+- La ligne « Intensité » des écrans Prêt (facile, moyen, dur, avec les watts des bots) est la seule à régler leur force ; la cote Elo fait le reste.
+- « Niveau des bots » est retiré des Réglages et des écrans Prêt du Dernier survivant, du Grand Prix et de la Course ; une valeur déjà choisie est mise en commentaire au lancement (niveau remis à 100 %).
+- « Objectif des bots » n’est plus dans Réglages › Séance : il se choisit sur la ligne « Intensité ». « Niveau automatique (Elo) » devient « Bots selon ta cote » (le libellé était coupé).
+- Les lignes « Bot 1 » à « Bot 4 » (19 choix) quittent l'écran Prêt et la pause ; « Peloton » et « Fantôme » restent.
+### Bluetooth et pilotes : constats de confort de la revue de code du 22 novembre (lot RC2, S6-05 à S6-13)
+- Après une reconnexion, le trainer n'est « connecté » qu'à sa première trame de mesures, et l'ancienne puissance n'est plus resservie (S6-05).
+- Une consigne de pente ou de puissance non finie (NaN) est ignorée au lieu de mettre le pilote en boucle de reconnexion (S6-06) ; une caractéristique de capacités ou de plage trop courte garde les valeurs par défaut (S6-07).
+- Trainer sans mode SIM : la pause et la fin ramènent la cible ERG au plus bas annoncé au lieu de la laisser appliquée (S6-08).
+- Click : trames de boutons tronquées ou incohérentes ignorées (S6-09) ; un même appui classé différemment par les deux boîtiers ne compte qu'une fois (S6-10).
+- Journal : adresses Bluetooth tronquées aux trois derniers octets, liste des appareils cardio à portée écrite une fois par lancement (S6-11).
+- `openride-ble-diag` : rapports dans `~/OpenRide/rapports/diag/` (droits du seul propriétaire), `scan` limité aux appareils reconnus sauf `--all` (S6-12) ; `--erg` et `--sim-grade` bornés, Reset tenté même si la pente 0 % échoue (S6-13).
+
+### Trainer et FIT : constats forts de la revue de code du 22 novembre (lot RC2)
+- Vent « ressenti par le trainer » (`[wind] feel = "ftms"`) : le vent n'est plus renvoyé au trainer en pause, au bilan, au menu, ni dans la séance suivante sans vent (vélodrome, Cyber-Rogue) ; remis à zéro aussi à l'arrêt (S2-02).
+- Pilotage « résistance calculée » : une consigne de niveau acceptée lève le bandeau « trainer occupé » et remet le compteur de refus à zéro ; trois pertes de contrôle espacées ne mettent plus la séance en erreur (S6-01).
+- Après un changement de profil, « Pilotage du trainer » et les réglages du trainer et des braquets du nouveau joueur prennent effet sans relancer (S1-05b).
+- Mesures invraisemblables ignorées, valeur précédente gardée, une ligne de journal par sorte toutes les 10 s au plus : puissance au-delà de 1,5 fois la plage annoncée (3 000 W au moins), cadence au-dessus de 250 tr/min, FC hors de 25 à 250 bpm, du trainer comme de la ceinture (S6-03).
+- Export FIT : une valeur hors des plages du format ne fait plus échouer tout le fichier (ni `recover`) : la mesure fautive est retirée de ce relevé, vitesse et distance bornées, le journal garde les valeurs brutes (S7-01).
+- Tours du FIT : la distance d'un tour part du dernier relevé du tour précédent (les tours s'additionnent à la séance) et le temps chronométré d'un tour ne compte plus ses pauses (S7-04).
 ### Remettre à zéro les statistiques d'un profil (lot RZ1)
 - « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : niveau, expérience, pièces, défis, cartes, records, équipement acheté et cotes des bots repartent de zéro (avant une saison de la ligue, par exemple). Séances et FIT (historique du coach), cote Elo du cycliste, nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
 - Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant. Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut), exigée aussi par le core ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
