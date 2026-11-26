@@ -49,6 +49,11 @@ const float CAUSTIC_FAR_M = 70.0;
 const float CAUSTIC_GAIN = 0.32;
 
 #include "res://shaders/terrain_shade.gdshaderinc"
+// Trou dans le volume des tunnels proches (lot EA5) : variante TUNNEL_CUT seulement (tunnel_cut.gd, tuiles qui
+// touchent un tunnel) ; sans elle, le terrain garde ses passes de profondeur et d'ombre sans discard.
+#ifdef TUNNEL_CUT
+#include "res://shaders/tunnel_cut.gdshaderinc"
+#endif
 // layer_color : couleurs sRGB des couches (Vector4), converties en linéaire comme les textures `ground_a`.
 #include "res://shaders/couleur_srgb.gdshaderinc"
 
@@ -361,4 +366,10 @@ void fragment() {
 			EMISSION = ALBEDO * caustic(q, anim_time) * CAUSTIC_GAIN * uw * fade * clamp(n.y, 0.0, 1.0);
 		}
 	}
+#ifdef TUNNEL_CUT
+	// Lot EA5 : terrain du volume d'un tunnel non dessiné, en dernier (dérivées calculées par tout le quad)
+	if (tunnel_cut_inside(v_world_pos)) {
+		discard;
+	}
+#endif
 }

@@ -91,3 +91,15 @@ anim_time={
 "type": "float",
 "value": 0.0
 }
+tunnel_cut_data={
+"type": "sampler2D",
+"value": ""
+}
+tunnel_cut_count={
+"type": "int",
+"value": 0
+}
+tunnel_cut_box={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
