@@ -32,6 +32,7 @@ core n'en lit que l'avancement.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -456,14 +457,23 @@ def _run_compiler(args: list[str], on_line: Callable[[str], None] = lambda line:
         lines.append(line.rstrip())
         on_line(line.rstrip())
     code = proc.wait(timeout=STEP_TIMEOUT_S)
-    if code not in (0, 1) or (code == 1 and args[0] != "route-pack-build"):
+    # Code 1 toléré : cols refusés de `route-pack-build`, traces en erreur de `build-all` (revue de code
+    # K4-03 : une vieille trace en erreur ne fait plus afficher l'échec d'une installation réussie).
+    if code not in (0, 1) or (code == 1 and args[0] not in ("route-pack-build", "build-all")):
         last = next((ln for ln in reversed(lines) if ln.strip()), f"code {code}")
         raise ContentError(last.removeprefix("openride-compiler : ").strip())
     return "\n".join(lines)
 
 
-def _compile_routes(dirs: ContentDirs) -> None:
-    _run_compiler(["build-all", "--gpx-dir", str(dirs.gpx), "--routes-dir", str(dirs.routes)])
+_BUILD_ERRORS_RE = re.compile(r"Résumé : \d+ compilé\(s\), \d+ ignoré\(s\), (\d+) en erreur")
+
+
+def _compile_routes(dirs: ContentDirs) -> str:
+    """Compile les traces nouvelles ; renvoie une phrase sur les traces en erreur, ou une chaîne vide."""
+    out = _run_compiler(["build-all", "--gpx-dir", str(dirs.gpx), "--routes-dir", str(dirs.routes)])
+    found = _BUILD_ERRORS_RE.search(out)
+    errors = int(found.group(1)) if found else 0
+    return f" {errors} trace(s) du dossier des traces en erreur, non compilée(s)." if errors else ""
 
 
 def install_cols(dirs: ContentDirs, progress: Callable[[int], None]) -> str:
@@ -490,9 +500,9 @@ def install_cols(dirs: ContentDirs, progress: Callable[[int], None]) -> str:
     out = _run_compiler(["route-pack-build", COLS_PACK, "--install", "--gpx-dir", str(dirs.gpx)], line)
     refused = sum(1 for ln in out.splitlines() if ln.strip().startswith("refusé"))
     progress(80)
-    _compile_routes(dirs)
+    note = _compile_routes(dirs)
     done = total - refused
-    return f"Pack installé : {done} col(s) sur {total}" + (f", {refused} refusé(s)." if refused else ".")
+    return f"Pack installé : {done} col(s) sur {total}" + (f", {refused} refusé(s)." if refused else ".") + note
 
 
 def install_archive(a: dict[str, Any], dirs: ContentDirs, progress: Callable[[int], None]) -> str:
@@ -500,12 +510,15 @@ def install_archive(a: dict[str, Any], dirs: ContentDirs, progress: Callable[[in
         args = ["theme-install", str(a["path"])]
         if dirs.themes is not None:
             args += ["--themes-dir", str(dirs.themes)]
-        _run_compiler(args)
-        return f"Thème « {a['name']} » installé : il se choisit dans Réglages › Graphisme."
+        out = _run_compiler(args)
+        # Packs retirés par le ménage de la bibliothèque : dits à l'écran (revue de code K4-01).
+        gone = re.findall(r"pack « ([^»]+) » retiré", out)
+        note = f" Place dépassée : thème(s) retiré(s) : {', '.join(gone)}." if gone else ""
+        return f"Thème « {a['name']} » installé : il se choisit dans Réglages › Graphisme." + note
     _run_compiler(["route-pack-install", str(a["path"]), "--gpx-dir", str(dirs.gpx)])
     progress(50)
-    _compile_routes(dirs)
-    return f"Pack de parcours « {a['name']} » installé et compilé."
+    note = _compile_routes(dirs)
+    return f"Pack de parcours « {a['name']} » installé et compilé." + note
 
 
 # --- catalogue et installation en cours -----------------------------------------------------------

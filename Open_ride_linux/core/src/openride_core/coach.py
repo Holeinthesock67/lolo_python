@@ -344,6 +344,20 @@ def fitness_series(facts: Iterable[SessionFacts], today: date, table: dict[str, 
             "label": label["key"] if label else None, "label_text": label["text"] if label else None}
 
 
+# --- objectif de la semaine (lot OS1, pur) --------------------------------------------------------
+
+def week_goal(facts: Iterable[SessionFacts], today: date, target: int, table: dict[str, Any]) -> dict[str, Any] | None:
+    """Objectif de la semaine de l'accueil (lot OS1) : séances comptées de la semaine ISO de `today` (lundi à
+    dimanche, heure locale) d'au moins `[week] min_session_s`, contre `target` séances ; None si `target` vaut 0
+    (« aucun » : pas de ligne). `days_left` compte aujourd'hui."""
+    if target <= 0:
+        return None
+    monday = today - timedelta(days=today.weekday())
+    min_s = float((table.get("week") or {}).get("min_session_s", 1200))
+    done = sum(1 for f in facts if monday <= f.day <= today and f.duration_s >= min_s)
+    return {"target": int(target), "done": done, "days_left": 7 - today.weekday(), "reached": done >= target}
+
+
 # --- règles (pur) ---------------------------------------------------------------------------------
 
 @dataclass
@@ -978,10 +992,11 @@ def format_text(r: dict[str, Any]) -> str:
 def advice_today(today: date, ftp_w: float, objective: str, minutes: int, directory: Path | None = None,
                  workouts_dir: Path | None = None, watch: dict[str, Any] | None = None,
                  next_race: tuple[date, str] | None = None, chosen_need: str | None = None,
-                 table: dict[str, Any] | None = None, routes_root: Path | None = None) -> dict[str, Any]:
+                 table: dict[str, Any] | None = None, routes_root: Path | None = None,
+                 week_target: int = 0) -> dict[str, Any]:
     """Conseil du jour du profil en cours, lu sur le disque : même calcul pour `openride-core coach` et
     pour la commande IPC `get_coach` (lot CO3). Sans `watch` ni `next_race`, les saisies du jour de
-    `conseil.json` sont reprises."""
+    `conseil.json` sont reprises. `week_target` : objectif de la semaine en séances (lot OS1, 0 : aucun)."""
     from . import coach_game
     from . import config as config_mod
 
@@ -999,7 +1014,9 @@ def advice_today(today: date, ftp_w: float, objective: str, minutes: int, direct
         candidates = coach_game.load_candidates(routes_root)
     except Exception:   # catalogue illisible : le conseil reste, sans séance de jeu
         candidates = []
-    return advise(facts, ftp_w, today, inputs, table, library, candidates, curve_of_profile(directory, ftp_w))
+    result = advise(facts, ftp_w, today, inputs, table, library, candidates, curve_of_profile(directory, ftp_w))
+    result["week_goal"] = week_goal(facts, today, week_target, table)   # lot OS1
+    return result
 
 
 def curve_of_profile(directory: Path | None, ftp_w: float) -> dict[str, Any] | None:
@@ -1055,7 +1072,7 @@ def run(args: argparse.Namespace) -> int:
             if race:
                 save_next_race(parsed)
         result = advice_today(today, ftp, objective, minutes, args.directory, args.workouts, watch, race,
-                              args.besoin, table, args.routes)
+                              args.besoin, table, args.routes, cfg.coach.seances_semaine)
     except (CoachError, config_mod.ConfigError, ValueError) as exc:
         print(f"openride-core coach : {exc}", file=sys.stderr)
         return 1

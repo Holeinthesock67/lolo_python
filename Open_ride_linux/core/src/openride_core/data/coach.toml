@@ -155,3 +155,7 @@ labels = [
   { key = "tres_fatigue", min = -30, text = "fatigué, roule tranquille" },
   { key = "epuise", min = -1000, text = "très fatigué, récupère" },
 ]
+
+[week]
+# Objectif de la semaine de l'accueil (lot OS1) : une séance compte à partir de cette durée roulée.
+min_session_s = 1200
