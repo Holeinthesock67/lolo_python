@@ -130,15 +130,10 @@ def test_calibrate_bots_uses_bot_level_then_setting_once_per_level():
 
 
 def test_level_setting_and_start_bounds():
+    # Lot NI3 : « Niveau des bots » n'est plus au menu (Intensité du jour seule) ; la clé reste connue de
+    # config.py (bancs, ligne de commande) et `set_setting` la refuse
     cfg = Config()
-    item = next(it for it in settings.current(cfg) if it["key"] == "bots.level_pct")
-    assert item == {"key": "bots.level_pct", "label": "Niveau des bots", "group": "ride", "value": 100,
-                    "applies": "next_session", "type": "int", "min": 50, "max": 150, "step": 5, "unit": "%"}
-    assert settings.step(cfg, "bots.level_pct", 150, +1) == 150
-    assert settings.step(cfg, "bots.level_pct", 100, -1) == 95
-    for bad in (45, 155, "beaucoup"):
-        with pytest.raises(settings.SettingError):
-            settings.check(cfg, "bots.level_pct", bad)
+    assert "bots.level_pct" not in settings.KEYS and cfg.bots.level_pct == 100
     params = PhysicsParams()
     bots = bots_from_menu([{"kind": "profile", "profile": "diesel", "level_pct": 90},
                            {"kind": "profile", "profile": "diesel"}], params, 250.0, None, None)
@@ -153,7 +148,7 @@ def test_session_calibrates_at_start_and_refuses_bad_level(tmp_path, monkeypatch
         s, cap = make_session(tmp_path, monkeypatch, port=6160)
         errors: list[tuple[str, str]] = []
         s.server.send_error = lambda code, message: errors.append((code, message))
-        s._on_command("set_setting", {"key": "bots.level_pct", "value": 200}, 1)
+        s._on_command("set_setting", {"key": "bots.level_pct", "value": 100}, 1)   # lot NI3 : plus au menu
         assert errors[-1][0] == "setting_invalid"
         s.cfg.bots.level_pct = 90
         s._on_command("select_route", {"route_id": "demo"}, 2)

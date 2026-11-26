@@ -225,6 +225,23 @@ def parse_indoor_bike_data(data: bytes) -> IndoorBikeData:
     return out
 
 
+# Bornes de vraisemblance des mesures reçues (revue S6-03) : une trame bien formée d'un micrologiciel
+# fautif (32 767 W, 0xFFFF tr/min, FC 16 bits à 65 535) faussait physique, records et FIT.
+PLAUSIBLE_CADENCE_MAX_RPM = 250.0
+PLAUSIBLE_HR_BPM = (25, 250)
+PLAUSIBLE_POWER_FLOOR_W = 3000.0   # au moins, même si le trainer annonce une plage plus basse
+
+
+def plausible_power_max(range_max_w: float) -> float:
+    """Puissance mesurée la plus haute acceptée : la plage annoncée avec une marge de 50 %."""
+    return max(PLAUSIBLE_POWER_FLOOR_W, 1.5 * float(range_max_w))
+
+
+def plausible_hr(bpm: int | None) -> bool:
+    """Vrai pour une FC vraisemblable ; 0 et None (« pas de mesure ») sont traités à part."""
+    return bpm is not None and PLAUSIBLE_HR_BPM[0] <= bpm <= PLAUSIBLE_HR_BPM[1]
+
+
 def parse_hr_measurement(data: bytes) -> int:
     """Décode 0x2A37 : fréquence cardiaque en bpm (uint8 ou uint16 selon le bit 0)."""
     if data[0] & 0x01:

@@ -24,7 +24,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
 
 Étapes d'un scénario (liste `etapes`, jouées dans l'ordre ; `voies` sur une étape la réserve à ces voies) :
 - gestes : `appui` (événement ou liste : PLUS_SHORT, A_LONG, Y_SHORT…), `choisir` (identifiant d'un élément
-  de l'écran : focus dessus puis A maintenu ; à la souris, clic sur sa rangée), `aller` (focus seulement),
+  de l'écran, ou motif avec `*` : le premier élément actif qui y répond ; focus dessus puis A maintenu ; à la souris,
+  clic sur sa rangée), `aller` (focus seulement),
   `touche` (+ `maj`, `duree_ms`), `souris` (+ `element` ou `point`), `click` (+ `duree_s`) : gestes bruts ;
 - vérifications, attendues jusqu'à `delai` secondes (5 par défaut) : `ecran` (identifiant, ou liste des
   écrans permis ; + `monde` (menu du monde ouvert affiché ou non, ou son écran : globe, search, map, setup),
@@ -83,6 +84,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import fnmatch
 import html
 import json
 import os
@@ -662,6 +664,11 @@ class Run:
     def choose(self, item: str) -> bool:
         assert self.engine is not None
         st = self.state()
+        if "*" in item:   # motif (ex. « b:*_semaine ») : premier élément actif dont l'identifiant y répond
+            found = [it["id"] for it in st.get("items", []) if it["enabled"] and fnmatch.fnmatchcase(it["id"], item)]
+            if not found:
+                return False
+            item = found[0]
         if self.voie == "souris" and any(r["id"] == item for r in st.get("rows", [])):
             t = now()
             self._send({"type": "_test", "action": "mouse", "kind": "click", "item": item})
