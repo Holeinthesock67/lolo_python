@@ -1,5 +1,10 @@
 # Lot BF1 : bancs d'à-coups séparés à froid et à chaud
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série AC (à-coups) : bancs d'à-coups séparés à froid et à chaud, une image lente tolérée, modes de diagnostic froid-pilote et froid-godot | Python | PI1, PL1 | Petite | **En revue** (PR #1094) |
+
 Décision du 26/11 (le user a choisi « les deux lots ») : BF1 pour le banc, et un lot à part pour la préparation des
 graphismes au premier lancement. Analyse complète : `statut/ACOUPS_CAUSE_GENERALE_2026-11-26.md` (dossier du projet).
 
