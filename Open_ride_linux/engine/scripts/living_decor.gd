@@ -347,6 +347,7 @@ func _start_job(route, extend: bool) -> void:
 		"road_width_m": _road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
 	var bm = _active_biome_model()   # torii et lanternes des montées du biome japan (lot JP5) ; tuiles lues sous verrou
 	job["biome_at"] = Callable(bm, "dominant_at") if bm != null else Callable()
+	job["city_at"] = Callable(bm, "neon_at") if bm != null else Callable()   # ville néon : trottoirs animés (lot NV5)
 	# Parcours sous l'eau (lot SM1) : ni circulation, ni cyclistes du décor, ni spectateurs, passants ou objets du bord
 	underwater = AtmosphereModel.route_underwater(bm, route) >= AtmosphereModel.UNDERWATER_ROUTE
 	job["underwater"] = underwater
@@ -390,6 +391,7 @@ static func _prepare_job(job: Dictionary) -> void:
 	cm_back.configure(r, [] if uw else back, water, bool(job["crowd_all_climbs"]) and not uw, 0, road_w, ground_at)
 	var pm = PassersbyModel.new()
 	# Sous l'eau, aucun passant : ni au village ni en campagne (14/11 : un promeneur restait au bord du récif)
+	pm.city_at = job.get("city_at", Callable())
 	pm.configure(null if uw else r, buildings, water, 0, road_w,
 		PassersbyModel.crowd_zones(people, bool(job["crowd_all_climbs"]) and not uw), ground_at)
 	var marks := {}
