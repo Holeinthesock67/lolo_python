@@ -44,14 +44,17 @@ corriger les à-coups source par source. Le banc est traité à part (BF1, #1094
 3. **Ensuite, tout est à chaud.** Les lancements suivants ne refont rien : la clé n'a pas changé, et le départ
    compile 0 pipeline. `shader_warm.gd` reste le filet de sécurité pour un couple absent du catalogue (il l'y
    ajoute pour la fois suivante).
-4. **Export (J9).** `shader_baker/enabled = true` dans `export_presets.cfg` : Godot livre les shaders déjà
-   traduits pour Vulkan dans le `.pck`. Il ne reste alors au premier lancement que la part du pilote.
+4. **Export (J9).** `shader_baker/enabled = true` dans `export_presets.cfg` livrerait les shaders déjà traduits
+   par Godot. Le banc PG1-0 du 26/11 (BF1, r1094) montre que cette part est petite : avec le cache du pilote plein
+   et celui de Godot vide, le départ DB1 passe à 43 ms ; avec le cache de Godot plein et celui du pilote vide, il
+   reste à 8,1 s. Le gain vient donc de la préparation, qui fait créer les pipelines du pilote un par image. Le
+   shader baker reste un plus facultatif pour J9.
 
 ## 3. Étapes
 
 | # | Étape | Où |
 | --- | --- | --- |
-| PG1-0 | Diagnostic : bancs DB1 medium `--shaders froid-pilote` et `--shaders froid-godot` (BF1-6), après un banc chaud de la même tête. Ils disent quelle part revient à Godot (traduction, que le shader baker supprime à l'export) et quelle part revient au pilote (que seule la préparation supprime). | PC |
+| PG1-0 | **Fait le 26/11** (le pilote porte le coût, voir 2.4). Diagnostic : bancs DB1 medium `--shaders froid-pilote` et `--shaders froid-godot` (BF1-6), après un banc chaud de la même tête. Ils disent quelle part revient à Godot (traduction, que le shader baker supprime à l'export) et quelle part revient au pilote (que seule la préparation supprime). | PC |
 | PG1-1 | Recettes de doublures dans `shader_warm.gd` (`recipe_of`), catalogue écrit en fin de chargement et en fin de séance, lu au lancement. Tests unitaires : recette au même format de sommets, matériau rechargé, shader par chemin. | cloud |
 | PG1-2 | Écran « Préparation des graphismes » : clé de préparation, une création puis un dessin par image, barre et texte écrits. Pas de changement IPC : l'engine attend la fin avant d'envoyer `hello`. Si l'IPC doit changer (annonce au core), révision après 1.41. | cloud |
 | PG1-3 | Outil `engine/tests/catalogue_graphismes.py` : catalogue de départ produit en chargeant les parcours de démonstration, le monde ouvert simulé et les modes. Le catalogue est livré dans `engine/data/graphismes/`. | cloud |
