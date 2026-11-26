@@ -333,8 +333,10 @@ fi
 # Monde d'essai des tunnels (lot EA5) : tunnel de 300 m sous une crête de 45 m ; la colline reste au-dessus du tube,
 # le terrain n'y est pas dessiné (tunnel_cut.gd) : pas d'échec « sol au-dessus de la chaussée » dans le tube, portails
 # et approches contrôlés comme ailleurs (26 novembre 2026, Tromsø : +63 m dans les tunnels sous la ville).
-if python3 "$ENGINE_DIR/tests/make_tunnel_world.py" --out "$HERBE_DIR" >/dev/null 2>&1; then
-  HERBE_WORLDS+=("$HERBE_DIR/tunnel-essai.world")
+# Dossier à part : les mondes d'essai gardent leurs données OSM dans <out>/osm-cache, et celui des ponts, produit juste
+# avant, ferait lire au tunnel la trace sans tunnel (« aucun tunnel trouvé sur la trace »).
+if python3 "$ENGINE_DIR/tests/make_tunnel_world.py" --out "$HERBE_DIR/tunnel" >/dev/null 2>&1; then
+  HERBE_WORLDS+=("$HERBE_DIR/tunnel/tunnel-essai.world")
 else
   echo "monde d'essai des tunnels non produit (compilateur installé ?) : contrôle incomplet, compté en échec"
 fi
