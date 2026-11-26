@@ -124,6 +124,8 @@ const JINGLES := {
 	"gp_sonnette": [[0.0, C7, 0.35, 0.5, "bell"], [0.12, C7, 0.5, 0.5, "bell"]],
 	"gp_klaxon": [[0.0, C5, 0.18, 0.5, "tone"], [0.0, E5, 0.18, 0.4, "tone"], [0.26, C5, 0.18, 0.5, "tone"],
 		[0.26, E5, 0.18, 0.4, "tone"]],
+	# geste d'un bot voisin (lot BA1) : trois notes montantes très brèves, « ça part ! », plus sec que le sprint
+	"bot_attack": [[0.0, E5, 0.05, 0.5, "tone"], [0.06, G5, 0.05, 0.5, "tone"], [0.12, C6, 0.16, 0.55, "tone"]],
 }
 
 var _arches := PackedFloat64Array()

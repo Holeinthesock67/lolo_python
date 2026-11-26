@@ -1560,6 +1560,15 @@
             "type": "number",
             "description": "Révision 1.4 : écart en temps de passage (T16), positif si le bot est devant."
           },
+          "move": {
+            "type": "string",
+            "enum": [
+              "attack",
+              "respond",
+              "sprint"
+            ],
+            "description": "Révision 1.38 (lot BA1) : geste en cours d'un bot à profil (attaque, réponse à un départ, pic du sprint), absent sinon ; seulement pour les 5 bots les plus proches d'un peloton allégé."
+          },
           "out": {
             "type": "integer",
             "minimum": 1,
