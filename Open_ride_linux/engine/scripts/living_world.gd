@@ -28,6 +28,7 @@ const GroundDetails := preload("res://scripts/ground_details.gd")
 const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 const VolcanoFx := preload("res://scripts/volcano_fx.gd")
 const NeonFx := preload("res://scripts/neon_fx.gd")
+const NeonStreet := preload("res://scripts/neon_street.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
@@ -45,6 +46,7 @@ var direction := 1                     # sens de la marche, -1 à rebours (lot N
 var grass: Node3D = null
 var ground_details: Node3D = null     # rochers, herbes hautes, termitières des biomes (lot U8)
 var neon: Node3D = null               # ambiance des paysages en ville néon (lot NV2, neon_fx.gd)
+var neon_street: Node3D = null        # mobilier de rue de la ville néon (lots NV4 et NV5, neon_street.gd)
 var volcano: Node3D = null            # lave, braises, fumées des paysages en feu (démo « Volcan en flammes »)
 var sky_material: Material = null
 var terrain_material: Material = null
@@ -101,6 +103,10 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 		neon = NeonFx.new()
 		neon.name = "NeonFx"
 		add_child(neon)
+	if neon_street == null:
+		neon_street = NeonStreet.new()
+		neon_street.name = "NeonStreet"
+		add_child(neon_street)
 	if _route != null:
 		set_route(_route)
 
@@ -128,6 +134,11 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 		volcano.configure(VolcanoFx.budgets_of(living), route, model)
 	if neon != null:
 		neon.configure(model)
+	if neon_street != null:
+		neon_street.height_at = _terrain_height(route)
+		neon_street.exclusions = _exclusions()
+		neon_street.set_quality(preset)
+		neon_street.configure(route if enabled else null, model)
 	_neigh_at = -INF
 
 
@@ -177,6 +188,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		PerfProbe.mark_since("feu", "%d" % int(floor(cam_s)), t_fire)
 	if neon != null:
 		neon.update(cam_pos, 0.0 if paused else dt_s)
+	if neon_street != null:
+		neon_street.update(cam_s, dt_s)
 	SkyClouds.update(sky_material, last_wind, dt_s)
 	if terrain_material is ShaderMaterial:
 		var shadow := SkyClouds.terrain_shadow_params(sky_material, str(living.get("clouds", "off")))
@@ -243,6 +256,8 @@ func _refresh_shapes() -> void:
 		grass.exclusions = _exclusions()
 	if ground_details != null:
 		ground_details.exclusions = _exclusions()
+	if neon_street != null:
+		neon_street.exclusions = _exclusions()
 
 
 ## Hauteur du terrain affiché (relief exagéré `route.display_y`, lots Q2 et Y15), comme les animaux
