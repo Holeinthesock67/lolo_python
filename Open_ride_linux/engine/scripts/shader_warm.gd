@@ -25,7 +25,7 @@ extends Node3D
 ## dessinés. Le départ attend la fin (`pending`, compté dans `world_streamer.pending_count`), l'écran de chargement
 ## ou le menu restent animés entre deux images. Shaders déjà en cache : une image ordinaire par doublure. En
 ## séance, rien n'est retiré (une tuile retardée pourrait se voir apparaître).
-## Les tronçons OSM (`osm_streamer.gd`) passent aussi par `hold`. Hors de ce nœud : préchauffage des spectateurs
+## Les tronçons OSM (`osm_streamer.gd`) passent aussi par `hold` ; le décor vivant, resté caché, par `warm`. Hors de ce nœud : préchauffage des spectateurs
 ## et des passants un MultiMesh par image (AC5, #985), étape « préchauffage osm » de #953 ; sans eux, leurs images
 ## de 4 à 6 s restent au départ à froid (bancs du 25 novembre).
 ## Pas de class_name : charger par preload("res://scripts/shader_warm.gd").
@@ -136,6 +136,37 @@ func hold(nodes: Array) -> bool:
 			parent.remove_child(n)
 			held_nodes.append([n, parent])
 	_held.append({"nodes": held_nodes, "keys": waiting})
+	return true
+
+
+## Objets déjà dans la scène que leur propriétaire garde cachés (décor vivant, `living_decor.gd`, banc w24 du
+## 26 novembre : cyclistes du décor, circulation, bateaux, ciel et foules dessinés pour la première fois tous dans
+## l'image où le décor devient prêt, 8 s et 42 à 57 pipelines à froid sur la GTX 1060). Ils ne sont pas retirés :
+## seules les doublures de leurs couples nouveaux passent, une par image, comme pour `hold`. Renvoie les clés à
+## attendre (`keys_done`), vide si tout est déjà dessiné ou en séance. Compté dans `pending` jusqu'à la fin.
+func warm(nodes: Array) -> Array:
+	if not active:
+		return []
+	var waiting: Array = []
+	for n in nodes:
+		if not is_instance_valid(n) or not (n is GeometryInstance3D):
+			continue
+		for k in keys_of(n):
+			if not _known.has(k):
+				_known[k] = false
+				_queue.append({"key": k, "node": _make_proxy(n), "ready": -1})
+			if not bool(_known[k]) and not waiting.has(k):
+				waiting.append(k)
+	if not waiting.is_empty():
+		_held.append({"nodes": [], "keys": waiting})
+	return waiting
+
+
+## Vrai quand toutes ces clés ont été dessinées par leur doublure (ou abandonnées : séance partie, garde-fou).
+func keys_done(keys: Array) -> bool:
+	for k in keys:
+		if not bool(_known.get(k, true)):
+			return false
 	return true
 
 

@@ -48,6 +48,18 @@ Banc du correctif (12 MultiMesh d'arbres + 12 maillages, ombres, caches vidés) 
 - Correction v3 : les tronçons OSM (`osm_streamer.gd`) passent aussi par `hold`, comme les tuiles. Reste hors lot
   le préchauffage OSM de #953 (à faire une sorte par image) et le premier dessin des foules (#985).
 
+### Banc PC du 25 novembre, soir (tête 038d8abf + #953 9cd71915 + #985, w24)
+
+- DB1 à froid : **7,8 s (low), 8,2 s (medium), 8,0 s (high)** dans une seule image juste avant le premier mètre
+  (42 à 57 pipelines). Tuiles et « osm 0 » y passent déjà par les doublures (« shaders entrée 1 ») ; c'est la première
+  image où le décor vivant est prêt (`prepared`) : cyclistes du décor, circulation, routes voisines, ciel, bateaux,
+  objets du bord de route et foules y font tous leur premier dessin (étapes « decor cyclistes », « decor circulation »,
+  « decor ciel_bateaux », « spectateurs tri 504 » présentes pour la première fois).
+- Correction v4 : `living_decor.gd _warm_first_draw` : quand le décor devient prêt, ses vues nouvelles sont **cachées**
+  et leurs objets passent par `shader_warm.warm` (doublures sans retrait, une par image, comptées dans `pending`) ;
+  `_warm_check` (chaque image, `step`) rend aux vues leur visibilité quand toutes leurs clés sont dessinées. Faune,
+  éoliennes, drapeaux et épaves, déjà dessinés avant, ne sont pas touchés. En séance, rien n'est caché.
+
 ## 3. Spécification
 
 | # | Règle |
@@ -59,10 +71,12 @@ Banc du correctif (12 MultiMesh d'arbres + 12 maillages, ombres, caches vidés) 
 | AC6-5 | En séance (`session_state` RUNNING, `main.gd`) : `set_active(false)` remet tout dans la scène et plus rien n'est retiré (une tuile retardée pourrait se voir). Créé pendant une séance déjà partie (reprise, tour visuel) : inactif d'emblée. Les couples jetés sont repris au chargement suivant. |
 | AC6-6 | Garde-fou : sans caméra, tout revient dans la scène après 3 600 images. Réglage de test `shader_warm` (défaut vrai) pour couper le lot. |
 | AC6-7 | Hors lot : spectateurs et passants (AC5, #985), étape « préchauffage osm » de #953 (toutes les sortes dans une image), cyclistes du décor (« cyclistes affichage », AC4), forêts lointaines (préchauffées par PI2), image du chargement lui-même (13 s à froid : écran de chargement, ciel, portiques), arbres « ombre seule ». |
+| AC6-8 | `warm(objets)` : mêmes doublures que `hold`, mais les objets restent sous leur parent (le propriétaire les garde cachés) ; renvoie les clés à attendre, `keys_done(clés)` dit quand elles sont dessinées. `living_decor.gd` y passe, quand le décor devient prêt, les objets de la circulation, des routes voisines, des cyclistes du décor, du ciel, des bateaux, du bord de route, des luminaires, des spectateurs et des passants, et cache ces vues jusqu'à la fin. |
 
 ## 4. Fichiers
 
 - `engine/scripts/shader_warm.gd`, `engine/tests/unit/test_shader_warm.gd` ;
+- `engine/scripts/living_decor.gd` (`_warm_first_draw`, `_warm_check`), `engine/tests/unit/test_living_decor.gd` ;
 - `engine/scripts/world_streamer.gd` (`shader_warm`, `integrate`, `pending_count`), `engine/scripts/tree_renderer.gd`
   (`tile_nodes`), `engine/scripts/main.gd` (création, séance), `engine/scripts/osm_streamer.gd` (`shader_warm`) ;
 - `engine/tests/tour_visuel.py` : capture redemandée quand l'engine ne répond pas (premier point à shaders froids
