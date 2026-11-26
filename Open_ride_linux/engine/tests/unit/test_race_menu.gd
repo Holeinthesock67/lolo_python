@@ -40,7 +40,6 @@ func _item(f, id: String) -> Dictionary:
 const SETTINGS := {"type": "settings", "v": 1, "items": [
 	{"key": "race.opponents", "label": "Course : adversaires", "type": "int", "value": 7, "min": 2, "max": 11, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "race.laps", "label": "Course : tours de la boucle", "type": "int", "value": 3, "min": 1, "max": 10, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
-	{"key": "bots.level_pct", "label": "Niveau des bots", "type": "int", "value": 100, "min": 50, "max": 150, "step": 5, "unit": "%", "group": "ride", "applies": "next_session"},
 	{"key": "bots.objective", "label": "Objectif des bots", "type": "choice", "value": "tempo", "choices": ["recovery", "endurance", "tempo", "threshold", "max"], "group": "ride", "applies": "next_session"}]}
 
 const ROUTES := [{"id": "long", "name": "Longue", "status": "ready", "length_m": 25000.0, "route_type": "point_to_point"},
@@ -73,7 +72,7 @@ func _run() -> void:
 	act = f.handle("A_LONG")
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
 	_check(str(f.state()["title"]) == "Prêt : Course — Longue", "titre du mode (%s)" % f.state()["title"])
-	_check(_ids(f) == ["start", "change_route", "set:race.opponents", "set:bots.level_pct"],
+	_check(_ids(f) == ["start", "change_route", "set:race.opponents"],
 		"en ligne : pas de tours, pas de ligne Objets (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["detail"] == "25,0 km en ligne", "Lancer : jusqu'à l'arrivée (%s)" % _item(f, "start")["detail"])
 	# Cote Elo et effort des bots en watts (contrat 1.22) : ligne « Intensité » (lot R1) comme au Grand Prix
@@ -104,7 +103,7 @@ func _run() -> void:
 	_check(_item(f, "start")["detail"] == "3 tours, 9,0 km", "boucle : tours et longueur (%s)" % _item(f, "start")["detail"])
 	_check(not MenuFlow.race_launch(3, {"length_m": 800.0, "route_type": "point_to_point"})["enabled"],
 		"parcours de moins de 1 km : Lancer grisé")
-	_check(MenuFlow.race_keys({}) == ["race.opponents", "race.laps", "bots.level_pct"], "parcours inconnu : tours")
+	_check(MenuFlow.race_keys({}) == ["race.opponents", "race.laps"], "parcours inconnu : tours")
 	f.menu.reset()
 	_check(f.menu.mode == "free", "retour à l'accueil : le mode ne reste pas collé")
 

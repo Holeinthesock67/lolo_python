@@ -18,7 +18,7 @@ modifié : le banc ne fait qu'envoyer les commandes du menu (`select_route`, `st
 | --- | --- | --- |
 | Préparation | HOME temporaire, anneau synthétique de 3 km (bosse de 8 m) écrit dans ses parcours, `config.toml` du banc (qualité, ports UDP libres, départ immédiat), trainer, Click et ceinture simulés | 10 s |
 | Séance | Balade libre sur l'anneau. Toutes les 5 min : effort du cycliste virtuel changé (220, 200, 260, 180, 300, 240 W, pour une FTP fictive de 250 W) et un appui du Click (+ ou −) ; parcours relancé s'il se termine ; fin par `end_session` (FIT et bilan écrits) | 2 h |
-| Saison | L'horloge du core avance au mercredi 18 h de chaque semaine (`horloge_decalee.py`). Semaine 1 : `league_new`. Chaque semaine : `league_status`, puis la manche dans son mode (`start` avec `league` = vrai, 11 rivaux, environ 27 min) ; une manche d'un mode pas encore branché dans la ligue est laissée aux rivaux (semaine non courue, simulée). Le lundi après la semaine 8 : `league_status`, la saison doit être close | 8 × ~28 min avec la ligue complète ; ~1 h 15 avec CH3a seul (3 manches de Course) |
+| Saison | L'horloge du core avance au mercredi 18 h de chaque semaine (`horloge_decalee.py`). Semaine 1 : `league_new`. Chaque semaine : `league_status`, puis la manche dans son mode et sur le parcours de son terrain (anneau pour les boucles et le Grand Prix, vélodrome de 250 m, ligne finie par une côte de 4 % pour l'arrivée en côte ; `start` avec `league` = vrai, 11 rivaux, environ 27 min). Depuis le lot RT2, l'arrivée ne ferme plus la séance : une fois l'issue connue (arrivée, cycliste éliminé ou dernier en course, épreuve de piste finie), le banc demande le bilan par `end_session`, comme « A maintenu » du joueur ; une séance restée ouverte est fermée avant le `select_route` suivant ; une manche d'un mode pas encore branché dans la ligue est laissée aux rivaux (semaine non courue, simulée). Le lundi après la semaine 8 : `league_status`, la saison doit être close | 8 × ~28 min avec la ligue complète ; ~1 h 15 avec CH3a seul (3 manches de Course) |
 | Verdict | `verdict.md`, `verdict.json`, `fichiers.csv`, `core.log`, `engine.log`, `sonde/rapport.html` dans le dossier de sortie | 1 min |
 
 Total sur le PC : environ **6 h** quand toutes les manches seront jouables (CH3b), **3 h 30** avec CH3a. C'est un essai
@@ -96,8 +96,7 @@ branche de CH3 (#989), mesures de fichiers et de mémoire du core qui fondent le
 
 - Avec CH3a seul, 3 manches sur 8 sont jouables (Course en tours : semaines 1, 5 et 8) ; les 5 autres sont simulées
   pour les rivaux. L'essai prend les autres modes d'eux-mêmes dès que CH3b les branche (`league.PLAYABLE_MODES`).
-  Les manches « Grand Prix », « Vélodrome » et « Arrivée en côte » demanderont alors leur parcours ; le banc court
-  pour l'instant toutes les manches sur l'anneau.
+  Chaque manche se court sur le parcours de son terrain (`TERRAIN_ROUTES` de `essai_endurance.py`).
 - L'anneau synthétique n'a ni bâtiments ni forêt OSM : la mémoire et le GPU y sont ceux d'un décor léger. Pour un
   décor lourd, le scénario `endurance` de `sim_bench.py` (village simulé, 1 h) reste l'outil.
 - Le monde ouvert n'est pas dans l'essai (son cache ne doit jamais être touché par un banc).
