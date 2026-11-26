@@ -9,7 +9,7 @@ Bluetooth, nom, modèle et numéro de série des appareils, poids, FTP et puissa
 GPS, réseaux Wi-Fi, adresses IP et courriels sont remplacés par des repères (`<appareil-1>`,
 `<masqué>`…). Le test `test_diagnostic.py` vérifie qu'aucune valeur privée ne reste dans l'archive.
 
-Commande IPC `create_diagnostic` (révision 1.35), réponse `diagnostic` ; en ligne de commande :
+Commande IPC `create_diagnostic` (révision 1.37), réponse `diagnostic` ; en ligne de commande :
 `openride-core diagnostic [--dest openride|telechargements|bureau]`.
 """
 

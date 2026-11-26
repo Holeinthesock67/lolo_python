@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideDiagnosticMessage",
-  "description": "Révision 1.35 (lot DG1) : réponse à cmd create_diagnostic. Archive .zip écrite par le core dans le dossier choisi, sans donnée privée ; rien n'est envoyé. Datagramme de 4 096 octets au plus.",
+  "description": "Révision 1.37 (lot DG1) : réponse à cmd create_diagnostic. Archive .zip écrite par le core dans le dossier choisi, sans donnée privée ; rien n'est envoyé. Datagramme de 4 096 octets au plus.",
   "type": "object",
   "required": [
     "type",

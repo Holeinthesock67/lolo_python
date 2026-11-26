@@ -7,7 +7,7 @@
     {"note": "Lot NI2 : Séance sans les réglages des écrans de mode (Survivant, Grand Prix, conseil) ni le pilotage d'essai ; cadence de départ montrée au départ au pédalage",
      "choisir": "group:ride"},
     {"ecran": "settings_group", "groupe": "ride", "titre": "Réglages › Séance", "contient": ["Départ — au pédalage", "Cadence de départ — 30 tr/min"],
-     "absent": ["Survivant :", "Grand Prix :", "Conseil :", "Pilotage du trainer"]},
+     "absent": ["Survivant :", "Grand Prix :", "Conseil :", "Pilotage du trainer", "Niveau des bots", "Objectif des bots"]},
     {"capture": "ni2_seance"},
     {"appui": "Y_SHORT"},
     {"choisir": "group:rider"},

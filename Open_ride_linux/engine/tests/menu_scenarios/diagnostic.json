@@ -1,5 +1,5 @@
 {
-  "description": "Fichier de diagnostic depuis Réglages › Diagnostic (lot DG1, contrat 1.35) : trois dossiers au choix, carte « rien n'est envoyé », fichier écrit dans Téléchargements par le core et chemin sur la ligne d'état ; adresses Bluetooth fictives du journal masquées.",
+  "description": "Fichier de diagnostic depuis Réglages › Diagnostic (lot DG1, contrat 1.37) : trois dossiers au choix, carte « rien n'est envoyé », fichier écrit dans Téléchargements par le core et chemin sur la ligne d'état ; adresses Bluetooth fictives du journal masquées.",
   "fichiers": {"OpenRide/Logs/openride_2026-11-22_10-00-00.log": "2026-11-22 10:00:00 WARNING core Trainer AA:BB:CC:11:22:33 : CP occupé\n"},
   "etapes": [
     {"ecran": "home", "delai": 15},

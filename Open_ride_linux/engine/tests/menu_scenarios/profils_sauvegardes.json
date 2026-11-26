@@ -1,0 +1,103 @@
+{
+  "description": "Profils (lot SV1) : « Gérer : <profil en cours> › Restaurer une sauvegarde » liste les copies du profil en mots écrits ; restauration après confirmation aux boutons écrits (« Non » par défaut), profil actuel copié avant.",
+  "fichiers": {
+    "OpenRide/Profils/.migration": "fini\n",
+    "OpenRide/Profils/cycliste-a/profil.toml": "[profil]\nid = \"cycliste-a\"\nnom = \"Cycliste A\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n",
+    "OpenRide/Profils/cycliste-a/records.json": "{}",
+    "OpenRide/Profils/cycliste-b/profil.toml": "[profil]\nid = \"cycliste-b\"\nnom = \"Cycliste B\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n",
+    "OpenRide/Sauvegardes/profils/cycliste-a/20261115-130500_mise-a-jour/profil.toml": "[profil]\nid = \"cycliste-a\"\nnom = \"Cycliste A\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n",
+    "OpenRide/Sauvegardes/profils/cycliste-a/20261115-130500_mise-a-jour/elo.json": "{\"rating\": 1500}",
+    "OpenRide/Sauvegardes/profils/cycliste-a/20261115-130500_mise-a-jour/copie.toml": "[copie]\nprofil = \"cycliste-a\"\nnom = \"Cycliste A\"\nraison = \"mise-a-jour\"\nfaite = \"2026-11-15T13:05:00\"\nseances = 12\n"
+  },
+  "etapes": [
+    {
+      "ecran": "profiles",
+      "titre": "Qui roule ?",
+      "delai": 20
+    },
+    {
+      "choisir": "p:cycliste-a"
+    },
+    {
+      "ecran": "home",
+      "titre": "OpenRide — Cycliste A",
+      "delai": 10
+    },
+    {
+      "choisir": "profile"
+    },
+    {
+      "ecran": "profiles",
+      "delai": 10
+    },
+    {
+      "choisir": "manage"
+    },
+    {
+      "ecran": "profile_manage_list"
+    },
+    {
+      "choisir": "p:cycliste-a"
+    },
+    {
+      "ecran": "profile_manage",
+      "contient": [
+        "Restaurer une sauvegarde — copie faite chaque semaine"
+      ]
+    },
+    {
+      "capture": "gerer_profil_sauvegardes"
+    },
+    {
+      "choisir": "backups"
+    },
+    {
+      "ecran": "profile_backups",
+      "contient": [
+        "Avant la mise à jour, dim. 15/11 à 13:05 — 12 séances"
+      ],
+      "delai": 10
+    },
+    {
+      "capture": "liste_sauvegardes"
+    },
+    {
+      "choisir": "b:20261115-130500_mise-a-jour"
+    },
+    {
+      "ecran": "confirm",
+      "focus": "no",
+      "titre": "Restaurer la copie du dim. 15/11 à 13:05 ? Ton profil revient à cet état (réglages et FTP compris). Ton profil actuel est sauvegardé avant.",
+      "contient": [
+        "Non, garder mon profil",
+        "Oui, restaurer"
+      ]
+    },
+    {
+      "capture": "restauration_confirmation"
+    },
+    {
+      "choisir": "yes"
+    },
+    {
+      "ecran": "profile_manage",
+      "contient": [
+        "Sauvegarde restaurée (profil d'avant copié)"
+      ],
+      "delai": 15
+    },
+    {
+      "fichier": "OpenRide/Profils/cycliste-a/elo.json"
+    },
+    {
+      "fichier": "OpenRide/Profils/cycliste-a/records.json",
+      "existe": false
+    },
+    {
+      "fichier": "OpenRide/Sauvegardes/profils/cycliste-a/*_restauration/records.json"
+    },
+    {
+      "capture": "restauration_faite"
+    }
+  ]
+}
