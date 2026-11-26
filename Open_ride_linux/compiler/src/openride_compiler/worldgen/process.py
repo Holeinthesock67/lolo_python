@@ -528,9 +528,14 @@ class WorldSession:
         self.legs.append(Leg(edge_id, forward, to_node, p, self.length_m))
 
     def _extend(self) -> bool:
-        """Prolonge la route engagée jusqu'à l'horizon (plus une marge) ; vrai si elle a changé."""
+        """Prolonge la route engagée jusqu'à l'horizon (plus une marge) ; vrai si elle a changé.
+
+        Route arrêtée (« plus de route connue », sens interdit au bout d'une impasse) : faux tant que rien n'est
+        ajouté. Avant le 26/11, vrai à chaque `progress` : une révision identique toutes les 0,5 s (banc de
+        Tromsø, 331 révisions), que l'engine reconstruisait chaque fois (lot OW8)."""
         if self.length_m - self.s_m >= self.horizon_m:
             return False
+        legs0, finish0 = len(self.legs), self.finish_leg
         goal = self.s_m + self.horizon_m + EXTEND_MARGIN_M
         while self.length_m < goal:
             i = len(self.legs) - 1
@@ -542,11 +547,12 @@ class WorldSession:
                 self.finish_leg = i
                 self.log(f"arrivée ({self.nav.mode}) posée à {last.s1:.0f} m")
             if c.phase == "u_turn" and not self.graph.edges[c.branch_edge_id].allows(c.forward):
-                self.data_state = "missing"
-                self.status("ready", "plus de route connue", "missing")
+                if self.data_state != "missing":      # annoncé une fois, pas à chaque `progress`
+                    self.data_state = "missing"
+                    self.status("ready", "plus de route connue", "missing")
                 break
             self._append_leg(c.branch_edge_id, c.forward, c.to_node, turnaround=c.phase == "u_turn")
-        return True
+        return len(self.legs) != legs0 or self.finish_leg != finish0
 
     def _route_columns(self) -> dict[str, Any]:
         route = concat([leg.profile for leg in self.legs])
