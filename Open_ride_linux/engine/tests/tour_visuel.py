@@ -66,6 +66,7 @@ BIOME_STEP_M = 50.0
 MAX_BIOME_POINTS = 3
 SETTLE_S = 2.5
 PENDING_RETRIES = 12
+NO_REPLY_RETRIES = 8        # capture sans réponse redemandée (premier rendu figé par la compilation des shaders)
 
 
 class TourError(ValueError):
@@ -365,16 +366,25 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
             time.sleep(SETTLE_S)
             info: dict[str, Any] | None = None
             png = out / f"{k + 1:02d}_{p['id']}.png"
-            for _ in range(PENDING_RETRIES):
+            silent = 0
+            pending = 0
+            while pending < PENDING_RETRIES:
                 mark = core.log.mark()
                 core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot", "path": str(png),
                                "tag": p["id"]})
                 hit = core.log.wait_for(r"^screenshot (\{.*\})$", 15.0, mark)
                 info = json.loads(hit[1].group(1)) if hit else None
-                # Sans réponse : redemandée. Au premier point, shaders froids, le rendu CPU (lavapipe) fige
-                # l'engine 10 à 20 s et la demande, en UDP, se perd derrière les trames d'état (CI de #1066).
-                if info is not None and int(info.get("streaming_pending", 0)) == 0:
+                if info is None:
+                    # Premier passage d'une scène sous Vulkan logiciel, caches de shaders vides (HOME temporaire,
+                    # revue vague 5) : l'engine fige 10 à 40 s, les trames `state` remplissent sa file UDP et la
+                    # demande de capture s'y perd. Redemandée.
+                    silent += 1
+                    if silent > NO_REPLY_RETRIES:
+                        break
+                    continue
+                if int(info.get("streaming_pending", 0)) == 0:
                     break
+                pending += 1
                 time.sleep(1.0)
             ok = bool(info and info.get("ok")) and png.is_file()
             m = {} if info is None else {"triangles": int(info.get("triangles", 0)),
