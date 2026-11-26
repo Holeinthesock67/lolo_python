@@ -35,7 +35,24 @@ func _init(route_data = null, p_cell_m: float = DEFAULT_CELL_M) -> void:
 		var p: Vector4 = route.sample_xyzh(minf(k * AXIS_STEP_M, route.length_m))
 		_ax.append(p.x)
 		_az.append(p.z)
-	for i in range(_ax.size() - 1):
+	_insert(0, _ax.size() - 1)
+
+
+## Autre chaussée dessinée à tenir dégagée (monde ouvert, 24/11 : amorces des branches non suivies des carrefours,
+## world_streamer.gd `set_previews`) : axe (x, z) en polyligne, rangé comme la route, sans le relier à elle.
+func add_polyline(line: PackedVector2Array) -> void:
+	if line.size() < 2:
+		return
+	var start := _ax.size()
+	for p in line:
+		_ax.append(p.x)
+		_az.append(p.y)
+	_insert(start, _ax.size() - 1)
+
+
+## Segments [i ; i + 1] de l'axe pour i de `from_i` à `to_i` − 1, rangés dans les cases que touche leur rectangle.
+func _insert(from_i: int, to_i: int) -> void:
+	for i in range(from_i, to_i):
 		var x0: float = minf(_ax[i], _ax[i + 1])
 		var x1: float = maxf(_ax[i], _ax[i + 1])
 		var z0: float = minf(_az[i], _az[i + 1])

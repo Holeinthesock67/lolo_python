@@ -61,6 +61,9 @@ var _zones: ExclusionZones = null       # zones sans herbe ni détail de sol (_e
 var _zones_version := -2
 var _shapes: Dictionary = {"forests": [], "buildings": [], "waters": []}
 var _route = null
+## Branches non suivies des carrefours (monde ouvert, 24/11) : clé -> PackedVector2Array (x, z), tenues dégagées
+## d'herbe et de détails de sol comme la route (`set_avoid_lines`).
+var _avoid: Dictionary = {}
 
 
 func configure(preset_name: String, living_enabled: bool, theme: Dictionary, environment: Environment = null,
@@ -120,7 +123,38 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 	if volcano != null:
 		volcano.height_at = _terrain_height(route)
 		volcano.configure(VolcanoFx.budgets_of(living), route, model)
+	for key in _avoid:
+		_apply_avoid(_avoid[key])
 	_neigh_at = -INF
+
+
+## Monde ouvert (24/11, herbe sur les amorces des rues de Biarritz) : branches non suivies des carrefours connus
+## (`live_world.branch_lines()` : {key, xs, zs}), dessinées en amorce par world_streamer.gd ; ni herbe ni détail de
+## sol sur leur chaussée. Les carrefours arrivent avec la route, jusqu'à 3 km devant, bien avant les touffes (280 m).
+func set_avoid_lines(items: Array) -> void:
+	var keep := {}
+	for it in items:
+		var key: String = it["key"]
+		keep[key] = true
+		if _avoid.has(key):
+			continue
+		var line := PackedVector2Array()
+		var xs: Array = it["xs"]
+		var zs: Array = it["zs"]
+		for i in range(mini(xs.size(), zs.size())):
+			line.append(Vector2(float(xs[i]), float(zs[i])))
+		_avoid[key] = line
+		_apply_avoid(line)
+	for key in _avoid.keys():
+		if not keep.has(key):
+			_avoid.erase(key)   # gardée par l'herbe jusqu'au prochain set_route (rien n'y repousse)
+
+
+func _apply_avoid(line: PackedVector2Array) -> void:
+	if grass != null:
+		grass.avoid_line(line)
+	if ground_details != null:
+		ground_details.avoid_line(line)
 
 
 func on_state(state: Dictionary, now_s: float) -> void:

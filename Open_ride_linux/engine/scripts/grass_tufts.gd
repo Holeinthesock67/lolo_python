@@ -204,6 +204,13 @@ func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: i
 	_group_visible.resize(groups)
 
 
+## Autre chaussée à tenir dégagée en plus de la route (monde ouvert : branches non suivies des carrefours, 24/11).
+## Effacée au prochain `configure`.
+func avoid_line(line: PackedVector2Array) -> void:
+	if _road != null:
+		_road.add_polyline(line)
+
+
 ## Matériau des touffes : balancement au vent apparent, fondu avec la distance, montrées de `lod_begin`
 ## à `lod_end` mètres (0 : sans borne).
 func _tuft_material(lod_begin: float, lod_end: float) -> ShaderMaterial:

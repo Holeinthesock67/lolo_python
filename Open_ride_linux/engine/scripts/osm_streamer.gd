@@ -53,6 +53,14 @@ const CHUNK_M := 1000.0
 ## Demi-largeur dégagée autour de l'axe de la route pour les cours d'eau (chaussée de 6 m, bas-côtés).
 const ROAD_CLEAR_M := 4.0
 const WATER_COLOR := Color(0.12, 0.32, 0.38, 1.0)
+## Monde ouvert (24/11, maison sur la route à Biarritz) : un bâtiment que l'axe de la route engagée traverse, ou
+## approche à moins de BUILDING_AXIS_CLEAR_M, n'est pas dessiné. Pas la demi-largeur de la chaussée (3 m) : dans
+## les rues étroites, le ruban de 6 m touche les façades, et les retirer viderait les vieilles villes ; seule une
+## maison sur la voie du cycliste disparaît (virage de rue coupé par la route lissée, passage sous un immeuble).
+const BUILDING_AXIS_CLEAR_M := 1.5
+## Pas des points de l'axe (Catmull-Rom de route_data.gd) comparés aux bâtiments, et case de leur grille.
+const BUILDING_AXIS_STEP_M := 2.0
+const BUILDING_AXIS_CELL_M := 25.0
 
 var route = null
 var world_dir := ""
@@ -172,11 +180,19 @@ func set_world(new_route, new_world_dir: String, manifest: Dictionary = {}, them
 ## Monde vivant (lot W10) : nouvelle route après une révision ; les tronçons d'indice >= from_k sont
 ## reconstruits, les autres gardés (leurs travaux en cours gardent l'ancienne route, qui ne change plus).
 func swap_route(new_route, from_k: int) -> void:
+	# Tronçon plus ancien dont un bâtiment est sur la route réécrite (carré lu par ce tronçon, que la route nouvelle
+	# traverse) : refait aussi, le bâtiment retiré (drop_buildings_on_route).
+	var redo := {}
+	if new_route != null and new_route.live:
+		redo = chunks_with_buildings_on(new_route, float(from_k) * CHUNK_M, from_k)
 	for k in _jobs.keys():
-		if k >= from_k:
+		if k >= from_k or redo.has(k):
 			BgTasks.wait(_jobs[k]["task"])
 			_jobs.erase(k)
 	route = new_route
+	_ready_chunks = _ready_chunks.filter(func(item): return not redo.has(item["k"]))
+	for k in redo:
+		_free_chunk(k)
 	_ready_chunks = _ready_chunks.filter(func(item): return item["k"] < from_k)
 	for k in _chunk_instances.keys():
 		if k >= from_k:
@@ -323,6 +339,9 @@ func _build_chunk_job(job: Dictionary) -> void:
 		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k, job.get("route"))
 		if b_res.get("ok", false):
 			var items: Array = b_res.get("items", [])
+			var r_live = job.get("route")
+			if r_live != null and r_live.live and not items.is_empty():
+				items = drop_buildings_on_route(items, r_live)
 			b_items = items
 			for b in items:
 				shapes["buildings"].append(_shape(b.get("outer", [])))
@@ -830,6 +849,94 @@ func sea_horizon() -> MeshInstance3D:
 
 
 ## Contour `[[x, z], …]` -> `{points: PackedVector2Array, rect: Rect2}`.
+## Points de l'axe de la route (Catmull-Rom, tous les BUILDING_AXIS_STEP_M) à partir de `from_s`, rangés par case de
+## BUILDING_AXIS_CELL_M : Vector2i -> PackedVector2Array. Seuls les points dans `area` (vide : partout).
+static func route_axis_cells(r, from_s: float = 0.0, area: Rect2 = Rect2()) -> Dictionary:
+	var cells := {}
+	if r == null or r.n < 2:
+		return cells
+	var whole := area.size == Vector2.ZERO
+	var grown := area.grow(BUILDING_AXIS_CLEAR_M + r.ds_m)
+	# Points bruts de la route d'abord (pas de 10 m) : on n'échantillonne finement que près de `area`.
+	for i in range(maxi(floori(from_s / r.ds_m), 0), r.n - 1):
+		if not whole and not grown.has_point(Vector2(r.x[i], r.z[i])) and not grown.has_point(Vector2(r.x[i + 1], r.z[i + 1])):
+			continue
+		var s0: float = r.s[i]
+		var steps := maxi(1, ceili((r.s[i + 1] - s0) / BUILDING_AXIS_STEP_M))
+		for k in range(steps):
+			var p: Vector3 = r.sample_point(s0 + (r.s[i + 1] - s0) * k / float(steps))
+			var c := Vector2i(floori(p.x / BUILDING_AXIS_CELL_M), floori(p.z / BUILDING_AXIS_CELL_M))
+			var pts: PackedVector2Array = cells.get(c, PackedVector2Array())
+			pts.append(Vector2(p.x, p.z))
+			cells[c] = pts
+	return cells
+
+
+## Vrai si un point de l'axe (`route_axis_cells`) est dans le contour ou à moins de BUILDING_AXIS_CLEAR_M de ses murs.
+static func axis_hits_ring(cells: Dictionary, ring: PackedVector2Array, rect: Rect2) -> bool:
+	if ring.size() < 3:
+		return false
+	var g := rect.grow(BUILDING_AXIS_CLEAR_M)
+	for cz in range(floori(g.position.y / BUILDING_AXIS_CELL_M), floori(g.end.y / BUILDING_AXIS_CELL_M) + 1):
+		for cx in range(floori(g.position.x / BUILDING_AXIS_CELL_M), floori(g.end.x / BUILDING_AXIS_CELL_M) + 1):
+			var pts = cells.get(Vector2i(cx, cz))
+			if pts == null:
+				continue
+			for p in (pts as PackedVector2Array):
+				if not g.has_point(p):
+					continue
+				if Geometry2D.is_point_in_polygon(p, ring):
+					return true
+				var n := ring.size()
+				for i in range(n):
+					if p.distance_to(Geometry2D.get_closest_point_to_segment(p, ring[i], ring[(i + 1) % n])) < BUILDING_AXIS_CLEAR_M:
+						return true
+	return false
+
+
+## Bâtiments de `items` (couche buildings lue) que la route `r` ne traverse pas (monde ouvert, 24/11). Exécutable en
+## thread secondaire.
+static func drop_buildings_on_route(items: Array, r) -> Array:
+	var shapes := []
+	var area := Rect2()
+	for b in items:
+		var sh := _shape(b.get("outer", []))
+		shapes.append(sh)
+		area = sh["rect"] if area.size == Vector2.ZERO else area.merge(sh["rect"])
+	var cells := route_axis_cells(r, 0.0, area)
+	if cells.is_empty():
+		return items
+	var out := []
+	for i in range(items.size()):
+		if not axis_hits_ring(cells, shapes[i]["points"], shapes[i]["rect"]):
+			out.append(items[i])
+	return out
+
+
+## Tronçons déjà chargés, plus bas que `below_k`, dont un bâtiment est sur la route `r` à partir de `from_s` :
+## {k: true}.
+func chunks_with_buildings_on(r, from_s: float, below_k: int) -> Dictionary:
+	var out := {}
+	var cells := {}
+	var built := false
+	for k in _shapes_by_chunk:
+		if k >= below_k or not _chunk_instances.has(k):
+			continue
+		var bs: Array = _shapes_by_chunk[k].get("buildings", [])
+		if bs.is_empty():
+			continue
+		if not built:
+			cells = route_axis_cells(r, from_s)
+			built = true
+			if cells.is_empty():
+				return out
+		for b in bs:
+			if axis_hits_ring(cells, b["points"], b["rect"]):
+				out[k] = true
+				break
+	return out
+
+
 static func _shape(pts: Array) -> Dictionary:
 	var out := PackedVector2Array()
 	var rect := Rect2()

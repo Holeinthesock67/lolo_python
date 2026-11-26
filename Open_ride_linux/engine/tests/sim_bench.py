@@ -105,6 +105,8 @@ CMD_ID_BASE = 20_000
 SETTLE_S = 5.0          # après route_loaded : premières tuiles et premier décor avant la première capture
 SHOT_TIMEOUT_S = 5.0    # attente de la réponse d'une capture, une fois redemandée
 SPEED_TOLERANCE = 0.10  # vitesse imposée : médiane à ± 10 %
+SPEED_COAST_W = 5.0     # vitesse imposée : en dessous, roue libre (descente), échantillon écarté
+SPEED_COAST_S = 20.0    # … ainsi que les secondes qui suivent, le temps de revenir à la vitesse imposée
 LATENCY_MIN_PRESSES = 10   # lot X7 : appuis du Click appariés de bout en bout
 LATENCY_P95_MS = 150.0     # notification → image affichée, p95 (strict en fenêtre réelle)
 SPEED_WARMUP_S = 20.0   # départ arrêté : hors médiane de la vitesse
@@ -968,20 +970,38 @@ def shot_timing(s: dict[str, Any]) -> str:
 
 
 def speed_check(recs: list[dict[str, Any]], target_kmh: float, tolerance: float = SPEED_TOLERANCE,
-                warmup_s: float = SPEED_WARMUP_S) -> tuple[bool, str]:
-    """Vitesse médiane du journal (m/s, 1 Hz) après la mise en vitesse, comparée à la vitesse imposée."""
+                warmup_s: float = SPEED_WARMUP_S, coast_s: float = SPEED_COAST_S) -> tuple[bool, str]:
+    """Vitesse médiane du journal (m/s, 1 Hz) après la mise en vitesse, comparée à la vitesse imposée.
+
+    Le cycliste simulé (stratégie `vitesse`) ne freine pas : dans une descente où tenir la vitesse ne demande aucune
+    puissance, il roule en roue libre et va plus vite (banc rOWlh du 24/11, monde ouvert du lac : jusqu'à 50 km/h à
+    −13 %, médiane 33,7 km/h pour 30 imposés). Ces secondes ne disent rien de la vitesse imposée : les échantillons à
+    moins de SPEED_COAST_W watts et les `coast_s` secondes qui suivent (le temps de ralentir) sont écartés, et comptés
+    dans le message."""
     ts = [x["ts"] for x in recs if isinstance(x.get("ts"), (int, float))]
     if not ts:
         return False, "aucun échantillon de vitesse au journal"
     t0 = min(ts)
-    v = sorted(float(x["speed"]) * 3.6 for x in recs if isinstance(x.get("speed"), (int, float))
-               and isinstance(x.get("ts"), (int, float)) and x["ts"] - t0 >= warmup_s)
+    timed = sorted((x for x in recs if isinstance(x.get("speed"), (int, float)) and isinstance(x.get("ts"), (int, float))
+                    and x["ts"] - t0 >= warmup_s), key=lambda x: x["ts"])
+    v, coasting, coast_until = [], 0, -math.inf
+    for x in timed:
+        p = x.get("power")
+        if isinstance(p, (int, float)) and p < SPEED_COAST_W:
+            coast_until = x["ts"] + coast_s
+        if x["ts"] <= coast_until:
+            coasting += 1
+            continue
+        v.append(float(x["speed"]) * 3.6)
+    v.sort()
     if not v:
-        return False, f"aucun échantillon de vitesse après {warmup_s:.0f} s"
+        return False, (f"aucun échantillon de vitesse après {warmup_s:.0f} s"
+                       + (f" ({coasting} s en roue libre écartées)" if coasting else ""))
     med = v[len(v) // 2]
     ok = abs(med - target_kmh) <= tolerance * target_kmh
     return ok, (f"médiane {med:.1f} km/h sur {len(v)} s (attendu {target_kmh:.1f} ± {tolerance * target_kmh:.1f}), "
-                f"de {v[0]:.1f} à {v[-1]:.1f} km/h")
+                f"de {v[0]:.1f} à {v[-1]:.1f} km/h"
+                + (f", {coasting} s en roue libre (descente) écartées" if coasting else ""))
 
 
 # --- rapport HTML ------------------------------------------------------------------------------

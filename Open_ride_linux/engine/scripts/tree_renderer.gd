@@ -19,6 +19,7 @@ extends Node3D
 ## lointain arbre par arbre dans le shader de balancement, ombre portée coupée au même endroit (`lod_ranges`).
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
@@ -232,7 +233,8 @@ func get_active_tree_count() -> int:
 ## posés à la hauteur affichée de la route (`route.display_y`, relief exagéré des lots Q2 et Y15).
 ## Renvoie un dictionnaire avec la clé de tuile et les listes d'arbres par case [0..15].
 func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
-		density_factor: float, areas: Array = [], buildings: Array = []) -> Dictionary:
+		density_factor: float, areas: Array = [], buildings: Array = [], waters: Array = [],
+		avoid_lines: Array = []) -> Dictionary:
 	var t_start := Time.get_ticks_usec()
 	# Seule la section `vegetation` change : copie superficielle du thème, copie de cette section.
 	var tile_theme := theme.duplicate()
@@ -336,6 +338,14 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 	var t_buildings := Time.get_ticks_usec()
 	if not buildings.is_empty():
 		trees = exclude_buildings(trees, buildings)
+	# 4. Aucun arbre dans l'eau (mer, lacs, grandes rivières) ni sur les branches non suivies des carrefours
+	#    (24/11, monde ouvert de Biarritz : arbre dans la mer, arbres sur les amorces des rues).
+	if not waters.is_empty():
+		trees = exclude_water(trees, waters)
+	if not avoid_lines.is_empty():
+		var corridor := VegetationPlacer._theme_value(tile_theme, "road", "width_m", VegetationPlacer.DEFAULT_ROAD_WIDTH_M) * 0.5 \
+			+ VegetationPlacer.ROAD_MARGIN_M
+		trees = exclude_lines(trees, avoid_lines, corridor)
 	var tree_species := PackedByteArray()
 	if biomes_on:
 		var assigned := VegetationPlacer.assign_species(trees, biome_model, float(veg["max_density_per_ha"]) / maxf(clampf(density_factor, 0.0, 1.0), 1e-6), near_water)
@@ -490,6 +500,63 @@ static func exclude_buildings(trees: PackedVector4Array, buildings: Array) -> Pa
 			if not boxes[i].has_point(p):
 				continue
 			if VegetationPlacer._in_ring(p.x, p.y, rings[i]) or _ring_distance(p, rings[i]) < BUILDING_CLEARANCE_M:
+				blocked = true
+				break
+		if not blocked:
+			out.append(tree)
+	return out
+
+
+## Arbres hors des plans d'eau `waters` (aires de la couche eau : `outer`, `holes` ; mer comprise) : un arbre dans un
+## contour extérieur et dans aucune de ses îles est retiré. Contours indexés (exclusion_zones.gd) : la côte d'une mer
+## a des milliers de sommets. Exécutable en thread secondaire.
+static func exclude_water(trees: PackedVector4Array, waters: Array) -> PackedVector4Array:
+	var outers := []
+	var islands := []
+	for w in waters:
+		if typeof(w) != TYPE_DICTIONARY:
+			continue
+		var outer = w.get("outer", [])
+		if typeof(outer) != TYPE_ARRAY or outer.size() < 3:
+			continue
+		outers.append(VegetationPlacer._packed_ring(outer))
+		var holes = w.get("holes", [])
+		if typeof(holes) == TYPE_ARRAY:
+			for h in holes:
+				if typeof(h) == TYPE_ARRAY and h.size() >= 3:
+					islands.append(VegetationPlacer._packed_ring(h))
+	if outers.is_empty():
+		return trees
+	var wet := ExclusionZones.new(outers)
+	var dry := ExclusionZones.new(islands)
+	var out := PackedVector4Array()
+	for tree in trees:
+		if wet.contains(tree.x, tree.z) and not dry.contains(tree.x, tree.z):
+			continue
+		out.append(tree)
+	return out
+
+
+## Arbres à plus de `corridor` mètres de chacune des polylignes `lines` (PackedVector2Array en x, z). Exécutable
+## en thread secondaire.
+static func exclude_lines(trees: PackedVector4Array, lines: Array, corridor: float) -> PackedVector4Array:
+	var segs: Array[PackedVector2Array] = []
+	var boxes: Array[Rect2] = []
+	for line in lines:
+		var pts: PackedVector2Array = line
+		for i in range(pts.size() - 1):
+			segs.append(PackedVector2Array([pts[i], pts[i + 1]]))
+			boxes.append(Rect2(pts[i], Vector2.ZERO).expand(pts[i + 1]).grow(corridor))
+	if segs.is_empty():
+		return trees
+	var out := PackedVector4Array()
+	for tree in trees:
+		var p := Vector2(tree.x, tree.z)
+		var blocked := false
+		for i in range(segs.size()):
+			if not boxes[i].has_point(p):
+				continue
+			if p.distance_to(Geometry2D.get_closest_point_to_segment(p, segs[i][0], segs[i][1])) < corridor:
 				blocked = true
 				break
 		if not blocked:
