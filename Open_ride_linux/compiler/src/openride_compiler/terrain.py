@@ -215,8 +215,10 @@ def curvature_drop(route_tree: cKDTree, gx: np.ndarray, gz: np.ndarray) -> np.nd
 
 
 def build_level(route: dict, frame: LocalFrame, provider: ElevationProvider, level: Level,
-                log: Log = stderr_log, spans=None) -> dict[tuple[int, int], np.ndarray]:
-    """Grilles float32 (101 × 101) de toutes les tuiles d'un niveau ; pas de fondu sous les ponts `spans`."""
+                log: Log = stderr_log, spans=None, tunnels=None) -> dict[tuple[int, int], np.ndarray]:
+    """Grilles float32 (101 × 101) de toutes les tuiles d'un niveau ; pas de fondu sur les portions en pont et en
+    tunnel `spans` ; pas de garde-fou de la chaussée sur les portions en tunnel `tunnels` (lot EA5 : la colline
+    reste au-dessus du tunnel, l'engine ne dessine pas le terrain dans le tube)."""
     x, z = np.asarray(route["x"], float), np.asarray(route["z"], float)
     keys = select_tiles(x, z, level)
     axis = route_axis(route, spans) if level.blend else None
@@ -239,16 +241,18 @@ def build_level(route: dict, frame: LocalFrame, provider: ElevationProvider, lev
         for k, key in enumerate(batch):
             out[key] = y32[k]
     if level.blend:
-        res = fit_route_ground(out, route, level, spans)
+        res = fit_route_ground(out, route, level, spans, tunnels)
         if res["lowered"] or res["raised"]:
             log(f"terrain {level.name} : sol réglé sur la route de l'engine ({res['lowered']} sommet(s) abaissé(s) "
                 f"sous la chaussée, {res['raised']} remonté(s) sous les talus)")
     return out
 
 
-def fit_route_ground(tiles: dict[tuple[int, int], np.ndarray], route: dict, level: Level = None, spans=None) -> dict:
+def fit_route_ground(tiles: dict[tuple[int, int], np.ndarray], route: dict, level: Level = None, spans=None,
+                     tunnels=None) -> dict:
     """Règle unique sol / route (`road_ground.py`) sur les tuiles d'un niveau d'un parcours compilé : route telle que
-    l'engine la dessine, sol sous la chaussée, pieds des talus appuyés hors ponts `spans`. Rend le bilan de `fit`."""
+    l'engine la dessine, sol sous la chaussée, pieds des talus appuyés hors ponts et tunnels `spans` ; pas de sol
+    abaissé dans les tunnels `tunnels` (lot EA5 : la colline reste au-dessus du tube). Rend le bilan de `fit`."""
     from . import road_ground as RG
     from .bridges import route_s
 
@@ -260,12 +264,31 @@ def fit_route_ground(tiles: dict[tuple[int, int], np.ndarray], route: dict, leve
         head = _heading(x, z, False)
     s = route_s(route) if "n" in route and "ds_m" in route else None
     ground = [(sp[0], sp[1]) for sp in (spans or [])]
-    upper, lower = RG.corridor_s(x, z, route["alt_m"], head, s=s, ground_spans=ground,
+    open_ = [(sp[0], sp[1]) for sp in (tunnels or [])]
+    upper, lower = RG.corridor_s(x, z, route["alt_m"], head, s=s, open_spans=open_, ground_spans=ground,
                                  loop=route.get("type") == "loop")
     return RG.fit_tiles(tiles, level.tile_m, upper[:3], RG.drop_covered_feet(upper, lower, upper[3], lower[3]))
 
 
 # --- garde-fou de la chaussée -----------------------------------------------------------------
+
+def open_pieces(route: dict, tunnels=None) -> list[tuple[int, int]]:
+    """Tranches [a, b) des points de la route à ciel ouvert : hors de l'intérieur des portions en tunnel (lot EA5,
+    bornes gardées, comme `axis_pieces` du monde ouvert) ; toute la route sans tunnel."""
+    n = len(route["x"])
+    if not tunnels:
+        return [(0, n)]
+    from .bridges import outside_spans, route_s
+    keep = outside_spans(route_s(route), tunnels)
+    out, start = [], None
+    for i, k in enumerate(np.append(keep, False)):
+        if k and start is None:
+            start = i
+        elif not k and start is not None:
+            out.append((start, i))
+            start = None
+    return out
+
 
 ROAD_CHECK_STEP_M = 1.0     # pas le long de la route et en travers de la chaussée
 
@@ -371,11 +394,16 @@ def _sync_edges(tiles: dict[tuple[int, int], np.ndarray]) -> None:
 
 
 def build_terrain(route: dict, frame: LocalFrame, provider: ElevationProvider,
-                  log: Log = stderr_log, horizon: bool = True, spans=None) -> dict[str, dict[tuple[int, int], np.ndarray]]:
+                  log: Log = stderr_log, horizon: bool = True, spans=None,
+                  tunnels=None) -> dict[str, dict[tuple[int, int], np.ndarray]]:
     """Niveaux proche et lointain, plus l'horizon (lot JP4) sauf `horizon=False` (`--no-horizon`) ;
-    `spans` : portions en pont, sans fondu de la route (lot EA4)."""
+    `spans` : portions en pont (lot EA4) et en tunnel, sans fondu de la route ; `tunnels` : portions en tunnel
+    (lot EA5), sans garde-fou de la chaussée (la colline est gardée). Un tunnel absent de `spans` y est ajouté."""
     levels = ALL_LEVELS if horizon else LEVELS
-    return {level.name: build_level(route, frame, provider, level, log, spans) for level in levels}
+    if tunnels:
+        from .tunnels import merge_spans
+        spans = merge_spans(spans or [], tunnels)
+    return {level.name: build_level(route, frame, provider, level, log, spans, tunnels) for level in levels}
 
 
 def terrain_manifest(tiles: dict[str, dict[tuple[int, int], np.ndarray]],

@@ -1,9 +1,9 @@
 """Ligne de commande `openride-compiler` (lot B1 §3.3).
 
     openride-compiler build <trace .gpx|.fit|.tcx|.fit.gz|.tcx.gz|.zip> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
-                            [--layers route,terrain,biome,buildings,vegetation,poi,water,coast,roads,bridges,segments] [--offline]
+                            [--layers route,terrain,biome,buildings,vegetation,poi,water,coast,roads,bridges,tunnels,segments] [--offline]
                             [--biome ID] [--variant GROUND,ROOFS[,LANDSCAPE]]
-    openride-compiler add-layer <dossier.world> terrain|biome|buildings|vegetation|poi|water|coast|roads|bridges|segments [--offline]
+    openride-compiler add-layer <dossier.world> terrain|biome|buildings|vegetation|poi|water|coast|roads|bridges|tunnels|segments [--offline]
                                 [--manual FICHIER.segments.toml] [--biome ID] [--variant GROUND,ROOFS[,LANDSCAPE]]
     openride-compiler list | build-all [--layers ...] [--biome ID] [--variant GROUND,ROOFS[,LANDSCAPE]] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
@@ -44,6 +44,7 @@ from .osm import OverpassClient
 from .coast import build_coast, coast_manifest, write_coast_dir
 from .surface import apply_surface, fetch_ways, surface_summary
 from . import bridges as BR
+from . import tunnels as TU
 from .osm_layers import (
     add_sea_areas,
     build_osm_layers,
@@ -77,11 +78,11 @@ from .writer import (biome_manifest, build_manifest, normalize_name, replace_bio
                      sha256_of, shares_text, write_biome, write_world)
 
 LAYERS = ("route", "terrain", "biome", "buildings", "vegetation", "poi", "water", "coast", "roads", "bridges",
-          "segments")
+          "tunnels", "segments")
 # Segments (lot T3) : produits par défaut quand le core est installé, omis avec un avertissement sinon.
 # Biome (lot U2, 3.0) : par défaut aussi ; sans réseau, repli OSM et altitude avec un avertissement.
 DEFAULT_LAYERS = ("route", "terrain", "biome", "segments")
-OSM_LAYERS = ("buildings", "vegetation", "poi", "water", "coast", "roads", "bridges")   # bridges : lot EA4
+OSM_LAYERS = ("buildings", "vegetation", "poi", "water", "coast", "roads", "bridges", "tunnels")   # bridges : lot EA4 ; tunnels : EA5
 # Couches tirées de la côte OSM (lot U3) : la mer de la couche eau et la couche côte.
 COAST_LAYERS = ("water", "coast")
 
@@ -169,7 +170,7 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("add-layer", help="régénère une couche d'un .world existant")
     a.add_argument("world", type=Path)
     a.add_argument("layer", choices=["terrain", "biome", "buildings", "vegetation", "poi", "water", "coast", "roads",
-                                     "bridges", "segments"])
+                                     "bridges", "tunnels", "segments"])
     a.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                    help="couche biome : impose ce biome à tout le parcours (255 partout)")
     a.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS[,LANDSCAPE]",
@@ -322,18 +323,23 @@ def cmd_build(args: argparse.Namespace) -> int:
     provider = make_provider(args.offline)
     compiled = compile_route(points, out_and_back=args.out_and_back, provider=provider)
     _report_alt(compiled)
-    # Ponts (lot EA4) : portions en pont lues avant tout le reste, le profil de la route y va en ligne droite
-    # (fiche, segments et terrain le suivent) ; la même requête des voies sert ensuite à la surface.
+    # Ponts (lot EA4) et tunnels (lot EA5) : portions lues avant tout le reste, le profil de la route y va en ligne
+    # droite (fiche, segments et terrain le suivent) ; la même requête des voies sert ensuite à la surface.
     osm_client = None
     ways = None
     spans: list = []
-    if "bridges" in args.layers:
+    t_spans: list = []
+    if "bridges" in args.layers or "tunnels" in args.layers:
         osm_client = make_osm_client(args.offline)
         frame0 = LocalFrame.from_manifest(build_manifest(name, compiled, args.gpx.name, ""))
         ways = fetch_ways(osm_client, compiled.route, frame0)
-        spans = BR.route_bridge_spans(compiled.route, ways, frame0)
-        changed = BR.apply_bridge_profile(compiled.route, spans)
-        print(f"ponts : {len(spans)} portion(s), {changed} point(s) du profil en ligne droite", file=sys.stderr)
+        if "bridges" in args.layers:
+            spans = BR.route_bridge_spans(compiled.route, ways, frame0)
+        if "tunnels" in args.layers:
+            t_spans = TU.route_tunnel_spans(compiled.route, ways, frame0)
+        changed = BR.apply_bridge_profile(compiled.route, TU.merge_spans(spans, t_spans))
+        print(f"ponts : {len(spans)} portion(s), tunnels : {len(t_spans)} portion(s), {changed} point(s) du profil "
+              "en ligne droite", file=sys.stderr)
     manifest = build_manifest(name, compiled, args.gpx.name, sha256_of(args.gpx))
     side = sidecar_path(args.gpx, stem[0] if stem else args.gpx.stem)
     if side.is_file():
@@ -350,7 +356,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     tiles = None
     if "terrain" in args.layers:
         tiles = build_terrain(compiled.route, frame, provider, horizon=not getattr(args, "no_horizon", False),
-                              spans=spans)
+                              spans=spans, tunnels=t_spans)
         manifest["layers"]["terrain"] = terrain_manifest(tiles, provider)
 
     forced = getattr(args, "biome", None)
@@ -364,6 +370,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     osm_res = None
     coast_res = None
     bridge_chunks = None
+    tunnel_chunks = None
     if any(la in args.layers for la in OSM_LAYERS):
         osm_client = osm_client or make_osm_client(args.offline)
         responses = osm_client.fetch_for_route(compiled.route, frame)
@@ -383,12 +390,17 @@ def cmd_build(args: argparse.Namespace) -> int:
         if "water" in args.layers:
             manifest["layers"]["water"] = water_manifest(osm_res)
             if tiles is not None:
-                _sink_under_water(tiles, compiled.route, chunk_areas(osm_res.water_chunks), spans, frame, provider)
+                _sink_under_water(tiles, compiled.route, chunk_areas(osm_res.water_chunks), TU.merge_spans(spans, t_spans),
+                                  frame, provider)
         if "roads" in args.layers:
             manifest["layers"]["roads"] = roads_manifest(osm_res)
         if "bridges" in args.layers:
             bridge_chunks = _route_bridges(compiled.route, spans, frame, near_tiles, provider)
             manifest["layers"]["bridges"] = BR.bridges_manifest(bridge_chunks, spans, osm_res.osm_date)
+        if "tunnels" in args.layers:
+            tunnel_chunks = TU.route_tunnels(compiled.route, t_spans)
+            print(TU.tunnels_summary(tunnel_chunks), file=sys.stderr)
+            manifest["layers"]["tunnels"] = TU.tunnels_manifest(tunnel_chunks, t_spans, osm_res.osm_date)
         if not args.no_surface:   # surface de la route (lot U20), avec les couches OSM
             values = apply_surface(compiled.route, manifest, osm_client, frame, ways)
             print(surface_summary(values), file=sys.stderr)
@@ -415,6 +427,8 @@ def cmd_build(args: argparse.Namespace) -> int:
                 write_roads_dir(folder / "roads", osm_res.roads_chunks)
         if bridge_chunks is not None:
             BR.write_bridges_dir(folder / "bridges", bridge_chunks)
+        if tunnel_chunks is not None:
+            TU.write_tunnels_dir(folder / "tunnels", tunnel_chunks)
         if coast_res is not None and coast_res.present and "coast" in args.layers:
             write_coast_dir(folder / "coast", coast_res.coast_chunks)
 
@@ -565,8 +579,10 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
     if args.layer == "terrain":
         provider = make_provider(args.offline)
         spans = BR.manifest_spans(manifest)
-        tiles = build_terrain(route, frame, provider, horizon=not getattr(args, "no_horizon", False), spans=spans)
-        _sink_under_water(tiles, route, read_world_areas(world), spans, frame, provider)
+        t_spans = TU.manifest_spans(manifest)
+        tiles = build_terrain(route, frame, provider, horizon=not getattr(args, "no_horizon", False), spans=spans,
+                              tunnels=t_spans)
+        _sink_under_water(tiles, route, read_world_areas(world), TU.merge_spans(spans, t_spans), frame, provider)
         replace_terrain_dir(world, tiles)
         manifest.setdefault("layers", {})["terrain"] = terrain_manifest(tiles, provider)
         manifest["format_version"] = C.FORMAT_VERSION
@@ -576,8 +592,8 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         return EXIT_OK
 
     osm_client = make_osm_client(args.offline)
-    if args.layer == "bridges":
-        return _add_bridges_layer(world, manifest, route, route_file, frame, osm_client, args, t0)
+    if args.layer in ("bridges", "tunnels"):
+        return _add_structures_layer(world, manifest, route, route_file, frame, osm_client, args, t0)
     near_tiles = load_existing_near_tiles(world)
     needs_y = args.layer in ("buildings", "poi", "water", "roads")
     # La côte demande le MNT au-delà des tuiles proches (falaises jusqu'au bord de l'étendue) ; l'eau, le MNT
@@ -617,7 +633,9 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         replace_layer_dir(world, "water", write_water_dir, osm_res.water_chunks)
         manifest.setdefault("layers", {})["water"] = water_manifest(osm_res)
         tiles = load_terrain_tiles(world)
-        if tiles and _sink_under_water(tiles, route, chunk_areas(osm_res.water_chunks), BR.manifest_spans(manifest), frame, provider):
+        if tiles and _sink_under_water(tiles, route, chunk_areas(osm_res.water_chunks),
+                                       TU.merge_spans(BR.manifest_spans(manifest), TU.manifest_spans(manifest)),
+                                       frame, provider):
             replace_terrain_dir(world, tiles)
         count = osm_res.water_lines_count + osm_res.water_areas_count
     manifest["format_version"] = C.FORMAT_VERSION
@@ -626,33 +644,46 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def _add_bridges_layer(world: Path, manifest: dict, route: dict, route_file: str, frame: LocalFrame,
-                       osm_client, args: argparse.Namespace, t0: float) -> int:
-    """`add-layer bridges` (lot EA4) : même résultat que `build` avec la couche : portions en pont, profil de
-    la route en ligne droite (route.json et fiche réécrits), terrain refait s'il est là (pas de fondu sous les
-    ponts, sol sous l'eau abaissé), tablier et piles."""
-    spans = BR.route_bridge_spans(route, fetch_ways(osm_client, route, frame), frame)
-    changed = BR.apply_bridge_profile(route, spans)
+def _add_structures_layer(world: Path, manifest: dict, route: dict, route_file: str, frame: LocalFrame,
+                          osm_client, args: argparse.Namespace, t0: float) -> int:
+    """`add-layer bridges` (lot EA4) ou `add-layer tunnels` (lot EA5) : même résultat que `build` avec la couche :
+    portions de la couche relues sur OSM, celles de l'autre couche gardées du manifeste, profil de la route en ligne
+    droite sur les deux (route.json et fiche réécrits), terrain refait s'il est là (pas de fondu sur un pont ni un
+    tunnel, colline gardée sur un tunnel, sol sous l'eau abaissé), puis objets de la couche."""
+    ways = fetch_ways(osm_client, route, frame)
+    if args.layer == "bridges":
+        spans, t_spans = BR.route_bridge_spans(route, ways, frame), TU.manifest_spans(manifest)
+    else:
+        spans, t_spans = BR.manifest_spans(manifest), TU.route_tunnel_spans(route, ways, frame)
+    changed = BR.apply_bridge_profile(route, TU.merge_spans(spans, t_spans))
     provider = make_provider(args.offline)
     tiles = None
     if ((manifest.get("layers") or {}).get("terrain") or {}).get("present"):
         horizon = bool((((manifest.get("layers") or {}).get("terrain") or {}).get("tiles") or {}).get("horizon"))
-        tiles = build_terrain(route, frame, provider, horizon=horizon, spans=spans)
-        _sink_under_water(tiles, route, read_world_areas(world), spans, frame, provider)
-    chunks = _route_bridges(route, spans, frame, tiles.get("near") if tiles else None, provider)
+        tiles = build_terrain(route, frame, provider, horizon=horizon, spans=spans, tunnels=t_spans)
+        _sink_under_water(tiles, route, read_world_areas(world), TU.merge_spans(spans, t_spans), frame, provider)
     tmp = world / f".{Path(route_file).name}.tmp"
     tmp.write_text(json.dumps(route, separators=(",", ":")), encoding="utf-8")
     tmp.replace(world / route_file)
     if tiles is not None:
         replace_terrain_dir(world, tiles)
         manifest["layers"]["terrain"] = terrain_manifest(tiles, provider)
-    replace_layer_dir(world, "bridges", BR.write_bridges_dir, chunks)
-    manifest.setdefault("layers", {})["bridges"] = BR.bridges_manifest(chunks, spans)
+    if args.layer == "bridges":
+        chunks = _route_bridges(route, spans, frame, tiles.get("near") if tiles else None, provider)
+        replace_layer_dir(world, "bridges", BR.write_bridges_dir, chunks)
+        manifest.setdefault("layers", {})["bridges"] = BR.bridges_manifest(chunks, spans)
+        what = f"{len(spans)} pont(s)"
+    else:
+        chunks = TU.route_tunnels(route, t_spans)
+        print(TU.tunnels_summary(chunks), file=sys.stderr)
+        replace_layer_dir(world, "tunnels", TU.write_tunnels_dir, chunks)
+        manifest.setdefault("layers", {})["tunnels"] = TU.tunnels_manifest(chunks, t_spans)
+        what = f"{len(t_spans)} tunnel(s)"
     if "stats" in manifest:
         manifest["stats"] = compute_stats(route)
     manifest["format_version"] = C.FORMAT_VERSION
     replace_manifest(world, manifest)
-    print(f"{world} : couche bridges régénérée, {len(spans)} pont(s), {changed} point(s) du profil changé(s) "
+    print(f"{world} : couche {args.layer} régénérée, {what}, {changed} point(s) du profil changé(s) "
           f"({time.monotonic() - t0:.1f} s)")
     return EXIT_OK
 

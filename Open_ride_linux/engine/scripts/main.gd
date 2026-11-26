@@ -42,6 +42,7 @@ const TrackView := preload("res://scripts/track/track_view.gd")
 ## Retours et consignes communs à tous les modes (lot RT1).
 const FeedbackModel := preload("res://scripts/feedback_model.gd")
 const FeedbackView := preload("res://scripts/feedback_view.gd")
+const RefusalModel := preload("res://scripts/refusal_model.gd")
 const GpScene := preload("res://scripts/grandprix/gp_scene.gd")
 const GpSoundModel := preload("res://scripts/grandprix/gp_sound_model.gd")
 const GpItems := preload("res://scripts/grandprix/gp_items.gd")
@@ -170,6 +171,7 @@ var gp_view = null
 var track_hud = TrackHudModel.new()
 var track_view = null
 var feedback = FeedbackModel.new()
+var refusals = RefusalModel.new()   # refus expliqués (lot RT4) : appui sans effet, bonus refusé, trainer perdu
 var feedback_view = null
 ## Grand Prix des objets en 3D (lot GP7) : boîtes, objets, effets sur les coureurs, onomatopées ; et ses sons.
 var gp_scene = null
@@ -424,6 +426,9 @@ func _ready() -> void:
 	ipc.progression_received.connect(_on_progression)
 	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_profiles(msg)
+		_refresh_menu())
+	ipc.profile_backups_received.connect(func(msg: Dictionary) -> void:   # lot SV1
+		menu_flow.on_profile_backups(msg)
 		_refresh_menu())
 	ipc.interrupted_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_interrupted(msg)
@@ -772,6 +777,7 @@ func _on_input_event(event_name: String) -> void:
 	if mark != "":
 		banner.show_message("press", mark, PRESS_HINT_S)
 		return
+	_explain_press(event_name)
 	if _camera_event(event_name):
 		return
 	_menu_event(event_name)
@@ -940,9 +946,11 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
+		"list_profile_backups":   # copies du profil en cours (lot SV1)
+			ipc.send_command("list_profile_backups", {})
 		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
-		"undo_profile_reset":   # lot RZ1 : confirmation exigée aussi par le core
+		"undo_profile_reset", "restore_profile_backup":   # lots RZ1 et SV1 : confirmation exigée aussi par le core
 			ipc.send_command(name, {"id": str(act["id"]), "confirmed": true})
 		"reset_profile_stats":
 			ipc.send_command(name, {"confirmed": true})
@@ -976,7 +984,7 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("end_session", {"save": false})
 			world_menu_view.vm.reset()
 		"world_search":
-			ipc.send_command("world_search", {"query": act["query"]})
+			world_menu_view.vm.search_request = ipc.send_command("world_search", {"query": act["query"]})
 		"world_map":
 			ipc.send_command("world_map", {"lat": act["lat"], "lon": act["lon"], "radius_m": act["radius_m"]})
 		"world_pin":
@@ -993,7 +1001,7 @@ func _on_world_menu_received(kind: String, msg: Dictionary) -> void:
 	var vm = world_menu_view.vm
 	match kind:
 		"places":
-			vm.on_places(msg.get("items", []))
+			vm.on_places(msg.get("items", []), int(msg.get("request_cmd_id", -1)))
 		"world_map":
 			vm.on_map(msg)
 		"world_regions":
@@ -2340,8 +2348,12 @@ func _on_core_error(code: String, message: String) -> void:
 	if world_menu_view != null and world_menu_view.visible:
 		world_menu_view.vm.on_error(code, message)
 		world_menu_view.update_display()
+	var explained: bool = menu_flow.explains_error(code)   # départ refusé, expliqué sur l'écran Prêt (lot RT4)
 	menu_flow.on_error(code, message)
 	_refresh_menu()
+	if explained:
+		print("Erreur du core (expliquée à l'écran Prêt) : ", code, " : ", message)
+		return
 	banner.show_message("error", "Erreur du core [%s] : %s" % [code, message], ERROR_MIN_S)
 	banner.set_sticky("error", session_state == "ERROR")
 
@@ -2667,12 +2679,24 @@ func _update_track(state: Dictionary, in_session: bool) -> void:
 ## arrivent par le message `elimination` (signal de ipc_client.gd).
 func _update_feedback(state: Dictionary) -> void:
 	var now_s := Time.get_ticks_msec() / 1000.0
-	var moments: Array = track_hud.moments(state) + survivor_hud.moments(state)
+	var moments: Array = track_hud.moments(state) + survivor_hud.moments(state) + refusals.on_state(state)
 	var sounds: Array = feedback.push_all(moments, now_s)
 	sounds += feedback.on_state(state, now_s, _mode_goal(state))
 	for j in sounds:
 		_play_event(j)
 	feedback_view.update_view(feedback.view(state, now_s, _mode_consigne(state)))
+
+
+## Appui sans effet en séance (lot RT4, refusal_model.gd) : bandeau « × REFUSÉ » commun, pourquoi et quoi faire.
+## La trame connue est celle d'avant l'appui : le core relaie l'appui à l'engine avant de le traiter.
+func _explain_press(event_name: String) -> void:
+	if feedback.is_done():
+		return   # course finie : la consigne de fin suffit
+	var m := RefusalModel.press(event_name, _last_state, rogue_host.is_active(), menu_flow.is_visible())
+	if m.is_empty():
+		return
+	for j in feedback.push_all([m], Time.get_ticks_msec() / 1000.0):
+		_play_event(j)
 
 
 ## Consigne du mode en cours (lot RT1) : épreuve de piste, Dernier survivant, Grand Prix ; {} sinon.

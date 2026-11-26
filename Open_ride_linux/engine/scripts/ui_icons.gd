@@ -11,10 +11,11 @@ const ITEM_ICONS := {
 	"open_world": "globe", "plan": "calendar", "ftp": "bolt", "sim": "chip", "settings": "gear",
 	"devices": "list", "pairing": "list", "quit": "power", "start": "play", "resume": "play",
 	"continue": "play", "records": "trophy", "end_save": "flag", "abandon": "cross", "u_turn": "u_turn", "no": "cross",
-	"yes": "check", "difficulty": "slope", "ride_mode": "bars", "target_w": "bolt", "cadence_rpm": "bike", "minimap_zoom": "globe", "bot1": "rider", "bot2": "rider", "bot3": "rider", "bot4": "rider", "ghost": "ghost", "peloton": "rider",
+	"yes": "check", "difficulty": "slope", "ride_mode": "bars", "target_w": "bolt", "cadence_rpm": "bike", "ghost": "ghost", "peloton": "rider",
 	"rogue": "rider", "rogue_change": "gear", "objective": "flag", "duration": "calendar",
-	"chassis": "bike", "launch": "play", "history": "list", "collection": "trophy", "coach": "flag", "league": "calendar",
+	"chassis": "bike", "launch": "play", "history": "list", "collection": "trophy", "coach": "flag", "league": "calendar", "week": "check",
 	"garage": "bike", "bike": "bike", "outfit": "rider", "avatar": "rider", "save": "check", "cancel": "cross",
+	"minimap_zoom": "globe",   # ligne « Zoom de la carte » de la pause en monde ouvert (lot W24)
 }
 ## Bonus du HUD (lot TT6, maquettes validées le 8 novembre) : forme de chaque valeur de `powerup.held` et
 ## `powerup.active` (contrat 1.13) ; la Puissance reprend l'éclair, une valeur inconnue l'icône neutre.

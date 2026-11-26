@@ -71,9 +71,10 @@
         "fjord",
         "ile_volcanique",
         "rizieres",
-        "volcan_actif"
+        "volcan_actif",
+        "ville_neon"
       ],
-      "description": "Paysage du lot U25 (6.0) posé sur des biomes existants : canyons rouges, fjords, îles volcaniques, rizières ; volcan actif (lave et feu)."
+      "description": "Paysage du lot U25 (6.0) posé sur des biomes existants : canyons rouges, fjords, îles volcaniques, rizières ; volcan actif (lave et feu) ; ville néon (lot NV1 : ville de bord de mer au coucher du soleil et de nuit)."
     },
     "weightGrid": {
       "type": "array",

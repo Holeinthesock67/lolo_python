@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Essai du moteur Mobile pour `low` (mesure seule, décision du propriétaire) | GDScript | Y2 | Petite | Oui (mesure) ; issue #363 |
+| Essai du moteur Mobile pour `low` (mesure seule, décision du propriétaire) | GDScript | Y2 | Petite | **Abandonné le 22 novembre 2026** (audit de cohérence G11) ; issue #363 |
 
 ## 1. Objectif
 
@@ -49,3 +49,7 @@ Aucune.
 
 - Passage effectif de `low` en Mobile et corrections des shaders : lot à part, seulement si le propriétaire le décide.
 - Moteur Compatibility (utilisé seulement par les tests sans carte graphique).
+
+## 9. Décision
+
+Abandonné le 22 novembre 2026 (audit de cohérence et de qualité, constat G11) : la qualité `low` tient déjà son budget GPU de 8 ms en Forward+ sur la GTX 1060, et un deuxième moteur de rendu doublerait les bancs et les captures de chaque PR de rendu. Les trois qualités restent en Forward+ (`engine/project.godot`). À rouvrir seulement si une machine plus faible que le PC cible doit être servie.

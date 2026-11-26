@@ -49,6 +49,7 @@ import perf_probe  # noqa: E402
 import rendu_jeu  # noqa: E402
 
 sys.path.insert(0, str(REPO / "core" / "src"))
+from openride_core import velodrome  # noqa: E402
 from openride_core.demo_world import write_world  # noqa: E402
 from openride_core.tools.route_vectors import _route  # noqa: E402
 
@@ -58,6 +59,10 @@ except ImportError:   # pragma: no cover - version sans ligue
     league = None
 
 ROUTE_ID = "anneau_endurance"
+LINE_ID = "ligne_endurance"     # manche à arrivée en côte (parcours en ligne)
+# Parcours de chaque terrain de manche (`league.Round.terrain`) : la manche refuse un parcours qui ne s'y prête pas.
+TERRAIN_ROUTES = {"boucle": ROUTE_ID, "grandprix": ROUTE_ID, "piste": velodrome.TRACK_ID, "arrivee_cote": LINE_ID}
+FIELD = 11                       # rivaux de la manche (`league.FIELD_SIZE`)
 WEEKS = 8
 EFFORT_CYCLE = ((220, 90), (200, 90), (260, 85), (180, 80), (300, 90), (240, 80))   # FTP fictive 250 W
 EFFORT_PERIOD_S = 300.0
@@ -126,6 +131,34 @@ def next_monday(d: date) -> date:
     return d + timedelta(days=(7 - d.weekday()) % 7 or 7)
 
 
+def write_line(routes: Path, length_m: float) -> None:
+    """Parcours en ligne de `length_m`, plat puis une côte de 4 % sur son dernier kilomètre (arrivée en côte)."""
+    climb = min(1000.0, 0.3 * length_m)
+    write_world(routes, LINE_ID, length_m, title="Ligne d'endurance (banc)",
+                grade=lambda s: 4.0 if s >= length_m - climb else 0.0)
+
+
+def line_length_m(manche_s: float | None) -> float:
+    """Longueur du parcours en ligne pour une manche d'environ `manche_s` à ~9 m/s (1 km de course au moins)."""
+    return max(2000.0, round((manche_s or 27 * 60) * 9.0, -2))
+
+
+def race_over(mode: str, lines: list[str]) -> bool:
+    """Issue de la manche connue dans les lignes du core lues depuis son départ : depuis le lot RT2, l'arrivée ne
+    ferme plus la séance (le cycliste roule au calme jusqu'à « Terminer et enregistrer », A maintenu) ; le banc
+    demande alors le bilan comme le joueur. Course et Grand Prix : arrivée ; Dernier survivant : cycliste éliminé
+    ou dernier en course ; piste : cycliste sorti ou épreuve finie."""
+    text = "\n".join(lines)
+    if mode in ("race", "grandprix"):
+        return re.search(r"Arrivée \((?:race|grandprix)\)", text) is not None
+    if mode == "survivor":
+        out = re.findall(r"Dernier survivant : (.+?) éliminé à l'arche", text)
+        return "cycliste" in out or len(out) >= FIELD
+    if mode == "track":
+        return re.search(r"Épreuve de piste \S+ : event = (?:finish|out, rider = me)\b", text) is not None
+    return False
+
+
 class Endurance:
     def __init__(self, args: argparse.Namespace) -> None:
         self.a = args
@@ -171,11 +204,14 @@ class Endurance:
             "engine_log_mo": round(self.engine_log.stat().st_size / 1e6, 3) if self.engine_log.exists() else 0.0,
         })
 
-    def ride(self, phase: str, seconds: float, until_finished: bool, relaunch: dict[str, Any] | None) -> bool:
+    def ride(self, phase: str, seconds: float, until_finished: bool, relaunch: dict[str, Any] | None,
+             mode: str | None = None) -> bool:
         """Roule `seconds` (ou jusqu'à FINISHED si `until_finished`) : effort changé toutes les 5 min, fichiers
-        relevés chaque minute, parcours relancé s'il finit (balade libre). Rend vrai si FINISHED est vu."""
+        relevés chaque minute, parcours relancé s'il finit (balade libre). Avec `mode` (manche de la ligue) : une
+        fois l'issue connue (`race_over`), bilan demandé par `end_session`. Rend vrai si FINISHED est vu."""
         start = now()
         after = start
+        asked = False
         next_effort = start + EFFORT_PERIOD_S
         next_files = start
         while now() - start < seconds:
@@ -185,6 +221,9 @@ class Endurance:
             if now() >= next_files:
                 self.sample_files(phase)
                 next_files += FILES_PERIOD_S
+            if mode is not None and not asked and race_over(mode, [ln for tt, ln in self.core.lines if tt >= start]):
+                asked = True
+                self.cmd("end_session", {"save": True})   # « A maintenu = bilan », comme le joueur
             fin = self.core.wait_for(r"-> FINISHED", 1.0, after=after)
             if fin is not None:
                 after = fin[0] + 1e-3
@@ -200,9 +239,29 @@ class Endurance:
                 return False
         return False
 
-    def start_session(self, start_args: dict[str, Any]) -> tuple[bool, str]:
+    def session_state(self) -> str:
+        """Dernier état de séance lu dans le journal du core (« Séance : A -> B »)."""
+        for _, ln in reversed(self.core.lines):
+            m = re.search(r"Séance : \S+ -> (\w+)", ln)
+            if m:
+                return m.group(1)
+        return "IDLE"
+
+    def close_open_session(self) -> None:
+        """Séance restée ouverte (manche précédente sans issue dans le temps imparti) : fermée avant le
+        `select_route` suivant, refusé hors de IDLE, READY, FINISHED et ERROR."""
+        if self.session_state() in ("IDLE", "READY", "FINISHED", "ERROR"):
+            return
         t = now()
-        self.cmd("select_route", {"route_id": ROUTE_ID})
+        self.cmd("end_session", {"save": True})
+        fin = self.core.wait_for(r"-> (?:FINISHED|IDLE|ERROR)", 15.0, after=t)
+        self.check(fin is not None, "séance restée ouverte : fermée", "end_session accepté" if fin else "absente en 15 s")
+        time.sleep(1.0)
+
+    def start_session(self, start_args: dict[str, Any], route_id: str = ROUTE_ID) -> tuple[bool, str]:
+        self.close_open_session()
+        t = now()
+        self.cmd("select_route", {"route_id": route_id})
         ready = self.core.wait_for(r"-> READY", 30.0, after=t)
         if ready is None:
             return False, "pas de READY en 30 s après select_route"
@@ -237,6 +296,8 @@ class Endurance:
         routes = self.home / ".local" / "share" / "openride" / "routes"
         routes.mkdir(parents=True)
         write_ring(routes, a.anneau_m)
+        write_line(routes, line_length_m(a.manche_s))
+        velodrome.write_velodrome(routes)
         state_port, self.cmd_port = free_udp_ports(2)
         cfg = tmp / "config.toml"
         cfg.write_text("\n".join([f"[ipc]\nport_state = {state_port}\nport_commands = {self.cmd_port}\n",
@@ -342,10 +403,15 @@ class Endurance:
                 self.weeks.append(row)
                 self.check(None, f"saison : manche {i + 1} ({day.isoformat()})", row["detail"] + ", simulée pour les rivaux")
                 continue
-            ok, detail = self.start_session({"mode": mode, "league": True})
+            route_id = TERRAIN_ROUTES.get(rnd.terrain if rnd is not None else "boucle", ROUTE_ID)
+            row["parcours"] = route_id
+            ok, detail = self.start_session({"mode": mode, "league": True}, route_id)
             row.update(depart=ok, detail=detail)
             if ok:
-                row["arrivee"] = self.ride(f"manche {i + 1}", timeout, until_finished=True, relaunch=None)
+                # Dernier survivant (une arche par rival, 1 km au moins entre deux) et élimination de la piste (un
+                # rival sorti tous les 4 tours de 250 m) : jusqu'à 11 km quelle que soit `--manche-s`, à ~6 m/s
+                limit = max(timeout, FIELD * 1000.0 / 6.0 + 600) if mode in ("survivor", "track") else timeout
+                row["arrivee"] = self.ride(f"manche {i + 1}", limit, until_finished=True, relaunch=None, mode=mode)
                 time.sleep(3.0)
                 data = self.league_json() or {}
                 res = (data.get("results") or {}).get(str(i))
