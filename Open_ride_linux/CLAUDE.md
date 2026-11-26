@@ -211,6 +211,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
   - avant chaque `git push` (branche de lot ou train) : `python3 scripts/avant_poussee.py` depuis `Open_ride_linux/` (lot AP1, 1 à 3 min : `.uid` manquants, `--corriger` les écrit ; révision IPC, `WORLDGEN_VERSION` ou `SCHEMA_VERSION` déjà prise par main ; conflit avec main ; numéros de lot en double ; tests touchés avec le garde-fou `tmp_path`) ; ne pousser que sur « PRÊT À POUSSER » ;
   - messages de commit en français ;
   - fusion dans `main` (`--no-ff`) seulement quand tout est vert ;
+  - juste après chaque fusion dans main (train ou PR) : `python3 scripts/conflits_ouverts.py --gh` (ou `--liste` « NUMÉRO BRANCHE ») liste en quelques secondes les PR ouvertes que la fusion met en conflit ou dont le numéro IPC / WORLDGEN / SCHEMA est désormais pris (lot CF1) ; prévenir aussitôt leurs fils ;
   - après une fusion, le propriétaire fait `git checkout main && git pull` sur son PC.
 - **Fichiers à ne pas versionner :** `.venv/`, `spike_reports/`, `*.fit`, `*.jsonl`, `.coverage`.
 
