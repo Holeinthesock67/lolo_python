@@ -19,7 +19,9 @@ extends RefCounted
 ##   au premier `remaining_s` vu pour ce bonus). Lot TT6 (maquettes validées le 8 novembre) : `held_kind`,
 ##   `active_kind` et `refused_kind` nomment l'icône (ui_icons.gd `powerup_shape`) ; pendant les 2 s d'un
 ##   refus (`refused` du contrat 1.13), `refused_text` (« Enclume refusée ») et `refused_detail` (la raison,
-##   « pas de descente ») remplacent la ligne de la réserve, qui revient ensuite.
+##   « pas de descente ») remplacent la ligne de la réserve, qui revient ensuite. Lot TT-BONUS (contrat 1.41) :
+##   pendant les 6 s du champ `gain`, `gain_text` (« Casque aéro : +4,2 s ») et `gain_kind` (icône) prennent la
+##   ligne du bonus actif, `gain_tone` `good` (temps gagné) ou `bad` (temps perdu).
 ## Textes en français, nombres au format français.
 
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
@@ -154,7 +156,8 @@ func _segment_view(state: Dictionary, now_s: float) -> Dictionary:
 
 func _powerup_view(state: Dictionary) -> Dictionary:
 	var out := {"visible": false, "held_text": "", "active_text": "", "fraction": 0.0, "held_kind": "",
-		"active_kind": "", "refused_kind": "", "refused_text": "", "refused_detail": ""}
+		"active_kind": "", "refused_kind": "", "refused_text": "", "refused_detail": "", "gain_kind": "",
+		"gain_text": "", "gain_tone": ""}
 	var pu = state.get("powerup")
 	if typeof(pu) != TYPE_DICTIONARY:
 		_active_kind = ""
@@ -173,7 +176,13 @@ func _powerup_view(state: Dictionary) -> Dictionary:
 		# Raison seule (la ligne de 300 unités ne tient pas « … · gardé en réserve » pour « trop près de
 		# l'arrivée ») : la réserve revient sur la même ligne au bout des 2 s ; sans raison connue, « gardé en réserve ».
 		out["refused_detail"] = reason if reason != "" else KEPT
-	out["visible"] = held != null or active != null or out["refused_kind"] != ""
+	var gain = pu.get("gain")
+	if active == null and typeof(gain) == TYPE_DICTIONARY and gain.get("gain_s") != null:
+		var gain_s := float(gain.get("gain_s"))
+		out["gain_kind"] = str(gain.get("kind", ""))
+		out["gain_text"] = gain_line(out["gain_kind"], gain_s)
+		out["gain_tone"] = "good" if gain_s >= 0.0 else "bad"
+	out["visible"] = held != null or active != null or out["refused_kind"] != "" or out["gain_kind"] != ""
 	if active == null:
 		_active_kind = ""
 		return out
@@ -186,6 +195,11 @@ func _powerup_view(state: Dictionary) -> Dictionary:
 	out["active_text"] = "%s · %d s" % [power_up_name(str(active)), int(ceil(remaining))]
 	out["fraction"] = clampf(remaining / _active_total_s, 0.0, 1.0)
 	return out
+
+
+## Temps gagné par un bonus fini (lot TT-BONUS) : « Casque aéro : +4,2 s », « Plume : −0,6 s ».
+static func gain_line(kind: String, gain_s: float) -> String:
+	return power_up_name(kind) + " : " + gap_text(gain_s)
 
 
 static func power_up_name(kind: String) -> String:

@@ -641,10 +641,15 @@ func update_segment(view: Dictionary) -> void:
 			UiTheme.WARN if refused != "" else UiTheme.TEXT, refused != "")
 		bonus_detail.text = str(pu.get("refused_detail", "")) if refused != "" else ""
 		bonus_detail.visible = bonus_detail.text != ""
-		bonus_active.text = active
-		bonus_active.visible = active != ""
-		_set_bonus_icon("active", bonus_active_icon, UiIcons.powerup_shape(str(pu.get("active_kind", ""))) if active != "" else "",
-			BONUS_COLOR, false)
+		# Lot TT-BONUS : après le bonus, le temps gagné (6 s) prend sa ligne, en mots et en couleur.
+		var gain := str(pu.get("gain_text", "")) if active == "" else ""
+		bonus_active.text = active if active != "" else gain
+		bonus_active.visible = bonus_active.text != ""
+		var gain_tint: Color = SEGMENT_TONES.get(str(pu.get("gain_tone", "")), SEGMENT_TONES[""])
+		bonus_active.modulate = gain_tint if gain != "" else Color.WHITE
+		var line_kind := str(pu.get("active_kind", "")) if active != "" else str(pu.get("gain_kind", ""))
+		_set_bonus_icon("active", bonus_active_icon, UiIcons.powerup_shape(line_kind) if bonus_active.visible else "",
+			gain_tint if gain != "" else BONUS_COLOR, false)
 		var fraction := float(pu.get("fraction", 0.0)) if active != "" else 0.0
 		bonus_bar.visible = active != ""
 		if absf(fraction - _bonus_fraction) > 0.005:
