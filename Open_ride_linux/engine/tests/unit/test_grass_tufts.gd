@@ -447,6 +447,9 @@ class _DesertModel:
 		return {"sand_desert": dry, "temperate_meadow": 1.0 - dry}
 	func fire_at(_x: float, _z: float) -> Dictionary:
 		return {}   # pas de paysage en feu (biome_model.gd `fire_at`, DB2)
+	func neon_at(_x: float, _z: float) -> Dictionary:
+		return {"density": 1.0} if neon else {}   # ville néon (lot NV6)
+	var neon := false
 
 
 class _ReefModel:
@@ -458,6 +461,9 @@ class _ReefModel:
 
 	func fire_at(_x: float, _z: float) -> Dictionary:
 		return {}   # pas de paysage en feu (biome_model.gd `fire_at`, DB2)
+	func neon_at(_x: float, _z: float) -> Dictionary:
+		return {"density": 1.0} if neon else {}   # ville néon (lot NV6)
+	var neon := false
 
 
 ## Désert (03/11) : herbe sèche (teintes DRY_TINTS) et clairsemée ; hors désert ou sans modèle, herbe d'avant.
@@ -481,6 +487,12 @@ func _test_desert() -> void:
 	for slot in range(n):
 		green += 1 if g.style_draw(3, slot, Vector3.ZERO) == 0 else 0
 	_check(green == n, "prairie : toutes les touffes d'avant")
+	m.neon = true
+	var paved := 0
+	for slot in range(n):
+		paved += 1 if g.style_draw(3, slot, Vector3.ZERO) == -1 else 0
+	_check(paved == n, "ville néon (lot NV6) : aucune touffe sur le dallage")
+	m.neon = false
 	for t in GrassTufts.DRY_TINTS:
 		var c: Color = t * Color(0.4, 0.56, 0.24)
 		_check(c.r > c.g and c.g > c.b, "teinte sèche %s : paille ou ocre (rouge > vert > bleu)" % c.to_html(false))
@@ -509,6 +521,9 @@ class _SnowModel:
 		return {"polar": polar, "tundra": 1.0 - polar}
 	func fire_at(_x: float, _z: float) -> Dictionary:
 		return {}
+	func neon_at(_x: float, _z: float) -> Dictionary:
+		return {"density": 1.0} if neon else {}   # ville néon (lot NV6)
+	var neon := false
 
 
 ## Lot DB3 (banc rDB3 du 14/11, touffes vertes dans la neige) : aucune touffe sur la banquise, herbe sèche et

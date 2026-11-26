@@ -77,8 +77,8 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     recette : en plus les parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
     assert names == ["demo-biomes-forets.world", "demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
-                     "demo-circuit.world", "demo-corniche.world", "demo-japon.world", "demo-recif.world",
-                     "demo-vignes.world", "demo-volcan.world"]
+                     "demo-circuit.world", "demo-corniche.world", "demo-japon.world", "demo-lagune.world",
+                     "demo-recif.world", "demo-vignes.world", "demo-volcan.world"]
     retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
                "demo-biomes-tour.world"]
     assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + retired)
@@ -151,7 +151,8 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
                       "demo-circuit": "Circuit des Prés", "demo-recif": "Récif des tortues",
                       "demo-volcan": "Volcan en flammes", "demo-biomes-sud": "Route du Sud",
                       "demo-biomes-nord": "Route du Grand Nord", "demo-corniche": "Boucle de la Corniche",
-                      "demo-vignes": "Route des Vignes", "demo-biomes-forets": "Route des Trois Forêts"}
+                      "demo-vignes": "Route des Vignes", "demo-biomes-forets": "Route des Trois Forêts",
+                      "demo-lagune": "Avenue de la Lagune"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
     assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
@@ -237,7 +238,7 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
     assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
     assert note == "" and sorted(written) == ["demo-biomes-forets", "demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-corniche",
-                                                 "demo-japon", "demo-recif", "demo-vignes", "demo-volcan"]
+                                                 "demo-japon", "demo-lagune", "demo-recif", "demo-vignes", "demo-volcan"]
     assert not gravel.exists()
     assert _json(old)["name"] == "Circuit des Prés"
     assert _json(mine / "manifest.json")["name"] == "Mes paysages"
@@ -272,7 +273,8 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
     assert "demo-corniche (Boucle de la Corniche) : 2.5 km" in out and "demo-vignes (Route des Vignes) : 5.0 km" in out
     assert "demo-biomes-forets (Route des Trois Forêts) : " in out
-    assert len(list(tmp_path.glob("*.world"))) == 10
+    assert "demo-lagune (Avenue de la Lagune) : 5.0 km" in out
+    assert len(list(tmp_path.glob("*.world"))) == 11
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -690,6 +692,54 @@ def test_corniche_loop(demo_set: Path, mbw) -> None:
         h = float(terrain(*map(np.asarray, plan.road.point(s, off))))
         assert (h < 0.0) == below, (s, off, h)
     assert _json(demo_set / "demo-corniche.json")["generated"]["poi"] >= 2
+
+
+def test_lagune_loop(demo_set: Path, mbw) -> None:
+    """Avenue de la Lagune (lot NV6) : boucle fermée de 5 km, plate (pente de −3,5 à +3,5 %, la butte du port pour
+    seule bosse : 4 à 7 m de montée par tour), toutes les tuiles dans le paysage `ville_neon` à toits plats ; ville
+    dense (plus de 300 bâtiments, hôtels, cafés et cinéma à noms inventés) ; le front de mer : plage de sable sur tout
+    le tronçon `sea`, aucun bâtiment côté mer, la mer à gauche."""
+    import numpy as np
+    from openride_compiler.regional import LANDSCAPES
+
+    world = demo_set / "demo-lagune.world"
+    route = _json(world / "route.json")
+    manifest = _json(world / "manifest.json")
+    assert manifest["name"] == "Avenue de la Lagune" and "tags" not in manifest["library"]
+    assert route["type"] == "loop" and route["length_m"] == pytest.approx(mbw.LAGUNE_M, abs=5.0)
+    assert (route["x"][0], route["z"][0], route["alt_m"][0]) == (route["x"][-1], route["z"][-1], route["alt_m"][-1])
+    assert -3.5 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 3.5
+    climb = sum(max(b - a, 0.0) for a, b in zip(route["alt_m"], route["alt_m"][1:]))
+    assert 4.0 <= climb <= 7.0, climb
+    assert manifest["layers"]["biome"]["shares"] == {"coast": 100.0}
+    tiles = sorted(f for level in ("near", "far") for f in (world / "biome" / level).glob("tile_*.json"))
+    assert tiles and "ville_neon" in LANDSCAPES
+    for f in tiles:
+        assert _json(f)["variant"] == {"ground": None, "roofs": "toit_plat_blanc", "landscape": "ville_neon"}, f.name
+    buildings = [b for f in (world / "buildings").glob("chunk_*.json") for b in _json(f)["buildings"]]
+    assert len(buildings) > 300 and max(b["height_m"] for b in buildings) >= 45.0
+    colours = {b["hint"]["colour"] for b in buildings}
+    assert colours >= set(mbw.LAGUNE_PASTELS)
+    coast = manifest["layers"]["coast"]
+    assert coast["present"] and coast["beaches_count"] == coast["lines_count"] >= 2
+    for f in sorted((world / "coast").glob("chunk_*.json")):
+        jsonschema.validate(_json(f), _schema("coast"))
+        assert all(line["shore"] == "sand" for line in _json(f)["lines"])
+    plan = mbw.Plan(("coast",), False, True, loop="lagune")
+    terrain = mbw.make_terrain(plan)
+    s0, s1 = mbw.LAGUNE_SEA
+    mid = (s0 + s1) / 2.0
+    for s, off, below in ((mid, -300.0, True), (mid, -150.0, True), (mid, 150.0, False), (mid, -20.0, False),
+                          (s0 - 200.0, -150.0, False), (s1 + 300.0, -150.0, False)):
+        h = float(terrain(*map(np.asarray, plan.road.point(s, off))))
+        assert (h < 0.0) == below, (s, off, h)
+    # Aucun bâtiment entre la route et la mer le long du front de mer.
+    for b in buildings:
+        cx = float(np.mean([p[0] for p in b["outer"]])) + plan.offset[0]
+        cz = float(np.mean([p[1] for p in b["outer"]])) + plan.offset[1]
+        s, dx = plan.road.locate(np.asarray(cx), np.asarray(cz))
+        assert not (s0 < float(s) < s1 and float(dx) * mbw.SEA_SIDE > 0.0), b["id"]
+    assert _json(demo_set / "demo-lagune.json")["generated"]["poi"] >= 4
 
 
 def test_vignes_loop(demo_set: Path, mbw) -> None:
