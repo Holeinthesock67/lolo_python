@@ -1,0 +1,56 @@
+# Lot CS0 (style « dessin animé », cell shading) : ce que coûte ou rapporte chaque brique du style sur la GTX 1060,
+# AVANT tout développement des lots CS2 à CS6. Mesure seule : aucun budget n'est jugé, le défaut du jeu ne change pas
+# (les essais passent par OPENRIDE_RENDER_DIAG, scripts/toon_essai.gd ; sans la variable rien n'est créé).
+#
+# Banc : engine/tests/cout_rendu.py sur le tronçon cultures → forêt → montagne (2 km par biome, celui de la recette
+# U18), une variante par brique, dans les trois qualités (règle du user). 24 passages d'environ 5 min :
+#   low     6 passages  ~35 min     medium  9 passages  ~50 min     high    9 passages  ~50 min     total ~2 h 15
+# Mondes fabriqués par le banc dans son dossier de sortie : ~/OpenRide/Cache/monde n'est jamais lu ni écrit.
+# Ne pas toucher l'écran du PC pendant le banc (captures et temps GPU).
+#
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux (le fil de fusion remplit `tete`) :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/cs0_dessin_anime.toml
+#
+# Ce qu'on lit dans <sortie>/<étape>/cout/cout.md (GPU médian et gain par rapport à `base` de la même qualité) :
+#   1. cs_contours en medium et high : y a-t-il des traits sur la planche avec le MSAA 2× ? (au cloud, non : les
+#      tampons de profondeur et de normales sont vides sous MSAA). Sinon le style impose le SMAA (cs_contours_smaa).
+#   2. msaa0_smaa, sans_ssao, ombres_nettes : ce que le style permet d'économiser.
+#   3. cs_contours, cs_contours_epais, cs_paliers : ce que coûtent le trait et la copie d'écran des paliers.
+#   4. cs_complet : le style visé d'un bloc. Réussite si son GPU médian reste sous le budget de la qualité
+#      (8 / 13 / 16 ms) ; l'idéal est de ne pas dépasser `base`.
+# La planche (cout/planche/) donne l'image de chaque variante : à montrer au user avec le tableau.
+# Recette détaillée : plans/EXPLORATION_CELL_SHADING_2026-11-22.md, §8.2.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rCS0"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rCS0-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rCS0"
+pr = 1023
+branche = "claude/project-thread-sgmd1j"
+cache = "separe"
+risque = 3                               # mesure sans enjeu de fusion : après les bancs du chemin critique
+# Fumée (~4 min) : import Godot, tests des essais de rendu et du style graphique.
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_toon_essai bash engine/tests/run_engine_tests.sh && \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_graphic_style bash engine/tests/run_engine_tests.sh"""
+fumee_delai_min = 12
+
+[[pr.etape]]
+id = "medium"
+commande = "python engine/tests/cout_rendu.py lancer --out {sortie}/cout --qualites medium --troncon farmland,temperate_forest,alpine --variantes base,sans_ssao,msaa0_smaa,ombres_nettes,cs_contours,cs_contours_smaa,cs_contours_epais,cs_paliers,cs_complet"
+delai_min = 75
+
+[[pr.etape]]
+id = "high"
+commande = "python engine/tests/cout_rendu.py lancer --out {sortie}/cout --qualites high --troncon farmland,temperate_forest,alpine --variantes base,sans_ssao,msaa0_smaa,ombres_nettes,cs_contours,cs_contours_smaa,cs_contours_epais,cs_paliers,cs_complet"
+delai_min = 75
+
+[[pr.etape]]
+id = "low"
+commande = "python engine/tests/cout_rendu.py lancer --out {sortie}/cout --qualites low --troncon farmland,temperate_forest,alpine --variantes base,ombres_nettes,cs_contours,cs_contours_epais,cs_paliers,cs_complet"
+delai_min = 55

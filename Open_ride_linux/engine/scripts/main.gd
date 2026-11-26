@@ -15,6 +15,7 @@ const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const GraphicStyle := preload("res://scripts/graphic_style.gd")
+const ToonEssai := preload("res://scripts/toon_essai.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const HudView := preload("res://scripts/hud_view.gd")
@@ -355,6 +356,8 @@ func _ready() -> void:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 	_apply_style()
+	if ToonEssai.attach(camera) != null:   # essais de rendu du dessin animé (lot CS0), jamais sans OPENRIDE_RENDER_DIAG
+		print("Essai de rendu : dessin animé ", ToonEssai.wanted())
 	load_guard = LoadGuard.new(QualityPresets.image(_quality_name), bool(cfg["load_guard"]), _forward_plus())
 	if load_guard.enabled:   # temps GPU de la vue lu à chaque image
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
