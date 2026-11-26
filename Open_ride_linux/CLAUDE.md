@@ -208,6 +208,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
   - pytest tourne avec un HOME temporaire, des fenêtres de bureau muettes et un garde-fou qui fait échouer tout test écrivant hors de son dossier temporaire (`scripts/isolation_tests.py`, chargé par les `conftest.py`) ; une seule suite de tests ou banc à la fois sur la machine (verrou commun).
 - **Git :**
   - une branche par travail ;
+  - avant chaque `git push` (branche de lot ou train) : `python3 scripts/avant_poussee.py` depuis `Open_ride_linux/` (lot AP1, 1 à 3 min : `.uid` manquants, `--corriger` les écrit ; révision IPC, `WORLDGEN_VERSION` ou `SCHEMA_VERSION` déjà prise par main ; conflit avec main ; numéros de lot en double ; tests touchés avec le garde-fou `tmp_path`) ; ne pousser que sur « PRÊT À POUSSER » ;
   - messages de commit en français ;
   - fusion dans `main` (`--no-ff`) seulement quand tout est vert ;
   - après une fusion, le propriétaire fait `git checkout main && git pull` sur son PC.
