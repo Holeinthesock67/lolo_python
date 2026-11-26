@@ -163,6 +163,17 @@ func _init() -> void:
 		{"name": "Montée du col", "time": "6:42,3", "before": "avant 6:58,9"}],
 		"records battus : du dernier au premier, ancien temps ou premier temps (%s)" % str(recs))
 	_check(vm.records_beaten(full_summary).is_empty(), "records battus : aucun sans segments")
+	# lot PP4 : records de puissance après ceux des segments, du plus long au plus court, effort en mots
+	var pw := segs.duplicate(true)
+	pw["power_records"] = [{"s": 5, "w": 880, "prev_w": 860, "e": "libre"}, {"s": 1200, "w": 262.4, "prev_w": null, "e": "ERG"}]
+	var precs: Array = vm.records_beaten(pw, {"col": "Montée du col", "spr": "Sprint"})
+	_check(precs.size() == 4 and precs[2] == {"name": "Puissance 20 min · ERG", "time": "262 W", "before": "premier effort"}
+		and precs[3] == {"name": "Puissance 5 s · libre", "time": "880 W", "before": "avant 860 W"},
+		"records de puissance : durée, mot de l'effort, watts, ancien record (%s)" % str(precs))
+	_check(vm.ftp_review(full_summary).is_empty() and vm.verdict(full_summary).is_empty(), "FTP à revoir : rien sans signal")
+	var fr: Dictionary = vm.verdict({"ftp_review": {"estimate_w": 262, "ftp_set_w": 250, "delta_pct": 4.8, "confidence": "Fiable"}})
+	_check(fr["text"] == "FTP à revoir : ta FTP estimée est de 262 W, ta FTP réglée de 250 W (plus haute)."
+		and fr["tip"].begins_with("Pour la changer : « Qui roule ? › Ma puissance »"), "FTP à revoir : en watts et en mots (%s)" % str(fr))
 	_check(vm.ftp_result(full_summary).is_empty(), "FTP : pas de bandeau sans test")
 	_check(vm.ftp_result({"ftp_test": {"ftp_w": 251, "previous_ftp_w": 243, "warnings": [], "reliable": true}})
 		== {"value": "251 W", "before": "avant 243 W", "delta": "+8 W", "ok": true, "note": "effort fiable"}, "FTP : résultat fiable")

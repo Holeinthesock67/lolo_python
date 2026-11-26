@@ -1,7 +1,7 @@
 """Tests du script de contrôle des visuels de cartes de collection (lot BC4).
 
 Vérifie les critères d'acceptation du cahier LOT_BC4_visuels_gemini.md :
-- Lecture du catalogue collection.toml (42 visuels)
+- Lecture du catalogue collection.toml (53 visuels)
 - Validation des images conformes (PNG, 512x512, fond transparent, <= 200 Ko)
 - Tests négatifs (rejet taille incorrecte, absence de transparence, fichier trop lourd, fichier corrompu)
 - Détection des fichiers manquants et comportement strict / non-strict
@@ -71,10 +71,10 @@ def _make_png(
     return path
 
 
-def test_catalog_reads_all_42_visuals():
-    """Le catalogue collection.toml est lu et contient exactement 42 visuels distincts."""
+def test_catalog_reads_all_53_visuals():
+    """Le catalogue collection.toml est lu et contient exactement 53 visuels distincts."""
     visuals = cv.get_expected_visuals()
-    assert len(visuals) == 42
+    assert len(visuals) == 53
     assert "pedale" in visuals
     assert "everest" in visuals
     assert "coq" in visuals
@@ -152,7 +152,7 @@ def test_check_collection_missing_and_valid(tmp_path):
     _make_png(assets / "inconnu.png", size=(512, 512), transparent=True)  # extra
 
     rep = cv.check_collection(assets_dir=assets)
-    assert rep["total_expected"] == 42
+    assert rep["total_expected"] == 53
     assert "pedale" in rep["valid"]
     assert "coq" in rep["valid"]
     assert "everest" in rep["invalid"]
@@ -167,7 +167,7 @@ def test_check_collection_missing_and_valid(tmp_path):
     rep2 = cv.check_collection(assets_dir=assets, strict=False)
     assert rep2["ok"] is True
     assert len(rep2["invalid"]) == 0
-    assert len(rep2["missing"]) == 40
+    assert len(rep2["missing"]) == 51
 
     # Mais en mode strict, les manquants provoquent ok = False
     rep_strict = cv.check_collection(assets_dir=assets, strict=True)
@@ -224,7 +224,7 @@ def test_cli_execution(tmp_path):
     )
     assert res_json.returncode == 0
     data = json.loads(res_json.stdout)
-    assert data["total_expected"] == 42
+    assert data["total_expected"] == 53
     assert "missing" in data
 
 

@@ -71,7 +71,9 @@ def test_history_sessions_carry_their_cards(home, monkeypatch):
     asyncio.run(s._send_history("list_history", {}, 3))
     (msg,) = of(frames, "history")
     cards = {x["id"]: x.get("cards") for x in msg["sessions"]}
-    assert cards == {"2025-10-12_10-00_demo.jsonl": ["ftp_premier"], "2025-10-09_10-00_demo.jsonl": ["premiere_seance"]}
+    # La première séance tient 200 W sur 20 min : trophée de puissance du lot PP7b.
+    assert cards == {"2025-10-12_10-00_demo.jsonl": ["ftp_premier"],
+                     "2025-10-09_10-00_demo.jsonl": ["premiere_seance", "watts_20min_200"]}
 
 
 def test_history_without_collection_still_answers(home, monkeypatch):

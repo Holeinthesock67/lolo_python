@@ -76,6 +76,7 @@ func _init() -> void:
 	_test_view()
 	_test_announce()
 	_test_history_badge()
+	_test_power_trophy()
 	print("test_collection_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -246,3 +247,18 @@ func _test_history_badge() -> void:
 	_check(ra.get("icon", "") == "trophy" and ra["detail"].ends_with(" · 2 cartes") and not rb.has("icon")
 		and not rb["detail"].contains("carte"), "badge et nombre de cartes sur la seule séance qui en a gagné (%s)" % str(ra))
 
+
+
+## Trophée de puissance (série PP, lot PP7b) : famille « Puissance », avancement en watts (FTP fictive 250 W).
+func _test_power_trophy() -> void:
+	var m = Collection.new()
+	var card := {"id": "watts_5min_300", "title": "Moteur à 300", "text": "300 W tenus cinq minutes.",
+		"family": "puissance", "rarity": "rare", "visual": "moteur_300"}
+	m.on_collection({"type": "collection", "v": 1, "request_cmd_id": 4, "cards_count": 1, "first_time": false,
+		"cards": [card], "earned": [], "remaining": [{"id": "watts_5min_300", "value": 268.0, "target": 300.0}],
+		"new": []})
+	var album: Dictionary = m.album("c:watts_5min_300")
+	_check(album["families"][0]["name"] == "Puissance", "album : famille « Puissance »")
+	m.open_card("c:watts_5min_300")
+	var v: Dictionary = m.card_view()
+	_check(v["lines"][0] == ["Avancement", "268 / 300 W"], "trophée à gagner : avancement en watts (%s)" % str(v["lines"]))

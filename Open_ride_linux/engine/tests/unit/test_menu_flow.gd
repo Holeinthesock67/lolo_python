@@ -1019,7 +1019,7 @@ func _test_who_rides_focus_before_list() -> void:
 	f.menu.handle("PLUS_SHORT")
 	f.on_profiles({"items": items, "active": "cycliste-a"})
 	st = f.menu.state()
-	_check(st["items"][st["focus"]]["id"] == "p:cycliste-b", "liste renvoyée ensuite : focus du joueur gardé")
+	_check(st["items"][st["focus"]]["id"] == "power", "liste renvoyée ensuite : focus du joueur gardé (« Ma puissance », lot PP3)")
 
 
 func _init() -> void:
