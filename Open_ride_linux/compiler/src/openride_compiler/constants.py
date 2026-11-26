@@ -15,7 +15,7 @@ ROUTE_FIELDS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
 SURFACES = ("paved", "compacted", "gravel", "dirt", "wood")   # colonne facultative surface (1.6, lot U20 ; wood : 1.7, lot VD1)
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 
-FORMAT_VERSION = "1.10"   # 1.10 : grandes rivières en surface (lot EA3) ; 1.9 : couche bridges (lot EA4) ; 1.8 : niveau de terrain horizon (lot JP4) ; 1.6 : colonne surface de la route (lot U20) ; 1.5 : prés, champs et routes voisines (lot P22) ; 1.4 : monde vivant (W1)
+FORMAT_VERSION = "1.11"   # 1.11 : couche tunnels (lot EA5) ; 1.10 : grandes rivières en surface (lot EA3) ; 1.9 : couche bridges (lot EA4) ; 1.8 : niveau de terrain horizon (lot JP4) ; 1.6 : colonne surface de la route (lot U20) ; 1.5 : prés, champs et routes voisines (lot P22) ; 1.4 : monde vivant (W1)
 SUPPORTED_MAJOR = 1
 ROUTE_VERSION = "1.0"
 COMPILER_NAME = "openride-compiler"

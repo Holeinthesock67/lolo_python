@@ -581,6 +581,9 @@ func _ready() -> void:
 	ipc.history_session_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_history_session(msg)
 		_refresh_menu())
+	ipc.power_curve_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_power_curve(msg)
+		_refresh_menu())
 	ipc.collection_received.connect(func(msg: Dictionary) -> void:
 		_run_menu_action(menu_flow.on_collection(msg)))
 	ipc.league_received.connect(func(msg: Dictionary) -> void:   # ligue d'hiver (lot CH4a)
@@ -623,6 +626,7 @@ static func _quality_from_cli() -> bool:
 ## appliqués tout de suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
+	_run_menu_action(menu_flow.take_power_refresh())   # FTP acceptée dans « Ma puissance » : courbe redemandée (lot PP3)
 	AudioMix.apply_settings(menu_flow.settings.items)
 	fps_counter.measure_kept = _probe.is_open() or load_guard.enabled
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
@@ -865,6 +869,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_plans()
 		"list_history":
 			ipc.list_history()
+		"list_power_curve":
+			ipc.list_power_curve()
 		"coach_command":   # séance conseillée (lot CO5) : get_coach et saisies du conseil, réponse `coach`
 			ipc.coach_command(str(act["name"]), act.get("args", {}))
 		"sequence":   # plusieurs actions d'un même choix, dans l'ordre (course conseillée, réglage du conseil)

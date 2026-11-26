@@ -25,7 +25,7 @@ import tomllib
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, tzinfo
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from .progression import STATS, FACT_EVENT_KINDS, Progress, SessionFacts, Table, add_stats
 
@@ -34,7 +34,7 @@ SEEN_NAME = "collection_vue.json"
 SEEN_VERSION = 1
 
 FAMILIES = ("distance", "seance", "denivele", "regularite", "heure", "entrainement", "modes",
-            "saison", "anniversaire")
+            "saison", "anniversaire", "puissance")
 RARITIES = ("commune", "rare", "epique", "legendaire")   # ordre croissant de rareté
 TITLE_MAX = 24
 TEXT_MAX = 70
@@ -57,7 +57,11 @@ _RULES: dict[str, dict[str, tuple[type, bool]]] = {
     "saison": {"from": (str, False), "to": (str, False), "easter_from": (int, False),
                "easter_to": (int, False), "count": (int, False), "min_minutes": (float, False)},
     "anniversaire": {"years": (int, True)},
+    "puissance": {"seconds": (int, True), "watts": (float, True)},
 }
+# Durées de la courbe de puissance (tools/power_curve.py, DURATIONS_S, lot PP1) : seules durées connues
+# d'une règle `puissance` (lot PP7b) ; test_collection vérifie qu'elles restent les mêmes.
+POWER_DURATIONS_S = (5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600)
 
 
 class CollectionError(Exception):
@@ -150,6 +154,9 @@ def _check_rule(raw: Any, where: str, table: Table | None) -> dict[str, Any]:
         elif "easter_from" not in rule or "easter_to" not in rule \
                 or rule["easter_from"] > rule["easter_to"]:
             raise CollectionError(f"{where}.rule : `easter_from` ≤ `easter_to`, tous deux donnés")
+    if kind == "puissance" and (rule["seconds"] not in POWER_DURATIONS_S or rule["watts"] <= 0):
+        raise CollectionError(f"{where}.rule : `seconds` parmi les durées de la courbe "
+                              f"({', '.join(map(str, POWER_DURATIONS_S))}), `watts` positif")
     if kind == "anniversaire" and rule["years"] < 1:
         raise CollectionError(f"{where}.rule.years : 1 ou plus")
     return rule
@@ -188,8 +195,9 @@ def parse_catalogue(data: dict, source: str = "collection.toml",
         if unknown:
             raise CollectionError(f"{where} : clé inconnue {sorted(unknown)[0]}")
         rule = _check_rule(raw.get("rule"), where, table)
-        if (rule["kind"] == "saison") != (raw["family"] == "saison"):
-            raise CollectionError(f"{where} : la famille « saison » va avec la règle « saison »")
+        for paired in ("saison", "puissance"):   # l'album lit l'unité et l'édition dans la famille
+            if (rule["kind"] == paired) != (raw["family"] == paired):
+                raise CollectionError(f"{where} : la famille « {paired} » va avec la règle « {paired} »")
         cards.append(Card(id=cid, family=raw["family"], rarity=raw["rarity"], rule=rule, **values))
     return tuple(cards)
 
@@ -299,12 +307,17 @@ def _matches(card: Card, facts: SessionFacts, when: datetime | None) -> int:
 
 
 def evaluate(progress: Progress, cards: Iterable[Card], table: Table,
-             tz: tzinfo | None = None, now: float | None = None) -> Collection:
+             tz: tzinfo | None = None, now: float | None = None,
+             powers: Mapping[str, Mapping[int, float]] | None = None) -> Collection:
     """Cartes gagnées par les séances comptées de `progress`, dans l'ordre chronologique.
 
     `table` donne le seuil des défis de la série V ; `tz` le fuseau des heures et des dates
-    (défaut : celui de la machine) ; `now` l'heure de l'appel (défaut : maintenant).
+    (défaut : celui de la machine) ; `now` l'heure de l'appel (défaut : maintenant) ;
+    `powers` les meilleurs efforts de chaque séance, nom du journal -> {durée en s: watts}, libres
+    ou ERG (courbe de la séance, `tools/power_curve.session_powers`, lot PP7b) : sans lui, aucune
+    carte de puissance n'est gagnée.
     """
+    powers = powers or {}
     cards = tuple(cards)
     limit = (now if now is not None else datetime.now().timestamp()) + FUTURE_TOLERANCE_S
     challenges = {c.id: c for c in table.challenges}
@@ -323,6 +336,7 @@ def evaluate(progress: Progress, cards: Iterable[Card], table: Table,
     days: set[date] = set()
     streaks: dict[str, tuple[Any, int]] = {}      # carte -> (dernière semaine ou dernier jour, série)
     best: dict[str, int] = dict.fromkeys((c.id for c in cards), 0)
+    best_w: dict[str, float] = dict.fromkeys((c.id for c in cards), 0.0)   # meilleur effort (puissance)
     first_day: date | None = None
     earned: list[Earned] = []
     done: set[str] = set()
@@ -356,6 +370,12 @@ def evaluate(progress: Progress, cards: Iterable[Card], table: Table,
                 counters[card.id] += _matches(card, facts, when)
                 if counters[card.id] >= card.count:
                     win(card, facts)
+            elif kind == "puissance":
+                w = (powers.get(facts.journal) or {}).get(rule["seconds"])
+                if w is not None:
+                    best_w[card.id] = max(best_w[card.id], float(w))
+                    if round(float(w)) >= rule["watts"]:
+                        win(card, facts)
             elif day is None:
                 continue
             elif kind == "saison":
@@ -401,6 +421,8 @@ def evaluate(progress: Progress, cards: Iterable[Card], table: Table,
             progress_of[card.id] = (counters[card.id], float(card.count))
         elif card.kind in ("semaines", "jours"):
             progress_of[card.id] = (float(best[card.id]), float(card.count))
+        elif card.kind == "puissance":
+            progress_of[card.id] = (float(round(best_w[card.id])), rule["watts"])
         elif card.kind == "anniversaire":
             span = 365.0 * rule["years"]
             elapsed = float((today - first_day).days) if first_day is not None else 0.0
