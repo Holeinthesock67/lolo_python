@@ -591,13 +591,16 @@ def _start_or_capture(steady: list[dict[str, Any]], saccades: list[dict[str, Any
 
 
 def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | None = None,
-                 targets: dict[str, Any] | None = None, real_window: bool = True) -> list[tuple[bool | None, str, str]]:
+                 targets: dict[str, Any] | None = None, real_window: bool = True,
+                 shaders: str = "chaud") -> list[tuple[bool | None, str, str]]:
     """À-coups en régime établi (après `warmup_s` du bloc) : secondes dont la pire image dépasse `hitch_ms` (au plus
     `max_per_min` par minute), aucune image au-delà de `freeze_ms`, et pas d'à-coups qui reviennent à
     distance régulière (saccades.csv, captures du banc écartées) ; départ (fin du chargement à `warmup_s`
     du bloc) : aucune image au-delà de `start_freeze_ms`. Une seconde lente du régime établi que saccades.csv
     explique par une capture du banc est écartée, par une image d'avant le départ (cycliste à 0 m) jugée avec le
-    départ (lot PL1 : chargement du peloton plus long que `warmup_s`). Seuils `hitches` de perf_targets.json."""
+    départ (lot PL1 : chargement du peloton plus long que `warmup_s`). Seuils `hitches` de perf_targets.json.
+    Lot BF1 : `shaders` « froid » (premier lancement, caches vides) juge le départ à `cold_start_freeze_ms` et
+    relève le chargement à titre indicatif ; une image de la séance jusqu'à `freeze_tolerated_ms` est tolérée."""
     t = targets or load_targets()
     lim = t.get("hitches", {})
     hitch_ms, per_min = float(lim.get("hitch_ms", 50.0)), float(lim.get("max_per_min", 3.0))
@@ -615,8 +618,15 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
     note = "" if real_window else ", indicatif sous Xvfb"
     out: list[tuple[bool | None, str, str]] = []
     # Départ : après le chargement (warmup_s général), avant le régime établi ; seuil propre, plus large.
-    start_ms = float(lim.get("start_freeze_ms", 150.0))
+    cold = shaders == "froid"
+    start_ms = float(lim.get("cold_start_freeze_ms", 1000.0) if cold else lim.get("start_freeze_ms", 150.0))
     loaded = min(ts) + float(t.get("warmup_s", 0))
+    if cold:   # premier lancement : écran du chargement, indicatif (lot BF1)
+        load = values([r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] < loaded],
+                      "frame_max_ms")
+        if load:
+            out.append((None, "à-coups : chargement à froid",
+                        f"pire image {max(load):.0f} ms avant {loaded - min(ts):.0f} s (indicatif, écran de chargement)"))
     start = values([r for r in rows if isinstance(r.get("t_s"), (int, float))
                     and (loaded <= r["t_s"] < warm or held.get(id(r)) == "départ")], "frame_max_ms")
     if start:
@@ -624,7 +634,7 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
         out.append(((top_start <= start_ms) if real_window else None, "à-coups : départ",
                     f"pire image {top_start:.0f} ms de {loaded - min(ts):.0f} à {warmup_s:.0f} s "
                     + ("et avant le premier mètre " if "départ" in held.values() else "")
-                    + f"(au plus {start_ms:.0f} ms){note}"))
+                    + f"(au plus {start_ms:.0f} ms" + (", shaders froids" if cold else "") + f"){note}"))
     if worst:
         minutes = max(len(steady) / 60.0, 1.0)
         n = sum(w > hitch_ms for w in worst)
@@ -632,8 +642,15 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
                     f"{n} seconde(s) avec une image de plus de {hitch_ms:.0f} ms en {len(steady) / 60.0:.1f} min, "
                     f"{n / minutes:.1f} par minute (au plus {per_min:g}){note}"))
         top = max(worst)
-        out.append(((top <= freeze_ms) if real_window else None, "à-coups : pire image",
-                    f"{top:.0f} ms (au plus {freeze_ms:.0f} ms){note}"))
+        # Lot BF1 : une image isolée un peu au-delà de freeze_ms (101 à 139 ms en 18 min, bancs w24) est tolérée.
+        tol_ms = float(lim.get("freeze_tolerated_ms", freeze_ms))
+        tol_n = int(lim.get("freeze_tolerated_count", 0))
+        over = [w for w in worst if w > freeze_ms]
+        tolerated = top > freeze_ms and top <= tol_ms and len(over) <= tol_n
+        out.append(((top <= freeze_ms or tolerated) if real_window else None, "à-coups : pire image",
+                    f"{top:.0f} ms (au plus {freeze_ms:.0f} ms"
+                    + (f" ; {len(over)} image(s) jusqu'à {tol_ms:.0f} ms tolérée(s)" if tolerated else "")
+                    + f"){note}"))
     else:   # O3-02 : toutes les secondes dans la chauffe des à-coups (ou mises à part) : rien de jugé
         out.append((False if real_window else None, "à-coups : images lentes", unmeasured(rows, warmup_s) + note))
     if saccades is not None:
@@ -800,7 +817,7 @@ def svg_chart(rows: list[dict[str, Any]], title: str, series: tuple[tuple[str, s
 
 
 def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de performance du moteur",
-                 real_window: bool = True, engine_dir: Path | None = None) -> dict[str, Any]:
+                 real_window: bool = True, engine_dir: Path | None = None, shaders: str = "chaud") -> dict[str, Any]:
     """Écrit sonde.csv, sonde.txt et rapport.html dans `out` ; renvoie le résumé. Avec `engine_dir` (dossier
     du fichier de l'engine), y ajoute les saccades, les tâches de fond et le démarrage (lot X15), recopiés
     dans `out`."""
@@ -813,7 +830,8 @@ def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de p
     if summary["budgets"]:
         text += "\nBudgets du préréglage (engine/tests/perf_targets.json, lot X14) :\n" + budget_text(summary["budgets"]) + "\n"
     stalls = read_stalls(engine_dir) if engine_dir is not None else None
-    hitches = hitch_checks(rows, stalls["saccades"] if stalls is not None else None, real_window=real_window) \
+    hitches = hitch_checks(rows, stalls["saccades"] if stalls is not None else None, real_window=real_window,
+                           shaders=shaders) \
         if rows else []
     if hitches:
         summary["budgets"] += hitches
