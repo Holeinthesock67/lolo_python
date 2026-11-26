@@ -391,9 +391,10 @@ def open_world_start(spec: dict[str, Any]) -> list[dict[str, Any]]:
         *spec.get("cap", []),
         {"capture": "cap"},
         {"touche": "Enter"},
-        {"monde": False, "delai": 300},
-        {"note": "Monde ouvert préchargé : route engagée, séance prête", "journal": "core", "motif": OPEN_WORLD_READY,
-         "delai": 600},
+        {"note": "Monde ouvert préchargé : route engagée, séance prête (attendu avant la fermeture du menu, qui en "
+                 "dépend : 300 s fixes ne suffisaient pas en montagne, Grenoble du 26/11)",
+         "journal": "core", "motif": OPEN_WORLD_READY, "delai": 900},
+        {"monde": False, "delai": 60},
         {"note": "Lot W18 : le monde prêt, l'engine envoie start de lui-même (départ au pédalage)",
          "journal": "core", "motif": "Commande start ", "delai": 60},
         {"attendre": 2},
