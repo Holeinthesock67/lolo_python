@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AC (à-coups) : le banc des menus note si ses caches de rendu étaient vides, et la sonde juge alors le départ à froid (1 s), comme le banc simulé depuis BF1 | Python | BF1, ML2 | Petite | **En revue** (PR à venir) |
+| Série AC (à-coups) : le banc des menus note si ses caches de rendu étaient vides, et la sonde juge alors le départ à froid (1 s), comme le banc simulé depuis BF1 | Python | BF1, ML2 | Petite | **En revue** (PR #1109) |
 
 Demande du 26/11 (coordinateur, après le banc r1097) : même défaut que celui corrigé par BF1 dans `sim_bench.py`,
 cette fois dans le banc des menus (`menu_bench.py` puis `perf_probe.py report`).
@@ -32,4 +32,4 @@ cette fois dans le banc des menus (`menu_bench.py` puis `perf_probe.py report`).
 
 ## Livraison
 
-- PR à venir (branche `claude/project-thread-gn65yi-menus`).
+- PR #1109 (branche `claude/project-thread-gn65yi-menus`).
