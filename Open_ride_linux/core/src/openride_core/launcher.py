@@ -117,6 +117,8 @@ ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
     "--crowd": "bancs du lot Y21 (spectateurs sur toutes les montées)",
     "--camera-height": "bancs du lot Y5 (vue follow_far plus haute, par-dessus les arbres proches)",
     "--horizon": "bancs du lot JP4 (avec et sans relief d'horizon)",
+    "--graphics-prep": "bancs du lot PG1 (préparation des graphismes forcée ou coupée ; jeu : à la clé de prepare.json)",
+    "--graphics-catalog-dir": "outils de test du lot PG1 (catalogue des graphismes d'un banc)",
 }
 
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
