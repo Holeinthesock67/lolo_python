@@ -104,6 +104,8 @@ const WARM_FORMATS := {
 	"sea_foam": ["normals", "colors", "uvs"],
 	"beach": ["normals", "colors", "uvs"],
 	"bridges": ["normals", "colors"],
+	"tunnels": ["normals", "colors"],        # lot EA5 : tube, portails et murs (tunnel_mesh.gd « shell »)
+	"tunnel_lamps": ["normals", "colors"],   # lot EA5 : lampes (tunnel_mesh.gd « lamps »)
 }
 const WARM_FRAMES := 5
 const WARM_DIST_M := 2.0
@@ -223,8 +225,8 @@ func _drop_warm() -> void:
 	_warm_left.clear()
 
 
-## Nœuds de tronçon qui portent une ombre (integrate) : bâtiments, ponts (EA4 : tablier) et tunnels (EA5 : tube dans
-## l'ombre).
+## Nœuds de tronçon qui portent une ombre (integrate) : bâtiments, ponts (lot EA4 : tablier) et tunnels (lot EA5 :
+## tube dans l'ombre).
 static func _casts_shadow(kind: String) -> bool:
 	return kind == "buildings" or kind == "bridges" or kind == "tunnels"
 
@@ -889,8 +891,8 @@ func integrate(max_new: int) -> int:
 			mi.mesh = mesh
 
 			mi.material_override = _material_for(kind)
-			# Ombres des bâtiments, des ponts (lot EA4 : tablier sur l'eau et le fond de vallée) et des tunnels (EA5) ; même règle
-			# pour le préchauffage (warm_up).
+			# Ombres des bâtiments, des ponts (lot EA4 : tablier sur l'eau et le fond de vallée) et des tunnels
+			# (lot EA5) ; même règle pour le préchauffage (warm_up).
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if _casts_shadow(kind) \
 				else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			if kind == "buildings":
