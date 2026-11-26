@@ -176,6 +176,7 @@ from openride_core.launcher import ENGINE_DONE, ENGINE_SELF_KILLED, ENGINE_SHUTD
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 import pile_gdb  # noqa: E402
+import perf_probe  # noqa: E402
 import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
 
@@ -330,6 +331,19 @@ def copy_render_caches(src_home: Path, dst_home: Path) -> int:
             shutil.copytree(src_home / rel, dst_home / rel, dirs_exist_ok=True)
             n += 1
     return n
+
+
+def render_caches_empty(saved: Path | None) -> bool:
+    """Vrai si ce passage part sans cache de rendu (pas de `--caches-rendu`, ou dossier encore sans fichier) : il
+    compilera tout, comme un premier lancement. Même règle que `sim_bench.caches_empty` (lot BF1), lot BF2."""
+    if saved is None:
+        return True
+    return not any(p.is_file() for rel in RENDER_CACHES if (saved / rel).is_dir() for p in (saved / rel).rglob("*"))
+
+
+def probe_paths(cmd: list[str]) -> list[Path]:
+    """Fichiers de la sonde (`--perf-probe=CHEMIN`) passés à l'engine."""
+    return [Path(c.split("=", 1)[1]) for c in cmd if c.startswith("--perf-probe=")]
 
 
 def write_demo_copies(routes: Path, n: int) -> None:
@@ -938,6 +952,13 @@ class Run:
         cmd += sup.engine_cmd[sup.engine_cmd.index("--"):] + [f"--routes-dir={self.routes}", "--test-mode"]
         if a.sonde:   # sonde de performance de l'engine (lot X13) : moteur.csv, saccades.csv, taches.csv (lot ML2)
             cmd.append(f"--perf-probe={self.out / f'sonde{suffix}' / 'moteur.csv'}")
+        # Lot BF2 : à caches de rendu vides, le départ se juge à froid (perf_probe report lit la marque posée à côté
+        # de moteur.csv). Banc r1097 du 26/11 : passage « chaud » d'ea1_lac jugé à 150 ms sur des caches vides.
+        cold = render_caches_empty(self.args.caches_rendu)
+        self.report.check(None, "caches de rendu", "vides avant ce passage : départ jugé à froid (premier lancement)"
+                          if cold else "gardés d'un passage précédent : départ jugé à chaud")
+        for probe in probe_paths(cmd):
+            perf_probe.write_shaders_mark(probe.parent, "froid" if cold else "chaud")
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
