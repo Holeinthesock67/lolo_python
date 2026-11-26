@@ -41,6 +41,7 @@ const PerfProbe := preload("res://scripts/perf_probe.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
 const FarWater := preload("res://scripts/far_water.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
+const TunnelCut := preload("res://scripts/tunnel_cut.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -145,6 +146,9 @@ var _chunk_road_materials: Dictionary = {}   # k -> ShaderMaterial (tronçons à
 var _track_material: ShaderMaterial = null   # piste du vélodrome (lot VD4), refait quand la route change
 var _road_wetness := 0.0
 var _terrain_material: Material
+var _terrain_material_cut: ShaderMaterial = null   # copie de _terrain_material en variante TUNNEL_CUT (lot EA5)
+var _cut_param_names: Array = []                   # uniformes recopiés de _terrain_material sur sa copie
+var _tunnel_version := -1                          # TunnelCut.version() vue par les tuiles affichées
 var _road_width_m: float = RoadBuilder.ROAD_WIDTH_M
 var _ground_color: Color = FLAT_GROUND_COLOR
 var _ground: MeshInstance3D = null
@@ -176,6 +180,10 @@ func _process(_delta: float) -> void:
 	# dans la scène (seuls les tests appelaient flush()).
 	if osm_streamer != null:
 		osm_streamer.integrate(MAX_NEW_PER_FRAME)
+	if _tunnel_version != TunnelCut.version():
+		_refresh_tunnel_cut()
+	if _terrain_material_cut != null:
+		_sync_cut_material()
 
 
 func _exit_tree() -> void:
@@ -281,10 +289,70 @@ func far_water_material() -> Material:
 
 
 func _terrain_material_for(key: String) -> Material:
+	var cut := _tile_cut(key)
 	if biome_textures == null:
-		return _terrain_material
+		return _terrain_cut_material() if cut else _terrain_material
 	var parts := key.split(":")
-	return biome_textures.tile_material("far" if parts[0] == "far" else "near", int(parts[1]), int(parts[2]))
+	var mat: ShaderMaterial = biome_textures.tile_material("far" if parts[0] == "far" else "near", int(parts[1]), int(parts[2]))
+	if cut:
+		mat.shader = TunnelCut.shader_for(mat.shader, true)
+	return mat
+
+
+## Lot EA5 : vrai si la tuile proche `key` ("near:ix:iz" ou "flat:ix:iz") touche un tunnel enregistré
+## (tunnel_cut.gd) ; elle reçoit alors la variante TUNNEL_CUT du shader, qui ne dessine pas le terrain dans le
+## tube. Les tuiles lointaines ne sont jamais au droit de la caméra : pas de trou.
+func _tile_cut(key: String) -> bool:
+	var parts := key.split(":")
+	if parts.size() < 3 or not (parts[0] == "near" or parts[0] == "flat"):
+		return false
+	var o := TerrainTiles.tile_origin("near", int(parts[1]), int(parts[2]))
+	var size := float(TerrainTiles.LEVELS["near"]["size"])
+	return TunnelCut.touches(Rect2(o.x, o.z, size, size))
+
+
+## Registre des tunnels changé : chaque tuile affichée prend la variante qui lui revient, sans refaire son maillage.
+func _refresh_tunnel_cut() -> void:
+	_tunnel_version = TunnelCut.version()
+	for key in _instances:
+		if (key as String).begins_with("road:"):
+			continue
+		var mesh: Mesh = (_instances[key] as MeshInstance3D).mesh
+		if mesh == null or mesh.get_surface_count() == 0:
+			continue
+		var cut := _tile_cut(key)
+		var mat: Material = mesh.surface_get_material(0)
+		if biome_textures != null:
+			if mat is ShaderMaterial:
+				(mat as ShaderMaterial).shader = TunnelCut.shader_for((mat as ShaderMaterial).shader, cut)
+		elif mat == _terrain_material or mat == _terrain_material_cut:
+			mesh.surface_set_material(0, _terrain_cut_material() if cut else _terrain_material)
+
+
+## Copie de _terrain_material en variante TUNNEL_CUT (parcours sans modèle de biome), faite à la demande.
+func _terrain_cut_material() -> Material:
+	if not _terrain_material is ShaderMaterial:
+		return _terrain_material
+	if _terrain_material_cut == null:
+		var base := _terrain_material as ShaderMaterial
+		_terrain_material_cut = base.duplicate() as ShaderMaterial
+		_terrain_material_cut.shader = TunnelCut.shader_for(base.shader, true)
+		_cut_param_names.clear()
+		for u in base.shader.get_shader_uniform_list():
+			_cut_param_names.append(u["name"])
+	_sync_cut_material()
+	return _terrain_material_cut
+
+
+## Recopie sur la copie TUNNEL_CUT les uniformes changés sur _terrain_material (thème, relief, ombre des nuages).
+func _sync_cut_material() -> void:
+	var base := _terrain_material as ShaderMaterial
+	if base == null:
+		return
+	for pname in _cut_param_names:
+		var v = base.get_shader_parameter(pname)
+		if _terrain_material_cut.get_shader_parameter(pname) != v:
+			_terrain_material_cut.set_shader_parameter(pname, v)
 
 
 ## Biome le plus présent au départ du parcours (biome par défaut sans parcours ni modèle).

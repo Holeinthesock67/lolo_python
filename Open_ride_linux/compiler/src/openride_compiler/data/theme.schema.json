@@ -479,6 +479,45 @@
         },
         "fire": {
           "$ref": "#/$defs/fire"
+        },
+        "neon": {
+          "$ref": "#/$defs/neon"
+        }
+      }
+    },
+    "neon": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Ambiance néon du paysage (lot NV1, parcours « Avenue de la Lagune ») : couleurs des néons, dégradé du ciel de fin de journée, brume, densité des néons et du mobilier lumineux ; toutes les clés sont facultatives.",
+      "properties": {
+        "pink": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "cyan": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "violet": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "orange": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "sky_top": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "sky_mid": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "sky_horizon": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "fog": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "density": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
         }
       }
     },
@@ -878,7 +917,8 @@
           "fjord",
           "ile_volcanique",
           "rizieres",
-          "volcan_actif"
+          "volcan_actif",
+          "ville_neon"
         ]
       },
       "additionalProperties": {

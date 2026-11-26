@@ -80,6 +80,7 @@ extends RefCounted
 ## dans la carte et ouvre l'écran « Aide Grand Prix » (grandprix/gp_help.gd), un sujet par ligne.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
+const RefusalModel := preload("res://scripts/refusal_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
 const RiddenDistance := preload("res://scripts/ridden_distance.gd")
 const SummaryViewModel := preload("res://scripts/summary_view_model.gd")
@@ -102,14 +103,14 @@ const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et surviv
 const SURVIVOR_SPACING_KM := [1, 3]
 ## Aide des touches sur une ligne de réglage de l'écran Prêt d'un mode (essai du 4 novembre).
 const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
-const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread",
-	"survivor.after_out"]
+## Lot NI3 : plus de « Niveau des bots » ; la force se choisit sur la ligne « Intensité du jour » seule.
+const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "survivor.spread", "survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
 ## Grand Prix des objets (lot GP9) : réglages de l'écran Prêt dans l'ordre du plan (§4.4), tours du circuit
 ## seulement (lot GPL1 : le Grand Prix se court sur une boucle), et préfixe des libellés du core.
-## Objectif des bots : ligne « Intensité » (lot R1).
-const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "bots.level_pct", "grandprix.chaos",
-	"grandprix.box_every_m"]
+## Objectif des bots : ligne « Intensité » (lot R1) ; lot NI3 : plus de « Niveau des bots », la force se choisit
+## sur la ligne « Intensité du jour » seule.
+const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "grandprix.chaos", "grandprix.box_every_m"]
 ## Course (lot CR1) en ligne la plus courte (`grandprix.boxes.MIN_COURSE_M` du core) ; le Grand Prix des objets
 ## se court sur une boucle (lot GPL1).
 const GP_MIN_COURSE_M := 1000.0
@@ -262,8 +263,11 @@ var summary_message := ""
 ## ou « start_open_world » (monde ouvert, note_launch depuis main.gd). Seule source de « Rejouer » : la fin de
 ## séance rouvre l'écran par lequel ce lancement était passé, avec les mêmes choix, quel que soit le mode.
 var last_launch := ""
-## Ligne d'état de l'écran Prêt (bots refusés par le core, lot O7).
+## Ligne d'état de l'écran Prêt (départ refusé par le core : lots O7 et RT4, refusal_model.gd).
 var ready_message := ""
+## Codes d'erreur d'un `start` refusé, affichés sur l'écran Prêt avec leur raison et quoi faire (lot RT4).
+## Les erreurs de parcours (`route_*`) et du trainer (`trainer_control_refused`, séance en ERROR) gardent leur bandeau.
+const READY_REFUSALS := ["bot_invalid", "bad_args", "workout_invalid", "plan_invalid", "busy"]
 var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
@@ -382,6 +386,8 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": ProfilesViewModel.RESTORE, "title": "Restaurer un profil supprimé",
 		"on_back": ProfilesViewModel.MANAGE_LIST, "items": []})
+	menu.add_screen({"id": ProfilesViewModel.BACKUPS, "title": "Restaurer une sauvegarde",
+		"on_back": ProfilesViewModel.MANAGE, "items": []})   # lot SV1
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -603,6 +609,12 @@ func on_scan_results(msg: Dictionary) -> void:
 		menu.focus_item("save")
 
 
+## Vrai quand l'écran Prêt explique ce refus du core en mots (lot RT4) : le bandeau technique « Erreur du core »
+## n'est alors pas montré par-dessus.
+func explains_error(code: String) -> bool:
+	return is_visible() and menu.current_screen() == MenuModel.READY and code in READY_REFUSALS
+
+
 ## Erreur du core : écran Créer un entraînement (bad_args, busy, workout_invalid,
 ## workout_write_failed), sinon écran Appareils (busy, scan_failed, pairing_failed).
 func on_error(code: String, text: String) -> void:
@@ -648,8 +660,10 @@ func on_error(code: String, text: String) -> void:
 		contents.on_error(code, text)
 		_refresh_contents()
 		return
-	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league" or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
-		ready_message = "Échec : " + text
+	if menu.current_screen() == MenuModel.READY and code in READY_REFUSALS:
+		# Départ refusé (lot RT4) : pourquoi et quoi faire, sur tous les écrans Prêt (séance libre comprise :
+		# un entraînement ou un plan refusés ne laissaient aucune trace)
+		ready_message = RefusalModel.launch_text(code, text)
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
 		_plan_request = ""
@@ -1300,6 +1314,12 @@ func _handle_event(event: String) -> Dictionary:
 			profiles.done_message = "Statistiques remises à zéro (sauvegarde faite)"
 			_refresh_profiles()
 			return act
+		"restore_profile_backup":   # confirmation acceptée (lot SV1)
+			profiles.message = "Copie du profil actuel puis restauration…"
+			profiles.done_message = "Sauvegarde restaurée (profil d'avant copié)"
+			profiles.restoring = true
+			_refresh_profiles()
+			return act
 		"undo_profile_reset":   # lot RZ1
 			profiles.message = "Annulation de la remise à zéro…"
 			profiles.done_message = "Statistiques d'avant remises en place"
@@ -1401,7 +1421,7 @@ func _handle_event(event: String) -> Dictionary:
 		if str(act["id"]) == "ftp":
 			menu.push_screen(FTP_TEST)
 			return {}
-		if str(act["id"]) == "history":
+		if str(act["id"]) in ["history", "week"]:   # « Semaine : … » (lot OS1) ouvre aussi l'Historique
 			history.begin()
 			_refresh_history()
 			menu.push_screen(HistoryViewModel.SCREEN)
@@ -1650,7 +1670,7 @@ static func mode_label(label: String, prefix: String) -> String:
 
 # --- effort des bots en watts sur l'écran Prêt (lot GP-niv) et cote Elo (lot BOT-elo) ----------------------
 
-const PREVIEW_KEYS := ["bots.level_pct", "bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
+const PREVIEW_KEYS := ["bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
 	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps",
 	"race.opponents", "race.laps"]   # race.* : Course (lot CR1), la durée suit les tours et le plateau
 
@@ -1815,7 +1835,7 @@ static func grandprix_launch(laps: int, route: Dictionary) -> Dictionary:
 ## Réglages de l'écran Prêt de la Course (lot CR1) : tours sur une boucle ; en ligne, la course va jusqu'à l'arrivée.
 static func race_keys(route: Dictionary) -> Array:
 	var line := not route.is_empty() and str(route.get("route_type", "")) != "loop"
-	return ["race.opponents"] + ([] if line else ["race.laps"]) + ["bots.level_pct"]   # objectif : ligne « Intensité » (R1)
+	return ["race.opponents"] + ([] if line else ["race.laps"])   # force des bots : ligne « Intensité » seule (R1, NI3)
 
 
 ## Ligne « Lancer » de la Course (lot CR1) : {enabled, detail, advice}. Boucle : tours et longueur ; en ligne :
@@ -1829,7 +1849,7 @@ static func race_launch(laps: int, route: Dictionary) -> Dictionary:
 			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
 	if float(length) < GP_MIN_COURSE_M:
 		return {"enabled": false, "detail": "parcours trop court",
-			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours." % [
+			"advice": RefusalModel.TAG + " · Lancer grisé : parcours de %s, %d km au moins.\nÀ faire : choisis un autre parcours." % [
 				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
 	return {"enabled": true, "detail": "%s en ligne" % CatalogModel._format_fr_km(float(length)),
 		"advice": ""}
@@ -1860,12 +1880,12 @@ static func survivor_advice(opponents: int, spacing_km: int, length_m: float) ->
 		var n := mini(int(floor(length_m / (sp * 1000.0) + 1e-9)), SURVIVOR_OPPONENTS[1])
 		if n >= SURVIVOR_OPPONENTS[0]:
 			fits.append(("%d adversaires à %d km d'écart" if fits.is_empty() else "%d à %d km") % [n, sp])
-	var text := "Lancer grisé : %d arches × %d km = %d km, parcours de %s.\n" % [
+	var text := RefusalModel.TAG + " · Lancer grisé : %d arches × %d km = %d km, parcours de %s.\n" % [
 		opponents, spacing_km, opponents * spacing_km, CatalogModel._format_fr_km(length_m)]
 	if fits.is_empty():
-		return text + "Choisis un parcours plus long ou une boucle."
+		return text + "À faire : choisis un parcours plus long ou une boucle."
 	var listed := str(fits[0]) if fits.size() == 1 else ", ".join(fits.slice(0, fits.size() - 1)) + " ou " + str(fits[-1])
-	return text + "Possible : " + listed + ", sinon change de parcours."
+	return text + "À faire : règle " + listed + ", ou change de parcours."
 
 
 func _route_entry(route_id: String) -> Dictionary:
@@ -2105,6 +2125,7 @@ func _refresh_profiles() -> void:
 	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
 	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
 	menu.set_screen_items(ProfilesViewModel.RESTORE, profiles.restore_items())
+	menu.set_screen_items(ProfilesViewModel.BACKUPS, profiles.backup_items())
 	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
 
 
@@ -2165,6 +2186,19 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				var u := profiles.undo_confirm()
 				menu.confirm(u["title"], {"action": "undo_profile_reset", "id": u["id"]}, u["yes"], u["no"],
 					u["yes_detail"], u["no_detail"])
+			elif item_id == ProfilesViewModel.BACKUPS_ID:   # lot SV1 : liste demandée au core
+				profiles.message = ""
+				profiles.backups_loaded = false
+				profiles.backups = []
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.BACKUPS)
+				act = {"action": "list_profile_backups"}
+		ProfilesViewModel.BACKUPS:
+			if item_id.begins_with("b:"):
+				profiles.message = ""
+				var b := profiles.backup_confirm(item_id.substr(2))
+				menu.confirm(b["title"], {"action": "restore_profile_backup", "id": b["id"]}, b["yes"], b["no"],
+					b["yes_detail"], b["no_detail"])
 	_refresh_profiles()
 	return act
 
@@ -2237,6 +2271,15 @@ func on_profiles(msg: Dictionary) -> void:
 		menu.open_screen(ProfilesViewModel.SCREEN)   # supprimé
 	elif menu.current_screen() == ProfilesViewModel.RESTORE and profiles.message.begins_with("Profil restauré"):
 		menu.handle("Y_SHORT")   # restauré : retour à « Gérer un profil », message gardé
+	_refresh_profiles()
+
+
+## `profile_backups` (lot SV1) : liste des copies ; après une restauration, retour à « Gérer », message gardé.
+func on_profile_backups(msg: Dictionary) -> void:
+	var restored: bool = profiles.take_restored()
+	profiles.on_backups(msg)
+	if restored and menu.current_screen() == ProfilesViewModel.BACKUPS:
+		menu.handle("Y_SHORT")
 	_refresh_profiles()
 
 
@@ -2563,6 +2606,7 @@ func state() -> Dictionary:
 		st["status"] = summary_message
 	elif st["screen"] == MenuModel.READY:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
+		st["status_error"] = ready_message != ""
 		if menu.mode in MenuModel.SETTINGS_MODES and ready_message == "":
 			_mode_status(st)
 		var ready_items: Array = st.get("items", [])
@@ -2625,6 +2669,7 @@ func on_coach(msg: Dictionary) -> void:
 
 func _refresh_coach() -> void:
 	menu.set_coach_home(coach.home_detail())
+	menu.set_week_home(coach.week_label(), coach.week_detail())   # lot OS1
 	var rows: Array = []
 	for key in CoachViewModel.SETTING_KEYS:
 		var it: Dictionary = settings.item(key)

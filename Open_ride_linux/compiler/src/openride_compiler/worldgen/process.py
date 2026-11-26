@@ -58,6 +58,7 @@ from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
 from ..bridges import BRIDGES_VERSION
+from ..tunnels import TUNNELS_VERSION
 from . import biome_tiles
 from . import session_ground as SG
 from .squares import (FAR_LAKE_SEARCH_M, FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox,
@@ -361,7 +362,8 @@ class WorldSession:
         if self.session_dir is None:
             stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
             self.session_dir = self.cache.sessions_dir() / f"ow-{stamp}.world"
-        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges", "coast"):
+        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges", "tunnels",
+                    "coast"):
             (self.session_dir / sub).mkdir(parents=True, exist_ok=True)
         self.ground = SG.SessionGround(self.session_dir)
 
@@ -388,6 +390,7 @@ class WorldSession:
                 "poi": {"present": True, "version": C.POI_VERSION},
                 "water": {"present": True, "version": C.WATER_VERSION},
                 "bridges": {"present": True, "version": BRIDGES_VERSION},   # lot EA4
+                "tunnels": {"present": True, "version": TUNNELS_VERSION},   # lot EA5
                 "coast": {"present": True, "version": C.COAST_VERSION},     # lot W23 : mer et plages
                 "biome": biome_tiles.manifest_block(self._biome_sources()),
             },

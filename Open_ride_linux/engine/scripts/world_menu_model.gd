@@ -56,6 +56,8 @@ var query: String:
 		entry.text = value
 var typing := true
 var places: Array = []
+## Identifiant de commande de la dernière recherche envoyée (posé par main.gd) ; -1 : inconnu.
+var search_request := -1
 var place_index := 0
 var search_for_target := false
 ## Carte : centre demandé, routes reçues ({c, xz}), curseur en mètres depuis le centre (x est, z sud).
@@ -353,7 +355,11 @@ func _start() -> Dictionary:
 
 # --- réponses du core ------------------------------------------------------------------------
 
-func on_places(items: Array) -> void:
+func on_places(items: Array, request_cmd_id: int = -1) -> void:
+	# Réponses dans le désordre (bancs du 25 novembre : « sevrie » affiché après « sevrier ») : seule la réponse à
+	# la dernière recherche envoyée (`search_request`) remplace la liste ; -1 des deux côtés : pas de contrôle.
+	if request_cmd_id >= 0 and search_request >= 0 and request_cmd_id != search_request:
+		return
 	places = items
 	place_index = 0
 
