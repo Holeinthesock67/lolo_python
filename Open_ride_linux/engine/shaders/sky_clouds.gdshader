@@ -33,6 +33,15 @@ uniform float exposure : hint_range(0, 128) = 1.0;
 // Nuages
 // Nuit (lot P19) : étoiles de 0 (jour, rien de plus à calculer) à 1 (nuit noire), cachées par les nuages
 uniform float stars : hint_range(0, 1) = 0.0;
+// Ville néon (lot NV2) : 0 = rien de plus à calculer, image inchangée ; sinon dégradé à trois couleurs
+// (horizon, milieu, haut) et grand soleil bas sur l'horizon, posés par atmosphere_view.gd.
+uniform float neon_level : hint_range(0, 1) = 0.0;
+uniform vec4 neon_top_color : source_color = vec4(0.22, 0.19, 0.48, 1.0);
+uniform vec4 neon_mid_color : source_color = vec4(0.73, 0.35, 0.75, 1.0);
+uniform vec4 neon_horizon_color : source_color = vec4(1.0, 0.63, 0.44, 1.0);
+uniform float neon_horizon_energy = 1.35;
+uniform vec3 neon_sun_dir = vec3(-0.0992, 0.0744, -0.9923);
+uniform float neon_sun : hint_range(0, 1) = 1.0;
 uniform float coverage : hint_range(0, 1) = 0.0;
 uniform vec4 cloud_color : source_color = vec4(0.957, 0.969, 0.984, 1.0);
 uniform float altitude_m = 2000.0;
@@ -112,6 +121,11 @@ void sky() {
 	float v_angle = clamp(EYEDIR.y, -1.0, 1.0);
 	vec3 sky = mix(sky_top_color.rgb, sky_horizon_color.rgb, clamp(pow(1.0 - v_angle, 0.6 / sky_curve), 0.0, 1.0));
 	sky *= sky_energy;
+	if (neon_level > 0.0) {
+		vec3 g = mix(neon_horizon_color.rgb * neon_horizon_energy, neon_mid_color.rgb, smoothstep(0.0, 0.20, v_angle));
+		g = mix(g, neon_top_color.rgb, smoothstep(0.14, 0.62, v_angle));
+		sky = mix(sky, g * sky_energy, neon_level);
+	}
 	if (stars > 0.0 && EYEDIR.y > 0.0) {
 		// Une étoile au plus par case d'environ 0,25° : point rond au centre de la case (assez gros pour se voir
 		// à l'écran, lot P35), éclat et teinte tirés de la case, plus faible près de l'horizon
@@ -135,7 +149,16 @@ void sky() {
 #endif
 	}
 
-	if (LIGHT0_ENABLED) {
+	if (neon_level > 0.0 && neon_sun > 0.0 && EYEDIR.y > 0.0) {
+		// Grand soleil du coucher : disque de 6° de rayon, orangé en haut, rose en bas, et son halo
+		float ang = acos(clamp(dot(normalize(EYEDIR), neon_sun_dir), -1.0, 1.0));
+		float k = neon_level * neon_sun;
+		sky += vec3(1.0, 0.35, 0.45) * exp(-ang * 5.0) * 0.6 * k;
+		vec3 disc = mix(vec3(0.95, 0.28, 0.42), vec3(1.0, 0.82, 0.38), clamp((EYEDIR.y - neon_sun_dir.y) / 0.1 * 0.5 + 0.5, 0.0, 1.0));
+		sky = mix(sky, disc, smoothstep(0.105, 0.098, ang) * k);
+	}
+
+	if (LIGHT0_ENABLED && neon_level < 1.0) {
 		float sun_angle = dot(LIGHT0_DIRECTION, EYEDIR);
 		float sun_size = cos(LIGHT0_SIZE);
 		float sun_max = cos(sun_angle_max);

@@ -27,6 +27,7 @@ const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 const GroundDetails := preload("res://scripts/ground_details.gd")
 const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 const VolcanoFx := preload("res://scripts/volcano_fx.gd")
+const NeonFx := preload("res://scripts/neon_fx.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
@@ -43,6 +44,7 @@ var living: Dictionary = {}
 var direction := 1                     # sens de la marche, -1 à rebours (lot N22) : donné à l'herbe et aux détails du sol
 var grass: Node3D = null
 var ground_details: Node3D = null     # rochers, herbes hautes, termitières des biomes (lot U8)
+var neon: Node3D = null               # ambiance des paysages en ville néon (lot NV2, neon_fx.gd)
 var volcano: Node3D = null            # lave, braises, fumées des paysages en feu (démo « Volcan en flammes »)
 var sky_material: Material = null
 var terrain_material: Material = null
@@ -95,6 +97,10 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 		volcano = VolcanoFx.new()
 		volcano.name = "VolcanoFx"
 		add_child(volcano)
+	if neon == null:
+		neon = NeonFx.new()
+		neon.name = "NeonFx"
+		add_child(neon)
 	if _route != null:
 		set_route(_route)
 
@@ -120,6 +126,8 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 	if volcano != null:
 		volcano.height_at = _terrain_height(route)
 		volcano.configure(VolcanoFx.budgets_of(living), route, model)
+	if neon != null:
+		neon.configure(model)
 	_neigh_at = -INF
 
 
@@ -167,6 +175,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		var t_fire := Time.get_ticks_usec()
 		volcano.update(cam_pos, cam_s, dt_s)
 		PerfProbe.mark_since("feu", "%d" % int(floor(cam_s)), t_fire)
+	if neon != null:
+		neon.update(cam_pos, 0.0 if paused else dt_s)
 	SkyClouds.update(sky_material, last_wind, dt_s)
 	if terrain_material is ShaderMaterial:
 		var shadow := SkyClouds.terrain_shadow_params(sky_material, str(living.get("clouds", "off")))

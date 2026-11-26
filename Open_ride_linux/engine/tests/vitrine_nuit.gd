@@ -9,6 +9,7 @@ extends SceneTree
 ##
 ##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_nuit.gd -- --out DOSSIER [--preset medium] [--ciel physique]
+##     [--neon 1]   (lot NV2 : ciel, lumière et brume du paysage `ville_neon`, au coucher du soleil puis de nuit)
 ##
 ## Écrit DOSSIER/nuit_<preset>_<heure>_<vue>.png et DOSSIER/vitrine_nuit.csv (heure ; hauteur du soleil ;
 ## lumières ; luminance moyenne).
@@ -27,6 +28,7 @@ const AvatarModel := preload("res://scripts/avatar_model.gd")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
+const BiomeModel := preload("res://scripts/biome_model.gd")
 const MoonView := preload("res://scripts/moon_view.gd")
 const Fireflies := preload("res://scripts/fireflies.gd")
 
@@ -61,6 +63,7 @@ const RIDER_POS := Vector3(1.5, GROUND_Y, -18.0)
 var _out_dir := "user://vitrine_nuit"
 var _preset := "medium"
 var _sky := "nuages"
+var _neon := false   # --neon 1 (lot NV2) : ambiance du paysage `ville_neon`, coucher du soleil puis nuit
 
 
 func _init() -> void:
@@ -72,6 +75,8 @@ func _init() -> void:
 			_preset = args[i + 1]
 		elif args[i] == "--ciel":
 			_sky = args[i + 1]
+		elif args[i] == "--neon":
+			_neon = args[i + 1] == "1"
 	call_deferred("_run")
 
 
@@ -129,6 +134,9 @@ func _run() -> void:
 		var out := SkyCycle.evaluate(str(h[1]), "off", theme, LAT, NAN, DATE, 0.0, {}, float(h[2]))
 		var light: Dictionary = out["daylight"]
 		var lit := bool(light.get("active", false))
+		if _neon:
+			var neon_theme: Dictionary = theme["landscapes"]["ville_neon"]["neon"]
+			atmo.set_neon(1.0, 1.0 if str(h[0]) == "nuit" else 0.0, BiomeModel.NEON_DEFAULTS.merged(neon_theme, true))
 		atmo.set_cycle(light if lit else {})
 		NightLights.apply(NightLights.level(light), lit)
 		for view in VIEWS:

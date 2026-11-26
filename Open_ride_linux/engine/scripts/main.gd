@@ -1355,6 +1355,8 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 	_step_cycle(now_s)
 	if living_world != null and living_world.volcano != null:
 		atmosphere_view.set_fire(living_world.volcano.fire_level, living_world.volcano.glow_color)
+	if living_world != null and living_world.neon != null and (living_world.neon.active() or atmosphere_view.neon_level > 0.0):
+		atmosphere_view.set_neon(living_world.neon.neon_level, living_world.neon.night, living_world.neon.palette)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 	if moon_view != null:
 		moon_view.update(camera.global_position, atmosphere_view.cycle)

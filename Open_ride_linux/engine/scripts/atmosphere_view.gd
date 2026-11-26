@@ -65,6 +65,23 @@ const FIRE_LIGHT := 0.15     # part de la lueur dans la lumière du soleil
 const FIRE_SKY := 0.7        # part de la lueur dans l'horizon du ciel (le haut du ciel s'assombrit de cendres)
 const ASH_TOP := Color(0.55, 0.38, 0.32)
 const SMOKE_CLOUD := Color(0.5, 0.42, 0.4)
+var neon_level := 0.0        # ville néon autour de la caméra (neon_fx.gd), 0 à 1
+var neon_night := 0.0        # 0 : coucher du soleil, 1 : nuit
+var neon := {}               # section `neon` du thème (couleurs #RRGGBB)
+const NEON_SUN_DIR := Vector3(-0.10, 0.075, -1.0)    # soleil bas sur l'horizon
+const NEON_MOON_DIR := Vector3(-0.35, 0.75, -0.55)   # lumière de la nuit, d'en haut
+const NEON_SUN_TINT := Color(1.0, 0.45, 0.42)
+const NEON_NIGHT_TINT := Color(0.55, 0.45, 0.95)
+const NEON_SUN_ENERGY := 1.5
+const NEON_NIGHT_ENERGY := 0.12
+const NEON_AMBIENT_DUSK := Color(0.62, 0.36, 0.80)
+const NEON_AMBIENT_NIGHT := Color(0.45, 0.22, 0.75)
+const NEON_AMBIENT_ENERGY_DUSK := 0.25               # × NIGHT_AMBIENT_GAIN dans _apply_sky
+const NEON_AMBIENT_ENERGY_NIGHT := 0.2
+const NEON_HORIZON_ENERGY := 1.35
+const NEON_NIGHT_TOP := 0.45                         # part du ciel du coucher gardée la nuit (haut, milieu)
+const NEON_NIGHT_MID := 0.55
+const NEON_NIGHT_FOG := 0.45
 static var _star_textures := []
 
 
@@ -192,6 +209,7 @@ func _params_at(s: float, weather: Dictionary) -> Dictionary:
 	if cycle_active():
 		_with_cycle(p)
 	_with_fire(p)
+	_with_neon(p)
 	p["s"] = s
 	return p
 
@@ -200,6 +218,47 @@ func _params_at(s: float, weather: Dictionary) -> Dictionary:
 func set_fire(level: float, color: Color) -> void:
 	fire_level = clampf(level, 0.0, 1.0)
 	fire_color = color
+
+
+## Ambiance d'un paysage en ville néon (lot NV2) : coucher du soleil puis nuit, posés après l'heure et le feu.
+## `level` : part de l'ambiance (0 : rien ne change), `night` : 0 coucher, 1 nuit, `palette` : section `neon`.
+func set_neon(level: float, night: float, palette: Dictionary) -> void:
+	neon_level = clampf(level, 0.0, 1.0) if not palette.is_empty() else 0.0
+	neon_night = clampf(night, 0.0, 1.0)
+	neon = palette
+
+
+## Couleurs du ciel néon à l'instant (haut, milieu, horizon), du coucher du soleil à la nuit.
+func neon_sky() -> Array:
+	var top := Color(str(neon["sky_top"]))
+	var mid := Color(str(neon["sky_mid"]))
+	var hz := Color(str(neon["sky_horizon"]))
+	var pink := Color(str(neon["pink"]))
+	return [top.lerp(top * NEON_NIGHT_TOP, neon_night), mid.lerp(mid * NEON_NIGHT_MID, neon_night),
+		hz.lerp(hz.lerp(pink, 0.7) * 0.75, neon_night)]
+
+
+func _with_neon(p: Dictionary) -> void:
+	if neon_level <= 0.0:
+		return
+	var k := neon_level
+	var n := neon_night
+	var fog := Color(str(neon["fog"]))
+	p["horizon_color"] = (p["horizon_color"] as Color).lerp(fog.lerp(fog * NEON_NIGHT_FOG, n), k)
+	p["light_tint"] = (p["light_tint"] as Color).lerp(NEON_SUN_TINT.lerp(NEON_NIGHT_TINT, n), k)
+	p["light_energy_factor"] = lerpf(float(p["light_energy_factor"]), lerpf(NEON_SUN_ENERGY, NEON_NIGHT_ENERGY, n), k)
+	p["sun_direction"] = (p["sun_direction"] as Vector3).slerp(NEON_SUN_DIR.normalized().slerp(NEON_MOON_DIR.normalized(), n), k).normalized()
+	# Lumière ambiante et étoiles : celles de l'heure si le jour et la nuit tournent, sinon celles du plein jour
+	var amb_c: Color = p.get("ambient_color", Color.WHITE)
+	var amb_e := float(p.get("ambient_energy", 1.0 / NIGHT_AMBIENT_GAIN))
+	p["ambient_color"] = amb_c.lerp(NEON_AMBIENT_DUSK.lerp(NEON_AMBIENT_NIGHT, n), k)
+	p["ambient_energy"] = lerpf(amb_e, lerpf(NEON_AMBIENT_ENERGY_DUSK, NEON_AMBIENT_ENERGY_NIGHT, n), k)
+	if not p.has("sky_top"):
+		p["sky_top"] = Color.WHITE
+		p["sky_horizon"] = Color.WHITE
+	p["stars"] = lerpf(float(p.get("stars", 0.0)), lerpf(0.08, 1.0, n), k)
+	p["neon"] = k
+	p["neon_night"] = n
 
 
 func _with_fire(p: Dictionary) -> void:
@@ -240,7 +299,7 @@ func _with_cycle(p: Dictionary) -> void:
 
 ## Une fois par image en roulant, après le décor vivant (météo évaluée `weather_eval`).
 func step(now_s: float, s_route: float, camera: Camera3D, weather_eval: Dictionary) -> void:
-	if atmosphere == null and not cycle_active():
+	if atmosphere == null and not cycle_active() and neon_level <= 0.0 and not current.has("neon"):
 		return
 	if now_s - _at >= PERIOD_S:
 		_at = now_s
@@ -273,7 +332,7 @@ static func _differs(a: Dictionary, b: Dictionary) -> bool:
 		return true
 	if absf(float(a.get("underwater", 0.0)) - float(b.get("underwater", 0.0))) > COLOR_EPS:
 		return true
-	for k in ["light_energy_factor", "ambient_energy", "stars", "fire"]:
+	for k in ["light_energy_factor", "ambient_energy", "stars", "fire", "neon", "neon_night"]:
 		if absf(float(a.get(k, 1.0)) - float(b.get(k, 1.0))) > COLOR_EPS:
 			return true
 	for k in ["horizon_color", "light_tint"]:
@@ -366,6 +425,19 @@ func _apply_sky(p: Dictionary) -> void:
 		# Nuages éclairés comme l'horizon : orangés au coucher, sombres la nuit
 		sm.set_shader_parameter("cloud_color", (sm.get_meta("base_cloud") as Color) * (mults[2] as Color))
 		sm.set_shader_parameter("stars", stars)
+		# Ville néon (lot NV2) : dégradé à trois couleurs et grand soleil bas, dans la mesure de `neon`
+		var nk := float(p.get("neon", 0.0))
+		if nk > 0.0 or sm.has_meta("neon_on"):
+			sm.set_shader_parameter("neon_level", nk)
+			sm.set_meta("neon_on", nk > 0.0)
+			if nk > 0.0:
+				var ns := neon_sky()
+				sm.set_shader_parameter("neon_top_color", ns[0])
+				sm.set_shader_parameter("neon_mid_color", ns[1])
+				sm.set_shader_parameter("neon_horizon_color", ns[2])
+				sm.set_shader_parameter("neon_horizon_energy", lerpf(NEON_HORIZON_ENERGY, 1.0, neon_night))
+				sm.set_shader_parameter("neon_sun_dir", NEON_SUN_DIR.normalized())
+				sm.set_shader_parameter("neon_sun", 1.0 - smoothstep(0.0, 0.6, neon_night))
 	elif mat is ProceduralSkyMaterial:   # ciel sans nuages (et moteur Compatibility) : couleurs seulement, sans étoiles
 		var pm := mat as ProceduralSkyMaterial
 		var mults := _sky_mults(p)

@@ -2686,9 +2686,9 @@
         "cyan": "#1ad9ff",
         "violet": "#8c40ff",
         "orange": "#ff8c1f",
-        "sky_top": "#0b0833",
-        "sky_mid": "#80198a",
-        "sky_horizon": "#ff7a38",
+        "sky_top": "#38307b",
+        "sky_mid": "#bb59bf",
+        "sky_horizon": "#ffa170",
         "fog": "#f25a8c",
         "density": 1.0
       }
