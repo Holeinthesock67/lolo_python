@@ -41,6 +41,8 @@ const SETTLE_FRAMES := 2
 const SHOW_FRAMES := 1
 ## Garde-fou : au-delà de ce nombre d'images sans fin (caméra absente…), tout est rendu visible.
 const MAX_HOLD_FRAMES := 3600
+## Objets entrés dans l'arbre passés au catalogue par image (lot PG1).
+const SEEN_PER_FRAME := 64
 
 ## Faux en séance : `hold` ne cache rien et rend tout ce qui attend (main.gd).
 var active := true
@@ -394,7 +396,8 @@ func pending() -> int:
 
 
 func _ready() -> void:
-	get_tree().node_added.connect(_on_node_added)
+	if DisplayServer.get_name() != "headless":   # sans rendu (tests sans écran), rien à préparer
+		get_tree().node_added.connect(_on_node_added)
 
 
 func _on_node_added(n: Node) -> void:
@@ -405,9 +408,10 @@ func _on_node_added(n: Node) -> void:
 func _process(_delta: float) -> void:
 	step(get_viewport().get_camera_3d() if is_inside_tree() else null)
 	if catalog != null:
-		if not _seen.is_empty():
-			_record(_seen)
-			_seen.clear()
+		if not _seen.is_empty():   # au plus SEEN_PER_FRAME objets par image : pas de pic au changement de qualité
+			var n := mini(_seen.size(), SEEN_PER_FRAME)
+			_record(_seen.slice(0, n))
+			_seen = _seen.slice(n)
 		catalog.flush()   # quelques petits fichiers par image au plus
 
 

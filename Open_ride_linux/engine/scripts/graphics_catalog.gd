@@ -147,7 +147,7 @@ static func _first_triangle(arrays: Array) -> Array:
 		var stride: int = int(a.size() / n)
 		if stride <= 0:
 			return []
-		var b = a.duplicate()
+		var b = a.slice(0, 0)   # tableau vide du même type, sans copier les sommets
 		b.resize(stride * 3)
 		for v in range(3):
 			for c in range(stride):
