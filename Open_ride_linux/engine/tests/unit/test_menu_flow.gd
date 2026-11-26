@@ -4,6 +4,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_menu_flow.gd
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
+const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
@@ -88,8 +89,8 @@ func _test_full_session() -> void:
 	f.menu.focus_item("details")
 	_check(f.handle("A_LONG").is_empty() and f.show_details, "Voir le bilan détaillé")
 	f.menu.focus_item("new_session")
-	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
-			"Nouvelle séance : accueil, listes redemandées et monde rechargé")
+	_check(f.handle("A_LONG") == MAIN_MENU_VOSGES and f.state()["screen"] == "home",
+			"Menu principal : accueil, entraînement retiré, listes redemandées et monde rechargé")
 	_check(f.state()["items"][0]["label"] == "Parcours : Vosges", "le parcours reste choisi après la séance")
 	f.on_state({"session_state": "FINISHED"})
 	f.handle("MINUS_SHORT")   # Quitter (dernier élément de l'accueil)
@@ -214,12 +215,65 @@ func _test_summary_replay_and_main_menu() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {}})
 	f.menu.focus_item("new_session")
-	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home"
+	_check(f.handle("A_LONG") == MAIN_MENU_VOSGES and f.state()["screen"] == "home"
 		and f.menu.mode == "free", "Menu principal : l'accueil, mode remis à la session libre")
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {}})
-	_check(f.handle("Y_SHORT") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
+	_check(f.handle("Y_SHORT") == MAIN_MENU_VOSGES and f.state()["screen"] == "home",
 		"Retour (Y) depuis la fin de séance : Menu principal")
+
+
+const MAIN_MENU_VOSGES := {"action": "sequence", "list": [{"action": "select_workout", "workout_id": null},
+	{"action": "list", "route_id": "vosges"}]}
+
+
+## Fin de séance (20 novembre) : « Rejouer » suit le dernier lancement, « Menu principal » le même accueil
+## après tous les modes.
+func _finish_session(f) -> void:
+	f.on_state({"session_state": "RUNNING"})
+	f.on_state({"session_state": "FINISHED", "summary": {}})
+
+
+func _test_summary_same_for_all_modes() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	f.menu.world_id = "vosges"
+	# Cyber-Rogue : la run est effacée par le core à la fin ; « Rejouer » rouvre son écran de départ.
+	f._note_launch_of({"action": "start_run", "args": {}})
+	f.menu.set_rogue_ready("Objectif : boss")
+	f._note_launch_of({"action": "start"})   # « Démarrer » de l'écran Prêt du Rogue : la run reste à rejouer
+	_check(f.last_launch == "start_run", "Démarrer du Rogue après start_run : la run reste le lancement")
+	_finish_session(f)
+	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"}
+		and f.state()["screen"] == RogueMenuModel.SCREEN and f.menu.mode == "free",
+		"Rejouer après une run : écran de départ du Cyber-Rogue (%s)" % f.state()["screen"])
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "home", "Retour depuis le départ du Rogue rejoué : l'accueil")
+	# Monde ouvert : lancé depuis le globe (main.gd) ; « Rejouer » rouvre le globe.
+	f.note_launch("start_open_world")
+	_finish_session(f)
+	_check(f.handle("A_LONG") == {"action": "sequence", "list": [{"action": "list"}, {"action": "open_world_menu"}]}
+		and f.state()["screen"] == "home", "Rejouer après le monde ouvert : le globe, l'accueil derrière")
+	# Séance du jour d'un plan : rejouée comme entraînement, sans plan_day (séance du jour suivante sinon).
+	f.menu.prepare_start("Séance du jour", {"plan_day": true})
+	f._note_launch_of(f.handle("A_LONG"))
+	_check(f.last_launch == "start", "Démarrer de l'écran Prêt : lancement « start »")
+	_finish_session(f)
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "ready" and f.menu.mode == "erg" and not f.menu.start_args.has("plan_day"),
+		"Rejouer la séance du plan : écran Prêt ERG, sans plan_day (%s)" % str(f.menu.start_args))
+	# Menu principal : mode libre après tous les modes, entraînement du core retiré.
+	for prep in ["erg", "grandprix", "track", "coach"]:
+		match prep:
+			"erg": f.menu.prepare_start("ERG court", {})
+			"grandprix": f.menu.mode = "grandprix"
+			"track": f.menu.prepare_track()
+			"coach": f.menu.prepare_coach_race("Course", {}, "conseil")
+		_finish_session(f)
+		f.menu.focus_item("new_session")
+		_check(f.handle("A_LONG") == MAIN_MENU_VOSGES and f.menu.mode == "free" and f.menu.route_mode == ""
+			and f.state()["screen"] == "home", "Menu principal après %s : accueil en session libre" % prep)
 
 
 func _test_view() -> void:
@@ -324,6 +378,33 @@ func _test_connect_screen() -> void:
 	_check(k.state()["screen"] == "confirm", "Quitter passe par la confirmation")
 
 
+## Lot NI4 (audit M2) : « Session simulée » sort de l'accueil et se range dans Réglages › Appareils ; en
+## session simulée, la même ligne propose de revenir au matériel réel. Confirmation avant la relance.
+func _test_sim_session_in_devices() -> void:
+	for in_sim in [false, true]:
+		var f = MenuFlow.new()
+		f.connect_done = true
+		f.on_state({"session_state": "IDLE"})
+		if in_sim:
+			f.menu.set_sim_session(true)
+		_check(not "sim" in _ids(f), "accueil sans « Session simulée » (%s)" % str(_ids(f)))
+		f.handle("MINUS_SHORT")
+		f.handle("MINUS_SHORT")   # Réglages
+		f.handle("A_LONG")
+		f.handle("A_LONG")   # Appareils
+		_check(f.state()["screen"] == "pairing", "Réglages → Appareils")
+		var sim: Dictionary = f.state()["items"].filter(func(it): return it["id"] == "sim")[0]
+		var label := "Revenir au matériel réel" if in_sim else "Session simulée (sans matériel)"
+		_check(sim["label"] == label and not sim["enabled"], "%s : grisée pendant la recherche" % label)
+		f.on_scan_results({"type": "scan_results", "request_cmd_id": 3, "done": true, "plus_address": null, "items": []})
+		f.menu.focus_item("sim")
+		_check(_focus_id(f) == "sim", "%s : active après la recherche" % label)
+		_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "confirm", "%s : confirmation d'abord" % label)
+		f.handle("PLUS_SHORT")   # Oui
+		var act: Dictionary = f.handle("A_LONG")
+		_check(act == {"action": "relaunch" if in_sim else "relaunch_sim"}, "%s : relance (%s)" % [label, str(act)])
+
+
 func _test_pairing_screen() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
@@ -375,21 +456,23 @@ func _test_relaunch_setting() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.on_state({"session_state": "IDLE", "difficulty_pct": 50})
-	var living := {"key": "render.living", "label": "Décor vivant", "group": "graphics", "type": "choice", "value": "on",
-		"choices": ["on", "off"], "applies": "relaunch"}
+	# Réglage booléen appliqué au prochain lancement : « Progression et Garage » (« Décor vivant », exemple d'avant,
+	# est retiré du menu au lot NI4).
+	var living := {"key": "progression.enabled", "label": "Progression et Garage", "group": "advanced", "type": "choice",
+		"value": "on", "choices": ["on", "off"], "applies": "relaunch"}
 	var feel := {"key": "wind.feel", "label": "Ressenti du vent", "group": "wind", "type": "choice", "value": "grade",
 		"choices": ["grade", "ftms"], "applies": "next_session"}
 	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [living, feel]})
-	f.settings_group = "graphics"
+	f.settings_group = "advanced"
 	f._refresh_settings()
 	f.menu.push_screen(f.SETTINGS_GROUP)
 	var rows: Array = f.state()["items"]
-	_check(rows.size() == 1 and rows[0]["detail"] == "oui", "décor vivant affiché « oui », pas de relance (%s)" % str(rows))
-	_check(f.state()["card"]["lines"] == ["Choix : oui, non (rendu de la 1.0)", "S'applique au prochain lancement d'OpenRide"],
+	_check(rows.size() == 1 and rows[0]["detail"] == "oui", "progression affichée « oui », pas de relance (%s)" % str(rows))
+	_check(f.state()["card"]["lines"] == ["Choix : oui, non (sans Garage)", "S'applique au prochain lancement d'OpenRide"],
 		"carte : choix en français et prochain lancement (%s)" % str(f.state()["card"]))
 	f.on_settings({"type": "settings", "request_cmd_id": 3, "items": [living.merged({"value": "off"}, true), feel]})
 	rows = f.state()["items"]
-	_check(rows.size() == 2 and rows[1]["id"] == "relaunch" and rows[1]["detail"] == "pour appliquer : Décor vivant",
+	_check(rows.size() == 2 and rows[1]["id"] == "relaunch" and rows[1]["detail"] == "pour appliquer : Progression et Garage",
 		"valeur changée : « Relancer OpenRide maintenant » (%s)" % str(rows))
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG") == {"action": "relaunch"}, "Relancer : action relaunch (code 64)")
@@ -468,7 +551,7 @@ func _test_settings_screen() -> void:
 	f.handle("A_LONG")   # Graphisme
 	f.handle("A_LONG")   # Qualité
 	f.handle("PLUS_SHORT")
-	_check(f.state()["items"][0]["detail"] == "◀ low ▶", "choix en boucle : high → low")
+	_check(f.state()["items"][0]["detail"] == "◀ basse ▶", "choix en boucle : haute → basse (valeur low, lot QG1)")
 	_check(f.handle("Y_SHORT").is_empty() and f.state()["screen"] == "settings_group", "Y : annulé")
 	f.handle("Y_SHORT")
 	f.handle("PLUS_SHORT")
@@ -498,8 +581,8 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	_check(_ids(f) == ["_sim", "seuil", "_create", "_qwk", "_help"],
-		"sous-menu ERG : liste puis Créer, QWKcode et Aide, sans import (révision 1.15) (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_help"],
+		"sous-menu ERG : liste puis Créer et Aide, sans import (révision 1.15) ni QWKcode (lot NI4) (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_help" and f.state()["card"].get("name", "") == "Choisir un entraînement",
 		"focus sur Comment ça marche ? : carte de l'aide (%s)" % str(f.state()["card"]))
@@ -514,8 +597,6 @@ func _test_erg_submenu() -> void:
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help", "A long sur un sujet : rien")
 	f.handle("Y_SHORT")
 	_check(f.state()["screen"] == "workouts" and _focus_id(f) == "_help", "Y : retour à la liste")
-	f.handle("MINUS_SHORT")
-	_check(f.state()["card"].get("name", "") == "Saisie QWKcode (GoldenCheetah)", "QWKcode : carte de l'aide")
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_create", "focus sur Créer un entraînement")
 	_check(f.state()["card"].get("name", "") == "Créer des intervalles", "Créer : carte de l'aide")
@@ -622,7 +703,7 @@ func _test_plans() -> void:
 	f.on_state({"session_state": "RUNNING", "route_id": "vosges"})
 	f.on_state({"session_state": "FINISHED", "route_id": "vosges", "summary": {"duration_s": 2700.0}})
 	f.menu.focus_item("new_session")
-	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"}, "nouvelle séance : listes (plans compris) redemandées")
+	_check(f.handle("A_LONG") == MAIN_MENU_VOSGES, "Menu principal : listes (plans compris) redemandées")
 	var done: Dictionary = active.duplicate(true)
 	done["today"][0]["done"] = true
 	done["done"] = 1
@@ -830,7 +911,7 @@ func _test_route_import(f) -> void:
 	f.handle("Y_SHORT")
 
 
-## Bots choisis sur l'écran Prêt (lot O7) : `start` avec l'argument `bots`.
+## Bots de l'écran Prêt (lots O7 et PL1 ; lot NI3 : plus de lignes « Bot n ») : `start` avec l'argument `bots`.
 func _test_bots_menu() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
@@ -838,92 +919,44 @@ func _test_bots_menu() -> void:
 	f.set_routes(ROUTES)
 	f.handle("PLUS_SHORT")   # Session libre
 	f.handle("A_LONG")
-	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot1", "ghost", "peloton", "records"],
-		"écran Prêt : bot, fantôme et peloton avant les records (%s)" % str(_ids(f)))
-	_check(f.state()["items"][3]["label"] == "Bot 1 : aucun" and f.state()["items"][4]["label"] == "Fantôme de la dernière séance : non",
-		"par défaut : aucun bot, pas de fantôme")
+	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "ghost", "peloton", "records"],
+		"écran Prêt : fantôme et peloton avant les records, plus de ligne « Bot 1 » (%s)" % str(_ids(f)))
+	_check(f.state()["items"][3]["label"] == "Fantôme de la dernière séance : non", "par défaut : pas de fantôme")
 	_check(f.handle("A_LONG") == {"action": "start"}, "sans bot : start sans argument (les bots de la ligne de commande restent)")
 	f.handle("MINUS_SHORT")   # Records (boucle depuis Démarrer)
 	f.handle("MINUS_SHORT")   # Peloton (lot PL1)
 	f.handle("MINUS_SHORT")   # Fantôme
 	_check(_focus_id(f) == "ghost", "focus sur le fantôme")
-	f.handle("MINUS_SHORT")   # Bot
-	for i in range(4):
-		f.handle("A_LONG")
-	_check(f.state()["items"][3]["label"] == "Bot 1 : 90 % de la FTP" and f.state()["screen"] == "ready", "A long : bot suivant (%s)" % f.state()["items"][3]["label"])
-	_check(_ids(f) == ["start", "workout", "change_route", "bot1", "bot2", "ghost", "peloton", "records"]
-		and f.state()["items"][4]["label"] == "Bot 2 : aucun", "lot O35 : un bot choisi ouvre la ligne « Bot 2 » (%s)" % str(_ids(f)))
-	f.handle("PLUS_SHORT")
-	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")
-	_check(f.state()["items"][5]["label"] == "Fantôme de la dernière séance : oui", "fantôme demandé")
-	for i in range(5):
+	_check(f.state()["items"][3]["label"] == "Fantôme de la dernière séance : oui", "fantôme demandé")
+	for i in range(3):
 		f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "start", "retour sur Démarrer")
 	var act: Dictionary = f.handle("A_LONG")
-	_check(act == {"action": "start", "args": {"bots": [{"kind": "constant", "ftp_pct": 90}, {"kind": "ghost"}]}},
-		"start avec bot à 90 %% de la FTP et fantôme (%s)" % str(act))
+	_check(act == {"action": "start", "args": {"bots": [{"kind": "ghost"}]}}, "start avec le fantôme (%s)" % str(act))
 	f.on_error("bot_invalid", "aucune séance passée sur le parcours « vosges » pour le fantôme")
-	_check(f.state()["status"].begins_with("Échec : aucune séance passée"), "refus du core sur la ligne d'état")
+	_check(f.state()["status"] == "× REFUSÉ · Départ impossible : pas encore de fantôme sur ce parcours\nÀ faire : roule-le une fois en entier, ou retire la ligne « Fantôme »",
+		"refus du core expliqué : pourquoi et quoi faire (lot RT4, %s)" % str(f.state()["status"]))
 	f.handle("PLUS_SHORT")
 	_check(f.state()["status"] == "", "ligne d'état effacée à l'appui suivant")
-	# Un bot de 250 W seul, avec un test de FTP préparé : les deux arguments partent ensemble.
+	# Un peloton de 4, avec un test de FTP préparé : les deux arguments partent ensemble.
 	var g = MenuFlow.new()
 	g.connect_done = true
 	g.on_state({"session_state": "IDLE", "route_id": "vosges"})
 	g.set_routes(ROUTES)
 	g.menu.prepare_start("test de FTP (rampe)", {"ftp_test": "ramp"})
-	g.menu.bot_choices.assign([2])
+	g.menu.peloton = 4
 	g.menu._refresh_home()
-	_check(g.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp", "bots": [{"kind": "constant", "power_w": 250}]}},
-		"test de FTP et bot : arguments réunis")
+	var ga: Dictionary = g.handle("A_LONG")
+	_check(ga.get("args", {}).get("ftp_test", "") == "ramp" and (ga["args"]["bots"] as Array).size() == 4,
+		"test de FTP et peloton : arguments réunis (%s)" % str(ga))
 	g.menu.reset()
-	_check(g.menu.bot_choices == [2] and not g.menu.ghost, "nouvelle séance : le bot de la séance lancée reste choisi (lot O32)")
-	# Bots à profil (lot T13) : après les bots constants, chaque profil à 90, 100 et 110 % de la FTP.
-	var labels: Array = []
-	for c in MenuModel.BOT_CHOICES:
-		labels.append(c[0])
-	_check(labels.slice(7) == ["Grimpeur 90 %", "Grimpeur 100 %", "Grimpeur 110 %", "Rouleur 90 %", "Rouleur 100 %",
-		"Rouleur 110 %", "Sprinteur 90 %", "Sprinteur 100 %", "Sprinteur 110 %", "Diesel 90 %", "Diesel 100 %", "Diesel 110 %"],
-		"profils et niveaux au menu (%s)" % str(labels))
-	g.menu.bot_choices.assign([9])
-	_check(g.menu._start_args() == {"bots": [{"kind": "profile", "profile": "climber", "level_pct": 110}]},
-		"start avec un grimpeur à 110 %% (%s)" % str(g.menu._start_args()))
-	_test_four_bots()
-
-
-## Quatre bots et le fantôme (lot O35) : la limite du core (MAX_CONSTANT_BOTS), une ligne par bot, « aucun »
-## retire le bot et remonte les suivants.
-func _test_four_bots() -> void:
-	var m = MenuModel.new()
-	m.set_world("vosges", "Vosges")
-	m.focus_item("ride")
-	m.handle("A_LONG")   # écran Prêt
-	for n in range(MenuModel.MAX_BOTS):
-		m.focus_item("bot%d" % (n + 1))
-		for i in range(n + 1):
-			m.handle("A_LONG")   # Bot n+1 : 200 W, 250 W, 300 W, 90 % de la FTP
-	var ids: Array = []
-	for it in m.state()["items"]:
-		ids.append(it["id"])
-	_check(ids == ["start", "workout", "change_route", "bot1", "bot2", "bot3", "bot4", "ghost", "peloton", "records"],
-		"quatre bots : pas de cinquième ligne (%s)" % str(ids))
-	_check(m.state()["items"][6]["label"] == "Bot 4 : 90 % de la FTP", "libellé du 4e bot (%s)" % m.state()["items"][6]["label"])
-	m.ghost = true
-	_check(m._start_args() == {"bots": [{"kind": "constant", "power_w": 200}, {"kind": "constant", "power_w": 250},
-		{"kind": "constant", "power_w": 300}, {"kind": "constant", "ftp_pct": 90}, {"kind": "ghost"}]},
-		"start avec quatre bots et le fantôme (%s)" % str(m._start_args()))
-	# Bot 2 remis à « aucun » (fin du cycle) : retiré, Bot 3 et Bot 4 remontent, une ligne vide revient.
-	m.focus_item("bot2")
-	for i in range(MenuModel.BOT_CHOICES.size() - 2):
-		m.handle("A_LONG")
-	_check(m.bot_choices == [1, 3, 4], "bot 2 retiré, les suivants remontent (%s)" % str(m.bot_choices))
-	_check(m.state()["items"][6]["label"] == "Bot 4 : aucun", "ligne « Bot 4 : aucun » revenue")
+	_check(g.menu.peloton == 4 and not g.menu.ghost, "nouvelle séance : le peloton de la séance lancée reste choisi (lot O32)")
 	_test_peloton_menu()
 
 
-## Peloton (lot PL1) : « Peloton : aucun », A long : 4, 8, 11 bots à profil sans niveau (celui du réglage), coupé
-## pour ne pas dépasser 11 bots avec ceux choisis un par un ; repris des derniers choix.
+## Peloton (lot PL1) : « Peloton : aucun », A long : 4, 8, 11 bots à profil sans niveau (réglés par l'Intensité du
+## jour et la cote, lot NI3) ; repris des derniers choix, sans les anciens bots choisis un par un.
 func _test_peloton_menu() -> void:
 	var m = MenuModel.new()
 	m.set_world("vosges", "Vosges")
@@ -934,81 +967,39 @@ func _test_peloton_menu() -> void:
 	for i in range(3):
 		m.handle("A_LONG")   # 4, 8, 11
 	_check(m.state()["items"][m.state()["focus"]]["label"] == "Peloton : 11 bots", "A long : 4, 8 puis 11 bots")
-	var args: Dictionary = m._start_args()
-	_check(args["bots"].size() == 11 and args["bots"][0] == {"kind": "profile", "profile": "rouleur"}
-		and args["bots"][1] == {"kind": "profile", "profile": "climber"}, "onze bots à profil, en cycle (%s)" % str(args["bots"].slice(0, 2)))
-	m.bot_choices.assign([1, 2, 3, 4])
 	m.ghost = true
-	m._refresh_home()
-	args = m._start_args()
-	_check(args["bots"].size() == 12 and m.peloton_size() == 7 and args["bots"][-1] == {"kind": "ghost"},
-		"quatre bots choisis : peloton coupé à 7, fantôme en plus (%d)" % args["bots"].size())
+	var args: Dictionary = m._start_args()
+	_check(args["bots"].size() == 12 and args["bots"][0] == {"kind": "profile", "profile": "rouleur"}
+		and args["bots"][1] == {"kind": "profile", "profile": "climber"} and args["bots"][-1] == {"kind": "ghost"},
+		"onze bots à profil, en cycle, fantôme en plus (%s)" % str(args["bots"].slice(0, 2)))
 	m.focus_item("peloton")
 	m.handle("A_LONG")
 	_check(m.peloton == 0 and not m._start_args()["bots"].any(func(b): return MenuModel._is_peloton_bot(b)), "A long après 11 : plus de peloton")
-	# Derniers choix (lot O32) : 4 bots, 7 bots de peloton et le fantôme reviennent tels quels
+	# Derniers choix (lot O32) : peloton et fantôme repris ; un ancien bot choisi un par un (avant NI3) est sauté
 	var n = MenuModel.new()
 	n.set_last_choices({"bots": args["bots"]})
-	_check(n.bot_choices == [1, 2, 3, 4] and n.peloton_size() == 7 and n.ghost, "derniers choix : peloton repris (%d)" % n.peloton_size())
+	_check(n.peloton_size() == 11 and n.ghost, "derniers choix : peloton repris (%d)" % n.peloton_size())
+	n.set_last_choices({"bots": [{"kind": "constant", "power_w": 200}, {"kind": "profile", "profile": "climber", "level_pct": 110}]
+		+ (args["bots"] as Array).slice(0, 7)})
+	_check(n.peloton == 8 and not n.ghost, "ancien choix : bots un par un sautés, 7 bots de peloton : 8 (%d)" % n.peloton)
 	n.set_last_choices({"bots": [{"kind": "profile", "profile": "diesel"}]})
-	_check(n.peloton == 4 and n.bot_choices.is_empty(), "un seul bot de peloton : la plus petite taille, 4")
+	_check(n.peloton == 4, "un seul bot de peloton : la plus petite taille, 4")
 
 
-## Lot O21 : QWKcode saisi au clavier, envoyé au core par create_workout_qwk.
+## Lot NI4 : la saisie du QWKcode au clavier (lot O21) est retirée ; « Créer un entraînement » reste, et l'aide
+## explique le fichier .qwk, toujours lu par le core.
 func _test_qwk_entry() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.on_state({"session_state": "IDLE", "route_id": "vosges"})
 	f.set_workouts([{"id": "seuil", "name": "Seuil", "duration_s": 3600}])
-	_check(not f.qwk_key("a", false, false)["used"], "hors de l'écran de saisie : la touche reste un bouton")
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	f.menu.focus_item("_qwk")
-	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_qwk"
-		and f.state()["title"] == "Saisir du QWKcode", "écran Saisir du QWKcode")
-	_check(_ids(f) == ["line:0", "save", "clear"] and not f.state()["items"][1]["enabled"],
-		"texte vide : une ligne, Enregistrer désactivé (%s)" % str(_ids(f)))
-	_check(f.state()["card"].get("name", "") == "Saisie QWKcode (GoldenCheetah)", "carte : syntaxe du QWKcode")
-	for ch in "# Seuil":
-		f.qwk_key(ch, false, false)
-	f.qwk_key("", true, false)
-	for ch in "4x 5m@280 r3m@1400":
-		_check(f.qwk_key(ch, false, false)["used"], "« %s » écrit" % ch)
-	f.qwk_key("", false, true)   # Retour arrière : 1400 → 140
-	var items: Array = f.state()["items"]
-	_check(items[0]["label"] == "# Seuil" and items[1]["label"] == "4x 5m@280 r3m@140▌" and _focus_id(f) == "line:1",
-		"deux lignes, curseur en fin de la dernière (%s)" % str(items.map(func(it): return it["label"])))
-	_check(items[2]["enabled"] and items[2]["detail"] == "1 segment", "Enregistrer : 1 segment")
-	f.qwk_key("", true, false)
-	f.qwk_key("", true, false)   # pas deux lignes vides
-	_check(_ids(f) == ["line:0", "line:1", "line:2", "save", "clear"], "une seule ligne vide en fin")
-	f.qwk_key("", false, true)
-	_check(_ids(f).size() == 4 and f.state()["items"][1]["label"].ends_with("▌"), "Retour arrière remonte d'une ligne")
-	f.menu.focus_item("save")
-	var act: Dictionary = f.qwk_key("", true, false)
-	_check(act.get("action", {}) == {"action": "create_workout_qwk", "text": "# Seuil\n4x 5m@280 r3m@140"},
-		"Entrée sur Enregistrer : create_workout_qwk (%s)" % str(act))
-	f.on_error("workout_invalid", "ligne 2 : cible trop haute")
-	_check(f.state()["screen"] == "workout_qwk" and f.state()["status"] == "Échec : ligne 2 : cible trop haute",
-		"erreur du core sur l'écran de saisie, texte gardé")
-	f.handle("Y_SHORT")
-	f.menu.focus_item("_qwk")
-	f.handle("A_LONG")
-	_check(f.state()["items"][0]["label"] == "# Seuil", "texte gardé en revenant sur l'écran")
-	f.menu.focus_item("save")
-	_check(f.handle("A_LONG") == {"action": "create_workout_qwk", "text": "# Seuil\n4x 5m@280 r3m@140"},
-		"A maintenu sur Enregistrer : même commande")
-	f.on_workout_saved({"type": "workout_saved", "request_cmd_id": 21, "workout_id": "seuil_2", "name": "Seuil",
-		"created": true})
-	_check(f.state()["screen"] == "workouts" and f.state()["status"] == "Créé : Seuil", "retour à la liste")
-	f.menu.focus_item("_qwk")
-	f.handle("A_LONG")
-	_check(_ids(f) == ["line:0", "save", "clear"], "texte vidé après l'enregistrement")
-	f.qwk_key("x", false, false)
-	f.menu.focus_item("clear")
-	f.handle("A_LONG")
-	_check(f.state()["items"][0]["label"] == "▌", "Tout effacer")
+	_check(not "_qwk" in _ids(f) and "_create" in _ids(f), "liste ERG : plus de « Saisir du QWKcode », Créer reste")
+	_check(not f.has_method("qwk_key"), "plus de saisie au clavier du QWKcode")
+	_check(not f.state()["items"].any(func(it): return "QWKcode" in str(it.get("label", ""))),
+		"aucune ligne QWKcode dans la liste")
 
 
 ## « Qui roule ? » ouvert sur le seul nombre de profils de `hello_ack`, la liste `profiles` arrivant après :
@@ -1034,6 +1025,7 @@ func _test_who_rides_focus_before_list() -> void:
 func _init() -> void:
 	_test_who_rides_focus_before_list()
 	_test_summary_replay_and_main_menu()
+	_test_summary_same_for_all_modes()
 	_test_qwk_entry()
 	_test_bots_menu()
 	_test_plans()
@@ -1043,6 +1035,7 @@ func _init() -> void:
 	_test_settings_screen()
 	_test_connect_screen()
 	_test_pairing_screen()
+	_test_sim_session_in_devices()
 	_test_relaunch_setting()
 	_test_full_session()
 	_test_abandon_and_summary_quit()

@@ -7,9 +7,9 @@ extends Node3D
 ## - bidons posés, musettes lancées, musettes guidées (anneau de visée `hot`) et nuages d'orage : une réserve
 ##   de POOL instances par sorte, créée une fois à la construction, aucune création en course ;
 ## - effets sur les coureurs (le cycliste et les bots), une réserve par coureur : étoiles qui tournent au-dessus
-##   d'un coureur qui glisse, nuage et averse, halo de la super-forme, voiture d'équipe devant le coureur
-##   remorqué, rafales du vent contraire, traits du coup de fouet. `low` : sprites seulement, sans particules ;
-##   `medium` : averse limitée ; `high` : averse et étincelles complètes (gp_scene_model.gd PARTICLES) ;
+##   d'un coureur qui glisse, nuage et averse, halo de la super-forme, rafales du vent contraire, traits du coup
+##   de fouet (la voiture d'équipe est un véhicule de traffic_renderer.gd, sorte `team_car`). `low` : sprites
+##   seulement, sans particules ; `medium` : averse limitée ; `high` : averse et étincelles complètes (gp_scene_model.gd PARTICLES) ;
 ## - onomatopées au-dessus du coureur touché (« ZIOUF ! », « SPLASH ! », « BOING ! »), quatre au plus.
 ## Ne décide rien : main.gd appelle step() une fois par image avec la trame, la route, la place du cycliste et
 ## celle des bots (bots_view.anchor_of). Rien n'est montré hors du mode. Ombres coupées partout.
@@ -21,10 +21,12 @@ const Items := preload("res://scripts/grandprix/gp_items.gd")
 const MAX_RIDERS := 12
 const BOX_M := 0.6
 const BOX_HEIGHT_M := 0.9
+const SIGN_PX := [0.009, 0.003]       # symbole lisible de loin ; mot de 0,7 m au plus (voies de 0,77 m)
+const SIGN_UP_M := [0.95, 0.42]        # au-dessus de la boîte : symbole, puis mot
+const SIGN_STAGGER_M := 0.22           # mot de la voie du centre plus haut : les trois mots ne se touchent pas
 const BOX_SPIN := 1.2                 # rad/s
 const OBJ_HEIGHT_M := {"bottle": 0.12, "musette": 0.6, "homing": 0.8, "storm": 4.5}
 const RIDER_TOP_M := 1.9              # au-dessus du casque
-const CAR_AHEAD_M := 5.0
 const WORD_RISE_M := 0.8
 const WARM_FRAMES := 3
 const WARM_DIST_M := 2.0
@@ -37,6 +39,7 @@ var _boxes: MultiMeshInstance3D
 var _pools := {}                      # sorte -> [Node3D]
 var _rigs: Array = []                 # [{root, looks: {look: Node3D}, rain: CPUParticles3D, sparks: CPUParticles3D}]
 var _labels: Array = []               # Label3D des onomatopées
+var _box_signs: Array = []            # [symbole, mot] (Label3D) des boîtes : « + BONUS », « ? SURPRISE », « ! ATTAQUE »
 var _mats := {}
 var _active := false
 var _warm_left := -1                  # -1 : jamais préchauffé
@@ -69,6 +72,10 @@ func reset() -> void:
 ## Message `gp_hit` du core ; vrai s'il est nouveau (onomatopée posée).
 func on_hit(msg: Dictionary, now_s: float) -> bool:
 	return _model.on_hit(msg, now_s)
+
+
+func on_event(msg: Dictionary, now_s: float) -> bool:
+	return _model.on_event(msg, now_s)
 
 
 ## Une fois par image. `gp` : objet `gp` de la trame (null hors du mode) ; `riders` : [{id, pos (Vector3 au
@@ -108,6 +115,7 @@ func _build() -> void:
 	_mats["cloud"] = _flat(Color(0.55, 0.55, 0.62))
 	_mats["canvas"] = _flat(Color(0.86, 0.76, 0.56))
 	_mats["crate"] = _textured(_crate_image())
+	(_mats["crate"] as StandardMaterial3D).vertex_color_use_as_albedo = true   # teinte de la voie (MultiMesh)
 	_mats["star"] = _sprite(_star_image())
 	_mats["halo"] = _sprite(_ring_image())
 	_mats["rain"] = _sprite(_rain_image())
@@ -119,6 +127,7 @@ func _build() -> void:
 	_boxes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true   # couleur de la famille de la voie (lot GPO1)
 	var box := BoxMesh.new()
 	box.size = Vector3.ONE * BOX_M
 	box.material = _mats["crate"]
@@ -154,6 +163,21 @@ func _build() -> void:
 		l.visible = false
 		add_child(l)
 		_labels.append(l)
+	for i in range(Model.MAX_ROWS * Model.LANE_CENTRES_M.size()):
+		var pair: Array = []
+		for k in range(2):   # symbole (gros), puis mot
+			var sign := Label3D.new()
+			sign.name = "GpBoxSign%d_%d" % [i, k]
+			sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sign.font_size = 64
+			sign.pixel_size = SIGN_PX[k]
+			sign.outline_size = 16
+			sign.outline_modulate = Items.INK
+			sign.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			sign.visible = false
+			add_child(sign)
+			pair.append(sign)
+		_box_signs.append(pair)
 	set_quality(quality)
 
 
@@ -245,17 +269,6 @@ func _make_rig(i: int) -> Dictionary:
 	halo.add_child(sparks)
 	root.add_child(halo)
 	looks["halo"] = halo
-	# Voiture d'équipe devant le coureur remorqué : caisse blanche, vitres encre, deux vélos sur le toit
-	var car := Node3D.new()
-	_mesh(car, _box(Vector3(1.8, 0.7, 4.2)), "paper", Vector3(0.0, 0.55, 0.0))
-	_mesh(car, _box(Vector3(1.6, 0.5, 2.2)), "ink", Vector3(0.0, 1.15, 0.3))
-	for x in [-0.4, 0.4]:
-		_mesh(car, _box(Vector3(0.04, 0.55, 1.6)), "fresh", Vector3(x, 1.7, 0.3))
-	for w in [Vector3(-0.85, 0.3, -1.4), Vector3(0.85, 0.3, -1.4), Vector3(-0.85, 0.3, 1.4), Vector3(0.85, 0.3, 1.4)]:
-		var wheel := _mesh(car, _cylinder(0.3, 0.2), "ink", w)
-		wheel.rotation = Vector3(0.0, 0.0, PI / 2.0)
-	root.add_child(car)
-	looks["car"] = car
 	# Rafales du vent contraire : trois traits `draft` devant le coureur
 	var gust := Node3D.new()
 	for k in range(3):
@@ -284,6 +297,20 @@ func _step_boxes(gp: Dictionary, now_s: float) -> void:
 		var bob := 0.08 * sin(now_s * 2.0 + float(i))
 		var spin := Basis(Vector3.UP, now_s * BOX_SPIN + float(i)) * Basis(Vector3.RIGHT, 0.35)
 		mm.set_instance_transform(i, Transform3D(spin, t.origin + Vector3(0.0, BOX_HEIGHT_M + bob, 0.0)))
+		var lane := int(b.get("lane", 1))
+		mm.set_instance_color(i, Model.box_color(lane))
+		if i < _box_signs.size():
+			var words: Array = Model.box_sign(lane)
+			for k in range(2):
+				var sign: Label3D = _box_signs[i][k]
+				sign.text = str(words[k])
+				sign.modulate = Model.box_color(lane)
+				var up: float = SIGN_UP_M[k] + (SIGN_STAGGER_M if k == 1 and lane == 1 else 0.0)
+				sign.global_position = t.origin + Vector3(0.0, BOX_HEIGHT_M + BOX_M + up, 0.0)
+				sign.visible = true
+	for i in range(list.size(), _box_signs.size()):
+		for sign in _box_signs[i]:
+			(sign as Label3D).visible = false
 	mm.visible_instance_count = list.size()
 	_shown["boxes"] = list.size()
 
@@ -330,8 +357,6 @@ func _step_riders(riders: Array, now_s: float) -> void:
 		if root.visible:
 			var slip: Node3D = rig["looks"]["slip"]
 			slip.rotation.y = fmod(now_s * 4.0, TAU)
-			var car: Node3D = rig["looks"]["car"]
-			car.position = Vector3(0.0, 0.0, -CAR_AHEAD_M)
 		var rain: CPUParticles3D = rig["rain"]
 		var rain_on: bool = root.visible and "rain" in wanted and Model.particles(quality, "rain") > 0
 		if rain.emitting != rain_on:
@@ -342,7 +367,7 @@ func _step_riders(riders: Array, now_s: float) -> void:
 		if sparks.emitting != sparks_on:
 			sparks.emitting = sparks_on
 	_shown["looks"] = looks_shown
-	# Onomatopées au-dessus des coureurs touchés
+	# Onomatopées au-dessus des coureurs touchés, mots des boîtes et des objets utilisés (tous les coureurs)
 	var pos_of := {}
 	for r in riders:
 		if r is Dictionary and r.get("pos") is Vector3:
@@ -357,7 +382,8 @@ func _step_riders(riders: Array, now_s: float) -> void:
 			continue
 		l.text = str(w["text"])
 		l.global_position = pos_of[w["target"]] + Vector3(0.0, RIDER_TOP_M + 0.6 + WORD_RISE_M * float(w["age"]), 0.0)
-		l.modulate.a = 1.0 - 0.6 * float(w["age"])
+		var c: Color = w.get("color", Items.WARM)
+		l.modulate = Color(c.r, c.g, c.b, 1.0 - 0.6 * float(w["age"]))
 		l.visible = true
 		shown += 1
 	_shown["words"] = shown

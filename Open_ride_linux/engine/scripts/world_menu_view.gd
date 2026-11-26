@@ -169,7 +169,10 @@ func _build_globe() -> void:
 
 ## Image lue à l'exécution (le projet est lancé sans passage par l'éditeur : pas de fichiers .import).
 static func _load_texture(path: String) -> Texture2D:
-	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+	# Octets lus par FileAccess : marche dans le projet et dans le .pck exporté (importeur « keep »).
+	var img := Image.new()
+	if img.load_jpg_from_buffer(FileAccess.get_file_as_bytes(path)) != OK:
+		img = null
 	return ImageTexture.create_from_image(img) if img != null else null
 
 
@@ -285,6 +288,9 @@ func _body_text() -> String:
 				lines.append("  aucun résultat")
 			return "\n".join(lines)
 		Model.MAP:
+			if vm.map_ready and vm.roads.is_empty():
+				# Carte vide (25 novembre) : le dire en mots plutôt qu'un fond muet.
+				return "Choisis le point de départ\nAucune route sur la carte ici : tuiles pas encore téléchargées (réseau coupé ?). Le départ prendra la route la plus proche."
 			return "Choisis le point de départ sur une route" + ("" if vm.map_ready else "\nChargement de la carte…")
 		Model.SETUP:
 			var rows := ["Cap : %d°" % int(vm.heading_deg), "Navigation : " + Model.NAV_LABELS[vm.nav], _extra_text(), biome_text()]

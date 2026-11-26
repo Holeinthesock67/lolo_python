@@ -92,6 +92,42 @@ def test_sink_grid_lowers_inside_only_never_raises_and_keeps_road() -> None:
     assert y[0, 0] == 50.0
 
 
+def test_lake_bed_blends_up_to_a_road_on_the_shore() -> None:
+    """20/11 (fil des bornes, monde ouvert généré) : route à 288 m qui longe un lac au niveau 282,3. Le fond creusé à
+    281,3 jusqu'à 4 m du bord de la chaussée laissait la route en surplomb d'une chute de 7 m, sans talus. Le fond
+    passe maintenant par le fondu route / MNT : chaussée gardée, rive en pente douce, fond au-delà du fondu."""
+    gx, gz = np.meshgrid(np.arange(0.0, 60.0, 1.0), np.arange(0.0, 3.0, 1.0))
+    y = np.full(gx.shape, 287.95)                  # relief déjà fondu à la route sur toute la bande
+    areas = WT.inland_areas([{"kind": "lake", "level_y": 282.3, "outer": rect(2.5, -10, 200, 20), "holes": []}])
+    d_edge = gx - C.ROAD_HALF_WIDTH_M              # route le long de x = 0
+    WT.sink_grid(gx, gz, y, areas, road=(d_edge, np.full(gx.shape, 288.0)))
+    row = y[1]
+    assert np.all(row[d_edge[1] <= C.BLEND_INNER_M] == pytest.approx(288.0 - C.ROAD_SINK_M))   # chaussée gardée
+    assert np.all(np.diff(row) <= 1e-9)                                                        # rive qui descend
+    assert np.all(row[d_edge[1] >= C.BLEND_OUTER_M] == pytest.approx(282.3 - C.WATER_SINK_M))  # fond du lac
+    assert np.max(-np.diff(row)) < 0.6                                                         # pas de chute à pic
+
+
+def test_route_tiles_lake_bed_rises_to_the_road() -> None:
+    """Même règle pour un parcours compilé : à 10 m de l'axe, le sol reste près de la route (281,3 avant)."""
+    tiles = {"near": {}, "far": {}}
+    gx, gz = tile_coords(0, 0, NEAR)
+    tiles["near"][(0, 0)] = np.full(gx.shape, 287.95, dtype="<f4")
+    z_road = float(gz[50, 0])
+    xs = np.arange(-100.0, 2001.0, 10.0).tolist()   # sommets à 10 m au plus, comme une route compilée
+    route = {"x": xs, "z": [z_road] * len(xs), "alt_m": [288.0] * len(xs)}
+    WT.sink_route_tiles(tiles, route, [{"kind": "lake", "level_y": 282.3,
+                                       "outer": rect(-50, z_road + 4, 1500, z_road + 400), "holes": []}])
+    g = tiles["near"][(0, 0)]
+    col = g[:, 40]
+    step = abs(float(gz[1, 0] - gz[0, 0]))
+    j = 50 + int(np.sign(gz[51, 0] - gz[50, 0]))       # sommet suivant, côté lac
+    assert step <= 10.0 and col[j] > 288.0 - 1.0
+    assert col[50] == pytest.approx(287.95, abs=1e-4)
+    far = 50 + int(np.sign(gz[51, 0] - gz[50, 0])) * int(np.ceil((C.ROAD_HALF_WIDTH_M + C.BLEND_OUTER_M) / step + 1))
+    assert col[far] == pytest.approx(282.3 - C.WATER_SINK_M, abs=1e-4)
+
+
 def test_route_tiles_sunk_identically_on_shared_border() -> None:
     tiles = {"near": {}, "far": {}}
     for key in ((0, 0), (1, 0)):

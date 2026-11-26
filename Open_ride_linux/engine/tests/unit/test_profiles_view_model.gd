@@ -183,6 +183,113 @@ func _test_trash_and_trial(f) -> void:
 	f.menu.focus_item("restore")
 	f.on_error("profile_invalid", "le nom « Cycliste B » est déjà pris")
 	_check(f.state()["status"].contains("déjà pris"), "refus du core sur la ligne d'état")
+	_test_reset_stats(f)
+
+
+## Lot RZ1 : « Remettre à zéro mes statistiques » et « Annuler la remise à zéro » dans « Gérer : <profil en cours> ».
+func _test_reset_stats(f) -> void:
+	f.on_profiles(PROFILES)
+	f.menu.reset()
+	f.menu.push_screen(ProfilesViewModel.MANAGE_LIST)
+	f.menu.focus_item("p:cycliste-b")
+	f.handle("A_LONG")
+	var row: Dictionary = f.state()["items"][_ids(f.state()["items"]).find("reset_stats")]
+	_check(not row["enabled"] and row["detail"] == "choisir ce profil d'abord", "autre profil : remise à zéro grisée, mot écrit")
+	f.handle("Y_SHORT")
+	f.menu.focus_item("p:" + str(PROFILES["active"]))
+	f.handle("A_LONG")
+	_check(not _ids(f.state()["items"]).has("undo_reset"), "sans remise faite : pas d'annulation")
+	row = f.state()["items"][_ids(f.state()["items"]).find("reset_stats")]
+	_check(row["enabled"] and row["label"] == "Remettre à zéro mes statistiques" and row["detail"].contains("sauvegarde"),
+		"profil en cours : remise à zéro, sauvegarde annoncée")
+	f.menu.focus_item("reset_stats")
+	f.handle("A_LONG")
+	var st: Dictionary = f.state()
+	_check(f.menu.current_screen() == MenuModel.CONFIRM and st["focus"] == 0, "remise à zéro : confirmation, « Non » d'abord")
+	_check(st["title"].begins_with("Remettre à zéro les statistiques de « ") and st["title"].contains("Sauvegarde faite avant")
+		and st["title"].contains("FTP, réglages et cote Elo gardés"), "question écrite : %s" % st["title"])
+	_check(st["items"][0]["label"] == "Non, garder mes statistiques" and st["items"][1]["label"] == "Oui, remettre à zéro",
+		"boutons qui disent ce qu'ils font")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "reset_profile_stats"}, "« Oui » : reset_profile_stats")
+	_check(f.state()["status"] == "Sauvegarde puis remise à zéro…", "attente écrite")
+	f.on_profiles(PROFILES.merged({"resets": [{"id": "cycliste-a_20261128-093000", "date": "2026-11-28", "time": "09:30"}]}, true))
+	_check(f.state()["status"] == "Statistiques remises à zéro (sauvegarde faite)", "réponse du core : remise faite")
+	var ids := _ids(f.state()["items"])
+	_check(ids.has("undo_reset") and f.state()["items"][ids.find("undo_reset")]["detail"] == "remise du 28/11 à 09:30",
+		"annulation proposée avec la date")
+	f.menu.focus_item("undo_reset")
+	f.handle("A_LONG")
+	_check(f.state()["title"].begins_with("Annuler la remise à zéro du 28/11 à 09:30 ?"), "annulation : question datée")
+	_check(f.state()["items"][1]["label"] == "Oui, annuler la remise", "annulation : bouton écrit")
+	_check(f.handle("A_LONG") == {}, "« Non » par défaut : rien n'est envoyé")
+	f.menu.focus_item("undo_reset")
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "undo_profile_reset", "id": "cycliste-a_20261128-093000"}, "« Oui » : undo_profile_reset")
+	f.menu.confirm("Quitter OpenRide ?", {"action": "quit"})
+	_check(f.state()["items"][0]["label"] == "Non" and f.state()["items"][1]["label"] == "Oui", "autres confirmations : Non / Oui")
+	f.handle("Y_SHORT")
+	_test_backups(f)
+
+
+## Lot SV1 : « Restaurer une sauvegarde » dans « Gérer : <profil en cours> ».
+func _test_backups(f) -> void:
+	f.on_hello_profile(HELLO_A)
+	f.on_profiles(PROFILES)
+	f.menu.reset()
+	f.menu.push_screen(ProfilesViewModel.MANAGE_LIST)
+	f.menu.focus_item("p:cycliste-b")
+	f.handle("A_LONG")
+	var row: Dictionary = f.state()["items"][_ids(f.state()["items"]).find("backups")]
+	_check(not row["enabled"] and row["detail"] == "choisir ce profil d'abord", "autre profil : restauration grisée, mot écrit")
+	f.handle("Y_SHORT")
+	f.menu.focus_item("p:cycliste-a")
+	f.handle("A_LONG")
+	_check(_ids(f.state()["items"])[-1] == "backups", "« Restaurer une sauvegarde » en fin de « Gérer »")
+	row = f.state()["items"][-1]
+	_check(row["enabled"] and row["label"] == "Restaurer une sauvegarde" and row["detail"].contains("chaque semaine"),
+		"profil en cours : libellé et détail écrits")
+	f.menu.focus_item("backups")
+	_check(f.handle("A_LONG") == {"action": "list_profile_backups"}, "A maintenu : liste demandée au core")
+	_check(f.menu.current_screen() == ProfilesViewModel.BACKUPS and f.state()["items"][0]["label"] == "Recherche des copies…",
+		"attente de la liste écrite")
+	f.on_profile_backups({"type": "profile_backups", "v": 1, "request_cmd_id": 9, "profile": "cycliste-a", "items": []})
+	_check(f.state()["items"][0]["label"] == "Aucune copie pour l'instant" and not f.state()["items"][0]["enabled"],
+		"aucune copie : dit en mots")
+	var copies := [
+		{"id": "20261122-130500_semaine", "reason": "semaine", "date": "2026-11-22", "time": "13:05", "sessions": 42},
+		{"id": "20261121-080000_mise-a-jour", "reason": "mise-a-jour", "date": "2026-11-21", "time": "08:00", "sessions": 1}]
+	f.on_profile_backups({"type": "profile_backups", "v": 1, "request_cmd_id": 9, "profile": "cycliste-a", "items": copies})
+	var items: Array = f.state()["items"]
+	_check(items[0]["label"] == "Copie de la semaine, dim. 22/11 à 13:05" and items[0]["detail"] == "42 séances",
+		"copie de la semaine en mots : %s" % items[0]["label"])
+	_check(items[1]["label"] == "Avant la mise à jour, sam. 21/11 à 08:00" and items[1]["detail"] == "1 séance",
+		"copie avant la mise à jour : %s" % items[1]["label"])
+	f.menu.focus_item("b:20261122-130500_semaine")
+	f.handle("A_LONG")
+	var st: Dictionary = f.state()
+	_check(f.menu.current_screen() == MenuModel.CONFIRM and st["focus"] == 0, "restauration : confirmation, « Non » d'abord")
+	_check(st["title"].begins_with("Restaurer la copie du dim. 22/11 à 13:05 ?") and st["title"].contains("sauvegardé avant"),
+		"question écrite : %s" % st["title"])
+	_check(st["items"][0]["label"] == "Non, garder mon profil" and st["items"][1]["label"] == "Oui, restaurer",
+		"boutons qui disent ce qu'ils font")
+	_check(f.handle("A_LONG") == {}, "« Non » par défaut : rien n'est envoyé")
+	_check(f.menu.current_screen() == ProfilesViewModel.BACKUPS, "« Non » : retour à la liste")
+	f.menu.focus_item("b:20261122-130500_semaine")
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "restore_profile_backup", "id": "20261122-130500_semaine"},
+		"« Oui » : restore_profile_backup")
+	_check(f.state()["status"] == "Copie du profil actuel puis restauration…", "attente écrite")
+	f.on_hello_profile(HELLO_A)   # profil rechargé par le core : même profil
+	f.on_profiles(PROFILES)
+	f.on_profile_backups({"type": "profile_backups", "v": 1, "request_cmd_id": 10, "profile": "cycliste-a",
+		"items": copies})
+	_check(f.menu.current_screen() == ProfilesViewModel.MANAGE and f.state()["status"] == "Sauvegarde restaurée (profil d'avant copié)",
+		"restauré : retour à « Gérer », message (%s, %s)" % [f.menu.current_screen(), f.state()["status"]])
+	_check(ProfilesViewModel.backup_when({"date": "2026-11-28", "time": "09:30"}) == "sam. 28/11 à 09:30", "jour de la semaine")
+	f.handle("Y_SHORT")
 
 
 func _init() -> void:

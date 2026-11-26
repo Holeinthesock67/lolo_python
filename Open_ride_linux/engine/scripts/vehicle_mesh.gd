@@ -2,7 +2,9 @@ extends RefCounted
 
 ## Maillages des véhicules du décor (Lot P25), construits par code avec le Builder de people_mesh.gd (Y14),
 ## sans texture : berline `car_a`, citadine haute `car_b`, utilitaire `van`, camion porteur `truck`, autocar
-## `bus`, moto et son pilote `moto`, tracteur `tractor` et tracteur qui herse un champ `tractor_field`.
+## `bus`, moto et son pilote `moto`, tracteur `tractor` et tracteur qui herse un champ `tractor_field` ; voiture
+## d'équipe du Grand Prix des objets `team_car` (lot GP-voiture-modele : break aux couleurs de l'équipe, galerie
+## et trois vélos sur le toit, antenne radio), jamais tirée dans la circulation (part nulle de traffic_model.gd).
 ## Pas de class_name : charger par preload("res://scripts/vehicle_mesh.gd").
 ##
 ## Repère : sol à y = 0, avant vers -z (traffic_model.gd `world_transform`), axe au milieu en x. Les caisses
@@ -34,7 +36,7 @@ const WHEEL_SIDES := 12
 const ARCH_STEPS := 7
 const GLASS_OUT_M := 0.008        # vitres de côté posées juste devant la tôle
 
-const KINDS := ["car_a", "car_b", "van", "truck", "bus", "moto", "tractor", "tractor_field"]
+const KINDS := ["car_a", "car_b", "van", "truck", "bus", "moto", "tractor", "tractor_field", "team_car"]
 
 ## Roues : [x, y, z, rayon, largeur] ; x > 0 : une roue de chaque côté, x = 0 : une roue au milieu (moto).
 const WHEELS := {
@@ -46,6 +48,7 @@ const WHEELS := {
 	"moto": [[0.0, 0.31, -0.72, 0.31, 0.13], [0.0, 0.31, 0.68, 0.31, 0.15]],
 	"tractor": [[0.72, 0.45, -1.35, 0.45, 0.28], [0.82, 0.8, 0.75, 0.8, 0.45]],
 	"tractor_field": [[0.72, 0.45, -1.35, 0.45, 0.28], [0.82, 0.8, 0.75, 0.8, 0.45]],
+	"team_car": [[0.79, 0.33, -1.42, 0.33, 0.22], [0.79, 0.33, 1.45, 0.33, 0.22]],
 }
 ## Roue à crampons (pneus arrière du tracteur), à partir de ce rayon
 const LUG_RADIUS_M := 0.6
@@ -53,11 +56,14 @@ const LUG_RADIUS_M := 0.6
 const CAR_PAINT := [Color(0.62, 0.08, 0.08), Color(0.12, 0.2, 0.45), Color(0.86, 0.86, 0.83), Color(0.08, 0.08, 0.09),
 	Color(0.55, 0.57, 0.6), Color(0.32, 0.33, 0.35), Color(0.12, 0.28, 0.18), Color(0.35, 0.5, 0.7)]
 const TRACTOR_PAINT := [Color(0.2, 0.45, 0.15), Color(0.7, 0.1, 0.07), Color(0.12, 0.25, 0.6), Color(0.85, 0.42, 0.08)]
+## Voiture d'équipe : caisse blanche, bande et vélos de la seconde couleur (bleu `fresh` de la charte du Grand Prix)
+const TEAM_PAINT := [Color(0.95, 0.94, 0.9)]
 const BUS_PAINT := [Color(0.9, 0.9, 0.88), Color(0.9, 0.84, 0.6), Color(0.15, 0.3, 0.65), Color(0.2, 0.5, 0.3)]
 const SECOND := {
 	"car_a": Color(0.5, 0.5, 0.5), "car_b": Color(0.5, 0.5, 0.5), "van": Color(0.5, 0.5, 0.5),
 	"truck": Color(0.86, 0.86, 0.84), "bus": Color(0.12, 0.2, 0.45), "moto": Color(0.1, 0.1, 0.11),
 	"tractor": Color(0.85, 0.7, 0.12), "tractor_field": Color(0.85, 0.7, 0.12),
+	"team_car": Color(0.18, 0.545, 1.0),
 }
 
 
@@ -67,6 +73,8 @@ static func paint(kind: String, index: int) -> Color:
 		pal = TRACTOR_PAINT
 	elif kind == "bus":
 		pal = BUS_PAINT
+	elif kind == "team_car":
+		pal = TEAM_PAINT
 	return pal[posmod(index, pal.size())]
 
 
@@ -129,6 +137,8 @@ static func _body(m, kind: String) -> void:
 		"tractor_field":
 			_tractor(m)
 			_harrow(m)
+		"team_car":
+			_team_car(m)
 
 
 # --- Pièces ---------------------------------------------------------------------------------------------
@@ -492,3 +502,76 @@ static func _harrow(m) -> void:
 		_box(m, VEH_SECOND, Vector3(0.0, 0.5, z), Vector3(3.0, 0.12, 0.18))
 		for i in range(9):
 			_box(m, VEH_METAL, Vector3(-1.4 + 0.35 * i, 0.22, z), Vector3(0.04, 0.44, 0.04))
+
+
+## Voiture d'équipe (lot GP-voiture-modele) : break de 4,7 m (rétroviseurs compris dans la demi-largeur de
+## traffic_model.gd), long toit plat et hayon presque droit, bande de la seconde couleur sur les flancs et le
+## hayon, galerie à deux barres et rails, trois vélos debout sur le toit (cadres de la seconde couleur, sens
+## alternés), antenne radio, phares, calandre, feux arrière verticaux, plaques et rétroviseurs.
+static func _team_car(m) -> void:
+	_hull(m, {
+		"top": [[-2.32, 0.3, VEH_PAINT], [-2.36, 0.64, VEH_PAINT], [-2.22, 0.8, VEH_PAINT], [-1.05, 0.92, VEH_GLASS],
+			[-0.32, 1.44, VEH_PAINT], [1.98, 1.46, VEH_GLASS], [2.3, 1.0, VEH_PAINT], [2.36, 0.92, VEH_PAINT],
+			[2.36, 0.3]],
+		"floor": 0.3, "arches": [[-1.42, 0.38, 0.33], [1.45, 0.38, 0.33]],
+		"hw": 0.9, "belt": 0.97, "roof_k": 0.8,
+		"glass": [[[-0.86, 1.0], [-0.42, 1.37], [0.18, 1.38], [0.18, 1.0]],
+			[[0.28, 1.0], [0.28, 1.38], [1.14, 1.39], [1.14, 1.0]],
+			[[1.24, 1.0], [1.24, 1.39], [1.92, 1.39], [2.18, 1.0]]],
+		# Bande de l'équipe sous les vitres, de l'aile avant au hayon, et flèche sur les portières
+		"panels": [[VEH_SECOND, [[-2.2, 0.73], [-2.2, 0.79], [-1.2, 0.9], [2.3, 0.9], [2.3, 0.73]]],
+			[VEH_SECOND, [[-0.75, 0.42], [-0.2, 0.72], [0.9, 0.72], [0.35, 0.42]]]],
+	})
+	_pair(m, VEH_HEAD, Vector3(0.6, 0.62, -2.345), Vector3(0.42, 0.12, 0.06))
+	_box(m, VEH_DARK, Vector3(0.0, 0.52, -2.35), Vector3(0.76, 0.14, 0.05))       # calandre
+	_box(m, VEH_DARK, Vector3(0.0, 0.36, -2.34), Vector3(1.84, 0.14, 0.1))        # pare-chocs avant
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.37, -2.395), Vector3(0.5, 0.1, 0.02))       # plaque avant
+	_pair(m, VEH_TAIL, Vector3(0.74, 1.02, 2.335), Vector3(0.14, 0.4, 0.06))      # feux arrière verticaux
+	_box(m, VEH_DARK, Vector3(0.0, 0.38, 2.34), Vector3(1.84, 0.14, 0.1))         # pare-chocs arrière
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.66, 2.37), Vector3(0.5, 0.1, 0.02))         # plaque arrière
+	_box(m, VEH_SECOND, Vector3(0.0, 0.84, 2.37), Vector3(1.2, 0.1, 0.012))       # bande du hayon
+	_pair(m, VEH_PAINT, Vector3(0.97, 1.02, -0.78), Vector3(0.13, 0.1, 0.17))     # rétroviseurs
+	_pair(m, VEH_DARK, Vector3(0.905, 0.6, 0.2), Vector3(0.012, 0.03, 2.6))       # baguette de porte
+	_pair(m, VEH_DARK, Vector3(0.905, 0.8, 0.23), Vector3(0.012, 0.42, 0.02))     # jointure des portes
+	# Galerie : rails le long du toit, deux barres en travers, rails à vélo
+	_pair(m, VEH_DARK, Vector3(0.62, 1.49, 0.8), Vector3(0.05, 0.05, 2.3))
+	for z in [-0.05, 1.65]:
+		_box(m, VEH_DARK, Vector3(0.0, 1.53, z), Vector3(1.52, 0.04, 0.07))
+	for x in [-0.46, 0.0, 0.46]:
+		_box(m, VEH_METAL, Vector3(x, 1.565, 0.8), Vector3(0.07, 0.03, 1.95))
+	# Trois vélos debout, sens alternés
+	var flip := 1.0
+	for x in [-0.46, 0.0, 0.46]:
+		_roof_bike(m, Vector3(x, 1.58, 0.8), flip)
+		flip = -flip
+	_rod(m, VEH_DARK, Vector3(-0.35, 1.43, -0.15), Vector3(-0.38, 2.05, 0.05), 0.008, 4)   # antenne radio
+
+
+## Vélo de course debout sur la galerie : roues posées en `base` (milieu de l'empattement, au sol du rail),
+## avant vers -z (`dir` = -1 : retourné). Cadre de la seconde couleur, pneus, selle et cintre noirs ; pièces
+## fines à 3 ou 4 côtés (au plus MAX_TRIANGLES pour la voiture et ses trois vélos, test_vehicle_mesh.gd).
+static func _roof_bike(m, base: Vector3, dir: float) -> void:
+	const R := 0.34
+	const RING := 8
+	var p := func(z: float, y: float) -> Vector3:
+		return base + Vector3(0.0, y, z * dir)
+	var front: Vector3 = p.call(-0.5, R)
+	var rear: Vector3 = p.call(0.5, R)
+	for c in [front, rear]:   # pneus : anneaux de RING tronçons
+		for i in range(RING):
+			var a0 := TAU * float(i) / RING
+			var a1 := TAU * float(i + 1) / RING
+			_rod(m, VEH_DARK, c + Vector3(0.0, sin(a0), cos(a0)) * R, c + Vector3(0.0, sin(a1), cos(a1)) * R, 0.02, 3)
+	var bb: Vector3 = p.call(0.06, 0.28)
+	var seat: Vector3 = p.call(0.24, 0.8)
+	var head_top: Vector3 = p.call(-0.36, 0.8)
+	var head_low: Vector3 = p.call(-0.4, 0.64)
+	for t in [[bb, head_low], [seat, head_top], [bb, seat], [head_low, head_top]]:   # tubes du cadre
+		_rod(m, VEH_SECOND, t[0], t[1], 0.03, 4)
+	for t in [[bb, rear], [seat, rear], [head_low, front]]:   # bases, haubans et fourche
+		_rod(m, VEH_SECOND, t[0], t[1], 0.02, 3)
+	_box(m, VEH_DARK, p.call(0.26, 0.9), Vector3(0.08, 0.04, 0.26))            # selle
+	var stem: Vector3 = p.call(-0.44, 0.86)
+	_rod(m, VEH_METAL, head_top, stem, 0.016, 3)                                # potence
+	_rod(m, VEH_DARK, stem + Vector3(-0.2, 0.0, 0.0), stem + Vector3(0.2, 0.0, 0.0), 0.016, 3)   # cintre
+	_rod(m, VEH_METAL, bb + Vector3(-0.08, 0.0, 0.0), bb + Vector3(0.08, 0.0, 0.0), 0.06, 4)   # pédalier

@@ -9,8 +9,9 @@ Exemples (sur le PC Ubuntu, Zwift et téléphone déconnectés) :
     openride-ble-diag trainer --name "HomeTrainer" --duration 30
     openride-ble-diag trainer --name "HomeTrainer" --control --sim-grade 4 --erg 150
     openride-ble-diag click --duration 60
+    openride-ble-diag spindown --duration 90       # sonde d'étalonnage FTMS (lot ET1)
 
-Chaque commande écrit un rapport JSON dans ./spike_reports/.
+Chaque commande écrit un rapport JSON dans ~/OpenRide/rapports/diag/ (droits du seul propriétaire).
 """
 
 from __future__ import annotations
@@ -31,17 +32,31 @@ from bleak import BleakClient, BleakScanner
 from bleak.backends.device import BLEDevice
 
 from .. import ftms, zwift_click
+from ..config import OPENRIDE_HOME
 
 log = logging.getLogger("ble_diag")
-REPORT_DIR = Path("spike_reports")
+# Rapports sous ~/OpenRide/rapports/diag/, droits du seul propriétaire (revue S6-12) : ils portent des
+# adresses d'appareils et des relevés bruts ; avant, `./spike_reports/` du dossier courant.
+REPORT_DIR = OPENRIDE_HOME / "rapports" / "diag"
+DIAG_GRADE_RANGE = (-10.0, 20.0)   # --sim-grade borné comme `[trainer] grade_min_pct`/`grade_max_pct`
+DIAG_POWER_RANGE = (0.0, 2000.0)   # --erg sans plage lue sur le trainer (comme le pilote)
 
 
 # --- Utilitaires ----------------------------------------------------------------------
 
+def bounded(value: float, lo: float, hi: float, option: str) -> float:
+    """Consigne de diagnostic ramenée dans sa plage, avec un avertissement (revue S6-13)."""
+    out = min(max(float(value), lo), hi)
+    if out != value:
+        log.warning("%s %g hors de la plage %g à %g : ramené à %g", option, value, lo, hi, out)
+    return out
+
+
 def save_report(kind: str, report: dict) -> Path:
-    REPORT_DIR.mkdir(exist_ok=True)
+    REPORT_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
     path = REPORT_DIR / f"{datetime.now():%Y-%m-%d_%H-%M-%S}_{kind}.json"
     path.write_text(json.dumps(report, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
+    path.chmod(0o600)
     log.info("Rapport écrit : %s", path)
     return path
 
@@ -103,7 +118,6 @@ async def cmd_scan(args: argparse.Namespace) -> None:
         row = {"name": dev.name or adv.local_name, "address": dev.address, "rssi": adv.rssi,
                "service_uuids": adv.service_uuids,
                "manufacturer_ids": list(adv.manufacturer_data.keys())}
-        rows.append(row)
         tags = []
         if ftms.FTMS_SERVICE in adv.service_uuids:
             tags.append("FTMS")
@@ -111,6 +125,9 @@ async def cmd_scan(args: argparse.Namespace) -> None:
             tags.append("HR")
         if 2378 in adv.manufacturer_data:
             tags.append("ZWIFT")
+        if not tags and not args.all:
+            continue   # appareils des voisins : ni affichés ni écrits, sauf --all (revue S6-12)
+        rows.append(row)
         log.info("%4s dBm  %-20s %-25s %s", adv.rssi, dev.address, row["name"], " ".join(tags))
     save_report("scan", {"devices": rows})
 
@@ -177,6 +194,10 @@ async def cmd_trainer(args: argparse.Namespace) -> None:
             pr = ftms.parse_power_range(bytes(await client.read_gatt_char(ftms.SUPPORTED_POWER_RANGE)))
             report["power_range"] = asdict(pr)
             log.info("Plage de puissance : %d à %d W, pas %d W", pr.min_w, pr.max_w, pr.increment_w)
+        power_lo, power_hi = DIAG_POWER_RANGE
+        if "power_range" in report and report["power_range"]["max_w"] > report["power_range"]["min_w"]:
+            power_lo = max(float(report["power_range"]["min_w"]), 0.0)
+            power_hi = float(report["power_range"]["max_w"])
 
         report["hr_service_present"] = has_char(client, ftms.HR_MEASUREMENT)
         log.info("Service cardio (0x180D) exposé : %s", report["hr_service_present"])
@@ -197,20 +218,28 @@ async def cmd_trainer(args: argparse.Namespace) -> None:
             await asyncio.sleep(phase)
             if args.control:
                 if args.sim_grade is not None:
-                    commands.append(await control(client, f"sim grade {args.sim_grade}%",
-                                                  ftms.cmd_set_sim_params(args.sim_grade)))
+                    grade = bounded(args.sim_grade, *DIAG_GRADE_RANGE, "--sim-grade")
+                    commands.append(await control(client, f"sim grade {grade}%",
+                                                  ftms.cmd_set_sim_params(grade)))
                     await asyncio.sleep(phase)
                 if args.erg is not None:
-                    commands.append(await control(client, f"erg {args.erg} W",
-                                                  ftms.cmd_set_target_power(args.erg)))
+                    watts = bounded(args.erg, power_lo, power_hi, "--erg")
+                    commands.append(await control(client, f"erg {watts} W",
+                                                  ftms.cmd_set_target_power(watts)))
                     await asyncio.sleep(phase)
         finally:
-            if args.control and client.is_connected:
-                # Toujours relâcher la résistance en partant, même après une interruption.
-                commands.append(await control(client, "sim grade 0% (relâche)",
-                                              ftms.cmd_set_sim_params(0.0)))
-                # Puis rendre le contrôle FTMS, pour qu'une autre application puisse le prendre.
-                commands.append(await control(client, "reset (contrôle rendu)", ftms.cmd_reset()))
+            if args.control:
+                # Toujours relâcher la résistance en partant, même après une interruption ; chaque
+                # écriture à part, pour que le Reset parte même si la pente 0 % échoue (revue S6-13).
+                for label, payload in (("sim grade 0% (relâche)", ftms.cmd_set_sim_params(0.0)),
+                                       ("reset (contrôle rendu)", ftms.cmd_reset())):
+                    if not client.is_connected:
+                        break
+                    try:
+                        commands.append(await control(client, label, payload))
+                    except Exception as exc:
+                        log.warning("CP   %s impossible : %s", label, exc)
+                        commands.append({"command": label, "sent": payload.hex(), "error": str(exc)})
             report["commands"] = commands
 
     report["indoor_bike_data_rate"] = rate_stats(ibd_times)
@@ -218,6 +247,20 @@ async def cmd_trainer(args: argparse.Namespace) -> None:
     report["samples"] = samples
     log.info("Fréquence Indoor Bike Data : %s", report["indoor_bike_data_rate"])
     save_report("trainer", report)
+
+
+# --- spindown (lot ET1) ---------------------------------------------------------------
+
+async def cmd_spindown(args: argparse.Namespace) -> None:
+    """Sonde d'étalonnage : le trainer fait-il vraiment le Spin Down Control qu'il annonce ?"""
+    from .spindown import probe
+
+    dev = await find_device(args.name, args.address, args.timeout)
+    print("Trainer trouvé. Avant de commencer : Zwift, montre et téléphone déconnectés du trainer.")
+    async with BleakClient(dev, timeout=args.timeout) as client:
+        report = await probe(client, duration_s=args.duration, say=lambda text: print(">>> " + text))
+    path = save_report("spindown", report)   # sans nom ni adresse du trainer
+    print(f"Résultat : {report.get('verdict')}. Rapport : {path}")
 
 
 # --- click ----------------------------------------------------------------------------
@@ -327,7 +370,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=float, default=20.0, help="délai de recherche/connexion (s)")
     sub = p.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("scan", help="lister les appareils BLE visibles")
+    sc = sub.add_parser("scan", help="lister les appareils BLE reconnus (FTMS, cardio, Zwift)")
+    sc.add_argument("--all", action="store_true",
+                    help="lister aussi les autres appareils à portée (voisins compris)")
 
     t = sub.add_parser("trainer", help="diagnostic FTMS du home trainer")
     t.add_argument("--name", default="HomeTrainer", help="partie du nom annoncé (défaut : HomeTrainer)")
@@ -337,6 +382,11 @@ def build_parser() -> argparse.ArgumentParser:
                    help="prendre le contrôle et tester les commandes")
     t.add_argument("--sim-grade", type=float, default=None, help="pente à tester en SIM (%%)")
     t.add_argument("--erg", type=float, default=None, help="puissance à tester en ERG (W)")
+
+    sd = sub.add_parser("spindown", help="sonde d'étalonnage FTMS du trainer (lot ET1, 5 min sur le vélo)")
+    sd.add_argument("--name", default="HomeTrainer", help="partie du nom annoncé (défaut : HomeTrainer)")
+    sd.add_argument("--address", help="adresse MAC (prioritaire sur --name)")
+    sd.add_argument("--duration", type=float, default=90.0, help="attente du résultat après la commande (s)")
 
     c = sub.add_parser("click", help="diagnostic du Zwift Click")
     c.add_argument("--name", help="nom annoncé (défaut : Zwift Click)")
@@ -353,7 +403,7 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("bleak").setLevel(logging.INFO if args.verbose else logging.WARNING)
-    handler = {"scan": cmd_scan, "trainer": cmd_trainer, "click": cmd_click, "trace": cmd_trace}[args.command]
+    handler = {"scan": cmd_scan, "trainer": cmd_trainer, "spindown": cmd_spindown, "click": cmd_click, "trace": cmd_trace}[args.command]
     try:
         asyncio.run(handler(args))
     except KeyboardInterrupt:

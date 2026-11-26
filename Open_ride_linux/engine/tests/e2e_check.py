@@ -2,6 +2,7 @@
 """Essai de bout en bout sans écran : vrai core et vrai engine Godot (lot J8).
 
 Usage : e2e_check.py --godot CHEMIN [--engine-routes-dir DOSSIER] [--keep]
+        e2e_check.py --exported build/engine/openride.x86_64 [--keep]
 
 Lance `openride-core run --trainer mock --input none --autostart` puis l'engine en `--test-mode`,
 chacun avec un HOME temporaire et des ports UDP libres, et vérifie le dialogue réel :
@@ -13,6 +14,8 @@ Chaque vérification imprime une ligne [OK] ou [ÉCHEC] avec sa mesure. Code de 
 passe, 1 sinon ; en cas d'échec, les journaux sont gardés dans le dossier temporaire indiqué.
 `--engine-routes-dir` donne à l'engine un autre dossier de parcours que celui du core (sert à
 montrer que la vérification de longueur échoue sur une copie modifiée de `demo`).
+`--exported` remplace `godot --path engine` par l'engine exporté (lot EX2 : binaire « release » et
+`openride.pck` à côté, construits par `scripts/export_engine.sh`) : mêmes vérifications.
 """
 
 from __future__ import annotations
@@ -181,7 +184,7 @@ def read_states(sock: socket.socket, until, timeout: float) -> tuple[float, dict
     return None
 
 
-def run(godot: Path, engine_routes_dir: Path | None, keep: bool) -> int:
+def run(godot: Path, engine_routes_dir: Path | None, keep: bool, exported: bool = False) -> int:
     t0 = now()
     real_home = Path.home()
     before = snapshot_home(real_home)
@@ -209,7 +212,9 @@ def run(godot: Path, engine_routes_dir: Path | None, keep: bool) -> int:
                        f"{started[0] - core.t_start:.2f} s" if started else "pas de « Core démarré » en 15 s"):
             return 1
 
-        engine = Proc("engine", [str(godot), "--headless", "--path", str(ENGINE_DIR), "--",
+        # Engine exporté (lot EX2) : le binaire charge openride.pck posé à côté de lui, sans --path.
+        project = [] if exported else ["--path", str(ENGINE_DIR)]
+        engine = Proc("engine", [str(godot), "--headless", *project, "--",
                                  f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                                  f"--routes-dir={engine_routes_dir or core_routes}", "--test-mode"],
                       env, tmp / "engine.log")
@@ -347,14 +352,21 @@ def schema_errors(state: dict) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--godot", type=Path, required=True, help="exécutable Godot 4.7")
+    exe = ap.add_mutually_exclusive_group(required=True)
+    exe.add_argument("--godot", type=Path, help="exécutable Godot 4.7 (projet engine/ non empaqueté)")
+    exe.add_argument("--exported", type=Path,
+                     help="engine exporté : binaire avec openride.pck à côté (scripts/export_engine.sh, lot EX2)")
     ap.add_argument("--engine-routes-dir", type=Path, help="dossier de parcours de l'engine (défaut : celui du core)")
     ap.add_argument("--keep", action="store_true", help="garder le dossier temporaire même si tout passe")
     args = ap.parse_args(argv)
-    if not os.access(args.godot, os.X_OK):
-        print(f"Godot introuvable : {args.godot}")
+    binary = args.exported or args.godot
+    if not os.access(binary, os.X_OK):
+        print(f"{'Engine exporté' if args.exported else 'Godot'} introuvable : {binary}")
         return 2
-    return run(args.godot, args.engine_routes_dir, args.keep)
+    if args.exported and not binary.with_suffix(".pck").is_file():
+        print(f"paquet absent à côté du binaire : {binary.with_suffix('.pck')}")
+        return 2
+    return run(binary, args.engine_routes_dir, args.keep, exported=args.exported is not None)
 
 
 if __name__ == "__main__":

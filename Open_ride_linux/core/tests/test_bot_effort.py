@@ -30,6 +30,8 @@ def test_objectives_validated_on_15_november():
     assert CHOICES[("bots", "objective")] == tuple(be.OBJECTIVES)
     assert ("bots", "objective") in PROFILE_KEYS                 # réglage du joueur, gardé d'une séance à l'autre
     assert any(s.key == "bots.objective" for s in SETTINGS)
+    # Lot NI3 : sa seule place est la ligne « Intensité du jour » des écrans Prêt, plus « Réglages › Séance »
+    assert next(s for s in SETTINGS if s.key == "bots.objective").menu_group == "screen"
     assert be.share_pct("inconnu") == 80.0
 
 
@@ -57,6 +59,8 @@ def test_track_objective_follows_the_event():
     assert be.track_effort("hour", {}, 250.0) == be.Effort("max", None, 3600.0)
     assert be.track_effort("free", {}, 250.0).objective == "tempo"
     assert be.track_effort("elimination", {}, 250.0).course_m == be.TRACK_DEFAULT_LAPS * 250.0
+    # élimination : une élimination tous les `every_laps` tours, une par adversaire
+    assert be.track_effort("elimination", {"opponents": 7, "every_laps": 4}, 250.0).course_m == 7 * 4 * 250.0
     from openride_core import track
 
     assert set(be.TRACK_EFFORT) == set(track.EVENTS)            # toutes les épreuves ont leur effort

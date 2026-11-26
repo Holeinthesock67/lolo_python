@@ -9,8 +9,9 @@ extends CanvasLayer
 ## - Fond semi-transparent, centre de l'écran dégagé (route visible à 50 m).
 ## - Ne calcule rien : s'appuie sur hud_view_model.gd.
 ## - Lot P16 : indicateur du vent sous le panneau de gauche (`update_wind`, sortie de
-##   wind_view_model.gd) : flèche d'où vient le vent par rapport à la route, « 18 km/h face »,
-##   barres d'intensité et leur niveau, pastille verte, rouge ou grise du verdict ; caché sans vent.
+##   wind_view_model.gd) : flèche d'où vient le vent par rapport à la route et « 18 km/h de face » ;
+##   caché sans vent. Lot NI1 (21/11) : barres, niveau « modéré » et pastille du verdict retirés (cinq
+##   signes pour une seule info) ; la flèche garde la teinte du verdict, les mots disent le sens.
 ##   Le coin supérieur droit sous le panneau de droite reste libre (blocs segment et bonus, série T).
 ## - Lot T9 : blocs « segment » (approche, chrono et écart au record, résultat) et « bonus » (réserve,
 ##   bonus actif et barre de temps) empilés sous le panneau de droite (`update_segment`, sortie de
@@ -31,6 +32,10 @@ extends CanvasLayer
 ##   s'arrête au-dessus du profil d'altitude (ou du bandeau ERG). Lot X22 : blocs segment et bonus à la
 ##   hauteur de leur contenu ; quand la place manque, l'encart garde les deux lignes autour du cycliste
 ##   (ses voisins, avec maillot et W′), puis les maillots, puis les autres lignes.
+## - Lot NI1 (audit des éléments inutiles du 21/11) : plus de ligne « ÉTAT: … | TRAINER: … | ENTRÉE: … » (mots du
+##   core) ni de ligne de texte ERG (jamais affichée) dans le bandeau central, plus de case « CIBLE ERG » (le
+##   bandeau ERG la montre) ; une ligne `notice_label` n'y parle que d'un problème (core attendu, trainer perdu,
+##   `HudViewModel.notice_text`) ; bandeau central caché quand il n'a rien à dire ; PENTE cachée sur la piste.
 ## - Lot DS6 : free_right_top(), haut de la place libre de la colonne de droite, pour le bloc du Dernier
 ##   survivant (survivor/survivor_view.gd).
 
@@ -39,6 +44,7 @@ const UiIcons := preload("res://scripts/ui_icons.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotHudModel := preload("res://scripts/bot_hud_model.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 
 const COLOR_DESCENT := UiTheme.GRADE_DESCENT
@@ -52,11 +58,10 @@ const WIND_TONES := {
 	"bad": UiTheme.WIND_BAD,
 	"neutral": UiTheme.WIND_NEUTRAL,
 }
-const WIND_BAR_COLOR := UiTheme.PALE
+const WIND_PANEL_H := 92.0   # flèche de 72 px et ses marges (lot NI1 : 132 px avec barres et pastille)
 const DRAFT_COLOR := UiTheme.DRAFT
 const DRAFT_GAP := 10.0
 const DRAFT_W_GAP := 4.0
-const WIND_BAR_OFF := UiTheme.WIND_BAR_OFF
 const SEGMENT_TONES := {"good": UiTheme.SEGMENT_GOOD, "bad": UiTheme.SEGMENT_BAD, "": UiTheme.SEGMENT_NEUTRAL}
 const BONUS_COLOR := UiTheme.BONUS   # violet des arches de bonus (lot T8)
 ## Bloc bonus (lot TT6, maquettes validées le 8 novembre) : icône blanche de la réserve, violette du bonus
@@ -92,8 +97,8 @@ const BLOCK_SCALE := COLUMN_W / BLOCK_W
 const ERG_RESERVE := ErgView.BOTTOM_OFFSET + ErgView.PANEL_HEIGHT
 const JERSEY_COLORS := {"sprint": UiTheme.JERSEY_SPRINT, "kom": UiTheme.JERSEY_KOM}
 const KOM_DOT := UiTheme.KOM_DOT
-const WBAL_BG := UiTheme.TRACK
-const WBAL_COLOR := UiTheme.WBAL
+const WBAL_BG := BotReserve.BG_DARK       # jauge W′ des bots : même dessin dans les modes (bot_reserve.gd, lot RW)
+const WBAL_COLOR := BotReserve.COLOR
 
 const GRADE_COLORS := {
 	"descent": COLOR_DESCENT,
@@ -131,7 +136,6 @@ var _center_box: VBoxContainer
 
 # Nœuds d'affichage
 var power_val: Label
-var target_val: Label
 var cadence_val: Label
 var hr_val: Label
 var speed_val: Label
@@ -139,9 +143,8 @@ var grade_val: Label
 var distance_val: Label
 var time_val: Label
 var gear_val: Label
-var erg_label: Label
 var climb_label: Label
-var status_label: Label
+var notice_label: Label   # problème à signaler (lot NI1) ; vide d'ordinaire
 var trial_badge: Label = null   # bandeau « ESSAI » du profil d'essai (série MJ, lot MJ8)
 var profile_panel: Control
 var alt_min_label: Label
@@ -150,9 +153,7 @@ var alt_max_label: Label
 var panel_wind: Panel
 var wind_arrow: Control
 var wind_speed_label: Label
-var wind_bars: Control
-var wind_level_label: Label
-var wind_verdict_label: Label
+var wind_dir_label: Label    # « de face », « de dos », « de gauche », « de droite » (lot NI1)
 var _wind_view: Dictionary = {}
 # Abri derrière un bot (Lot P17)
 var draft_label: Label
@@ -194,9 +195,6 @@ var _last_profile_dir := 1
 var _last_profile_time_s := 0.0
 var _profile_data: Dictionary = {}
 var _route = null
-## Faux quand le bandeau ERG (erg_view.gd, lot N7) affiche l'entraînement : la ligne ERG du panneau
-## central reste alors cachée.
-var show_erg_line := true
 
 
 func _init() -> void:
@@ -217,9 +215,6 @@ func _build_ui() -> void:
 	power_val = _create_metric(left_vbox, "PUISSANCE (W)", HudViewModel.NO_VALUE)
 	cadence_val = _create_metric(left_vbox, "CADENCE (RPM)", HudViewModel.NO_VALUE)
 	hr_val = _create_metric(left_vbox, "CARDIO (BPM)", HudViewModel.NO_VALUE)
-	# Cible ERG sous les mesures, affichée seulement en ERG.
-	target_val = _create_metric(left_vbox, "CIBLE ERG", HudViewModel.NO_VALUE, 32, 16)
-	target_val.get_parent().visible = false
 
 	# Panneau droit (haut) : Vitesse, Pente, Braquet, Distance, Temps
 	panel_right = _create_panel(Vector2(-TOP_MARGIN - COLUMN_W, TOP_MARGIN), Vector2(COLUMN_W, COLUMN_H), true, false)
@@ -234,7 +229,7 @@ func _build_ui() -> void:
 	distance_val = _create_metric(right_vbox, "DISTANCE", HudViewModel.NO_VALUE, 26, 16)
 	time_val = _create_metric(right_vbox, "TEMPS", HudViewModel.NO_VALUE, 26, 16)
 
-	# Bandeau supérieur central : ERG, prochaine montée et ligne d'état de diagnostic
+	# Bandeau supérieur central : prochaine montée, et un problème à signaler s'il y en a un (lot NI1)
 	var center_x := TOP_MARGIN + COLUMN_W + TOP_MARGIN
 	panel_center = _create_panel(Vector2(center_x, TOP_MARGIN), Vector2(-2.0 * center_x, CENTER_H), false, false, true)
 	var center_vbox := VBoxContainer.new()
@@ -248,18 +243,12 @@ func _build_ui() -> void:
 	climb_label.clip_text = true
 	center_vbox.add_child(climb_label)
 
-	erg_label = Label.new()
-	erg_label.add_theme_font_size_override("font_size", 18)
-	erg_label.text = ""
-	erg_label.clip_text = true
-	center_vbox.add_child(erg_label)
-
-	# Ligne d'état de diagnostic : séance, raison de pause, trainer, entrée (affichée depuis le lot D).
-	status_label = Label.new()
-	status_label.add_theme_font_size_override("font_size", 14)
-	status_label.text = "ÉTAT: en attente du core…"
-	status_label.clip_text = true
-	center_vbox.add_child(status_label)
+	notice_label = Label.new()
+	notice_label.add_theme_font_size_override("font_size", 20)
+	notice_label.modulate = UiTheme.WARN
+	notice_label.text = HudViewModel.notice_text({})
+	notice_label.clip_text = true
+	center_vbox.add_child(notice_label)
 
 	_build_wind_panel()
 	_build_draft_label()
@@ -300,7 +289,7 @@ func set_draft_boost(on: bool) -> void:
 ## Indicateur du vent (Lot P16), sous le panneau de gauche (même largeur), caché tant qu'il n'y a
 ## pas de vent dans les trames du core.
 func _build_wind_panel() -> void:
-	panel_wind = _create_panel(Vector2(TOP_MARGIN, TOP_MARGIN + COLUMN_H + 10.0), Vector2(BLOCK_W, 132.0), false, false)
+	panel_wind = _create_panel(Vector2(TOP_MARGIN, TOP_MARGIN + COLUMN_H + 10.0), Vector2(BLOCK_W, WIND_PANEL_H), false, false)
 	_shrink_block(panel_wind, false)
 	panel_wind.name = "WindPanel"
 	panel_wind.visible = false
@@ -310,41 +299,21 @@ func _build_wind_panel() -> void:
 	wind_arrow.size = Vector2(72.0, 72.0)
 	wind_arrow.draw.connect(_on_wind_arrow_draw)
 	panel_wind.add_child(wind_arrow)
+	# Deux lignes à droite de la flèche (lot NI1) : « 26 km/h » puis « de face ».
 	wind_speed_label = Label.new()
 	wind_speed_label.name = "WindSpeed"
-	# Haut à 4 px : le libellé de 30 px grandit à 43 px de haut, il s'arrête ainsi à 47 px, au-dessus
-	# du niveau (50 px), à toutes les échelles de l'interface (chevauchement vu en 1024x600)
 	wind_speed_label.position = Vector2(92.0, 4.0)
 	wind_speed_label.size = Vector2(200.0, 43.0)
 	wind_speed_label.add_theme_font_size_override("font_size", 30)
 	wind_speed_label.clip_text = true
 	panel_wind.add_child(wind_speed_label)
-	wind_bars = Control.new()
-	wind_bars.name = "WindBars"
-	wind_bars.position = Vector2(94.0, 50.0)
-	wind_bars.size = Vector2(70.0, 28.0)
-	wind_bars.draw.connect(_on_wind_bars_draw)
-	panel_wind.add_child(wind_bars)
-	wind_level_label = Label.new()
-	wind_level_label.name = "WindLevel"
-	wind_level_label.position = Vector2(172.0, 50.0)
-	wind_level_label.size = Vector2(120.0, 32.0)
-	wind_level_label.add_theme_font_size_override("font_size", 22)
-	wind_level_label.modulate = UiTheme.HUD_DIM
-	wind_level_label.clip_text = true
-	panel_wind.add_child(wind_level_label)
-	wind_verdict_label = Label.new()
-	wind_verdict_label.name = "WindVerdict"
-	wind_verdict_label.position = Vector2(10.0, 88.0)
-	wind_verdict_label.size = Vector2(280.0, 36.0)
-	wind_verdict_label.add_theme_font_size_override("font_size", 24)
-	wind_verdict_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	wind_verdict_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var pill := StyleBoxFlat.new()
-	pill.bg_color = WIND_TONES["neutral"]
-	pill.set_corner_radius_all(18)
-	wind_verdict_label.add_theme_stylebox_override("normal", pill)
-	panel_wind.add_child(wind_verdict_label)
+	wind_dir_label = Label.new()
+	wind_dir_label.name = "WindDirection"
+	wind_dir_label.position = Vector2(92.0, 48.0)
+	wind_dir_label.size = Vector2(200.0, 34.0)
+	wind_dir_label.add_theme_font_size_override("font_size", 24)
+	wind_dir_label.clip_text = true
+	panel_wind.add_child(wind_dir_label)
 
 
 ## Encart des bots (lots O7 et T15), sous le panneau de droite (même largeur), caché tant qu'il n'y a pas
@@ -730,18 +699,12 @@ func update_wind(view: Dictionary, watts := true) -> void:
 	if not shown:
 		_wind_view = {}
 		return
-	var changed: bool = view.get("arrow_deg") != _wind_view.get("arrow_deg") or view.get("level") != _wind_view.get("level")
+	var changed: bool = view.get("arrow_deg") != _wind_view.get("arrow_deg") or view.get("tone") != _wind_view.get("tone")
 	_wind_view = view.duplicate()
-	var label := str(view.get("label", ""))
-	wind_speed_label.text = (str(view["speed_text"]) + " " + label).strip_edges()
-	wind_level_label.text = str(view.get("level_text", ""))
-	wind_verdict_label.text = str(view.get("verdict_text", ""))
-	var pill := wind_verdict_label.get_theme_stylebox("normal") as StyleBoxFlat
-	if pill != null:
-		pill.bg_color = WIND_TONES.get(str(view.get("tone", "neutral")), WIND_TONES["neutral"])
+	wind_speed_label.text = str(view["speed_text"])
+	wind_dir_label.text = str(view.get("direction_text", ""))
 	if changed:
 		wind_arrow.queue_redraw()
-		wind_bars.queue_redraw()
 
 
 ## Flèche dans le sens où souffle le vent, vue du cycliste (route vers le haut) : vent de face, flèche
@@ -762,17 +725,6 @@ func _on_wind_arrow_draw() -> void:
 	var side := Vector2(-to_dir.y, to_dir.x)
 	wind_arrow.draw_colored_polygon(PackedVector2Array([tip, tip - to_dir * 18.0 + side * 13.0,
 		tip - to_dir * 18.0 - side * 13.0]), col)
-
-
-## Barres d'intensité : une par niveau au-delà du calme (quatre en tout).
-func _on_wind_bars_draw() -> void:
-	var level := int(_wind_view.get("level", 0))
-	var n := 4
-	var w := wind_bars.size.x / float(n)
-	for i in range(n):
-		var h := wind_bars.size.y * float(i + 1) / float(n)
-		var r := Rect2(i * w + 2.0, wind_bars.size.y - h, w - 4.0, h)
-		wind_bars.draw_rect(r, WIND_BAR_COLOR if i < level else WIND_BAR_OFF)
 
 
 ## Bloc sous une colonne réduit à BLOCK_SCALE ; à droite, réduit vers le bord droit de l'écran.
@@ -861,13 +813,13 @@ func _zone_color(zone: int) -> Color:
 func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = null, s: float = 0.0, dir := 1) -> void:
 	_route = route
 	_erg_active = state.get("erg") != null
-	# Épreuve de piste (lot VD9, maquettes VD8) : bandeau de l'épreuve à la place de la ligne d'état, bloc des
-	# tours à la place du profil d'altitude (piste plate) ; la séance libre en ERG garde le bandeau ERG.
+	# Épreuve de piste (lot VD9, maquettes VD8) : bandeau de l'épreuve à la place du bandeau central, bloc des
+	# tours à la place du profil d'altitude. Piste plate (épreuve ou séance libre au vélodrome) : ni profil ni
+	# PENTE, toujours à 0 % (le relèvement n'est pas une pente, lot NI1).
 	var on_track: bool = state.get("track") != null
+	var flat_track: bool = on_track or (route != null and route.has_method("is_track") and route.is_track())
 	if profile_panel != null:
-		profile_panel.visible = not _erg_active and not on_track
-	if panel_center != null:
-		panel_center.visible = _erg_active or not on_track
+		profile_panel.visible = not _erg_active and not flat_track
 	var now_s := Time.get_ticks_usec() / 1e6
 	vm.on_state(state, now_s)
 	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm, vm.ridden_m() if state.has("s") else NAN)
@@ -895,24 +847,11 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 		_set_metric(grade_val, lines["grade_val"])
 		var g_class: String = lines.get("grade_class", "flat")
 		grade_val.modulate = GRADE_TEXT_COLORS.get(g_class, GRADE_TEXT_COLORS["flat"])
+		grade_val.get_parent().visible = not flat_track
 
-	if erg_label != null:
-		erg_label.text = lines.get("erg", "")
-		erg_label.visible = show_erg_line and lines.get("erg", "") != ""
-
-	if target_val != null:
-		# Même texte que la ligne de puissance du HUD d'origine (« 230 W »).
-		var has_target: bool = lines["power"].contains("CIBLE ERG: ")
-		_set_metric(target_val, lines["power"].get_slice("CIBLE ERG: ", 1) if has_target else HudViewModel.NO_VALUE)
-		target_val.get_parent().visible = has_target
-
-	if status_label != null:
-		var pause = state.get("pause_reason", null)
-		status_label.text = "ÉTAT: %s%s | TRAINER: %s | ENTRÉE: %s" % [
-			state.get("session_state", "?"),
-			(" (" + str(pause) + ")") if pause != null else "",
-			state.get("trainer_status", "?"),
-			state.get("input_status", "?")]
+	if notice_label != null:
+		notice_label.text = HudViewModel.notice_text(state)
+		notice_label.visible = notice_label.text != ""
 
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:
@@ -926,7 +865,11 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 			climb_label.text = "Prochaine montée : dans %.1f km (%.1f km à %.1f %%)" % [
 				float(climb["start_m"]) / 1000.0, float(climb["length_m"]) / 1000.0, float(climb["avg_grade_pct"])]
 	if climb_label != null:
+		if route == null:
+			climb_label.text = ""   # plus de parcours : plus de montée annoncée
 		climb_label.visible = climb_label.text != ""   # ligne vide : pas de hauteur dans le bandeau
+	if panel_center != null:   # rien à dire (ni montée ni problème) : pas de bandeau vide (lot NI1)
+		panel_center.visible = not on_track and (climb_label.visible or notice_label.visible)
 	_fit_top_panels()
 
 	# Profil d'altitude (au plus 5 fois par seconde ou si s a avancé d'une colonne ~41 m)

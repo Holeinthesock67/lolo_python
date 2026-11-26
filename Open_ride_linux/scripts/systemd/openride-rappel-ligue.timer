@@ -1,0 +1,10 @@
+[Unit]
+Description=OpenRide : rappel de la manche de la ligue d'hiver (samedi 18 h, dimanche midi)
+
+[Timer]
+OnCalendar=Sat *-*-* 18:00:00
+OnCalendar=Sun *-*-* 12:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

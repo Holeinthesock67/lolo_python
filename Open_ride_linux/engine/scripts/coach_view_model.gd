@@ -173,6 +173,36 @@ func home_detail() -> String:
 	return "%s · %d min" % [str(msg.get("need_label", need_name(need()))), minutes(msg.get("duration_s"))]
 
 
+# --- objectif de la semaine (lot OS1, objet `week_goal` du message `coach`) -----------------------------
+
+func week_goal() -> Dictionary:
+	var g = msg.get("week_goal") if loaded() else null
+	return g if g is Dictionary and typeof(g.get("target")) in [TYPE_INT, TYPE_FLOAT] and int(g["target"]) > 0 else {}
+
+
+static func _seances(n: int) -> String:
+	return "%d séance%s" % [n, "s" if n > 1 else ""]
+
+
+## Ligne de l'accueil : « Semaine : 1 séance sur 2 » ; "" sans objectif (réglage à 0, core plus ancien).
+func week_label() -> String:
+	var g := week_goal()
+	if g.is_empty():
+		return ""
+	return "Semaine : %s sur %d" % [_seances(int(g.get("done", 0))), int(g["target"])]
+
+
+## Détail de la ligne : l'état en mots, jamais la couleur seule.
+func week_detail() -> String:
+	var g := week_goal()
+	if g.is_empty():
+		return ""
+	if bool(g.get("reached", false)):
+		return "objectif atteint"
+	var left := int(g.get("days_left", 0))
+	return "dernier jour" if left <= 1 else "il reste %d jours" % left
+
+
 # --- écran du conseil ------------------------------------------------------------------------------
 
 func title() -> String:

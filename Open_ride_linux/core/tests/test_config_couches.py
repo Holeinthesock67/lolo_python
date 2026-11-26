@@ -33,7 +33,7 @@ def test_profile_keys_are_real_config_keys():
 def test_every_menu_setting_has_a_scope():
     scopes = {s.key: s.scope for s in settings.SETTINGS}
     assert scopes["rider.ftp_w"] == scopes["rider.hr_max_bpm"] == scopes["bike.mass_kg"] == "profil"
-    assert scopes["bots.level_pct"] == scopes["wind.mode"] == scopes["render.camera"] == "profil"
+    assert scopes["bots.objective"] == scopes["wind.mode"] == scopes["render.camera"] == "profil"
     assert scopes["render.quality"] == scopes["render.display"] == scopes["audio.master_pct"] == "machine"
     assert set(scopes.values()) == {"profil", "machine"}
 
@@ -97,6 +97,18 @@ def test_machine_key_in_profile_is_ignored_with_warning(home, caplog):
         cfg = config.load(home / "config.toml")
     assert cfg.render.quality == "low" and cfg.render.camera == "side"
     assert "quality ignoré" in caplog.text
+
+
+def test_retired_key_in_profile_is_ignored_without_warning(home, caplog):
+    """Lot GPL1 : `[grandprix] distance_km` écrit dans le profil d'un joueur avant le retrait du réglage : ignoré
+    sans l'alerte « réglage de la machine »."""
+    a = player("cycliste-a", "Cycliste A")
+    with (a.root / profiles.FILE_NAME).open("a", encoding="utf-8") as fh:
+        fh.write("[grandprix]\ndistance_km = 12\nlaps = 2\n")
+    profiles.activate(a)
+    with caplog.at_level(logging.WARNING, logger="config"):
+        cfg = config.load(home / "config.toml")
+    assert cfg.grandprix.laps == 2 and caplog.records == []
 
 
 def test_bad_value_in_profile_names_the_file(home):

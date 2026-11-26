@@ -444,7 +444,8 @@ def build_coach_message(request_cmd_id: int, advice: dict[str, Any]) -> dict[str
             "tss_estimate": workout["tss_estimate"] if workout else None,
             "notes": list(advice["notes"]), "alternatives": list(advice["alternatives"]),
             "workout": workout, "other_workouts": [_coach_workout(w) for w in advice["other_workouts"]],
-            "route": advice.get("route"), "details": advice["details"]}
+            "route": advice.get("route"), "details": advice["details"],
+            "week_goal": advice.get("week_goal")}   # lot OS1 : objectif de la semaine, facultatif
 
 
 # --- collection de cartes (série BC, lot BC2, contrat IPC révision 1.8) -----------------------
@@ -487,7 +488,7 @@ def build_collection_message(request_cmd_id: int, profile_ctx: Any,
     cards = load_catalogue(table=table)
     cache = FactsCache(journal_dir / CACHE_NAME)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
-                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
     col = evaluate(progress, cards, table, now=now)
     seen = load_seen(seen_path(profile_ctx.root))
 
@@ -530,7 +531,7 @@ def collection_earned(profile_ctx: Any, journal_dir: Path | None = None,
     table = load_table(table_path)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR),
                          cache=FactsCache(journal_dir / CACHE_NAME),
-                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
     col = evaluate(progress, load_catalogue(table=table), table, now=now)
     return [(e.start_ts, e.key) for e in col.earned if e.start_ts is not None]
 
@@ -574,7 +575,7 @@ def compute_summary_collection(profile_ctx: Any,
     cards = load_catalogue(table=table)
     cache = FactsCache(journal_dir / CACHE_NAME)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
-                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
     col = evaluate(progress, cards, table, now=now)
     seen = load_seen(seen_path(profile_ctx.root))
     ann = announcement(col, seen)

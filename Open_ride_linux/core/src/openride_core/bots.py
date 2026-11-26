@@ -39,7 +39,7 @@ import math
 import zlib
 from pathlib import Path
 from collections.abc import Iterable
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 from dataclasses import dataclass
 
@@ -58,7 +58,9 @@ class RaceHint(NamedTuple):
     `power_cp` : puissance demandée en part de la CP (None : la stratégie du bot) ; `peak` : son pic de sprint
     s'il en a un ; `tactical` : il quitte la roue suivie (sprint, relais en tête, allure) ; `wheel` : roue
     imposée (écart en m, vitesse en m/s : le derny du keirin), qu'il ne double pas ; `lane_m` : place voulue
-    (`lane.home`, écart d'AS2 ; None : la sienne) ; `key` : occasion du pic (un pic par ligne)."""
+    (`lane.home`, écart d'AS2 ; None : la sienne) ; `key` : occasion du pic (un pic par ligne) ; `parked` : coureur
+    sorti de l'épreuve, rangé à `lane_m` sans placement automatique (ni roue ni dépassement, les autres l'évitent ;
+    essai du 22 novembre)."""
 
     power_cp: float | None = None
     peak: bool = False
@@ -66,6 +68,7 @@ class RaceHint(NamedTuple):
     wheel: tuple[float, float] | None = None
     lane_m: float | None = None
     key: Any = None
+    parked: bool = False
 
 
 class BotError(Exception):
@@ -105,6 +108,8 @@ class ConstantPowerBot:
         self.wheel: tuple[float, float] | None = None   # roue suivie : écart (m) et vitesse du coureur devant
         self.push = 0.0                        # poussée du coureur qui suit de près
         self.power_factor = 1.0                # mamie à l'attaque du mode WTF (lot WTF2)
+        self.work_j = 0.0                      # travail et temps roulé (lot GP-niv, bilan)
+        self.ride_s = 0.0
         self.shelters = True                   # faux pendant le Furtif du Grand Prix (lot GP4) : n'abrite personne
         # Écart à l'axe (lot AS2), posé par draft.update_lanes ; départage stable des bots partis côte à côte
         self.lane = Lane(BOT_LANE_M, BOT_LANE_M, rank=1 + zlib.crc32(self.id.encode()) % 65536)
@@ -136,12 +141,19 @@ class ConstantPowerBot:
 
         power = self._blocked_power(self.power_w * self.power_factor, grade, alt)
         self.physics.step(power, grade, alt, dt, alpha_draft=self.draft)
+        self.work_j += power * dt   # lot GP-niv : puissance moyenne du bot au bilan (`avg_power_w`)
+        self.ride_s += dt
         if self.lane.blocked is not None and self.lane.blocked[0] <= BRAKE_GAP_M:
             self.physics.v = min(self.physics.v, self.lane.blocked[1])   # freine : roue contre roue, pas plus vite
         if route is not None and not route.is_loop and self.physics.s >= route.length_m:
             self.physics.s = route.length_m
             self.physics.v = 0.0
         self.t += dt
+
+    @property
+    def avg_power_w(self) -> float | None:
+        """Puissance moyenne depuis le départ (None avant le premier pas roulé), lot GP-niv."""
+        return self.work_j / self.ride_s if self.ride_s > 0 else None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -385,6 +397,8 @@ class ProfileBot(ConstantPowerBot):
         self.effort_target: tuple[float, float] | None = None
         # lot DS3 : (distance à l'arche en m, menacé, à l'abri, distance de début du sprint) ; None hors mode
         self.survival: tuple[float, bool, bool, float] | None = None
+        # lot BR5 : le mode tient le bot ce pas (voie d'esquive du Grand Prix), posé par la séance
+        self.mode_hold = False
         # lot Y10 : tactique (mode « none » jusqu'au départ de séance, `bot_tactics.start_race`)
         self.tactics = Tactics(self.id, self.spec.character, name=self.name)
         # lot VD7 : consigne de l'épreuve de piste (None hors épreuve), course vue par les bots, temps du champ
@@ -392,6 +406,7 @@ class ProfileBot(ConstantPowerBot):
         self.race_view: Any = None
         self.race_t = 0.0
         self._lane_home: float | None = None    # place d'avant la consigne (rendue sans consigne)
+        self._lane_auto: bool | None = None     # placement automatique d'avant une consigne `parked`
         self.set_scale(scale)
 
     def set_scale(self, scale: float) -> None:
@@ -440,15 +455,28 @@ class ProfileBot(ConstantPowerBot):
             frac = hint.power_cp if hint.power_cp is not None else 1.30   # sans pic : sprint à 1,3 × CP
             return frac * self.cp_w, hint.tactical or hint.peak
         if self.survival is not None:
-            d_m, danger, safe, sprint_from_m = self.survival
-            reserve = self.wbal_pct if wbal_pct is None else wbal_pct
-            if danger and d_m <= sprint_from_m and reserve > SURVIVAL_MIN_WBAL_PCT:
+            safe = self.survival[2]
+            if self._survival_sprint(self.wbal_pct if wbal_pct is None else wbal_pct):
                 return spec.survival * self.cp_w, True
             power, tactical = self._course_strategy(s, length_m, is_loop, wbal_pct)
             if safe:
                 return min(power, SURVIVAL_SAFE_CP * self.cp_w), False
             return power, tactical
         return self._course_strategy(s, length_m, is_loop, wbal_pct)
+
+    def _survival_sprint(self, reserve: float) -> bool:
+        """Lot DS3 : menacé, assez près de l'arche et avec de la réserve : sprint de survie."""
+        if self.survival is None:
+            return False
+        d_m, danger, _, sprint_from_m = self.survival
+        return danger and d_m <= sprint_from_m and reserve > SURVIVAL_MIN_WBAL_PCT
+
+    def mode_speaks(self) -> bool:
+        """Lot BR5 (R5 de la stratégie des bots) : vrai quand ce qui est propre au mode décide ce pas (voie d'esquive du Grand Prix, sprint de
+        survie ou économie du Dernier survivant) : les gestes de base de `bot_tactics` se taisent alors."""
+        if self.mode_hold:
+            return True
+        return self.survival is not None and (self.survival[2] or self._survival_sprint(self.wbal_pct))
 
     def _course_strategy(self, s: float, length_m: float, is_loop: bool,
                          wbal_pct: float | None = None) -> tuple[float, bool]:
@@ -506,13 +534,17 @@ class ProfileBot(ConstantPowerBot):
         loop = route.is_loop if route is not None else False
         self.cp_w = self.base_cp_w * self.tactics.cp_factor(self.t)   # lot Y10 : forme et fatigue
         power, tactical = self._strategy(self.physics.s, length, loop)
-        power, tactical = self.tactics.adjust(self, power, tactical, self.t, self.physics.s, length, loop)
+        if self.mode_speaks():   # lot BR5 : le mode d'abord, les gestes de base seulement quand il se tait
+            self.tactics.yield_to_mode()
+        else:
+            power, tactical = self.tactics.adjust(self, power, tactical, self.t, self.physics.s, length, loop)
         lane = None
         if self.tactics.on.racing:   # lot VD7 : coalitions, marquage, bluff, classement, fatigue visible
             power, tactical, lane = self.tactics.race_power(self, power, tactical, self.race_t, self.race_view)
         hint = self.hint
         if hint is not None or lane is not None or self._lane_home is not None:   # hors piste : rien à faire
-            self._apply_place(lane if lane is not None else (hint.lane_m if hint is not None else None))
+            self._apply_place(lane if lane is not None else (hint.lane_m if hint is not None else None),
+                              hint is not None and hint.parked)
             if hint is not None and hint.wheel is not None:   # roue imposée (derny) : jamais devant elle
                 if self.wheel is None or hint.wheel[0] < self.wheel[0]:
                     self.wheel = hint.wheel
@@ -536,9 +568,13 @@ class ProfileBot(ConstantPowerBot):
         super().step(dt, route)
         self.wbal = wbal_step(self.wbal, power, 0.0, dt, cp_w=self.cp_w, w_prime_j=self.w_prime_j)
 
-    def _apply_place(self, want: float | None) -> None:
+    def _apply_place(self, want: float | None, parked: bool = False) -> None:
         """Place voulue (`lane.home`) par la fatigue visible ou la consigne de l'épreuve ; celle d'avant rendue
-        sans consigne."""
+        sans consigne. `parked` : placement automatique coupé tant que dure la consigne (coureur sorti)."""
+        if parked and self._lane_auto is None:
+            self._lane_auto, self.lane.auto = self.lane.auto, False
+        elif not parked and self._lane_auto is not None:
+            self.lane.auto, self._lane_auto = self._lane_auto, None
         if want is not None:
             if self._lane_home is None:
                 self._lane_home = self.lane.home
@@ -803,13 +839,17 @@ MAX_BOTS = MAX_CONSTANT_BOTS + 1   # et un fantôme
 LEVEL_BOUNDS = BOUNDS[("bots", "level_pct")]   # % de la FTP : bornes du réglage `bots.level_pct`
 
 
-def last_ride(route_id: str | None, directory: Path) -> Path | None:
-    """Journal le plus récent d'une séance sur ce parcours, d'où un fantôme peut partir ; None sinon."""
+def last_ride(route_id: str | None, directory: Path, exclude: Path | None = None) -> Path | None:
+    """Journal le plus récent d'une séance sur ce parcours, d'où un fantôme peut partir ; None sinon.
+    `exclude` : journal de la séance en cours, jamais pris (revue RC13, C2-02 : fantôme ajouté à la pause)."""
     from .journal import read_journal
 
     if not route_id or not directory.is_dir():
         return None
+    skip = _resolved(exclude)
     for path in sorted(directory.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True):
+        if skip is not None and _resolved(path) == skip:
+            continue
         try:
             header = next((line for line in read_journal(path) if isinstance(line, dict)), {})
         except Exception:
@@ -823,15 +863,28 @@ def last_ride(route_id: str | None, directory: Path) -> Path | None:
     return None
 
 
+def _resolved(path: Path | None) -> Path | None:
+    try:
+        return Path(path).resolve() if path is not None else None
+    except OSError:
+        return None
+
+
 def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
                    journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
-                   taken_ids: Iterable[str] = ()) -> list[Any]:
+                   taken_ids: Iterable[str] = (),
+                   names: Callable[[list[str]], list[str]] | None = None,
+                   exclude_journal: Path | None = None) -> list[Any]:
     """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
     ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus `MAX_CONSTANT_BOTS` bots
     de ces deux genres en tout, 11 depuis le lot PL1 ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
     `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
 
     `taken_ids` (lot N18, `set_bots`) : ids déjà pris dans la séance, sautés (`bot1`, `bot2`… sinon).
+    `exclude_journal` (`set_bots`) : journal de la séance en cours, que le fantôme ne rejoue pas (revue RC13).
+
+    `names` (lot R4) : noms des bots à profil d'après leurs profils dans l'ordre de la liste (les rivaux du
+    profil, `CoreSession._rival_names`) ; « Grimpeur », « Grimpeur 2 »… sans lui (`profile_bot_names`).
 
     Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
     """
@@ -851,7 +904,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
     constant = 0
     ghost = False
     profiles = [it.get("profile") for it in items if isinstance(it, dict) and it.get("kind") == "profile"]
-    names = iter(profile_bot_names([p for p in profiles if isinstance(p, str)]))
+    names = iter((names or profile_bot_names)([p for p in profiles if isinstance(p, str) and p in PROFILES]))
     for it in items:
         kind = it.get("kind") if isinstance(it, dict) else None
         if kind == "constant":
@@ -884,7 +937,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             if ghost:
                 raise BotError("un seul fantôme")
             ghost = True
-            path = last_ride(route_id, journal_dir)
+            path = last_ride(route_id, journal_dir, exclude_journal)
             if path is None:
                 raise BotError(f"aucune séance passée sur le parcours « {route_id} » pour le fantôme")
             out.append(GhostBot(path))

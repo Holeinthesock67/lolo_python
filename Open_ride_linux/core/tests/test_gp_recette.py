@@ -63,7 +63,7 @@ def test_manques_signales(tmp_path, capsys):
     a = journal(tmp_path, "a.jsonl", items=("gel", "bottle"), events=[(5.0, "use", "me", "gel")])
     assert gr.main([str(a)]) == 1
     out = capsys.readouterr().out
-    assert "Reste à faire : une course sur circuit." in out
+    assert "Reste à faire" not in out                      # aucun format exigé (lot GP13b)
     assert "Reste à utiliser : Bidon glissant." in out
     assert "Reste à subir : Bidon glissant." in out
     assert "Non joués" in out and "Super-forme" in out
@@ -106,9 +106,10 @@ def test_dossier_dernieres_courses(tmp_path, capsys):
     journal(d, "a.jsonl", laps=2, events=full_events())
     (d / "classique.jsonl").write_text(json.dumps({"kind": "header", "version": 1}) + "\n", encoding="utf-8")
     assert [p.name for p in gr.journaux_gp(d)] == ["a.jsonl"]
-    assert gr.main(["--dossier", str(d), "--dernieres", "5", "--json"]) == 1   # pas de course en ligne
+    # Lot GP13b : la course en ligne n'est plus exigée (parcours du Grand Prix tous en boucle)
+    assert gr.main(["--dossier", str(d), "--dernieres", "5", "--json"]) == 0
     bil = json.loads(capsys.readouterr().out)
-    assert bil["formats"] == {"circuit": True, "en_ligne": False}
+    assert bil["formats"] == {"circuit": True, "en_ligne": False} and bil["ok"]
 
 
 def test_aucune_course(tmp_path):
@@ -138,6 +139,7 @@ def test_vraie_seance_circuit_lue_par_le_bilan(env):
     assert course.format() == "circuit, 3 tour(s)"
     bil = gr.bilan([course])
     lignes = {o["item"]: o for o in bil["objets"]}
-    assert lignes["musette_x3"]["utilise"] == 3
+    assert lignes["musette_x3"]["utilise"] >= 3            # les 3 données, plus celles tirées en course
     assert bil["courses"][0]["pente_ok"]                  # aucun objet ne touche la pente envoyée (plan GP §7)
-    assert bil["formats"] == {"circuit": True, "en_ligne": False} and not bil["ok"]
+    assert bil["formats"] == {"circuit": True, "en_ligne": False}
+    assert not bil["ok"] and bil["a_subir"]                # une seule course : des objets restent à subir

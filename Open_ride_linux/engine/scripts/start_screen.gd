@@ -43,10 +43,10 @@ const GANTRY_Y_GO := 150.0
 const LAMP_R := 30.0
 const BREATH_PERIOD_S := 1.6
 # Étapes, texte, carte du parcours, anneau de cadence.
-const STEP_W := 160.0
+const STEP_W := 184.0
 const STEP_H := 40.0
 const STEP_Y := 420.0
-const STEP_GAP := 190.0
+const STEP_GAP := 204.0
 const TEXT_SIZE := 26
 const SMALL_SIZE := 18
 const CARD := Rect2(48.0, 540.0, 420.0, 140.0)
@@ -58,11 +58,14 @@ const GO_SIZE := 132
 const GO_FLASH_S := 0.2
 
 var _wait = null          # objet start_wait de la dernière trame, null hors attente
+var _phase := ""          # étape de l'attente en cours, et depuis quand (aide du lot RT4)
+var _phase_since_s := 0.0
 var _cadence := 0.0
 var _cadence_shown := 0.0
 var _go_left_s := 0.0
 var _t := 0.0
 var _route := {}          # carte du parcours (StartWaitModel.route_card), {} sans parcours
+var _goal := ""           # objectif du mode (lot RT2), écrit sous la carte du parcours ; "" sans objectif
 var _font: Font = null
 var _title_font: FontVariation = null
 var _tag_font: FontVariation = null
@@ -95,10 +98,19 @@ func set_route(card: Dictionary) -> void:
 	queue_redraw()
 
 
+## Objectif du mode en une ligne (lot RT2, « Objectif : finir 1er en 3 tours ») ; "" : pas de ligne.
+func set_goal(goal: String) -> void:
+	if goal == _goal:
+		return
+	_goal = goal
+	queue_redraw()
+
+
 ## Trame reçue pendant l'attente (`wait` : objet start_wait) ou hors attente (null).
 func show_wait(wait, cadence_rpm: float) -> void:
 	if wait == null and _wait != null:
 		_wait = null
+		_phase = ""
 		visible = _go_left_s > 0.0
 		queue_redraw()
 		return
@@ -106,6 +118,10 @@ func show_wait(wait, cadence_rpm: float) -> void:
 		_cadence_shown = cadence_rpm
 	_wait = wait
 	_cadence = cadence_rpm
+	var phase := str(wait.get("phase", "")) if wait is Dictionary else ""
+	if phase != _phase:
+		_phase = phase
+		_phase_since_s = Time.get_ticks_msec() / 1000.0
 	if wait != null:
 		_go_left_s = 0.0
 		visible = true
@@ -143,16 +159,22 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-## Vrai au pédalage : seule étape de l'attente où l'écran s'anime.
+## Vrai au pédalage et à l'échauffement : seules étapes de l'attente où l'écran s'anime.
 func _animated() -> bool:
-	return _wait is Dictionary and str(_wait.get("phase", "")) == "pedalage"
+	return _wait is Dictionary and str(_wait.get("phase", "")) in ["pedalage", "echauffement"]
 
 
 ## Informations des tests visuels et unitaires.
 func test_info() -> Dictionary:
 	return {"visible": visible, "lights": StartWaitModel.lights(_wait), "go": _go_left_s > 0.0,
 		"text": StartWaitModel.text(_wait), "steps": StartWaitModel.steps(_wait),
-		"route": str(_route.get("name", "")), "route_line": str(_route.get("line", "")), "animated": _animated()}
+		"route": str(_route.get("name", "")), "route_line": str(_route.get("line", "")), "goal": goal_text(), "animated": _animated(),
+		"warmup": StartWaitModel.warmup_view(_wait), "hint": _hint()}
+
+
+## Aide d'une attente qui dure (lot RT4) : trainer muet, décor long à charger.
+func _hint() -> String:
+	return StartWaitModel.hint(_wait, Time.get_ticks_msec() / 1000.0 - _phase_since_s)
 
 
 func _draw() -> void:
@@ -169,12 +191,23 @@ func _draw() -> void:
 		_draw_title()
 		_draw_gantry(GANTRY_Y, StartWaitModel.lights(_wait), false)
 		_draw_steps()
-		var text := StartWaitModel.text(_wait)
-		var cut := text.find("  (")
-		_centered(_font, text if cut < 0 else text.substr(0, cut), 500.0, TEXT_SIZE, UiTheme.TEXT)
+		var wv := StartWaitModel.warmup_view(_wait)
+		if wv.is_empty():
+			var text := StartWaitModel.text(_wait)
+			var cut := text.find("  (")
+			_centered(_font, text if cut < 0 else text.substr(0, cut), 500.0, TEXT_SIZE, UiTheme.TEXT)
+			var help := _hint()
+			if help != "":
+				_centered(_font, help, 532.0, SMALL_SIZE, UiTheme.WARN)
+		else:
+			_draw_warmup(wv)
 		_draw_route_card()
 		_draw_cadence_ring(pedalling)
-		_draw_keycap(Vector2(560.0, 642.0), "Y", "annuler")
+		if wv.is_empty():
+			_draw_keycap(Vector2(560.0, 642.0), "Y", "annuler")
+		else:
+			_draw_keycap(Vector2(500.0, 642.0), "Z", "passer")
+			_draw_keycap(Vector2(640.0, 642.0), "Y", "annuler")
 	_flush_texts()
 
 
@@ -268,7 +301,7 @@ func _draw_steps() -> void:
 	var steps := StartWaitModel.steps(_wait)
 	for i in steps.size():
 		var st: String = steps[i]["state"]
-		var r := Rect2(BASE.x * 0.5 + (i - 1) * STEP_GAP - STEP_W * 0.5, STEP_Y, STEP_W, STEP_H)
+		var r := Rect2(BASE.x * 0.5 + (i - (steps.size() - 1) * 0.5) * STEP_GAP - STEP_W * 0.5, STEP_Y, STEP_W, STEP_H)
 		var edge: Color = UiTheme.OK if st == "done" else (UiTheme.FOCUS if st == "current" else UiTheme.LINE)
 		var fill := Color(UiTheme.FOCUS, 0.16) if st == "current" else Color(UiTheme.SURFACE, 0.9)
 		_rounded(r, fill, edge, int(STEP_H * 0.5), 2)
@@ -280,7 +313,26 @@ func _draw_steps() -> void:
 			draw_circle(dot, 6.0, UiTheme.FOCUS if st == "current" else UiTheme.LINE)
 		var col: Color = UiTheme.TEXT if st == "done" else (UiTheme.FOCUS if st == "current" else UiTheme.DIM)
 		var w := _bold_font.get_string_size(steps[i]["label"], HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
-		_text(_bold_font, Vector2(r.position.x + 98.0 - w * 0.5, r.position.y + 27.0), str(steps[i]["label"]), -1, 19, col)
+		_text(_bold_font, Vector2(r.position.x + 46.0 + (STEP_W - 54.0 - w) * 0.5, r.position.y + 27.0), str(steps[i]["label"]), -1, 19, col)
+
+
+## Échauffement d'une course : cible en watts en grand, partie en cours, temps restant, cible suivante, barre.
+func _draw_warmup(wv: Dictionary) -> void:
+	var box := Rect2(BASE.x * 0.5 - 230.0, 474.0, 460.0, 150.0)
+	_rounded(box, Color(UiTheme.NIGHT, 0.9), UiTheme.FOCUS, 12, 2)
+	_text(_tag_font, box.position + Vector2(22.0, 30.0), "ÉCHAUFFEMENT", -1, 16, UiTheme.DIM)
+	var left := "encore " + str(wv.get("left", ""))
+	var lw := _bold_font.get_string_size(left, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	_text(_bold_font, Vector2(box.end.x - 22.0 - lw, box.position.y + 32.0), left, -1, 20, UiTheme.GOLD)
+	_centered_at(_title_font, str(wv.get("target", "")), Vector2(BASE.x * 0.5, box.position.y + 96.0), 58, UiTheme.TEXT)
+	var line := str(wv.get("part", ""))
+	var nxt := str(wv.get("next", ""))
+	if nxt != "":
+		line = nxt if line == "" else line + " · " + nxt
+	_centered_at(_font, line, Vector2(BASE.x * 0.5, box.position.y + 124.0), SMALL_SIZE, UiTheme.DIM)
+	var bar := Rect2(box.position.x + 22.0, box.end.y - 16.0, box.size.x - 44.0, 6.0)
+	draw_rect(bar, UiTheme.LINE)
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * float(wv.get("progress", 0.0)), bar.size.y)), UiTheme.FOCUS)
 
 
 func _draw_route_card() -> void:
@@ -291,6 +343,8 @@ func _draw_route_card() -> void:
 	_text(_tag_font, Vector2(x, CARD.position.y + 30.0), "PARCOURS", -1, 16, UiTheme.DIM)
 	_text(_bold_font, Vector2(x, CARD.position.y + 62.0), str(_route.get("name", "")), 250.0, 24, UiTheme.TEXT)
 	_text(_font, Vector2(x, CARD.position.y + 90.0), str(_route.get("line", "")), 250.0, SMALL_SIZE, UiTheme.GOLD)
+	if _goal != "":   # lot RT2 : l'objectif écrit avant le départ, en mots
+		_text(_bold_font, Vector2(x, CARD.position.y + 120.0), goal_text(), 260.0, SMALL_SIZE, UiTheme.TEXT)
 	var h: PackedFloat32Array = _route.get("heights", PackedFloat32Array())
 	if h.size() < 2:
 		return
@@ -373,3 +427,8 @@ func _centered(font: Font, text: String, y: float, font_size: int, col: Color) -
 func _centered_at(font: Font, text: String, at: Vector2, font_size: int, col: Color) -> void:
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	_text(font, Vector2(at.x - w * 0.5, at.y), text, -1, font_size, col)
+
+
+## Ligne d'objectif affichée : « Objectif : … », "" sans objectif.
+func goal_text() -> String:
+	return ("Objectif : " + _goal) if _goal != "" else ""

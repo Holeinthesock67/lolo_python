@@ -7,7 +7,7 @@
 
 ## 1. Objectif
 
-Supprimer l'image lente qui apparaît quand une tuile proche de 1 km entre dans la fenêtre : la sonde rW17g du 15 novembre (monde ouvert avec biomes, départ de Sarre-Union) montre l'étape « arbres near:x:y » à 100–157 ms en une seule image. Résultat : 3,8 images lentes par minute en medium (seuil 3), pire image 133 ms ; 131 ms en high (seuil 100 ms) ; low dans les seuils.
+Supprimer l'image lente qui apparaît quand une tuile proche de 1 km entre dans la fenêtre : la sonde rW17g du 15 novembre (monde ouvert avec biomes, départ sur une route réelle) montre l'étape « arbres near:x:y » à 100–157 ms en une seule image. Résultat : 3,8 images lentes par minute en medium (seuil 3), pire image 133 ms ; 131 ms en high (seuil 100 ms) ; low dans les seuils.
 
 ## 2. Cause
 
@@ -25,7 +25,7 @@ Supprimer l'image lente qui apparaît quand une tuile proche de 1 km entre dans 
 
 ## 5. Recette sur le PC
 
-Sonde de la rW17g rejouée en low, medium et high (scénario `w17_cap`, départ de Sarre-Union, `OPENRIDE_PERF_PROBE`) : images lentes par minute (≤ 3 de plus de 50 ms, aucune de plus de 100 ms), étape « arbres » dans `saccades.csv`, budgets GPU 8, 13 et 16 ms inchangés.
+Sonde de la rW17g rejouée en low, medium et high (scénario `w17_cap`, départ de Sevrier, `OPENRIDE_PERF_PROBE`) : images lentes par minute (≤ 3 de plus de 50 ms, aucune de plus de 100 ms), étape « arbres » dans `saccades.csv`, budgets GPU 8, 13 et 16 ms inchangés.
 
 ## Livraison
 

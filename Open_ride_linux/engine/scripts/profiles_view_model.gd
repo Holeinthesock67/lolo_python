@@ -13,6 +13,12 @@ extends RefCounted
 ##   profil en cours et le dernier profil joueur ne se suppriment pas).
 ## - « Gérer un profil » finit par « Vider le profil d'essai » (confirmation, `clear_trial_profile`) et
 ##   « Restaurer un profil supprimé » (RESTORE : profils de la corbeille, `restore_profile`), lot O33.
+## - « Gérer : <profil en cours> » (lot RZ1, révision 1.31) : « Remettre à zéro mes statistiques »
+##   (confirmation aux boutons écrits, « Non » par défaut, `reset_profile_stats`) et « Annuler la remise à zéro »
+##   (dernière remise de `profiles.resets`, `undo_profile_reset`) ; la sauvegarde est faite par le core avant tout.
+## - « Gérer : <profil en cours> » (lot SV1) : « Restaurer une sauvegarde » ouvre BACKUPS, les copies du profil
+##   (`list_profile_backups`, message `profile_backups`) en mots écrits ; A maintenu sur une copie demande une
+##   confirmation (« Non » par défaut), puis `restore_profile_backup` ; l'état actuel est copié par le core avant.
 ## - Profil d'essai : titre « OpenRide — PROFIL D'ESSAI » et bandeau « ESSAI » au HUD (`is_trial()`).
 ##
 ## Le core contrôle les noms (`name_invalid`) ; le modèle n'empêche que ce que la grille ne sait pas écrire.
@@ -22,9 +28,16 @@ const NAME := "profile_name"
 const MANAGE_LIST := "profile_manage_list"
 const MANAGE := "profile_manage"
 const RESTORE := "profile_restore"
-const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE, RESTORE]
+const BACKUPS := "profile_backups"   # lot SV1
+const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE, RESTORE, BACKUPS]
 const CLEAR_TRIAL_ID := "clear_trial"
 const RESTORE_ID := "restore"
+const RESET_ID := "reset_stats"     # lot RZ1
+const UNDO_RESET_ID := "undo_reset"
+const BACKUPS_ID := "backups"       # lot SV1
+const REASON_WORDS := {"semaine": "Copie de la semaine", "mise-a-jour": "Avant la mise à jour",
+	"remise-a-zero": "Avant la remise à zéro", "restauration": "Avant une restauration"}
+const WEEKDAYS := ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."]
 const MAX_PROFILES := 8
 const NAME_MAX := 16
 const TextEntry := preload("res://scripts/text_entry.gd")
@@ -38,6 +51,14 @@ var items: Array = []
 var active := ""
 ## Corbeille (`profiles.trash`, lot O33) : {id, name, deleted}, les plus récents d'abord.
 var trash: Array = []
+## Remises à zéro du profil en cours (`profiles.resets`, lot RZ1) : {id, date, time}, les plus récentes d'abord.
+var resets: Array = []
+## Copies du profil en cours (`profile_backups.items`, lot SV1) : {id, reason, date, time, sessions}, les plus
+## récentes d'abord ; `backups_loaded` faux tant que la réponse du core n'est pas arrivée.
+var backups: Array = []
+var backups_loaded := false
+## Restauration demandée, en attente de la liste `profile_backups` qui la termine (retour à « Gérer »).
+var restoring := false
 ## Message affiché à la réponse `profiles` de la demande en cours (vider, restaurer) ; "" : aucune.
 var done_message := ""
 ## `hello_ack.config.profile` : {id, name, type, count} ({} : core sans profils, rien n'est affiché).
@@ -114,6 +135,8 @@ func on_profiles(msg: Dictionary) -> void:
 	active = str(msg.get("active", "")) if msg.get("active") != null else ""
 	var t = msg.get("trash", [])
 	trash = t if t is Array else []
+	var r = msg.get("resets", [])
+	resets = r if r is Array else []
 	if message == "Enregistrement…":
 		message = ""
 	if done_message != "":
@@ -125,6 +148,7 @@ func on_error(code: String, text: String) -> bool:
 	if code not in ["name_invalid", "profile_invalid", "busy"]:
 		return false
 	done_message = ""
+	restoring = false
 	message = ("Nom refusé : " if code == "name_invalid" else "") + text
 	return true
 
@@ -164,7 +188,7 @@ func who_items() -> Array:
 		out.append({"id": "new", "label": "Nouveau profil", "enabled": true, "detail": ""})
 	if _players().size() > 0:
 		out.append({"id": "manage", "label": "Gérer un profil", "enabled": true,
-			"detail": "renommer, supprimer, restaurer, vider l'essai"})
+			"detail": "renommer, supprimer, remettre à zéro, restaurer"})
 	return out
 
 
@@ -206,8 +230,102 @@ func manage_items() -> Array:
 	var it := _find(manage_id)
 	var can_delete := manage_id != current_id() and _players().size() > 1
 	var why := "profil en cours" if manage_id == current_id() else ("dernier profil" if not can_delete else "")
-	return [{"id": "rename", "label": "Renommer", "enabled": true, "detail": str(it.get("name", ""))},
+	var out := [{"id": "rename", "label": "Renommer", "enabled": true, "detail": str(it.get("name", ""))},
 		{"id": "delete", "label": "Supprimer", "enabled": can_delete, "detail": why}]
+	var own := manage_id == current_id()
+	out.append({"id": RESET_ID, "label": "Remettre à zéro mes statistiques", "enabled": own,
+		"detail": "sauvegarde faite avant, annulable" if own else "choisir ce profil d'abord"})
+	if own and not resets.is_empty():
+		out.append({"id": UNDO_RESET_ID, "label": "Annuler la remise à zéro", "enabled": true,
+			"detail": "remise du " + reset_when(resets[0])})
+	out.append({"id": BACKUPS_ID, "label": "Restaurer une sauvegarde", "enabled": own,
+		"detail": "copie faite chaque semaine" if own else "choisir ce profil d'abord"})
+	return out
+
+
+func on_backups(msg: Dictionary) -> void:
+	var raw = msg.get("items", [])
+	backups = raw if raw is Array else []
+	backups_loaded = true
+	if done_message != "":
+		message = done_message
+		done_message = ""
+
+
+## « dim. 22/11 à 13:05 » d'une copie {date, time} (jour de la semaine calculé, sans fuseau).
+static func backup_when(b: Dictionary) -> String:
+	var d := str(b.get("date", ""))
+	if d.length() != 10:
+		return d + " à " + str(b.get("time", ""))
+	var unix := Time.get_unix_time_from_datetime_string(d + "T00:00:00")
+	var wd: int = Time.get_datetime_dict_from_unix_time(unix)["weekday"]
+	return "%s %s/%s à %s" % [WEEKDAYS[wd], d.substr(8, 2), d.substr(5, 2), str(b.get("time", ""))]
+
+
+static func backup_label(b: Dictionary) -> String:
+	return str(REASON_WORDS.get(str(b.get("reason", "")), "Copie")) + ", " + backup_when(b)
+
+
+static func sessions_text(n: int) -> String:
+	return "aucune séance" if n <= 0 else ("1 séance" if n == 1 else "%d séances" % n)
+
+
+## Fin de la restauration (lot SV1) : vrai une fois, à la liste qui suit la restauration.
+func take_restored() -> bool:
+	var was := restoring
+	restoring = false
+	return was
+
+
+## Copies du profil en cours (écran BACKUPS) : raison et date en mots, nombre de séances.
+func backup_items() -> Array:
+	var out: Array = []
+	for b in backups:
+		out.append({"id": "b:" + str(b.get("id", "")), "label": backup_label(b), "enabled": true,
+			"detail": sessions_text(int(b.get("sessions", 0)))})
+	if out.is_empty():
+		out.append({"id": "none", "label": "Recherche des copies…" if not backups_loaded else "Aucune copie pour l'instant",
+			"enabled": false, "detail": "" if not backups_loaded else "la première se fait au prochain lancement"})
+	return out
+
+
+func _backup(entry_id: String) -> Dictionary:
+	for b in backups:
+		if str(b.get("id", "")) == entry_id:
+			return b
+	return {}
+
+
+## Confirmation de la restauration d'une copie (lot SV1) : « Non » par défaut, boutons écrits courts.
+func backup_confirm(entry_id: String) -> Dictionary:
+	var b := _backup(entry_id)
+	return {"title": ("Restaurer la copie du %s ? Ton profil revient à cet état (réglages et FTP compris). "
+		+ "Ton profil actuel est sauvegardé avant.") % backup_when(b), "id": entry_id,
+		"yes": "Oui, restaurer", "yes_detail": "", "no": "Non, garder mon profil", "no_detail": ""}
+
+
+## « 28/11 à 09:30 » d'une remise à zéro {id, date, time}.
+static func reset_when(r: Dictionary) -> String:
+	var d := str(r.get("date", ""))
+	var day := (d.substr(8, 2) + "/" + d.substr(5, 2)) if d.length() == 10 else d
+	return day + " à " + str(r.get("time", ""))
+
+
+## Confirmation de la remise à zéro (lot RZ1) : question qui dit ce qui part et ce qui reste, boutons écrits courts
+## (la boîte de confirmation coupe les libellés longs : banc des menus du 22 novembre).
+func reset_confirm() -> Dictionary:
+	var name := str(_find(manage_id).get("name", manage_id))
+	return {"title": ("Remettre à zéro les statistiques de « %s » ? Niveau, pièces, cartes et records repartent "
+		+ "de zéro. Séances, FTP, réglages et cote Elo gardés. Sauvegarde faite avant.") % name,
+		"yes": "Oui, remettre à zéro", "yes_detail": "", "no": "Non, garder mes statistiques", "no_detail": ""}
+
+
+## Confirmation de l'annulation de la dernière remise à zéro (lot RZ1).
+func undo_confirm() -> Dictionary:
+	var r: Dictionary = resets[0] if not resets.is_empty() else {}
+	return {"title": ("Annuler la remise à zéro du %s ? Les statistiques d'avant reviennent ; "
+		+ "les séances courues depuis comptent aussi.") % reset_when(r), "id": str(r.get("id", "")),
+		"yes": "Oui, annuler la remise", "yes_detail": "", "no": "Non, garder la remise", "no_detail": ""}
 
 
 func manage_title() -> String:

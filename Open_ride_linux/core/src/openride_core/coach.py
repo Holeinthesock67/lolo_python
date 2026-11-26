@@ -73,7 +73,7 @@ OBJECTIVES = CHOICES[("coach", "objectif")]      # réglage `[coach] objectif` (
 CHOSEN_NEEDS = (*NEEDS, "recovery", "ftp_test")   # « Choisir un autre besoin » (get_coach {need})
 RACE_KINDS = ("course", "championnat")           # « Ma prochaine course » (plan §3, S6)
 MATCH_TOLERANCE_S = 60.0
-FACTS_VERSION = 2   # version des faits du cache `coach.json` (2 : course disputée, lot CO6)
+FACTS_VERSION = 3   # version des faits du cache `coach.json` (2 : course disputée, lot CO6 ; 3 : revue RC13)
 
 
 class CoachError(ValueError):
@@ -157,6 +157,8 @@ def session_facts(session: Any, ftp_w: float, table: dict[str, Any], source: str
         if isinstance(t.get("ftp_w"), (int, float)) and t["ftp_w"] > 0:
             test_w = float(t["ftp_w"])
     race = race_of(recs, getattr(session, "games", []) or [], table)
+    if race is not None and race["kind"] == "bots" and not hard:
+        race = None   # revue RC13 (C1-01) : une sortie tranquille avec des bots n'est pas une course
     return SessionFacts(float(s["start_ts"]), float(s["duration_s"]), float(s["tss"]), need_s, hard,
                         dict(s["best_power_w"]), test_w, source, workout, race)
 
@@ -186,8 +188,11 @@ def race_of(records: list[dict], games: list[dict], table: dict[str, Any]) -> di
     Dernier survivant (lignes `survivor_*`) : éliminé dans une montée (pente moyenne au-dessus de
     `climb_grade_pct` sur les `climb_window_s` secondes d'avant) → aérobie intense ; éliminé à moins de
     `sprint_gap_s` secondes → anaérobie ; sinon puissance en baisse → aérobie léger ; vainqueur : aucune
-    cause. Run Cyber-Rogue (`rogue_run`) et course contre les bots hors ERG (relevés avec `draft`) : le
-    journal ne dit pas où le cycliste a perdu, seule la baisse de puissance est lue. Sinon : None
+    cause. Run Cyber-Rogue (`rogue_run`) et course contre les bots hors ERG (clé `draft` sur au moins la
+    moitié des relevés : la séance a des bots, un abri ponctuel par un véhicule ne compte pas) : le
+    journal ne dit pas où le cycliste a perdu, seule la baisse de puissance est lue. `session_facts` ne
+    garde une course contre les bots que si la séance est dure (S3) : une sortie en groupe tranquille
+    n'impose pas de récupération le lendemain (revue RC13, C1-01). Sinon : None
     (rien n'est inventé ; les sprints chronométrés T4 ne gardent pas l'écart au journal)."""
     rc = table["races"]
     kinds = {g.get("kind") for g in games}
@@ -215,9 +220,9 @@ def race_of(records: list[dict], games: list[dict], table: dict[str, Any]) -> di
         return {"kind": "survivor", "place": place if isinstance(place, int) else None, "cause": cause}
     if "rogue_run" in kinds:
         kind = "rogue"
-    elif records and any("draft" in r for r in records) \
+    elif records and sum(1 for r in records if "draft" in r) * 2 >= len(records) \
             and sum(1 for r in records if r.get("mode") == "ERG") * 2 < len(records):
-        kind = "bots"
+        kind = "bots"   # revue RC13 (C1-01) : bots sur au moins la moitié des relevés, pas un abri de véhicule
     else:
         return None
     return {"kind": kind, "place": None, "cause": "light" if _faded(records, table) else None}
@@ -285,6 +290,20 @@ def build_signals(facts: Iterable[SessionFacts], ftp_w: float, today: date, tabl
         "ftp_age_days": ftp_age, "profile": profile,
         "races": [{"date": f.day, "tss": f.tss, **f.race} for f in reversed(recent) if f.race],
     }
+
+
+# --- objectif de la semaine (lot OS1, pur) --------------------------------------------------------
+
+def week_goal(facts: Iterable[SessionFacts], today: date, target: int, table: dict[str, Any]) -> dict[str, Any] | None:
+    """Objectif de la semaine de l'accueil (lot OS1) : séances comptées de la semaine ISO de `today` (lundi à
+    dimanche, heure locale) d'au moins `[week] min_session_s`, contre `target` séances ; None si `target` vaut 0
+    (« aucun » : pas de ligne). `days_left` compte aujourd'hui."""
+    if target <= 0:
+        return None
+    monday = today - timedelta(days=today.weekday())
+    min_s = float((table.get("week") or {}).get("min_session_s", 1200))
+    done = sum(1 for f in facts if monday <= f.day <= today and f.duration_s >= min_s)
+    return {"target": int(target), "done": done, "days_left": 7 - today.weekday(), "reached": done >= target}
 
 
 # --- règles (pur) ---------------------------------------------------------------------------------
@@ -895,10 +914,11 @@ def format_text(r: dict[str, Any]) -> str:
 def advice_today(today: date, ftp_w: float, objective: str, minutes: int, directory: Path | None = None,
                  workouts_dir: Path | None = None, watch: dict[str, Any] | None = None,
                  next_race: tuple[date, str] | None = None, chosen_need: str | None = None,
-                 table: dict[str, Any] | None = None, routes_root: Path | None = None) -> dict[str, Any]:
+                 table: dict[str, Any] | None = None, routes_root: Path | None = None,
+                 week_target: int = 0) -> dict[str, Any]:
     """Conseil du jour du profil en cours, lu sur le disque : même calcul pour `openride-core coach` et
     pour la commande IPC `get_coach` (lot CO3). Sans `watch` ni `next_race`, les saisies du jour de
-    `conseil.json` sont reprises."""
+    `conseil.json` sont reprises. `week_target` : objectif de la semaine en séances (lot OS1, 0 : aucun)."""
     from . import coach_game
     from . import config as config_mod
 
@@ -916,7 +936,9 @@ def advice_today(today: date, ftp_w: float, objective: str, minutes: int, direct
         candidates = coach_game.load_candidates(routes_root)
     except Exception:   # catalogue illisible : le conseil reste, sans séance de jeu
         candidates = []
-    return advise(facts, ftp_w, today, inputs, table, library, candidates)
+    result = advise(facts, ftp_w, today, inputs, table, library, candidates)
+    result["week_goal"] = week_goal(facts, today, week_target, table)   # lot OS1
+    return result
 
 
 def run(args: argparse.Namespace) -> int:
@@ -951,7 +973,7 @@ def run(args: argparse.Namespace) -> int:
             if race:
                 save_next_race(parsed)
         result = advice_today(today, ftp, objective, minutes, args.directory, args.workouts, watch, race,
-                              args.besoin, table, args.routes)
+                              args.besoin, table, args.routes, cfg.coach.seances_semaine)
     except (CoachError, config_mod.ConfigError, ValueError) as exc:
         print(f"openride-core coach : {exc}", file=sys.stderr)
         return 1

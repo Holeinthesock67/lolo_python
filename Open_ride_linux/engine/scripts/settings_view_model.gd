@@ -37,28 +37,30 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
 ## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
-## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail` ; jauge d'abri
-## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
+## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
+## Qualité graphique (lot QG1) : `render.quality` garde `low` / `medium` / `high` dans le fichier, affichée basse / moyenne / haute.
 ## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
 ## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des biomes de biome_ids.gd, noms du plan U §2.
-## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
+## Lot O26 : ressenti et mode du vent, thème par défaut (le décor vivant est retiré du menu au lot NI4) ; « Son »
+## (`audio.enabled`, lot NI4) : oui / non.
 ## Pilotage du trainer (lots RC1-RC3) : `trainer.control` prend `resistance` / `sim`.
-## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
 ## Jour et nuit, saisons (lot P19) : `render.day_night` et `render.seasons`, coupés par défaut ; `render.month`
 ## (lot U13b) : date du PC ou mois choisi.
 ## Départ de la séance (lot O36) : `depart.mode` prend `pedalage` / `immediat`.
 ## Dernier survivant (lot DS2) : écart de niveau des bots et suite donnée à l'élimination du cycliste.
 ## Séance conseillée (lot CO5) : `coach.objectif` ; champs des saisies du conseil (CoachViewModel.KEY_PREFIX).
 const CHOICE_TEXTS := {
+	"render.quality": {"low": "basse", "medium": "moyenne", "high": "haute"},   # lot QG1 : valeurs du fichier inchangées
 	"depart.mode": {"pedalage": "au pédalage", "immediat": "immédiat"},
 	"powerups.mode": {"off": "non", "classiques": "classiques", "tactiques": "tactiques"},   # contrat 1.13 (TT1)
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
 	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},
 	"render.fps": {"off": "non", "on": "oui", "detail": "détaillé"},
-	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"ride.vehicle_draft": {"on": "oui", "off": "non"},
+	"bots.elo": {"on": "oui", "off": "non"},   # lot BOT-elo : niveau automatique (Elo)
+	"privacy.hide_start": {"on": "oui", "off": "non"},   # lot PZ1 : zone privée au départ
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	"gravel.mode": {"off": "coupé", "auto": "chemins réels", "compacted": "chemin compact", "gravel": "gravier",
 		"dirt": "terre"},
@@ -68,8 +70,9 @@ const CHOICE_TEXTS := {
 		"savanna": "savane", "sand_desert": "désert de sable", "rock_desert": "désert de roche", "jungle": "jungle",
 		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique",
 		"japan": "Japon", "atlantic_heath": "Atlantique et landes",
-		"high_plateau": "hauts plateaux", "reef": "fond marin"},
-	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
+		"high_plateau": "hauts plateaux", "reef": "fond marin", "cloud_forest": "forêt de nuages",
+		"eucalypt_woodland": "bush à eucalyptus", "temperate_rainforest": "forêt pluviale tempérée"},
+	"audio.enabled": {"on": "oui", "off": "non (silence)"},   # lot NI4 : tout le son d'un seul choix
 	"render.day_night": {"off": "coupé", "theme": "heure du thème", "real": "heure du PC", "accelerated": "une journée en une heure"},
 	"render.seasons": {"off": "coupées", "theme": "celle du thème", "date": "selon la date", "random": "au hasard",
 		"spring": "printemps", "summer": "été", "autumn": "automne", "winter": "hiver"},
@@ -81,7 +84,6 @@ const CHOICE_TEXTS := {
 	"wind.feel": {"grade": "par la pente", "ftms": "par le trainer (essai)"},
 	"open_world.network": {"on": "oui", "off": "non (hors ligne)"},
 	"progression.enabled": {"on": "oui", "off": "non (sans Garage)"},
-	"render.texture_level": {"auto": "selon la qualité", "low": "basses (1 024 px)", "medium": "moyennes (1 024 px)", "high": "hautes (2 048 px)"},
 	"trainer.control": {"resistance": "résistance calculée", "sim": "SIM du trainer"},
 	"survivor.spread": {"tight": "serré (± 3 %)", "normal": "normal (± 8 %)", "wide": "large (± 15 %)"},
 	"survivor.after_out": {"ride": "continuer à rouler", "end": "terminer la séance"},
@@ -102,6 +104,8 @@ const BOOL_TEXTS := {"on": "oui", "off": "non"}
 const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["graphics", "Graphisme"], ["sound", "Son"],
 	["wind", "Vent"], ["advanced", "Avancé"]]
 const OTHER_GROUP := ["other", "Autres réglages"]
+## Lot NI2 (R1) : réglages de leur propre écran (écran Prêt d'un mode, séance conseillée), jamais dans « Réglages ».
+const SCREEN_GROUP := "screen"
 ## Points cardinaux d'une direction en degrés (unité « ° »), de 45 en 45 depuis le nord.
 const COMPASS := ["nord", "nord-est", "est", "sud-est", "sud", "sud-ouest", "ouest", "nord-ouest"]
 
@@ -176,9 +180,11 @@ static func number_text(value) -> String:
 	return str(value)
 
 
-## Groupe d'un élément : son `group` s'il est connu, sinon « other ».
+## Groupe d'un élément : son `group` s'il est connu (ou `screen`), sinon « other ».
 static func group_of(it: Dictionary) -> String:
 	var g := str(it.get("group", ""))
+	if g == SCREEN_GROUP:
+		return g
 	for known in GROUPS:
 		if known[0] == g:
 			return g
@@ -198,6 +204,37 @@ static func crumb(group: String) -> String:
 	return "Réglages › " + group_title(group)
 
 
+## Règle commune des lignes sans effet (lot NI2, R3, R6) : une ligne de « Réglages » est montrée seulement si
+## elle peut agir. Cachée (valeur gardée) quand :
+## - son `when` (envoyé par le core) n'est rempli par aucun des réglages dont elle dépend (vent coupé : force,
+##   direction et rafales ; départ immédiat : cadence de départ ; saisons et jour-nuit coupés : mois…) ;
+## - c'est un choix à une seule valeur (thème tant qu'aucun pack n'est installé).
+## La valeur prise est celle en cours de modification, pour que la liste suive tout de suite.
+func is_active(it: Dictionary) -> bool:
+	if str(it.get("type", "")) == "choice" and (it.get("choices", []) as Array).size() < 2:
+		return false
+	var when = it.get("when", [])
+	if not when is Array or (when as Array).is_empty():
+		return true
+	for cond in when:
+		if not cond is Dictionary:
+			continue
+		var key := str(cond.get("key", ""))
+		var other := item(key)
+		var value = editing.get("value") if str(editing.get("key", "")) == key else other.get("value")
+		if other.is_empty():
+			return true   # réglage inconnu (core plus récent) : la ligne reste
+		for v in cond.get("in", []):
+			if str(v) == str(value):
+				return true
+	return false
+
+
+## Élément montré dans un sous-écran de « Réglages » : du groupe `group`, et actif (is_active).
+func _shown(it, group: String) -> bool:
+	return it is Dictionary and group_of(it) == group and group != SCREEN_GROUP and is_active(it)
+
+
 ## Entrées des sous-écrans pour l'écran « Réglages » (id « group:groupe ») : titre, et en détail les
 ## réglages qu'il contient. Groupes vides omis.
 func group_items() -> Array:
@@ -205,7 +242,7 @@ func group_items() -> Array:
 	for g in GROUPS + [OTHER_GROUP]:
 		var labels := PackedStringArray()
 		for it in items:
-			if it is Dictionary and group_of(it) == g[0]:
+			if _shown(it, str(g[0])):
 				labels.append(str(it.get("label", it.get("key", ""))))
 		if not labels.is_empty():
 			out.append({"id": "group:" + str(g[0]), "label": g[1], "detail": ", ".join(labels)})
@@ -236,7 +273,7 @@ static func row(id: String, it: Dictionary, editing_it := {}) -> Dictionary:
 func menu_items(group: String) -> Array:
 	var out: Array = []
 	for it in items:
-		if not it is Dictionary or group_of(it) != group:
+		if not _shown(it, group):
 			continue
 		out.append(row("set:" + str(it["key"]), it, editing if str(editing.get("key", "")) == str(it["key"]) else {}))
 	var waiting := pending_relaunch(group)

@@ -104,8 +104,41 @@ func _test_warm_up() -> void:
 	cam.free()
 
 
+## Étapes du plan (banc rJ25J du 25/11) : une sorte par étape, donc par image ; chaque sorte garde ses propres
+## WARM_FRAMES images, les autres restent posées tant que les leurs ne sont pas finies.
+func _test_warm_steps() -> void:
+	var osm = OsmStreamer.new()
+	root.add_child(osm)
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	_check(osm.warm_steps(null).is_empty(), "étapes sans caméra : aucune")
+	var steps: Array = osm.warm_steps(cam)
+	_check(steps.size() == OsmStreamer.WARM_FORMATS.size(), "une étape par sorte (%d)" % steps.size())
+	_check(str(steps[0][0]) == "osm buildings", "nom de l'étape : osm <sorte>")
+	_check(int((steps[0][1] as Callable).call()) == 1, "une étape pose une seule sorte")
+	var warm: Node3D = cam.get_node("OsmWarm")
+	_check(warm.get_child_count() == 1 and warm.get_child(0).name == "warm_buildings", "la première : bâtiments seuls")
+	var counts_ok := true
+	for k in range(1, steps.size()):
+		osm.integrate(0)   # une image entre deux étapes
+		(steps[k][1] as Callable).call()
+		var live := warm.get_children().filter(func(n): return not n.is_queued_for_deletion()).size()
+		counts_ok = counts_ok and live == mini(k + 1, OsmStreamer.WARM_FRAMES)
+	_check(counts_ok, "au plus WARM_FRAMES sortes en scène, la plus ancienne retirée au bout de ses images")
+	var mi := warm.get_node_or_null("warm_bridges") as MeshInstance3D
+	_check(mi != null and mi.material_override == osm._material_for("bridges")
+		and mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "dernière sorte : matériau et ombre des ponts")
+	for i in OsmStreamer.WARM_FRAMES:
+		osm.integrate(0)
+	_check(not osm.is_warming(), "tout retiré après les images de la dernière sorte")
+	_check(osm.warm_up(cam, "inconnue") == 0 and not osm.is_warming(), "sorte inconnue : rien")
+	osm.free()
+	cam.free()
+
+
 func _init() -> void:
 	_test_formats()
 	_test_warm_up()
+	_test_warm_steps()
 	print("test_osm_warm : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

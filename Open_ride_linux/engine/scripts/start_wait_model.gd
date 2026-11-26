@@ -25,8 +25,18 @@ const LIGHTS := 5
 const GO_S := 1.2
 const TITLE := "START YOUR ENGINES"
 const TAG := "OPENRIDE · DÉPART"
-## Étapes de l'attente, dans l'ordre des pastilles de l'écran : (phase, libellé).
+## Étapes de l'attente, dans l'ordre des pastilles de l'écran : (phase, libellé). L'échauffement d'une course
+## (révision 1.33, `start_wait.warmup`) n'a sa pastille que quand la trame l'annonce.
 const STEPS := [["decor", "Décor"], ["trainer", "Trainer"], ["pedalage", "Pédalage"]]
+const WARMUP_STEP := ["echauffement", "Échauffement"]
+## Aides d'une attente qui dure (lot RT4) : le mot « À faire » écrit, jamais la couleur seule.
+const TRAINER_HINT_S := 8.0
+const DECOR_HINT_S := 20.0
+const TRAINER_HINT := "À faire : allume le trainer et pédale pour le réveiller ; sinon Y, puis Appareils"
+const DECOR_HINT := "Décor long à charger : patiente encore un peu, ou Y pour annuler"
+## Libellés des parties de l'échauffement (types de blocs de core warmup.py).
+const WARMUP_BLOCKS := {"warmup": "Montée douce", "steady": "Allure endurance", "interval_on": "Accélération !",
+	"interval_off": "Récupération"}
 const PROFILE_POINTS := 60
 
 ## Parcours dont le décor du départ est prêt ; vide tant qu'il ne l'est pas.
@@ -81,9 +91,27 @@ static func text(wait) -> String:
 			return "Départ : chargement du décor…  (Y : annuler)"
 		"trainer":
 			return "Départ : connexion du trainer…  (Y : annuler)"
+		"echauffement":
+			var w := warmup_view(wait)
+			return "Échauffement : %s, encore %s  (Z : passer, Y : annuler)" % [str(w.get("target", "")), str(w.get("left", ""))]
 		"pedalage":
 			return "Pédale pour partir : %d tr/min, %s s sur %.0f s  (Y : annuler)" % [int(wait.get("cadence_rpm", 0)),
 				("%.1f" % float(wait.get("held_s", 0.0))).replace(".", ","), float(wait.get("hold_s", 0.0))]
+	return ""
+
+
+## Aide quand l'attente dure (lot RT4, refus expliqués) : quoi faire si le trainer ne répond pas après
+## TRAINER_HINT_S secondes, ou si le décor met plus de DECOR_HINT_S secondes à venir ; "" sinon.
+static func hint(wait, waited_s: float) -> String:
+	if not (wait is Dictionary):
+		return ""
+	match str(wait.get("phase", "")):
+		"trainer":
+			if waited_s >= TRAINER_HINT_S:
+				return TRAINER_HINT
+		"decor":
+			if waited_s >= DECOR_HINT_S:
+				return DECOR_HINT
 	return ""
 
 
@@ -94,7 +122,7 @@ static func lights(wait) -> int:
 	match str(wait.get("phase", "")):
 		"decor":
 			return 1
-		"trainer":
+		"trainer", "echauffement":
 			return 2
 		"pedalage":
 			return mini(LIGHTS, 3 + int(floor(progress(wait) * 2.0 + 1.0e-6)))
@@ -115,14 +143,42 @@ static func steps(wait) -> Array:
 	if not (wait is Dictionary):
 		return []
 	var phase := str(wait.get("phase", ""))
+	var list: Array = STEPS.duplicate()
+	if wait.get("warmup", null) is Dictionary:
+		list.insert(2, WARMUP_STEP)
 	var at := -1
-	for i in STEPS.size():
-		if STEPS[i][0] == phase:
+	for i in list.size():
+		if list[i][0] == phase:
 			at = i
 	var out: Array = []
-	for i in STEPS.size():
-		out.append({"label": STEPS[i][1], "state": "done" if i < at else ("current" if i == at else "todo")})
+	for i in list.size():
+		out.append({"label": list[i][1], "state": "done" if i < at else ("current" if i == at else "todo")})
 	return out
+
+
+## « 7:05 » ; « 0:45 ».
+static func clock(seconds: float) -> String:
+	var s := maxi(int(ceil(seconds - 1.0e-6)), 0)
+	return "%d:%02d" % [s / 60, s % 60]
+
+
+## Échauffement en cours (`start_wait.warmup`, phase `echauffement`) : {target « 165 W », left « 7:32 », part
+## (libellé de la partie), next « puis 175 W dans 0:45 » ou "", progress 0 à 1} ; {} hors échauffement.
+static func warmup_view(wait) -> Dictionary:
+	if not (wait is Dictionary) or str(wait.get("phase", "")) != "echauffement":
+		return {}
+	var w = wait.get("warmup", null)
+	if not (w is Dictionary):
+		return {}
+	var total := float(w.get("total_s", 0.0))
+	var left := float(w.get("left_s", 0.0))
+	var nxt = w.get("next_target_w", null)
+	var next_text := ""
+	if nxt != null:
+		next_text = "puis %d W dans %s" % [int(nxt), clock(float(w.get("block_left_s", 0.0)))]
+	return {"target": "%d W" % int(w.get("target_w", 0)), "left": clock(left),
+		"part": str(WARMUP_BLOCKS.get(str(w.get("block", "")), "")), "next": next_text,
+		"progress": 1.0 if total <= 0.0 else clampf(1.0 - left / total, 0.0, 1.0)}
 
 
 ## Ligne de valeurs sous le nom du parcours : « 24,6 km · 410 m D+ » (le dénivelé seulement s'il est connu).

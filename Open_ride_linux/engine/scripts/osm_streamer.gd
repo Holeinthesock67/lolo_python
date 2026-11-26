@@ -105,7 +105,7 @@ const WARM_FRAMES := 5
 const WARM_DIST_M := 2.0
 const WARM_SIZE_M := 0.002
 var _warm: Node3D = null
-var _warm_frames := 0
+var _warm_left: Dictionary = {}   # sorte -> images de préchauffage restantes
 
 
 func _init() -> void:
@@ -140,30 +140,52 @@ static func warm_arrays(kind: String) -> Array:
 	return _arrays_from_mesh_dict(d)
 
 
-## Étape du préchauffage unique (main.gd, warmup_plan.gd) : un triangle de chaque sorte de nœud de tronçon,
-## minuscule à WARM_DIST_M devant `camera`, avec le matériau et les ombres des vrais nœuds (integrate), retiré
-## après WARM_FRAMES images. Sans caméra : rien. Retourne le nombre de sortes posées.
-func warm_up(camera: Node3D) -> int:
-	_drop_warm()
+## Étapes du plan de préchauffage unique (main.gd, warmup_plan.gd) : une sorte de nœud de tronçon par image.
+## Toutes les sortes dans la même image compilaient 29 pipelines d'un coup (banc rJ25J du 25/11, monde ouvert
+## medium, shaders froids : image de 6,2 s sur la GTX 1060) ; une par image, chaque compilation tombe seule.
+func warm_steps(camera: Node3D) -> Array:
+	var steps: Array = []
+	if camera == null:
+		return steps
+	for kind in WARM_FORMATS:
+		steps.append(["osm %s" % kind, warm_up.bind(camera, str(kind))])
+	return steps
+
+
+## Préchauffage : un triangle minuscule de la sorte `only` (toutes si vide) à WARM_DIST_M devant `camera`, avec
+## le matériau et les ombres des vrais nœuds (integrate), retiré après WARM_FRAMES images. Une sorte déjà posée par
+## une étape précédente reste jusqu'à la fin de ses propres images. Toutes les sortes (`only` vide) : le
+## préchauffage précédent est retiré d'abord. Sans caméra : rien. Retourne le nombre de sortes posées.
+func warm_up(camera: Node3D, only: String = "") -> int:
+	if only.is_empty() or (_warm != null and _warm.get_parent() != camera):
+		_drop_warm()
 	if camera == null:
 		return 0
-	_warm = Node3D.new()
-	_warm.name = "OsmWarm"
-	_warm.position = Vector3(0.0, 0.0, -WARM_DIST_M)
-	_warm.scale = Vector3.ONE * WARM_SIZE_M
-	for kind in WARM_FORMATS:
+	if _warm == null:
+		_warm = Node3D.new()
+		_warm.name = "OsmWarm"
+		_warm.position = Vector3(0.0, 0.0, -WARM_DIST_M)
+		_warm.scale = Vector3.ONE * WARM_SIZE_M
+		camera.add_child(_warm)
+	var kinds: Array = WARM_FORMATS.keys() if only.is_empty() else ([only] if WARM_FORMATS.has(only) else [])
+	for kind in kinds:
+		var old: Node = _warm.get_node_or_null("warm_" + str(kind))
+		if old != null:
+			_warm.remove_child(old)
+			old.queue_free()
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, warm_arrays(kind))
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, warm_arrays(str(kind)))
 		var mi := MeshInstance3D.new()
-		mi.name = "warm_" + kind
+		mi.name = "warm_" + str(kind)
 		mi.mesh = mesh
-		mi.material_override = _material_for(kind)
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if _casts_shadow(kind) \
+		mi.material_override = _material_for(str(kind))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if _casts_shadow(str(kind)) \
 			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_warm.add_child(mi)
-	camera.add_child(_warm)
-	_warm_frames = WARM_FRAMES
-	return WARM_FORMATS.size()
+		_warm_left[str(kind)] = WARM_FRAMES
+	if _warm_left.is_empty():
+		_drop_warm()
+	return kinds.size()
 
 
 ## Triangles du préchauffage encore en scène (tests).
@@ -171,11 +193,28 @@ func is_warming() -> bool:
 	return _warm != null
 
 
+## Une image de préchauffage de moins pour chaque sorte posée ; une sorte arrivée au bout est retirée, et le
+## nœud du préchauffage quand il n'en reste aucune.
+func _warm_tick() -> void:
+	if _warm == null:
+		return
+	for kind in _warm_left.keys():
+		_warm_left[kind] = int(_warm_left[kind]) - 1
+		if int(_warm_left[kind]) <= 0:
+			_warm_left.erase(kind)
+			var mi: Node = _warm.get_node_or_null("warm_" + str(kind))
+			if mi != null:
+				_warm.remove_child(mi)
+				mi.queue_free()
+	if _warm_left.is_empty():
+		_drop_warm()
+
+
 func _drop_warm() -> void:
 	if _warm != null:
 		_warm.queue_free()
 		_warm = null
-	_warm_frames = 0
+	_warm_left.clear()
 
 
 ## Nœuds de tronçon qui portent une ombre (integrate) : bâtiments et ponts.
@@ -790,10 +829,7 @@ func _poll_jobs(wait: bool) -> void:
 
 
 func integrate(max_new: int) -> int:
-	if _warm_frames > 0:
-		_warm_frames -= 1
-		if _warm_frames <= 0:
-			_drop_warm()
+	_warm_tick()
 	_poll_jobs(false)
 	var created := 0
 	while created < max_new and not _ready_chunks.is_empty():

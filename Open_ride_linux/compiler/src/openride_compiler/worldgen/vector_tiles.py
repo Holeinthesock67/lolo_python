@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sqlite3
 import time
 from collections import Counter
@@ -68,13 +69,23 @@ _WATER_AREA = {"lake": "lake", "pond": "pond", "reservoir": "reservoir", "basin"
                "river": "river"}   # river : grandes rivières en surface (lot EA3)
 # Version des lignes versées depuis les tuiles : une base plus ancienne est refaite depuis les tuiles du
 # cache (sans téléchargement). 2 : classe `river` de la couche `water` (sorte `river`), surfaces découpées
-# au bord de la tuile sans côté dégénéré (lot EA3).
-CONVERT_VERSION = 2
+# au bord de la tuile sans côté dégénéré (lot EA3). 3 : identifiants des voies uniques (`way_id`, 21/11).
+CONVERT_VERSION = 3
 _SEA_CLASS = "ocean"
 _BEACH = {"beach": "beach", "sand": "sand"}       # sous-classe du sable de `landcover` → `natural`
 
 
 # --- identifiants -------------------------------------------------------------------------------
+
+def _tile_template(data: bytes) -> str | None:
+    """Modèle d'URL des tuiles lu dans un TileJSON, ou None s'il est invalide (page d'erreur, JSON coupé)."""
+    try:
+        tiles = json.loads(data)["tiles"]
+        template = tiles[0]
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None
+    return template if isinstance(template, str) and template else None
+
 
 def node_id(lon: float, lat: float) -> int:
     """Identifiant négatif d'un nœud : coordonnées quantifiées à 1e-7° (unique, stable)."""
@@ -83,8 +94,23 @@ def node_id(lon: float, lat: float) -> int:
     return -((qy << 32) | qx)
 
 
+FEATURE_BITS = 20
+PIECE_BITS = 12
+
+
 def way_id(x: int, y: int, feature: int, piece: int) -> int:
-    return -(((x << ZOOM | y) << 24) | ((feature & 0xFFFFF) << 4) | (piece & 0xF))
+    """Identifiant négatif d'un morceau de voie : tuile, rang de l'objet dans la tuile, rang du morceau.
+
+    Unique par construction (21 novembre 2026) : avant, le morceau tenait sur 4 bits ; une route de la couche
+    `transportation` faite de plus de 16 morceaux (lignes fusionnées par OpenMapTiles, coupées au bord de la tuile)
+    donnait le même identifiant à des morceaux différents. Le graphe n'en gardait qu'un, celui lu en premier, donc un
+    autre selon l'emprise : chaque carré du monde ouvert et la balade avaient des routes différentes sous le même
+    nom (altitudes de la balade jusqu'à 1 m loin de celles du carré, routes absentes du sol réglé, banc du lac
+    d'Annecy). Un rang hors des bornes est une erreur, jamais un repli silencieux.
+    """
+    if not (0 <= feature < 1 << FEATURE_BITS and 0 <= piece < 1 << PIECE_BITS):
+        raise ValueError(f"identifiant de voie hors bornes : objet {feature}, morceau {piece} (tuile {x}, {y})")
+    return -(((x << ZOOM | y) << (FEATURE_BITS + PIECE_BITS)) | (feature << PIECE_BITS) | piece)
 
 
 def tile_key(x: int, y: int) -> str:
@@ -580,6 +606,8 @@ class TileSource:
         cached = self.cache.root / "brut" / "tuiles" / "tilejson.json"
         fresh = cached.is_file() and self.clock() - cached.stat().st_mtime < TILEJSON_MAX_AGE_S
         data = cached.read_bytes() if fresh else None
+        if data is not None and _tile_template(data) is None:
+            data = None        # copie invalide (revue de code K1-06) : redemandée comme une copie trop vieille
         if data is None:
             if not self.network:
                 if not cached.is_file():
@@ -590,8 +618,13 @@ class TileSource:
                     if not self.due(TILEJSON_KEY):
                         raise CompileError("nouvelle demande après le recul")
                     data = self.net.get(self.tilejson_url)
+                    if _tile_template(data) is None:
+                        # page d'erreur servie en 200 : la bonne copie du cache n'est pas écrasée
+                        raise CompileError("TileJSON reçu invalide (champ 'tiles' absent)")
                     cached.parent.mkdir(parents=True, exist_ok=True)
-                    cached.write_bytes(data)
+                    tmp = cached.with_name(f".{cached.name}.tmp-{os.getpid()}")
+                    tmp.write_bytes(data)
+                    os.replace(tmp, cached)
                     self._succeeded(TILEJSON_KEY)
                 except CompileError as exc:
                     if self.due(TILEJSON_KEY):
