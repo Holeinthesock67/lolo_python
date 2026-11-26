@@ -24,6 +24,7 @@ from openride_compiler.errors import CompileError
 from openride_compiler.theme import DEFAULT_THEME_PATH
 from openride_compiler.theme_packs import (
     DEFAULT_LIBRARY_GB,
+    INSTALL_MARK,
     USE_FILE,
     enforce_library_limit,
     install_theme,
@@ -128,6 +129,7 @@ def _sparse_pack(themes: Path, name: str, size: int) -> Path:
     d = themes / name
     d.mkdir(parents=True)
     (d / "theme.json").write_text("{}", encoding="utf-8")
+    (d / INSTALL_MARK).write_text("", encoding="utf-8")   # pack installé par theme-install (lot RC24)
     with (d / "textures.bin").open("wb") as f:   # fichier creux : la taille compte, le disque non
         f.truncate(size)
     return d
