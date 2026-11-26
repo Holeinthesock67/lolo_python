@@ -190,7 +190,10 @@ jobs:
         # relief de séance), captures jointes au run pour validation (règle du propriétaire du 29 octobre).
         if: github.event_name == 'pull_request'
         run: |
-          git fetch -q --depth=1 origin "${{ github.base_ref }}"
+          # Base de la PR vue au début du run (celle du commit de fusion testé), pas main au moment de l'étape : un
+          # train fusionné pendant le run faisait tourner les captures sur une PR qui ne touche pas au terrain (#1088,
+          # 26/11, lot BM1).
+          git fetch -q --depth=1 origin "${{ github.event.pull_request.base.sha }}"
           # Liste lue à part : une erreur de git diff arrête l'étape au lieu de sauter les captures (O2-19).
           changes="$(git diff --name-only FETCH_HEAD HEAD)"
           if ! printf '%s\n' "$changes" | grep -qE '^Open_ride_linux/engine/(scripts/(terrain_tiles|world_streamer|living_world)\.gd|shaders/|tests/tours/flancs\.json)'; then
