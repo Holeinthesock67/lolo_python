@@ -233,6 +233,10 @@ Lots entrés sur `main` sans ligne dans ce suivi, relevés d'après les PR fusio
 
 - [x] **Gestes de base des bots du Grand Prix et du Dernier survivant** (lot BR5, 21 novembre) : réponse aux attaques au Grand Prix, attaque avant l'arche et réponse au Dernier survivant, dans la table `bot_tactics.MODE_TACTICS` ; ce qui est propre au mode (esquive, sprint de survie, économie) garde la priorité. Recette PC : fumée + medium.
 
+### Fichier de diagnostic (lot DG1, 22 novembre)
+
+- [ ] **Réglages › Diagnostic** ([cahier](lots/LOT_DG1_fichier_diagnostic.md)) : archive `.zip` sans donnée privée écrite dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Diagnostics/`, rien n'est envoyé ; `openride-core diagnostic` ; contrat IPC révision 1.37 (en revue).
+
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
