@@ -68,27 +68,26 @@ def test_nothing_to_check_or_no_godot(tmp_path, monkeypatch):
     assert cs.find_godot(tmp_path / "pas-de-godot") == g
 
 
-def test_sans_parcours_keeps_only_sessions(tmp_path, monkeypatch, capsys):
-    """Banc multi-zones (26/11) : la balade seule après chaque zone ; les parcours installés une fois, à part."""
+def test_balades_seules_skips_installed_routes(tmp_path, capsys):
+    """26/11 : rZONES contrôlait les 40 parcours installés après chaque zone ; `--balades-seules` ne garde que la balade."""
     routes = tmp_path / "routes"
     _world(routes / "demo.world")
-    seances = tmp_path / "seances"
-    _world(seances / "ow-20261126-0700.world", parts=1)
-    seen = {}
-    monkeypatch.setattr(cs, "find_godot", lambda asked: None)   # s'arrête avant Godot : on lit la liste
     out = tmp_path / "sortie"
-    assert cs.main(["--out", str(out), "--routes", str(routes), "--seances", str(seances), "--dernieres", "1",
-                    "--sans-parcours"]) == 2
-    seen["sans"] = capsys.readouterr().out
-    assert "mondes trouvés : 1" in seen["sans"] and "aucun (--sans-parcours)" in seen["sans"]
-    cs.main(["--out", str(out), "--routes", str(routes), "--seances", str(seances), "--dernieres", "1"])
-    assert "mondes trouvés : 2" in capsys.readouterr().out
-    cs.main(["--out", str(out), "--routes", str(routes), "--seances", str(seances), "--dernieres", "0"])
-    assert "mondes trouvés : 1" in capsys.readouterr().out    # étape « parcours installés » du banc
+    args = ["--out", str(out), "--routes", str(routes), "--seances", str(tmp_path / "s"), "--godot", str(tmp_path / "g")]
+    assert cs.main(args) == 2 and "mondes trouvés : 1" in capsys.readouterr().out          # le parcours installé compte
+    assert cs.main([*args, "--balades-seules"]) == 2
+    assert "mondes trouvés : 0" in capsys.readouterr().out
 
 
-def test_multi_zones_bench_checks_only_the_ride_per_zone():
-    toml = (ROOT / "scripts" / "file_bancs" / "ow_multi_zones.toml").read_text(encoding="utf-8")
-    zones = toml.count("--scenario ow_zone_")
-    assert zones == 7 and toml.count("controle_sol_route.py --sans-parcours") == zones
-    assert 'id = "sol-parcours-installes"' in toml
+def test_banc_multi_zones_controle_la_balade_seule():
+    """Chaque étape du banc multi-zones contrôle sa balade seule, avec un délai du contrôle sous celui de l'étape."""
+    import re
+    import tomllib
+    texte = (ROOT / "scripts" / "file_bancs" / "ow_multi_zones.toml").read_text(encoding="utf-8")
+    etapes = tomllib.loads(texte)["pr"][0]["etape"]
+    assert etapes
+    for e in etapes:
+        appel = re.search(r"controle_sol_route\.py[^|]*", e["commande"]).group(0)
+        assert "--balades-seules" in appel, e["id"]
+        delai = int(re.search(r"--delai-s (\d+)", appel).group(1))
+        assert delai < e["delai_min"] * 60 / 2, e["id"]
