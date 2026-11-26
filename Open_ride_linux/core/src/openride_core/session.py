@@ -53,6 +53,7 @@ from .open_world_segments import LiveSegments, OwIndex
 from .physics import PhysicsParams, RiderPhysics, draft_saving_w, equilibrium_speed, resistive_force
 from . import surface_physics, velodrome
 from . import powerups as powerups_mod, profiles
+from . import profile_backups
 from .powerups import PowerUpError, load_table
 from .records import DATE_FORMAT as RECORDS_DATE_FORMAT, RecordBook, RecordsError
 from .recorder import SessionRecorder
@@ -120,7 +121,8 @@ COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_ad
                   "clear_watch_advice")   # séance conseillée (lot CO3), réponse `coach`
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
                     "clear_trial_profile", "restore_profile",   # lots MJ7 et O33
-                    "reset_profile_stats", "undo_profile_reset")   # lot RZ1 (révision 1.31)
+                    "reset_profile_stats", "undo_profile_reset",   # lot RZ1 (révision 1.31)
+                    "list_profile_backups", "restore_profile_backup")   # lot SV1 (copies du profil)
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
@@ -554,7 +556,14 @@ class CoreSession:
         self._grade_sent = 0.0
         if self.rogue is not None:
             self.rogue.grade_sent = 0.0
+        self._send_wind(0.0)   # vent FTMS remis à zéro en pause, au bilan et au menu (revue S2-02)
         self.driver.set_sim_grade(0.0)
+
+    def _send_wind(self, wind_mps: float) -> None:
+        """Champ vent de la commande 0x11 (`[wind] feel = "ftms"`) ; sans effet pour un pilote sans vent."""
+        setter = getattr(self.driver, "set_wind", None)
+        if setter:
+            setter(wind_mps)
 
     def _on_command(self, name: str, args: dict, cmd_id: int) -> None:
         log.info("Commande %s %s (id=%d)", name, args, cmd_id)
@@ -972,6 +981,9 @@ class CoreSession:
         if name == "list_profiles":
             self._send_profiles(cmd_id)
             return
+        if name == "list_profile_backups":   # lot SV1 : lecture seule, aussi pendant une séance
+            self._send_backups(cmd_id)
+            return
         if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
             self.server.send_error("busy", "Profils modifiables seulement hors séance (terminer d'abord).")
             return
@@ -1008,6 +1020,8 @@ class CoreSession:
                 self._send_profiles(cmd_id)
             elif name in ("reset_profile_stats", "undo_profile_reset"):
                 self._reset_stats(name, args, cmd_id)
+            elif name == "restore_profile_backup":
+                self._restore_backup(args, cmd_id)
             else:
                 self._clear_trial(cmd_id)
         except profiles.ProfileNameError as exc:
@@ -1030,6 +1044,8 @@ class CoreSession:
             self.server.send_error("bad_args", f"{name} : confirmation absente (\"confirmed\": true)")
             return
         if name == "reset_profile_stats":
+            if ctx.id is not None and not ctx.is_trial and ctx.root.is_dir():
+                profile_backups.create(ctx, "remise-a-zero", self.profiles_base)   # lot SV1 : copie complète avant
             dest, moved = profiles.reset_stats(ctx, self.profiles_base)
             log.info("Statistiques du profil %s remises à zéro : %s mis de côté dans %s.", ctx.id,
                      ", ".join(moved), dest)
@@ -1041,6 +1057,42 @@ class CoreSession:
         ctx = profiles.ProfileContext.for_id(ctx.id, self.profiles_base)   # nouvelle date de départ des statistiques
         self._select_profile(ctx, cmd_id, reload=True)
         self._send_profiles(cmd_id)
+
+    def _backups_message(self, cmd_id: int) -> dict:
+        rows = profile_backups.entries(self.profile_ctx, self.profiles_base)[:profile_backups.SHOWN]
+        return {"type": "profile_backups", "v": 1, "request_cmd_id": cmd_id, "profile": self.profile_ctx.id,
+                "items": rows}
+
+    def _send_backups(self, cmd_id: int) -> None:
+        """Message `profile_backups` (lot SV1) : copies du profil en cours, lues dans un fil (disque)."""
+        async def send() -> None:
+            self.server.send_raw(await asyncio.to_thread(self._backups_message, cmd_id))
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (tests synchrones)
+            self.server.send_raw(self._backups_message(cmd_id))
+            return
+        self._spawn(send())
+
+    def _restore_backup(self, args: dict, cmd_id: int) -> None:
+        """`restore_profile_backup {id}` (lot SV1) : profil en cours seulement (son verrou est tenu par cette
+        séance), hors séance ; état actuel copié avant, puis profil rechargé comme après une remise à zéro."""
+        key = (cmd_id, "restore_profile_backup", args.get("id"))
+        if self._last_reset_cmd == key:   # copie d'une commande déjà traitée : pas de seconde restauration
+            self._send_backups(cmd_id)
+            return
+        if args.get("confirmed") is not True:   # confirmation exigée par le core aussi (comme RZ1)
+            self.server.send_error("bad_args", "restore_profile_backup : confirmation absente (\"confirmed\": true)")
+            return
+        ctx = self.profile_ctx
+        saved = profile_backups.restore(ctx, args.get("id"), self.profiles_base)
+        log.info("Profil %s restauré depuis la copie %s (état d'avant : %s).", ctx.id, args.get("id"), saved)
+        self._last_reset_cmd = key
+        ctx = profiles.ProfileContext.for_id(ctx.id, self.profiles_base)   # description et dates de la copie
+        self._select_profile(ctx, cmd_id, reload=True)
+        self._send_profiles(cmd_id)
+        self._send_backups(cmd_id)
 
     def _clear_trial(self, cmd_id: int) -> None:
         """`clear_trial_profile` (lot O33) : vide le profil d'essai comme `openride-core profil essai --vider` ;
@@ -1056,6 +1108,21 @@ class CoreSession:
                 removed = profiles.clear(trial)
         log.info("Profil d'essai vidé : %s.", ", ".join(removed) or "déjà vide")
         self._send_profiles(cmd_id)
+
+    def _rebind_trainer_cfg(self, old_trainer: Any, cfg: Any) -> None:
+        """Redonne au pilote et aux braquets la configuration du nouveau profil (revue S1-05b) :
+        sans cela, « Pilotage du trainer » et les réglages `[trainer]` gardaient l'ancien objet
+        jusqu'au relancement. Le pilote du Bluetooth simulé garde son nom d'appareil."""
+        drv_cfg = getattr(self.driver, "cfg", None)
+        if drv_cfg is old_trainer:
+            self.driver.cfg = cfg.trainer
+        elif isinstance(drv_cfg, type(cfg.trainer)):
+            self.driver.cfg = replace(cfg.trainer, device_name=drv_cfg.device_name)
+        k = self.gearing.k
+        self.gearing = Gearing(cfg.gearing, cfg.trainer)
+        self.gearing.k = min(max(k, 1), self.gearing.n_gears)
+        self.state.gears_total = self.gearing.n_gears
+        self.server.hello_config["gears_total"] = self.gearing.n_gears
 
     def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int, reload: bool = False) -> None:
         """Change de profil sans relancer : configuration effective, progression, records, plan et
@@ -1085,6 +1152,7 @@ class CoreSession:
         self.profile_lock = lock
         self.profile_ctx = ctx
         old_hr = (self.cfg.drivers.hr, self.cfg.drivers.hr_address)
+        self._rebind_trainer_cfg(self.cfg.trainer, cfg)
         self.cfg = cfg
         self.journal_dir = ctx.journal_dir
         self.records_path = ctx.records_path
@@ -1095,6 +1163,7 @@ class CoreSession:
         self.physics.p = self._base_params
         self._build_wind()
         self.gearing.k = min(max(cfg.gearing.start_gear, 1), self.gearing.n_gears)
+        self.state.gear = self.gearing.k
         self.difficulty_pct = float(cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
         if (cfg.drivers.hr, cfg.drivers.hr_address) != old_hr:
@@ -1748,7 +1817,8 @@ class CoreSession:
         try:
             advice = await asyncio.to_thread(coach.advice_today, today, float(self.cfg.rider.ftp_w), c.objectif,
                                              c.temps_disponible_min, self.journal_dir.parent, self.workouts_dir,
-                                             None, None, chosen, table, self.routes_root)
+                                             None, None, chosen, table, self.routes_root,
+                                             c.seances_semaine)
         except Exception:
             log.exception("Erreur lors du calcul du conseil (cmd_id=%d)", cmd_id)
             return
@@ -2246,7 +2316,8 @@ class CoreSession:
         wm.network = self.cfg.open_world.network   # réglage Avancé (lot O27) pris sans relancer
         try:
             if name == "world_search":
-                msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"))
+                # Numéro pris ici, dans l'ordre des commandes : seule la dernière saisie interroge Nominatim.
+                msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"), wm.new_search())
             elif name == "world_map":
                 msgs = await asyncio.to_thread(wm.world_map, cmd_id, args)
             else:
@@ -4443,9 +4514,9 @@ class CoreSession:
             if ratio != 1.0:
                 self.physics.p = replace(self.physics.p, cda_m2=self.physics.p.cda_m2 * ratio)
             if wcfg.feel == "ftms":
-                setter = getattr(self.driver, "set_wind", None)
-                if setter:
-                    setter(self._head_mps)
+                self._send_wind(self._head_mps)
+        if not (self.wind.active and wcfg.feel == "ftms"):
+            self._send_wind(0.0)   # vent coupé ou ressenti en pente : plus de vent périmé (revue S2-02)
         self._wind_offset = 0.0
         traffic = self._traffic_for(route)
         self._suction = 0.0
@@ -5329,6 +5400,7 @@ class CoreSession:
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
         self._resumed_journal = resume
         self._publish_interrupted()   # lot O34 : dans le premier hello_ack
+        profile_backups.start_weekly(self.profile_ctx, self.profiles_base)   # lot SV1 : copie de la semaine
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in self._services() if hasattr(p, "run")]  # trainer prioritaire
@@ -5555,6 +5627,7 @@ class CoreSession:
     async def _stop_drivers(self, tasks: list[asyncio.Task]) -> None:
         """Annule la consigne, arrête les pilotes et leur laisse le temps de rendre le trainer."""
         try:
+            self._send_wind(0.0)
             self.driver.set_sim_grade(0.0)
         except Exception:
             log.exception("Consigne 0 % impossible")

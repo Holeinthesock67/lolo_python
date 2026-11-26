@@ -37,8 +37,9 @@ check() {   # check <0 si réussi> <libellé> [mesure]
 
 step() { echo; echo "== $*"; }
 
-fingerprint() {   # empreinte des données de l'utilisateur (hors journaux et caches)
-    (cd "${HOME}/OpenRide" && find . -type f ! -path './Logs/*' ! -name '*.log' ! -name '.update.lock' -print0 | sort -z \
+fingerprint() {   # empreinte des données de l'utilisateur (hors journaux, caches et copies des profils, lot SV1)
+    (cd "${HOME}/OpenRide" && find . -type f ! -path './Logs/*' ! -path './Sauvegardes/profils/*' ! -name '*.log' \
+        ! -name '.update.lock' -print0 | sort -z \
         | xargs -0 sha256sum)
 }
 
@@ -126,6 +127,10 @@ check ${rc} "scripts/update.sh" "$(tail -n 1 "${HOME}/update.log")"
 after_head="$(git -C "${DEST}" rev-parse --short HEAD)"
 [[ "${before_head}" != "${after_head}" && -f "${PROJECT}/docs/RECETTE_INSTALL_TEMOIN.md" ]]
 check $? "code mis à jour" "${before_head} → ${after_head}"
+if [[ -d "${HOME}/OpenRide/Profils" ]]; then   # lot SV1 : profils copiés avant la mise à jour
+    ls -d "${HOME}"/OpenRide/Sauvegardes/profils/*/*_mise-a-jour > /dev/null 2>&1
+    check $? "profils copiés avant la mise à jour" "~/OpenRide/Sauvegardes/profils/"
+fi
 bash "${PROJECT}/scripts/install.sh" </dev/null > "${HOME}/install2.log" 2>&1
 check $? "install.sh relancé sur une installation existante"
 after_fp="$(fingerprint)"

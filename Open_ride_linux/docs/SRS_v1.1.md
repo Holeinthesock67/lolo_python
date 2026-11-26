@@ -477,6 +477,7 @@ after_out = "ride"           # cycliste éliminé : "ride" (continuer à rouler)
 [coach]                      # séance conseillée (série CO, lot CO3), réglable dans le menu ; suit le profil du joueur
 objectif = "endurance"       # "endurance", "courses" (et championnat) ou "grimpeur" : répartition visée sur 4 semaines
 temps_disponible_min = 60    # durée conseillée quand la règle ne fixe pas la sienne, 30 à 120 min par pas de 15
+seances_semaine = 2          # objectif de la semaine à l'accueil, en séances d'au moins 20 min (lot OS1), 0 à 7, 0 : aucun
 [grandprix]                  # mode « Grand Prix des objets » (série GP, lot GP2), réglable dans le menu
 opponents = 4                # adversaires, 2 à 4 (bots à profil)
 laps = 3                     # tours du circuit, 1 à 5 (le Grand Prix se court sur une boucle, lot GPL1)
