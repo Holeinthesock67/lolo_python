@@ -214,3 +214,19 @@ def test_shader_caches_kept_between_runs_when_warm(tmp_path: Path):
     other.mkdir()
     names = {p.name for p in sb.link_shader_caches(other, "froid-godot", root)}
     assert "shader_cache" not in names and "vulkan" in names and "nvidia" in names
+
+
+def test_warm_run_on_empty_caches_is_judged_cold(tmp_path: Path):
+    """Lot BF1 (banc PC du 26/11, #1094) : le passage « chaud » d'une PR, premier sur son cache séparé, compilait tout
+    (16 s au chargement, 9,9 s au départ) et était jugé à 150 ms ; un cache vide se voit avant le passage."""
+    root = tmp_path / "caches"
+    assert sb.caches_empty("chaud", root)
+    home = tmp_path / "home"
+    home.mkdir()
+    sb.link_shader_caches(home, "chaud", root)
+    assert sb.caches_empty("chaud", root)   # dossiers créés, toujours vides
+    (root / "godot_shader_cache" / "a.cache").write_text("x")
+    assert sb.caches_empty("froid-godot", root) and not sb.caches_empty("froid-pilote", root)
+    (root / "nvidia" / "GLCache").mkdir(parents=True, exist_ok=True)
+    (root / "nvidia" / "GLCache" / "b").write_text("x")
+    assert not sb.caches_empty("chaud", root) and not sb.caches_empty("froid-godot", root)

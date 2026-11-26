@@ -172,6 +172,15 @@ def link_shader_caches(home: Path, mode: str, root: Path) -> list[Path]:
     return out
 
 
+def caches_empty(mode: str, root: Path) -> bool:
+    """Vrai si les caches que le mode `mode` garde (tous en « chaud ») n'ont encore aucun fichier : ce passage
+    compilera tout, comme un premier lancement (lot BF1)."""
+    keep = {"chaud": None, "froid-pilote": {"godot_shader_cache"},
+            "froid-godot": {"godot_vulkan", "nvidia", "mesa", "mesa_db"}}.get(mode, set())
+    names = [name for _, name in SHADER_CACHE_LINKS if keep is None or name in keep]
+    return not any(p.is_file() for name in names if (root / name).is_dir() for p in (root / name).rglob("*"))
+
+
 class BenchProc(Proc):
     """Comme Proc, sans erreur si le processus écrit encore après la fermeture de son journal."""
 
@@ -447,6 +456,12 @@ class Bench:
         home = tmp / "home"
         home.mkdir()
         self.home = home
+        # Lot BF1 (banc PC du 26/11) : un passage « chaud » sur des caches encore vides (premier passage d'une PR,
+        # cache séparé par PR) est un premier lancement : jugé à froid, et dit au journal.
+        self.shaders_judged = a.shaders
+        if a.shaders != "froid" and caches_empty(a.shaders, a.shader_cache_dir):
+            self.shaders_judged = "froid"
+            r.check(None, "caches de shaders", f"vides avant ce passage « {a.shaders} » : premier lancement, jugé à froid")
         link_shader_caches(home, a.shaders, a.shader_cache_dir)
         for name, table in (("powerups.toml", self.powerups), ("grandprix.toml", self.grandprix)):
             if table is not None:
@@ -744,7 +759,7 @@ class Bench:
             rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
             self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}",
                                                          real_window=a.native, engine_dir=self.out,
-                                                         shaders=a.shaders)   # lot BF1 : seuil du départ à froid
+                                                         shaders=getattr(self, "shaders_judged", a.shaders))   # lot BF1
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
             if self.endurance:
