@@ -1,6 +1,6 @@
 # NV1 : paysage « ville néon » du thème
 
-- PR : à venir ; cahier : docs/lots/LOT_NV1_paysage_ville_neon.md ; version : 6.0
+- PR : #1085 ; cahier : docs/lots/LOT_NV1_paysage_ville_neon.md ; version : 6.0
 - CHANGELOG (section « Ajouté ») :
   - Nouveau paysage « ville néon » du thème (ville de bord de mer au coucher du soleil et de nuit), préparé pour le futur parcours « Avenue de la Lagune ». Rien ne change encore à l'écran.
 - SUIVI :

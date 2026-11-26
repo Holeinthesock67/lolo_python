@@ -35,4 +35,4 @@ Déclarer le paysage, sans rien dessiner encore : les lots NV2 à NV5 (ciel et l
 
 ## 5. Livraison
 
-PR du 26 novembre (branche `claude/project-thread-j0efty`). Reste : go de fusion du propriétaire.
+PR #1085 du 26 novembre (branche `claude/project-thread-j0efty`). Reste : go de fusion du propriétaire.
