@@ -104,3 +104,17 @@ def test_registre_embarque_dans_le_paquet():
     sortie = subprocess.run([sys.executable, str(ROOT / "scripts" / "numeroter_revisions.py")],
                             capture_output=True, text=True, check=True).stdout
     assert "révision" in sortie
+
+
+def test_ligne_de_journal_de_la_pr_passe_au_registre():
+    main = "| A | B | C |\n| 1 (révision 1.36) | 22 novembre | copies |\n"
+    branche = main + "| 1 (révision 1.38) | 22 novembre | attaque des bots |\n"
+    ajoutees = nr.lignes_journal_ajoutees(branche, main)
+    assert ajoutees == ["| 1 (révision 1.38) | 22 novembre | attaque des bots |"]
+    conflit = (main + "<<<<<<< HEAD\n" + ajoutees[0] + "\n=======\n| 1 (registre) | 26 novembre | x |\n"
+               ">>>>>>> origin/main\nsuite\n")
+    assert nr.retirer_lignes_journal(conflit, ajoutees) == main + "| 1 (registre) | 26 novembre | x |\nsuite\n"
+    assert nr.retirer_lignes_journal(branche, ajoutees) == main
+    entete = ("<<<<<<< HEAD\n21 octobre 2026, révision 1.1 … puis 1.8 à 1.38\n=======\n"
+              "21 octobre 2026, révision 1.1 … puis 1.8 et suivantes\n>>>>>>> origin/main\n")
+    assert nr.resoudre_conflits_rev(entete, nr.ENTETE_RE) == ("21 octobre 2026, révision 1.1 … puis 1.8 et suivantes\n", 1)

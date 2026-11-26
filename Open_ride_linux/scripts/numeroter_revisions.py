@@ -85,7 +85,10 @@ def numeroter(registre: Path, journal: Path | None, ordre: list[str] | None, ecr
     return attribues
 
 
-def resoudre_conflits_rev(texte: str) -> tuple[str, int]:
+ENTETE_RE = re.compile(r"^21 octobre 2026, révision")      # première ligne d'ipc_v1.md, qui listait les révisions
+
+
+def resoudre_conflits_rev(texte: str, motif: re.Pattern = REV_RE) -> tuple[str, int]:
     """Blocs de conflit qui portent sur CONTRACT_REV : garder le côté de main (le bas, `git merge origin/main`)."""
     sortie, regles, i = [], 0, 0
     lignes = texte.splitlines(keepends=True)
@@ -97,7 +100,7 @@ def resoudre_conflits_rev(texte: str) -> tuple[str, int]:
         j = next(k for k in range(i, len(lignes)) if lignes[k].startswith("======="))
         k = next(k for k in range(j, len(lignes)) if lignes[k].startswith(">>>>>>> "))
         bloc = lignes[i:k + 1]
-        if any(REV_RE.search(l) for l in bloc):
+        if any(motif.search(l) for l in bloc):
             sortie.extend(lignes[j + 1:k])
             regles += 1
         else:
@@ -167,9 +170,13 @@ def migrer(lot: str) -> int:
             print(f"{rel} : {regles} conflit(s) sur la révision réglé(s) avec la version de main")
         if "<<<<<<< " not in texte:
             subprocess.run(["git", "add", rel], cwd=PROJET, check=False)
-    if ajoutees:
-        f = PROJET / journal_rel
-        texte = retirer_lignes_journal(f.read_text(encoding="utf-8"), ajoutees)
+    f = PROJET / journal_rel
+    texte, regles = resoudre_conflits_rev(f.read_text(encoding="utf-8"), ENTETE_RE)
+    if regles:
+        f.write_text(texte, encoding="utf-8")
+        print(f"{journal_rel} : en-tête des révisions repris de main")
+    if ajoutees or regles:
+        texte = retirer_lignes_journal(texte, ajoutees)
         f.write_text(texte, encoding="utf-8")
         print(f"{journal_rel} : {len(ajoutees)} ligne(s) de journal passée(s) au registre")
         if "<<<<<<< " not in texte:

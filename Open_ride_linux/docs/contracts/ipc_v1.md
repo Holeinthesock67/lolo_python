@@ -1,6 +1,6 @@
 # OpenRide Linux – Contrat IPC v1
 
-21 octobre 2026, révision 1.1 du 24 octobre 2026, révision 1.2 du 25 octobre 2026, révision 1.3 du 26 octobre 2026, révision 1.4 du 27 octobre 2026, révision 1.5 du monde ouvert (lot W1) du 27 octobre 2026, révision 1.6 du 5 novembre 2026, révision 1.7 du 7 novembre 2026, puis révisions 1.8 à 1.32 (journal du §8) (ajouts compatibles, `v` reste 1)
+21 octobre 2026, révision 1.1 du 24 octobre 2026, révision 1.2 du 25 octobre 2026, révision 1.3 du 26 octobre 2026, révision 1.4 du 27 octobre 2026, révision 1.5 du monde ouvert (lot W1) du 27 octobre 2026, révision 1.6 du 5 novembre 2026, révision 1.7 du 7 novembre 2026, puis révisions 1.8 et suivantes (journal du §8, suivi depuis le lot CF2 par `core/src/openride_core/revisions_ipc/historique.txt` ; ligne à ne plus changer à chaque révision) (ajouts compatibles, `v` reste 1)
 
 ## 1. Objet, principes et conventions
 
