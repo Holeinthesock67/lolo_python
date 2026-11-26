@@ -325,8 +325,8 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes}",
             "--test-mode", f"--quality={args.quality}", "--camera=subjective"]
     if args.visual_grade is not None:
-        cmd.append(f"--visual-grade={args.visual_grade}")
-    cmd += list(getattr(args, "engine_arg", []) or [])   # lot PG1 : catalogue des graphismes de départ   # relief affiché ; défaut de l'engine sinon (2,5)
+        cmd.append(f"--visual-grade={args.visual_grade}")   # relief affiché ; défaut de l'engine sinon (2,5)
+    cmd += list(getattr(args, "engine_arg", []) or [])   # lot PG1 : catalogue des graphismes de départ
     import bancs_processus
     home_godot, home_env = bancs_processus.home_temporaire()   # revue vague 5, O3-09 : pas le vrai profil
     with log_path.open("w") as fh:
