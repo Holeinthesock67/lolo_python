@@ -191,4 +191,4 @@ def test_open_world_tunnel_in_the_square_of_its_middle(tmp_path: Path) -> None:
     near = np.frombuffer((a / "near.f32").read_bytes(), dtype="<f4").reshape(101, 101)
     assert float(near[50, 50]) > 330.0                    # la colline reste au-dessus du tunnel
     meta = _json(a / "meta.json")
-    assert meta["counts"]["tunnels"] == 1 and meta["versions"]["worldgen"] == 10
+    assert meta["counts"]["tunnels"] == 1 and meta["versions"]["worldgen"] >= 10   # tunnels depuis 10 (EA5)

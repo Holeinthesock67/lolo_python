@@ -68,8 +68,9 @@ from .store import WorldCache
 # ceux déjà dans main. Carrés recalculés. 6 (EA5) jamais fusionné ; 7 (20/11) : fond des lacs fondu avec la route (rive en
 # pente douce au lieu d'une chute de 7 m sous la chaussée) ; 9 (21/11) : garde-fou d'altitude du profil des arêtes
 # (altitude_guard.py : trous et pics du relief, pente et changement de pente bornés, pente des nœuds) ; 10 (22/11) :
-# tunnels dessinés (lot EA5, couche `tunnels` du carré).
-WORLDGEN_VERSION = 10
+# tunnels dessinés (lot EA5, couche `tunnels` du carré) ; 11 (26/11) : relief sol nu, IGN RGE ALTI en France puis
+# FABDEM ailleurs, Copernicus en secours (lots RL1 et RL2 ; le nom du relief est aussi dans les versions du carré).
+WORLDGEN_VERSION = 11
 # Règle sol / route du carré (road_ground.fit) en SQUARE_ROUNDS paires de passes ; chaque passe ne lit que le relief à
 # deux cases d'un sommet : relief proche calculé avec RING_CELLS cases de plus tout autour, bords communs identiques.
 # Marges du carré (21/11) : la balade, rééchantillonnée tous les 10 m sur ses arêtes, s'écarte de quelques cm de la

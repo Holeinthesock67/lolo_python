@@ -20,7 +20,7 @@ photogrammétrie, licence ouverte Etalab 2.0) : rues, ponts et talus au mètre p
 - Chaîne du monde ouvert : IGN → FABDEM (RL1) → Copernicus. `openride-worldgen --relief ign` par défaut
   (`fabdem`, `copernicus` ; `--ign-url` pour les tests). `world-measure` aussi ; le préchargement en avance reste
   celui des tuiles d'un degré du repli, les carrés IGN de 1 km sont demandés en roulant.
-- Nom du relief (`ign_rge_alti`) dans les versions des carrés : refaits d'eux-mêmes, sans WORLDGEN_VERSION.
+- Nom du relief (`ign_rge_alti`) dans les versions des carrés : refaits d'eux-mêmes ; `WORLDGEN_VERSION` 11 (avec RL1).
 
 ## Limites connues
 - Altitudes NGF-IGN69 contre EGM2008 pour FABDEM : quelques décimètres d'écart à la frontière, absorbés par le
