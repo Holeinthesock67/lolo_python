@@ -165,7 +165,10 @@ def controle_uid(engine: Path, corriger: bool, bilan: Bilan) -> None:
 # --- 3. numéros partagés et 4. assemblage ---------------------------------------------------------------------------
 
 def controle_versions(base: str, main: str, bilan: Bilan) -> None:
+    registre = montrer("HEAD", "core/src/openride_core/revisions_ipc/historique.txt") is not None
     for nom in VERSIONS:
+        if nom == "révision IPC" and registre:
+            continue                     # calculée par le registre (lot CF2) : controle_registre_ipc
         avant, apres, sur_main = version(base, nom), version("HEAD", nom), version(main, nom)
         if avant == apres:
             continue
