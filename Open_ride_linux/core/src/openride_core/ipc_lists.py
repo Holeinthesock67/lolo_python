@@ -558,6 +558,14 @@ def record_collection_seen(profile_ctx: Any, keys: list[str],
     return current
 
 
+def compute_summary_power(journal_path: Path, ftp_w: float, activities_dir: Path, cache_path: Path,
+                          sources: Any) -> dict[str, Any] | None:
+    """Records de puissance et signal « FTP à revoir » du bilan (série PP, lot PP4) : `tools.power_records`."""
+    from .tools.power_records import session_report
+
+    return session_report(journal_path, ftp_w, activities_dir, cache_path, sources)
+
+
 def compute_summary_collection(profile_ctx: Any,
                                journal_dir: Path | None = None,
                                table_path: Path | None = None,
