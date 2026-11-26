@@ -277,6 +277,13 @@ def cmd_collection(args: argparse.Namespace) -> int:
     return run(args.directory, args.json)
 
 
+def cmd_diagnostic(args: argparse.Namespace) -> int:
+    """`openride-core diagnostic` : même fichier que « Réglages › Diagnostic » (lot DG1)."""
+    from .diagnostic import main as diagnostic_main
+
+    return diagnostic_main(["--dest", args.dest])
+
+
 def cmd_devices(args: argparse.Namespace) -> int:
     from .tools.devices import run
 
@@ -641,6 +648,9 @@ def build_parser() -> argparse.ArgumentParser:
     dev.add_argument("--save", action="store_true",
                      help="enregistre le matériel trouvé dans config.toml (appui « + » demandé, lot N12)")
     dev.add_argument("--yes", action="store_true", help="avec --save : sans demander de confirmation")
+    dg = sub.add_parser("diagnostic", help="fichier de diagnostic local, sans donnée privée (rien n'est envoyé, lot DG1)")
+    dg.add_argument("--dest", choices=("openride", "telechargements", "bureau"), default="openride",
+                    help="dossier où écrire le fichier (défaut : ~/OpenRide/Diagnostics/)")
     st = sub.add_parser("settings", help="réglages du menu : lecture ou écriture dans config.toml")
     st.add_argument("action", nargs="*", metavar="set CLÉ VALEUR")
     st.add_argument("--json", action="store_true", help="sortie JSON")
@@ -742,7 +752,7 @@ def main(argv: list[str] | None = None) -> int:
             "history": cmd_history, "coach": cmd_coach, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
             "open-world-save": cmd_open_world_save, "demo-biomes": cmd_demo_biomes, "velodromes": cmd_velodromes,
-            "profil": cmd_profil}[args.command](args)
+            "profil": cmd_profil, "diagnostic": cmd_diagnostic}[args.command](args)
 
 
 if __name__ == "__main__":

@@ -879,6 +879,63 @@ class CoreSession:
             self._handle_collection_seen(args, cmd_id)
         elif name in ("league_status", "league_new"):   # révision 1.30 (lot CH3) : ligue d'hiver
             self._on_league_command(name, cmd_id)
+        elif name == "create_diagnostic":
+            self._on_create_diagnostic(args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- fichier de diagnostic (lot DG1, contrat IPC révision 1.37) ----------------------------
+
+    def _on_create_diagnostic(self, args: dict, cmd_id: int) -> None:
+        """`create_diagnostic` : archive masquée écrite dans le dossier choisi, réponse `diagnostic`.
+        Accepté à tout moment (lecture seule, écrite hors de la boucle) ; rien n'est envoyé."""
+        from . import diagnostic
+
+        dest = str(args.get("dest") or "openride")
+        if dest not in diagnostic.DESTS:
+            self.server.send_error("bad_args", f"Diagnostic : destination inconnue « {dest} ».")
+            return
+        try:
+            entries = [(c.id or "", c.name) for c in profiles.list_contexts(self.profiles_base)]
+        except (profiles.ProfileContextError, OSError):
+            entries = []
+        if self.profile_ctx.id:
+            entries.append((self.profile_ctx.id, self.profile_ctx.name))
+        kwargs = dict(home=self.import_home, devices=self._build_devices(), profile_entries=entries,
+                      engine_version=str(args.get("engine_version") or "")[:40],
+                      gpu=str(args.get("gpu") or "")[:80], session_state=self.state.session_state,
+                      extra={"trainer_puissance_w": list(getattr(self.driver, "power_range", ()) or ())})
+
+        def done(res: dict | None, reason: str = "") -> None:
+            msg = {"type": "diagnostic", "v": 1, "request_cmd_id": cmd_id, "ok": res is not None, "dest": dest}
+            if res is not None:
+                msg.update(path=res["path"], size_kb=res["size_kb"], masked=res["masked"])
+                log.info("Diagnostic écrit : %s (%d ko, %d valeurs masquées).", res["path"], res["size_kb"],
+                         res["masked"])
+            else:
+                msg["reason"] = reason[:200]
+                log.warning("Diagnostic refusé : %s", reason)
+            self.server.send_raw(msg)
+
+        def run() -> None:
+            try:
+                done(diagnostic.write(self.cfg, dest, **kwargs))
+            except diagnostic.DiagnosticError as exc:
+                done(None, str(exc))
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : sur place
+            run()
+            return
+
+        async def bg() -> None:
+            try:
+                res = await asyncio.to_thread(diagnostic.write, self.cfg, dest, **kwargs)
+            except diagnostic.DiagnosticError as exc:
+                done(None, str(exc))
+            else:
+                done(res)
+
+        self._spawn(bg())
 
     # --- contenus installables depuis le menu (lot O25, contrat IPC révision 1.5) ---------------
 
