@@ -2214,8 +2214,12 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	if living_decor != null:
 		living_decor.set_sun_elevation(float(light["sun_elevation_deg"]) if lit else NAN)
 	var glow := NightLights.level(light)
-	if glow != NightLights.current or lit != NightLights.enabled:
-		NightLights.apply(glow, lit)
+	# Ville néon (lot NV3) : fenêtres, vitrines et luminaires allumés dès le coucher du soleil du paysage
+	var neon_k: float = living_world.neon.neon_level if living_world != null and living_world.neon != null else 0.0
+	var lights_on := lit or neon_k > 0.0
+	glow = maxf(glow, neon_k)
+	if glow != NightLights.current or lights_on != NightLights.enabled:
+		NightLights.apply(glow, lights_on)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
 	# Pas de neige dans un paysage en feu (DB2, volcano_fx.gd `melt_snow`) : la limite ne descend plus l'hiver

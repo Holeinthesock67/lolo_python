@@ -28,6 +28,7 @@ const AvatarModel := preload("res://scripts/avatar_model.gd")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
+const NeonFx := preload("res://scripts/neon_fx.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const MoonView := preload("res://scripts/moon_view.gd")
 const Fireflies := preload("res://scripts/fireflies.gd")
@@ -137,8 +138,9 @@ func _run() -> void:
 		if _neon:
 			var neon_theme: Dictionary = theme["landscapes"]["ville_neon"]["neon"]
 			atmo.set_neon(1.0, 1.0 if str(h[0]) == "nuit" else 0.0, BiomeModel.NEON_DEFAULTS.merged(neon_theme, true))
+			NeonFx.apply_globals(1.0, BiomeModel.NEON_DEFAULTS.merged(neon_theme, true))
 		atmo.set_cycle(light if lit else {})
-		NightLights.apply(NightLights.level(light), lit)
+		NightLights.apply(1.0 if _neon else NightLights.level(light), lit or _neon)
 		for view in VIEWS:
 			var from: Vector3 = VIEWS[view][0] + Vector3(0, GROUND_Y, 0)
 			var to: Vector3 = VIEWS[view][1] + Vector3(0, GROUND_Y, 0)
@@ -162,6 +164,7 @@ func _run() -> void:
 				NightLights.current, view, _luminance(img)])
 	csv.close()
 	NightLights.apply(0.0, false)
+	NeonFx.apply_globals(0.0, {})
 	print("vitrine_nuit : captures dans ", ProjectSettings.globalize_path(_out_dir))
 	quit(0)
 
