@@ -12,7 +12,11 @@ chaussée) tourne ici sur ce que le joueur roule vraiment :
   écrit par le générateur, avec la route engagée et les carrés liés, tel que l'engine l'a affiché.
 
     python3 scripts/controle_sol_route.py --out DOSSIER [--godot BINAIRE] [--routes DOSSIER]
-        [--seances DOSSIER] [--dernieres N] [MONDE.world ...]
+        [--seances DOSSIER] [--dernieres N] [--sans-parcours] [MONDE.world ...]
+
+`--sans-parcours` (26 novembre) : balades du monde ouvert seulement. Les parcours installés (une quarantaine avec
+le pack des cols et les démos de 40 km) prennent plus de 15 min : le banc multi-zones les contrôle une seule fois,
+dans une étape à part, au lieu de les refaire après chaque zone (délai de 30 min dépassé le 26/11).
 
 Avec des mondes en arguments, seuls ceux-là sont contrôlés. Écrit `DOSSIER/controle.log` (sortie complète, pires
 points listés avec s, x, z) et `DOSSIER/resume.txt`. Code de sortie : 0 si tout passe, 1 si un contrôle échoue,
@@ -69,11 +73,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--routes", type=Path, default=DEFAULT_ROUTES)
     ap.add_argument("--seances", type=Path, default=DEFAULT_SEANCES)
     ap.add_argument("--dernieres", type=int, default=3, help="balades du monde ouvert contrôlées (défaut 3)")
+    ap.add_argument("--sans-parcours", action="store_true",
+                    help="balades du monde ouvert seulement, sans les parcours installés")
     ap.add_argument("--delai-s", type=int, default=1800)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
-    worlds = list(a.mondes) or installed_worlds(a.routes) + latest_sessions(a.seances, a.dernieres)
-    print(f"parcours : {a.routes} ; balades : {a.seances} ; mondes trouvés : {len(worlds)}", flush=True)
+    routes = [] if a.sans_parcours else installed_worlds(a.routes)
+    worlds = list(a.mondes) or routes + latest_sessions(a.seances, a.dernieres)
+    print(f"parcours : {'aucun (--sans-parcours)' if a.sans_parcours else a.routes} ; balades : {a.seances} ; mondes trouvés : {len(worlds)}", flush=True)
     if not worlds:
         why = (f"rien à contrôler : aucun parcours dans {a.routes}, aucune balade ow-*.world avec route/part_*.json "
                f"et manifest.json dans {a.seances}")
