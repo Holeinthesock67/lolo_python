@@ -69,7 +69,13 @@ func _init() -> void:
 	v.update_display()
 	_check(v.vm.state == "map" and not v.globe_view.visible and v.body_label.text.contains("Chargement"), "carte : globe caché, attente des routes")
 	_check(v.help_label.text.contains("route la plus proche") and v.hint_text().contains("Entrée : Départ ici"), "carte : explication et légende")
+	# Carte sans route (tuiles pas téléchargées, 25 novembre) : dit en mots, pas un fond muet.
+	v.vm.on_map({"roads": []})
+	v.update_display()
+	_check(v.body_label.text.contains("Aucune route") and not v.body_label.text.contains("Chargement"), "carte vide expliquée")
 	v.vm.on_map({"roads": [{"c": "t", "xz": [0, 0, 500, 0]}]})
+	v.update_display()
+	_check(not v.body_label.text.contains("Aucune route"), "carte avec routes : pas de message de carte vide")
 	v.vm.handle("A_SHORT")
 	v.update_display()
 	_check(v.vm.state == "setup" and v.help_label.text.begins_with("Balade") and v.help_label.text.contains("carrefour")

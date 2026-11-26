@@ -12,7 +12,7 @@
     {"choisir": "demo"},
     {"ecran": "home", "focus": "world", "contient": ["Parcours : Col du lacet"]},
     {"choisir": "ride"},
-    {"ecran": "ready", "titre": "Prêt : session libre — Col du lacet", "focus": "start", "elements": ["start", "workout", "change_route", "bot1", "ghost", "records"]},
+    {"ecran": "ready", "titre": "Prêt : session libre — Col du lacet", "focus": "start", "elements": ["start", "workout", "change_route", "ghost", "peloton", "records"], "absent": ["Bot 1"]},
     {"choisir": "start"},
     {"note": "Départ au pédalage (lot O36) : attente du décor et du pédalage, puis course", "journal": "core", "motif": "Départ : étape decor -> ", "delai": 10},
     {"journal": "core", "motif": "-> RUNNING", "delai": 20},
