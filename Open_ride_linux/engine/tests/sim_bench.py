@@ -108,6 +108,13 @@ SPEED_TOLERANCE = 0.10  # vitesse imposée : médiane à ± 10 %
 LATENCY_MIN_PRESSES = 10   # lot X7 : appuis du Click appariés de bout en bout
 LATENCY_P95_MS = 150.0     # notification → image affichée, p95 (strict en fenêtre réelle)
 SPEED_WARMUP_S = 20.0   # départ arrêté : hors médiane de la vitesse
+# Vitesse imposée sur un parcours vallonné (monde ouvert, ± 13 %) : le cycliste simulé ne freine pas. En descente
+# et à l'abri d'un cycliste du décor il va plus vite que la vitesse imposée, puis il garde cet élan longtemps
+# (constante de temps de l'ordre de 25 s sur le plat). Ces échantillons-là ne disent rien de la vitesse tenue.
+SPEED_DESCENT_PCT = 0.0     # pente envoyée sous ce seuil : descente, hors médiane
+SPEED_DRAFT_MAX = 0.02      # abri au-delà : hors médiane
+SPEED_COAST_S = 15.0        # élan gardé après une descente ou un abri : hors médiane
+SPEED_MIN_SAMPLES = 30      # en dessous : médiane sur tout le parcours, avec la mention
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 # Changement d'état de la séance au journal du core (« Séance : RUNNING -> FINISHED ») : l'état lu est le
 # NOUVEL état, après la flèche, jamais le premier mot de la ligne.
@@ -967,19 +974,38 @@ def shot_timing(s: dict[str, Any]) -> str:
 
 def speed_check(recs: list[dict[str, Any]], target_kmh: float, tolerance: float = SPEED_TOLERANCE,
                 warmup_s: float = SPEED_WARMUP_S) -> tuple[bool, str]:
-    """Vitesse médiane du journal (m/s, 1 Hz) après la mise en vitesse, comparée à la vitesse imposée."""
+    """Vitesse médiane du journal (m/s, 1 Hz) après la mise en vitesse, comparée à la vitesse imposée.
+
+    Seuls comptent les échantillons où la vitesse imposée se tient : ni descente, ni abri, ni élan d'une
+    descente ou d'un abri des `SPEED_COAST_S` dernières secondes (le cycliste simulé ne freine pas)."""
     ts = [x["ts"] for x in recs if isinstance(x.get("ts"), (int, float))]
     if not ts:
         return False, "aucun échantillon de vitesse au journal"
     t0 = min(ts)
-    v = sorted(float(x["speed"]) * 3.6 for x in recs if isinstance(x.get("speed"), (int, float))
-               and isinstance(x.get("ts"), (int, float)) and x["ts"] - t0 >= warmup_s)
-    if not v:
+    rows = sorted((x for x in recs if isinstance(x.get("speed"), (int, float))
+                   and isinstance(x.get("ts"), (int, float)) and x["ts"] - t0 >= warmup_s), key=lambda x: x["ts"])
+    if not rows:
         return False, f"aucun échantillon de vitesse après {warmup_s:.0f} s"
+    held, last_free = [], -math.inf
+    for x in rows:
+        grade = x.get("grade_sent", x.get("grade"))
+        draft = x.get("draft")
+        free = (isinstance(grade, (int, float)) and grade < SPEED_DESCENT_PCT) or \
+            (isinstance(draft, (int, float)) and draft > SPEED_DRAFT_MAX)
+        if free:
+            last_free = x["ts"]
+        elif x["ts"] - last_free > SPEED_COAST_S:
+            held.append(float(x["speed"]) * 3.6)
+    every = sorted(float(x["speed"]) * 3.6 for x in rows)
+    if len(held) >= SPEED_MIN_SAMPLES:
+        v, note = sorted(held), (f" ; hors descentes, abri et élan : {len(held)}/{len(every)} s retenues"
+                                 if len(held) < len(every) else "")
+    else:
+        v, note = every, f" ; pas assez de plat ni de montée tenus ({len(held)} s) : tout le parcours compté"
     med = v[len(v) // 2]
     ok = abs(med - target_kmh) <= tolerance * target_kmh
     return ok, (f"médiane {med:.1f} km/h sur {len(v)} s (attendu {target_kmh:.1f} ± {tolerance * target_kmh:.1f}), "
-                f"de {v[0]:.1f} à {v[-1]:.1f} km/h")
+                f"de {v[0]:.1f} à {v[-1]:.1f} km/h{note}")
 
 
 # --- rapport HTML ------------------------------------------------------------------------------
