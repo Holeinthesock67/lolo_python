@@ -76,7 +76,8 @@ def _bearing(a: XZ, b: XZ) -> float:
 class Navigator:
     def __init__(self, graph: RoadGraph, mode: str, start_xz: XZ, start_heading_deg: float, seed: int,
                  target_xz: XZ | None = None, loop_m: float | None = None,
-                 allowed: Callable[[Edge], bool] | None = None) -> None:
+                 allowed: Callable[[Edge], bool] | None = None,
+                 home_edge: tuple[str, float] | None = None) -> None:
         if mode not in MODES:
             raise ValueError(f"mode de navigation inconnu : {mode}")
         if mode == "destination" and target_xz is None:
@@ -94,7 +95,10 @@ class Navigator:
         r = [_hash01(seed, "derive", k) for k in range(4)]
         self._drift = [(0.6, 20_000.0 + 20_000.0 * r[0], 2 * math.pi * r[1]),
                        (0.4, 10_000.0 + 10_000.0 * r[2], 2 * math.pi * r[3])]
-        self._start_node = nearest(graph.nodes.values(), self.start_xz) if mode == "loop" else None
+        # Départ de la boucle (26/11) : arête du départ et abscisse du point de départ depuis son bout `a`.
+        # Un identifiant d'arête est stable quand le graphe s'agrandit, pas celui d'un nœud de choix (un
+        # regroupement peut le changer) : le retour se recalcule donc à chaque choix depuis l'arête.
+        self.home_edge = (str(home_edge[0]), float(home_edge[1])) if home_edge else None
 
     # --- cap de balade ------------------------------------------------------------------------
 
@@ -205,11 +209,15 @@ class Navigator:
             return self._pick_ride(branches, _bearing(here, self.target_xz), seen, recent, n, phase="destination")
 
         if self.mode == "loop":
-            assert self.loop_m is not None and self._start_node is not None
-            home = self._start_node
-            if ridden >= 0.5 * self.loop_m and (node == home or _dist(here, self.start_xz) <= ARRIVED_M):
+            assert self.loop_m is not None
+            seeds = self._home_seeds()
+            if ridden >= 0.5 * self.loop_m and (node in seeds or _dist(here, self.start_xz) <= ARRIVED_M):
+                home_br = self._home_branch(branches)
+                if home_br is not None:
+                    return Choice(home_br.edge.id, home_br.forward, home_br.to_node, {"total": 0.0},
+                                  arrived=True, phase="loop_return")
                 return self._pick_ride(branches, self.ride_heading(ridden), seen, recent, n, arrived=True)
-            to_home = self._distances_to(home)
+            to_home = self._distances_to(seeds)
             if ridden < LOOP_OUT_SHARE * self.loop_m:
                 best = None
                 for br in branches:
@@ -224,6 +232,11 @@ class Navigator:
                 return Choice(br.edge.id, br.forward, br.to_node, sc, phase="loop_out")
             budget = self.loop_m - LOOP_MARGIN_M
             ret = [ridden + br.edge.length_m + to_home.get(br.to_node, math.inf) for br in branches]
+            if not any(math.isfinite(r) for r in ret):
+                # Aucun retour connu depuis ce carrefour (départ hors du graphe connu, sens uniques) : cap
+                # vers le départ en évitant impasses et routes déjà prises, jamais la plus petite arête au
+                # hasard (26/11 : une boucle de Sevrier finissait au bout d'un sens unique et se figeait).
+                return self._pick_ride(branches, _bearing(here, self.start_xz), seen, recent, n, phase="loop_return")
             if min(ret) >= budget:
                 k = min(range(len(branches)), key=lambda i: (ret[i], branches[i].edge.id))
                 br = branches[k]
@@ -293,16 +306,49 @@ class Navigator:
                     heapq.heappush(heap, (nd + h(to), nd, to))
         return math.inf
 
-    def _distances_to(self, home: int) -> dict[int, float]:
-        """Longueur du plus court retour vers `home` depuis chaque nœud (Dijkstra sur le graphe inversé)."""
+    def _home_seeds(self) -> dict[int, float]:
+        """Nœuds d'où l'on rejoint le départ de la boucle, avec la longueur qui reste jusqu'au point de départ.
+
+        Arête du départ connue : ses deux bouts, chacun seulement si le sens de l'arête permet d'aller de ce
+        bout au départ. Sinon (ou arête disparue) : le nœud le plus proche du départ dans le graphe actuel,
+        recalculé à chaque fois (jamais un identifiant de nœud gardé depuis l'ouverture).
+        """
         g = self.graph
+        if self.home_edge is not None and self.home_edge[0] in g.edges:
+            e = g.edges[self.home_edge[0]]
+            t = min(max(self.home_edge[1], 0.0), e.length_m)
+            seeds: dict[int, float] = {}
+            if e.allows(True) and e.a in g.nodes:
+                seeds[e.a] = t
+            if e.allows(False) and e.b in g.nodes:
+                seeds[e.b] = min(seeds.get(e.b, math.inf), e.length_m - t)
+            if seeds:
+                return seeds
+        return {nearest(g.nodes.values(), self.start_xz): 0.0}
+
+    def _home_branch(self, branches: list[Branch]) -> Branch | None:
+        """À un bout de l'arête du départ : la branche qui la reprend vers le point de départ."""
+        if self.home_edge is None:
+            return None
+        for br in branches:
+            if br.edge.id == self.home_edge[0]:
+                return br
+        return None
+
+    def _distances_to(self, seeds: int | dict[int, float]) -> dict[int, float]:
+        """Longueur du plus court retour vers le départ depuis chaque nœud (Dijkstra sur le graphe inversé) ;
+        `seeds` : un nœud, ou des nœuds avec la longueur qui reste depuis chacun."""
+        g = self.graph
+        if not isinstance(seeds, dict):
+            seeds = {seeds: 0.0}
         rev: dict[int, list[tuple[int, float]]] = {}
         for n in g.nodes:
             for e, fwd in g.branches(n):
                 to = e.b if fwd else e.a
                 rev.setdefault(to, []).append((n, e.length_m))
-        dist = {home: 0.0}
-        heap = [(0.0, home)]
+        dist = dict(seeds)
+        heap = [(d, s) for s, d in seeds.items()]
+        heapq.heapify(heap)
         while heap:
             d, n = heapq.heappop(heap)
             if d > dist.get(n, math.inf):
