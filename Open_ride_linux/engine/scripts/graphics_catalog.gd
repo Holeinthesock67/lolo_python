@@ -119,7 +119,7 @@ static func tiny_mesh(mesh: Mesh) -> ArrayMesh:
 		if mesh is ArrayMesh:
 			flags = (mesh as ArrayMesh).surface_get_format(i) & ~ATTRIBUTE_BITS
 			prim = (mesh as ArrayMesh).surface_get_primitive_type(i)
-		var small := _first_triangle(arrays)
+		var small := _first_triangle(arrays, _vertices_of(prim))
 		if small.is_empty():
 			return null
 		out.add_surface_from_arrays(prim, small, [], {}, flags)
@@ -127,17 +127,30 @@ static func tiny_mesh(mesh: Mesh) -> ArrayMesh:
 	return out
 
 
-## Les trois premiers sommets (ceux du premier triangle indexé s'il y a un index), chaque tableau gardant son
-## nombre de valeurs par sommet.
-static func _first_triangle(arrays: Array) -> Array:
+## Sommets d'une primitive : 1 (points), 2 (lignes), 3 (triangles). Banc r1097 du 26/11 : un maillage de lignes
+## réduit à 3 sommets faisait « Vertex amount (3) must be a multiple of … (2) ».
+static func _vertices_of(prim: int) -> int:
+	match prim:
+		Mesh.PRIMITIVE_POINTS:
+			return 1
+		Mesh.PRIMITIVE_LINES, Mesh.PRIMITIVE_LINE_STRIP:
+			return 2
+	return 3
+
+
+## Les `count` premiers sommets (ceux de la première primitive indexée s'il y a un index), chaque tableau gardant
+## son nombre de valeurs par sommet.
+static func _first_triangle(arrays: Array, count: int = 3) -> Array:
 	var verts = arrays[Mesh.ARRAY_VERTEX] if arrays.size() > Mesh.ARRAY_VERTEX else null
-	if verts == null or verts.size() < 3:
+	if verts == null or verts.size() < count:
 		return []
 	var n: int = verts.size()
-	var pick: Array = [0, 1, 2]
+	var pick: Array = range(count)
 	var idx = arrays[Mesh.ARRAY_INDEX] if arrays.size() > Mesh.ARRAY_INDEX else null
-	if idx != null and idx.size() >= 3:
-		pick = [int(idx[0]), int(idx[1]), int(idx[2])]
+	if idx != null and idx.size() >= count:
+		pick = []
+		for v in range(count):
+			pick.append(int(idx[v]))
 	var out: Array = []
 	out.resize(Mesh.ARRAY_MAX)
 	for t in range(mini(arrays.size(), Mesh.ARRAY_MAX)):
@@ -148,8 +161,8 @@ static func _first_triangle(arrays: Array) -> Array:
 		if stride <= 0:
 			return []
 		var b = a.slice(0, 0)   # tableau vide du même type, sans copier les sommets
-		b.resize(stride * 3)
-		for v in range(3):
+		b.resize(stride * count)
+		for v in range(count):
 			for c in range(stride):
 				b[v * stride + c] = a[pick[v] * stride + c]
 		out[t] = b
@@ -305,22 +318,40 @@ func pending_writes() -> int:
 	return _todo.size()
 
 
-## Doublures de tout le catalogue (dossier livré puis celui du joueur), à rejouer ; un fichier illisible est passé.
-static func load_all(dirs: Array = [BUNDLED_DIR, USER_DIR]) -> Array:
+## Fichiers du catalogue (dossier livré puis celui du joueur), une fois chaque clé.
+static func list_paths(dirs: Array = [BUNDLED_DIR, USER_DIR]) -> Array:
 	var out: Array = []
 	var seen: Dictionary = {}
 	for d in dirs:
 		for f in _files(d):
-			if seen.has(f):
-				continue
-			seen[f] = true
-			var ps = ResourceLoader.load(str(d).path_join(f), "PackedScene", ResourceLoader.CACHE_MODE_IGNORE)
-			if ps is PackedScene:
-				var n = (ps as PackedScene).instantiate()
-				if n is GeometryInstance3D:
-					out.append(n)
-				elif n != null:
-					(n as Node).free()
+			if not seen.has(f):
+				seen[f] = true
+				out.append(str(d).path_join(f))
+	return out
+
+
+## Doublure d'un fichier du catalogue ; null s'il est illisible. Banc r1097 du 26/11 : charger les 49 doublures
+## d'un coup faisait compiler tous leurs pipelines dans l'image suivante (21 s d'écran figé sur la GTX 1060) ;
+## graphics_prep.gd en charge une par image.
+static func load_one(path: String) -> GeometryInstance3D:
+	var ps = ResourceLoader.load(path, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE)
+	if not (ps is PackedScene):
+		return null
+	var n = (ps as PackedScene).instantiate()
+	if n is GeometryInstance3D:
+		return n
+	if n != null:
+		(n as Node).free()
+	return null
+
+
+## Doublures de tout le catalogue d'un coup (outils et tests) ; un fichier illisible est passé.
+static func load_all(dirs: Array = [BUNDLED_DIR, USER_DIR]) -> Array:
+	var out: Array = []
+	for path in list_paths(dirs):
+		var n := load_one(path)
+		if n != null:
+			out.append(n)
 	return out
 
 

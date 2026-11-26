@@ -102,6 +102,40 @@ func _initialize() -> void:
 	_check(not prep2.running and warm2.primed_left() == 0 and warm2.primed_shown < prep2.total
 		and not FileAccess.file_exists(base + "/prepare2.json"), "séance partie : abandonnée, clé non écrite")
 
+	# Fichiers du catalogue : chargés un par un, le suivant quand la doublure d'avant est passée (banc r1097 : les
+	# 49 d'un coup compilaient tout dans une image de 21 s).
+	var cat_dir := base + "/catalogue"
+	var cat = Catalog.new()
+	cat.dir = cat_dir
+	var srcs: Array = [_proxy("h"), _proxy("i"), _proxy("j")]
+	for s in srcs:
+		cat.record(s)
+	cat.flush()
+	for s in srcs:
+		s.free()
+	var paths: Array = Catalog.list_paths([cat_dir])
+	var warm3 = ShaderWarm.new()
+	world.add_child(warm3)
+	warm3.set_process(false)
+	var prep4 = GraphicsPrep.new()
+	prep4.warm = warm3
+	prep4.key_file = base + "/prepare4.json"
+	world.add_child(prep4)
+	prep4.set_process(false)
+	prep4.start(paths)
+	_check(paths.size() == 3 and prep4.running and warm3.pending() == 0, "trois fichiers, aucun chargé avant la première image")
+	var most := 0
+	for i in range(40):
+		prep4._process(0.0)
+		most = maxi(most, int(warm3.pending()))
+		warm3.step(cam)
+	_check(most == 1 and not prep4.running and prep4.done == 3 and FileAccess.file_exists(base + "/prepare4.json"),
+		"une doublure à la fois (au plus %d en file), toutes passées, clé écrite" % most)
+	for cf in DirAccess.get_files_at(cat_dir):
+		DirAccess.remove_absolute(cat_dir.path_join(cf))
+	DirAccess.remove_absolute(cat_dir)
+	DirAccess.remove_absolute(base + "/prepare4.json")
+
 	# Catalogue vide : rien ne s'affiche.
 	var prep3 = GraphicsPrep.new()
 	prep3.warm = warm

@@ -360,7 +360,7 @@ func _ready() -> void:
 			prep.name = "GraphicsPrep"
 			prep.warm = warm
 			add_child(prep)
-			prep.start(GraphicsCatalog.load_all())
+			prep.start(GraphicsCatalog.list_paths())   # chargées une par image (banc r1097)
 			_graphics_prep = prep
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()

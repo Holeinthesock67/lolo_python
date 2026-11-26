@@ -22,6 +22,11 @@ var key_file := KEY_FILE
 var total := 0
 var done := 0
 var running := false
+## Fichiers du catalogue pas encore chargés : un seul à la fois, quand la doublure d'avant est passée, pour que
+## les pipelines de chacun se compilent dans leur propre image et que la barre avance (banc r1097 du 26/11).
+var _paths: Array = []
+var _shown0 := 0
+var _skipped := 0
 var _label: Label = null
 var _bar: ProgressBar = null
 var _t0_ms := 0
@@ -53,14 +58,27 @@ static func write_key(key_file: String = KEY_FILE) -> void:
 		f.store_string(JSON.stringify({"key": current_key(), "date": Time.get_datetime_string_from_system()}))
 
 
-## Lance la préparation avec ces doublures (catalogue lu par l'appelant) ; rien à faire si la liste est vide.
-func start(proxies: Array) -> void:
-	if warm == null or proxies.is_empty():
-		for p in proxies:
-			(p as Node).free()
+## Lance la préparation : chemins des fichiers du catalogue (GraphicsCatalog.list_paths, chargés un par un) ou
+## doublures déjà faites (tests) ; rien à faire si la liste est vide.
+func start(items: Array) -> void:
+	if warm == null or items.is_empty():
+		for it in items:
+			if it is Node:
+				(it as Node).free()
 		return
-	total = warm.prime(proxies)
-	if total == 0:
+	var nodes: Array = []
+	_paths = []
+	for it in items:
+		if it is Node:
+			nodes.append(it)
+		else:
+			_paths.append(str(it))
+	total = items.size()
+	_shown0 = int(warm.primed_shown)
+	_skipped = 0
+	if not nodes.is_empty():
+		_skipped += nodes.size() - int(warm.prime(nodes))
+	if _paths.is_empty() and int(warm.primed_left()) <= 0:
 		return
 	running = true
 	_t0_ms = Time.get_ticks_msec()
@@ -99,12 +117,25 @@ func _refresh() -> void:
 func _process(_delta: float) -> void:
 	if not running or warm == null:
 		return
-	done = mini(total, int(warm.primed_shown))
+	if not bool(warm.active):
+		_end(false)   # séance partie avant la fin : refaite au lancement suivant
+		return
+	if not _paths.is_empty() and int(warm.primed_left()) <= 0:
+		var n = Catalog.load_one(str(_paths.pop_front()))
+		if n == null or int(warm.prime([n])) == 0:
+			_skipped += 1   # illisible, ou clé déjà passée par une autre doublure
+	done = mini(total, int(warm.primed_shown) - _shown0 + _skipped)
 	_refresh()
-	if done >= total or int(warm.primed_left()) <= 0:
-		running = false
-		if int(warm.primed_shown) >= total:   # séance partie avant la fin : refaite au lancement suivant
-			write_key(key_file)
-		print("Préparation des graphismes finie : %d doublures en %d ms" % [total, Time.get_ticks_msec() - _t0_ms])
-		for c in get_children():
-			c.queue_free()
+	if _paths.is_empty() and int(warm.primed_left()) <= 0:
+		_end(done >= total)
+
+
+func _end(complete: bool) -> void:
+	running = false
+	_paths = []
+	if complete:
+		write_key(key_file)
+	print("Préparation des graphismes %s : %d sur %d doublures en %d ms"
+		% ["finie" if complete else "interrompue", done, total, Time.get_ticks_msec() - _t0_ms])
+	for c in get_children():
+		c.queue_free()

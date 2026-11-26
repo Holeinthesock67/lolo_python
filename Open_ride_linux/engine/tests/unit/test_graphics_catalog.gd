@@ -81,6 +81,16 @@ func _initialize() -> void:
 	var lt: Texture2D = lm.get_shader_parameter("tex")
 	_check(lm.shader == sh and lt != null and lt.get_width() == 4, "même shader, texture de 4 × 4 pixels")
 
+	# Maillage de lignes (banc r1097) : deux sommets, pas trois (« Vertex amount (3) must be a multiple … (2) »).
+	var lines := ArrayMesh.new()
+	var la := []
+	la.resize(Mesh.ARRAY_MAX)
+	la[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3.ZERO, Vector3.ONE, Vector3.UP, Vector3.RIGHT])
+	lines.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, la)
+	var small_lines := Catalog.tiny_mesh(lines)
+	_check(small_lines != null and (small_lines.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() == 2
+		and small_lines.surface_get_primitive_type(0) == Mesh.PRIMITIVE_LINES, "lignes : une ligne de deux sommets")
+
 	# Clés stables : même shader, paramètres différents, même clé ; autre format ou autres ombres : autre clé.
 	var mat2 := mat.duplicate() as ShaderMaterial
 	mat2.set_shader_parameter("tex", null)

@@ -90,3 +90,20 @@ l'engine), pas dans le profil du joueur.
 - `engine/tests/catalogue_graphismes.py` et `tour_visuel.py --engine-arg` : catalogue de départ.
 - Tests : `test_graphics_catalog.gd`, `test_graphics_prep.gd`.
 - Pas de changement IPC.
+
+### Banc PC r1097 du 26/11 (pile 02bd9377 + #953 + #985 + #1066) et correctifs
+
+- Constat : en low, medium et high, une seule image de 20,5 à 22,2 s (124 pipelines) à l'entrée de la première
+  doublure, puis le parcours chargé à 56 s (« non chargé en 30 s »). Après la préparation, plus aucune image lente au
+  départ ni pendant la séance (pire image 76 ms en medium) : le principe tient, la cadence non.
+- Cause : les 49 doublures étaient chargées d'un coup ; leurs matériaux et maillages faisaient compiler tous leurs
+  pipelines dans l'image suivante (reproduit en cloud : 67 pipelines dans une image juste après le chargement).
+  Correctif : `GraphicsCatalog.list_paths` et `load_one`, `graphics_prep.gd` charge un fichier par image, le suivant
+  quand la doublure d'avant est passée (la barre avance, au plus quelques pipelines par image).
+- « Vertex amount (3) must be a multiple … (2) » : une doublure de lignes réduite à 3 sommets. Correctif :
+  `tiny_mesh` garde 1, 2 ou 3 sommets selon la primitive ; la recette livrée fautive refaite (mêmes clés).
+- Banc : le parcours attend la préparation au premier lancement ; `sim_bench.py` attend sa fin (ligne « Préparation
+  des graphismes finie », 300 s au plus, notée à titre indicatif) avant ses 30 s de chargement.
+- Hors PG1 : l'échec d'`ow-chaud` (images de 1 à 3,5 s au départ, cache par PR vide au premier passage « chaud »)
+  vient du banc des menus, sans préparation (`--test-mode`) ; même défaut que celui corrigé par BF1 pour
+  `sim_bench.py`.
