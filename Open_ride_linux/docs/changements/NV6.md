@@ -1,6 +1,6 @@
 # NV6 : ville néon, parcours « Avenue de la Lagune »
 
-- PR : à venir ; cahier : docs/lots/LOT_NV6_parcours_avenue_lagune.md ; version : 6.0
+- PR : #1089 ; cahier : docs/lots/LOT_NV6_parcours_avenue_lagune.md ; version : 6.0
 - CHANGELOG (section « Ajouté ») :
   - Nouveau parcours de démonstration « Avenue de la Lagune » : boucle plate de 5 km dans une ville de bord de mer au coucher du soleil puis de nuit, avec avenue aux néons, front de mer, port et vieux quartier. Livré avec les contenus de départ.
 - SUIVI :

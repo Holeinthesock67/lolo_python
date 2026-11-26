@@ -1,6 +1,6 @@
 # NV4 : ville néon, mobilier de rue
 
-- PR : à venir ; cahier : docs/lots/LOT_NV4_mobilier_de_rue.md ; version : 6.0
+- PR : #1089 ; cahier : docs/lots/LOT_NV4_mobilier_de_rue.md ; version : 6.0
 - CHANGELOG (section « Ajouté ») :
   - Paysage « ville néon » : la rue est meublée, avec des palmiers en rangée, des lampadaires, des enseignes lumineuses à noms inventés, des guirlandes d'ampoules et des voitures garées. Rien ne change ailleurs.
 - SUIVI :

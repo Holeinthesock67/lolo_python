@@ -1,6 +1,6 @@
 # NV2 : ville néon, ciel, lumière et brume
 
-- PR : à venir ; cahier : docs/lots/LOT_NV2_ciel_lumiere_ville_neon.md ; version : 6.0
+- PR : #1089 ; cahier : docs/lots/LOT_NV2_ciel_lumiere_ville_neon.md ; version : 6.0
 - CHANGELOG (section « Ajouté ») :
   - Paysage « ville néon » : ciel rose et orange avec un grand soleil bas, lumière rasante et brume rose au départ, puis nuit violette étoilée après une dizaine de minutes. Ce paysage impose sa lumière, quelle que soit l'heure choisie. Rien ne change ailleurs.
 - SUIVI :
