@@ -53,4 +53,4 @@ Banc `bonus_bench` (50 passages, graine 8, cyclistes de 200 à 320 W de FTP) : m
 
 ## Livraison
 
-PR en revue (26 novembre 2026), branche `claude/project-thread-a4jljr`. Aucune charge PC : core pur et HUD, CI et cloud.
+PR #1093 en revue (26 novembre 2026), branche `claude/project-thread-a4jljr`. Aucune charge PC : core pur et HUD, CI et cloud.
