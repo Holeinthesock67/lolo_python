@@ -12,6 +12,10 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
 - L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.39 provisoire).
 
+### Gestes des bots écrits et entendus (lot BA1)
+- Quand un bot proche attaque, suit une attaque ou lance son sprint, le bandeau l'écrit (« Grimpeur attaque, 40 m devant ») et un son court part : dans la Course, le Grand Prix, le Dernier survivant et la session libre avec un peloton.
+- Contrat IPC : champ facultatif `move` des bots (révision 1.38, numéro provisoire).
+
 ### Copies automatiques du profil (lot SV1)
 - Chaque profil de joueur est copié chaque semaine (au lancement, si la dernière copie a 7 jours), avant chaque mise à jour (« Mettre à jour » refuse de continuer si la copie échoue) et avant une remise à zéro, dans `~/OpenRide/Sauvegardes/profils/<profil>/`.
 - Les fichiers qui n'ont pas changé ne sont pas recopiés (liens durs) : une saison de 8 semaines tient dans un seul dossier. Gardées : 8 copies de la semaine, 3 avant mise à jour, 3 avant remise à zéro, 3 avant restauration.

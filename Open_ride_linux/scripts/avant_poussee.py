@@ -23,6 +23,11 @@ Relevé des 24-26 novembre (statut/FIABILITE_CI_BANCS_2026-11-26.md) : sur 10 ex
     python3 scripts/avant_poussee.py                  # depuis Open_ride_linux/, avant chaque `git push`
     python3 scripts/avant_poussee.py --corriger       # écrit aussi les .uid manquants (à commiter ensuite)
     python3 scripts/avant_poussee.py --installer-crochet   # crochet git pre-push du dépôt local
+    python3 scripts/avant_poussee.py --avant-fusion   # fil de fusion, juste avant de fusionner un train (secondes)
+
+Fraîcheur (lot BM1) : main changé depuis la base de la branche sur un fichier qu'elle touche aussi, ou sur un fichier
+partagé (contrat IPC, `main.gd`, garde-fou des tests) : avis avant une poussée, échec avec `--avant-fusion` (la CI
+verte du train ne vaut alors plus : fusionner main dans le train et attendre sa CI).
 
 À jouer aussi sur la branche d'un train, avant sa CI : une faute peut naître de l'assemblage (26/11, #1039 passait
 seul, le train de la courbe de puissance écrivait hors de `tmp_path`). Rejoué sur les deux trains rouges du 26/11
@@ -186,6 +191,37 @@ def controle_assemblage(main: str, bilan: Bilan) -> None:
         bilan.note(AVIS, f"assemblage non vérifié (git trop ancien ?) : {p.stderr.strip()[-120:]}")
 
 
+# --- fraîcheur de la base (lot BM1) -------------------------------------------------------------------------------
+
+# Fichiers dont un changement sur main peut casser une branche sans toucher à ses fichiers (contrat IPC, schémas,
+# scène principale de l'engine, règles partagées des tests) : signalés même sans fichier commun.
+SENSIBLES = re.compile(r"^(docs/contracts/|engine/scripts/main\.gd$|core/src/openride_core/ipc_server\.py$|"
+                       r"scripts/isolation_tests\.py$|core/tests/conftest\.py$|compiler/tests/conftest\.py$)")
+
+
+def controle_fraicheur(base: str, main_sha: str, changes: list[str], avant_fusion: bool, bilan: Bilan) -> None:
+    """Base qui bouge (26/11 : 3 trains rouges sur 5, #820 et #821 le 08/11) : une CI verte ne vaut que pour le main
+    qu'elle a vu. Fichiers changés sur main depuis la base de la branche, croisés avec ceux de la branche."""
+    prefixe = SOUS_DOSSIER + "/"
+    sur_main = {l[len(prefixe):] for l in git("diff", "--name-only", base, main_sha).splitlines()
+                if l.startswith(prefixe)}
+    if not sur_main:
+        bilan.note(OK, "fraîcheur : main n'a rien changé depuis la base de la branche")
+        return
+    communs = sorted(sur_main & set(changes))
+    sensibles = sorted(c for c in sur_main - set(changes) if SENSIBLES.match(c))
+    verdict = ECHEC if avant_fusion else AVIS
+    if communs:
+        bilan.note(verdict, f"fraîcheur : main a changé depuis la base {len(communs)} fichier(s) que la branche touche "
+                   f"aussi : {', '.join(communs[:6])}{' …' if len(communs) > 6 else ''} "
+                   "(fusionner main dans la branche, puis attendre sa CI)")
+    if sensibles:
+        bilan.note(verdict, f"fraîcheur : main a changé depuis la base des fichiers partagés : {', '.join(sensibles[:6])} "
+                   "(fusionner main dans la branche, puis attendre sa CI)")
+    if not communs and not sensibles:
+        bilan.note(OK, f"fraîcheur : {len(sur_main)} fichier(s) changé(s) sur main depuis la base, aucun en commun")
+
+
 # --- 5. et 6. tests -------------------------------------------------------------------------------------------------
 
 def tests_touches(changes: list[str]) -> dict[str, set[str]]:
@@ -281,6 +317,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sans-tests", action="store_true", help="sauter les tests (étapes 5 et 6)")
     ap.add_argument("--tous", action="store_true", help="jouer toutes les suites du core et du compilateur")
     ap.add_argument("--installer-crochet", action="store_true", help="poser le crochet git pre-push et sortir")
+    ap.add_argument("--avant-fusion", action="store_true",
+                    help="juste avant de fusionner (fil de fusion) : main changé sur un fichier commun = échec ; sans tests")
     a = ap.parse_args(argv)
     if a.installer_crochet:
         return installer_crochet()
@@ -307,8 +345,9 @@ def main(argv: list[str] | None = None) -> int:
     controle_uid(PROJET / "engine", a.corriger, bilan)
     controle_versions(base, main_sha, bilan)
     controle_assemblage(main_sha, bilan)
+    controle_fraicheur(base, main_sha, changes, a.avant_fusion, bilan)
 
-    if not a.sans_tests:
+    if not (a.sans_tests or a.avant_fusion):
         controle_paquets(bilan)
         if a.tous:
             jouer_pytest("core", ["tests"], bilan, "toute la suite")
@@ -320,10 +359,11 @@ def main(argv: list[str] | None = None) -> int:
                 reste = sorted(fichiers - set(TESTS_RAPIDES.get(suite, [])))
                 jouer_pytest(suite, reste, bilan, "tests touchés")
 
+    quoi = "FUSIONNER" if a.avant_fusion else "POUSSER"
     if bilan.echecs:
-        print(f"=== NE PAS POUSSER : {bilan.echecs} échec(s)", flush=True)
+        print(f"=== NE PAS {quoi} : {bilan.echecs} échec(s)", flush=True)
         return 1
-    print("=== PRÊT À POUSSER", flush=True)
+    print(f"=== PRÊT À {quoi}", flush=True)
     return 0
 
 
