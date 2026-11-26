@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 import tomllib
 from dataclasses import asdict, dataclass, field, replace
@@ -74,6 +75,8 @@ CHOSEN_NEEDS = (*NEEDS, "recovery", "ftp_test")   # « Choisir un autre besoin �
 RACE_KINDS = ("course", "championnat")           # « Ma prochaine course » (plan §3, S6)
 MATCH_TOLERANCE_S = 60.0
 FACTS_VERSION = 3   # version des faits du cache `coach.json` (2 : course disputée, lot CO6 ; 3 : revue RC13)
+
+log = logging.getLogger(__name__)
 
 
 class CoachError(ValueError):
@@ -426,7 +429,13 @@ def recommend(signals: dict[str, Any], inputs: Inputs, today: date, table: dict[
 
     # R4 : FTP trop ancienne pour des zones justes.
     age = signals["ftp_age_days"]
-    if (age is None or age > rules["r4_ftp_age_days"]) and form > rules["r4_min_form"]:
+    curve = signals.get("curve") or {}
+    review = curve.get("review")
+    if review and form > rules["r4_min_form"]:   # lot PP8 : la FTP estimée s'écarte de plus de 5 %
+        return advice("ftp_test", "R4", f"Ta FTP estimée ({review['estimate_w']} W) s'écarte de plus de 5 % de ta "
+                      f"FTP réglée ({review['ftp_set_w']} W) : un test de rampe la confirmera.", dur["ftp_test"])
+    confirmed = curve.get("confirmed", False)   # estimation Fiable à moins de 5 % : pas de test à date fixe
+    if (age is None or age > rules["r4_ftp_age_days"]) and form > rules["r4_min_form"] and not confirmed:
         since = (f"Ta FTP date du test du {signals['ftp_test_date'].strftime('%d/%m')}"
                  if signals["ftp_test_date"] else "Aucun test de FTP dans tes séances")
         return advice("ftp_test", "R4", f"{since} : un test recalera tes zones.", dur["ftp_test"])
@@ -547,11 +556,30 @@ def race_weak(signals: dict[str, Any], table: dict[str, Any]) -> tuple[str, str]
     return cause, f"{CAUSE_TEXT[cause]} {counts[cause]} fois sur tes {len(races)} dernières courses"
 
 
+# Durées du point faible de la courbe (lot PP5) -> clés de la table `[profile]`.
+CURVE_KEYS = {5: "5s", 60: "1min", 300: "5min", 1200: "20min"}
+
+
+def curve_signals(profile: dict[str, Any] | None, estimate: dict[str, Any] | None) -> dict[str, Any]:
+    """Signal « courbe » du coach (lot PP8) depuis « Se connaître » (PP5) et la FTP estimée (PP2) :
+    point faible (`weak_s`), `review` ({estimate_w, ftp_set_w} si l'écart dépasse 5 %), `confirmed` (estimation
+    Fiable à moins de 5 % : le test de FTP n'est plus proposé à date fixe)."""
+    out: dict[str, Any] = {"weak_s": (profile or {}).get("weak"), "review": None, "confirmed": False}
+    if estimate and estimate.get("estimate"):
+        if estimate.get("review"):
+            out["review"] = {"estimate_w": estimate["estimate"]["ftp_w"], "ftp_set_w": estimate["ftp_set_w"]}
+        elif estimate.get("confidence") == "Fiable":
+            out["confirmed"] = True
+    return out
+
+
 def profile_weak(signals: dict[str, Any], table: dict[str, Any]) -> str | None:
     """Besoin du point faible du profil de puissance (plus bas rapport réel / attendu)."""
     profile = signals.get("profile")
-    if not profile:
-        return None
+    if not profile:   # lot PP8 : sans test récent, le point faible de « Se connaître » (PP5)
+        weak = (signals.get("curve") or {}).get("weak_s")
+        key = CURVE_KEYS.get(weak) if weak is not None else None
+        return table["profile"]["need"].get(key) if key else None
     ref, need = table["profile"]["reference"], table["profile"]["need"]
     key = min(profile, key=lambda k: profile[k] / ref[k])
     return need[key]
@@ -559,7 +587,7 @@ def profile_weak(signals: dict[str, Any], table: dict[str, Any]) -> str | None:
 
 def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inputs,
            table: dict[str, Any] | None = None, library: Iterable[WorkoutNeed] | None = None,
-           candidates: list[Any] | None = None) -> dict[str, Any]:
+           candidates: list[Any] | None = None, curve: dict[str, Any] | None = None) -> dict[str, Any]:
     """Conseil complet (sortie `--json`) à partir des faits des séances, de la bibliothèque et des
     parcours du catalogue (`coach_game.Candidate`, séance de jeu du lot CO9 ; aucune sans eux)."""
     from . import coach_game
@@ -568,6 +596,7 @@ def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inp
     facts = list(facts)
     library = list(library or [])
     sig = build_signals(facts, ftp_w, today, table)
+    sig["curve"] = curve   # lot PP8 : courbe de puissance (point faible, signal FTP), None sans elle
     yesterday = [r for r in sig["races"] if r["date"] == today - timedelta(days=1)]
     if yesterday and not inputs.raced_yesterday:
         inputs = replace(inputs, raced_yesterday=True, yesterday_tss=sum(r["tss"] for r in yesterday))
@@ -595,7 +624,7 @@ def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inp
             "days_since_hard": sig["days_since_hard"], "hard_last_7d": sig["hard_last_7d"],
             "ftp_w": round(ftp_w, 1), "ftp_test_date": iso(sig["ftp_test_date"]),
             "ftp_age_days": sig["ftp_age_days"], "profile": sig["profile"],
-            "profile_weak": profile_weak(sig, table),
+            "profile_weak": profile_weak(sig, table), "curve": sig.get("curve"),
             "races": [{"date": r["date"].isoformat(), "kind": r["kind"], "place": r["place"], "cause": r["cause"]}
                       for r in sig["races"][:int(table["races"]["window_count"])]],
             "last_by_need": {n: iso(d) for n, d in sig["last_by_need"].items()},
@@ -936,9 +965,30 @@ def advice_today(today: date, ftp_w: float, objective: str, minutes: int, direct
         candidates = coach_game.load_candidates(routes_root)
     except Exception:   # catalogue illisible : le conseil reste, sans séance de jeu
         candidates = []
-    result = advise(facts, ftp_w, today, inputs, table, library, candidates)
+    result = advise(facts, ftp_w, today, inputs, table, library, candidates, curve_of_profile(directory, ftp_w))
     result["week_goal"] = week_goal(facts, today, week_target, table)   # lot OS1
     return result
+
+
+def curve_of_profile(directory: Path | None, ftp_w: float) -> dict[str, Any] | None:
+    """Signal « courbe » du profil en cours (lot PP8), depuis le cache commun du lot PP1 ; None si illisible."""
+    import time
+
+    from . import profiles
+    from .tools import ftp_estimate, power_curve as pc, power_profile
+
+    try:
+        ctx = profiles.current()
+        now = time.time()
+        act = Path(directory) if directory is not None else ctx.activities_dir
+        kept = pc.kept_sessions(pc.session_entries(act, ctx.mmp_cache), ctx.counted_sources)
+        m6 = pc.window_curve(kept, pc.WINDOWS["months6"], now)
+        w6 = pc.window_curve(kept, pc.WINDOWS["weeks6"], now)
+        return curve_signals(power_profile.profile_from_windows(m6, w6, now),
+                             ftp_estimate.estimate_from_sessions(kept, ftp_w, now))
+    except Exception:
+        log.exception("Courbe de puissance illisible pour le coach : conseil sans elle")
+        return None
 
 
 def run(args: argparse.Namespace) -> int:
