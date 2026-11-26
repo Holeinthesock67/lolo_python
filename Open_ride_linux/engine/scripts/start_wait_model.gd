@@ -29,6 +29,11 @@ const TAG := "OPENRIDE · DÉPART"
 ## (révision 1.33, `start_wait.warmup`) n'a sa pastille que quand la trame l'annonce.
 const STEPS := [["decor", "Décor"], ["trainer", "Trainer"], ["pedalage", "Pédalage"]]
 const WARMUP_STEP := ["echauffement", "Échauffement"]
+## Aides d'une attente qui dure (lot RT4) : le mot « À faire » écrit, jamais la couleur seule.
+const TRAINER_HINT_S := 8.0
+const DECOR_HINT_S := 20.0
+const TRAINER_HINT := "À faire : allume le trainer et pédale pour le réveiller ; sinon Y, puis Appareils"
+const DECOR_HINT := "Décor long à charger : patiente encore un peu, ou Y pour annuler"
 ## Libellés des parties de l'échauffement (types de blocs de core warmup.py).
 const WARMUP_BLOCKS := {"warmup": "Montée douce", "steady": "Allure endurance", "interval_on": "Accélération !",
 	"interval_off": "Récupération"}
@@ -92,6 +97,21 @@ static func text(wait) -> String:
 		"pedalage":
 			return "Pédale pour partir : %d tr/min, %s s sur %.0f s  (Y : annuler)" % [int(wait.get("cadence_rpm", 0)),
 				("%.1f" % float(wait.get("held_s", 0.0))).replace(".", ","), float(wait.get("hold_s", 0.0))]
+	return ""
+
+
+## Aide quand l'attente dure (lot RT4, refus expliqués) : quoi faire si le trainer ne répond pas après
+## TRAINER_HINT_S secondes, ou si le décor met plus de DECOR_HINT_S secondes à venir ; "" sinon.
+static func hint(wait, waited_s: float) -> String:
+	if not (wait is Dictionary):
+		return ""
+	match str(wait.get("phase", "")):
+		"trainer":
+			if waited_s >= TRAINER_HINT_S:
+				return TRAINER_HINT
+		"decor":
+			if waited_s >= DECOR_HINT_S:
+				return DECOR_HINT
 	return ""
 
 

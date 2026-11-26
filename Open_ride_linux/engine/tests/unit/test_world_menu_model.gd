@@ -45,8 +45,13 @@ func _init() -> void:
 	for ch in "entoux":
 		act = m.type_text(ch)
 	_check(act == {"action": "world_search", "query": "Ventoux"}, "recherche « Ventoux » demandée : %s" % str(act))
+	# Réponses dans le désordre (bancs du 25 novembre) : seule celle de la dernière recherche envoyée compte.
+	m.search_request = 12
+	m.on_places([{"name": "Ventouse", "kind": "other", "lat": 1.0, "lon": 1.0, "cached": false, "source": "nominatim"}], 11)
+	_check(m.places.is_empty(), "réponse d'une recherche plus ancienne (« Vento ») ignorée")
 	m.on_places([{"name": "Mont Ventoux", "kind": "peak", "lat": 44.174, "lon": 5.2788, "cached": false, "source": "embedded"},
-		{"name": "Ventoux, Vaucluse", "kind": "other", "lat": 44.0, "lon": 5.0, "cached": false, "source": "nominatim"}])
+		{"name": "Ventoux, Vaucluse", "kind": "other", "lat": 44.0, "lon": 5.0, "cached": false, "source": "nominatim"}], 12)
+	_check(m.places.size() == 2, "réponse de la dernière recherche gardée")
 	m.handle("PLUS_SHORT")
 	_check(m.place_index == 1, "+ : deuxième résultat")
 	m.handle("MINUS_SHORT")
