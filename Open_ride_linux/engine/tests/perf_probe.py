@@ -618,7 +618,7 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
     note = "" if real_window else ", indicatif sous Xvfb"
     out: list[tuple[bool | None, str, str]] = []
     # Départ : après le chargement (warmup_s général), avant le régime établi ; seuil propre, plus large.
-    cold = shaders == "froid"
+    cold = shaders.startswith("froid")   # froid, froid-pilote, froid-godot (sim_bench)
     start_ms = float(lim.get("cold_start_freeze_ms", 1000.0) if cold else lim.get("start_freeze_ms", 150.0))
     loaded = min(ts) + float(t.get("warmup_s", 0))
     if cold:   # premier lancement : écran du chargement, indicatif (lot BF1)

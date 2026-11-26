@@ -21,12 +21,13 @@ graphismes au premier lancement. Analyse complète : `statut/ACOUPS_CAUSE_GENERA
 | BF1-2 | À chaud (défaut) : départ jugé à `start_freeze_ms` (150 ms), inchangé. C'est le critère de la ligue. |
 | BF1-3 | À froid : départ jugé à `cold_start_freeze_ms` (1 000 ms, écran qui reste animé). La pire image du chargement (avant `warmup_s` général) est relevée en INFO (« à-coups : chargement à froid »). |
 | BF1-4 | Pire image de la séance : au plus `freeze_tolerated_count` (1) image entre `freeze_ms` (100) et `freeze_tolerated_ms` (200 ms) est tolérée et écrite dans la mesure. Deux images, ou une au-delà de 200 ms, échouent. |
+| BF1-6 | Diagnostic : `--shaders froid-pilote` garde seulement le cache de Godot (shaders traduits en SPIR-V, celui qu'un export pourrait livrer) et vide ceux du pilote et des pipelines Vulkan ; `--shaders froid-godot` fait l'inverse. Les deux sont jugés comme « froid ». Deux bancs DB1 medium (après un banc chaud de la même tête) disent quelle étape coûte, avant de choisir la forme de la préparation des graphismes. |
 | BF1-5 | Seuils dans `engine/tests/perf_targets.json` (`hitches`), avec leur raison. |
 
 ## 3. Fichiers
 
 `engine/tests/perf_targets.json`, `engine/tests/perf_probe.py`, `engine/tests/sim_bench.py`,
-`core/tests/test_perf_probe_hitches.py`.
+`core/tests/test_perf_probe_hitches.py`, `core/tests/test_sim_bench_fiabilite.py`.
 
 ## 4. Critères d'acceptation
 

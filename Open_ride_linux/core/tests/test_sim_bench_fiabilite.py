@@ -205,3 +205,12 @@ def test_shader_caches_kept_between_runs_when_warm(tmp_path: Path):
     cold = tmp_path / "froid"
     cold.mkdir()
     assert sb.link_shader_caches(cold, "froid", root) == [] and not (cold / ".cache").exists()
+    # Lot BF1 : froid à moitié, pour savoir quelle étape coûte (traduction de Godot ou pilote)
+    half = tmp_path / "pilote"
+    half.mkdir()
+    names = {p.name for p in sb.link_shader_caches(half, "froid-pilote", root)}
+    assert names == {"shader_cache"} and not (half / ".cache").exists()
+    other = tmp_path / "godot"
+    other.mkdir()
+    names = {p.name for p in sb.link_shader_caches(other, "froid-godot", root)}
+    assert "shader_cache" not in names and "vulkan" in names and "nvidia" in names
