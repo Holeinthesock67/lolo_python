@@ -1990,13 +1990,12 @@ class CoreSession:
         """(meilleur effort de `seconds` s sur les 6 derniers mois en W, FTP en W) pour un entraînement calé sur la
         courbe (lot PP8b) : toutes les séances comptées du profil, comme le coach (une remise à zéro des
         statistiques ne change pas ce que tu tiens) ; sans effort de cette durée, la courbe type × la FTP."""
-        from .tools import power_curve
+        from .ipc_lists import best_effort_w
 
         ctx = self.profile_ctx
         ftp = float(self.cfg.rider.ftp_w)
-        kept = power_curve.kept_sessions(power_curve.session_entries(self.journal_dir.parent, self._curve_cache(ctx)),
-                                         ctx.counted_sources)
-        best = power_curve.best_watts(kept, seconds, start=time.time() - power_curve.WINDOWS["months6"] * 86400.0)
+        best = best_effort_w(self.journal_dir.parent, self._curve_cache(ctx), ctx.counted_sources, seconds,
+                             time.time())
         if best is None:
             best = ftp * bot_effort.curve_pct(seconds) / 100.0
         return float(best), ftp

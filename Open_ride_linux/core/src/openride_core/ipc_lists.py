@@ -318,6 +318,16 @@ def _plan_curve(activities_dir: Path | None, cache_path: Path, sources: Any, sta
         return []
 
 
+def best_effort_w(activities_dir: Path, cache_path: Path, sources: Any, seconds: int, now: float) -> float | None:
+    """Meilleur effort de `seconds` s sur les 6 mois avant `now`, en W, de toutes les séances comptées (lot PP8b,
+    entraînement calé sur la courbe) ; None sans effort de cette durée."""
+    from .tools import power_curve
+
+    kept = power_curve.kept_sessions(power_curve.session_entries(Path(activities_dir), Path(cache_path)),
+                                     tuple(sources))
+    return power_curve.best_watts(kept, seconds, start=now - power_curve.WINDOWS["months6"] * 86400.0)
+
+
 MAX_SUMMARY_BLOCKS = 24
 
 

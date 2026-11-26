@@ -91,3 +91,12 @@ def test_plans_message_carries_the_curve(tmp_path, monkeypatch):
     assert msg["active"] is not None and {"s": 300, "before": None, "after": 260} in msg["active"]["curve"]
     plain = ipc_lists.build_plans_message(1, 250.0, plans_dir, w, state, act, date.fromtimestamp(NOW))
     assert "curve" not in plain["active"]
+
+
+def test_best_effort_over_six_months(tmp_path):
+    j = tmp_path / "Activities" / ".journal"
+    write_journal(j, "recent", NOW - 10 * DAY, [(60, 330.0)])
+    write_journal(j, "vieux", NOW - 300 * DAY, [(60, 450.0)])                 # hors des 6 mois
+    act, cache = tmp_path / "Activities", tmp_path / "c.json"
+    assert ipc_lists.best_effort_w(act, cache, LIVE, 60, NOW) == 330
+    assert ipc_lists.best_effort_w(act, cache, LIVE, 1200, NOW) is None
