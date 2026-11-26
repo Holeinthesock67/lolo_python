@@ -12,6 +12,9 @@
 # notify-send) ; dans un terminal, sur la sortie. Journal : ~/OpenRide/Logs/update.log.
 # Variables : OPENRIDE_VENV (défaut : core/.venv), OPENRIDE_NO_PIP=1 (tests : sans pip),
 # OPENRIDE_NO_GUI=1 (ni fenêtre ni notification), OPENRIDE_CLOSE_TIMEOUT (secondes, défaut 30).
+# Lot SV1 : avant le `git pull`, chaque profil de joueur est copié dans ~/OpenRide/Sauvegardes/profils/
+# (`openride-core profil sauvegarde --tous --raison mise-a-jour`, avec le core d'avant la mise à jour) ;
+# si la copie échoue, la mise à jour est refusée et rien n'est changé.
 
 set -uo pipefail
 
@@ -165,6 +168,25 @@ wait_game_closed() {
     done
 }
 
+# --- copie des profils avant la mise à jour (lot SV1) -------------------------------------
+
+backup_profiles() {
+    [[ -d "${OPENRIDE_DIR}/Profils" ]] || { log "pas de dossier Profils : aucune copie à faire"; return 0; }
+    local core="${VENV}/bin/openride-core" out
+    # sans venv (installation par OPENRIDE_PYTHON) : la commande posée par install.sh dans ~/.local/bin
+    [[ -x "${core}" ]] || core="${HOME}/.local/bin/openride-core"
+    [[ -x "${core}" ]] || core="$(command -v openride-core 2>/dev/null || echo "${VENV}/bin/openride-core")"
+    if [[ ! -x "${core}" ]]; then
+        log "copie des profils impossible : ${core} introuvable"
+        fail "la copie de tes profils n'a pas pu être faite : programme ${core} introuvable. Rien n'a été changé. Lance scripts/install.sh, puis relance « Mettre à jour »."
+    fi
+    out="$("${core}" profil sauvegarde --tous --raison mise-a-jour 2>&1)" || {
+        log "${out}"
+        fail "la copie de tes profils a échoué (disque plein ?). Rien n'a été changé. Libère de la place sur le disque (les plus vieilles copies sont dans ${OPENRIDE_DIR}/Sauvegardes/profils/), puis relance « Mettre à jour ». Détail dans le journal."
+    }
+    log "${out}"
+}
+
 # --- mise à jour -------------------------------------------------------------------------
 
 # Tout le travail est dans une fonction : bash la lit en entier avant que `git pull` ne
@@ -200,6 +222,8 @@ main() {
     esac
 
     wait_game_closed   # le jeu a pu être lancé pendant le fetch
+    # lot SV1 : profils copiés avant de changer quoi que ce soit (pas de copie si déjà à jour)
+    [[ "$(git rev-parse HEAD)" == "$(git rev-parse "${upstream}")" ]] || backup_profiles
     before="$(git rev-parse --short HEAD)"
     err="$(git pull --ff-only --quiet 2>&1)" || { log "${err}"; fail "git pull --ff-only a échoué (voir le journal)."; }
     after="$(git rev-parse --short HEAD)"
