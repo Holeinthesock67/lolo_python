@@ -6,7 +6,7 @@
     {"choisir": "settings"},
     {"ecran": "settings", "titre": "Réglages"},
     {"choisir": "contents"},
-    {"ecran": "contents", "titre": "Contenus", "delai": 10},
+    {"ecran": "contents", "titre": "Contenus", "contient": ["Contenus de départ"], "delai": 10},
     {"choisir": "content:starter"},
     {"ecran": "contents", "contient": ["Contenus de départ — installé"], "delai": 30},
     {"appui": "Y_SHORT"},
