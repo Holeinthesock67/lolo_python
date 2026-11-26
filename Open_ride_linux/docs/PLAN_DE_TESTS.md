@@ -44,6 +44,7 @@ Périmètre : tout le code Python du core, sans matériel. Familles principales 
 | Trainer FTMS | `core/tests/test_ftms_spec.py`, `core/tests/test_ble_sim.py` | Conformité FTMS v1.0, Control Point, erreurs ATT 0x80 et 0xFE, relâche à l'arrêt |
 | Séance | `core/tests/test_session_serie_t.py`, `core/tests/test_free_erg.py`, `core/tests/test_rogue_session.py` | États, pauses, ERG, ERG d'une session libre (O18), segments, Cyber-Rogue |
 | IPC | `core/tests/test_contract_ipc.py` | Chaque trame émise valide contre son schéma, exemples du contrat, révisions 1.1 à 1.5, limite de 4 096 octets |
+| Modes à l'identique | `core/tests/test_modes_identique.py` | Lot IM0 : chaque mode rejoué par une séance scriptée, journal, trames, bilan, consignes du trainer et messages identiques octet pour octet à la référence (`scripts/modes_identique.py`) ; aucune empreinte ne doit changer dans une PR de la série IM |
 | Réglages | `core/tests/test_settings_persistance.py` | Chaque réglage de la liste écrit puis relu après relance (X37) |
 | Documentation | `core/tests/test_docs_coherence.py` | Liens, chemins cités, modules de CLAUDE.md, nombres de tests, raccourcis du guide, statut des lots |
 
