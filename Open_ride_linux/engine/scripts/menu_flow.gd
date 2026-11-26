@@ -124,6 +124,7 @@ const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 const LeagueViewModel := preload("res://scripts/league_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
+const DiagnosticViewModel := preload("res://scripts/diagnostic_view_model.gd")   # lot DG1
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -321,6 +322,7 @@ var _preview_retried := ""
 var _preview_objective := ""   # objectif de la dernière réponse `bots_preview` (vélodrome : celui de l'épreuve)
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
 var contents = ContentsViewModel.new()
+var diagnostic = DiagnosticViewModel.new()   # « Réglages › Diagnostic » (lot DG1)
 
 
 func _init() -> void:
@@ -330,6 +332,8 @@ func _init() -> void:
 	menu.add_screen({"id": SETTINGS_GROUP, "title": "Réglages", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": ContentsViewModel.SCREEN, "title": "Contenus", "on_back": MenuModel.SETTINGS, "items": []})
+	menu.add_screen({"id": DiagnosticViewModel.SCREEN, "title": "Diagnostic", "on_back": MenuModel.SETTINGS,
+		"items": diagnostic.menu_items()})
 	menu.add_screen({"id": WORKOUT_CREATE, "title": "Créer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
 	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
@@ -576,6 +580,7 @@ func _refresh_settings() -> void:
 	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"},
 		{"id": "contents", "label": "Contenus : entraînements, plans, parcours"}]
 	items.append_array(settings.group_items())
+	items.append({"id": "diagnostic", "label": "Diagnostic : créer un fichier pour signaler un problème"})
 	if settings.items.is_empty():
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
 	items.append(SettingsViewModel.version_item(engine_version, core_version))
@@ -668,6 +673,9 @@ func on_error(code: String, text: String) -> void:
 		return
 	if menu.current_screen() == LeagueViewModel.SCREEN and code == "bad_args":
 		league.message = "Échec : " + text
+		return
+	if diagnostic.on_error(code, text):
+		_refresh_diagnostic()
 		return
 	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
 		contents.on_error(code, text)
@@ -830,6 +838,8 @@ func card(st: Dictionary) -> Dictionary:
 		return pairing.sheet(focused)
 	if screen == ContentsViewModel.SCREEN:
 		return contents.sheet(focused)
+	if screen == DiagnosticViewModel.SCREEN:
+		return diagnostic.sheet(focused)
 	if screen == SETTINGS_GROUP:
 		return settings.sheet(focused.substr(4)) if focused.begins_with("set:") else {}
 	if screen == WORKOUT_CREATE:
@@ -1508,11 +1518,21 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_contents()
 			menu.push_screen(ContentsViewModel.SCREEN)
 			return {"action": "list_contents"}
+		if item_id == "diagnostic":
+			_refresh_diagnostic()
+			menu.push_screen(DiagnosticViewModel.SCREEN)
+			return {}
 		if item_id.begins_with("group:"):
 			settings_group = item_id.substr(6)
 			_refresh_settings()
 			menu.push_screen(SETTINGS_GROUP)
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == DiagnosticViewModel.SCREEN:
+		var choice: Dictionary = diagnostic.handle(str(act["id"]))
+		_refresh_diagnostic()
+		if not choice.is_empty():
+			choice["engine_version"] = engine_version
+		return choice
 	if act.get("action", "") == "item" and act.get("screen", "") == ContentsViewModel.SCREEN:
 		var choice: Dictionary = contents.handle(str(act["id"]))
 		_refresh_contents()
@@ -2115,6 +2135,18 @@ func _handle_garage(screen: String, item_id: String) -> Dictionary:
 				menu.confirm(str(todo["title"]), {"action": "buy", "item_id": todo["item_id"]})
 	_refresh_garage()
 	return act
+
+
+# --- fichier de diagnostic (lot DG1) ------------------------------------------------------------
+
+func _refresh_diagnostic() -> void:
+	menu.set_screen_items(DiagnosticViewModel.SCREEN, diagnostic.menu_items())
+
+
+## Message `diagnostic` du core (révision 1.37) : chemin du fichier écrit ou cause de l'échec sur la ligne d'état.
+func on_diagnostic(msg: Dictionary) -> void:
+	diagnostic.on_diagnostic(msg)
+	_refresh_diagnostic()
 
 
 # --- contenus installables (lot O25) -----------------------------------------------------------
@@ -2731,6 +2763,9 @@ func state() -> Dictionary:
 	elif st["screen"] in CoachViewModel.SCREENS:
 		st["status"] = coach.status(str(st["screen"]))
 		st["status_error"] = coach.message.begins_with("Échec")
+	elif st["screen"] == DiagnosticViewModel.SCREEN:
+		st["status"] = diagnostic.message
+		st["status_error"] = diagnostic.message.begins_with("Échec")
 	elif st["screen"] == ContentsViewModel.SCREEN:
 		st["status"] = contents.message
 		st["status_error"] = contents.message.begins_with("Échec")

@@ -157,6 +157,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [ ] **Cyber-Rogue sans voile en high** (lot R27, 21 novembre) : une seule règle de brume (linéaire jusqu'à 400, 600 ou 900 m) au lieu de la brume exponentielle du high qui grisait tout le ciel, glow du high ramené à celui du medium ; testé par `test_neon_palette.gd` et la galerie du Cyber-Rogue en high (168/168) ; reste la planche, la passe PC et la validation du propriétaire.
 
 - [ ] **Début de run et adrénaline du Cyber-Rogue** (lot R26, 21 novembre, essai du propriétaire noté 3/5 pour « savoir quoi faire ») : échauffement qui charge l'adrénaline à sa consigne, consignes jugées sur 8 s à 10 % près avec marge de sortie, plage et écart en direct, sons d'entrée et de sortie de la plage (contrat révision 1.28) ; testé par `test_rogue_r26_debut_run.py`, `test_rogue_guide_model.gd` et la galerie du Cyber-Rogue ; reste la planche, la passe PC et un essai sur le vélo.
+- [ ] **Consignes du Cyber-Rogue** (lot R28, 22 novembre, essai du propriétaire) : consigne écrite = celle qui gagne et qui charge l'adrénaline, puissance écrite une seule fois, adrénaline à 1 par seconde sans malus de cadence (contrat révision 1.35 provisoire) ; testé par `test_rogue_r28_consignes.py`, `test_rogue_guide_model.gd` et la galerie du Cyber-Rogue ; reste la planche, la passe PC et un essai sur le vélo.
 
 - [x] **Jauge « Réserve W' » retirée du HUD du Cyber-Rogue** (lot R25, 21 novembre, fusionné le 22 novembre, #956, demande du propriétaire pendant l'essai) : jauge sans effet sur le jeu, qui nuisait à la lisibilité ; restent Ennemi, Bouclier et Adrénaline ; testé par `test_rogue_hud_model.gd` et la galerie du Cyber-Rogue ; reste la validation de la planche et la passe PC.
 
@@ -232,6 +233,10 @@ Lots entrés sur `main` sans ligne dans ce suivi, relevés d'après les PR fusio
 ### Lots du 21 novembre
 
 - [x] **Gestes de base des bots du Grand Prix et du Dernier survivant** (lot BR5, 21 novembre) : réponse aux attaques au Grand Prix, attaque avant l'arche et réponse au Dernier survivant, dans la table `bot_tactics.MODE_TACTICS` ; ce qui est propre au mode (esquive, sprint de survie, économie) garde la priorité. Recette PC : fumée + medium.
+
+### Fichier de diagnostic (lot DG1, 22 novembre)
+
+- [ ] **Réglages › Diagnostic** ([cahier](lots/LOT_DG1_fichier_diagnostic.md)) : archive `.zip` sans donnée privée écrite dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Diagnostics/`, rien n'est envoyé ; `openride-core diagnostic` ; contrat IPC révision 1.37 (en revue).
 
 ## 2. Ce qui a été testé
 
@@ -412,6 +417,7 @@ Audit de cohérence et de qualité du 22 novembre (constat C6) : 90 cases restai
 - [ ] Journal du lanceur (lot M8) : lancer par l'icône du bureau, quitter, puis `python -m openride_core.tools.log_report` sans argument ; vérifier que `~/run_trainer.log` pointe vers `~/OpenRide/Logs/openride_…log`, que l'ancien journal est devenu `run_trainer.log.ancien` et que les lignes `[engine]` de Godot y sont.
 - [ ] Grand Prix des objets (lot GP11 ; étape 5 complète après GP4) : [recette](RECETTE_SERIE_GP.md), banc `grand_prix` en low, medium et high puis quatre étapes de 10 min sur le vélo ; bilan par `python -m openride_core.tools.gp_recette`.
 - [ ] Un seul réglage de difficulté des bots (lot NI3, [cahier](lots/LOT_NI3_difficulte_des_bots.md) §5) : banc des menus `ni3_bots` en medium, captures low, medium et high des Réglages › Séance et des écrans Prêt (libre, Course, Dernier survivant, Grand Prix), à valider par le propriétaire.
+- [ ] Gestes des bots écrits et entendus (lot BA1, [cahier](lots/LOT_BA1_gestes_des_bots.md) §4) : banc des menus `ba1_attaque` en medium, capture du bandeau en low, medium et high, à valider par le propriétaire.
 - [ ] Menus sans éléments inutiles (lot NI4, [cahier](lots/LOT_NI4_menus_inutiles.md) §5) : fumée, banc des menus en medium et captures `ni4_*` (accueil, liste ERG, Graphisme, Son, Appareils), à valider par le propriétaire.
 - [ ] Réglages sans lignes inutiles (lot NI2, [cahier](lots/LOT_NI2_reglages_sans_effet.md) §5) : banc des menus en medium et captures des sous-écrans Séance, Graphisme, Vent et Avancé, à valider par le propriétaire.
 - [ ] Délai entre un appui et l'écriture de la commande au HomeTrainer.

@@ -27,7 +27,7 @@ from pathlib import Path
 from ..physics import PhysicsParams, RiderPhysics
 from ..rogue import cards as cardlib
 from ..rogue.balance import DEFAULT_BALANCE, BalanceError, RogueBalance, balance_hash, load_balance
-from ..rogue.combat import _window, target_at
+from ..rogue.combat import _window, win_target
 from ..rogue.rooms import OBJECTIVES, RoomRider
 from ..rogue.run import RunEngine, RunInputs
 from ..rogue.scenario import compose_run
@@ -74,7 +74,8 @@ TARGETS = (
     ("if", "IF de la run, Moyen", "moyen", None, None),          # bornes selon l'objectif
     ("min_over_110", "Minutes au-delà de 1,10 FTP, Moyen (VO2max)", "moyen", 8.0, None),
 )
-IF_RANGE = {"endurance": (0.62, 0.72), "threshold": (0.80, 0.88), "vo2max": (0.80, 0.90)}
+# lot R28 : la consigne écrite est celle qui bat le boss (+11,8 % au boss, « affiche une vraie consigne ») : IF plus haut
+IF_RANGE = {"endurance": (0.62, 0.72), "threshold": (0.80, 0.92), "vo2max": (0.80, 0.94)}
 GAP_MAX_PTS = 25.0
 
 
@@ -111,7 +112,7 @@ class Bot:
         mult = 1.0 + max(min(p.precision * self.noise, 3 * p.precision), -3 * p.precision)
         b = e.b
         if fight and e.room is not None:
-            frac = target_at(e.room, self.body.s)
+            frac = win_target(e.room, self.body.s, e._eff_balance())   # lot R28 : le cycliste suit la consigne écrite
         elif e.phase == "WARMUP":
             step = e._step
             frac = b.warmup_frac_from + (b.warmup_frac_to - b.warmup_frac_from) * min(e.t_phase / step.nominal_s, 1.0)

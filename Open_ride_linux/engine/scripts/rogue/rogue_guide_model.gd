@@ -40,7 +40,7 @@ const LEGENDS := {
 	"firewall": ["Le Firewall", "Un mur roule derrière toi à la puissance de la salle. S'il te touche, ton bouclier fond et tu perds de l'or. Tiens la consigne pour garder ton avance."],
 }
 const Z_REASON_TEXT := {
-	"adrenaline": ["Z refusé : adrénaline %d / 50", "Tiens la puissance cible pour remplir la jauge (+0,5 par seconde, +10 par changement parfait)"],
+	"adrenaline": ["Z refusé : adrénaline %d / 50", "Tiens la puissance cible pour remplir la jauge (+1 par seconde, +10 par changement parfait)"],
 	"overheat": ["Z refusé : surchauffe", "Baisse la puissance pour refroidir"],
 	"no_target": ["Z : rien à frapper ici", "Attends un objet marqué « Z »"],
 	"no_charge": ["Z refusé : aucune charge", "Tiens la cadence dans les tunnels verts pour charger"],
@@ -277,10 +277,11 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 	elif target is Dictionary and phase in ["WARMUP", "COOLDOWN"]:
 		var lo := int(target.get("lo", 0))
 		var hi = target.get("hi", null)
-		var big := ("≤ %s" % watts(float(hi), ftp_w)) if lo <= 0 and hi != null else target_band(lo, hi, ftp_w)
+		var big := (("≤ %d W" % bound_w(int(hi), ftp_w, false)) if ftp_w > 0.0 else ("≤ %d %% FTP" % int(hi))) if lo <= 0 and hi != null else target_band(lo, hi, ftp_w)
 		var flag = rogue.get("in_target", null)   # lot R26 : plage jugée par le core (tolérance et marge comprises)
 		var inside: bool = bool(flag) if flag is bool else (power_pct >= float(lo) and (hi == null or power_pct <= float(hi)))
-		out["consigne"] = {"big": big, "sub": "Tu es à %s%s" % [watts(power_pct, ftp_w, 1).trim_suffix(" FTP"), " ✔" if inside else ""], "ok": inside}
+		var sub_c := live_gap(power_pct, lo, hi, ftp_w, flag) if lo > 0 else ("✔ dans la plage" if inside else "trop haut")   # lot R28
+		out["consigne"] = {"big": big, "sub": sub_c.substr(0, 1).to_upper() + sub_c.substr(1), "ok": inside}
 	out["adr_trend"] = adrenaline_trend_text(rogue)
 	out["rules"] = "     •     ".join(RULES) if phase == "WARMUP" else ""
 	_hint(out, state, rogue, phase, z_ready, adr, target)
@@ -383,8 +384,10 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 		if hint == "":
 			if z_ready:
 				hint = "Z prêt : vise la prochaine cible"
+			elif tgt_lo > 0 and rogue.get("in_target", null) == true:
+				hint = "Dans la plage : l'adrénaline monte (%d/50)" % adr   # lot R28 : la plage n'est écrite qu'en haut à droite
 			elif tgt_lo > 0:
-				hint = "Tiens %s pour remplir l'adrénaline (%d/50)" % [target_band(tgt_lo, tgt_hi, ftp_w), adr]
+				hint = "Monte dans la plage pour remplir l'adrénaline (%d/50)" % adr
 			else:
 				hint = "Tiens la puissance pour remplir l'adrénaline (%d/50)" % adr
 	out["hint"] = hint
@@ -446,31 +449,44 @@ static func watts(pct: float, ftp: float, step: int = 5) -> String:
 
 
 ## Consigne de puissance en texte : « ≥ 175 W », ou « 175–190 W » quand elle a un plafond (endurance, R23).
+## Lot R28 : bornes arrondies vers l'intérieur (bas au 5 W au-dessus, haut au 5 W en dessous) : à la puissance écrite,
+## on est dans la plage jugée.
 static func target_band(lo: int, hi: Variant, ftp: float = 0.0) -> String:
-	if hi == null or int(hi) <= lo:
-		return "≥ %s" % watts(lo, ftp) if hi == null else watts(lo, ftp)
 	if ftp <= 0.0:
+		if hi == null or int(hi) <= lo:
+			return "≥ %d %% FTP" % lo if hi == null else "%d %% FTP" % lo
 		return "%d–%d %% FTP" % [lo, int(hi)]
-	return "%s–%s" % [watts(lo, ftp).trim_suffix(" W"), watts(int(hi), ftp)]
+	if hi == null or int(hi) <= lo:
+		return "≥ %d W" % bound_w(lo, ftp, true) if hi == null else "%d W" % bound_w(lo, ftp, true)
+	return "%d–%d W" % [bound_w(lo, ftp, true), maxi(bound_w(int(hi), ftp, false), bound_w(lo, ftp, true))]
 
 
-## Écart en direct à la consigne (lot R26) : « tu es à 196 W ✔ » dans la plage, sinon « tu es à 168 W (−12 W) » ou
-## « (+15 W) » au-dessus du plafond. `inside` : `rogue.in_target` (révision 1.28) ; null : comparaison simple.
+## Borne de plage en watts, au pas de 5 W, arrondie vers l'intérieur de la plage (lot R28).
+static func bound_w(pct: int, ftp: float, low: bool) -> int:
+	var w := float(pct) * ftp / 100.0
+	return int(ceil(w / 5.0 - 1e-6)) * 5 if low else int(floor(w / 5.0 + 1e-6)) * 5
+
+
+## Écart à la plage (lots R26 et R28) : « ✔ dans la plage », sinon « il manque 12 W » ou « 15 W de trop » au-dessus du
+## plafond. La puissance elle-même n'est écrite qu'en haut à gauche (lot R28 : elle l'était trois fois). `inside` :
+## `rogue.in_target` (révision 1.28) ; null : comparaison simple. `lo` et `hi` : la plage jugée (`target_pct`, R28).
 static func live_gap(power_pct: float, lo: int, hi: Variant, ftp: float, inside: Variant) -> String:
-	var now := watts(power_pct, ftp, 1).trim_suffix(" FTP")
 	var ok: bool = bool(inside) if inside is bool else (power_pct >= float(lo) and (hi == null or power_pct <= float(hi)))
+	var below := power_pct < float(lo)
+	# écart compté sur les nombres écrits à l'écran : borne de la plage et puissance en haut à gauche (lot R28)
+	var now_w := int(round(power_pct * ftp / 100.0))
 	if ok:
-		return "tu es à %s ✔" % now
+		# lot R28 : on entre à la consigne écrite ; la tolérance ne sert qu'à la sortie, et elle se dit en mots
+		if below and ftp > 0.0 and bound_w(lo, ftp, true) > now_w:
+			return "✔ marge : remonte de %d W" % (bound_w(lo, ftp, true) - now_w)
+		return "✔ dans la plage"
 	if ftp <= 0.0:
-		return "tu es à %s" % now
-	var gap_w := 0
-	if power_pct < float(lo):
-		gap_w = -int(round((float(lo) - power_pct) * ftp / 100.0))
-	elif hi != null and power_pct > float(hi):
-		gap_w = int(round((power_pct - float(hi)) * ftp / 100.0))
-	if gap_w == 0:
-		return "tu es à %s" % now
-	return "tu es à %s (%s%d W)" % [now, "+" if gap_w > 0 else "−", absi(gap_w)]
+		return "trop bas" if below else "trop haut"
+	if below and bound_w(lo, ftp, true) > now_w:
+		return "il manque %d W" % (bound_w(lo, ftp, true) - now_w)
+	if hi != null and power_pct > float(hi) and now_w > bound_w(int(hi), ftp, false):
+		return "%d W de trop" % (now_w - bound_w(int(hi), ftp, false))
+	return "presque dans la plage"   # puissance écrite dans la plage, moyenne jugée sur 8 s pas encore
 
 
 ## Tendance de l'adrénaline (champ `adrenaline_trend`, révision 1.17) : « +0,5/s », « −2/s surchauffe »,
