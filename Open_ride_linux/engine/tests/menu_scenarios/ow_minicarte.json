@@ -1,5 +1,5 @@
 {
-  "description": "Lot W24 (mini-carte du monde ouvert), recette sur le PC : départ de Sevrier trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie la mini-carte en bas à gauche (route devant en trait plein, route roulée en pointillés, branches des carrefours proches, « N », échelle « 200 m »), le carrefour écrit dessous et le but « Départ : … à vol d'oiseau » épinglé au bord puis revenu dans la carte au retour. Zoom réglable à la pause (« Zoom de la carte », 1,2 km puis 6 km de large, gardé pour la suite). Captures à 0,5, 2 (avant et après le zoom), 5 et 8 km. À lancer en low, medium et high, cache du monde ouvert séparé (cache=\"separe\").",
+  "description": "Lot W24 (mini-carte du monde ouvert), recette sur le PC : départ de Sevrier trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie la mini-carte en bas à gauche (route devant en trait plein, route roulée en pointillés, branches des carrefours proches, « N », échelle « 200 m »), le carrefour écrit dessous et le but « Départ : … à vol d'oiseau » épinglé au bord. Zoom réglable à la pause (« Zoom de la carte », 1,2 km puis 6 km de large, gardé pour la suite). Captures à 0,5, 2 (avant et après le zoom) et 3,5 km (banc PC du 25/11 : en Boucle de 10 km depuis Sevrier, le générateur republie sans fin la même route de 4,5 km et la séance s'arrête à 4,3 km en pause « route en cours de chargement », défaut du générateur hors du lot W24 ; la balade s'arrête donc avant). À lancer en low, medium et high, cache du monde ouvert séparé (cache=\"separe\").",
   "voies": [
     "clavier"
   ],
@@ -116,18 +116,11 @@
       "capture": "carte_2km_zoom_6km"
     },
     {
-      "distance_km": 5,
+      "distance_km": 3.5,
       "delai": 900
     },
     {
-      "capture": "carte_5km"
-    },
-    {
-      "distance_km": 8,
-      "delai": 900
-    },
-    {
-      "capture": "carte_8km"
+      "capture": "carte_3_5km"
     }
   ]
 }
