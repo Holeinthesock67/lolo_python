@@ -85,6 +85,25 @@
         "route_name": {"type": ["string", "null"], "maxLength": 40},
         "climb_s": {"type": ["integer", "null"], "minimum": 0}
       }
+    },
+    "fitness": {
+      "description": "Facultatif, lot FO1 (révision numérotée à la fusion) : « Ma forme », condition (CTL, 42 jours) et fatigue (ATL, 7 jours) du coach en points de charge (TSS), jamais de watts. days : fenêtre en jours ; step_days : écart des points ; ctl et atl : un entier par point, le dernier est aujourd'hui ; weeks : séances comptées par semaine de 7 jours, de la plus ancienne à la plus récente ; ctl_now, atl_now, form (condition moins fatigue) ; trend : up, down ou flat sur 7 jours ; weeks_up : semaines de suite où la condition monte ; label et label_text : mot de la fraîcheur (data/coach.toml, [fitness]). null sans séance.",
+      "type": ["object", "null"],
+      "required": ["days", "step_days", "ctl", "atl", "weeks", "ctl_now", "atl_now", "form", "trend", "weeks_up", "label", "label_text"],
+      "properties": {
+        "days": {"type": "integer", "minimum": 7},
+        "step_days": {"type": "integer", "minimum": 1},
+        "ctl": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "atl": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "weeks": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "ctl_now": {"type": "number"},
+        "atl_now": {"type": "number"},
+        "form": {"type": "number"},
+        "trend": {"enum": ["up", "down", "flat"]},
+        "weeks_up": {"type": "integer", "minimum": 0},
+        "label": {"type": ["string", "null"]},
+        "label_text": {"type": ["string", "null"]}
+      }
     }
   }
 }
