@@ -36,7 +36,7 @@ Valider les hypothèses techniques critiques avant le développement des modules
   # Tester le Zwift Click (handshake RideOn, appuis courts/longs)
   openride-ble-diag click --duration 60
   ```
-- Les rapports d'exécution détaillés sont automatiquement enregistrés au format JSON sous `./spike_reports/`.
+- Les rapports d'exécution détaillés sont automatiquement enregistrés au format JSON sous `~/OpenRide/rapports/diag/` (droits du seul propriétaire ; `./spike_reports/` avant le 23 novembre).
 
 ---
 

@@ -73,7 +73,7 @@ def test_pack_install_build_and_list(tmp_path: Path, capsys) -> None:
     gpx_dir, routes = tmp_path / "GPX", tmp_path / "routes"
     src = pack_zip(tmp_path / "essai.zip")
     assert run("route-pack-install", src, "--gpx-dir", gpx_dir) == 0
-    assert sorted(p.name for p in (gpx_dir / "pack-d-essai").iterdir()) == sorted(
+    assert sorted(p.name for p in (gpx_dir / "pack-d-essai").iterdir() if not p.name.startswith(".")) == sorted(
         [*PACK, *(n[:-4] + ".toml" for n in PACK), "pack.toml"])
     assert run("build-all", "--gpx-dir", gpx_dir, "--routes-dir", routes, "--layers", "route") == 0
     capsys.readouterr()
