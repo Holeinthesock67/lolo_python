@@ -7,6 +7,7 @@ pour vérifier l'interpolation. Aucun lieu réel : points quelconques dans et ho
 from __future__ import annotations
 
 import threading
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -36,14 +37,22 @@ class Flat:
 class Wms:
     """`mode` : « ok », « vide » (hors de France), « moitie » (moitié est vide), « grand » (octets inversés)."""
 
-    def __init__(self, mode="ok"):
-        self.mode, self.requests = mode, []
+    def __init__(self, mode="ok", delay_s=0.0):
+        self.mode, self.requests, self.delay_s = mode, [], delay_s
+        self.busy = self.peak = 0
+        self._lock = threading.Lock()
         srv = self
 
         class H(BaseHTTPRequestHandler):
             def do_GET(self):  # noqa: N802
                 q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 srv.requests.append(q)
+                with srv._lock:
+                    srv.busy += 1
+                    srv.peak = max(srv.peak, srv.busy)
+                time.sleep(srv.delay_s)
+                with srv._lock:
+                    srv.busy -= 1
                 e0, n0, e1, n1 = map(float, q["BBOX"][0].split(","))
                 w, h = int(q["WIDTH"][0]), int(q["HEIGHT"][0])
                 ce = e0 + (np.arange(w) + 0.5) * (e1 - e0) / w
@@ -174,6 +183,50 @@ def test_offline_and_network_failure_fall_back_without_mark(tmp_path, wms):
     q = _prov(tmp_path, "http://127.0.0.1:9/wms", fallback=Flat(4.0), timeout_s=2.0)   # port fermé
     assert np.all(q.elevations(LAT, LON) == 4.0)
     assert not list((tmp_path / "ign_rge_alti").glob("*.absent")) if (tmp_path / "ign_rge_alti").exists() else True
+
+
+def test_squares_downloaded_in_parallel(tmp_path):
+    """26/11 : un départ en France demandait les carrés un par un (banc multi-zones en DÉLAI) : en parallèle."""
+    srv = Wms(delay_s=0.3)
+    try:
+        p = _prov(tmp_path, srv.url)
+        e = np.array([(337 + i) * 1000.0 + 500.0 for i in range(4) for _ in range(3)])
+        n = np.array([(6262 + j) * 1000.0 + 500.0 for _ in range(4) for j in range(3)])
+        lon, lat = p._to_l93.transform(e, n, direction="INVERSE")
+        t0 = time.monotonic()
+        z = p.elevations(np.asarray(lat), np.asarray(lon))
+        took = time.monotonic() - t0
+        assert np.allclose(z, relief(e, n), atol=0.05)
+        assert len(srv.requests) == 12 and p.downloads == 12
+        assert srv.peak > 1 and took < 12 * 0.3 * 0.6          # pas un par un
+    finally:
+        srv.close()
+
+
+def test_network_failures_cut_the_service_for_the_session(tmp_path):
+    from openride_compiler.elevation import IGN_MAX_FAILURES
+
+    logs: list[str] = []
+    p = IgnRgeAltiProvider(cache_dir=tmp_path, base_url="http://127.0.0.1:9/wms", fallback=Flat(4.0),
+                           log=logs.append, timeout_s=1.0)                         # port fermé
+    for i in range(IGN_MAX_FAILURES + 3):
+        e, n = (400 + i) * 1000.0 + 500.0, 6400_500.0
+        lon, lat = p._to_l93.transform(e, n, direction="INVERSE")
+        assert p.elevations(np.array([lat]), np.array([lon]))[0] == 4.0
+    assert p.disabled and sum("non téléchargé" in m for m in logs) == IGN_MAX_FAILURES
+    assert any("coupé pour la séance" in m for m in logs)
+
+
+def test_far_tiles_use_the_fallback_not_ign():
+    """Tuiles lointaines (maille de 50 m, jusqu'à 12 km) : FABDEM, pas les centaines de carrés IGN de 1 km."""
+    from openride_compiler.worldgen import process
+
+    p = IgnRgeAltiProvider(offline=True, log=lambda m: None)
+    gen = process.WorldSession.__new__(process.WorldSession)
+    gen.provider = p
+    assert gen._far_provider() is p.fallback
+    src = __import__("inspect").getsource(process)
+    assert "generate_far(fk, self._far_provider()" in src
 
 
 def test_open_world_default_is_ign_then_fabdem():

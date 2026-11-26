@@ -395,6 +395,10 @@ IGN_PIX = int(IGN_TILE_M / IGN_CELL_M) + 1    # 201 : bords communs aux carrés 
 # cadre mais hors de France (Genève, Barcelone…), le service ne renvoie que des valeurs vides : repli et marque.
 IGN_BBOX = (41.2, -5.6, 51.2, 9.8)             # lat_min, lon_min, lat_max, lon_max
 IGN_NODATA_BELOW = -1000.0
+# Téléchargements en parallèle (26/11 : un départ en France demandait les carrés un par un, banc multi-zones en DÉLAI
+# à 600 s) et coupe-circuit : après IGN_MAX_FAILURES échecs réseau de suite, plus de demande pour la séance (repli).
+IGN_WORKERS = 6
+IGN_MAX_FAILURES = 5
 
 
 def ign_tile_key(e: float, n: float) -> tuple[int, int]:
@@ -462,6 +466,10 @@ class IgnRgeAltiProvider:
         self._to_l93 = Transformer.from_crs("EPSG:4326", "EPSG:2154", always_xy=True)
         self._grids: dict[tuple[int, int], np.ndarray | None] = {}
         self.downloads = 0
+        self.failures = 0              # échecs réseau de suite
+        self.disabled = False          # coupe-circuit : repli pour le reste de la séance
+        import threading
+        self._lock = threading.Lock()
 
     def tile_path(self, ke: int, kn: int) -> Path:
         return self.dir / f"{ign_tile_name(ke, kn)}.f32"
@@ -485,7 +493,7 @@ class IgnRgeAltiProvider:
         """Carré en cache après l'appel ? (faux : hors de France, hors ligne ou échec réseau)."""
         if self.tile_path(ke, kn).is_file():
             return True
-        if self.absent_path(ke, kn).is_file() or self.offline:
+        if self.absent_path(ke, kn).is_file() or self.offline or self.disabled:
             return False
         import urllib.request
 
@@ -499,7 +507,14 @@ class IgnRgeAltiProvider:
             return False
         except Exception as exc:  # noqa: BLE001 - réseau : repli pour cette séance, réessayé ensuite
             self.log(f"IGN : carré {name} non téléchargé ({exc}) : relief de repli pour cette séance")
+            with self._lock:
+                self.failures += 1
+                if self.failures >= IGN_MAX_FAILURES and not self.disabled:
+                    self.disabled = True
+                    self.log(f"IGN : {self.failures} échecs de suite, service coupé pour la séance : relief de repli")
             return False
+        with self._lock:
+            self.failures = 0
         self.dir.mkdir(parents=True, exist_ok=True)
         if np.isnan(grid).all():
             self.absent_path(ke, kn).write_text("hors de la couverture du RGE ALTI\n", encoding="utf-8")
@@ -507,8 +522,20 @@ class IgnRgeAltiProvider:
         tmp = self.tile_path(ke, kn).with_suffix(f".tmp-{os.getpid()}")
         grid.astype("<f4").tofile(tmp)
         os.replace(tmp, self.tile_path(ke, kn))
-        self.downloads += 1
+        with self._lock:
+            self.downloads += 1
         return True
+
+    def prefetch(self, keys) -> None:
+        """Carrés manquants téléchargés en parallèle (IGN_WORKERS à la fois) avant leur lecture."""
+        todo = [k for k in dict.fromkeys(keys) if k not in self._grids and not self.tile_path(*k).is_file()
+                and not self.absent_path(*k).is_file()]
+        if len(todo) < 2 or self.offline or self.disabled:
+            return
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=min(IGN_WORKERS, len(todo)), thread_name_prefix="ign") as pool:
+            list(pool.map(lambda k: self.download_tile(*k), todo))
 
     def _grid(self, ke: int, kn: int) -> np.ndarray | None:
         key = (ke, kn)
@@ -534,7 +561,9 @@ class IgnRgeAltiProvider:
             ke = np.floor(e / IGN_TILE_M).astype(int)
             kn = np.floor(n / IGN_TILE_M).astype(int)
             vals = np.full(e.shape, np.nan)
-            for a, b in np.unique(np.stack((ke, kn), axis=1), axis=0):
+            keys = [(int(a), int(b)) for a, b in np.unique(np.stack((ke, kn), axis=1), axis=0)]
+            self.prefetch(keys)
+            for a, b in keys:
                 g = self._grid(int(a), int(b))
                 if g is None:
                     continue

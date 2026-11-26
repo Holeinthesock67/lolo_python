@@ -420,7 +420,8 @@ class WorldSession:
     def _biome(self, key: SquareKey) -> None:
         """Tuile de biome du carré ou de la tuile lointaine (W17) ; une erreur laisse le biome par défaut."""
         try:
-            biome_tiles.generate(key, self.frame, self.provider, self.cache, self.landcover,
+            biome_tiles.generate(key, self.frame, self._far_provider() if isinstance(key, FarKey) else self.provider,
+                                 self.cache, self.landcover,
                                  db=None if isinstance(key, FarKey) else self.db,
                                  network=self.network and not self.opened, log=self.log)
             self.stats["biome_tiles"] += 1
@@ -873,11 +874,11 @@ class WorldSession:
             return True
         if self.far_wanted:
             fk = self.far_wanted.pop(0)
-            if not self.network and not relief_has(self.provider, *self._latlon_of_square(fk)):
+            if not self.network and not relief_has(self._far_provider(), *self._latlon_of_square(fk)):
                 return True
             had = self.cache.get(fk.cache_key) is not None
             try:
-                generate_far(fk, self.provider, self.cache, self.db, self._far_water_data(fk))
+                generate_far(fk, self._far_provider(), self.cache, self.db, self._far_water_data(fk))
             except CompileError as exc:
                 self.log(f"tuile lointaine {fk.ix}_{fk.i_n} non générée : {exc}")
                 return True
@@ -916,6 +917,11 @@ class WorldSession:
     def _tiled_provider(self) -> ElevationProvider:
         """Source en tuiles d'un degré préchargée en avance : le repli de l'IGN (lot RL2), sinon la source."""
         return self.provider.fallback if isinstance(self.provider, IgnRgeAltiProvider) else self.provider
+
+    def _far_provider(self) -> ElevationProvider:
+        """Relief des tuiles lointaines (maille de 50 m, jusqu'à 12 km) : sans l'IGN au pas de 5 m (26/11 : quelque 600
+        carrés de 1 km demandés au départ, banc multi-zones en DÉLAI en France), son repli FABDEM suffit."""
+        return self._tiled_provider()
 
     def _prefetch_relief(self) -> None:
         prov = self._tiled_provider()
