@@ -4,7 +4,7 @@ modèle à 250 W, aucune donnée réelle."""
 
 from __future__ import annotations
 
-from openride_core import ipc_lists
+from openride_core import coach, ipc_lists
 from openride_core.tools import courbe_fictive, power_curve as pc, power_records as pr
 
 from test_power_curve import DAY, LIVE, NOW, write_journal
@@ -36,7 +36,8 @@ def test_records_start_again_but_ftp_review_reads_everything(tmp_path):
     assert {"s": 300, "w": 245, "prev_w": 240, "e": "libre"} in nxt["records"]
 
 
-def test_power_screen_curve_restarts_but_estimate_does_not(tmp_path):
+def test_power_screen_curve_restarts_but_estimate_does_not(tmp_path, monkeypatch):
+    monkeypatch.setattr(coach, "_cache_path", lambda: tmp_path / "coach.json")   # courbe de forme FO1 : cache ici
     j = tmp_path / "Activities" / ".journal"
     courbe_fictive.write_sessions(j, NOW)
     act, cache = tmp_path / "Activities", tmp_path / "c.json"
