@@ -1,5 +1,10 @@
 # Lot PG1 : préparation des graphismes au premier lancement
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série AC (à-coups) : préparation des graphismes au premier lancement, catalogue des matériaux rejoué une doublure par image | GDScript, Python | AC6, BF1 | Moyenne | **En revue** (PR #1097) |
+
 Décision du 26/11 (le user a choisi « les deux lots ») : une préparation unique au premier lancement, au lieu de
 corriger les à-coups source par source. Le banc est traité à part (BF1, #1094). Analyse :
 `statut/ACOUPS_CAUSE_GENERALE_2026-11-26.md` (dossier du projet). Empilé sur AC6 (#1066, `shader_warm.gd`).
