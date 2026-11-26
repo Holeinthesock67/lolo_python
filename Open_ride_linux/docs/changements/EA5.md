@@ -1,0 +1,7 @@
+# EA5 : tunnels dessinés, colline gardée au-dessus
+
+- PR : #940 ; cahier : docs/lots/LOT_EA5_tunnels_dessines.md ; version : 6.0
+- CHANGELOG (section « Ajouté ») :
+  - Les tunnels sont dessinés : la colline reste au-dessus, la route entre dans un tube éclairé (parois, voûte, trottoirs, têtes de portail, lampes tous les 12 m), sans herbe en travers de l'entrée ni ciel à l'intérieur ; parcours compilés et monde ouvert.
+- SUIVI :
+  - [ ] **Tunnels dessinés** (lot EA5, 20 novembre, en PR, série EA de la 6.0, `docs/lots/LOT_EA5_tunnels_dessines.md`) : couche `tunnels` du format 1.11 (§8 octies) : portions en tunnel accrochées aux voies OSM `tunnel=*` ou spans « tunnel » des arêtes du monde ouvert ; profil en ligne droite, colline gardée au-dessus (ni fondu ni garde-fou de la chaussée, choix du 20 novembre), parcours compilés comme monde ouvert (`WORLDGEN_VERSION` 10, remis sur main le 22 novembre après la règle sol / route : pas de sol abaissé dans le tube, `road_ground.corridor_s` `open_spans`) ; tube, portails, murs d'approche et lampes dessinés par `engine/scripts/tunnel_mesh.gd`, terrain non dessiné dans le tube (variante `TUNNEL_CUT` des seules tuiles qui touchent un tunnel, `tunnel_cut.gd`, `tunnel_cut.gdshaderinc`, shaders du terrain) ; `add-layer tunnels`, `verify`, scénario `ea5_tunnel` du banc des menus. Tests `compiler/tests/test_tunnels.py`, `engine/tests/unit/test_tunnel_mesh.gd`, `engine/tests/render/test_tunnel_render.gd`. Reste : essai PC (low, medium, high) et captures validées.

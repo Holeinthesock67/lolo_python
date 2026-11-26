@@ -31,6 +31,8 @@ const OsmLayers := preload("res://scripts/osm_layers.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const BridgeMesh := preload("res://scripts/bridge_mesh.gd")
+const TunnelMesh := preload("res://scripts/tunnel_mesh.gd")
+const TunnelCut := preload("res://scripts/tunnel_cut.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const RoadTrafficModel := preload("res://scripts/road_traffic_model.gd")
@@ -63,6 +65,8 @@ var _sea_material: ShaderMaterial      # lot U9 : mer et horizon
 var _foam_material: ShaderMaterial
 var _beach_material: ShaderMaterial
 var _bridge_material: StandardMaterial3D   # lot EA4 : tablier, garde-corps et piles
+var _tunnel_material: StandardMaterial3D   # lot EA5 : tube, portails et murs d'approche
+var _tunnel_lamp_material: StandardMaterial3D
 var _horizon: MeshInstance3D = null
 var _shores_by_chunk: Dictionary = {}  # k -> Array[PackedVector2Array] (lignes de côte, lot U9)
 
@@ -101,6 +105,8 @@ func _init_materials() -> void:
 	_beach_material = ShaderMaterial.new()
 	_beach_material.shader = BeachShader
 	_bridge_material = BridgeMesh.make_material()
+	_tunnel_material = TunnelMesh.make_material()
+	_tunnel_lamp_material = TunnelMesh.make_lamp_material()
 
 
 ## Matériau d'un nœud de tronçon selon sa sorte (meshes_data.kind).
@@ -116,6 +122,10 @@ func _material_for(kind: String) -> Material:
 			return _beach_material
 		"bridges":
 			return _bridge_material
+		"tunnels":
+			return _tunnel_material
+		"tunnel_lamps":
+			return _tunnel_lamp_material
 	return _water_material
 
 
@@ -184,6 +194,7 @@ func clear() -> void:
 	_pois_by_chunk.clear()
 	_shapes_by_chunk.clear()
 	_shores_by_chunk.clear()
+	TunnelCut.clear()
 	if _horizon != null:
 		remove_child(_horizon)
 		_horizon.mesh = null
@@ -210,6 +221,7 @@ func _free_chunk(k: int) -> void:
 				(mi as MeshInstance3D).mesh = null   # maillage libéré avant le nœud (rendu factice sans écran)
 			mi.free()
 	_chunk_instances.erase(k)
+	TunnelCut.remove_chunk(k)
 	_pois_by_chunk.erase(k)
 	_shores_by_chunk.erase(k)
 	if _shapes_by_chunk.erase(k):
@@ -237,13 +249,17 @@ func update_window(s_from: float, s_to: float) -> void:
 	_update_sound_pois()
 
 
-## Anneau d'horizon (lot U9) : suit la caméra active à l'horizontale.
+## Anneau d'horizon (lot U9) : suit la caméra active à l'horizontale ; trou du terrain des tunnels proches de la
+## caméra (lot EA5, tunnel_cut.gd).
 func _process(_delta: float) -> void:
-	if _horizon == null or not is_inside_tree():
+	if not is_inside_tree():
 		return
 	var cam := get_viewport().get_camera_3d()
-	if cam != null:
-		var c := cam.global_position
+	if cam == null:
+		return
+	var c := cam.global_position
+	TunnelCut.update(c)
+	if _horizon != null:
 		_horizon.position = Vector3(c.x, 0.0, c.z)
 
 
@@ -460,6 +476,24 @@ func _build_chunk_job(job: Dictionary) -> void:
 					meshes_data.append({"kind": "bridges", "arrays": arr})
 	PerfProbe.task("osm_ponts", str(k), (Time.get_ticks_usec() - t_bridges) / 1000.0)
 
+	# Tunnels (lot EA5) : tube, portails, murs d'approche et lampes ; volume où le terrain n'est pas dessiné
+	var t_tunnels := Time.get_ticks_usec()
+	var tunnel_cut := PackedFloat32Array()
+	if layers.has("tunnels"):
+		var tu_res := OsmLayers.load_chunk(w_dir, "tunnels", k, job.get("route"))
+		if tu_res.get("ok", false):
+			var tu_items: Array = tu_res.get("items", [])
+			if v_scale != 1.0:
+				tu_items = scale_bridges(tu_items, r_disp)
+			var tu_mesh := TunnelMesh.build(tu_items)
+			if int(tu_mesh.get("built", 0)) > 0:
+				for part in [["shell", "tunnels"], ["lamps", "tunnel_lamps"]]:
+					var arr := _arrays_from_mesh_dict(tu_mesh[part[0]])
+					if not arr.is_empty():
+						meshes_data.append({"kind": part[1], "arrays": arr})
+				tunnel_cut = tu_mesh["cut"]
+	PerfProbe.task("osm_tunnels", str(k), (Time.get_ticks_usec() - t_tunnels) / 1000.0)
+
 	# Forêts (voisinage sonore et animaux : les arbres sont dessinés par tree_renderer.gd)
 	var t_veg := Time.get_ticks_usec()
 	var veg_items := []
@@ -527,6 +561,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 		"boats": boats,
 		"sea": sea_info,
 		"shores": shores,
+		"tunnel_cut": tunnel_cut,
 	}
 
 
@@ -736,7 +771,7 @@ func integrate(max_new: int) -> int:
 			if kind == "buildings":
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.visibility_range_end = vis_end
-			elif kind == "bridges":   # lot EA4 : ombre du tablier sur l'eau et le fond de vallée
+			elif kind == "bridges" or kind == "tunnels":   # lot EA4 : ombre du tablier ; EA5 : tube dans l'ombre
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			else:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -746,6 +781,7 @@ func integrate(max_new: int) -> int:
 			created += 1
 
 		_chunk_instances[k] = nodes
+		TunnelCut.set_chunk(k, item.get("tunnel_cut", PackedFloat32Array()))
 		if not (item.get("shores", []) as Array).is_empty():
 			_shores_by_chunk[k] = item["shores"]
 		var sea: Dictionary = item.get("sea", {})
