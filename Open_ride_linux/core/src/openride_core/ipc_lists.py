@@ -601,11 +601,12 @@ def rider_curve(activities_dir: Path, cache_path: Path, sources: Any, ftp_w: flo
 
 
 def compute_summary_power(journal_path: Path, ftp_w: float, activities_dir: Path, cache_path: Path,
-                          sources: Any) -> dict[str, Any] | None:
-    """Records de puissance et signal « FTP à revoir » du bilan (série PP, lot PP4) : `tools.power_records`."""
+                          sources: Any, since: float | None = None) -> dict[str, Any] | None:
+    """Records de puissance et signal « FTP à revoir » du bilan (série PP, lot PP4) : `tools.power_records`.
+    `since` : remise à zéro des statistiques (lot RZ1), pour les records seulement."""
     from .tools.power_records import session_report
 
-    return session_report(journal_path, ftp_w, activities_dir, cache_path, sources)
+    return session_report(journal_path, ftp_w, activities_dir, cache_path, sources, since=since)
 
 
 def compute_summary_collection(profile_ctx: Any,
@@ -670,15 +671,20 @@ def _fitness_of(activities_dir: Path, ftp_w: float, sources, now: float) -> dict
 
 def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir: Path, cache_path: Path,
                               sources, profile_id: str | None = None, now: float | None = None,
-                              routes: list | None = None) -> dict[str, Any]:
+                              routes: list | None = None, since: float | None = None) -> dict[str, Any]:
     """Réponse à `list_power_curve` : courbe du profil en cours (13 durées, 6 mois et 6 semaines, PP1), FTP estimée
-    et sa proposition (PP2), évolution sur 6 mois ; un seul datagramme de moins de 4 096 octets."""
+    et sa proposition (PP2), évolution sur 6 mois ; un seul datagramme de moins de 4 096 octets.
+
+    `since` (remise à zéro des statistiques, lot RZ1) : la courbe, le profil (PP5) et le défi (PP7) ne lisent que
+    les séances d'après ; la FTP estimée, sa proposition et son évolution mensuelle lisent toutes les séances."""
     from .tools import ftp_estimate, power_challenge, power_curve, power_profile
 
     now = time.time() if now is None else now
-    kept = power_curve.kept_sessions(power_curve.session_entries(activities_dir, cache_path), tuple(sources))
-    m6 = power_curve.window_curve(kept, power_curve.WINDOWS["months6"], now)
-    w6 = power_curve.window_curve(kept, power_curve.WINDOWS["weeks6"], now)
+    found = power_curve.session_entries(activities_dir, cache_path)
+    kept = power_curve.kept_sessions(found, tuple(sources))
+    stats = kept if since is None else power_curve.kept_sessions(found, tuple(sources), since)
+    m6 = power_curve.window_curve(stats, power_curve.WINDOWS["months6"], now)
+    w6 = power_curve.window_curve(stats, power_curve.WINDOWS["weeks6"], now)
     est = ftp_estimate.estimate_from_sessions(kept, ftp_w, now)
     e = est["estimate"]
     msg = {"type": "power_curve", "v": 1, "request_cmd_id": request_cmd_id, "profile_id": profile_id,

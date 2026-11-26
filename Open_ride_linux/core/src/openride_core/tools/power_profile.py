@@ -103,12 +103,13 @@ def profile_from_windows(m6: dict, w6: dict, now: float) -> dict[str, Any]:
 
 
 def compute(directory: Path | None = None, sources=None, cache_path: Path | None = None,
-            now: float | None = None) -> dict[str, Any]:
+            now: float | None = None, since: float | None = None) -> dict[str, Any]:
     ctx = profiles.current()
+    since = getattr(ctx, "stats_since", None) if since is None else since   # remise à zéro (lot RZ1)
     now = time.time() if now is None else now
     act = Path(directory) if directory is not None else ctx.activities_dir
     kept = pc.kept_sessions(pc.session_entries(act, Path(cache_path) if cache_path else ctx.mmp_cache),
-                            tuple(sources) if sources is not None else tuple(ctx.counted_sources))
+                            tuple(sources) if sources is not None else tuple(ctx.counted_sources), since)
     m6 = pc.window_curve(kept, pc.WINDOWS["months6"], now)
     w6 = pc.window_curve(kept, pc.WINDOWS["weeks6"], now)
     return {"profile_id": ctx.id, **profile_from_windows(m6, w6, now)}
