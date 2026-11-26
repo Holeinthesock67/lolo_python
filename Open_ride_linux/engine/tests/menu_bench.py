@@ -366,6 +366,8 @@ class ScenarioError(Exception):
 
 
 OPEN_WORLD_READY = "Monde ouvert prêt"
+# Préparation du monde ouvert après « Démarrer » (menu fermé, « Monde ouvert prêt ») : une seule attente pour les deux.
+OPEN_WORLD_PREP_S = 600
 START_KEYS = {"recherche", "contient", "cap"}
 
 
@@ -391,9 +393,12 @@ def open_world_start(spec: dict[str, Any]) -> list[dict[str, Any]]:
         *spec.get("cap", []),
         {"capture": "cap"},
         {"touche": "Enter"},
-        {"monde": False, "delai": 300},
+        {"note": "Le menu se ferme quand le core passe LOADING -> READY, au moment même où il écrit « Monde ouvert "
+                 "prêt » : même attente (au premier départ d'une zone, en cache séparé et à froid, la préparation "
+                 "peut passer 5 min : Grenoble, 26 novembre)",
+         "monde": False, "delai": OPEN_WORLD_PREP_S},
         {"note": "Monde ouvert préchargé : route engagée, séance prête", "journal": "core", "motif": OPEN_WORLD_READY,
-         "delai": 600},
+         "delai": OPEN_WORLD_PREP_S},
         {"note": "Lot W18 : le monde prêt, l'engine envoie start de lui-même (départ au pédalage)",
          "journal": "core", "motif": "Commande start ", "delai": 60},
         {"attendre": 2},

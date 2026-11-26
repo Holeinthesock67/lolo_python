@@ -90,3 +90,12 @@ def test_template_keeps_its_lanes(tmp_path) -> None:
     lanes = [s.get("voies") for s in steps["etapes"]]
     assert all(v is not None for v in lanes)
     assert [s for s in steps["etapes"] if "touche" in s and s["touche"] != "Enter"][0]["voies"] == []   # lettres : clavier
+
+
+def test_menu_close_waits_as_long_as_the_ready_line(tmp_path) -> None:
+    """Le menu se ferme au passage LOADING -> READY, quand le core écrit « Monde ouvert prêt » : même attente
+    (26 novembre, Grenoble en cache séparé à froid : menu encore affiché à 300 s, monde prêt peu après)."""
+    steps = mb.load_scenario(_write(tmp_path, [{"depart_monde_ouvert": {"recherche": "grenoble"}}]))["etapes"]
+    close = next(s for s in steps if s.get("monde") is False)
+    ready = next(s for s in steps if s.get("motif") == "Monde ouvert prêt")
+    assert close["delai"] == ready["delai"] == mb.OPEN_WORLD_PREP_S >= 600
