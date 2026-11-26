@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série OW (monde ouvert) : plus de révision identique quand la route s'arrête, révision sans changement de route sans rien reconstruire, travaux OSM et ruban d'une route remplacée jamais attendus sur le fil principal | Python, GDScript | W8, W10 | Petite | **En revue** (PR à venir) |
+| Série OW (monde ouvert) : plus de révision identique quand la route s'arrête, révision sans changement de route sans rien reconstruire, travaux OSM et ruban d'une route remplacée jamais attendus sur le fil principal | Python, GDScript | W8, W10 | Petite | **En revue** (PR #1105) |
 
 Demande du 26/11 (point 2 du banc `rZONES26c`, Tromsø en medium) : attente du fil principal sur la tâche OSM et
 coût du décor vivant. Lot indépendant des lots BF1 et PG1. Correction globale : aucune règle propre à une zone.
@@ -46,4 +46,4 @@ coût du décor vivant. Lot indépendant des lots BF1 et PG1. Correction globale
 
 ## Livraison
 
-- PR à venir (branche `claude/project-thread-gn65yi-ow`).
+- PR #1105 (branche `claude/project-thread-gn65yi-ow`).
