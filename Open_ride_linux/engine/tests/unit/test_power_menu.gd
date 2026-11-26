@@ -39,7 +39,9 @@ func _msg(proposal) -> Dictionary:
 			{"m": "2026-11", "ftp": 249, "p5": 300, "p20": 262}],
 		"warnings": ["L'estimation suppose des efforts à fond.", "Calibration du home trainer."],
 		"profile": {"kind": "rouleur", "strong": 1200, "weak": 60, "missing": [], "form_pct": 95,
-			"aging": {"s": 5, "age_d": 150, "left_d": 33}, "gaps": [[480, 720], [3600, 3600]]}}
+			"aging": {"s": 5, "age_d": 150, "left_d": 33}, "gaps": [[480, 720], [3600, 3600]]},
+		"challenge": {"s": 60, "target_w": 431, "record_w": 430, "why": "weak", "route_id": "demo",
+			"route_name": "Col du lacet", "climb_s": 412}}
 
 
 var _failures := 0
@@ -87,8 +89,16 @@ func _init() -> void:
 	st = f.state()
 	_check(st["title"] == "Ma puissance — Cycliste 1", "titre au nom du profil (%s)" % st["title"])
 	var ids := _ids(st)
-	_check(ids.slice(0, 5) == ["window", "accept", "ramp", "months", "profile"] and ids.size() == 18,
-		"période, proposition, rampe, évolution, profil, puis 13 durées (%s)" % str(ids))
+	_check(ids.slice(0, 6) == ["window", "accept", "ramp", "months", "challenge", "profile"] and ids.size() == 19,
+		"période, proposition, rampe, évolution, défi, profil, puis 13 durées (%s)" % str(ids))
+	# lot PP7 : défi « bats ton record »
+	_check(_item(st, "challenge")["label"] == "Défi : 1 min à 431 W" and _item(st, "challenge")["detail"] == "Col du lacet",
+		"défi en watts et parcours proposé")
+	f.menu.focus_item("challenge")
+	var cl: Array = f.card(f.state())["lines"]
+	_check(cl[0] == "Défi : tiens 1 min à 431 W ou plus, ton record + 1 W." and cl[1] == "Pourquoi : c'est ta durée à travailler."
+		and cl[2] == "Parcours proposé : Col du lacet (montée principale d'environ 7 min à cette puissance)."
+		and cl[3].begins_with("A : rouler ce défi"), "carte du défi en mots (%s)" % str(cl))
 	# lot PP5 : « Se connaître »
 	_check(_item(st, "profile")["label"] == "Ton profil : rouleur" and _item(st, "profile")["detail"] == "point fort : 20 min",
 		"profil en un mot et point fort")
@@ -166,6 +176,33 @@ func _init() -> void:
 	f.handle("A_LONG")
 	_check(f.menu.current_screen() == "ftp_test", "« Faire un test de rampe » : écran du test de FTP")
 	f.handle("Y_SHORT")
+	# « Rouler ce défi » : parcours, session libre, fantôme du record, écran Prêt
+	f.handle("Y_SHORT")
+	f.menu.open_screen(Profiles.SCREEN)
+	f.menu.focus_item("power")
+	f.handle("A_LONG")
+	f.on_power_curve(_msg(null))
+	f.menu.focus_item("challenge")
+	var act: Dictionary = f.handle("A_LONG")
+	_check(act.get("action") == "sequence" and act["list"][0] == {"action": "select_route", "route_id": "demo"}
+		and act["list"][1] == {"action": "select_workout", "workout_id": null}, "défi : parcours proposé et session libre (%s)" % str(act))
+	_check(f.menu.current_screen() == MenuModel.READY and f.menu.start_args.get("bots") == [{"kind": "constant", "power_w": 431}]
+		and f.menu.coach_ready == "fantôme à 431 W", "écran Prêt : fantôme du record à 431 W")
+	# sans parcours proposé : la liste des parcours d'abord, puis l'écran Prêt du défi
+	f.menu.open_screen(Profiles.SCREEN)
+	f.menu.focus_item("power")
+	f.handle("A_LONG")
+	var sprint := _msg(null)
+	sprint["challenge"] = {"s": 5, "target_w": 881, "record_w": 880, "why": "aging", "route_id": null, "route_name": null, "climb_s": null}
+	f.on_power_curve(sprint)
+	f.menu.world_id = ""
+	f.menu.focus_item("challenge")
+	act = f.handle("A_LONG")
+	_check(act["list"] == [{"action": "select_workout", "workout_id": null}] and f.menu.current_screen() == MenuModel.ROUTES
+		and f.menu.start_args.get("bots") == [{"kind": "constant", "power_w": 881}], "défi sans parcours : liste des parcours d'abord")
+	f.menu.open_screen(Profiles.SCREEN)
+	f.menu.focus_item("power")
+	f.handle("A_LONG")
 	# profil sans séance
 	var empty := _msg(null)
 	empty["sessions"] = {"m6": 0, "w6": 0}
