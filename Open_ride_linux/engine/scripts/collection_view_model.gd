@@ -25,13 +25,13 @@ const LOADING := "Chargement…"
 ## Familles du catalogue (core/src/openride_core/collection.py, FAMILIES), dans l'ordre de l'album.
 const FAMILY_NAMES := {"distance": "Distance", "seance": "Séances", "denivele": "Dénivelé",
 	"regularite": "Régularité", "heure": "Heure", "entrainement": "Entraînement", "modes": "Modes de jeu",
-	"saison": "Saisons", "anniversaire": "Anniversaires"}
+	"saison": "Saisons", "anniversaire": "Anniversaires", "puissance": "Puissance"}
 const RARITY_NAMES := {"commune": "Commune", "rare": "Rare", "epique": "Épique", "legendaire": "Légendaire"}
 ## Rangées de l'album visibles à la fois (maquette BC3 : trois familles).
 const FAMILIES_SHOWN := 3
 ## Unité de l'avancement d'une carte à gagner, selon sa famille (les autres comptent des séances,
 ## des semaines ou des jours, dits par la ligne d'ambiance).
-const UNITS := {"distance": " km", "denivele": " m", "anniversaire": " jours"}
+const UNITS := {"distance": " km", "denivele": " m", "anniversaire": " jours", "puissance": " W"}
 const MONTHS := ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre",
 	"octobre", "novembre", "décembre"]
 

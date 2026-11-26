@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Défi « bats ton record » dans « Ma puissance », parcours proposé, fantôme du record sur l'écran Prêt ; trophées par palier en PP7b | Python + GDScript | PP3, PP5 | Moyenne | PR ouverte le 21 novembre (série PP, 6.0), captures à valider par le propriétaire ; PP7b (trophées) en cahier |
+| Défi « bats ton record » dans « Ma puissance », parcours proposé, fantôme du record sur l'écran Prêt ; trophées par palier en PP7b | Python + GDScript | PP3, PP5 | Moyenne | PR ouverte le 21 novembre (série PP, 6.0), captures à valider par le propriétaire ; PP7b (trophées) en PR à part |
 
 ## 1. Objectif
 
@@ -26,10 +26,13 @@ Idées du §8.3 du plan `docs/6.0/PLAN_SERIE_PP.md`, retenues par le propriétai
 - Ligne « Défi : 1 min à 431 W », avec le parcours proposé ou « parcours au choix » ; carte : la cible, pourquoi cette durée, le parcours, « A : rouler ce défi, avec le fantôme de ton record ».
 - **Fantôme du record** : A ouvre l'écran Prêt « défi : 1 min » sur le parcours proposé (`select_route`, session libre), avec un bot à puissance constante à la cible dans l'argument `bots` de `start` (détail « fantôme à 431 W ») ; sans parcours proposé, la liste des parcours s'ouvre d'abord. Aucune commande nouvelle ; rien pendant la séance.
 
-## 3. PP7b – Trophées par palier (cahier, à coder ensuite)
+## 3. PP7b – Trophées par palier (PR à part, empilée sur PP8)
 
 - Nouvelle règle `puissance` du catalogue de la collection (série BC, `data/collection.toml`) : `seconds` et `watts` (exemple : 300 W sur 5 min), gagnée par la première séance comptée qui tient le palier (courbe de la séance, cache commun du lot PP1).
-- Paliers proposés : 5 s (600, 800, 1 000 W), 1 min (350, 450 W), 5 min (250, 300, 350 W), 20 min (200, 250, 300 W) ; rareté croissante ; à valider par le propriétaire avant le code.
+- Paliers : 5 s (600, 800, 1 000 W), 1 min (350, 450 W), 5 min (250, 300, 350 W), 20 min (200, 250, 300 W) ; rareté croissante ; **watts fixes** (décision du propriétaire du 21 novembre, plutôt que des paliers relatifs à la FTP).
+- Efforts libres ou ERG, courses comprises (le meilleur des deux, comme la courbe) ; un effort arrondi au watt tient le palier (249,6 W tient 250 W), même arrondi que les records du bilan (PP4).
+- Nouvelle famille « Puissance » de l'album, avec la règle `puissance` seulement ; avancement d'une carte à gagner : meilleur effort et palier en watts (« 268 / 300 W »).
+- Visuels : onze noms nouveaux, consignes au §4 bis de `docs/5.0/VISUELS_BC4.md` ; tant qu'une image manque, le disque et le pictogramme de BC5.
 - Annonce au bilan par `summary.collection` (existant) : rien de nouveau dans le contrat.
 
 ## 4. Critères d'acceptation
@@ -39,5 +42,8 @@ Idées du §8.3 du plan `docs/6.0/PLAN_SERIE_PP.md`, retenues par le propriétai
 3. Banc des menus : scénario `ma_puissance` vert en low, medium et high, captures `ma_puissance_defi`, `ma_puissance_defi_parcours` et `ma_puissance_defi_pret` ; **captures validées par le propriétaire avant fusion**.
 
 ## 5. Livraison
+
+PP7b : 21 novembre 2026, PR empilée sur PP8 : `collection.py` (règle `puissance`, famille `puissance`, paramètre `powers` de `evaluate`), `tools/power_curve.session_powers`, `ipc_lists.collection_powers` (cache commun de PP1, cache illisible : collection sans ces cartes), onze cartes de `data/collection.toml` ; testé par `core/tests/test_collection.py`, `test_collection_ipc.py` et `engine/tests/unit/test_collection_menu.gd`. Recette PC : logique, fumée + medium.
+
 
 21 novembre 2026, PR empilée sur PP5. Aucune donnée réelle : cycliste fictif à 250 W.
