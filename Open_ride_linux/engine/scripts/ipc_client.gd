@@ -78,6 +78,8 @@ signal mode_options_received(msg: Dictionary)
 ## Profils de joueurs (lot MJ8, contrat 1.5) : réponse à list_profiles, create_profile, rename_profile,
 ## delete_profile (un seul datagramme).
 signal profiles_received(msg: Dictionary)
+## Copies du profil en cours (lot SV1) : réponse à list_profile_backups et restore_profile_backup.
+signal profile_backups_received(msg: Dictionary)
 ## Séance interrompue d'un lancement précédent (lot O34, contrat 1.5) : réponse à recover_session.
 signal interrupted_received(msg: Dictionary)
 ## Contenus installables (lot O25, contrat 1.5) : réponse à list_contents et install_content (un seul datagramme).
@@ -377,6 +379,8 @@ func _poll_incoming() -> void:
 				progression_received.emit(json_obj)
 			"profiles":
 				profiles_received.emit(json_obj)
+			"profile_backups":
+				profile_backups_received.emit(json_obj)
 			"interrupted":
 				interrupted_received.emit(json_obj)
 			"contents":
