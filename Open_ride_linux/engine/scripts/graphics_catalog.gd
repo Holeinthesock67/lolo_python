@@ -24,6 +24,9 @@ var dir := USER_DIR
 var _have: Dictionary = {}
 ## Recettes à écrire : [[clé, doublure]].
 var _todo: Array = []
+## Objets déjà vus, par identifiants (maillage, matériau d'objet, ombres) : un objet de plus du même genre ne coûte
+## qu'une recherche (foules, herbe, arbres : des milliers d'objets au changement de qualité).
+var _fast: Dictionary = {}
 
 
 ## Clé stable d'une surface, d'un lancement à l'autre (les clés de shader_warm.gd prennent des identifiants
@@ -256,6 +259,20 @@ static func _files(d: String) -> Array:
 func record(n: Node) -> void:
 	if not (n is GeometryInstance3D):
 		return
+	var info := _mesh_of(n)
+	if info.is_empty():
+		return
+	var gi := n as GeometryInstance3D
+	var fast := "%d|%d|%d|%s" % [(info["mesh"] as Mesh).get_instance_id(),
+		gi.material_override.get_instance_id() if gi.material_override != null else 0, int(gi.cast_shadow),
+		str(info["prefix"])]
+	if n is MeshInstance3D:
+		for i in range((n as MeshInstance3D).get_surface_override_material_count()):
+			var o: Material = (n as MeshInstance3D).get_surface_override_material(i)
+			fast += ",%d" % (o.get_instance_id() if o != null else 0)
+	if _fast.has(fast):
+		return
+	_fast[fast] = true
 	for k in keys_of(n):
 		var h: String = k.md5_text()
 		if _have.has(h):
