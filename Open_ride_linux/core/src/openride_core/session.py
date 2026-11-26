@@ -1898,11 +1898,9 @@ class CoreSession:
         """Cache de la courbe de puissance (série PP) : celui donné à la séance, sinon celui du profil quand la
         séance écrit dans les journaux du profil, sinon un cache à côté des activités de la séance (dossier
         donné à la séance : jamais le cache du profil pour d'autres séances)."""
-        if self.mmp_cache_path is not None:
-            return self.mmp_cache_path
-        if Path(self.journal_dir) == Path(ctx.journal_dir):
-            return ctx.mmp_cache
-        return self.journal_dir.parent / ".cache" / "mmp.json"
+        from .ipc_lists import curve_cache
+
+        return curve_cache(ctx, self.journal_dir, self.mmp_cache_path)
 
     def _power_report(self, journal_path: Path) -> dict | None:
         from .ipc_lists import compute_summary_power
