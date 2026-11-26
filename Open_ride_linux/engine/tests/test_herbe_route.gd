@@ -26,7 +26,12 @@ extends SceneTree
 ##   plus loin que le bas-côté) doivent être enterrés, sinon on voit sous la route. Les remblais plus hauts que
 ##   FLOAT_TOL_M sont comptés et le plus haut est affiché. Sur un pont (couche `bridges`, bridge_mesh.gd
 ##   `deck_axis_alt`), la route n'a pas de talus : le tablier la porte, l'appui n'est pas demandé (22 novembre 2026 :
-##   pont de 30 m sur un ruisseau au banc ea1_lac, 2,2 m sous la route, en échec au relief ×2,5).
+##   pont de 30 m sur un ruisseau au banc ea1_lac, 2,2 m sous la route, en échec au relief ×2,5). Dans un tunnel
+##   (couche `tunnels`, lot EA5), le terrain n'est pas dessiné dans le tube ni dans l'approche des portails
+##   (tunnel_cut.gd) et la colline reste au-dessus : un point de la chaussée dans ce volume (même calcul que le
+##   shader, TunnelMesh.cut_contains) n'est contrôlé ni contre le sol au-dessus ni contre un remblai ; avant et
+##   après le volume, le portail compris, la règle commune s'applique (26 novembre 2026 : Tromsø, +63 m sur la
+##   moitié de la balade, réseau de tunnels sous la ville ; le générateur, qui exclut ces portions, comptait 0).
 ##   Le sol sous la route ne dépend pas du préréglage (low, medium et high ont les mêmes tuiles proches) : un
 ##   passage par parcours et par relief suffit pour les trois.
 ## Code de sortie 1 si un contrôle échoue ; les pires points sont listés (s, x, z) pour aller les voir.
@@ -51,6 +56,7 @@ const CrowdModel := preload("res://scripts/crowd_model.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const BridgeMesh := preload("res://scripts/bridge_mesh.gd")
+const TunnelMesh := preload("res://scripts/tunnel_mesh.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
 
 const ROAD_HALF_M := RoadBuilder.ROAD_WIDTH_M * 0.5
@@ -128,7 +134,7 @@ func _run(wd: String, k: float, theme: Dictionary) -> void:
 	var bridges := []
 	for kk in range(RoadBuilder.chunk_count(route)):
 		bridges.append_array(OsmLayers.route_bridges(wd, route, kk))
-	_check_terrain(tag, route, ground_at, bridges)
+	_check_terrain(tag, route, ground_at, bridges, _tunnel_cut(wd, route))
 	_check_roadside(tag, wd, route, ground_at, road)
 	if k != 1.0:
 		return   # placement du décor : mêmes x et z au relief de séance, seule la pente change (contrôlé à ×k)
@@ -187,13 +193,14 @@ static func _ground_fn(wd: String, route) -> Callable:
 
 ## Sol affiché en travers de la chaussée : ni au-dessus de la route (route enfoncée), ni trop dessous sans que
 ## les talus touchent le sol (route qui lévite).
-func _check_terrain(tag: String, route, ground_at: Callable, bridges: Array = []) -> void:
+func _check_terrain(tag: String, route, ground_at: Callable, bridges: Array = [], cut := PackedFloat32Array()) -> void:
 	var above := []
 	var floating := []
 	var worst_up := -INF
 	var worst_down := INF
 	var banks := 0
 	var decks := 0   # coupes sur remblai portées par un pont
+	var in_tunnel := 0   # points de la chaussée dans le volume où le terrain n'est pas dessiné
 	var n := 0
 	var foot_off := ROAD_HALF_M + RoadBuilder.SHOULDER_WIDTH_M + RoadBuilder.SKIRT_OUT_M
 	var foot_drop := RoadBuilder.SHOULDER_DROP_M + RoadBuilder.SKIRT_DROP_M
@@ -209,6 +216,10 @@ func _check_terrain(tag: String, route, ground_at: Callable, bridges: Array = []
 		while off <= ROAD_HALF_M + 1e-6:
 			var x: float = smp["x"] + right.x * off
 			var z: float = smp["z"] + right.y * off
+			if not cut.is_empty() and TunnelMesh.cut_contains(cut, Vector3(x, y, z)):
+				in_tunnel += 1   # terrain non dessiné ici, colline au-dessus du tube
+				off += ACROSS_STEP_M
+				continue
 			var d: float = float(ground_at.call(x, z)) - y
 			n += 1
 			worst_up = maxf(worst_up, d)
@@ -231,10 +242,28 @@ func _check_terrain(tag: String, route, ground_at: Callable, bridges: Array = []
 			if not buried:
 				floating.append([-low, low_txt])
 		s += SECTION_STEP_M
-	_check(above.is_empty(), "%s : sol au moins %.0f cm sous la chaussée (%d points, au plus %+.2f m, %d trop haut)%s" % [
-		tag, TERRAIN_SINK_MIN_M * 100.0, n, worst_up, above.size(), "" if above.is_empty() else " — " + _worst(above)])
+	_check(above.is_empty(), "%s : sol au moins %.0f cm sous la chaussée (%d points, au plus %+.2f m, %d trop haut ; %d en tunnel)%s" % [
+		tag, TERRAIN_SINK_MIN_M * 100.0, n, worst_up, above.size(), in_tunnel, "" if above.is_empty() else " — " + _worst(above)])
 	_check(floating.is_empty(), "%s : route posée sur le sol ou sur ses talus (sol au plus %.2f m sous la route ; %d coupes sur remblai de plus de %.1f m, %d sans appui ; %d sur un pont)%s" % [
 		tag, -worst_down, banks, FLOAT_TOL_M, floating.size(), decks, "" if floating.is_empty() else " — " + _worst(floating)])
+
+
+## Volume des tunnels où le terrain n'est pas dessiné (tunnel_cut.gd), tel qu'osm_streamer.gd le construit :
+## couche `tunnels` de chaque tronçon (tuiles liées d'un monde vivant), hauteurs au relief affiché.
+static func _tunnel_cut(wd: String, route) -> PackedFloat32Array:
+	var cut := PackedFloat32Array()
+	var manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(wd.path_join("manifest.json")))
+	if typeof(manifest) != TYPE_DICTIONARY or not OsmLayers.layers_present(manifest).has("tunnels"):
+		return cut
+	for kk in range(RoadBuilder.chunk_count(route)):
+		var res := OsmLayers.load_chunk(wd, "tunnels", kk, route)
+		if not res.get("ok", false):
+			continue
+		var items: Array = res.get("items", [])
+		if route.relief_k != 1.0:
+			items = OsmStreamer.scale_bridges(items, route)
+		cut.append_array(TunnelMesh.build(items)["cut"])
+	return cut
 
 
 ## Coupe posée sur un pont : axe sur un tablier, à la hauteur de la route (même règle que les talus retirés de
