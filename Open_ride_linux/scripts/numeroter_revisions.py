@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Numéroter les révisions IPC en attente (lot CF2, 26 novembre) : à jouer par le fil de fusion sur la branche du train.
 
-Une PR qui change le contrat ajoute `core/src/openride_core/revisions_ipc/a_numeroter/LOT.txt` (une ligne : ce qui
-change) et écrit sa ligne au journal de `docs/contracts/ipc_v1.md` avec « révision à la fusion, lot LOT ». Elle ne
-touche ni `CONTRACT_REV` ni `historique.txt`, donc plusieurs PR de protocole passent dans le même train. Ce script,
+Une PR qui change le contrat ajoute `core/src/openride_core/revisions_ipc/a_numeroter/LOT.txt` : une ligne, sa ligne
+de journal (ce qui change), qui n'est plus ajoutée en bas du tableau d'`ipc_v1.md`. Elle ne touche ni
+`CONTRACT_REV`, ni son assertion, ni `historique.txt`, donc plusieurs PR de protocole passent dans le même train. Ce script,
 une fois les PR assemblées sur la branche du train :
   - donne à chaque révision en attente le numéro suivant, dans l'ordre d'arrivée sur la branche (date du commit qui a
     ajouté le fichier, puis nom), ou dans l'ordre `--ordre LOT1,LOT2` ;
@@ -17,14 +17,15 @@ quel lot a quel numéro.
 
 PR ouverte d'avant le registre (CONTRACT_REV écrit à la main) : sur sa branche, `git merge origin/main`, puis
     python3 scripts/numeroter_revisions.py --migrer LOT
-qui écrit a_numeroter/LOT.txt (texte tiré du commentaire de son CONTRACT_REV), règle les conflits de
-`ipc_server.py` et `test_contract_ipc.py` qui portent sur CONTRACT_REV en gardant la version de main, et les
-ajoute à l'index ; il reste à finir le commit de fusion (ou à régler les autres conflits).
+qui écrit a_numeroter/LOT.txt (texte tiré de sa ligne au journal, sinon du commentaire de son CONTRACT_REV), règle
+les conflits de `ipc_server.py` et `test_contract_ipc.py` qui portent sur la révision en gardant main, retire sa
+ligne du journal d'`ipc_v1.md` (elle est dans le registre) et ajoute le tout à l'index ; il reste à finir le commit de fusion (ou à régler les autres conflits).
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -33,6 +34,7 @@ PROJET = Path(__file__).resolve().parents[1]
 REGISTRE = PROJET / "core" / "src" / "openride_core" / "revisions_ipc"
 JOURNAL = PROJET / "docs" / "contracts" / "ipc_v1.md"
 LISEZMOI = "LISEZMOI.txt"
+REV_RE = re.compile(r"CONTRACT_REV|\[\"rev\"\] == ")
 FICHIERS_REV = ("core/src/openride_core/ipc_server.py", "core/tests/test_contract_ipc.py")
 
 
@@ -95,7 +97,7 @@ def resoudre_conflits_rev(texte: str) -> tuple[str, int]:
         j = next(k for k in range(i, len(lignes)) if lignes[k].startswith("======="))
         k = next(k for k in range(j, len(lignes)) if lignes[k].startswith(">>>>>>> "))
         bloc = lignes[i:k + 1]
-        if any("CONTRACT_REV" in l for l in bloc):
+        if any(REV_RE.search(l) for l in bloc):
             sortie.extend(lignes[j + 1:k])
             regles += 1
         else:
@@ -114,21 +116,64 @@ def texte_de_la_branche(source: str) -> str:
     return re.sub(r"^\d+\.\d+\s*(\([^)]*\))?\s*:\s*", "", premier).strip()
 
 
+def git_show(rev: str, rel: str) -> str:
+    p = subprocess.run(["git", "show", f"{rev}:{PROJET.name}/{rel}"], cwd=PROJET, capture_output=True, text=True,
+                       check=False)
+    return p.stdout if p.returncode == 0 else ""
+
+
+def lignes_journal_ajoutees(branche: str, main: str) -> list[str]:
+    deja = set(main.splitlines())
+    return [l for l in branche.splitlines() if l.startswith("| 1 (") and l not in deja]
+
+
+def retirer_lignes_journal(texte: str, ajoutees: list[str]) -> str:
+    """Les lignes de journal de la PR passent au registre : retirées d'ipc_v1.md, conflits de fin de tableau compris."""
+    a_retirer = set(ajoutees)
+    sortie, i = [], 0
+    lignes = texte.splitlines(keepends=True)
+    while i < len(lignes):
+        if lignes[i].startswith("<<<<<<< "):
+            j = next(k for k in range(i, len(lignes)) if lignes[k].startswith("======="))
+            k = next(k for k in range(j, len(lignes)) if lignes[k].startswith(">>>>>>> "))
+            haut = [l for l in lignes[i + 1:j] if l.strip()]
+            if haut and all(l.rstrip("\n") in a_retirer for l in haut):
+                sortie.extend(lignes[j + 1:k])
+                i = k + 1
+                continue
+        if lignes[i].rstrip("\n") not in a_retirer:
+            sortie.append(lignes[i])
+        i += 1
+    return "".join(sortie)
+
+
 def migrer(lot: str) -> int:
     attente = REGISTRE / "a_numeroter" / f"{lot}.txt"
+    journal_rel = "docs/contracts/ipc_v1.md"
+    ref_main = "MERGE_HEAD" if (subprocess.run(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], cwd=PROJET,
+                                               capture_output=True).returncode == 0) else "origin/main"
+    ajoutees = lignes_journal_ajoutees(git_show("HEAD", journal_rel), git_show(ref_main, journal_rel))
     if not attente.exists():
-        p = subprocess.run(["git", "show", f"HEAD:{PROJET.name}/{FICHIERS_REV[0]}"], cwd=PROJET,
-                           capture_output=True, text=True, check=False)
-        attente.write_text((texte_de_la_branche(p.stdout) or f"révision du lot {lot}") + "\n", encoding="utf-8")
-        print(f"écrit : a_numeroter/{lot}.txt : {attente.read_text(encoding='utf-8').strip()}")
+        cellules = ajoutees[0].split("|") if ajoutees else []
+        texte = (" ".join(cellules[3].split()) if len(cellules) > 4 else "") \
+            or texte_de_la_branche(git_show("HEAD", FICHIERS_REV[0])) or f"révision du lot {lot}"
+        attente.write_text(texte + "\n", encoding="utf-8")
+        print(f"écrit : a_numeroter/{lot}.txt : {texte[:100]}")
     for rel in FICHIERS_REV:
         f = PROJET / rel
         texte, regles = resoudre_conflits_rev(f.read_text(encoding="utf-8"))
         if regles:
             f.write_text(texte, encoding="utf-8")
-            print(f"{rel} : {regles} conflit(s) sur CONTRACT_REV réglé(s) avec la version de main")
+            print(f"{rel} : {regles} conflit(s) sur la révision réglé(s) avec la version de main")
         if "<<<<<<< " not in texte:
             subprocess.run(["git", "add", rel], cwd=PROJET, check=False)
+    if ajoutees:
+        f = PROJET / journal_rel
+        texte = retirer_lignes_journal(f.read_text(encoding="utf-8"), ajoutees)
+        f.write_text(texte, encoding="utf-8")
+        print(f"{journal_rel} : {len(ajoutees)} ligne(s) de journal passée(s) au registre")
+        if "<<<<<<< " not in texte:
+            subprocess.run(["git", "add", journal_rel], cwd=PROJET, check=False)
     subprocess.run(["git", "add", str(attente)], cwd=PROJET, check=False)
     reste = subprocess.run(["git", "diff", "--name-only", "--diff-filter=U"], cwd=PROJET, capture_output=True,
                            text=True, check=False).stdout.split()

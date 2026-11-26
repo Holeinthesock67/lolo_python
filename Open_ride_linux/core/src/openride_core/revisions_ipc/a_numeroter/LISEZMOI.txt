@@ -1,6 +1,6 @@
 # Révisions du contrat IPC en attente de numéro (lot CF2).
 # Une PR qui change le contrat ajoute ici UN fichier à son nom de lot, par exemple `BA1.txt`, d'une seule ligne :
-# « ce qui change » (même texte que sa ligne au journal de docs/contracts/ipc_v1.md). Elle ne touche ni
-# CONTRACT_REV ni historique.txt : deux PR de protocole ne se gênent donc plus et passent dans le même train.
+# « ce qui change », c'est-à-dire sa ligne de journal (plus ajoutée en bas d'ipc_v1.md). Elle ne touche ni
+# CONTRACT_REV, ni son assertion, ni historique.txt : deux PR de protocole ne se gênent donc plus et passent dans le même train.
 # CONTRACT_REV vaut la dernière révision de historique.txt plus un par fichier en attente (ce fichier-ci excepté).
 # À la fusion, scripts/numeroter_revisions.py (fil de fusion, sur la branche du train) donne à chacun son numéro.
