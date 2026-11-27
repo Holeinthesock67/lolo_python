@@ -1,0 +1,21 @@
+{
+  "description": "Fichier de diagnostic depuis Réglages › Diagnostic (lot DG1, contrat 1.37) : trois dossiers au choix, carte « rien n'est envoyé », fichier écrit dans Téléchargements par le core et chemin sur la ligne d'état ; adresses Bluetooth fictives du journal masquées.",
+  "fichiers": {"OpenRide/Logs/openride_2026-11-22_10-00-00.log": "2026-11-22 10:00:00 WARNING core Trainer AA:BB:CC:11:22:33 : CP occupé\n"},
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "settings"},
+    {"ecran": "settings", "titre": "Réglages", "contient": ["Diagnostic : créer un fichier pour signaler un problème"]},
+    {"choisir": "diagnostic"},
+    {"ecran": "diagnostic", "titre": "Diagnostic", "contient": ["Enregistrer dans Téléchargements", "Enregistrer sur le Bureau", "Enregistrer dans le dossier OpenRide"]},
+    {"aller": "dest:telechargements"},
+    {"ecran": "diagnostic", "contient": ["Rien n'est envoyé"]},
+    {"capture": "diagnostic_avant"},
+    {"choisir": "dest:telechargements"},
+    {"ecran": "diagnostic", "contient": ["Fichier créé", "Rien n'a été envoyé."], "delai": 15},
+    {"capture": "diagnostic_apres"},
+    {"fichier": "Téléchargements/openride_diagnostic_*.zip", "existe": true},
+    {"journal": "core", "motif": "Diagnostic écrit : ~/Téléchargements/openride_diagnostic_"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "settings", "focus": "diagnostic"}
+  ]
+}

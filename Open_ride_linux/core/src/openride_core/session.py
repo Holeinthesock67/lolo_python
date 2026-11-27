@@ -60,6 +60,8 @@ from .recorder import SessionRecorder
 from . import __version__, race_resume
 from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
+from .game_modes import registry as game_modes
+from .game_modes.base import ModeContext
 
 ROGUE_SCENE_ID = "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 from .demo_world import ensure_demo_world
@@ -415,6 +417,7 @@ class CoreSession:
         self.grandprix_path: Path = grandprix_path or gp_items.GRANDPRIX_FILE   # objets et valeurs (lot GP2)
         self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
+        self._mode_ctx = ModeContext(self)   # vue de la séance lue par les adaptateurs de mode (lot IM1)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
         self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
         # Courbe du cycliste en % de sa FTP (lot PP6), calculée hors de la boucle au lancement, au changement de
@@ -879,6 +882,63 @@ class CoreSession:
             self._handle_collection_seen(args, cmd_id)
         elif name in ("league_status", "league_new"):   # révision 1.30 (lot CH3) : ligue d'hiver
             self._on_league_command(name, cmd_id)
+        elif name == "create_diagnostic":
+            self._on_create_diagnostic(args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- fichier de diagnostic (lot DG1, contrat IPC révision 1.37) ----------------------------
+
+    def _on_create_diagnostic(self, args: dict, cmd_id: int) -> None:
+        """`create_diagnostic` : archive masquée écrite dans le dossier choisi, réponse `diagnostic`.
+        Accepté à tout moment (lecture seule, écrite hors de la boucle) ; rien n'est envoyé."""
+        from . import diagnostic
+
+        dest = str(args.get("dest") or "openride")
+        if dest not in diagnostic.DESTS:
+            self.server.send_error("bad_args", f"Diagnostic : destination inconnue « {dest} ».")
+            return
+        try:
+            entries = [(c.id or "", c.name) for c in profiles.list_contexts(self.profiles_base)]
+        except (profiles.ProfileContextError, OSError):
+            entries = []
+        if self.profile_ctx.id:
+            entries.append((self.profile_ctx.id, self.profile_ctx.name))
+        kwargs = dict(home=self.import_home, devices=self._build_devices(), profile_entries=entries,
+                      engine_version=str(args.get("engine_version") or "")[:40],
+                      gpu=str(args.get("gpu") or "")[:80], session_state=self.state.session_state,
+                      extra={"trainer_puissance_w": list(getattr(self.driver, "power_range", ()) or ())})
+
+        def done(res: dict | None, reason: str = "") -> None:
+            msg = {"type": "diagnostic", "v": 1, "request_cmd_id": cmd_id, "ok": res is not None, "dest": dest}
+            if res is not None:
+                msg.update(path=res["path"], size_kb=res["size_kb"], masked=res["masked"])
+                log.info("Diagnostic écrit : %s (%d ko, %d valeurs masquées).", res["path"], res["size_kb"],
+                         res["masked"])
+            else:
+                msg["reason"] = reason[:200]
+                log.warning("Diagnostic refusé : %s", reason)
+            self.server.send_raw(msg)
+
+        def run() -> None:
+            try:
+                done(diagnostic.write(self.cfg, dest, **kwargs))
+            except diagnostic.DiagnosticError as exc:
+                done(None, str(exc))
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : sur place
+            run()
+            return
+
+        async def bg() -> None:
+            try:
+                res = await asyncio.to_thread(diagnostic.write, self.cfg, dest, **kwargs)
+            except diagnostic.DiagnosticError as exc:
+                done(None, str(exc))
+            else:
+                done(res)
+
+        self._spawn(bg())
 
     # --- contenus installables depuis le menu (lot O25, contrat IPC révision 1.5) ---------------
 
@@ -3047,20 +3107,12 @@ class CoreSession:
         return True
 
     def _fill_rogue_frame(self) -> None:
-        """Objet `rogue` de la trame : état du dernier pas et événements de tous les pas depuis la trame
-        précédente (lot R23 : la boucle tourne à 50 Hz, la trame part à 30 Hz)."""
-        if self.rogue is None:
-            return
-        frame = self.rogue.take_frame()
-        if frame is not None:
-            self.state.rogue = frame
+        """Partie `rogue` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["rogue"].fill_frame(self._mode_ctx)
 
     def _fill_wtf_frame(self) -> None:
-        st = self.state
-        if self.wtf is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.wtf = None
-            return
-        st.wtf = self.wtf.frame(self._t_session, self.physics.s)
+        """Partie `wtf` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["wtf"].fill_frame(self._mode_ctx)
 
     # --- mode « Dernier survivant » (série DS, lot DS2) ------------------------------------
 
@@ -3358,7 +3410,7 @@ class CoreSession:
             season = league.new_season(self._league_today(), previous=previous, roster=roster)
             try:
                 if previous is not None:   # saison close gardée à part, classement et trophée compris (revue F1-07)
-                    league.save(self._league_path().with_name(f"ligue_saison_{previous.number}.json"), previous)
+                    league.save(league.archive_path(self._league_path(), previous.number), previous)
                 rivals.save(self._rivals_path(), roster)   # rivaux d'abord : jamais une saison sans ses rivaux
                 league.save(self._league_path(), season)
             except OSError as exc:
@@ -3368,7 +3420,8 @@ class CoreSession:
                      season.end_day(self._league_today()))
             if self._rec:
                 self._rec.game({"kind": "league_new", "ts": round(time.time(), 3), "number": season.number})
-        self.server.send_raw(league.status(season, self._league_today(), cmd_id))
+        self.server.send_raw(league.status(season, self._league_today(), cmd_id,   # palmarès : lot CH6
+                                           past=league.history(self._league_path(), season)))
 
     def _league_field(self, args: dict, mode: str | None) -> list[Any] | None:
         """Plateau de la manche de la semaine : les 11 rivaux dans l'ordre de la saison, niveau = « Niveau des
@@ -3770,24 +3823,12 @@ class CoreSession:
         return added.rank
 
     def _fill_track_frame(self) -> None:
-        st = self.state
-        if self.track_event is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.track = None
-            return
-        st.track = self.track_event.frame()
+        """Partie `track` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["track"].fill_frame(self._mode_ctx)
 
     def _fill_survivor_frame(self) -> None:
-        st = self.state
-        if self.survivor is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.survivor = None
-            return
-        st.survivor = self.survivor.frame()
-        ahead = st.survivor.get("ahead")
-        if ahead is not None:
-            ahead["catch_w"] = self._survivor_catch_w(ahead["id"])
-        if st.bots:
-            st.bots = [{**b, "out": self.survivor.racers[b["id"]].out_arch}
-                       if b["id"] in self._survivor_out else b for b in st.bots]
+        """Partie `survivor` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["survivor"].fill_frame(self._mode_ctx)
 
     # --- mode « Grand Prix des objets » (série GP, lot GP2) --------------------------------
 
@@ -3998,14 +4039,8 @@ class CoreSession:
                 self._rec.game({**line, "ts": round(time.time(), 3)})
 
     def _fill_grandprix_frame(self) -> None:
-        st = self.state
-        gp = self.grandprix
-        if gp is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.gp = None
-            return
-        st.gp = gp.frame(GP_ME)
-        if st.bots:   # objet en réserve et effets en cours de chaque bot
-            st.bots = [{**b, **gp.bot_frame(b["id"])} if b["id"] in gp.racers else b for b in st.bots]
+        """Partie `grandprix` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["grandprix"].fill_frame(self._mode_ctx)
 
     # --- options des modes (lot GP2 : commandes génériques, celles du Mode WTF en alias) -------
 
@@ -4231,22 +4266,8 @@ class CoreSession:
         self._spawn(asyncio.to_thread(save))
 
     def _fill_race_frame(self) -> None:
-        """Champs de la révision 1.4 de la série T dans la trame `state`."""
-        st = self.state
-        race = self.race
-        if race is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.segment = st.powerup = st.jerseys = None
-            st.bot_ahead = st.bot_behind = None
-            return
-        f = race.frame(self._t_session, self.physics.s, self.physics.v, self.bots)
-        st.segment, st.powerup, st.jerseys = f.get("segment"), f.get("powerup"), f.get("jerseys")
-        st.bot_ahead, st.bot_behind = f.get("bot_ahead"), f.get("bot_behind")
-        if self.physics.direction < 0:   # à rebours (lot N17) : ni segment à venir ni voisin dans la course
-            st.segment = None
-            st.bot_ahead = st.bot_behind = None
-        extra = f.get("bots_extra") or {}
-        if st.bots:
-            st.bots = [{**b, **extra.get(b["id"], {})} for b in st.bots]
+        """Partie `classic` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["classic"].fill_frame(self._mode_ctx)
 
     def _write_ftp_test(self, rec: SessionRecorder) -> FtpResult | None:
         """Séance de test de FTP : résultat au journal (ligne `ftp_test`), rien dans `config.toml`."""
@@ -5492,18 +5513,20 @@ class CoreSession:
                                        if b.get("lane_m") is not None else b for b in self.state.bots]
             else:
                 self.state.bots = None
-            self._fill_race_frame()
+            self._fill_frame()
             self._fill_wind_frame()
             self._fill_vehicles_frame()
             self._fill_riders_frame()
-            self._fill_wtf_frame()
-            self._fill_survivor_frame()
-            self._fill_grandprix_frame()
-            self._fill_track_frame()
-            self._fill_rogue_frame()
             self._lighten_bots_frame()
         except Exception as exc:
             self._mode_failed(exc, "trame", now_mono)
+
+    def _fill_frame(self) -> None:
+        """Partie de la trame propre à chaque mode (lot IM1) : tous les modes de la table, dans l'ordre fixe, chacun
+        remplit son champ (ou le vide hors séance) et décore la liste `bots`."""
+        ctx = self._mode_ctx
+        for mode in game_modes.MODES:
+            mode.fill_frame(ctx)
 
     def _active_mode(self) -> str:
         """Nom du mode en cours, pour le journal : le plus particulier d'abord."""
