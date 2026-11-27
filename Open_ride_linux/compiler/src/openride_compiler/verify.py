@@ -627,9 +627,9 @@ def _check_river_levels(item: dict, outer: list, holes: list, label: str, proble
     """Aire `river` (format 1.10, §8) : `outer_y` de la longueur de `outer`, `holes_y` parallèle à `holes`,
     altitudes finies (K3-07). Facultatifs : absents, l'engine prend `level_y`."""
     oy = item.get("outer_y")
-    if oy is not None:
-        if not isinstance(oy, list) or len(oy) != len(outer) or not all(_is_number(v) for v in oy):
-            problems.append(f"{label} : outer_y invalide (une altitude finie par sommet de outer)")
+    if oy is not None and (not isinstance(oy, list) or len(oy) != len(outer)
+                           or not all(_is_number(v) for v in oy)):
+        problems.append(f"{label} : outer_y invalide (une altitude finie par sommet de outer)")
     hy = item.get("holes_y")
     if hy is not None:
         if not isinstance(hy, list) or len(hy) != len(holes):
