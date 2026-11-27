@@ -75,6 +75,7 @@ LANE_FREE_M = 100.0
 MIN_CENTRE_M = MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
 GUARD_RIDER_WIDTH_M = MIN_CENTRE_M - 1.5e-3   # lot DPS1 : garde finale, en travers du cycliste
 GUARD_STEPS = 8           # lot DPS1 : corrections au plus par groupe et par pas
+GUARD_REACH_M = GUARD_LEN_M + GUARD_STEPS * (2.0 * GUARD_LEN_M + 0.01)   # portée de la garde autour d'une file
 GROUP_CLEAR_M = 30.0
 VEHICLE_CLEAR_M = 60.0
 # Lot DB3 (banc rDB3, Route du Grand Nord : 53 à 106 contacts) : un groupe ne double jamais un véhicule du même sens.
@@ -849,6 +850,8 @@ class RoadCyclists:
         par derrière (le cycliste qui le rattrape) ou par un usager d'en face, il s'écarte à la place libre la plus
         proche ; sinon son groupe est avancé devant, à la vitesse de l'autre. Chaque correction est comptée
         (`guard_total`) : elle doit rester rare, la règle de chaque groupe étant censée l'éviter."""
+        if not self._guard_needed(rider_s):
+            return
         # le cycliste : à MIN_CENTRE_M au moins en travers (MIN_GAP_M d'épaule à épaule, lot P32), pas seulement sans contact
         placed: list[tuple[float, float, float, int, float]] = [(rider_s, self.rider_lane, rider_v, 1, GUARD_RIDER_WIDTH_M)]
         for b in self._bot_groups:
@@ -865,8 +868,33 @@ class RoadCyclists:
                 return i
         return -1
 
-    def _guard_group(self, g: Group, placed: Sequence[tuple[float, float, float, int, float]]) -> None:
+    def _guard_needed(self, rider_s: float) -> bool:
+        """Vrai si deux occupants se touchent (au sens de `_touch`) ; sinon la garde ne changerait rien et elle est
+        sautée (lot DPS1, coût de la garde à chaque pas : comparaisons directes, sans liste ni tri)."""
+        groups = self.groups
+        for gi, g in enumerate(groups):
+            for m in g.members:
+                s, lat = g.s - g.dir * m.dl, m.lateral
+                if abs(rider_s - s) < GUARD_LEN_M and abs(self.rider_lane - lat) < GUARD_RIDER_WIDTH_M:
+                    return True
+                for b in self._bot_groups:
+                    if abs(b.s - s) < GUARD_LEN_M and abs(b.members[0].lateral - lat) < GUARD_WIDTH_M:
+                        return True
+                for h in groups[gi + 1:]:
+                    for o in h.members:
+                        if abs(h.s - h.dir * o.dl - s) < GUARD_LEN_M and abs(o.lateral - lat) < GUARD_WIDTH_M:
+                            return True
+        return False
+
+    def _guard_group(self, g: Group, all_placed: Sequence[tuple[float, float, float, int, float]]) -> None:
         edge = self._edge_lateral(self._half_at(g.s))
+        # Seuls comptent les occupants à portée : un pas de la garde déplace le groupe de moins de 2 × GUARD_LEN_M, d'où
+        # GUARD_REACH_M autour de sa file (même résultat qu'avec tous les occupants, beaucoup moins de calcul).
+        ms = [g.s - g.dir * m.dl for m in g.members]
+        lo, hi = min(ms) - GUARD_REACH_M, max(ms) + GUARD_REACH_M
+        placed = [o for o in all_placed if lo < o[0] < hi]
+        if not placed:
+            return
         for _ in range(GUARD_STEPS):
             hit = None
             for m in g.members:
