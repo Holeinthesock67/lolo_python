@@ -259,3 +259,56 @@ def test_warm_run_on_empty_caches_is_judged_cold(tmp_path: Path):
     (root / "nvidia" / "GLCache").mkdir(parents=True, exist_ok=True)
     (root / "nvidia" / "GLCache" / "b").write_text("x")
     assert not sb.caches_empty("chaud", root) and not sb.caches_empty("froid-godot", root)
+
+
+# --- vitesse imposée sur la pente du parcours (27 novembre, banc rDPS1) ---------------------------
+
+def test_speed_bench_keeps_neutral_gear_by_dropping_click_presses(tmp_path):
+    """Scénario demo : 30 appuis du Click montaient le braquet de ~10 crans (+5 points reçus) et le cycliste simulé
+    poussait trop fort (49 km/h pour 40). Avec la vitesse imposée, appuis et watts du scénario sont retirés."""
+    spec = sim_scenarios.load_scenario("demo")
+    presses = [ev for ev in spec["events"] if ev.get("action") == "press"]
+    assert len(presses) >= 30
+    b = sb.Bench(_args(speed_kmh=40.0), "demo", spec, {}, "demo", tmp_path)
+    assert not [ev for ev in b.spec["events"] if ev.get("action") in ("press", "rider")]
+    assert b.speed_dropped == len(spec["events"]) - len(b.spec["events"]) > 0
+    assert [ev for ev in spec["events"] if ev.get("action") == "press"] == presses   # scénario d'origine intact
+    # sans vitesse imposée : scénario inchangé
+    assert sb.Bench(_args(), "demo", spec, {}, "demo", tmp_path).spec["events"] == spec["events"]
+
+
+def _rec(i, grade, sent, draft=0.0):
+    return {"ts": 1000.0 + i, "speed": 40 / 3.6, "grade": grade, "grade_sent": sent, "draft": draft}
+
+
+def test_grade_coherence_flags_a_received_grade_far_from_the_course():
+    ok, msg = sb.grade_coherence([_rec(i, 2.0, 2.1) for i in range(120)])
+    assert ok is True and "écart médian 0.10" in msg
+    # rDPS1 : parcours 1,5 à 2,9 %, pente envoyée 2,8 à 8,1 %
+    ok, msg = sb.grade_coherence([_rec(i, 1.5 + i / 100, 2.8 + i / 25) for i in range(120)])
+    assert ok is False and "banc faussé" in msg
+    # abri : supplément de pente voulu, hors calcul
+    recs = [_rec(i, 2.0, 2.0) for i in range(60)] + [_rec(60 + i, 2.0, 6.0, draft=0.3) for i in range(60)]
+    assert sb.grade_coherence(recs)[0] is True
+    assert sb.grade_coherence([])[0] is False
+
+
+# --- refuser plutôt que deviner (27 novembre) ----------------------------------------------------
+
+def test_empty_world_is_refused_not_replaced_by_demo(tmp_path, capsys):
+    """Banc pile à-coups du 27/11 : W=$(find …) vide, --world "" roulait sans le dire sur le Col du lacet."""
+    spec = sim_scenarios.load_scenario("nominal")
+    for vide in ("", "  "):
+        with pytest.raises(SystemExit) as exc:
+            sb.Bench(_args(world=vide, speed_kmh=50.0), "nominal", spec, {}, "nominal", tmp_path)
+        assert exc.value.code == 2
+    assert "aucun parcours par défaut" in capsys.readouterr().err
+    # sans --world : le monde du scénario, puis demo, comme avant
+    assert sb.Bench(_args(world=None), "nominal", spec, {"world": "village"}, "nominal", tmp_path).world == "village"
+    assert sb.Bench(_args(world=None), "nominal", spec, {}, "nominal", tmp_path).world == "demo"
+
+
+def test_missing_world_folder_is_an_environment_failure(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        sb.prepare_world(str(tmp_path / "absent.world"), tmp_path / "routes", tmp_path)
+    assert exc.value.code == 2
