@@ -182,7 +182,8 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		g *= 1.0 + tufts_p * relief * vec3(1.0, 0.9, 0.6);
 		// Vagues de vent (H3) : bandes claires de 6 m qui défilent dans le sens du vent
 		vec2 wd = length(wind_dir.xz) > 1e-4 ? normalize(wind_dir.xz) : vec2(1.0, 0.0);
-		vec2 wq = vec2(dot(q, wd) - wind_phase * (2.0 + 6.0 * wind_strength), dot(q, vec2(-wd.y, wd.x)) * 0.25);
+		// Défilement : multiplicateur constant, le vent fort accélère déjà wind_phase (revue E12-51).
+		vec2 wq = vec2(dot(q, wd) - wind_phase * 3.0, dot(q, vec2(-wd.y, wd.x)) * 0.25);
 		g *= 1.0 + (sd_noise(wq / 6.0) - 0.5) * 0.18 * wind_strength * relief;
 		final_color += g * grass_mod * w_grass;
 	}

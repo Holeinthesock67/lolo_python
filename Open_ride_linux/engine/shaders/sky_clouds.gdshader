@@ -88,7 +88,8 @@ float _layer(vec2 p, float evolve) {
 
 // Opacité des nuages dans la direction `eyedir` vue depuis `pos` (une ou deux couches, fondu vers l'horizon).
 float _clouds_alpha(vec3 eyedir, vec3 pos) {
-	float evolve = wind_phase * 0.004 * (0.3 + wind_strength);
+	// Multiplicateur constant : le vent fort accélère déjà wind_phase (revue E12-51).
+	float evolve = wind_phase * 0.0018;
 	float t = altitude_m / max(eyedir.y, 0.02);
 	vec2 p = pos.xz + eyedir.xz * t + cloud_offset;
 	float alpha = _layer(p, evolve);
