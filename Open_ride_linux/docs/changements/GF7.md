@@ -1,6 +1,6 @@
 # GF7 : sonde de performance bornée au roulage (écran de bilan, dérive, préparation)
 
-- PR : à venir ; fil « Fiabiliser les outils de banc » (27 novembre 2026), constats du fil « Bilan des à-coups »
+- PR : #1165 ; fil « Fiabiliser les outils de banc » (27 novembre 2026), constats du fil « Bilan des à-coups »
   (statut/BILAN_ACOUPS_2026-11-28.md, §3) ; version : 6.0
 - CHANGELOG (section « Corrigé ») :
   - Banc simulé avec `--probe` : budgets et à-coups jugés du chargement à l'ordre `end_session` ; l'écran de bilan
