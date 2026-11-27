@@ -119,7 +119,11 @@ var _bed_done := {}                     # fond -> flux fabriqué (synthèse ou .
 var _bed_mutex := Mutex.new()
 var beds_posed := 0                     # fonds posés sur leur lecteur depuis le démarrage (tests)
 var ambience_us := {"evaluate": 0, "collect": 0, "players": 0}   # dernier update_ambience, en µs (mesures)
-var _event_player: AudioStreamPlayer
+## Jingles : un lecteur par voix, pris à tour de rôle (E9-02). Réaffecter `stream` d'un lecteur arrête ce qu'il
+## joue (mesuré sous Godot 4.7.2 : jingle coupé à 0,296 s au lieu de 1,585 s) : avec un seul lecteur, chaque jingle
+## coupait le précédent. Le quatrième d'affilée coupe le plus ancien.
+var _event_players: Array[AudioStreamPlayer] = []
+var _event_next := 0
 var events_played := []                # jingles demandés (tests)
 
 
@@ -173,12 +177,13 @@ func _init_players() -> void:
 		add_child(p)
 		_poi_players.append(p)
 
-	_event_player = AudioStreamPlayer.new()
-	_event_player.name = "EventPlayer"
-	_event_player.bus = AudioMix.bus(AudioMix.EVENTS)
-	_event_player.max_polyphony = EVENT_POLYPHONY
-	_event_player.volume_db = EVENT_DB
-	add_child(_event_player)
+	for i in range(EVENT_POLYPHONY):
+		var ep := AudioStreamPlayer.new()
+		ep.name = "EventPlayer" if i == 0 else "EventPlayer_%d" % i
+		ep.bus = AudioMix.bus(AudioMix.EVENTS)
+		ep.volume_db = EVENT_DB
+		add_child(ep)
+		_event_players.append(ep)
 
 	for bed in AmbienceModel.BEDS:
 		var bp := AudioStreamPlayer.new()
@@ -227,10 +232,12 @@ func play_event(jingle: String, volume_db := 0.0) -> void:
 		return
 	var st: Resource = stream(jingle)
 	events_played.append(jingle)
-	_event_player.stream = st
-	_event_player.volume_db = EVENT_DB + volume_db   # plus bas pour un bot du Grand Prix (lot GPO1)
+	var ep: AudioStreamPlayer = _event_players[_event_next]
+	_event_next = (_event_next + 1) % _event_players.size()
+	ep.stream = st
+	ep.volume_db = EVENT_DB + volume_db   # plus bas pour un bot du Grand Prix (lot GPO1), ce jingle seul
 	if is_inside_tree():
-		_event_player.play()
+		ep.play()
 
 
 func set_pois(points: Array) -> void:
