@@ -1,0 +1,37 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+11.3;11;0;0;0;0;4;0;voice_bonjour=1
+21.3;11;0;0;0;0;4;0;voice_bonjour=1
+31.3;11;0;0;0;0;4;0;voice_bonjour=2
+41.3;11;0;0;0;0;4;0;voice_bonjour=2
+51.3;11;0;1;0;0;4;0;tractor_engine=1 voice_bonjour=2
+61.3;11;0;1;0;0;4;0;airliner_rumble=1 tractor_engine=1 voice_allez=1 voice_bonjour=2
+71.3;11;0;1;0;0;4;0;airliner_rumble=1 tractor_engine=1 voice_allez=1 voice_bonjour=2
+81.3;11;0;1;0;0;4;0;airliner_rumble=1 tractor_engine=1 voice_allez=1 voice_bonjour=2
+91.3;11;0;1;0;0;4;0;airliner_rumble=1 tractor_engine=1 voice_allez=2 voice_bonjour=2
+101.3;11;0;1;0;0;4;0;airliner_rumble=2 tractor_engine=1 voice_allez=2 voice_bonjour=2
+111.3;11;0;1;0;0;4;0;airliner_rumble=2 tractor_engine=1 voice_allez=2 voice_bonjour=2
+121.3;11;0;1;0;0;4;0;airliner_rumble=2 tractor_engine=1 voice_allez=2 voice_bonjour=2
+131.3;11;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=2 voice_bonjour=2
+141.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=3 voice_bonjour=2
+151.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=3 voice_bonjour=2
+161.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=3 voice_bonjour=2
+171.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=3 voice_bonjour=2
+181.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=3 voice_bonjour=2
+191.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=3 voice_bonjour=2
+201.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=3 voice_bonjour=2
+211.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=2 voice_allez=3 voice_bonjour=2
+221.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=2
+231.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=2
+241.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=2
+251.3;12;0;2;0;0;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=2
+261.3;12;0;2;0;1;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=3
+271.3;12;0;2;0;1;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=3
+281.3;12;0;2;0;1;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=3
+291.3;12;0;2;0;1;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=3
+301.3;12;0;2;0;1;4;0;airliner_rumble=2 tractor_engine=3 voice_allez=3 voice_bonjour=3
+311.3;12;0;3;0;1;4;0;airliner_rumble=2 tractor_engine=4 voice_allez=3 voice_bonjour=3
+321.3;12;0;3;0;1;4;0;airliner_rumble=2 paramotor_buzz=1 tractor_engine=4 voice_allez=3 voice_bonjour=3
+331.3;12;0;3;0;1;4;0;airliner_rumble=2 paramotor_buzz=1 tractor_engine=4 voice_allez=3 voice_bonjour=3
+341.3;12;0;3;0;1;4;0;airliner_rumble=2 paramotor_buzz=1 tractor_engine=4 voice_allez=3 voice_bonjour=3
+351.3;12;0;3;0;1;4;0;airliner_rumble=2 paramotor_buzz=1 tractor_engine=4 vehicle_pass=1 voice_allez=3 voice_bonjour=3
+361.2;12;0;2;0;1;4;0;airliner_rumble=2 paramotor_buzz=1 tractor_engine=4 vehicle_pass=1 voice_allez=3 voice_bonjour=3
