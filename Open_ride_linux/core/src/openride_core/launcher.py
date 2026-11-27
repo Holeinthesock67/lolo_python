@@ -334,6 +334,53 @@ def migrate_profiles(home: Path | None = None) -> str | None:
     return None
 
 
+def check_profiles(message: Callable[[str, bool], None], ask: Callable[[str], bool],
+                   base: Path | None = None) -> None:
+    """Profils abîmés, avant le core (revue S5-01 et S5-05) ; rien n'est jamais effacé.
+
+    - `profil.toml` illisible : question au joueur ; sur accord, l'ancien fichier est mis de côté et un fichier
+      lisible est écrit avec tout ce qui se lit encore (`profiles.set_aside_description`). Sur refus, le profil
+      reste tel quel : s'il est celui du lancement, le lanceur s'arrête avec un message (jamais l'autre joueur
+      à sa place, `profiles.default_id`).
+    - `profile.json` abîmé ou manquant à côté d'une copie : copie remise en place (`profile.repair`) et fenêtre
+      qui le dit. Un profil tenu par une autre séance n'est pas touché.
+    """
+    from . import profile as profile_mod
+    from . import profiles
+
+    for pid, reason in profiles.unreadable(base):
+        root = (base if base is not None else profiles.profiles_dir()) / pid
+        question = (f"Le profil « {pid} » ne peut pas être lu (réglages du joueur, profil.toml) :\n{reason}\n\n"
+                    "Le réparer ? L'ancien fichier est gardé à côté, rien n'est effacé : ce qui se lit encore "
+                    "(nom, FTP, poids…) est repris, le reste revient à sa valeur par défaut. Les séances, "
+                    "l'expérience et les records ne bougent pas. Une sauvegarde du profil peut aussi être "
+                    "restaurée ensuite depuis « Gérer : <profil> ».")
+        if not ask(question):
+            print(f"openride : profil {pid} illisible, laissé tel quel : {reason}", file=sys.stderr)
+            continue
+        try:
+            kept, lost = profiles.set_aside_description(root, pid)
+        except (OSError, profiles.ProfileContextError) as exc:
+            message(f"Profil « {pid} » non réparé : {exc}. Le fichier est laissé tel quel.", True)
+            continue
+        lost_text = (f" Remis par défaut : {', '.join(lost)}, à vérifier dans Réglages." if lost else "")
+        print(f"openride : profil {pid} réparé, ancien profil.toml gardé sous {kept.name}", flush=True)
+        message(f"Profil « {pid} » réparé : l'ancien fichier est gardé sous {kept.name}.{lost_text}", False)
+    for ctx in profiles.list_contexts(base):
+        lock = profiles.ProfileLock(ctx)
+        try:
+            lock.acquire()
+        except profiles.ProfileContextError:
+            continue   # séance en cours sur ce profil : elle a son propre profil en mémoire
+        try:
+            text = profile_mod.repair(ctx.profile_path).message(ctx.name or ctx.id or "")
+        finally:
+            lock.release()
+        if text:
+            print(f"openride : {text}", file=sys.stderr)
+            message(text, True)
+
+
 def migrate_settings(home: Path | None = None) -> list[str]:
     """Réglages retirés du menu remis par défaut dans les fichiers du joueur (lot NI2, `migration_reglages.py`) ;
     une ligne au journal par fichier changé ; une erreur d'écriture n'empêche pas de démarrer."""
@@ -1146,6 +1193,7 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
             print(f"openride : {warning}", file=sys.stderr)
             message(warning, True)
         migrate_settings()
+    check_profiles(message, ask)
     for _ in range(config_repair.MAX_REPAIRS + 1):
         try:
             sup = build_supervisor(args)
@@ -1162,6 +1210,11 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
             except OSError as err:
                 return fail(f"configuration invalide : {exc} (réparation impossible : {err})")
         except ValueError as exc:
+            from .profiles import FILE_NAME, ProfileContextError
+
+            if isinstance(exc, ProfileContextError) and FILE_NAME in str(exc):
+                return fail(f"{exc}. Le profil n'est remplacé par aucun autre : relance OpenRide et accepte la "
+                            "réparation (l'ancien fichier est gardé), ou corrige ce fichier.")
             return fail(str(exc))
         except FileNotFoundError as exc:
             return fail(str(exc))
