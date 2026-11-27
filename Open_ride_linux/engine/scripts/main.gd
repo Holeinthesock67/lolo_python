@@ -80,6 +80,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const BotMovesModel := preload("res://scripts/bot_moves_model.gd")
 const PhotoMomentsModel := preload("res://scripts/photo_moments_model.gd")
 const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
@@ -294,6 +295,7 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+var bot_moves = BotMovesModel.new()   # lot BA1 : gestes des bots voisins, en mots et en son
 ## Photos automatiques à l'arrivée et aux records (photo_moments_model.gd, réglage `render.auto_photos`).
 var photo_moments = PhotoMomentsModel.new()
 var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
@@ -451,6 +453,9 @@ func _ready() -> void:
 		_refresh_menu())
 	ipc.contents_received.connect(func(msg: Dictionary) -> void:
 		_run_menu_action(menu_flow.on_contents(msg))
+		_refresh_menu())
+	ipc.diagnostic_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_diagnostic(msg)
 		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
@@ -964,6 +969,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("list_contents", {})
 		"install_content":
 			ipc.send_command("install_content", {"id": str(act["id"])})
+		"create_diagnostic":   # fichier de diagnostic (lot DG1, contrat 1.37) : carte graphique en plus
+			ipc.send_command("create_diagnostic", {"dest": str(act["dest"]),
+				"engine_version": str(act.get("engine_version", "")),
+				"gpu": RenderingServer.get_video_adapter_name()})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
 		"list_profile_backups":   # copies du profil en cours (lot SV1)
@@ -2467,6 +2476,11 @@ func _on_state_received(state: Dictionary) -> void:
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
 		_play_event(jingle)
+	var move: Dictionary = bot_moves.on_state(state, float(Time.get_ticks_msec()) / 1000.0)
+	if not move.is_empty():   # lot BA1 : « Grimpeur attaque, 40 m devant » et un son court
+		banner.show_message("bot_move", str(move["text"]), BotMovesModel.SHOW_S)
+		_play_event(str(move["jingle"]))
+		ipc.test_log("bot_move " + str(move["text"]))
 	for req in photo_moments.on_state(state, float(Time.get_ticks_msec()) / 1000.0):
 		_take_photo(req)
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):

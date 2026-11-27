@@ -86,6 +86,8 @@ signal profile_backups_received(msg: Dictionary)
 signal interrupted_received(msg: Dictionary)
 ## Contenus installables (lot O25, contrat 1.5) : réponse à list_contents et install_content (un seul datagramme).
 signal contents_received(msg: Dictionary)
+## Fichier de diagnostic (lot DG1, contrat 1.37) : réponse à create_diagnostic.
+signal diagnostic_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -389,6 +391,8 @@ func _poll_incoming() -> void:
 				interrupted_received.emit(json_obj)
 			"contents":
 				contents_received.emit(json_obj)
+			"diagnostic":
+				diagnostic_received.emit(json_obj)
 			"xp_result":
 				xp_result_received.emit(json_obj)
 			"room":

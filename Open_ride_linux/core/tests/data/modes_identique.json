@@ -1,0 +1,379 @@
+{
+ "note": "Empreintes du filet « à l'identique » des modes (lot IM0), recalculées par scripts/modes_identique.py --maj ; à ne changer que pour un changement de comportement voulu.",
+ "scenarios": {
+  "course": {
+   "bilan": {
+    "n": 21,
+    "sha256": "d20f32a3749748b47b4de1a900e17a1651a78d41fb547eb22462101cc98d0986"
+   },
+   "journal": {
+    "n": 376,
+    "sha256": "edf2cdd8da2cc1ba427cc81ebd4574305618e1cbc31ab33860953e650b62f774"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "554c554b9da7bab76ce6addf330f629dcd1283969c922c36ea556fba8220a826"
+   },
+   "trainer": {
+    "n": 30124,
+    "sha256": "4b098bdf02e1a1540ae5bac705ab979443ccbecdce00335aec3281660942e849"
+   },
+   "trames": {
+    "n": 1506,
+    "sha256": "f9dc3b4d20614a1f76deb34fffd61d4eb32dac5aa201349fa2af85c3560d25ba"
+   }
+  },
+  "fin_arret_du_core": {
+   "bilan": {
+    "n": 18,
+    "sha256": "633de283f19a83a39b92c8c68a4a86565e802bfc869de3e0eaff121e8fec683d"
+   },
+   "journal": {
+    "n": 62,
+    "sha256": "6643b0a7c1868c592aa72aed3daa3dbede4a79df3c0748bc8eee3f27bc4c515d"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "d4d6e52e910deb7381344619c9f816cc515e3273e5631c36c2a76392e1f865a1"
+   },
+   "trainer": {
+    "n": 4504,
+    "sha256": "42a6be44b767ea8be231f89fc57ae0f8c99e8b59651d65acf5916e8398096385"
+   },
+   "trames": {
+    "n": 225,
+    "sha256": "a490dbe4472a5a5f1f245a395c31e745e741149eb11bb6d474934ebaac964f3d"
+   }
+  },
+  "fin_sans_enregistrer": {
+   "bilan": {
+    "n": 19,
+    "sha256": "4d41d7d54e01b23f27dbaaf3a8cfde58293de8074d5457b47050bf8b1bd6150b"
+   },
+   "journal": {
+    "n": 62,
+    "sha256": "d84508e4809ab66f26b3d4d4d5e0d4917987d7339c713d8917c51cbfc9533fdb"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "1ebeb8d2cdd00b313089325346dbe94ad2407f333d7f5751e77717d890131709"
+   },
+   "trainer": {
+    "n": 4504,
+    "sha256": "d55f6ee758bdcc7c67529fee44d7d5f207bea44345ce2a70c426ec2225cb29c8"
+   },
+   "trames": {
+    "n": 225,
+    "sha256": "2952b191ba5812e7166e1e068ae6daa99e1f516ffa2c134da5a1447836a6dd7d"
+   }
+  },
+  "fin_trainer_refuse": {
+   "bilan": {
+    "n": 18,
+    "sha256": "4dd500e34f32efe50012793b1351afef7ae9baba52edb5f5e705ffd83e48edf6"
+   },
+   "journal": {
+    "n": 31,
+    "sha256": "b722989520d8a954aa3536e05e611e23228a088a0c1e6c7899ac8994166f1a75"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "a4feb60b74a782772f159f5497ffeb1c04798f25998a1ac696cb4aad120a6d79"
+   },
+   "trainer": {
+    "n": 2308,
+    "sha256": "1272a4936b60b0941c12ecbb4bfd644f139db4bc4df712b95b1f4d5f51d682ac"
+   },
+   "trames": {
+    "n": 200,
+    "sha256": "a1eb93983533bdf770d645ceea4600e5c7bba903649754354bd94223ea92827f"
+   }
+  },
+  "grandprix": {
+   "bilan": {
+    "n": 20,
+    "sha256": "65647267cef5c207886d3b9abc65b6b4afd5be7f700526d30bccc16d3798ff1a"
+   },
+   "journal": {
+    "n": 289,
+    "sha256": "ad46c49672b5acf8dd7a37df858d960a7291709f6706b2a5757eb3ea1e33cbcf"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "5961b104620efe91854e5ab79ceedeb63031064ca70dbb80ad4c543fff9a019a"
+   },
+   "trainer": {
+    "n": 21454,
+    "sha256": "e6fe3812cbb9c57dc5b637a121111f32c763c78abae334be447d8812bac0dc9b"
+   },
+   "trames": {
+    "n": 1087,
+    "sha256": "87782e28d45ee4ab293b1cdb20f385505299a4c87d5a382dfbc1c2acda356f62"
+   }
+  },
+  "libre": {
+   "bilan": {
+    "n": 18,
+    "sha256": "6aea81a1e50164c063b1d06a190d40d20e9902d44e314b19b1b671d9e709d922"
+   },
+   "journal": {
+    "n": 150,
+    "sha256": "9b88c342eb3b9e8fc21ca4825dd1e98e5a818757da8b245f1372a5b2e748be53"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "8403947ae911f5baa97d13249a75dc3d60d79cac11e28763d0125077239f77f8"
+   },
+   "trainer": {
+    "n": 14006,
+    "sha256": "d426ad98dd84a5f8c375da3d7ba3257156195ac69d305147fe0ca5effcbec89f"
+   },
+   "trames": {
+    "n": 710,
+    "sha256": "64c7d82e14439ba140d84ef095fd49fd0ced47e6d43d82f469f3541c810c1992"
+   }
+  },
+  "piste_americaine": {
+   "bilan": {
+    "n": 18,
+    "sha256": "d5e8d2adf277b6725ecc1a543de3da90c4918c93de46951262876b64340a6c76"
+   },
+   "journal": {
+    "n": 629,
+    "sha256": "8f460657fbd73d0e76fe2a274871e72208ce6279fef54bc54cbf1e689c02bc29"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "ffe5ee3e213ad9668803de58e45d0ac8e06fe6be73a3b5bab41a9d11dc09310a"
+   },
+   "trainer": {
+    "n": 52416,
+    "sha256": "a8ec2ec57684a7640ca3f045e7a4bf0bd1990f69eb279727830d3c6721c30d55"
+   },
+   "trames": {
+    "n": 2620,
+    "sha256": "6e523dd920cc7761809927d851da4cffdf0a447e19e1b1219db3cd42d52790b0"
+   }
+  },
+  "piste_libre_erg": {
+   "bilan": {
+    "n": 18,
+    "sha256": "9f0e615713cf82539c8ca3977401624a1f8c8d2732c89bf70e068c2f32fdf0a9"
+   },
+   "journal": {
+    "n": 95,
+    "sha256": "1dacc389a44ba2f8cb4aea2d1f808fa5c0250642eaa56e60bd28f1942a416676"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "95898c1a5948461b70c7ea6f730589aadc0cf152cc8b78206883189af7593b4d"
+   },
+   "trainer": {
+    "n": 8304,
+    "sha256": "2c2ef255cecc9a7103137405a327afca7a8d274af73ae3096be4c3338328fae7"
+   },
+   "trames": {
+    "n": 415,
+    "sha256": "a9dedff2fdbf654ffaa498228736bf313e2767d0996cc5b6965ef940a254583f"
+   }
+  },
+  "piste_poursuite": {
+   "bilan": {
+    "n": 18,
+    "sha256": "af410f605488cb1a8297077b4d2b92af8d4e172b3fa34f317054522104183570"
+   },
+   "journal": {
+    "n": 113,
+    "sha256": "cbe04a6490ee98acd667d7090ce7bb3dcdef1c81edcbbfb2e6ff69d09fab0979"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "e943965f5cc0b6bd525396e43f951d87c4b5364255f1851341920512cc932f78"
+   },
+   "trainer": {
+    "n": 9854,
+    "sha256": "d03a57c231633a6153b82474d9148a5f19972538a8ec8b168273041d8d95d72c"
+   },
+   "trames": {
+    "n": 492,
+    "sha256": "4eb5e8147fc74fb426b64dcfdcb9dcb1999c435327b2f47f733dae73ad22c0ec"
+   }
+  },
+  "piste_scratch": {
+   "bilan": {
+    "n": 19,
+    "sha256": "a8c8b9c81f26957ef8d4bf410bef986e8fc5621d574cd79c58f9075b929abadb"
+   },
+   "journal": {
+    "n": 279,
+    "sha256": "8857d25e223b7bdee085c497bc1721438553e98394138b7e3f7a47542a614d93"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "dbeb3f4fa65f08cfa79d603ef4b56c83c7079b09889332b217ee97f4ffe2f00e"
+   },
+   "trainer": {
+    "n": 25010,
+    "sha256": "0eeea7aabd1bec3e0bd55269ea2a85d414b4a8d03159ee2d756f51f248bfdb03"
+   },
+   "trames": {
+    "n": 1250,
+    "sha256": "95295ad81f70ddb924c99cd2163aefc9c426359e348201472fd294f7abed8322"
+   }
+  },
+  "refus": {
+   "bilan": {
+    "n": 18,
+    "sha256": "01654ad8d58797f8214a1327b4b1740be83b544b86875479b63b41399f1f21da"
+   },
+   "journal": {
+    "n": 80,
+    "sha256": "ec048062df8408c932c6294dee71d8333109831ec2862ba9195ebda9fac256f4"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "e0dcdbd35af996fe03323cbc11fddcdaf7f2c97e343e3f1f142915ae06c4a885"
+   },
+   "trainer": {
+    "n": 1844,
+    "sha256": "9de1f711b4a0702592b7d0a3f797d7ae634c0347f2437ff880cec95b6e5a3508"
+   },
+   "trames": {
+    "n": 90,
+    "sha256": "0ea15bfd3a7aee62e7955f7d2a54932564dd60afa7d999d7010fd02608c0682e"
+   }
+  },
+  "rogue_gagnee": {
+   "bilan": {
+    "n": 15,
+    "sha256": "1b0ff96c846674590f3cb06930624ea598529b5d06418795d483669b67242519"
+   },
+   "journal": {
+    "n": 1830,
+    "sha256": "4e09bc74cc7f428f31f2fb813bd23e39515a4db1ce07b0c985d8b7c79f5731fa"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "584567240c3a43fbca261dcd20a288aed751e9baff87a80f09ad6feb7355dbcd"
+   },
+   "trainer": {
+    "n": 3611,
+    "sha256": "deb723b05efec160adb640ebfebefa1b03b4cf4aad089bdd54ad20ad548856d6"
+   },
+   "trames": {
+    "n": 360,
+    "sha256": "cd5b8ff67a217c5495fa28653424fbb06961be8934065f1ad116716ea81d3b64"
+   }
+  },
+  "rogue_perdue": {
+   "bilan": {
+    "n": 15,
+    "sha256": "7af29d81faaeb0bea8bf584c96f803b2fb1d0756e4c5b7e4e0c5c66e175f9c74"
+   },
+   "journal": {
+    "n": 1342,
+    "sha256": "b35ec4d77b942f94843f99a41532b2a56929f725a6df9b9147c2d771edc99506"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "f00a03f5f85f6fdd792c507e739e5fbffc5f7c8bdc1ffe7a131019b80ea154b5"
+   },
+   "trainer": {
+    "n": 2640,
+    "sha256": "f80fa377e6474af07f57ecd446f244338ac97fd0f9c654b8e47c2e5f2a82d362"
+   },
+   "trames": {
+    "n": 263,
+    "sha256": "b9f48617c74a955419894dfd85eeaee6d5439fd3e9a880a5fa10f8d7c3633b17"
+   }
+  },
+  "rogue_reprise": {
+   "bilan": {
+    "n": 15,
+    "sha256": "85cbc2bcd95d2514190027a8ef394d14d26e2fbad15308ed6a73394d3802f380"
+   },
+   "journal": {
+    "n": 613,
+    "sha256": "877804b1b22ed711b44a47394686baad7d3f8c0789cc4fef101751b68b5a14bf"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "330f2a24c699fea32f987f09aa5afcf5c8a35db9ace61982536ef2d3cdfb0c11"
+   },
+   "trainer": {
+    "n": 1206,
+    "sha256": "0f65d207e382d06428ccc2882c07c947a68e832e7d1ea255e39468aa0847fd7a"
+   },
+   "trames": {
+    "n": 120,
+    "sha256": "24fdbadef31421129e3b49b9597cac9de0e9bfa5cc505db9a41417000ab7d2de"
+   }
+  },
+  "survivant_continuer": {
+   "bilan": {
+    "n": 19,
+    "sha256": "9deae9d6490314d6c0a447bf7c4064738213359bec87f63d58f31759ff280d84"
+   },
+   "journal": {
+    "n": 803,
+    "sha256": "c6bb62266fc08deb553c00cd24596fe9047512a4985b4255dd68c02a931d3e47"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "b8dda7f2fc196ceebc8ba8f6f2d8b35bd3b4279c762eb1e7c5b0a7f9d2450c5a"
+   },
+   "trainer": {
+    "n": 66004,
+    "sha256": "45234e8de0dd83025ddef9aa83daf71cebfc31101085de0effe57d2fe6f2853d"
+   },
+   "trames": {
+    "n": 3300,
+    "sha256": "a9e2911c057baa202008af3a8e462fb86dffdf9d53bbbe1fddbc18a0f324c72e"
+   }
+  },
+  "survivant_terminer": {
+   "bilan": {
+    "n": 19,
+    "sha256": "d39db5bde9429dd110f9021c8f894fbb0c1f9f6f479ec65e86eb0427b319f7de"
+   },
+   "journal": {
+    "n": 239,
+    "sha256": "83468425bed9f516bc504c3011a0b288759ebfd188a6059218c48b000f41fcfe"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "62bd0ccfeb60167fabeb2b5ab0a3f536e6f64c41a2c614e94b567ed0aece48e7"
+   },
+   "trainer": {
+    "n": 19114,
+    "sha256": "ee30f0bdfdffc0eea48f650ddba7bfc700cce54e8733ce8be30cc0d6a5c421ee"
+   },
+   "trames": {
+    "n": 955,
+    "sha256": "f9c8d150013a5eb29effa10365083c31d83b27d019a54d8a10c92473afac4da1"
+   }
+  },
+  "wtf": {
+   "bilan": {
+    "n": 18,
+    "sha256": "6cc4a8ac63c8ce771b440fe657271a070d88997e3d3dae37705e6ceb5515b8b8"
+   },
+   "journal": {
+    "n": 770,
+    "sha256": "6484c6168c863a0bea3392c9e5d3ac9ad575f1a19dd63fb0e1cfe1c7a99d1b08"
+   },
+   "messages": {
+    "n": 2,
+    "sha256": "fa8e7d415c263a979bfc83e0e5a7523beae069a36bf6731629df830f11e6d5b9"
+   },
+   "trainer": {
+    "n": 75798,
+    "sha256": "000c31b11d0230130f2ae9ea5ebb8bce7d8591bac79e2f74eb76d80976b1390e"
+   },
+   "trames": {
+    "n": 3789,
+    "sha256": "7a201aa187580de77671fbba13f7e6439918eb0f3282b6947bcea1640d88ca5c"
+   }
+  }
+ }
+}
