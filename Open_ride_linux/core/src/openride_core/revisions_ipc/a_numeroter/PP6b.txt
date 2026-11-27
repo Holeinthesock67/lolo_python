@@ -1,1 +1,0 @@
-Ajouts compatibles (série PP, lot PP6b « Jeu à ta mesure ») : champs facultatifs `hold_s` et `my_time_s` du message `bots_preview` (durée tenable à l'allure des bots et temps à fond du cycliste, lus sur sa courbe de puissance). Un engine plus ancien les ignore.

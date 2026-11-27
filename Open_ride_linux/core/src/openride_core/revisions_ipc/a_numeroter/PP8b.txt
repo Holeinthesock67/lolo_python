@@ -1,1 +1,0 @@
-Ajouts compatibles (série PP, lot PP8b, conseils du coach) : argument facultatif `on_ref` de `create_workout` (effort en % de ton meilleur 1 min ou 5 min), champ facultatif `target_w` de `workout_saved`, tableau facultatif `active.curve` du message `plans` (courbe avant et depuis le début du plan, 5 s, 1 min, 5 min, 20 min). Un engine plus ancien ne les envoie ni ne les lit.

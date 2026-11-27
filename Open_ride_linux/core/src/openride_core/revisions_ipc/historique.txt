@@ -34,3 +34,5 @@
 1.39 | R28 | `rogue.target_pct` = plage jugée, bas = la consigne qui gagne, `in_target` entre à cette consigne
 1.40 | CH6 | palmarès de la ligue d'hiver, `league.history`
 1.41 | TT-BONUS | temps gagné par un bonus fini, champ facultatif `powerup.gain` ({kind, gain_s}, 6 s) ; Plume, Casque aéro et Puissance à 30 s et × 0,8, × 0,6, × 1,20
+1.42 | PP6b | Ajouts compatibles (série PP, lot PP6b « Jeu à ta mesure ») : champs facultatifs `hold_s` et `my_time_s` du message `bots_preview` (durée tenable à l'allure des bots et temps à fond du cycliste, lus sur sa courbe de puissance). Un engine plus ancien les ignore.
+1.43 | PP8b | Ajouts compatibles (série PP, lot PP8b, conseils du coach) : argument facultatif `on_ref` de `create_workout` (effort en % de ton meilleur 1 min ou 5 min), champ facultatif `target_w` de `workout_saved`, tableau facultatif `active.curve` du message `plans` (courbe avant et depuis le début du plan, 5 s, 1 min, 5 min, 20 min). Un engine plus ancien ne les envoie ni ne les lit.
