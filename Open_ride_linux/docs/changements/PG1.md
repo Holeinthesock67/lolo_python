@@ -5,6 +5,8 @@
   - Premier lancement, ou après une mise à jour du jeu ou du pilote : « Préparation des graphismes : première fois
     seulement » sous le menu, avec une barre. Les shaders de tout le jeu passent une fois, un par image, pour que le
     départ ne fige plus l'écran. Les lancements suivants ne refont rien.
+  - Le départ attend la fin de la préparation (jusqu'à 5 min quand le jeu est ouvert) au lieu de partir sans décor
+    après 60 s.
 - SUIVI :
   - [ ] PG1 : catalogue des graphismes (graphics_catalog.gd), préparation (graphics_prep.gd), catalogue de départ
     livré (`engine/data/graphismes/`, `engine/tests/catalogue_graphismes.py`).

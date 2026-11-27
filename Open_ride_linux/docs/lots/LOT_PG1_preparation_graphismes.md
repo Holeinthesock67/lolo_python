@@ -107,3 +107,24 @@ l'engine), pas dans le profil du joueur.
 - Hors PG1 : l'échec d'`ow-chaud` (images de 1 à 3,5 s au départ, cache par PR vide au premier passage « chaud »)
   vient du banc des menus, sans préparation (`--test-mode`) ; même défaut que celui corrigé par BF1 pour
   `sim_bench.py`.
+
+### Banc PC j26r2 du 27/11 (pile 80bd6053) et correctifs
+
+- Constat : à froid, pire image du départ de 2,8 s (low), 3,2 s (medium) et 3,1 s (high), au plus 1 s. En low, c'est
+  « shaders doublure 26 » à 0 m, parcours pas encore chargé : une image de la préparation elle-même (4 pipelines,
+  0,5 à 2,8 s par pipeline sur le pilote froid, impossible à découper plus fin). En medium et high, préparation
+  « interrompue : 46 sur 49 » à 61 s : la barrière du départ du core (`[depart] attente_decor_s`, 60 s) a lâché,
+  la séance est partie sans décor et a coupé la préparation.
+- Correctif du juge : `graphics_prep.gd` note chaque image de la préparation (et les 3 qui suivent sa fin) d'une étape
+  « préparation graphismes » pour la sonde ; `perf_probe.hitch_checks` range ces secondes à part (« à-coups :
+  préparation des graphismes », INFO, barre affichée) au lieu du départ ou du régime établi.
+- Correctif du jeu, sans changement du contrat IPC : `start_gate.py` porte l'attente du décor à `ATTENTE_ENGINE_S`
+  (300 s) dès qu'un engine s'est relié pendant l'attente (un battement manqué pendant une image de plusieurs secondes
+  ne l'oublie pas) ; sans engine, `attente_decor_s` reste la limite, et 0 (départ sans décor) reste 0.
+- Reste à faire, hors de ce correctif :
+  - images de 200 à 600 ms (4 à 7 pipelines : route, OSM, arches, cyclistes) juste après le chargement du parcours :
+    pipelines absents du catalogue livré ; à refaire sur le PC avec `engine/tests/catalogue_graphismes.py` ;
+  - `ow-chaud` (carte de Sevrier restée sur « Chargement de la carte ») : réponse `world_map` du core jamais
+    complète côté engine pendant des images de 2 à 3,5 s (préchauffage OSM à froid, banc des menus sans préparation) ;
+    commande déjà acquittée, jamais redemandée. Lot à part : redemander `world_map` si la réponse n'est pas complète
+    après 5 s.

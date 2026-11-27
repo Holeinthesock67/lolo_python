@@ -10,6 +10,7 @@ extends CanvasLayer
 ## Pas de class_name : charger par preload("res://scripts/graphics_prep.gd").
 
 const Catalog := preload("res://scripts/graphics_catalog.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const KEY_FILE := "user://graphismes/prepare.json"
 const SHADER_CACHE_DIR := "user://shader_cache"
@@ -30,6 +31,13 @@ var _skipped := 0
 var _label: Label = null
 var _bar: ProgressBar = null
 var _t0_ms := 0
+var _tail := 0
+
+## Étape notée à chaque image de la préparation pour la sonde des bancs (PerfProbe, saccades.csv) : « préparation
+## graphismes ». Le juge des à-coups (tests/perf_probe.py) range ces images avec le chargement (banc j26r2).
+const PROBE_KIND := "préparation"
+const PROBE_ID := "graphismes"
+const TAIL_FRAMES := 3
 
 
 ## Clé de la préparation : ce qui invalide les caches de shaders et de pipelines.
@@ -115,11 +123,17 @@ func _refresh() -> void:
 
 
 func _process(_delta: float) -> void:
-	if not running or warm == null:
+	if not running:
+		if _tail > 0:   # dernières doublures dessinées après la fin : leurs pipelines sont encore de la préparation
+			_tail -= 1
+			PerfProbe.mark(PROBE_KIND, PROBE_ID, 0.0)
+		return
+	if warm == null:
 		return
 	if not bool(warm.active):
 		_end(false)   # séance partie avant la fin : refaite au lancement suivant
 		return
+	PerfProbe.mark(PROBE_KIND, PROBE_ID, 0.0)   # image sous la barre : jugée comme chargement par les bancs
 	if not _paths.is_empty() and int(warm.primed_left()) <= 0:
 		var n = Catalog.load_one(str(_paths.pop_front()))
 		if n == null or int(warm.prime([n])) == 0:
@@ -132,6 +146,7 @@ func _process(_delta: float) -> void:
 
 func _end(complete: bool) -> void:
 	running = false
+	_tail = TAIL_FRAMES if complete else 0   # coupée par la séance : les images suivantes sont jugées
 	_paths = []
 	if complete:
 		write_key(key_file)

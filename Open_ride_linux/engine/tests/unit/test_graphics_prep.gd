@@ -6,6 +6,7 @@ extends SceneTree
 const ShaderWarm := preload("res://scripts/shader_warm.gd")
 const GraphicsPrep := preload("res://scripts/graphics_prep.gd")
 const Catalog := preload("res://scripts/graphics_catalog.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 var _failures := 0
 var _checked := 0
@@ -135,6 +136,43 @@ func _initialize() -> void:
 		DirAccess.remove_absolute(cat_dir.path_join(cf))
 	DirAccess.remove_absolute(cat_dir)
 	DirAccess.remove_absolute(base + "/prepare4.json")
+
+	# Banc j26r2 : chaque image de la préparation est notée « préparation graphismes » pour la sonde (jugée comme
+	# chargement par tests/perf_probe.py), plus TAIL_FRAMES images après la fin ; rien ensuite.
+	var warm5 = ShaderWarm.new()
+	world.add_child(warm5)
+	warm5.set_process(false)
+	var prep5 = GraphicsPrep.new()
+	prep5.warm = warm5
+	prep5.key_file = base + "/prepare5.json"
+	world.add_child(prep5)
+	prep5.set_process(false)
+	var was_active: bool = PerfProbe.active
+	PerfProbe.active = true
+	PerfProbe._steps.clear()
+	prep5.start([_proxy("k"), _proxy("l")])
+	var marked_running := 0
+	var frames_running := 0
+	var marked_after := 0
+	for i in range(20):
+		var before: bool = prep5.running
+		warm5.step(cam)
+		prep5._process(0.0)
+		var marked := false
+		for st in PerfProbe._steps:
+			if st[0] == GraphicsPrep.PROBE_KIND and st[1] == GraphicsPrep.PROBE_ID:
+				marked = true
+		PerfProbe._steps.clear()
+		if before:
+			frames_running += 1
+			marked_running += int(marked)
+		else:
+			marked_after += int(marked)
+	PerfProbe.active = was_active
+	_check(frames_running > 0 and marked_running == frames_running and marked_after == GraphicsPrep.TAIL_FRAMES,
+		"images de la préparation notées pour la sonde (%d sur %d, puis %d après la fin)"
+		% [marked_running, frames_running, marked_after])
+	DirAccess.remove_absolute(base + "/prepare5.json")
 
 	# Catalogue vide : rien ne s'affiche.
 	var prep3 = GraphicsPrep.new()
