@@ -2423,7 +2423,7 @@ func _on_state_received(state: Dictionary) -> void:
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
-			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
+			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y, running)
 	# Bots placés depuis la trame seulement quand l'image ne l'a pas fait (menu, pause, bots retirés) : en séance,
 	# _process les place avec le s lissé de la caméra. Deux placements par image, l'un avec le s brut, faisaient
 	# avancer les bots par à-coups (rejeu du 2 novembre, lot AS2).
