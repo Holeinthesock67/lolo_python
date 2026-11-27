@@ -476,6 +476,9 @@ class Bench:
                 (home / "OpenRide" / name).write_text(toml_text(table), encoding="utf-8")
         routes = home / ".local" / "share" / "openride" / "routes"
         route_id = prepare_world(self.world, routes, tmp)
+        # Garde-fou 4 (27 novembre) : ce que le banc a réellement utilisé, en tête du journal et du rapport.
+        self.provenance = provenance(self.world, route_id)
+        r.check(None, "banc joué sur", provenance_text(self.provenance))
         state_port, cmd_port = free_udp_ports(2)
         cfg_lines = [f"[ipc]\nport_state = {state_port}\nport_commands = {cmd_port}\n"]
         # Le core renvoie [render] quality à l'engine au démarrage (réglages O4) : sans cette ligne, sa valeur
@@ -808,6 +811,13 @@ class Bench:
             self.t0_wall = time.mktime(time.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")) + int(m.group(2)) / 1000
         tb = core_log.count("Traceback")
         r.check(tb == 0, "exceptions du core", f"{tb} trace(s) Python dans core.log")
+        loaded = ROUTE_LOADED.findall(core_log)
+        prov = getattr(self, "provenance", None)
+        if prov is not None:
+            prov["charge"] = [(rid, float(m)) for rid, m in loaded]
+            ok = bool(loaded) and loaded[0][0] == prov["parcours"]   # le premier ; un enchaînement en ajoute d'autres
+            r.check(ok, "parcours chargé par le core = parcours demandé",
+                    ", ".join(f"{rid} ({m / 1000:.1f} km)" for rid, m in prov["charge"]) or "aucun « Parcours … chargé »")
         # Journal de séance, FIT, bilan et log_report.
         journals = sorted((home / "OpenRide" / "Activities" / ".journal").glob("*.jsonl"))
         fits = sorted((home / "OpenRide" / "Activities").glob("*.fit"))
@@ -1032,6 +1042,35 @@ def speed_check(recs: list[dict[str, Any]], target_kmh: float, tolerance: float 
                 f"de {v[0]:.1f} à {v[-1]:.1f} km/h{note}")
 
 
+# --- provenance (garde-fou 4) -------------------------------------------------------------------
+
+ROUTE_LOADED = re.compile(r"Parcours « ([^»]+) » chargé : (\d+) m")
+
+
+def _git(*args: str) -> str:
+    try:
+        p = subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return p.stdout.strip() if p.returncode == 0 else ""
+
+
+def provenance(world: str, route_id: str) -> dict[str, Any]:
+    """Monde demandé, parcours préparé, têtes réellement utilisées (27 novembre : un banc qui s'était trompé de monde
+    ne se voyait qu'en relisant les saccades). `main` : point de départ de la tête sur origin/main (ou main)."""
+    head = _git("rev-parse", "HEAD")
+    main = _git("merge-base", "HEAD", "origin/main") or _git("merge-base", "HEAD", "main")
+    return {"monde": world, "parcours": route_id, "tete": head[:8] or "?",
+            "branche": _git("rev-parse", "--abbrev-ref", "HEAD") or "?", "main": main[:8] or "?",
+            "modifie": bool(_git("status", "--porcelain", "--untracked-files=no")), "charge": []}
+
+
+def provenance_text(p: dict[str, Any]) -> str:
+    world = p["monde"] if p["monde"] == p["parcours"] else f"{p['monde']} → parcours {p['parcours']}"
+    return (f"monde {world} ; tête {p['tete']} ({p['branche']}{', fichiers modifiés' if p['modifie'] else ''}), "
+            f"partie de main {p['main']}")
+
+
 # --- rapport HTML ------------------------------------------------------------------------------
 
 def svg_chart(records: list[dict[str, Any]], key: str, label: str, color: str, events: list[tuple[float, str]],
@@ -1162,6 +1201,7 @@ figcaption {{ font-size:12px; padding:4px 6px; color:var(--muted); }}
 pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overflow:auto; max-height:360px; font-size:12px; }}
 </style></head><body>
 <h1>Banc simulé : {html.escape(b.name)}</h1>
+{provenance_html(getattr(b, "provenance", None))}
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
 {f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality}){html.escape(cycle_note(b.args))}
@@ -1179,16 +1219,28 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
     (b.out / "rapport.html").write_text(doc, encoding="utf-8")
 
 
+def provenance_html(p: dict[str, Any] | None) -> str:
+    """Encadré en tête du rapport : sur quoi le banc a réellement roulé (garde-fou 4)."""
+    if not p:
+        return ""
+    charge = ", ".join(f"{rid} ({m / 1000:.1f} km)" for rid, m in p.get("charge", [])) or "inconnu"
+    return (f'<p style="border:2px solid var(--line);padding:6px 10px"><b>Joué sur :</b> {html.escape(provenance_text(p))}'
+            f"<br><b>Parcours chargé par le core :</b> {html.escape(charge)}</p>")
+
+
 def write_index(out: Path, results: list[tuple[str, Report]]) -> None:
+    def joue(r: Report) -> str:   # garde-fou 4 : ligne « banc joué sur » du passage
+        return next((m for _, label, m in r.rows if label == "banc joué sur"), "")
     rows = "".join(f'<tr><td><a href="{html.escape(n)}/rapport.html">{html.escape(n)}</a></td>'
-                   f'<td>{len(r.rows) - r.failed}/{len(r.rows)}</td><td>{"OK" if not r.failed else "ÉCHEC"}</td></tr>'
+                   f'<td>{len(r.rows) - r.failed}/{len(r.rows)}</td><td>{"OK" if not r.failed else "ÉCHEC"}</td>'
+                   f'<td>{html.escape(joue(r))}</td></tr>'
                    for n, r in results)
     (out / "index.html").write_text(
         '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Banc simulé</title>'
         '<style>body{font:15px system-ui;margin:16px;background:#fafafa;color:#222}td{padding:4px 10px;'
         'border-bottom:1px solid #ddd}@media (prefers-color-scheme: dark){body{background:#16181b;color:#eee}'
         'a{color:#8cf}}</style></head><body><h1>Banc simulé</h1><table><tr><th>Scénario</th><th>Vérifications</th>'
-        f"<th>Résultat</th></tr>{rows}</table></body></html>", encoding="utf-8")
+        f"<th>Résultat</th><th>Joué sur</th></tr>{rows}</table></body></html>", encoding="utf-8")
 
 
 
