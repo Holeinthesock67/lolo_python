@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| « Se connaître » dans « Ma puissance » : profil en un mot, point fort et point faible, forme du moment, record vieillissant, trous de la courbe | Python + GDScript | PP1, PP3 | Petite | PR ouverte le 21 novembre (série PP, 6.0), captures à valider par le propriétaire |
+| « Se connaître » dans « Ma puissance » : profil en un mot, point fort et point faible, forme du moment, record vieillissant, trous de la courbe | Python + GDScript | PP1, PP3 | Petite | **Livré le 26 novembre** (PR #977) |
 
 ## 1. Objectif
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AC (à-coups) : bancs d'à-coups séparés à froid et à chaud, une image lente tolérée, modes de diagnostic froid-pilote et froid-godot | Python | PI1, PL1 | Petite | **En revue** (PR #1094) |
+| Série AC (à-coups) : bancs d'à-coups séparés à froid et à chaud, une image lente tolérée, modes de diagnostic froid-pilote et froid-godot | Python | PI1, PL1 | Petite | **Livré le 26 novembre** (PR #1094) |
 
 Décision du 26/11 (le user a choisi « les deux lots ») : BF1 pour le banc, et un lot à part pour la préparation des
 graphismes au premier lancement. Analyse complète : `statut/ACOUPS_CAUSE_GENERALE_2026-11-26.md` (dossier du projet).
@@ -52,3 +52,7 @@ graphismes au premier lancement. Analyse complète : `statut/ACOUPS_CAUSE_GENERA
 Le coût du premier lancement est presque tout dans le pilote (création des pipelines). La traduction des shaders
 par Godot coûte peu. Le « shader baker » de l'export ne suffirait donc pas : c'est la préparation des graphismes
 (PG1, #1097) qui porte le gain, parce qu'elle fait créer les pipelines un par image.
+
+## Livraison
+
+Fusionné dans `main` le 26 novembre 2026 (PR #1094), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « **En revue** (PR #1094) »).

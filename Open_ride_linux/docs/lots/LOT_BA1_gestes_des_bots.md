@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Quand un bot voisin attaque, suit une attaque ou lance son sprint : une ligne en mots dans le bandeau et un son court, dans tous les modes à bots | Python, GDScript | Y10, T12, CR1 (livrés) | Petite | En revue (PR à valider : captures du bandeau) |
+| Quand un bot voisin attaque, suit une attaque ou lance son sprint : une ligne en mots dans le bandeau et un son court, dans tous les modes à bots | Python, GDScript | Y10, T12, CR1 (livrés) | Petite | **Livré le 27 novembre** (PR #1008) |
 
 ## 1. Objectif
 

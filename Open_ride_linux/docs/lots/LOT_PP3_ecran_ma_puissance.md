@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Écran « Ma puissance » : courbe 6 mois et 6 semaines, FTP estimée et proposition, évolution | Python + GDScript | PP1, PP2, MJ8 | Moyenne | PR ouverte le 21 novembre (série PP, 6.0), captures à valider par le propriétaire |
+| Écran « Ma puissance » : courbe 6 mois et 6 semaines, FTP estimée et proposition, évolution | Python + GDScript | PP1, PP2, MJ8 | Moyenne | **Livré le 26 novembre** (PR #975) |
 
 ## 1. Objectif
 

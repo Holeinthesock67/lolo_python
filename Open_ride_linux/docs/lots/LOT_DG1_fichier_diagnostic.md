@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| « Réglages › Diagnostic » : un fichier `.zip` à joindre à un signalement, sans donnée privée, rien n'est envoyé | Python, GDScript | — | Petite | En revue (PR à venir) |
+| « Réglages › Diagnostic » : un fichier `.zip` à joindre à un signalement, sans donnée privée, rien n'est envoyé | Python, GDScript | — | Petite | **Livré le 26 novembre** (PR #1004) |
 
 ## 1. Objectif
 

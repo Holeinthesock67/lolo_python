@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Aide du Grand Prix des objets : « Comment ça marche ? » sur l'écran Prêt (résumé dans la carte, écran « Aide Grand Prix » en cinq sujets) et aide des voies du HUD qui dit à quoi sert la voie (boîte libre, prise, réserve pleine, bidon devant, musette derrière) | GDScript, JSON | GP8, GP9, GPL1 | Petite | En cours (21 novembre) |
+| Aide du Grand Prix des objets : « Comment ça marche ? » sur l'écran Prêt (résumé dans la carte, écran « Aide Grand Prix » en cinq sujets) et aide des voies du HUD qui dit à quoi sert la voie (boîte libre, prise, réserve pleine, bidon devant, musette derrière) | GDScript, JSON | GP8, GP9, GPL1 | Petite | **Livré le 24 novembre** (PR #952) |
 
 Demande du propriétaire (21 novembre 2026, 10 h 10) : « À quoi sert le changement de voie en Grand Prix ? Impact sur le jeu ? », puis « Aucune explication nulle part ». Constat : l'écran Prêt du mode ne montrait que la fiche du parcours, le guide décrivait les réglages sans les voies, et l'aide du HUD disait « Bidon glissant en vue : A ou ← → » ou « A : voie suivante · ← → : voie » sans dire pourquoi changer de voie. Branche partie de celle de GPL1 (#942, tête 35b0825b). Principes du propriétaire : libellés simples, pas de consigne pendant qu'il pédale sauf utile, pas d'exception.
 
@@ -30,3 +30,7 @@ Demande du propriétaire (21 novembre 2026, 10 h 10) : « À quoi sert le change
 ## 4. Recette
 
 Catégorie : logique (écrans de menu et texte du HUD, aucun changement de rendu 3D). Captures des deux écrans de menu et de la ligne d'aide du HUD à valider par le propriétaire.
+
+## Livraison
+
+Fusionné dans `main` le 24 novembre 2026 (PR #952), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En cours (21 novembre) »).
