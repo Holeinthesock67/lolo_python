@@ -552,7 +552,7 @@ func _side(g: Dictionary, choosing: bool) -> void:
 	if not fw.is_empty() and not choosing:
 		side_panel.visible = true
 		var c := _tone({"ok": "ok", "warn": "warn", "danger": "danger"}.get(str(fw.get("level", "ok")), "ok"))
-		side_title.text = "Firewall derrière toi"
+		side_title.text = str(fw.get("title", "Firewall derrière toi"))   # revue E10-06 : « Firewall arrêté »
 		side_big.text = str(fw.get("text", ""))
 		side_big.add_theme_color_override("font_color", c)
 		side_sub.text = str(fw.get("sub", ""))

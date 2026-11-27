@@ -811,6 +811,23 @@ class RunEngine:
 
     # --- reprise ------------------------------------------------------------------------------
 
+    def current_messages(self) -> list:
+        """Messages `room` et `loot` qui décrivent l'état courant (revue de code E10-01) : salle en cours, offre de
+        cartes ou de relique ouverte, salles des portes du couloir. Reconstruits depuis l'état, et non lus dans les
+        messages déjà envoyés : après une relance du core (reprise d'un instantané), rien n'a encore été envoyé et
+        `rogue_resync` ne rendait rien, la salle se roulait sans ruban ni repères."""
+        out: list = []
+        if self.room is not None:
+            out += self.room.to_messages(self.room_id)
+        if self.phase == CORRIDOR:
+            for rid in self.door_ids:
+                room = self._previews.get(rid)
+                if room is not None:
+                    out += room.to_messages(rid)
+        if self.phase in (WARMUP, CORRIDOR) and self.stage is not None and self.offer:
+            out.append(self._loot_message())
+        return out
+
     def snapshot(self) -> bytes:
         """État complet de la run, pour la reprise après un plantage du core (à écrire en base 64)."""
         d = {k: v for k, v in self.__dict__.items() if k != "_journal"}
