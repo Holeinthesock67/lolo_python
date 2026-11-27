@@ -422,8 +422,9 @@ def add_route_rivers(river_polys: list[tuple[str, list, list]], route: dict, axi
                      water_chunks: dict[int, dict[str, list[dict]]]) -> int:
     """Grandes rivières en surface d'un parcours compilé : chaque rivière est découpée par carré de 1 km
     du repère près de la route ; un morceau va au tronçon le plus proche de son centre (à moins de
-    `OSM_BAND_M`) ; les rubans des cours d'eau sont coupés dans la surface. Rend le nombre d'aires."""
-    from .osm_layers import nearest_chunk_and_y, ring_centroid
+    `OSM_BAND_M`), ou de son sommet le plus proche s'il n'entre dans le couloir que par un bord (K3-04 : rivière
+    large longée par la route) ; les rubans des cours d'eau sont coupés dans la surface. Rend le nombre d'aires."""
+    from .osm_layers import area_chunk_and_y
 
     cell = C.RIVER_CELL_M
     corridor = route_cells(route, C.OSM_BAND_M, cell)
@@ -434,7 +435,7 @@ def add_route_rivers(river_polys: list[tuple[str, list, list]], route: dict, axi
             pieces = clip_to_rect(outer, holes, x0, z0, x0 + cell, z0 + cell)
             for n, (po, ph) in enumerate(pieces):
                 o, hs = piece_rings(po, ph)
-                k, _ = nearest_chunk_and_y(*ring_centroid(o), route, axis, C.OSM_BAND_M)
+                k, _ = area_chunk_and_y(o, route, axis)
                 if k is not None:
                     placed.append((k, f"{item_id}_c{ci}_{cj}" + (f"_{n}" if len(pieces) > 1 else ""), o, hs))
     if not placed:

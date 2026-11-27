@@ -391,7 +391,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             manifest["layers"]["water"] = water_manifest(osm_res)
             if tiles is not None:
                 _sink_under_water(tiles, compiled.route, chunk_areas(osm_res.water_chunks), TU.merge_spans(spans, t_spans),
-                                  frame, provider)
+                                  frame, provider, t_spans)
         if "roads" in args.layers:
             manifest["layers"]["roads"] = roads_manifest(osm_res)
         if "bridges" in args.layers:
@@ -462,15 +462,17 @@ def _route_bridges(route: dict, spans: list, frame: LocalFrame, near_tiles, prov
     return chunks
 
 
-def _sink_under_water(tiles, route: dict, areas, spans=None, frame: LocalFrame | None = None, provider=None) -> int:
+def _sink_under_water(tiles, route: dict, areas, spans=None, frame: LocalFrame | None = None, provider=None,
+                      tunnels=None) -> int:
     """Sol abaissé sous les lacs, étangs et réservoirs (lot EA1, `water_terrain.py`), hors ponts (EA4), et sous
-    les grandes rivières, dont le niveau se lit dans le MNT brut (lot EA3, `river_surface.py`)."""
+    les grandes rivières, dont le niveau se lit dans le MNT brut (lot EA3, `river_surface.py`). `tunnels` : portions
+    en tunnel, rendues à la règle sol / route pour garder la colline au-dessus du tube (K3-01, comme `build_terrain`)."""
     height = dem_height(frame, None, provider) if frame is not None and provider is not None else None
     n = sink_route_tiles(tiles, route, areas, spans, height)
     if n:
         print(f"terrain : {n} échantillon(s) abaissé(s) sous les plans d'eau", file=sys.stderr)
         if tiles.get("near"):   # la règle sol / route a le dernier mot, eau comprise (road_ground.py)
-            fit_route_ground(tiles["near"], route, NEAR, spans)
+            fit_route_ground(tiles["near"], route, NEAR, spans, tunnels)
     return n
 
 
@@ -582,7 +584,8 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         t_spans = TU.manifest_spans(manifest)
         tiles = build_terrain(route, frame, provider, horizon=not getattr(args, "no_horizon", False), spans=spans,
                               tunnels=t_spans)
-        _sink_under_water(tiles, route, read_world_areas(world), TU.merge_spans(spans, t_spans), frame, provider)
+        _sink_under_water(tiles, route, read_world_areas(world), TU.merge_spans(spans, t_spans), frame, provider,
+                          t_spans)
         replace_terrain_dir(world, tiles)
         manifest.setdefault("layers", {})["terrain"] = terrain_manifest(tiles, provider)
         manifest["format_version"] = C.FORMAT_VERSION
@@ -633,9 +636,9 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         replace_layer_dir(world, "water", write_water_dir, osm_res.water_chunks)
         manifest.setdefault("layers", {})["water"] = water_manifest(osm_res)
         tiles = load_terrain_tiles(world)
+        t_spans = TU.manifest_spans(manifest)
         if tiles and _sink_under_water(tiles, route, chunk_areas(osm_res.water_chunks),
-                                       TU.merge_spans(BR.manifest_spans(manifest), TU.manifest_spans(manifest)),
-                                       frame, provider):
+                                       TU.merge_spans(BR.manifest_spans(manifest), t_spans), frame, provider, t_spans):
             replace_terrain_dir(world, tiles)
         count = osm_res.water_lines_count + osm_res.water_areas_count
     manifest["format_version"] = C.FORMAT_VERSION
@@ -661,7 +664,8 @@ def _add_structures_layer(world: Path, manifest: dict, route: dict, route_file: 
     if ((manifest.get("layers") or {}).get("terrain") or {}).get("present"):
         horizon = bool((((manifest.get("layers") or {}).get("terrain") or {}).get("tiles") or {}).get("horizon"))
         tiles = build_terrain(route, frame, provider, horizon=horizon, spans=spans, tunnels=t_spans)
-        _sink_under_water(tiles, route, read_world_areas(world), TU.merge_spans(spans, t_spans), frame, provider)
+        _sink_under_water(tiles, route, read_world_areas(world), TU.merge_spans(spans, t_spans), frame, provider,
+                          t_spans)
     tmp = world / f".{Path(route_file).name}.tmp"
     tmp.write_text(json.dumps(route, separators=(",", ":")), encoding="utf-8")
     tmp.replace(world / route_file)
