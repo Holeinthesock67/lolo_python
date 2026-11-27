@@ -65,6 +65,11 @@ var _speed_kmh := 0.0
 var _wheel_angle := 0.0
 var _last_speed_s := -1.0
 var _nodes := {}           # nom → MeshInstance3D (ou liste pour les pièces doubles)
+## Lot AC3 : position (assis 0, en danseuse 1) du haut du corps déjà posé, -1 à reposer. Le buste, les bras, la tête
+## et le dossard ne dépendent que de la position, pas de l'angle du pédalier (AvatarMesh.pose) : ils ne sont
+## replacés qu'à un changement de position ; les jambes, les chaussures et le pédalier le sont à chaque pose.
+var _upper_pose := -1
+var upper_posed := 0       # lot AC3 : hauts du corps replacés depuis la construction (tests)
 var _number: Label3D
 var _mats := {}
 
@@ -200,6 +205,7 @@ func _rebuild() -> void:
 		remove_child(_rig)
 		_rig.queue_free()
 	_nodes.clear()
+	_upper_pose = -1
 	_dims = AvatarMesh.dims(settings)
 	_frame_spec = EquipmentMeshes.frame_spec(str(looks["frame"]))
 	_rig = Node3D.new()
@@ -400,14 +406,8 @@ func apply_pose(angle: float, standing: bool) -> void:
 	if _rig == null:
 		return
 	var p := AvatarMesh.pose(angle, standing, _dims, _frame_spec)
-	_place("torso", [[p["hip"], p["shoulder"]]])
-	_place("pelvis", [[p["hip"], p["shoulder"]]])
-	_place("neck", [[p["neck"], p["chin"]]])
 	_place("thigh", [[p["hip_r"], p["knee_r"]], [p["hip_l"], p["knee_l"]]])
 	_place("shin", [[p["knee_r"], p["ankle_r"]], [p["knee_l"], p["ankle_l"]]])
-	_place("upper_arm", [[p["shoulder_r"], p["elbow_r"]], [p["shoulder_l"], p["elbow_l"]]])
-	_place("sleeve", [[p["shoulder_r"], p["elbow_r"]], [p["shoulder_l"], p["elbow_l"]]])
-	_place("forearm", [[p["elbow_r"], p["hand_r"]], [p["elbow_l"], p["hand_l"]]])
 	var socks := EquipmentMeshes.socks_spec(str(looks["socks"]))
 	var sock_nodes := _list("sock")
 	for i in range(sock_nodes.size()):
@@ -415,6 +415,30 @@ func apply_pose(angle: float, standing: bool) -> void:
 		var ankle: Vector3 = p["ankle_" + side]
 		var knee: Vector3 = p["knee_" + side]
 		sock_nodes[i].transform = AvatarMesh.segment_transform(ankle, ankle + (knee - ankle) * float(socks["length"]))
+	if _upper_pose != int(standing):
+		_place_upper(p, standing)
+	var shoes := _list("shoe")
+	for i in range(shoes.size()):
+		shoes[i].transform = AvatarMesh.foot_transform(angle, 1 if i == 0 else -1)
+	for m in _list("crank"):
+		m.basis = AvatarMesh.spin_x(angle)
+	if _lamps != null:
+		_lamps.visible = NightLights.enabled
+	# Danseuse : le vélo se balance d'un côté à l'autre, au rythme du pédalier (une oscillation par tour).
+	_bike.rotation.z = sin(angle) * SWAY_RAD if standing else 0.0
+	_rig.rotation.z = sin(angle) * SWAY_RAD * 0.35 if standing else 0.0
+
+
+## Haut du corps de la pose `p` (buste, bras, mains, tête, casque, cheveux, dossard), qui ne dépend que de `standing`.
+func _place_upper(p: Dictionary, standing: bool) -> void:
+	_upper_pose = int(standing)
+	upper_posed += 1
+	_place("torso", [[p["hip"], p["shoulder"]]])
+	_place("pelvis", [[p["hip"], p["shoulder"]]])
+	_place("neck", [[p["neck"], p["chin"]]])
+	_place("upper_arm", [[p["shoulder_r"], p["elbow_r"]], [p["shoulder_l"], p["elbow_l"]]])
+	_place("sleeve", [[p["shoulder_r"], p["elbow_r"]], [p["shoulder_l"], p["elbow_l"]]])
+	_place("forearm", [[p["elbow_r"], p["hand_r"]], [p["elbow_l"], p["hand_l"]]])
 	var hands := _list("hand")
 	for i in range(hands.size()):
 		hands[i].position = p["hand_r" if i == 0 else "hand_l"]
@@ -428,20 +452,10 @@ func apply_pose(angle: float, standing: bool) -> void:
 	for m in _list("hair"):
 		m.visible = int(settings["hair"]) > 0
 		m.scale = Vector3.ONE * [1.0, 0.95, 1.0, 1.04, 1.0, 1.1][int(settings["hair"])]
-	var shoes := _list("shoe")
-	for i in range(shoes.size()):
-		shoes[i].transform = AvatarMesh.foot_transform(angle, 1 if i == 0 else -1)
-	for m in _list("crank"):
-		m.basis = AvatarMesh.spin_x(angle)
 	if _number != null:
 		var lean := AvatarMesh.STANDING_LEAN if standing else AvatarMesh.SEATED_LEAN + float(_frame_spec.get("lean_add", 0.0))
 		_number.position = p["hip"].lerp(p["shoulder"], 0.55) + Vector3(0.0, sin(lean), cos(lean)) * (AvatarMesh.BACK_DEPTH * float(_dims["bs"]) + 0.02)
 		_number.rotation = Vector3(-lean, 0.0, 0.0)
-	if _lamps != null:
-		_lamps.visible = NightLights.enabled
-	# Danseuse : le vélo se balance d'un côté à l'autre, au rythme du pédalier (une oscillation par tour).
-	_bike.rotation.z = sin(angle) * SWAY_RAD if standing else 0.0
-	_rig.rotation.z = sin(angle) * SWAY_RAD * 0.35 if standing else 0.0
 
 
 func _place(part: String, ends: Array) -> void:
