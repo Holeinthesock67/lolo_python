@@ -1,6 +1,6 @@
 # EC1 : retour au menu après une séance
 
-- PR : à venir ; revue de code vague 3 (E2-01, E2-02, E2-03, E2-04, E2-05) ; engine seul (menus), ni core ni IPC
+- PR : #1123 ; revue de code vague 3 (E2-01, E2-02, E2-03, E2-04, E2-05) ; engine seul (menus), ni core ni IPC
 - CHANGELOG (section « Corrigé ») :
   - Monde ouvert : après une balade, le menu garde le parcours choisi avant elle. Il n'y a plus de bandeau d'erreur au retour au menu, ni de ligne « Parcours : ow:… » à l'accueil, ni de « Session libre › Démarrer » sans effet.
   - Cyber-Rogue : une run préparée puis quittée avant le départ ne laisse plus la séance suivante partir sans parcours (pente nulle, pas d'arrivée). L'écran « Composition de la run… » a une sortie : Y revient à l'écran de départ, et sans réponse du core le menu y revient seul avec un message.
