@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Rivaux reconnaissables : les bots à profil gardent nom, équipe, caractère et cote d'une course à l'autre, dans tous les modes et la ligue d'hiver | Python | BOT-elo (#941) | Petite | PR du 22 novembre |
+| Rivaux reconnaissables : les bots à profil gardent nom, équipe, caractère et cote d'une course à l'autre, dans tous les modes et la ligue d'hiver | Python | BOT-elo (#941) | Petite | **Livré le 22 novembre** (PR #986) |
 
 ## 1. Objectif
 
