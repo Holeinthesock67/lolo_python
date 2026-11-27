@@ -33,3 +33,4 @@
 1.38 | BA1 | geste des bots `move`
 1.39 | R28 | `rogue.target_pct` = plage jugée, bas = la consigne qui gagne, `in_target` entre à cette consigne
 1.40 | CH6 | palmarès de la ligue d'hiver, `league.history`
+1.41 | TT-BONUS | temps gagné par un bonus fini, champ facultatif `powerup.gain` ({kind, gain_s}, 6 s) ; Plume, Casque aéro et Puissance à 30 s et × 0,8, × 0,6, × 1,20
