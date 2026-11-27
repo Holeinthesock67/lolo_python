@@ -57,7 +57,7 @@ class Relief(SyntheticProvider):
         return float(x[0]) < self.limit_e
 
 
-def grid_db(path: Path, step: int = 500, east_km: int = 26, half_km: int = 9) -> Path:
+def grid_db(path: Path, step: int = 500, east_km: int = 26, half_km: int = 9, islet: bool = False) -> Path:
     """Grille de routes : lignes est-ouest tertiaires, colonnes nord-sud résidentielles."""
     w = OsmDbWriter(path, "test", "test/grille")
     es = list(range(E_REF - 2000, E_REF + east_km * 1000 + 1, step))
@@ -69,6 +69,9 @@ def grid_db(path: Path, step: int = 500, east_km: int = 26, half_km: int = 9) ->
     for i, e in enumerate(es):
         w.add_road(200_000 + i, {"highway": "residential"}, [nid[(i, j)] for j in range(len(ns))],
                    [lonlat(e, n) for n in ns])
+    if islet:
+        w.add_road(900_000, {"highway": "service"}, [9_000_001, 9_000_002],
+                   [lonlat(E_REF + 250, N_REF + 20), lonlat(E_REF + 250, N_REF + 120)])
     w.finish(osm_date="2026-10-20T00:00:00Z")
     return path
 
@@ -421,3 +424,63 @@ def test_turnaround_loop_closes_on_the_dead_end() -> None:
         a = np.array(end) - np.array(prev)
         a = a / np.hypot(*a)
         assert float(d0 @ a) > 0.99 and float(d1 @ a) < -0.99
+
+
+# --- 26/11 : boucle qui se figeait au passage au retour, route bloquée republiée sans fin ---------
+
+def grid_with_islet_db(path: Path) -> Path:
+    """Grille de `grid_db` et, à 20 m du départ, un bout de voie isolé : nœud le plus proche du départ,
+    d'où aucun chemin ne mène au reste du graphe."""
+    return grid_db(path, east_km=12, half_km=6, islet=True)
+
+
+def test_loop_home_is_the_start_edge_not_the_nearest_node(tmp_path) -> None:
+    """Le retour de la boucle vise l'arête du départ : un nœud plus proche mais isolé ne la fige plus."""
+    s, rec = session(tmp_path, grid_with_islet_db(tmp_path / "grille.sqlite"))
+    s.handle({**open_msg(), "nav": "loop", "loop_km": 8.0})
+    _ride_to(s, 12_000.0)
+    assert s.length_m >= 12_000.0                     # la route grandit après les 40 % de l'aller
+    assert s.data_state != "missing"
+    assert s.finish_m is not None and 4000.0 <= s.finish_m <= 9500.0
+    x, z = _route_point(s, s.finish_m)
+    start_x, start_z = s.nav.start_xz
+    assert math.hypot(x - start_x, z - start_z) <= 15.0
+
+
+def test_loop_without_known_way_home_heads_back_instead_of_any_edge(grid, tmp_path) -> None:
+    """Sans arête du départ et sans retour connu : cap vers le départ (jamais la plus petite arête au hasard)."""
+    from openride_compiler.worldgen.navigator import Navigator
+    s, _ = session(tmp_path, grid)
+    s.handle({**open_msg(), "nav": "loop", "loop_km": 8.0})
+    nav = Navigator(s.graph, "loop", s.nav.start_xz, 90.0, 7, loop_m=8000.0)
+    nav._home_seeds = lambda: {-1: 0.0}                # départ introuvable dans le graphe
+    far = max(s.legs[:-1], key=lambda leg: math.hypot(leg.profile.x[-1] - nav.start_xz[0],
+                                                       leg.profile.z[-1] - nav.start_xz[1]))
+    k = s.legs.index(far)
+    c = nav.choose(far.to_node, far.edge_id, [leg.edge_id for leg in s.legs[:k + 1]] * 3)
+    here = s.graph.nodes[far.to_node]
+    end = s.graph.nodes[c.to_node]
+    assert c.phase == "loop_return"
+    assert math.dist((end.x, end.z), nav.start_xz) < math.dist((here.x, here.z), nav.start_xz)
+
+
+def oneway_dead_end_db(path: Path) -> Path:
+    """Route est-ouest à sens unique vers l'est, qui s'arrête à 3 km : impasse sans demi-tour permis."""
+    w = OsmDbWriter(path, "test", "test/sens-unique")
+    pts = list(range(-5000, 3001, 100))
+    w.add_road(800, {"highway": "tertiary", "oneway": "yes"}, [40_000 + k for k in range(len(pts))],
+               [lonlat(E_REF + d, N_REF) for d in pts])
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    return path
+
+
+def test_blocked_route_is_not_republished_on_every_progress(tmp_path) -> None:
+    s, rec = session(tmp_path, oneway_dead_end_db(tmp_path / "sens_unique.sqlite"))
+    s.handle(open_msg(E_REF + 100, N_REF, 90.0))
+    _ride_to(s, 1000.0, step=50.0)
+    assert s.data_state == "missing"
+    revs, statuses = len(rec.of("revision")), len(rec.of("status"))
+    for k in range(50):                               # la route ne bouge plus : rien à republier
+        s.handle({"type": "progress", "s_m": 1000.0 + k, "v_mps": 8.0})
+    assert len(rec.of("revision")) == revs
+    assert len(rec.of("status")) == statuses

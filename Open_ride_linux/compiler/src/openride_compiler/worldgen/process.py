@@ -305,7 +305,8 @@ class WorldSession:
         loop_km = msg.get("loop_km")
         self.nav = Navigator(self.graph, mode, (x, z), float(msg.get("heading_deg", 0.0)), int(msg.get("seed", 0)),
                              target_xz=target_xz, loop_m=float(loop_km) * 1000.0 if loop_km else None,
-                             allowed=None if self.network else self._edge_available)
+                             allowed=None if self.network else self._edge_available,
+                             home_edge=self.start_edge)
         self._make_session_dir()
         self._extend()
         self._write_manifest()
@@ -355,6 +356,7 @@ class WorldSession:
         if p.length_m - tt >= C.DS_M:
             p = tail_profile(p, tt)
         self.legs = [Leg(e.id, forward, e.b if forward else e.a, p, 0.0)]
+        self.start_edge = (e.id, t)          # départ de la boucle (navigateur), abscisse depuis le bout `a`
         self.log(f"départ accroché à l'arête {e.id} ({best[0]:.0f} m), sens {'direct' if forward else 'inverse'}")
         return True
 
@@ -528,10 +530,14 @@ class WorldSession:
         self.legs.append(Leg(edge_id, forward, to_node, p, self.length_m))
 
     def _extend(self) -> bool:
-        """Prolonge la route engagée jusqu'à l'horizon (plus une marge) ; vrai si elle a changé."""
+        """Prolonge la route engagée jusqu'à l'horizon (plus une marge) ; vrai si elle a changé.
+
+        Route bloquée (plus de route connue) : faux, sans rien republier (26/11 : la même route était
+        republiée à chaque `progress`, soit plusieurs fois par seconde, et l'engine relisait tout)."""
         if self.length_m - self.s_m >= self.horizon_m:
             return False
         goal = self.s_m + self.horizon_m + EXTEND_MARGIN_M
+        count = len(self.legs)
         while self.length_m < goal:
             i = len(self.legs) - 1
             last = self.legs[i]
@@ -542,11 +548,19 @@ class WorldSession:
                 self.finish_leg = i
                 self.log(f"arrivée ({self.nav.mode}) posée à {last.s1:.0f} m")
             if c.phase == "u_turn" and not self.graph.edges[c.branch_edge_id].allows(c.forward):
-                self.data_state = "missing"
-                self.status("ready", "plus de route connue", "missing")
+                if self.data_state != "missing":
+                    self.log(f"plus de route connue au bout de {last.s1:.0f} m (impasse en sens unique)")
+                    self.data_state = "missing"
+                    self.status("ready", "plus de route connue", "missing")
                 break
             self._append_leg(c.branch_edge_id, c.forward, c.to_node, turnaround=c.phase == "u_turn")
-        return True
+        grew = len(self.legs) != count
+        if grew and self.data_state == "missing":     # graphe complété depuis : la route repart
+            self.data_state = "cached"
+            self.log(f"route retrouvée : {self.length_m:.0f} m engagés")
+            if self.opened:
+                self.status("ready", "", "cached")
+        return grew
 
     def _route_columns(self) -> dict[str, Any]:
         route = concat([leg.profile for leg in self.legs])

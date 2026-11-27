@@ -1,0 +1,30 @@
+# Banc du lot BO1 (#1084) : Boucle de 10 km depuis Sevrier, qui se figeait à 4,3 km avant la correction.
+# Scénario engine/tests/menu_scenarios/ow_boucle_sevrier.json, présent sur la branche seule (aucune autre PR requise).
+# Contrôles après le banc : sol / route, profil d'altitude, lignes « [gel] », et nombre de révisions à longueur
+# figée (révisions en rafale = défaut). Cache SÉPARÉ obligatoire : jamais ~/OpenRide/Cache/monde.
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/bo1_boucle_sevrier.toml
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rBO1"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rBO1-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "r1084"
+branche = "claude/project-thread-bo5if1"
+cache = "separe"
+risque = 1
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); true"""
+fumee_delai_min = 8
+
+[[pr.etape]]
+id = "boucle-sevrier-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ow_boucle_sevrier --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; \
+python3 scripts/controle_sol_route.py --out {sortie}/sol --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; \
+if [ -f scripts/controle_profil_altitude.py ]; then python3 scripts/controle_profil_altitude.py --out {sortie}/profil --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; fi; \
+grep -rh "\\[gel\\]" {sortie}/banc > {sortie}/gels.txt; grep -rhoc "world_revision rev=" {sortie}/banc > {sortie}/revisions.txt; exit $rc"""
+delai_min = 45
