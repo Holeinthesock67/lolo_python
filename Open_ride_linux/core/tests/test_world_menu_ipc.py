@@ -80,6 +80,21 @@ def test_search_merges_sources_and_validates_contract():
     assert [i["source"] for i in msg["items"]][0] == "base"
 
 
+def test_long_nominatim_names_fit_the_schema():
+    """Revue vague 3, E3-03 : le nom complet de Nominatim était coupé à 120 caractères, le schéma en dit 80."""
+    long_name = "Sevrier, Annecy, Haute-Savoie, Auvergne-Rhône-Alpes, France métropolitaine, 74320, France, " * 2
+
+    class LongNet(Net):
+        def fetch(self, url, headers, timeout):
+            return json.dumps([{"display_name": long_name, "type": "village", "lat": "45.86", "lon": "6.14"}]).encode()
+
+    wm, _ = menu(LongNet())
+    (msg,) = wm.search(7, "zzqx")
+    validator("places").validate(msg)
+    (item,) = [i for i in msg["items"] if i["source"] == "nominatim"]
+    assert len(item["name"]) == 80 and item["name"].endswith("…") and item["name"].startswith("Sevrier, Annecy")
+
+
 def test_offline_never_asks_nominatim():
     wm, net = menu(network=False)
     for text in ("ventoux", "paris", "inconnu"):
