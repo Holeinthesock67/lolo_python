@@ -12,6 +12,7 @@ const WindModel := preload("res://scripts/wind_model.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
+const LoopRoute := preload("res://tests/loop_route.gd")
 
 var _failures := 0
 var _checked := 0
@@ -76,6 +77,67 @@ func _test_window_backwards() -> void:
 		"à rebours : les %d tronçons d'avance vers le départ (%s)" % [GrassTufts.CHUNKS_AHEAD, str(back)])
 	_check(g._next_job(k) >= 0 and int(g._queue[g._next_job(k)][1]) <= k,
 		"à rebours : le tronçon rempli d'abord est celui de la caméra ou devant elle")
+	g.queue_free()
+
+
+## Revue E7-02 : sur une boucle, la ligne ne vide plus la fenêtre (deux tronçons refaits au lieu de neuf) et le
+## même endroit a la même herbe d'un tour à l'autre ; la fin du dernier tronçon (10 m de trop) reste vide.
+func _sorted_keys(pts: PackedVector3Array) -> Array:
+	var out := []
+	for p in pts:
+		out.append("%.2f:%.2f" % [p.x, p.z])
+	out.sort()
+	return out
+
+
+func _test_loop_line() -> void:
+	var route = LoopRoute.circle(101, 10.0, Vector2(500.0, 500.0))   # 1 010 m : dernier tronçon de 10 m
+	var g = GrassTufts.new()
+	root.add_child(g)
+	g.configure(QualityPresets.living("medium")["grass_tufts"], route)
+	var lap: float = route.length_m
+	_settle(g, lap - 20.0)
+	var before := _sorted_keys(g.get_positions())
+	var visible_before: int = g.get_visible_count()
+	g.update(20.0)   # 40 m plus loin, après la ligne (s ramené au début du tour)
+	var kept := 0
+	for gi in range(g._slot_chunk.size()):
+		if g._filled[gi] > 0:
+			kept += 1
+	_check(kept >= g._slot_chunk.size() - 2 and g.get_visible_count() >= visible_before * 0.6,
+		"boucle : la ligne garde %d tronçons sur %d (%d touffes sur %d)" % [kept, g._slot_chunk.size(), g.get_visible_count(), visible_before])
+	_settle(g, 20.0)
+	var crossed := _sorted_keys(g.get_positions())
+	var common := 0
+	var seen := {}
+	for key in before:
+		seen[key] = true
+	for key in crossed:
+		if seen.has(key):
+			common += 1
+	_check(common >= before.size() * 0.6, "boucle : touffes vues devant avant la ligne encore là après (%d sur %d)" % [common, before.size()])
+	# Un tour complet, par pas de 20 m, puis le même endroit qu'au départ
+	var s := 40.0
+	while s < lap - 20.0:
+		_settle(g, s)
+		s += 20.0
+	_settle(g, lap - 20.0)
+	var after := _sorted_keys(g.get_positions())
+	_check(before.size() > 0 and after == before, "boucle : même herbe au même endroit au tour suivant (%d touffes)" % after.size())
+	# Dernier tronçon (990 à 1 030 m, dont 20 m après la ligne) : places au-delà du tour laissées vides
+	var last: int = g._loop.count() - 1
+	var stations: PackedVector4Array = g.chunk_stations(last)
+	var in_last := 0
+	var in_prev := 0
+	for slot in range(g._per_chunk):
+		if g.tuft_transform(last, slot, stations) != null:
+			in_last += 1
+		if g.tuft_transform(last - 1, slot) != null:
+			in_prev += 1
+	_check(in_last > 0 and in_last < in_prev * 0.5,
+		"boucle : dernier tronçon de 10 m, %d touffes (tronçon plein : %d)" % [in_last, in_prev])
+	_check(g.tuft_transform(last + 1, 3) == g.tuft_transform(0, 3) and g.tuft_transform(-1, 5) == g.tuft_transform(last, 5),
+		"boucle : numéros ramenés au tour")
 	g.queue_free()
 
 
@@ -602,5 +664,6 @@ func _init() -> void:
 	_test_desert()
 	_test_snow()
 	_test_window_backwards()
+	_test_loop_line()
 	print("test_grass_tufts : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
