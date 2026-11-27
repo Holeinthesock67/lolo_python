@@ -897,7 +897,7 @@ class WorldSession:
             if not self.network and not relief_has(self.provider, *self._latlon_of_square(key)):
                 self.failed.add(key)
                 return True
-            partial = self._square_partial(key, fetch=True)
+            partial = self._square_partial(key)
             had = self.cache.is_valid(key.cache_key, _square_versions(self.db, self.provider)) or (
                 partial and self.cache.is_valid(key.cache_key, _square_versions(self.db, self.provider, False)))
             try:
