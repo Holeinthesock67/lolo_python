@@ -115,6 +115,8 @@ SPEED_DESCENT_PCT = 0.0     # pente envoyée sous ce seuil : descente, hors méd
 SPEED_DRAFT_MAX = 0.02      # abri au-delà : hors médiane
 SPEED_COAST_S = 15.0        # élan gardé après une descente ou un abri : hors médiane
 SPEED_MIN_SAMPLES = 30      # en dessous : médiane sur tout le parcours, avec la mention
+SPEED_DROPPED_ACTIONS = ("press", "rider")   # vitesse imposée : actions du scénario retirées (braquet neutre)
+GRADE_GAP_MAX = 0.5         # vitesse imposée : écart médian toléré entre pente envoyée et pente du parcours (points)
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 # Changement d'état de la séance au journal du core (« Séance : RUNNING -> FINISHED ») : l'état lu est le
 # NOUVEL état, après la flèche, jamais le premier mot de la ligne.
@@ -401,8 +403,16 @@ class Bench:
                 raise SystemExit(f"{name} : vitesse imposée avec la difficulté {self.difficulty} % : la vitesse "
                                  "imposée demande la difficulté 100 % (pente reçue = pente du parcours)")
             self.difficulty = 100.0
-            self.spec = {**spec, "rider": {"strategy": "vitesse", "speed_kmh": float(self.speed_kmh)}}
+            # Braquet neutre tenu (27 novembre, banc rDPS1 à 49 km/h pour 40, sur main aussi) : le cycliste simulé
+            # règle ses watts sur la pente REÇUE, le jeu fait la vitesse sur la pente du PARCOURS ; les 30 appuis du
+            # Click du scénario `demo` montaient le braquet de ~10 crans (+5 points reçus). Appuis du Click et
+            # changements de watts du cycliste retirés : sans effet voulu sur une vitesse imposée.
+            events = [ev for ev in spec.get("events", []) if ev.get("action") not in SPEED_DROPPED_ACTIONS]
+            self.speed_dropped = len(spec.get("events", [])) - len(events)
+            self.spec = {**spec, "events": events,
+                         "rider": {"strategy": "vitesse", "speed_kmh": float(self.speed_kmh)}}
             self.scenario_arg = ""   # scénario modifié : écrit dans un fichier
+        self.env_invalid: list[str] = []   # banc faussé par l'outil : code 2 (ENVIRONNEMENT), pas un échec de la PR
         self.ready_at = SETTLE_S     # temps relatif de la première capture comptée (après le chargement)
         self.duration = float(args.duration or settings.get("duration_s") or
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
@@ -917,6 +927,13 @@ class Bench:
                 print(f"   pente du parcours {min(grades):.1f} à {max(grades):.1f} %, "
                       f"pente envoyée {min(sent):.1f} à {max(sent):.1f} %")
         if self.speed_kmh:
+            if getattr(self, "speed_dropped", 0):
+                r.check(None, "vitesse imposée : braquet neutre tenu",
+                        f"{self.speed_dropped} appui(s) du Click ou changement(s) de watts du scénario retirés")
+            coherent, measure = grade_coherence(recs)
+            label = "pente envoyée = pente du parcours (vitesse imposée)"
+            if not r.check(coherent, label, measure):
+                self.env_invalid.append(label)
             r.check(*speed_check(recs, float(self.speed_kmh)), f"vitesse imposée {float(self.speed_kmh):.0f} km/h")
         self._decor_checks()
         self._input_checks()
@@ -1030,6 +1047,28 @@ def speed_check(recs: list[dict[str, Any]], target_kmh: float, tolerance: float 
     ok = abs(med - target_kmh) <= tolerance * target_kmh
     return ok, (f"médiane {med:.1f} km/h sur {len(v)} s (attendu {target_kmh:.1f} ± {tolerance * target_kmh:.1f}), "
                 f"de {v[0]:.1f} à {v[-1]:.1f} km/h{note}")
+
+
+def grade_coherence(recs: list[dict[str, Any]], warmup_s: float = SPEED_WARMUP_S,
+                    gap_max: float = GRADE_GAP_MAX) -> tuple[bool, str]:
+    """Vitesse imposée : la stratégie `vitesse` du cycliste simulé règle ses watts sur la pente reçue, la vitesse du
+    jeu se fait sur la pente du parcours. Les deux doivent rester égales (braquet neutre, difficulté 100 %), hors
+    abri (supplément de pente voulu) : écart médian au plus `gap_max` points, sinon le verdict de vitesse est faussé
+    par l'outil (27 novembre : +1,3 à +5,2 points sur rDPS1)."""
+    ts = [x["ts"] for x in recs if isinstance(x.get("ts"), (int, float))]
+    if not ts:
+        return False, "aucun échantillon de pente au journal"
+    t0 = min(ts)
+    gaps = sorted(abs(float(x["grade_sent"]) - float(x["grade"])) for x in recs
+                  if isinstance(x.get("grade_sent"), (int, float)) and isinstance(x.get("grade"), (int, float))
+                  and isinstance(x.get("ts"), (int, float)) and x["ts"] - t0 >= warmup_s
+                  and not (isinstance(x.get("draft"), (int, float)) and x["draft"] > SPEED_DRAFT_MAX))
+    if not gaps:
+        return False, "aucun échantillon de pente envoyée hors abri"
+    med = gaps[len(gaps) // 2]
+    ok = med <= gap_max
+    return ok, (f"écart médian {med:.2f} point(s) sur {len(gaps)} s (au plus {gap_max:.1f}), jusqu'à {gaps[-1]:.1f}"
+                + ("" if ok else " : vitesse jugée sur une autre pente que celle du jeu, banc faussé (ENVIRONNEMENT)"))
 
 
 # --- rapport HTML ------------------------------------------------------------------------------
@@ -1304,6 +1343,7 @@ def main(argv: list[str] | None = None) -> int:
     real_home = Path.home()
     before = snapshot_home(real_home)
     results: list[tuple[str, Report]] = []
+    env_invalid: list[tuple[str, str]] = []
     # Bip au départ de chaque scénario et au verdict, journal guide.jsonl : utile pour l'endurance
     # d'une heure (lot X16), qu'on lance avant de faire autre chose.
     guide = Guide("Banc simulé", args.out / "guide.jsonl", sound=False if args.muet else None, screen=False)
@@ -1315,6 +1355,7 @@ def main(argv: list[str] | None = None) -> int:
                    "endurance : rien à faire, ne pas mettre le PC en veille" if bench.endurance else "",
                    index=k + 1, total=len(names))
         rep = bench.run()
+        env_invalid += [(sname, label) for label in bench.env_invalid]
         guide.measure(sname, "OK" if not rep.failed else f"{rep.failed} échec(s)", ok=not rep.failed)
         results.append((sname, rep))
     changed = home_changes(before, snapshot_home(real_home), args.out, real_home)
@@ -1328,6 +1369,10 @@ def main(argv: list[str] | None = None) -> int:
     guide.finish(not failed, f"Banc fini : {verdict}")
     guide.close()
     print("RÉSULTAT : " + verdict)
+    invalid = [f"{name} : {label}" for name, label in env_invalid]
+    if invalid:
+        print("ENVIRONNEMENT banc faussé par l'outil : " + " ; ".join(invalid), file=sys.stderr)
+        return 2
     return 0 if not failed else 1
 
 
