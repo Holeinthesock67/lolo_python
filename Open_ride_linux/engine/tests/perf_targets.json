@@ -3,7 +3,11 @@
   "warmup_s": 20,
   "busy_pct": 95,
   "hitches": {"_doc": "À-coups en régime établi, tous préréglages (saccades du 04/11 : une image de 82 à 147 ms tous les 40 m, invisible au p99) : au plus max_per_min secondes par minute dont la pire image dépasse hitch_ms, aucune image au-delà de freeze_ms, et pas d'images de plus de hitch_ms qui reviennent à distance régulière (perf_probe.hitch_checks). Les warmup_s premières secondes sont ignorées : arbres des premières tuiles posés pendant le départ, avant que le cycliste roule (banc #710 du 04/11 : 117 à 147 ms vers 23 s, à 0 m). Le départ reste jugé à part : de la fin du chargement (warmup_s général) à warmup_s du bloc, aucune image au-delà de start_freeze_ms (147 ms mesurés en high sur la demo compilée, à-coup du départ connu). Tolérance de max_per_min : un à-coup isolé de 50 à 75 ms par minute ou deux ne compte pas (bancs de 2 min de #710 après correction : 0 à 2) ; l'herbe de 40 m en faisait 8 à 23 par minute.",
-              "warmup_s": 30, "hitch_ms": 50, "max_per_min": 3, "freeze_ms": 100, "start_freeze_ms": 150},
+              "warmup_s": 30, "hitch_ms": 50, "max_per_min": 3, "freeze_ms": 100, "start_freeze_ms": 150,
+              "_doc_tolerance": "Lot BF1 (26/11) : une seule image de la séance entre freeze_ms et freeze_tolerated_ms est tolérée (bancs w24 : 101 à 139 ms sur une image en 18 min, verdict qui changeait d'un passage à l'autre) ; deux, ou une au-delà, échouent.",
+              "freeze_tolerated_ms": 200, "freeze_tolerated_count": 1,
+              "_doc_cold": "Lot BF1 (26/11) : banc --shaders froid (premier lancement, caches vides). La GTX 1060 compile 100 à 250 ms par pipeline, jusqu'à 0,7 s pour un seul : 150 ms au départ y est intenable. À froid, le départ est jugé à cold_start_freeze_ms (écran qui reste animé) et le chargement est relevé à titre indicatif ; 150 ms reste le critère à chaud (le jeu au quotidien, les manches de la ligue).",
+              "cold_start_freeze_ms": 1000},
   "presets": {
     "low":    {"fps_median_min": 55, "p99_ms_max": 25, "gpu_ms_median_max": 8,  "gpu_busy95_pct_max": 5},
     "medium": {"fps_median_min": 58, "p99_ms_max": 25, "gpu_ms_median_max": 13, "gpu_busy95_pct_max": 5},

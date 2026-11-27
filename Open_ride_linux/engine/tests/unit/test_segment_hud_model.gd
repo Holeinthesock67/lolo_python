@@ -103,7 +103,7 @@ func _run() -> void:
 	var odd: Dictionary = m.view({"powerup": {"held": "roller", "active": null, "remaining_s": 0.0,
 		"refused": {"kind": "roller", "reason": "raison_de_demain"}}}, 63.0)["powerup"]
 	_check(odd["refused_detail"] == "gardé en réserve", "raison inconnue : « gardé en réserve »")
-	# Lot TT-BONUS (contrat 1.41) : temps gagné par le bonus fini, 6 s, à la place de la ligne du bonus actif
+	# Lot TT-BONUS (révision IPC à la fusion) : temps gagné par le bonus fini, 6 s, à la place de la ligne du bonus actif
 	var won: Dictionary = m.view({"powerup": {"held": null, "active": null, "remaining_s": 0.0,
 		"gain": {"kind": "aero", "gain_s": 4.2}}}, 70.0)["powerup"]
 	_check(won["visible"] and won["gain_text"] == "Casque aéro : +4,2 s" and won["gain_kind"] == "aero"

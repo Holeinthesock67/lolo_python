@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Tunnels dessinés (colline gardée au-dessus, terrain non dessiné dans le tube, piédroits, voûte, portails, murs d'approche, lampes), parcours compilés et monde ouvert | Python, GDScript, shader | EA4, #936 (garde-fou de la chaussée) | Moyenne | En revue (PR à valider : essai PC, mesures low, medium, high et captures) |
+| Tunnels dessinés (colline gardée au-dessus, terrain non dessiné dans le tube, piédroits, voûte, portails, murs d'approche, lampes), parcours compilés et monde ouvert | Python, GDScript, shader | EA4, #936 (garde-fou de la chaussée) | Moyenne | **Livré le 26 novembre** (PR #940) ; essai PC (low, medium, high) et captures à faire |
 
 ## 1. Objectif
 

@@ -1,0 +1,1 @@
+temps gagné par un bonus fini, champ facultatif `powerup.gain` ({kind, gain_s}, 6 s) ; Plume, Casque aéro et Puissance à 30 s et × 0,8, × 0,6, × 1,20

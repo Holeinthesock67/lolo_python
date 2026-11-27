@@ -862,7 +862,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:
-		var climb: Dictionary = vm.next_climb(route, s, 300.0, 3.0, dir)
+		var climb: Dictionary = vm.next_climb_cached(route, s, 300.0, 3.0, dir)   # pas de recherche complète par trame (EC7)
 		if climb.is_empty():
 			climb_label.text = ""
 		elif climb.get("in_progress", false):

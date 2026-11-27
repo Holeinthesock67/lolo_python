@@ -19,7 +19,7 @@ extends RefCounted
 ##   au premier `remaining_s` vu pour ce bonus). Lot TT6 (maquettes validées le 8 novembre) : `held_kind`,
 ##   `active_kind` et `refused_kind` nomment l'icône (ui_icons.gd `powerup_shape`) ; pendant les 2 s d'un
 ##   refus (`refused` du contrat 1.13), `refused_text` (« Enclume refusée ») et `refused_detail` (la raison,
-##   « pas de descente ») remplacent la ligne de la réserve, qui revient ensuite. Lot TT-BONUS (contrat 1.41) :
+##   « pas de descente ») remplacent la ligne de la réserve, qui revient ensuite. Lot TT-BONUS (révision IPC à la fusion) :
 ##   pendant les 6 s du champ `gain`, `gain_text` (« Casque aéro : +4,2 s ») et `gain_kind` (icône) prennent la
 ##   ligne du bonus actif, `gain_tone` `good` (temps gagné) ou `bad` (temps perdu).
 ## Textes en français, nombres au format français.

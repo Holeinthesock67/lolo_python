@@ -174,6 +174,7 @@
   "core/tests/test_migration_profils.py": 5.2,
   "core/tests/test_migration_reglages.py": 0.0,
   "core/tests/test_mode_routes.py": 5.1,
+  "core/tests/test_modes_identique.py": 80.0,
   "core/tests/test_open_world_save.py": 24.2,
   "core/tests/test_open_world_segments.py": 0.1,
   "core/tests/test_open_world_session.py": 129.2,

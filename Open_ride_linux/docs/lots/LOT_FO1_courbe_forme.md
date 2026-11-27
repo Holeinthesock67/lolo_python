@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| « Ma forme » dans « Ma puissance » : condition (CTL) et fatigue (ATL) du coach sur 12 semaines, fraîcheur en mots, séances par semaine | Python + GDScript | PP3, CO1 | Petite | PR ouverte le 22 novembre (empilée sur PP7b), captures à valider par le propriétaire |
+| « Ma forme » dans « Ma puissance » : condition (CTL) et fatigue (ATL) du coach sur 12 semaines, fraîcheur en mots, séances par semaine | Python + GDScript | PP3, CO1 | Petite | **Livré le 26 novembre** (PR #1002) |
 
 ## 1. Objectif
 

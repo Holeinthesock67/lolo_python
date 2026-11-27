@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : notification bureau le samedi à 18 h et le dimanche à midi si la manche de la semaine n'est pas courue | Python, shell | CH3 | Petite | En revue |
+| Série CH : notification bureau le samedi à 18 h et le dimanche à midi si la manche de la semaine n'est pas courue | Python, shell | CH3 | Petite | **Livré le 25 novembre** (PR #1046) |
 
 Ce lot répond au choix du propriétaire du 24 novembre 2026 (« ok pour les deux ») : un rappel le samedi à 18 h
 et un autre le dimanche à midi. Il doit servir dès la semaine 2 (samedi 5 décembre). Cadrage :
@@ -51,3 +51,7 @@ et un autre le dimanche à midi. Il doit servir dès la semaine 2 (samedi 5 déc
 ## 3. Pour plus tard
 
 - Un réglage « Rappel de la ligue : oui / non » dans le menu. Aujourd'hui, on installe ou on retire le minuteur.
+
+## Livraison
+
+Fusionné dans `main` le 25 novembre 2026 (PR #1046), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En revue »).

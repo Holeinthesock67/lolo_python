@@ -97,7 +97,7 @@ DRAFT_PLUS_REACH_M = 25.0      # Aspiration + : portée de l'abri (15 m sans bon
 GAIN_EFFECTS = ("mass", "cda", "power")   # temps gagné affiché à la fin du bonus (lot TT-BONUS)
 GAIN_TAIL_S = 60.0              # élan gardé après la fin : les deux coureurs suivis encore 60 s, comme le banc
 GAIN_TAIL_DT = 0.2
-GAIN_SHOW_S = 6.0               # « Casque aéro : +4 s » affiché 6 s (champ `powerup.gain`, révision 1.41)
+GAIN_SHOW_S = 6.0               # « Casque aéro : +4 s » affiché 6 s (champ `powerup.gain`, révision IPC du lot)
 REFUSED_SHOW_S = 2.0            # raison du refus affichée 2 s (contrat 1.13, `powerup.refused`)
 
 MODES = ("off", "classiques", "tactiques")      # réglage `powerups.mode` (contrat 1.13)
@@ -606,6 +606,6 @@ class PowerUps:
                      "remaining_s": round(self.remaining_s, 1) if self.active else 0.0}
         if self.refused is not None:
             out["refused"] = {"kind": self.refused.kind, "reason": self.refused.reason}
-        if self.gain is not None:   # révision 1.41 (lot TT-BONUS)
+        if self.gain is not None:   # champ `gain` (révision IPC du lot TT-BONUS)
             out["gain"] = {"kind": self.gain.kind, "gain_s": self.gain.gain_s}
         return out

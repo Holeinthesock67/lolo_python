@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série TT : Plume, Casque aéro et Puissance à 30 s et plus forts ; « Casque aéro : +4,2 s » à la fin du bonus (révision IPC 1.41) | Python + GDScript | TT8 | Petite | **En revue** (PR à fusionner sur « go » du propriétaire) |
+| Série TT : Plume, Casque aéro et Puissance à 30 s et plus forts ; « Casque aéro : +4,2 s » à la fin du bonus (révision IPC à la fusion) | Python + GDScript | TT8 | Petite | **En revue** (PR à fusionner sur « go » du propriétaire) |
 
 Série TT (bonus tactiques, version 4.0). Source : essai vélo du propriétaire du 22 novembre (« essai 4 : bonus trop courts et trop faibles ») et fiche de cohérence du level design au home trainer du même jour, §3 bis (hors dépôt, profils synthétiques, FTP fictive 250 W).
 
@@ -25,7 +25,7 @@ Gain calculé 60 s après l'activation pour un cycliste d'exemple à 140 W, vale
 
 - `powerups.py` `DEFAULT_TABLE` : Plume masse × 0,8, Casque aéro CdA × 0,6, Puissance × 1,20, chacun 30 s (bornes `factor_bounds` inchangées). Les deux jeux (`classiques` et `tactiques`) tirent ces bonus : les valeurs valent pour les deux. Les bonus tactiques (Enclume, Aspiration +, Échappée, Rouleau) ne changent pas.
 - Temps gagné : pendant un bonus de masse, de CdA ou de puissance, une ombre sans bonus part du même point à la même vitesse et roule avec la même puissance mesurée, la même pente, le même abri et le même vent (`PowerUps.track_gain`, appelé par la séance juste après le pas du cycliste). À la fin du bonus, l'avance prise plus ce que l'élan rapporte encore pendant 60 s (simulation courte, une fois par bonus, sans entrée-sortie) est convertie en secondes. Ligne `Bonus fini : Casque aéro, +4,2 s.` au journal du core.
-- Contrat IPC, révision 1.41 (provisionnelle, après les 1.37 à 1.40 réservées) : champ facultatif `powerup.gain` (`{kind, gain_s}`) pendant 6 s. Un engine plus ancien l'ignore.
+- Contrat IPC, révision numérotée à la fusion (registre `revisions_ipc/a_numeroter/TT-BONUS.txt`) : champ facultatif `powerup.gain` (`{kind, gain_s}`) pendant 6 s. Un engine plus ancien l'ignore.
 - HUD (`segment_hud_model.gd`, `hud_view.gd`) : « Casque aéro : +4,2 s » à la place de la ligne du bonus actif pendant 6 s, en vert (gagné) ou en rouge (perdu, « Plume : −0,6 s »), toujours écrit en mots.
 - Banc `tools/bonus_bench.py` : cible 3,5 à 7 s pour la Plume, le Casque et la Puissance (1,5 à 2,5 s gardée pour les bonus tactiques), colonne « Cible ».
 

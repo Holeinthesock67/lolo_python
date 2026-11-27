@@ -131,7 +131,7 @@ CAS: list[dict[str, Any]] = [
                            "elapsed_s": 42.0, "gap_to_pr_s": -1.6},
                "powerup": {"held": "aero", "active": None, "remaining_s": 0.0}},
      "shown": ["bots_panel", "segment_panel", "bonus_panel"]},
-    # Lot TT-BONUS (contrat 1.41) : temps gagné par le bonus fini, 6 s, à la place de la ligne du bonus actif.
+    # Lot TT-BONUS (révision IPC à la fusion) : temps gagné par le bonus fini, 6 s, à la place de la ligne du bonus actif.
     {"name": "bonus_actif_30s", "state": {"powerup": {"held": "power", "active": "aero", "remaining_s": 21.0}},
      "shown": ["bonus_panel"]},
     {"name": "bonus_temps_gagne", "state": {"powerup": {"held": "power", "active": None, "remaining_s": 0.0,

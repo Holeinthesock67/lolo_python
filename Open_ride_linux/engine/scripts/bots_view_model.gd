@@ -10,7 +10,8 @@ extends RefCounted
 ##   (bots.light_frame) ; push() garde ceux de la dernière trame qui les portait (constants pendant la séance),
 ##   pour que l'encart ne les perde pas quand un bot sort des 5 plus proches. `wbal_pct` et `gap_s`, qui changent,
 ##   ne sont pas gardés : jauge cachée et écart calculé ici.
-## - Position affichée : s + v × (maintenant − réception), bornée à MAX_EXTRAPOLATION_S comme la caméra
+## - Position affichée : s + v × (maintenant − réception), bornée à MAX_EXTRAPOLATION_S comme la caméra (v prise
+##   nulle si s n'a pas changé depuis la trame d'avant : pause, arrivée, revue E6-02)
 ##   (camera_follow.gd) ; sur une boucle (loop_length_m > 0), s est ramené dans [0, longueur[. Comme pour la
 ##   caméra, l'écart entre la position affichée et celle de la nouvelle trame est rattrapé linéairement en
 ##   CORRECTION_S (lot AS2, essai vélo du 2 novembre : les bots avançaient par à-coups de ~15 cm d'une image
@@ -148,8 +149,10 @@ func count() -> int:
 ## Liste `bots` d'une trame `state` reçue à t_us (horloge locale, Time.get_ticks_usec()).
 func push(bots, t_us: int) -> void:
 	var shown := {}   # position affichée de chaque bot à t_us, avant la nouvelle trame
+	var prev_s := {}  # position reçue de la trame d'avant (revue E6-02)
 	for b in _bots:
 		shown[b["id"]] = _shown_s(b, t_us)
+		prev_s[b["id"]] = b["s"]
 	_bots.clear()
 	if not (bots is Array):
 		return
@@ -169,6 +172,10 @@ func push(bots, t_us: int) -> void:
 		if shown.has(item["id"]):
 			var off := gap_m(item["s"], float(shown[item["id"]]), loop_length_m)
 			item["offset"] = off if absf(off) < SNAP_M else 0.0
+		# Revue E6-02 : en pause (et à l'arrivée) le core envoie `s` figé avec `v` inchangée ; un bot dont `s` n'a pas
+		# bougé depuis la trame d'avant n'est pas extrapolé (sinon il glisse de CORRECTION_S × v, 1,7 m à 40 km/h, et
+		# se pose dans le vélo du cycliste figé). `v` reste celle du core pour l'écart en secondes et le HUD.
+		item["ext_v"] = 0.0 if prev_s.has(item["id"]) and float(prev_s[item["id"]]) == item["s"] else item["v"]
 		for key in PROFILE_FIELDS:
 			item[key] = b.get(key, null)
 		var kept: Dictionary = _kept.get(item["id"], {})
@@ -230,7 +237,7 @@ func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 func _shown_s(b: Dictionary, now_us: int) -> float:
 	var since := float(now_us - int(b["t_us"])) / 1e6
 	var dt := clampf(since, 0.0, MAX_EXTRAPOLATION_S)
-	var s: float = b["s"] + b["v"] * dt + float(b["offset"]) * clampf(1.0 - since / CORRECTION_S, 0.0, 1.0)
+	var s: float = b["s"] + float(b.get("ext_v", b["v"])) * dt + float(b["offset"]) * clampf(1.0 - since / CORRECTION_S, 0.0, 1.0)
 	return fposmod(s, loop_length_m) if loop_length_m > 0.0 else s
 
 

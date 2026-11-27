@@ -80,6 +80,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const BotMovesModel := preload("res://scripts/bot_moves_model.gd")
 const PhotoMomentsModel := preload("res://scripts/photo_moments_model.gd")
 const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
@@ -289,6 +290,7 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+var bot_moves = BotMovesModel.new()   # lot BA1 : gestes des bots voisins, en mots et en son
 ## Photos automatiques à l'arrivée et aux records (photo_moments_model.gd, réglage `render.auto_photos`).
 var photo_moments = PhotoMomentsModel.new()
 var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
@@ -298,6 +300,13 @@ var rogue_host = RogueHost.new()
 
 
 func _ready() -> void:
+	# Revue E1-03 : la fermeture de la fenêtre (Alt+F4, bouton du gestionnaire de fenêtres) passe par _quit, comme
+	# le menu : tâches de fond attendues, ligne ENGINE_DONE pour le lanceur, puis OS.kill (lot X58).
+	get_tree().set_auto_accept_quit(false)
+	if ipc.bind_failed:
+		ipc.quit_handled = true
+		_quit(1)   # port des trames pris (contrat §2) : même séquence d'arrêt
+		return
 	var cfg := EngineArgs.current()
 	routes_dir = cfg["routes_dir"]
 	if cfg.get("sim_session", false):
@@ -427,6 +436,9 @@ func _ready() -> void:
 		_refresh_menu())
 	ipc.contents_received.connect(func(msg: Dictionary) -> void:
 		_run_menu_action(menu_flow.on_contents(msg))
+		_refresh_menu())
+	ipc.diagnostic_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_diagnostic(msg)
 		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
@@ -940,6 +952,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("list_contents", {})
 		"install_content":
 			ipc.send_command("install_content", {"id": str(act["id"])})
+		"create_diagnostic":   # fichier de diagnostic (lot DG1, contrat 1.37) : carte graphique en plus
+			ipc.send_command("create_diagnostic", {"dest": str(act["dest"]),
+				"engine_version": str(act.get("engine_version", "")),
+				"gpu": RenderingServer.get_video_adapter_name()})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
 		"list_profile_backups":   # copies du profil en cours (lot SV1)
@@ -1198,6 +1214,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
+	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
+		print("Fenêtre fermée par le bureau : fermeture comme depuis le menu.")
+		_quit(0)
 	elif what == NOTIFICATION_PREDELETE:
 		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : elle donne le code de sortie.
 		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
@@ -1613,7 +1632,7 @@ func _poll_route_job() -> void:
 		seg_profiles[str(seg["id"])] = hud.vm.profile(route, float(seg["s_start"]), 0.0,
 			float(seg["s_end"]) - float(seg["s_start"]), SEGMENT_PROFILE_COLUMNS)
 	menu_flow.records.set_segments(route.segments, seg_profiles)
-	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
+	# Fichier des records de remplacement (tests visuels) ; vide : celui du profil en cours (lot EC9).
 	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
 	_load_phase(phases, "segments")
@@ -2268,6 +2287,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
+	menu_flow.on_command_failed(cmd_name)
 	if cmd_name in IpcClientScript.LIST_COMMANDS:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
@@ -2439,6 +2459,11 @@ func _on_state_received(state: Dictionary) -> void:
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
 		_play_event(jingle)
+	var move: Dictionary = bot_moves.on_state(state, float(Time.get_ticks_msec()) / 1000.0)
+	if not move.is_empty():   # lot BA1 : « Grimpeur attaque, 40 m devant » et un son court
+		banner.show_message("bot_move", str(move["text"]), BotMovesModel.SHOW_S)
+		_play_event(str(move["jingle"]))
+		ipc.test_log("bot_move " + str(move["text"]))
 	for req in photo_moments.on_state(state, float(Time.get_ticks_msec()) / 1000.0):
 		_take_photo(req)
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
@@ -2534,6 +2559,7 @@ func _update_grandprix(state: Dictionary, in_session: bool) -> void:
 			gp_scene.reset()
 		return
 	var t_step := Time.get_ticks_usec()
+	gp_scene.set_paused(str(state.get("session_state", "")) == "PAUSED", Time.get_ticks_msec() / 1000.0)   # E11-04
 	for snd in gp_sounds.on_state(gp):   # roulette, lancer, sonnette, klaxon (lot GP7)
 		_play_event(snd)
 		gp_sounds.me_played(Time.get_ticks_msec() / 1000.0)
