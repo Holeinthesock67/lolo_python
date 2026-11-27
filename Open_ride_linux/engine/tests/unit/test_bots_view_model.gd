@@ -81,6 +81,20 @@ func _test_view() -> void:
 	_check(is_equal_approx(caught, 100.3 + 10.0 * BotsViewModel.CORRECTION_S), "écart rattrapé en %s s (%s)" % [BotsViewModel.CORRECTION_S, caught])
 	smooth.push([{"id": "b", "s": 400.0, "v": 10.0, "kind": "constant"}], 300000)
 	_check(is_equal_approx(smooth.view(0.0, 10.0, 300000)[0]["s"], 400.0), "écart de plus de %s m : saut direct" % BotsViewModel.SNAP_M)
+	# Revue E6-02 : en pause, le core envoie `s` figé avec `v` inchangée ; le bot n'est plus extrapolé et revient à
+	# sa place reçue (il ne glisse plus dans le vélo du cycliste).
+	var paused = BotsViewModel.new()
+	paused.push([{"id": "b", "s": 100.0, "v": 11.1, "kind": "constant"}], 0)
+	var t_us := 0
+	for i in range(30):   # 1 s de pause à 30 Hz
+		t_us += 33333
+		paused.view(0.0, 0.0, t_us)
+		paused.push([{"id": "b", "s": 100.0, "v": 11.1, "kind": "constant"}], t_us)
+	var still: Dictionary = paused.view(0.0, 0.0, t_us + 30000)[0]
+	_check(absf(float(still["s"]) - 100.0) < 0.01, "pause : bot figé à sa place reçue, pas d'avance cumulée (%s)" % str(still["s"]))
+	_check(is_equal_approx(float(still["v"]), 11.1), "pause : la vitesse du core reste donnée au HUD")
+	paused.push([{"id": "b", "s": 100.37, "v": 11.1, "kind": "constant"}], t_us + 33333)
+	_check(paused.view(0.0, 0.0, t_us + 33333 + US / 2)[0]["s"] > 105.0, "reprise : extrapolé de nouveau dès que s bouge")
 	# gap_s du core (révision 1.4) prioritaire.
 	m.push([{"id": "b", "name": "Grimpeur", "s": 1100.0, "v": 5.0, "kind": "constant", "gap_s": 8.4}], 0)
 	_check(is_equal_approx(m.view(1000.0, 7.0, 0)[0]["gap_s"], 8.4), "gap_s du core utilisé")

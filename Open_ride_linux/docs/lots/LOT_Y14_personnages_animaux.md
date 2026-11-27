@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Personnages plus fins : corps articulé construit par code (`people_mesh.gd`), tenues variées par teintes, animations par articulations ; coureur casqué qui pédale sur un vrai vélo pour les bots d'O7 ; animaux refaits avec le même constructeur (vache pie, mouton à tête noire, chevreuil, oiseaux à rémiges) | GDScript + shader | P11, P15, P21, P23, O7 | Moyenne | Prototype le 27 octobre (spectateurs et passants), en attente de l'accord du propriétaire et de la mesure sur la GTX 1060 ; bots après O7 (#407) |
+| Personnages plus fins : corps articulé construit par code (`people_mesh.gd`), tenues variées par teintes, animations par articulations ; coureur casqué qui pédale sur un vrai vélo pour les bots d'O7 ; animaux refaits avec le même constructeur (vache pie, mouton à tête noire, chevreuil, oiseaux à rémiges) | GDScript + shader | P11, P15, P21, P23, O7 | Moyenne | En partie : prototype fusionné le 28 octobre (PR #445, avec Y11), bots d'O7 le 30 octobre (PR #593) |
 
 **Statut : prototype le 27 octobre (PR #445, avec Y11)**, en attente de l'accord du propriétaire et de la mesure sur la GTX 1060.
 

@@ -6,6 +6,68 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 
 ## Non publié
 
+> Passe de doc du 27 novembre (lots fusionnés du 22 au 27 novembre) : notes recopiées de `docs/changements/` (fichiers retirés) et lots fusionnés sans note détaillée, relevés d'après les PR fusionnées et leurs cahiers.
+
+### Ligue d'hiver (série CH, lots CH1 à CH7, BR4)
+- Nouveau : la **Ligue d'hiver** à l'accueil, une saison de 8 manches (une par semaine) contre les mêmes 11 rivaux, 6 meilleurs résultats comptés, une seule tentative par manche (lots CH1, CH2 : rivaux réglés pour environ 10 % de victoires par manche).
+- Chaque manche part dans son mode (Course, Dernier survivant, Grand Prix ou élimination) sur un parcours de son terrain, compte au bilan après l'arrivée (Y puis A maintenu) ; écran de la ligue avec le classement et écran Prêt de la manche (lots CH3a #989, CH3b #1034, CH3c #1020, CH4a #993, CH4c #1035, contrat IPC révision 1.30).
+- **Palmarès** des saisons closes : place, points, vainqueur, trophée (lot CH6, #1047, révision 1.40).
+- Rappel de la manche par notification de bureau le samedi à 18 h et le dimanche à midi si elle n'est pas courue (`scripts/install-rappel-ligue.sh`, lot CH7, #1046).
+- Rivaux reconnaissables : mêmes noms, équipes et caractères d'une course à l'autre, dans tous les modes (lot BR4, #986).
+
+### « Ma puissance » (série PP, lots PP1 à PP9, FO1, PP7v)
+- Courbe de puissance du profil (13 durées, 6 mois et 6 semaines, libre ou ERG) et FTP estimée proposée sans jamais l'écrire seule (PP1 #971, PP2 #973) ; écran « Ma puissance » dans le profil (PP3 #975).
+- Records de puissance au bilan et signal « FTP à revoir » (PP4 #976) ; « Se connaître » (PP5 #977) ; « Ma forme » : condition et fatigue en mots (FO1 #1002).
+- Bots calés sur la courbe du cycliste (PP6 #1021) ; défi « bats ton record » et fantôme du record (PP7 #978) ; trophées de puissance par palier en watts (PP7b #980) et leurs 11 visuels dans la Collection (PP7v #1099) ; le coach lit la courbe (PP8 #979) ; la courbe repart de la remise à zéro des statistiques (PP9 #1039).
+
+### Reprise, fin de séance et retours communs (lots RC1, RC3, FB1, RT1, RT2, RT4, EL1, CR1, RW)
+- Une course (Course, Grand Prix, Dernier survivant) est reprise entière après un plantage du core, et une séance ou une course coupée par un arrêt brutal se reprend depuis l'accueil moins de 2 h après (« Reprendre la course », lots RC1 et RC3, #1036).
+- Une erreur d'un mode de jeu termine la séance avec son bilan au lieu de la perdre (lot FB1, #1022).
+- Même fin dans tous les modes : l'arrivée ne coupe plus la séance, même résultat écrit en séance et en tête du bilan (lot RT2, #1000) ; retours et consignes communs (RT1, #959) ; chaque refus dit pourquoi et quoi faire (RT4, #990).
+- Élimination plus longue, écarts aux voisins, victoire marquée et échauffement sur place en ERG avant les courses (lot EL1, #958 ; EL1b, #1043 : éliminés rangés en haut de la piste).
+- Mode « Course » à l'accueil : le Grand Prix sans objet, sur tous les parcours libres (lot CR1, #939, révision 1.23) ; réserve des bots sur les listes des modes compétitifs (lot RW, #967).
+
+### Grand Prix des objets (lots GPO1, GPH1, GPL1)
+- Objets plus forts et plus longs, boîtes de famille par voie, gestes des bots visibles (lot GPO1, #957).
+- « Comment ça marche ? » sur l'écran Prêt et ligne d'aide des voies (lot GPH1, #952).
+- Le Grand Prix se court sur une boucle seulement ; Récif, Volcan et Grand Nord ajoutés au mode en restant libres (lot GPL1, #942).
+
+### Accueil, réglages et diagnostic (lots OS1, QG1, DG1, ET1, PZ1)
+- Objectif de la semaine à l'accueil (« Semaine : 1 séance sur 2 », lot OS1, #1038).
+- Réglages › Graphisme : la qualité graphique s'écrit basse, moyenne ou haute (au lieu de low, medium, high) et sa carte explique chaque niveau en mots (portée, végétation, brume, ombres ; basse si l'image saccade). Le fichier `config.toml` garde `low` / `medium` / `high` : réglages et profils existants inchangés (lot QG1, #1048).
+- **Réglages › Diagnostic** : un fichier `.zip` à joindre à un signalement, sans donnée privée, rien n'est envoyé ; aussi `openride-core diagnostic` (lot DG1, #1004, révision 1.37).
+- `openride-ble-diag spindown` : sonde d'étalonnage FTMS (lot ET1, #1009).
+- Zone privée au départ : aucune position à moins de 500 m du départ dans les FIT et le GPX du monde ouvert, réglage coupé par défaut (lot PZ1, #1015).
+
+### Rendu, paysages et parcours (lots EA5, NV1, PE1)
+- Les tunnels sont dessinés : la colline reste au-dessus, la route entre dans un tube éclairé (parois, voûte, trottoirs, têtes de portail, lampes tous les 12 m), sans herbe en travers de l'entrée ni ciel à l'intérieur ; parcours compilés et monde ouvert (lot EA5, #940).
+- Nouveau paysage « ville néon » du thème (ville de bord de mer au coucher du soleil et de nuit), préparé pour le futur parcours « Avenue de la Lagune ». Rien ne change encore à l'écran (lot NV1, #1085).
+- Core : règle de l'enchaînement de parcours en session libre (module `chain.py`) et un tour du FIT par parcours enchaîné ; rien ne change encore en jeu (lot PE1, #1016).
+
+### Monde ouvert (lots OW-RECH1, OW-CARTE1, RC22, RC24)
+- En tapant un nom (« sevrier »), la liste montrait parfois les lieux d'une saisie plus courte arrivés en dernier et Entrée partait du mauvais endroit : seule la réponse à la dernière recherche envoyée remplace la liste. Nominatim n'est plus interrogé à chaque lettre : une requête à la fois, et seulement pour la saisie la plus récente (lot OW-RECH1, #1072).
+- La carte du point de départ ne montrait que le curseur dans un lieu jamais roulé : les tuiles vectorielles absentes à moins de 3 km du lieu sont téléchargées à l'ouverture de la carte (réseau permis) et gardées pour le départ ; hors ligne, la carte lit celles déjà sur le PC, et dit en mots qu'elle reste sans route (lot OW-CARTE1, #1076).
+- Téléchargements sûrs : relief Copernicus coupé ou page d'erreur refusés et repris (plus de tuiles prises pour de la mer) ; réponses Overpass « runtime error » ou « timed out » plus mises en cache ; TileJSON invalide et tuile vectorielle coupée redemandés (lot RC22, #1061).
+- Contenus et packs : le ménage des thèmes ne retire plus que les packs installés par `theme-install` ; la génération des démonstrations ne coupe plus le réseau des autres fils du core ; une trace en erreur ne fait plus afficher « Installation impossible » ; une réinstallation forcée garde les fichiers ajoutés à la main (lot RC24, #1074).
+
+### Outils de test, CI et bancs du PC (lots AP1, BM1, CF1, DM1, BF1, IM0, REP1, OW-ZONES, RC17, RC20, RC21, X28b, X35b, EN1b)
+- `scripts/avant_poussee.py` : avant chaque poussée, en 1 à 3 minutes, les fautes qui faisaient le plus souvent rougir la CI (`.uid` oublié, numéro IPC ou WORLDGEN déjà pris, conflit avec main, lot en double, test qui écrit hors de son dossier temporaire) ; `--corriger` écrit les `.uid` manquants (AP1, #1088). `--avant-fusion` refuse de fusionner un train si main a changé un fichier qu'il touche aussi ou un fichier partagé (BM1, #1096).
+- `scripts/conflits_ouverts.py` : juste après une fusion dans main, liste en quelques secondes les PR ouvertes en conflit ou dont la révision IPC, `WORLDGEN_VERSION` ou `SCHEMA_VERSION` est désormais prise (CF1, #1103).
+- File des bancs du PC : délai d'une étape tiré des 5 derniers passages (au moins 1,5 fois le plus long), départ du monde ouvert attendu sur l'événement « Monde ouvert prêt » (DM1, #1095) ; cache du monde ouvert séparé par défaut, le vrai seulement avec `cache = "reel"` (RC17, #1042).
+- Bancs d'à-coups jugés à froid (départ à 1 s, premier lancement) et à chaud (150 ms), une image entre 100 et 200 ms tolérée (BF1, #1094) ; un banc sans mesure ne passe plus (RC20, #1041) ; vitesse imposée du banc simulé jugée hors descentes, abri et élan (X35b, #1090).
+- Banc multi-zones du monde ouvert sur 7 zones et 6 biomes, contrôle sol / route sur la balade seule (OW-ZONES, #1057 ; AP1) ; filet « à l'identique » des modes de jeu, rien ne change dans le jeu (IM0, #1092) ; répétition du samedi 28/11 au banc des menus (REP1, #1075) ; saison de l'essai d'endurance courue jusqu'au bout (EN1b, #1067) ; essai réseau dégradé stabilisé en CI (X28b, #1078).
+- Constats de confort de la revue de code vague 5 : `bump-version.sh`, audit des dépendances, isolation des tests, portail du PC, empreinte SHA-512 de Godot en CI, arrêt propre des bancs de l'engine, comparateurs (RC21, #1049).
+
+### Consignes du Cyber-Rogue (lot R28)
+- Moins de voile et de halo en medium et high : l'éclair d'une frappe n'assombrit plus tout l'écran (15 % au lieu de 45 %), et le halo des néons est plus court, sans bloom (retour du 23 novembre).
+- La consigne écrite est la vraie : la puissance qui bat l'ennemi à temps (au boss du seuil, 11,8 % de plus qu'avant), et l'adrénaline monte dès qu'on l'atteint (« affiche une vraie consigne », choix du propriétaire). La marge de 10 % ne sert plus qu'à rester dans la plage, et elle est écrite : « ✔ marge : remonte de 8 W ».
+- La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
+- L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.39 provisoire).
+
+### Gestes des bots écrits et entendus (lot BA1)
+- Quand un bot proche attaque, suit une attaque ou lance son sprint, le bandeau l'écrit (« Grimpeur attaque, 40 m devant ») et un son court part : dans la Course, le Grand Prix, le Dernier survivant et la session libre avec un peloton.
+- Contrat IPC : champ facultatif `move` des bots (révision 1.38, numéro provisoire).
+
 ### Copies automatiques du profil (lot SV1)
 - Chaque profil de joueur est copié chaque semaine (au lancement, si la dernière copie a 7 jours), avant chaque mise à jour (« Mettre à jour » refuse de continuer si la copie échoue) et avant une remise à zéro, dans `~/OpenRide/Sauvegardes/profils/<profil>/`.
 - Les fichiers qui n'ont pas changé ne sont pas recopiés (liens durs) : une saison de 8 semaines tient dans un seul dossier. Gardées : 8 copies de la semaine, 3 avant mise à jour, 3 avant remise à zéro, 3 avant restauration.

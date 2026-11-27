@@ -15,6 +15,7 @@ extends Node3D
 ## maillages de chaque sorte sont construits une fois et partagés.
 
 const TrafficModel := preload("res://scripts/traffic_model.gd")
+const DrawnBudget := preload("res://scripts/drawn_budget.gd")
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const VehicleShader := preload("res://shaders/vehicle.gdshader")
 const AudioMix := preload("res://scripts/audio_mix.gd")
@@ -119,17 +120,10 @@ func _dress(slot: Dictionary, v: Dictionary) -> void:
 
 
 ## Lot AS11 : véhicules dessinés. Le core fait rouler tous les véhicules (`core_full`) ; le préréglage ne règle
-## plus que le nombre dessiné (`budget` du modèle) : les plus proches du cycliste, dans l'ordre du modèle.
+## plus que le nombre dessiné (`budget` du modèle) : les plus proches du cycliste, dans l'ordre du modèle ; revue
+## E6-03 : jamais coupés à moins de DrawnBudget.ALWAYS_DRAWN_M (au plus MAX_VEHICLES, le budget du core).
 static func drawn_vehicles(m, rider_s: float) -> Array:
-	var all: Array = m.vehicles
-	if m.get("core_full") != true or all.size() <= int(m.budget) or is_nan(rider_s):
-		return all
-	var by_dist := all.duplicate()
-	by_dist.sort_custom(func(a, b): return absf(float(a["s"]) - rider_s) < absf(float(b["s"]) - rider_s))
-	var keep := {}
-	for v in by_dist.slice(0, int(m.budget)):
-		keep[str(v["id"])] = true
-	return all.filter(func(v): return keep.has(str(v["id"])))
+	return DrawnBudget.keep(m.vehicles, m.get("core_full") == true, int(m.budget), rider_s)
 
 
 func update() -> void:
