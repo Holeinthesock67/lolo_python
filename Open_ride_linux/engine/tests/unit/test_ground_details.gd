@@ -12,6 +12,7 @@ const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const LoopRoute := preload("res://tests/loop_route.gd")
 
 const ROAD_WIDTH_M := 6.0
 
@@ -23,6 +24,7 @@ var _theme: Dictionary
 func _init() -> void:
 	_theme = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	_run()
+	_test_loop()
 	print("test_ground_details : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -69,6 +71,62 @@ func _route() -> Variant:
 	var route = RouteDataScript.new()
 	route.load_route_dict(d)
 	return route
+
+
+## Revue E8-02 : sur une boucle, rochers et murets ne changent pas de place au passage de la ligne ni d'un tour à
+## l'autre ; rien dans la fin du dernier tronçon (au-delà du tour, couverte par le tronçon 0).
+func _detail_keys(g) -> Array:
+	var out := []
+	for kind in GroundDetails.KINDS:
+		for p in g.get_positions(kind):
+			out.append("%s:%.2f:%.2f" % [kind, p.x, p.z])
+	out.sort()
+	return out
+
+
+func _settle(g, s: float) -> void:
+	for i in range(200):
+		g.update(s)
+		if g.is_settled():
+			return
+
+
+func _test_loop() -> void:
+	var route = LoopRoute.circle(101)   # 1 010 m : 17 tronçons de 60 m, le dernier de 50 m
+	var g = GroundDetails.new()
+	g.configure(_budgets("high"), route, _model("atlantic_heath"), ROAD_WIDTH_M, 7)
+	var lap: float = route.length_m
+	_settle(g, lap - 30.0)
+	var before := _detail_keys(g)
+	g.update(30.0)   # 60 m plus loin, après la ligne : un seul tronçon refait
+	_check(g._queue.size() <= 1, "boucle : la ligne ne refait que %d tronçon (5 avant la correction)" % g._queue.size())
+	_settle(g, 30.0)
+	var crossed := _detail_keys(g)
+	var common := 0
+	var seen := {}
+	for key in before:
+		seen[key] = true
+	for key in crossed:
+		if seen.has(key):
+			common += 1
+	_check(common >= before.size() * 0.6, "boucle : rochers et murets vus devant avant la ligne encore là après (%d sur %d)" % [common, before.size()])
+	var s := 60.0
+	while s < lap - 30.0:
+		_settle(g, s)
+		s += 30.0
+	_settle(g, lap - 30.0)
+	var after := _detail_keys(g)
+	_check(before.size() > 0 and after == before, "boucle : mêmes rochers et murets au même endroit au tour suivant (%d)" % after.size())
+	var last: int = g._loop.count() - 1
+	var st: PackedVector4Array = g.chunk_stations(last)
+	var beyond := 0
+	for slot in range(2 * GroundDetails.WALL_PER_SIDE):
+		var d: Variant = g.detail_at("wall", 0, last, slot, st)
+		var piece := slot / 2
+		if d != null and float(last) * GroundDetails.CHUNK_M + (piece + 1) * GroundDetails.WALL_PIECE_M > lap + 0.01:
+			beyond += 1
+	_check(beyond == 0, "boucle : aucun muret au-delà du tour dans le dernier tronçon (%d)" % beyond)
+	g.free()
 
 
 func _model(biome: String) -> Variant:
