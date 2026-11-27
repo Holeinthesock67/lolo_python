@@ -273,7 +273,7 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
     assert "demo-corniche (Boucle de la Corniche) : 2.5 km" in out and "demo-vignes (Route des Vignes) : 5.0 km" in out
     assert "demo-biomes-forets (Route des Trois Forêts) : " in out
-    assert "demo-lagune (Avenue de la Lagune) : 5.0 km" in out
+    assert "demo-lagune (Avenue de la Lagune) : 15.0 km" in out
     assert len(list(tmp_path.glob("*.world"))) == 11
 
 
@@ -695,9 +695,9 @@ def test_corniche_loop(demo_set: Path, mbw) -> None:
 
 
 def test_lagune_loop(demo_set: Path, mbw) -> None:
-    """Avenue de la Lagune (lot NV6) : boucle fermée de 5 km, plate (pente de −3,5 à +3,5 %, la butte du port pour
+    """Avenue de la Lagune (lot NV6) : boucle fermée de 15 km, plate (pente de −3,5 à +3,5 %, la butte du port pour
     seule bosse : 4 à 7 m de montée par tour), toutes les tuiles dans le paysage `ville_neon` à toits plats ; ville
-    dense (plus de 300 bâtiments, hôtels, cafés et cinéma à noms inventés) ; le front de mer : plage de sable sur tout
+    dense (plus de 1 000 bâtiments, tours de 80 m et plus, hôtels, cafés et cinéma à noms inventés) ; le front de mer : plage de sable sur tout
     le tronçon `sea`, aucun bâtiment côté mer, la mer à gauche."""
     import numpy as np
     from openride_compiler.regional import LANDSCAPES
@@ -717,7 +717,7 @@ def test_lagune_loop(demo_set: Path, mbw) -> None:
     for f in tiles:
         assert _json(f)["variant"] == {"ground": None, "roofs": "toit_plat_blanc", "landscape": "ville_neon"}, f.name
     buildings = [b for f in (world / "buildings").glob("chunk_*.json") for b in _json(f)["buildings"]]
-    assert len(buildings) > 300 and max(b["height_m"] for b in buildings) >= 45.0
+    assert mbw.LAGUNE_M >= 15000.0 and len(buildings) > 1000 and max(b["height_m"] for b in buildings) >= 80.0
     colours = {b["hint"]["colour"] for b in buildings}
     assert colours >= set(mbw.LAGUNE_PASTELS)
     coast = manifest["layers"]["coast"]
@@ -739,7 +739,21 @@ def test_lagune_loop(demo_set: Path, mbw) -> None:
         cz = float(np.mean([p[1] for p in b["outer"]])) + plan.offset[1]
         s, dx = plan.road.locate(np.asarray(cx), np.asarray(cz))
         assert not (s0 < float(s) < s1 and float(dx) * mbw.SEA_SIDE > 0.0), b["id"]
-    assert _json(demo_set / "demo-lagune.json")["generated"]["poi"] >= 4
+    assert _json(demo_set / "demo-lagune.json")["generated"]["poi"] >= 6
+
+
+def test_lagune_recette(recette_set: Path, mbw) -> None:
+    """Variante de recette de l'Avenue de la Lagune (27 novembre) : la boucle de 5 km d'avant, gardée pour les
+    bancs ; même ville néon, sans le quartier des tours ni celui des villas."""
+    world = recette_set / "demo-lagune.world"
+    route = _json(world / "route.json")
+    assert route["type"] == "loop" and route["length_m"] == pytest.approx(mbw.LAGUNE_RECETTE_M, abs=5.0)
+    assert -3.5 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 3.5
+    for f in sorted(f for level in ("near", "far") for f in (world / "biome" / level).glob("tile_*.json")):
+        assert _json(f)["variant"]["landscape"] == "ville_neon", f.name
+    buildings = [b for f in (world / "buildings").glob("chunk_*.json") for b in _json(f)["buildings"]]
+    assert 300 < len(buildings) < 700
+    assert mbw.Plan(("coast",), False, True, recette=True, loop="lagune").loop == "lagune_recette"
 
 
 def test_vignes_loop(demo_set: Path, mbw) -> None:

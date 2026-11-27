@@ -54,9 +54,10 @@ rocheuse, aires `sea` jusqu'à 1 600 m) ; `--vignes`, boucle sinueuse de 5 km da
 lacets `wiggles` de la boucle, relief `vignes_relief`). Routes revêtues, sans épingle (rayon d'au moins 25 m).
 
 Avenue de la Lagune (lot NV6, parcours vitrine de la ville néon, dans la liste générale) : `--lagune`, boucle plate
-de 5 km dans une ville de bord de mer inventée (biome `coast`, toutes les tuiles dans le paysage `ville_neon`,
+de 15 km (5 km en recette, `LOOP_RECETTE`) dans une ville de bord de mer inventée (biome `coast`, toutes les tuiles dans le paysage `ville_neon`,
 variante `LAGUNE_VARIANT`) : avenue d'immeubles pastel de 3 à 10 étages, front de mer (tronçon `sea`, plage de sable,
-la mer à gauche), port et sa butte (relief `lagune_relief`, 3,1 % au plus), vieux quartier.
+la mer à gauche), port et sa butte (relief `lagune_relief`, 3,1 % au plus), vieux quartier,
+quartier des tours et quartier des villas.
 
 Route des Trois Forêts (lot V6-r4) : `--forets`, trois blocs de 2 km sur la route ouverte, en montée, du bush à
 eucalyptus à la forêt de nuages par la forêt pluviale tempérée (biomes du rang 4 de l'étude 6.0).
@@ -224,15 +225,28 @@ VIGNES_M = 5000.0
 VIGNES_BIOME = "farmland"
 VIGNES_LOBES = ((2, 0.2, 0.3), (3, 0.1, 1.0))
 VIGNES_WIGGLES = ((11, 38.0, 0.0), (19, 12.0, 0.7))
-# Avenue de la Lagune (lot NV6, parcours vitrine de la ville néon) : boucle plate de 5 km dans une ville de bord de mer
+# Avenue de la Lagune (lot NV6, parcours vitrine de la ville néon) : boucle plate de 15 km dans une ville de bord de mer
 # inventée (biome `coast`, paysage `ville_neon` sur toutes les tuiles, toits plats) : avenue d'immeubles, front de mer
 # (la mer et la plage à gauche), port et sa butte (seule bosse, 3 % au plus), vieux quartier, retour à l'avenue.
-LAGUNE_M = 5000.0
+LAGUNE_M = 15000.0
 LAGUNE_BIOME = "coast"
 LAGUNE_LOBES = ((2, 0.22, 0.4), (3, 0.05, 1.1))
-LAGUNE_SEA = (1400.0, 2900.0)    # front de mer (abscisses), la mer à gauche (`SEA_SIDE`, l'extérieur)
-LAGUNE_PORT = (2900.0, 3800.0)   # port ; la butte est en son milieu
+LAGUNE_SEA = (2400.0, 6000.0)    # front de mer (abscisses), la mer à gauche (`SEA_SIDE`, l'extérieur)
+LAGUNE_PORT = (6000.0, 7400.0)   # port ; la butte est en son milieu
 LAGUNE_BUMP_M = 5.0              # hauteur de la butte du port
+LAGUNE_OLD_M = 2000.0           # vieux quartier, après le port
+LAGUNE_TOWERS_M = 2400.0        # quartier des tours, après le vieux quartier
+LAGUNE_VILLAS_M = 2000.0        # quartier des villas, avant le retour sur l'avenue
+# Variante de recette (demande du propriétaire du 27 novembre : 15 km au jeu, 5 km gardés pour les bancs) : la boucle
+# d'avant, sans le quartier des tours ni celui des villas. `LOOP_RECETTE` : boucle prise par `Plan(recette=True)`.
+LAGUNE_RECETTE_M = 5000.0
+LAGUNE_RECETTE_SEA = (1400.0, 2900.0)
+LAGUNE_RECETTE_PORT = (2900.0, 3800.0)
+LAGUNE_LAYOUTS = {"lagune": {"sea": LAGUNE_SEA, "port": LAGUNE_PORT, "old_m": LAGUNE_OLD_M,
+                             "towers_m": LAGUNE_TOWERS_M, "villas_m": LAGUNE_VILLAS_M, "town_s": 1200.0},
+                  "lagune_recette": {"sea": LAGUNE_RECETTE_SEA, "port": LAGUNE_RECETTE_PORT, "old_m": 1150.0,
+                                     "towers_m": 0.0, "villas_m": 0.0, "town_s": 700.0}}
+LOOP_RECETTE = {"lagune": "lagune_recette"}
 LAGUNE_BUMP_SIGMA_M = 140.0      # pente de la butte : 0,86 × 5 / 140, soit 3,1 % au plus
 LAGUNE_VARIANT = {"ground": None, "roofs": "toit_plat_blanc", "landscape": "ville_neon"}
 # Façades pastel des immeubles (aucune couleur d'enseigne ni de marque : des teintes de crépi).
@@ -277,8 +291,8 @@ DEMO_LIBRARY = {
                                    "domaines.",
                     "tags": ["grandprix"]},
     # Lot NV6 : parcours vitrine de la ville néon, dans la liste générale.
-    "demo-lagune": {"description": "Boucle plate de 5 km dans une ville de bord de mer au coucher du soleil, puis de "
-                                   "nuit : avenue aux néons, front de mer, port et vieux quartier."},
+    "demo-lagune": {"description": "Boucle plate de 15 km dans une ville de bord de mer au coucher du soleil, puis de "
+                                   "nuit : avenue aux néons, front de mer, port, vieux quartier, tours et villas."},
 }
 
 
@@ -375,6 +389,8 @@ PLACE_NAMES = {
     "lagune_vue": ("Promenade des Flamants",),
     "lagune_port": ("Port de la Lagune",),
     "lagune_vieux": ("Vieux Quartier",),
+    "lagune_tours": ("Quartier des Tours",),
+    "lagune_villas": ("Les Jardins de la Lagune",),
 }
 RECETTE_PLACE_NAMES = {"port": "Port Fictif", "pointe": "Pointe Fictive", "mas": "Mas Fictif",
                        "hameau": "Hameau Fictif", "etang": "Étang Fictif", "col": "Col Fictif",
@@ -398,7 +414,8 @@ RECETTE_PLACE_NAMES = {"port": "Port Fictif", "pointe": "Pointe Fictive", "mas":
                        "vignes": "Village Fictif", "domaine": "Hameau Fictif", "vignes_vue": "Belvédère Fictif",
                        "lagune": "Village Fictif", "lagune_hotel": "Hôtel Fictif", "lagune_cine": "Cinéma Fictif",
                        "lagune_cafe": "Café Fictif", "lagune_vue": "Pointe Fictive", "lagune_port": "Port Fictif",
-                       "lagune_vieux": "Hameau Fictif"}
+                       "lagune_vieux": "Hameau Fictif", "lagune_tours": "Quartier Fictif",
+                       "lagune_villas": "Lotissement Fictif"}
 
 # Pente de la route (%) dans un bloc, selon la position u (m) dans le bloc.
 GRADE = {
@@ -472,6 +489,7 @@ class Plan:
                  circuit: bool = False, loop: str | None = None,
                  variants: tuple[dict | None, ...] | None = None) -> None:
         loop = loop or ("circuit" if circuit else None)
+        loop = LOOP_RECETTE.get(loop, loop) if recette else loop   # variante courte des bancs (Lagune : 5 km)
         circuit = loop is not None
         if circuit and LOOPS[loop]["biome"] is not None and len(set(biomes)) != 1:
             raise ValueError("circuit : un seul biome")
@@ -642,7 +660,7 @@ def vignes_relief(x, z, s=None, d=None):
             + 6.0 * np.sin(z / 190.0 + 1.0) * np.cos(x / 247.0))
 
 
-def lagune_relief(x, z, s=None, d=None):
+def lagune_relief(x, z, s=None, d=None, port=None):
     """Relief de l'Avenue de la Lagune (m, lot NV6) : ville plate à l'altitude de base, et la butte du port
     (`LAGUNE_BUMP_M` au milieu de `LAGUNE_PORT`, pente de 3,1 % au plus, `test_lagune_loop`), qui s'efface à 250 m de
     la route ; la plage et la mer viennent de `make_terrain` (tronçon `sea` de la boucle)."""
@@ -650,10 +668,16 @@ def lagune_relief(x, z, s=None, d=None):
     base = BASE_ALT_M + np.zeros_like(np.asarray(x, dtype=float))
     if s is None:
         return base
-    mid = (LAGUNE_PORT[0] + LAGUNE_PORT[1]) / 2.0
+    port = LAGUNE_PORT if port is None else port
+    mid = (port[0] + port[1]) / 2.0
     bump = LAGUNE_BUMP_M * np.exp(-((np.asarray(s, dtype=float) - mid) / LAGUNE_BUMP_SIGMA_M) ** 2)
     fade = 1.0 if d is None else np.clip(1.0 - (np.asarray(d, dtype=float) - 60.0) / 190.0, 0.0, 1.0)
     return base + bump * fade
+
+
+def lagune_recette_relief(x, z, s=None, d=None):
+    """Relief de la variante de recette de l'Avenue de la Lagune (5 km) : la butte au milieu de son port."""
+    return lagune_relief(x, z, s, d, LAGUNE_RECETTE_PORT)
 
 
 def _soft_cap(v, knee: float, rise: float):
@@ -1009,23 +1033,28 @@ def _lagune(op, rng, plan):
     """Avenue de la Lagune (lot NV6) : ville de bord de mer inventée, dense partout. Avenue : immeubles de 3 à 10
     étages des deux côtés, tours au second rang ; front de mer : rien côté mer (plage et mer du tronçon `sea`), hôtels
     de 5 à 12 étages côté ville, promenade ; port : entrepôts bas et hangars, deux côtés ; vieux quartier : maisons de
-    ville de 2 à 4 étages, plus près de la route, cinéma et cafés. Les néons, enseignes et palmiers sont ceux du
+    ville de 2 à 4 étages, plus près de la route, cinéma et cafés ; quartier des tours : tours de 12 à 30 étages et
+    commerces à leur pied ; quartier des villas : maisons basses dans leurs jardins. Les néons, enseignes et palmiers sont ceux du
     paysage `ville_neon` (engine), pas des éléments OSM."""
     inside, out = sim.LoopRoad.INSIDE, -sim.LoopRoad.INSIDE
-    sea0, sea1 = LAGUNE_SEA
-    port0, port1 = LAGUNE_PORT
+    lay = LAGUNE_LAYOUTS[plan.loop]
+    sea0, sea1 = lay["sea"]
+    port0, port1 = lay["port"]
     pastels = LAGUNE_PASTELS
     hotels = [plan.place("lagune_hotel", 0, k) for k in range(len(PLACE_NAMES["lagune_hotel"]))]
     cafes = [plan.place("lagune_cafe", 0, k) for k in range(len(PLACE_NAMES["lagune_cafe"]))]
     town = ("apartments", "apartments", "retail", "commercial", "hotel")
     # Avenue (départ et retour) : deux rangs de chaque côté.
-    for a, b in ((20.0, sea0 - 30.0), (port1 + 1150.0, plan.length_m - 20.0)):
+    old0, old1 = port1 + 10.0, port1 + lay["old_m"] - 20.0
+    tow0, tow1 = old1 + 20.0, old1 + lay["towers_m"]   # quartiers absents de la variante de recette (longueur 0)
+    vil0, vil1 = tow1 + 20.0, tow1 + lay["villas_m"]
+    for a, b in ((20.0, sea0 - 30.0), (vil1 + 20.0, plan.length_m - 20.0)):
         for side in (inside, out):
             _row(op, rng, a, b, side, 15.0, (3, 10), (18.0, 30.0), (14.0, 20.0), (0.0, 5.0), town, pastels,
                  hotels, 6)
             _row(op, rng, a + 15.0, b - 15.0, side, 52.0, (8, 16), (20.0, 28.0), (20.0, 26.0), (25.0, 60.0),
                  ("apartments", "office"), pastels)
-    op.node(*op.point(700.0, inside * 12.0), {"place": "town", "name": plan.place("lagune", 0)})
+    op.node(*op.point(lay["town_s"], inside * 12.0), {"place": "town", "name": plan.place("lagune", 0)})
     # Front de mer : hôtels côté ville (l'intérieur), la plage et la mer à gauche.
     _row(op, rng, sea0, sea1, inside, 17.0, (5, 12), (24.0, 40.0), (16.0, 22.0), (4.0, 12.0),
          ("hotel", "hotel", "apartments"), pastels, hotels, 3)
@@ -1038,7 +1067,6 @@ def _lagune(op, rng, plan):
              ("warehouse", "industrial", "retail"), ("#cfd6dc", "#a8e0dc", "#f4b8c8", "#e9e2d2"))
     op.node(*op.point((port0 + port1) / 2.0, out * 30.0), {"harbour": "yes", "name": plan.place("lagune_port", 0)})
     # Vieux quartier : maisons de ville serrées, cinéma et cafés.
-    old0, old1 = port1 + 10.0, port1 + 1130.0
     for side in (inside, out):
         _row(op, rng, old0, old1, side, 11.0, (2, 4), (9.0, 16.0), (9.0, 13.0), (0.0, 2.5),
              ("apartments", "retail", "house"), pastels, cafes, 9)
@@ -1048,6 +1076,27 @@ def _lagune(op, rng, plan):
                                                     "building:colour": "#c9b8ee",
                                                     "name": plan.place("lagune_cine", 0)}, 34.0, 24.0)
     op.node(*op.point((old0 + old1) / 2.0, out * 10.0), {"place": "quarter", "name": plan.place("lagune_vieux", 0)})
+    # Quartier des tours : tours de bureaux et d'habitation de 12 à 26 étages, deux rangs, des commerces à leur pied.
+    for side in (inside, out) if lay["towers_m"] else ():
+        _row(op, rng, tow0, tow1, side, 16.0, (2, 4), (20.0, 34.0), (12.0, 16.0), (2.0, 8.0),
+             ("retail", "commercial", "hotel"), pastels, hotels, 7)
+        _row(op, rng, tow0 + 10.0, tow1 - 10.0, side, 40.0, (12, 26), (24.0, 34.0), (24.0, 32.0), (12.0, 30.0),
+             ("office", "apartments", "office"), pastels)
+        _row(op, rng, tow0 + 40.0, tow1 - 40.0, side, 96.0, (16, 30), (26.0, 34.0), (26.0, 34.0), (40.0, 90.0),
+             ("office", "apartments"), pastels)
+    if lay["towers_m"]:
+        op.node(*op.point((tow0 + tow1) / 2.0, inside * 12.0),
+                {"place": "quarter", "name": plan.place("lagune_tours", 0)})
+    # Quartier des villas : maisons basses et espacées dans leurs jardins, petits immeubles au second rang.
+    for side in (inside, out) if lay["villas_m"] else ():
+        _row(op, rng, vil0, vil1, side, 14.0, (1, 2), (11.0, 18.0), (9.0, 13.0), (9.0, 20.0),
+             ("house", "house", "detached", "retail"), pastels, cafes, 14)
+        _row(op, rng, vil0 + 10.0, vil1 - 10.0, side, 44.0, (3, 5), (16.0, 24.0), (12.0, 16.0), (14.0, 34.0),
+             ("apartments",), pastels)
+        _veg(op, vil0 + 20.0, vil1 - 20.0, side, 70.0, 150.0, {"leisure": "park"})
+    if lay["villas_m"]:
+        op.node(*op.point((vil0 + vil1) / 2.0, out * 10.0),
+                {"place": "quarter", "name": plan.place("lagune_villas", 0)})
 
 
 # --- Tour des nouveaux paysages (lot DB1) : un décor par bloc, choisi par le paysage du bloc ou son biome ---
@@ -1331,9 +1380,12 @@ LOOPS = {
     "lagune": {"length_m": LAGUNE_M, "lobes": LAGUNE_LOBES, "biome": LAGUNE_BIOME, "relief": lagune_relief,
                "variant": LAGUNE_VARIANT, "sides": False, "sea": LAGUNE_SEA, "sea_band": CORNICHE_SEA_BAND_M,
                "shore": "sand"},
+    "lagune_recette": {"length_m": LAGUNE_RECETTE_M, "lobes": LAGUNE_LOBES, "biome": LAGUNE_BIOME,
+                       "relief": lagune_recette_relief, "variant": LAGUNE_VARIANT, "sides": False,
+                       "sea": LAGUNE_RECETTE_SEA, "sea_band": CORNICHE_SEA_BAND_M, "shore": "sand"},
 }
 LOOP_BLOCKS = {"circuit": _circuit, "recif": _recif, "volcan": _volcan, "corniche": _corniche, "vignes": _vignes,
-               "lagune": _lagune}
+               "lagune": _lagune, "lagune_recette": _lagune}
 
 
 def tour_blocks(which: str) -> tuple[tuple[str, ...], tuple[dict | None, ...] | None]:
@@ -1662,7 +1714,7 @@ def main(argv: list[str] | None = None) -> int:
     what.add_argument("--vignes", action="store_true",
                       help="la Route des Vignes (lot GP13b, Grand Prix) : boucle sinueuse de 5 km dans les vignes")
     what.add_argument("--lagune", action="store_true",
-                      help="l'Avenue de la Lagune (lot NV6) : boucle plate de 5 km en ville néon, la mer sur le front de mer")
+                      help="l'Avenue de la Lagune (lot NV6) : boucle plate de 15 km en ville néon, la mer sur le front de mer")
     what.add_argument("--demo-set", action="store_true", help="les parcours de demo-biomes (le tour gravel en plus avec --recette)")
     parser.add_argument("--gravel", action="store_true", help="un tiers de la route en gravel ou dirt")
     parser.add_argument("--sea", action="store_true", help="côte inventée et mer le long du biome coast")
