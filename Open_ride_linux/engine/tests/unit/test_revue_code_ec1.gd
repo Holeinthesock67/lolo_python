@@ -7,6 +7,7 @@ extends SceneTree
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
+const FeedbackModel := preload("res://scripts/feedback_model.gd")
 
 const ROGUE_CONFIG := {"w_prime_j": 20000.0, "w_prime_estimate_j": 18400.0, "cp_w": 220.0,
 	"objectives": ["endurance", "threshold", "vo2max"], "durations_min": [30, 45, 60, 90]}
@@ -84,6 +85,7 @@ func _run() -> void:
 	_test_run_without_answer()
 	_test_tag_filter_of_shown_list()
 	_test_ride_ended_by_error()
+	_test_end_hint_cleared_by_error()
 	print("test_revue_code_ec1 : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -227,3 +229,17 @@ func _test_ride_ended_by_error() -> void:
 	var h = _flow()
 	h.on_state({"session_state": "ERROR", "summary": {"duration_s": 1.0}})
 	_check(h.state()["screen"] == "home" and h.summary.is_empty(), "erreur hors séance : rien ne change")
+
+
+## E4-02 : la consigne de fin d'une séance arrêtée par une erreur ne reste pas pour la séance suivante.
+func _test_end_hint_cleared_by_error() -> void:
+	var fb = FeedbackModel.new()
+	fb.on_state({"session_state": "READY"}, 0.0)
+	fb.on_state({"session_state": "RUNNING"}, 1.0)
+	fb.result("place", "2e sur 8", "Bien joué", 2.0, "COURSE FINIE")
+	_check(fb.is_done(), "issue annoncée : consigne de fin posée")
+	fb.on_state({"session_state": "ERROR"}, 3.0)
+	_check(not fb.is_done(), "fin en erreur : consigne de fin effacée")
+	fb.on_state({"session_state": "READY"}, 4.0)
+	fb.on_state({"session_state": "RUNNING"}, 5.0)
+	_check(not fb.is_done(), "séance suivante : pas de « COURSE FINIE » de la séance d'avant")
