@@ -30,3 +30,6 @@
 1.35 | PP3 | « Ma puissance », `list_power_curve` et `power_curve` (fusionnée après la 1.36)
 1.36 | SV1 | copies automatiques du profil, `list_profile_backups`, `restore_profile_backup`, `profile_backups`
 1.37 | DG1 | fichier de diagnostic, `create_diagnostic` et `diagnostic`
+1.38 | BA1 | geste des bots `move`
+1.39 | R28 | `rogue.target_pct` = plage jugée, bas = la consigne qui gagne, `in_target` entre à cette consigne
+1.40 | CH6 | palmarès de la ligue d'hiver, `league.history`

@@ -816,6 +816,25 @@ def svg_chart(rows: list[dict[str, Any]], title: str, series: tuple[tuple[str, s
     return "".join(parts)
 
 
+SHADERS_MARK = "shaders.txt"   # lot BF2 : « froid » ou « chaud », posé par le banc à côté de moteur.csv
+SHADER_MODES = ("chaud", "froid", "froid-pilote", "froid-godot")
+
+
+def write_shaders_mark(directory: Path, mode: str) -> None:
+    """Note à côté de la sonde l'état des caches de shaders au départ (lot BF2, banc des menus)."""
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / SHADERS_MARK).write_text(mode + "\n", encoding="utf-8")
+
+
+def read_shaders_mark(directory: Path) -> str | None:
+    """État des caches noté par le banc (`write_shaders_mark`), ou None (pas de marque, ou marque inconnue)."""
+    try:
+        mode = (directory / SHADERS_MARK).read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return mode if mode in SHADER_MODES else None
+
+
 def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de performance du moteur",
                  real_window: bool = True, engine_dir: Path | None = None, shaders: str = "chaud") -> dict[str, Any]:
     """Écrit sonde.csv, sonde.txt et rapport.html dans `out` ; renvoie le résumé. Avec `engine_dir` (dossier
@@ -898,7 +917,8 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
         print()
     sampler.stop()
     rows = merge(read_engine_csv(engine_csv), sampler.rows)
-    summary = write_report(rows, out, engine_dir=engine_csv.parent)
+    summary = write_report(rows, out, engine_dir=engine_csv.parent,
+                           shaders=read_shaders_mark(engine_csv.parent) or "chaud")
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
     print(f"Rapport : {out / 'rapport.html'}")
     return max(_quality_verdict(summary, quality), _budget_verdict(summary, budgets))
@@ -948,6 +968,9 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--quality", help="préréglage voulu : échec si une seconde a été mesurée dans un autre (lot X32)")
     r.add_argument("--budgets", action="store_true", help="code 1 si un budget de perf_targets.json est dépassé (lot X14)")
     r.add_argument("--xvfb", action="store_true", help="mesure sous Xvfb : budgets en INFO")
+    r.add_argument("--shaders", choices=SHADER_MODES,
+                   help="caches de shaders au départ (défaut : marque shaders.txt du banc à côté de la sonde, sinon "
+                        "chaud) ; à froid, départ jugé à cold_start_freeze_ms (lot BF2)")
     c = sub.add_parser("chauffe", help="temps GPU, charge, température et fréquence par tranche (dossier ou sonde.csv)")
     c.add_argument("source", type=Path)
     c.add_argument("--tranche-min", type=float, default=10.0, help="durée d'une tranche en minutes (défaut 10)")
@@ -964,7 +987,10 @@ def main(argv: list[str] | None = None) -> int:
         print(heat_text(heat_windows(rows, args.tranche_min * 60.0)), end="")
         return 0
     out = args.out or (args.source if args.source.is_dir() else args.source.parent)
-    summary = write_report(rows, out, real_window=not args.xvfb, engine_dir=src.parent)
+    shaders = args.shaders or read_shaders_mark(src.parent) or "chaud"
+    print(f"Caches de shaders au départ : {shaders}"
+          + ("" if args.shaders else " (marque du banc)" if read_shaders_mark(src.parent) else " (par défaut)"))
+    summary = write_report(rows, out, real_window=not args.xvfb, engine_dir=src.parent, shaders=shaders)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
     return max(_quality_verdict(summary, args.quality), _budget_verdict(summary, args.budgets))
 
