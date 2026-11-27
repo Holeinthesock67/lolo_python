@@ -453,6 +453,9 @@ def test_session_finish_attaches_summary_collection(tmp_path, monkeypatch):
                 avg_power = 180.0
             return None, S(), None
 
+        def close_session(self, save=True, ts=None, private_start_m=0.0):   # fin de séance sans FIT (revue S1-02)
+            return self.finish(save, ts, private_start_m)
+
     s._rec = DummyRecorder()
     s._finish(save=True)
     assert s.state.summary is not None

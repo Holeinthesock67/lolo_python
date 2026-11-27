@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Ligue d'hiver : Dernier survivant, Grand Prix et élimination en manche | Python | CH3a, CH3c | Moyenne | En revue |
+| Ligue d'hiver : Dernier survivant, Grand Prix et élimination en manche | Python | CH3a, CH3c | Moyenne | **Livré le 24 novembre** (PR #1034) |
 
 Série CH (ligue d'hiver). Fait suite à CH3a (manche 1, Course en tours) et à CH3c (correctifs de la revue F1).
 Échéance : avant le dimanche 6 décembre au soir (fin de la semaine 2, Dernier survivant). Sinon la semaine est
@@ -47,3 +47,7 @@ modes. Le message `league` portait déjà `round.mode` et `round.terrain`.
     `arrivee_cote`, une boucle sinon ;
   - griser « Démarrer » avec une raison écrite.
 - La classique (CH5), ainsi que le podium et le trophée (CH4b).
+
+## Livraison
+
+Fusionné dans `main` le 24 novembre 2026 (PR #1034), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En revue »).

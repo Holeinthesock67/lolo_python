@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| HUD sans éléments inutiles ni doublons : ligne d'état technique, case CIBLE ERG, encart du vent, PENTE au vélodrome, vitesse en double au Cyber-Rogue, jauge d'abri des bots | GDScript, Python | P16, P17, VD9, R23 | Petite | En revue, **version 2.0** |
+| HUD sans éléments inutiles ni doublons : ligne d'état technique, case CIBLE ERG, encart du vent, PENTE au vélodrome, vitesse en double au Cyber-Rogue, jauge d'abri des bots | GDScript, Python | P16, P17, VD9, R23 | Petite | **Livré le 22 novembre** (PR #963) |
 
 ## 1. Constat
 

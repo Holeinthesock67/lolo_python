@@ -126,6 +126,7 @@ const LeagueViewModel := preload("res://scripts/league_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 const DiagnosticViewModel := preload("res://scripts/diagnostic_view_model.gd")   # lot DG1
 
+const OW_PREFIX := "ow:"   # balade du monde ouvert : pas un parcours du catalogue
 const SUMMARY := "summary"
 const CONNECT := "connect"
 const PAIRING := PairingViewModel.SCREEN
@@ -279,12 +280,18 @@ var wtf = WtfRulesModel.new()
 var gp_items = GpItemsMenuModel.new()
 ## `start_run` accusé par le core depuis le dernier lancement : l'écran d'attente peut céder la place à Prêt.
 var _rogue_acked := false
+## Vrai entre l'envoi de `start_run` et le départ : le core a peut-être une run préparée, donc plus de parcours.
+var _run_prepared := false
+## Vrai tant que le bilan affiché est celui d'une séance arrêtée par une erreur (état ERROR du core).
+var _error_summary := false
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
 var garage = GarageViewModel.new()
 ## Bilan de progression de la séance (lot V9) : dernier message `xp_result` ({} sans), et qu'il a déjà été annoncé.
 var progress = ProgressViewModel.new()
 var xp_result: Dictionary = {}
 var _xp_announced := false
+## Fichier des records imposé (tests visuels, `OPENRIDE_RECORDS_FILE`) ; vide : celui du profil en cours
+## (`records_file()`, lot EC9).
 var records_path := ""
 var _record_segment := ""
 var _record_bonus := false
@@ -379,7 +386,7 @@ func _init() -> void:
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
-	menu.add_screen({"id": RogueMenuModel.LOADING, "title": "Composition de la run…", "on_back": "", "items": []})
+	menu.add_screen({"id": RogueMenuModel.LOADING, "title": "Composition de la run…", "on_back": RogueMenuModel.SCREEN, "items": []})
 	menu.set_screen_items(RogueMenuModel.LOADING, [{"id": "wait", "label": "Composition de la run…", "enabled": false}])
 	menu.add_screen({"id": WtfRulesModel.SCREEN, "title": "Mode WTF", "on_back": MenuModel.HOME, "items": []})
 	_refresh_wtf()
@@ -484,9 +491,13 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	if not connect_done and menu.current_screen() == CONNECT:
 		_update_connect(with_devices(state), now_s)
 	var rid = state.get("route_id", null)
-	if rid != null and str(rid) != "" and str(rid) != menu.world_id:
+	# Balade du monde ouvert (`ow:<id>`) : ce n'est pas un parcours du catalogue, le menu garde le sien
+	# (revue de code E2-01 : « Menu principal » demandait ensuite au core un parcours introuvable).
+	if rid != null and str(rid) != "" and str(rid) != menu.world_id and not str(rid).begins_with(OW_PREFIX):
 		menu.set_world(str(rid), str(route_names.get(str(rid), rid)))
-	if st == "FINISHED" and state.get("summary") is Dictionary:
+	# Séance finie par une erreur (contrôle du trainer refusé) : le core l'a enregistrée, son bilan est dans la trame.
+	var failed_ride: bool = st == "ERROR" and (session_state in ["RUNNING", "PAUSED"] or _error_summary)
+	if (st == "FINISHED" or failed_ride) and state.get("summary") is Dictionary:
 		# Courbe du bilan (lot N20) retirée d'une trame trop lourde par le core (allègement) : la dernière reçue reste.
 		var kept = summary.get("power_profile", null) if session_state == "FINISHED" else null
 		summary = state["summary"]
@@ -501,14 +512,22 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 				if workout_done:   # entraînement fini : Y puis A maintenu termine et enregistre
 					menu.focus_item("end_save")
 			"FINISHED":
-				show_details = false
-				ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
-				summary_message = ""   # résultat du test au bandeau du bilan (summary_view.gd, lot N20)
-				_refresh_summary()
-				menu.open_screen(SUMMARY)
+				_open_summary()
+			"ERROR":
+				# Revue de code E2-05 : sans cela le menu réaffichait « Pause » ou « Prêt » aux actions sans effet.
+				if prev in ["RUNNING", "PAUSED"]:
+					if state.get("summary") is Dictionary:
+						_error_summary = true
+						_open_summary()
+					else:
+						menu.reset()
 			"IDLE", "READY":
 				if prev in ["RUNNING", "PAUSED"]:
 					menu.reset()
+		if st != "ERROR":
+			_error_summary = false
+		if st == "RUNNING":
+			_run_prepared = false
 		if st != "FINISHED":
 			xp_result = {}
 			_xp_announced = false
@@ -522,6 +541,15 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 		_lists_requested = true
 		out.append({"action": "list"})
 	return out
+
+
+## Bilan de fin de séance ouvert (séance finie, ou arrêtée par une erreur avec son bilan).
+func _open_summary() -> void:
+	show_details = false
+	ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
+	summary_message = ""   # résultat du test au bandeau du bilan (summary_view.gd, lot N20)
+	_refresh_summary()
+	menu.open_screen(SUMMARY)
 
 
 ## Trame complétée du dernier objet `devices` reçu (affichage des appareils à chaque image).
@@ -704,6 +732,14 @@ func on_error(code: String, text: String) -> void:
 		_refresh_pairing()
 
 
+## Commande abandonnée sans accusé du core (3 s). Revue de code E2-04 : l'attente de la run n'avait pas de sortie.
+func on_command_failed(cmd_name: String) -> void:
+	if cmd_name == "start_run" and menu.current_screen() == RogueMenuModel.LOADING:
+		rogue.message = "Échec : le core n'a pas répondu. Relance la run."
+		_refresh_rogue()
+		menu.open_screen(RogueMenuModel.SCREEN)
+
+
 func on_command_acked(cmd_name: String) -> void:
 	if cmd_name == "start_run":
 		_rogue_acked = true
@@ -779,7 +815,11 @@ func _cycle_routes(item_id: String) -> void:
 	if item_id == MenuModel.SORT_ROUTES_ID:
 		route_sort = (route_sort + 1) % CatalogModel.ROUTE_SORTS.size()
 	else:
-		var tags: Array = [""] + CatalogModel.route_tags(routes_raw)
+		# Étiquettes de la liste affichée (revue de code E2-03) : celles d'un parcours d'un autre mode remettaient
+		# le filtre à « toutes », et les étiquettes classées après elles restaient hors d'atteinte.
+		var by_mode: Dictionary = CatalogModel.mode_route_ids(routes_raw, menu.mode_routes)
+		var shown: Array = CatalogModel.routes_of_mode(routes_raw, by_mode, menu.routes_mode, menu.free_route_tag)
+		var tags: Array = [""] + CatalogModel.route_tags(shown)
 		route_tag = tags[(tags.find(route_tag) + 1) % tags.size()]
 	set_routes(routes_raw)
 	menu.focus_item(item_id)
@@ -1284,10 +1324,32 @@ func handle(event: String) -> Dictionary:
 	if pick != "":   # parcours du mode, ou retour au parcours libre (lot GP13) : envoyé au core
 		var route_act := {"action": "select_route", "route_id": pick}
 		act = route_act if act.is_empty() else {"action": "sequence", "list": [act, route_act]}
+	act = _restore_route_after_run(act)
 	if menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league":
 		_refresh_mode_ready()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
 	_note_launch_of(act)
 	return act
+
+
+## Run Cyber-Rogue préparée puis quittée pour un autre mode (revue de code E2-02) : le core a retiré son parcours
+## en composant la run, le menu lui renvoie le sien ; sans cela la séance partait sans parcours côté core.
+func _restore_route_after_run(act: Dictionary) -> Dictionary:
+	if not _run_prepared:
+		return act
+	var parts: Array = [act] if act.get("action", "") != "sequence" else act.get("list", [])
+	for a in parts:
+		if a is Dictionary and str(a.get("action", "")) in ["select_route", "start_run"]:
+			_run_prepared = str(a["action"]) == "start_run"
+			return act
+	if menu.mode == "rogue" or menu.current_screen() in [RogueMenuModel.SCREEN, RogueMenuModel.LOADING, MenuModel.CONFIRM]:
+		return act   # la run est encore celle que le joueur prépare
+	if menu.world_id == "" or menu.world_id.begins_with(OW_PREFIX):
+		return act
+	_run_prepared = false
+	var route_act := {"action": "select_route", "route_id": menu.world_id}
+	if act.is_empty():
+		return route_act
+	return {"action": "sequence", "list": parts + [route_act]}
 
 
 ## Lancement envoyé par le menu (seul ou dans une séquence) : retenu pour « Rejouer ». Le « Démarrer » du
@@ -1645,7 +1707,7 @@ func _leave_summary() -> void:
 
 ## Le core reste en FINISHED jusqu'au prochain select_route : listes redemandées, monde choisi rechargé.
 func _reload_world() -> Dictionary:
-	if menu.world_id != "":
+	if menu.world_id != "" and not menu.world_id.begins_with(OW_PREFIX):
 		return {"action": "list", "route_id": menu.world_id}
 	return {"action": "list"}
 
@@ -2060,6 +2122,7 @@ func _handle_rogue(item_id: String) -> Dictionary:
 
 func _launch_rogue(act: Dictionary) -> Dictionary:
 	_rogue_acked = false
+	_run_prepared = true
 	menu.open_screen(RogueMenuModel.LOADING)
 	return act
 
@@ -2559,11 +2622,20 @@ func shown_summary() -> Dictionary:
 	return history.detail if menu.current_screen() == HistoryViewModel.SESSION else summary
 
 
+## Fichier des records lu par l'écran (lot EC9, constat E12-01) : `records_path` s'il est imposé, sinon
+## celui du profil en cours (`profiles.current_id()` : dernier annoncé par le hello ou `profiles`), où le core écrit depuis
+## les profils ; sans profil : l'ancien `~/OpenRide/records.json`.
+func records_file() -> String:
+	if records_path != "":
+		return records_path
+	return RecordsViewModel.default_path(profiles.current_id())
+
+
 ## Écrans des records (lot T10) : « Records du parcours » (écran Prêt) relit le fichier et liste les
 ## segments ; un segment ouvre sa table « sans bonus » ; « A : voir les temps avec bonus » bascule.
 func _handle_records(screen: String, item_id: String) -> void:
 	if screen == MenuModel.READY and item_id == "records":
-		records.load_file(records_path)
+		records.load_file(records_file())
 		var title: String = "Records : " + (menu.world_name if menu.world_name != "" else menu.world_id)
 		menu.set_screen_items(RECORDS, records.segment_items(menu.world_id), title)
 		menu.push_screen(RECORDS)

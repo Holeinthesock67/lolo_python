@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Records de puissance de la séance au bilan, signal « FTP à revoir » (proposition seulement) | Python + GDScript | PP1, PP2, PP3 | Petite | PR ouverte le 21 novembre (série PP, 6.0) |
+| Records de puissance de la séance au bilan, signal « FTP à revoir » (proposition seulement) | Python + GDScript | PP1, PP2, PP3 | Petite | **Livré le 26 novembre** (PR #976) |
 
 ## 1. Objectif
 

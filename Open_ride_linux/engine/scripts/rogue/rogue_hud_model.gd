@@ -21,8 +21,9 @@ const POSTURE_TOKEN := {"ROC": "gold", "FLUIDE": "neutral", "VELOCE": "glitch", 
 ## Phases sans salle : une ligne dit ce qui se passe (recette R14 du 8 novembre : l'échauffement muet de 6 min
 ## passait pour un blocage).
 ## Phases où le Firewall poursuit le joueur ; ailleurs le core envoie un écart nul, ni affiché ni en rouge
-## (recette R14 : « FW 0 m » rouge pendant l'échauffement).
-const FIREWALL_PHASES := ["ROOM", "BOSS", "RECOVERY"]
+## (recette R14 : « FW 0 m » rouge pendant l'échauffement). Revue de code E10-06 : la récupération n'en est plus :
+## le mur y est arrêté (écart figé à 0 pendant 60 s), ce n'est pas un contact.
+const FIREWALL_PHASES := ["ROOM", "BOSS"]
 const PHASE_TEXT := {"WARMUP": "Échauffement : roule souple, la première salle arrive",
 	"COOLDOWN": "Retour au calme : roule souple jusqu'au bilan"}
 
@@ -54,6 +55,11 @@ func set_loot(msg: Dictionary) -> void:
 
 func is_active() -> bool:
 	return _active
+
+
+## Vrai sans message `loot` reçu (revue E10-01 : offre ouverte après une relance, à redemander au core).
+func missing_loot() -> bool:
+	return _loot.is_empty()
 
 
 func values() -> Dictionary:

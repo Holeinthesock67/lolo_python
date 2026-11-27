@@ -191,6 +191,23 @@ func _run() -> void:
 	scene.apply_camera(cam, Vector3.ZERO, 0.0, 1.0)
 	_check(is_equal_approx(cam.global_position.y, 1.4 * M.FOLLOW_HOP) and is_equal_approx(scene.rider_scale(), 1.0),
 		"Lune : la caméra suit le bond, cycliste rendu à sa taille")
+	# E11-06 : séance arrêtée pendant « Monde à l'envers » et « Vélo minuscule » : le nettoyage de fin (main.gd,
+	# step sans route) remet roulis, vue imposée et taille à la normale, sans attendre la séance suivante
+	scene.step(_ev({"id": "upside_down"}), route, 100.0, Callable(), sun)
+	scene.apply_camera(cam, Vector3.ZERO, 0.0, 1.0)
+	_check(is_equal_approx(scene.test_info()["roll_deg"], 180.0), "monde à l'envers en cours")
+	scene.step({}, null, 0.0, Callable(), sun)
+	_check(is_equal_approx(scene.test_info()["roll_deg"], 0.0), "fin de séance : roulis remis à zéro")
+	scene.step(_ev({"id": "camera", "view": "pigeon"}), route, 100.0, Callable(), sun)
+	scene.apply_camera(cam, Vector3.ZERO, 0.0, 1.0)
+	scene.step({}, null, 0.0, Callable(), sun)
+	_check(not scene.forced_camera(), "fin de séance : plus de vue du pigeon")
+	scene.step(tiny, route, 100.0, Callable(), sun)
+	scene.apply_camera(cam, Vector3.ZERO, 0.0, 1.0)
+	_check(is_equal_approx(scene.rider_scale(), M.TINY_RIDER_SCALE), "vélo minuscule en cours")
+	scene.step({}, null, 0.0, Callable(), sun)
+	_check(is_equal_approx(scene.test_info()["roll_deg"], 0.0) and not scene.forced_camera() and is_equal_approx(scene.rider_scale(), 1.0),
+		"fin de séance : roulis, vue imposée et taille remis à zéro (%s)" % str(scene.test_info()))
 	var cow_node: MeshInstance3D = WtfScene._make("cow")
 	_check(cow_node.mesh.get_surface_count() == 1 and (cow_node.material_override as StandardMaterial3D).vertex_color_use_as_albedo,
 		"vache en un seul maillage à couleurs : un appel de dessin")

@@ -38,7 +38,10 @@ func _rogue(over: Dictionary = {}) -> Dictionary:
 
 func _run() -> void:
 	var g = GuideModel.new()
-	var st := {"route_length_m": 1120.0, "v": 8.0}
+	# Trame comme le vrai core l'envoie en mode Rogue : `route_length_m` nul ; la longueur de la salle vient du message
+	# `room` (revue de code E10-02 : les tests posaient 1120 m dans la trame, « N m restants » ne s'affichait jamais en jeu).
+	var st := {"route_length_m": null, "v": 8.0}
+	g.set_room(3, [], 1120.0)
 
 	# Échauffement : compte à rebours, étapes à venir, consigne de puissance, boutons sans Z.
 	var warm := _rogue({"phase": "WARMUP", "phase_left_s": 222.0, "room_index": 1, "target_pct": {"lo": 55, "hi": 65},
@@ -73,7 +76,7 @@ func _run() -> void:
 	# Objets devant : la consigne du bas parle du plus proche, avec sa distance.
 	g.set_room(3, [{"kind": "strike_target", "s_m": 540.0, "len_m": 0.0, "param": null},
 		{"kind": "arch", "s_m": 700.0, "len_m": 0.0, "param": "down"},
-		{"kind": "tunnel", "s_m": 900.0, "len_m": 60.0, "param": 92.0}])
+		{"kind": "tunnel", "s_m": 900.0, "len_m": 60.0, "param": 92.0}], 1120.0)
 	o = g.compute(st, _rogue(), 92.0, [])
 	_check(o["hint"] == "Cible Z dans 40 m : appuie sur Z quand la roue passe sur l'anneau", "cible Z dans 40 m")
 	o = g.compute(st, _rogue({"s_room": 540.0, "adrenaline": 60.0}), 92.0, [])

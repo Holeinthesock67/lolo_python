@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Le Grand Prix des objets se court sur une boucle seulement : départ refusé en ligne, liste du mode réduite aux boucles étiquetées, réglage « Distance en ligne » retiré, bancs sur le Circuit des Prés ; Récif, Volcan et Grand Nord au Grand Prix en restant libres (étiquette `libre`, révision IPC 1.24) | Python, GDScript, JSON | GP13, GP13b | Petite | En cours (20 novembre) |
+| Le Grand Prix des objets se court sur une boucle seulement : départ refusé en ligne, liste du mode réduite aux boucles étiquetées, réglage « Distance en ligne » retiré, bancs sur le Circuit des Prés ; Récif, Volcan et Grand Nord au Grand Prix en restant libres (étiquette `libre`, révision IPC 1.24) | Python, GDScript, JSON | GP13, GP13b | Petite | **Livré le 24 novembre** (PR #942) |
 
 Demande du propriétaire (fil GP13b, 20 novembre à 0 h 56, lancée le 20 novembre à 17 h 53) : le Grand Prix des objets ne se joue plus que sur des boucles. Principe du propriétaire : pas d'exception, tout reste cohérent. Branche partie de celle de GP13b (#932, parcours Corniche et Vignes, déjà en boucle), avec `main` fusionné.
 
@@ -60,3 +60,7 @@ done
 Et le scénario de menus des démonstrations (`menu_bench.py --scenario parcours_demo`, une qualité suffit).
 
 Captures à valider (décision du propriétaire du 20 novembre : menus seulement, les bancs de rendu servent aux mesures) : `gp9_pret_boucle` et `gp9_pret` (écran Prêt sans « Distance en ligne », « 3 tours, 0,8 km » puis « 2 tours, 0,5 km ») ; `pret_gp_demo-recif`, `pret_gp_demo-volcan` et `pret_gp_demo-biomes-nord` (écran Prêt du Grand Prix sur les trois boucles restées libres).
+
+## Livraison
+
+Fusionné dans `main` le 24 novembre 2026 (PR #942), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En cours (20 novembre) »).
