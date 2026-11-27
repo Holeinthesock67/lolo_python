@@ -152,13 +152,22 @@ DEMO_SET = (("demo-biomes-paysages", "Tour des nouveaux paysages", "paysages", F
             ("demo-alpages", "Route des Alpages", "alpine", False, False, True),
             ("demo-littoral", "Route du Littoral", "coast", False, True, True),
             ("demo-jungle", "Route de la Jungle", "jungle", False, False, True),
-            ("demo-savane", "Route de la Savane", "savanna", False, False, True))
+            ("demo-savane", "Route de la Savane", "savanna", False, False, True),
+            ("demo-landes", "Route des Landes", "atlantic_heath", False, False, True),
+            ("demo-canyons", "Route des Canyons", "rock_desert", False, False, True),
+            ("demo-dunes", "Route des Dunes", "sand_desert", False, False, True),
+            ("demo-delta", "Route du Delta", "wetland", False, False, True),
+            ("demo-taiga", "Route de la Taïga", "boreal_forest", False, False, True),
+            ("demo-bush", "Route du Bush", "eucalypt_woodland", False, False, True),
+            ("demo-grands-cedres", "Route des Grands Cèdres", "temperate_rainforest", False, False, True),
+            ("demo-nuages", "Route des Nuages", "cloud_forest", False, False, True))
 # Lot DPB1 : démonstrations d'un seul biome du jeu de base, absentes de la variante de recette (les bancs gardent
 # leur jeu de parcours d'avant). Leur profil de 40 km (`LINE_PROFILES`) remplace la pente moyenne du biome, qui, tenue
 # sur 40 km, aurait donné 3 000 m de montée à l'alpin et mené la jungle sous la mer : tronçons (longueur en km, pente
 # en %), fondus sur `PROFILE_RAMP_M`, les ondulations du biome (`GRADE` moins sa moyenne) par-dessus. Le dernier
 # tronçon va jusqu'à l'arrivée.
-GAME_ONLY = frozenset({"demo-alpages", "demo-littoral", "demo-jungle", "demo-savane"})
+GAME_ONLY = frozenset({"demo-alpages", "demo-littoral", "demo-jungle", "demo-savane", "demo-landes", "demo-canyons",
+                       "demo-dunes", "demo-delta", "demo-taiga", "demo-bush", "demo-grands-cedres", "demo-nuages"})
 LINE_PROFILES = {
     # vallée, premier col, descente, replat, puis la grande montée finale vers le col (sommet du parcours)
     "alpine": ((8, 2.0), (7, 6.5), (5, -5.0), (6, 1.0), (8, 7.0), (6, 4.0)),
@@ -166,6 +175,19 @@ LINE_PROFILES = {
     "jungle": ((6, 3.0), (4, -3.0), (6, 2.0), (6, -2.0), (6, 3.0), (6, -3.0), (6, 1.0)),
     # savane en faux plats
     "savanna": ((8, 1.5), (4, -1.5), (8, 2.0), (4, -2.0), (8, 1.5), (8, 0.5)),
+    # landes ondulées
+    "atlantic_heath": ((6, 1.5), (4, -1.5), (6, 2.0), (4, -1.0), (6, 1.5), (4, -2.0), (10, 1.0)),
+    # fond de canyon : remontées et descentes entre les parois
+    "rock_desert": ((6, 2.5), (4, -2.0), (8, 3.0), (4, -3.0), (8, 2.5), (10, 1.0)),
+    # taïga : longues montées douces
+    "boreal_forest": ((6, 2.5), (4, -2.0), (6, 3.0), (4, -2.5), (6, 2.5), (4, -2.0), (10, 1.5)),
+    # bush en collines basses
+    "eucalypt_woodland": ((6, 2.0), (4, -2.0), (6, 2.5), (4, -2.0), (6, 2.0), (4, -1.5), (10, 1.0)),
+    # forêt pluviale : côtes franches sous les grands conifères
+    "temperate_rainforest": ((6, 4.0), (4, -3.0), (6, 4.5), (4, -3.5), (6, 4.0), (4, -2.0), (10, 3.0)),
+    # forêt de nuages : la montée finit au col des Nuages (sommet du parcours)
+    "cloud_forest": ((8, 3.0), (4, -3.0), (8, 5.0), (4, -2.0), (8, 5.5), (8, 4.0)),
+    # désert de sable et delta : pas de pente moyenne, pas de profil (pente `GRADE` du biome)
 }
 PROFILE_RAMP_M = 400.0
 # Tour des nouveaux paysages (lot DB1) : par bloc de 2 km, (biome, paysage du lot U25, sol, toits) ; le paysage,
@@ -211,7 +233,10 @@ NORD_CLIMB_M = 120.0         # du départ (taïga) à la banquise ; pente au plu
 NORD_HILLS_M = 35.0          # collines loin de la route (moraines, croupes de la toundra)
 # Variante régionale des parcours d'un seul biome (lot DJ1) : celle que le compilateur donne à une vraie route de
 # la région (zones `japon_*` de data/regional_variants.toml : sol basalte, toits kawara, test_japon_demo).
-BIOME_VARIANTS = {"japan": {"ground": "basalte", "roofs": "kawara", "landscape": None}}
+BIOME_VARIANTS = {"japan": {"ground": "basalte", "roofs": "kawara", "landscape": None},
+                  # lot DPB1 : le désert de roche n'a de décor que dans son paysage de canyon (lot U25, comme au tour des
+                  # nouveaux paysages)
+                  "rock_desert": {"ground": "gres_rose", "roofs": None, "landscape": "canyon"}}
 # Circuit de démonstration (lot O38) : boucle de 3 km (un tour de 5 à 7 minutes), prairie, départ au hameau.
 CIRCUIT_M = 3000.0
 CIRCUIT_BIOME = "temperate_grassland"
@@ -289,6 +314,22 @@ DEMO_LIBRARY = {
                     "tags": ["biome"]},
     "demo-savane": {"description": "{km} km de faux plats dans la savane, entre baobabs, acacias et villages.",
                     "tags": ["biome"]},
+    "demo-landes": {"description": "{km} km dans les landes atlantiques, entre bruyères, ajoncs et hameaux de granit.",
+                    "tags": ["biome"]},
+    "demo-canyons": {"description": "{km} km au fond des canyons rouges, entre parois de grès et ranchs.",
+                     "tags": ["biome"]},
+    "demo-dunes": {"description": "{km} km dans les dunes du désert, d'oasis en oasis.", "tags": ["biome"]},
+    "demo-delta": {"description": "{km} km à plat dans le delta, entre mares, chenaux et villages sur pilotis.",
+                   "tags": ["biome"]},
+    "demo-taiga": {"description": "{km} km dans la taïga, de lac en lac, entre cabanes de rondins et conifères.",
+                   "tags": ["biome"]},
+    "demo-bush": {"description": "{km} km de collines dans le bush à eucalyptus, de ferme en ferme.",
+                  "tags": ["biome"]},
+    "demo-grands-cedres": {"description": "{km} km de côtes sous les grands douglas et thuyas de la forêt pluviale, "
+                                          "de cascade en cascade.",
+                           "tags": ["biome"]},
+    "demo-nuages": {"description": "{km} km de montée dans la forêt de nuages, de finca en finca, jusqu'au col.",
+                    "tags": ["biome"]},
 }
 
 
@@ -351,8 +392,10 @@ PLACE_NAMES = {
     # Tour des nouveaux paysages (lot DB1) : trois blocs par biome depuis le lot DL1 (`LINE_MIN_M`), un nom par bloc.
     "fjord": ("Port-Bouleau", "Anse des Phoques", "Port-Saumon"),
     "fjord_vue": ("Belvédère du Fjord", "Pointe des Eiders", "Belvédère de la Cascade"),
-    "lande": ("Hameau des Murets", "Hameau des Bruyères", "Hameau du Menhir"),
-    "lande_vue": ("Pointe des Ajoncs", "Pointe du Calvaire", "Pointe des Courlis"),
+    "lande": ("Hameau des Murets", "Hameau des Bruyères", "Hameau du Menhir", "Hameau des Genêts",
+              "Hameau du Dolmen", "Hameau des Chaumes", "Hameau de la Fontaine"),
+    "lande_vue": ("Pointe des Ajoncs", "Pointe du Calvaire", "Pointe des Courlis", "Pointe des Korrigans",
+                  "Pointe du Moulin à Vent", "Pointe des Pluviers", "Pointe de la Lande Haute"),
     "rizieres": ("Village des Rizières", "Village des Terrasses", "Village des Buffles"),
     # Route des Érables (lot DJ1) : vingt blocs `japan` depuis le lot DL1 ; le belvédère du dernier bloc est le sommet
     # du parcours (`SUMMIT_KEYS`), les noms des autres blocs reviennent tous les 18 à 20 km.
@@ -363,7 +406,8 @@ PLACE_NAMES = {
                   "Belvédère des Cascades", "Belvédère des Grues", "Belvédère du Jardin de Mousse",
                   "Belvédère des Rizières", "Belvédère du Pont Rouge", "Belvédère des Lucioles"),
     "volcan": ("Cratère des Fumerolles", "Cratère des Cendres", "Cratère du Soufre"),
-    "canyon": ("Belvédère du Canyon Rouge", "Belvédère des Arches", "Belvédère des Cheminées"),
+    "canyon": ("Belvédère du Canyon Rouge", "Belvédère des Arches", "Belvédère des Cheminées", "Belvédère des Mesas",
+               "Belvédère de la Gorge Étroite", "Belvédère des Buttes", "Belvédère du Rocher Percé"),
     "plateau": ("Col des Lamas", "Belvédère des Vigognes", "Belvédère de l'Altiplano"),
     "lagon": ("Lagon des Tortues",),
     "laminaires": ("Forêt des Laminaires",),
@@ -377,8 +421,10 @@ PLACE_NAMES = {
     # Route du Sud (lot DB3, quatre blocs par biome depuis le lot DL1) et Route du Grand Nord (deux noms quand la
     # boucle repasse dans le même biome).
     "yourtes": ("Campement des Yourtes", "Campement des Chevaux", "Campement du Puits", "Campement des Aigles"),
-    "oasis": ("Oasis des Palmiers", "Oasis des Dattiers", "Oasis de la Source", "Oasis des Caravanes"),
-    "dunes": ("Belvédère des Dunes", "Belvédère du Grand Erg", "Belvédère des Sables", "Belvédère du Mirage"),
+    "oasis": ("Oasis des Palmiers", "Oasis des Dattiers", "Oasis de la Source", "Oasis des Caravanes",
+              "Oasis des Gazelles", "Oasis du Puits Profond", "Oasis des Nomades"),
+    "dunes": ("Belvédère des Dunes", "Belvédère du Grand Erg", "Belvédère des Sables", "Belvédère du Mirage",
+              "Belvédère des Fennecs", "Belvédère de la Dune Rouge", "Belvédère du Vent de Sable"),
     "savane": ("Village des Baobabs", "Village des Acacias", "Village des Termitières", "Village des Gazelles",
                "Village des Marabouts", "Village du Grand Puits", "Village des Impalas"),
     "savane_vue": ("Point de vue des Girafes", "Point de vue des Éléphants", "Point de vue des Zèbres",
@@ -386,10 +432,14 @@ PLACE_NAMES = {
                    "Point de vue des Buffles"),
     "canopee": ("Belvédère de la Canopée", "Belvédère des Toucans", "Belvédère des Lianes", "Belvédère des Orchidées",
                 "Belvédère des Singes Hurleurs", "Belvédère de la Cascade Verte", "Belvédère des Fromagers"),
-    "pilotis": ("Village des Pilotis", "Village des Pêcheurs", "Village des Pirogues", "Village des Nénuphars"),
-    "delta": ("Pointe des Palétuviers", "Pointe des Flamants", "Pointe des Ibis", "Pointe des Pélicans"),
-    "mares": ("Mare aux Hérons", "Mare aux Grenouilles", "Mare des Caïmans", "Mare aux Aigrettes"),
-    "chenal": ("Chenal des Roseaux", "Chenal des Papyrus", "Chenal des Loutres", "Chenal des Joncs"),
+    "pilotis": ("Village des Pilotis", "Village des Pêcheurs", "Village des Pirogues", "Village des Nénuphars",
+                "Village des Nasses", "Village des Lotus", "Village du Grand Bras"),
+    "delta": ("Pointe des Palétuviers", "Pointe des Flamants", "Pointe des Ibis", "Pointe des Pélicans",
+              "Pointe des Spatules", "Pointe des Martins-Pêcheurs", "Pointe des Cigognes"),
+    "mares": ("Mare aux Hérons", "Mare aux Grenouilles", "Mare des Caïmans", "Mare aux Aigrettes",
+              "Mare aux Tortues", "Mare des Libellules", "Mare aux Canards"),
+    "chenal": ("Chenal des Roseaux", "Chenal des Papyrus", "Chenal des Loutres", "Chenal des Joncs",
+               "Chenal des Lentilles d'Eau", "Chenal des Saules", "Chenal du Héron Cendré"),
     "trappeurs": ("Hameau des Trappeurs", "Cabanes du Lac Gelé"),
     "lac_nord": ("Lac des Huards", "Lac aux Castors"),
     "toundra": ("Refuge du Caribou", "Refuge des Lichens"),

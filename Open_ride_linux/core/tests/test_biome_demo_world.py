@@ -64,6 +64,18 @@ def recette_set(tmp_path_factory) -> Path:
     return out
 
 
+# Lot DPB1 : démonstrations d'un seul biome ajoutées après les quatre premières (identifiant, nom, biome, montée totale
+# de la route en m : bornes).
+BIOME_LINES_B = (("demo-landes", "Route des Landes", "atlantic_heath", 300, 600),
+                 ("demo-canyons", "Route des Canyons", "rock_desert", 600, 900),
+                 ("demo-dunes", "Route des Dunes", "sand_desert", 100, 300),
+                 ("demo-delta", "Route du Delta", "wetland", 0, 100),
+                 ("demo-taiga", "Route de la Taïga", "boreal_forest", 500, 800),
+                 ("demo-bush", "Route du Bush", "eucalypt_woodland", 400, 650),
+                 ("demo-grands-cedres", "Route des Grands Cèdres", "temperate_rainforest", 900, 1300),
+                 ("demo-nuages", "Route des Nuages", "cloud_forest", 1300, 1700))
+
+
 def _schema(name: str) -> dict:
     return json.loads((SCHEMAS / f"{name}.schema.json").read_text(encoding="utf-8"))
 
@@ -76,7 +88,9 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     """Jeu de base : le tour des nouveaux paysages, le circuit, le récif et le volcan (lots O38, SM1, DB1 et DB2) ;
     recette : en plus les parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    game_only = ["demo-alpages.world", "demo-jungle.world", "demo-littoral.world", "demo-savane.world"]   # lot DPB1 : jeu seul, jamais dans la recette
+    game_only = ["demo-alpages.world", "demo-jungle.world", "demo-littoral.world", "demo-savane.world",
+                 "demo-landes.world", "demo-canyons.world", "demo-dunes.world", "demo-delta.world", "demo-taiga.world",
+                 "demo-bush.world", "demo-grands-cedres.world", "demo-nuages.world"]   # lot DPB1 : jeu seul, jamais dans la recette
     assert names == sorted(["demo-biomes-forets.world", "demo-biomes-nord.world", "demo-biomes-paysages.world",
                             "demo-biomes-sud.world", "demo-circuit.world", "demo-corniche.world", "demo-japon.world",
                             "demo-recif.world", "demo-vignes.world", "demo-volcan.world", *game_only])
@@ -156,7 +170,8 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
                       # lot DPB1
                       "demo-alpages": "Route des Alpages",
                       "demo-littoral": "Route du Littoral", "demo-jungle": "Route de la Jungle",
-                      "demo-savane": "Route de la Savane"}
+                      "demo-savane": "Route de la Savane",
+                      **{n: t for n, t, *_ in BIOME_LINES_B}}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
     assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
@@ -228,7 +243,8 @@ def test_game_lines_at_least_40_km(mbw) -> None:
 
     assert demo_world.DEMO_LENGTH_M >= mbw.LINE_MIN_M and demo_world.DEMO_RECETTE_LENGTH_M == 5000.0
     lines = [which for _n, _t, which, *_, base in mbw.DEMO_SET if base and which not in mbw.LOOPS]
-    assert sorted(lines) == ["alpine", "coast", "forets", "japan", "jungle", "paysages", "savanna", "sud"]
+    assert sorted(lines) == sorted(["alpine", "coast", "forets", "japan", "jungle", "paysages", "savanna", "sud",
+                                    *(b for _n, _t, b, *_ in BIOME_LINES_B)])
     for which in lines:
         biomes, variants = mbw.tour_blocks(which)
         short, short_variants = mbw.tour_blocks(which, recette=True)
@@ -236,7 +252,7 @@ def test_game_lines_at_least_40_km(mbw) -> None:
         assert mbw.LINE_MIN_M <= len(biomes) * mbw.BLOCK_M < mbw.LINE_MIN_M + len(short) * mbw.BLOCK_M
         assert biomes == tuple(b for b in short for _ in range(k))
         assert variants == (None if short_variants is None else tuple(v for v in short_variants for _ in range(k)))
-    singles = ("japan", "alpine", "coast", "jungle", "savanna")   # lots DJ1 et DPB1
+    singles = ("japan", "alpine", "coast", "jungle", "savanna", *(b for _n, _t, b, *_ in BIOME_LINES_B))   # lots DJ1 et DPB1
     assert {w: len(mbw.tour_blocks(w)[0]) for w in lines} == {"paysages": 21, "sud": 24, "forets": 21,
                                                           **{w: 21 for w in singles}}
     assert {w: len(mbw.tour_blocks(w, recette=True)[0]) for w in lines} == {"paysages": 7, "sud": 6, "forets": 3,
@@ -558,7 +574,8 @@ def test_japon_demo(demo_set: Path, mbw) -> None:
 # Lot DPB1 : démonstrations d'un seul biome, (biome, montée totale de la route en m : bornes).
 BIOME_LINES = {"demo-alpages": ("alpine", 1300.0, 1700.0),
                "demo-littoral": ("coast", 0.0, 100.0), "demo-jungle": ("jungle", 400.0, 700.0),
-               "demo-savane": ("savanna", 300.0, 600.0)}
+               "demo-savane": ("savanna", 300.0, 600.0),
+               **{n: (b, float(lo), float(hi)) for n, _t, b, lo, hi in BIOME_LINES_B}}
 
 
 def test_biome_line_demos(demo_set: Path, recette_set: Path, mbw) -> None:

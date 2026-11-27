@@ -42,6 +42,14 @@ FINAL = {   # identifiant de fichier → nom au menu
     "demo-littoral": "Route du Littoral",
     "demo-jungle": "Route de la Jungle",
     "demo-savane": "Route de la Savane",
+    "demo-landes": "Route des Landes",
+    "demo-canyons": "Route des Canyons",
+    "demo-dunes": "Route des Dunes",
+    "demo-delta": "Route du Delta",
+    "demo-taiga": "Route de la Taïga",
+    "demo-bush": "Route du Bush",
+    "demo-grands-cedres": "Route des Grands Cèdres",
+    "demo-nuages": "Route des Nuages",
     "velodrome-250": "Vélodrome 250 m",
 }
 RETIRED = ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
