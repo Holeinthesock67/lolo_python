@@ -510,7 +510,7 @@ func _test_settings_screen() -> void:
 	f.handle("A_LONG")   # Réglages
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
 	_check(labels == ["Appareils : rechercher et appairer", "Contenus : entraînements, plans, parcours", "Cycliste", "Séance", "Graphisme", "Vent",
-			"Autres réglages", "OpenRide " + f.engine_version], "réglages rangés en sous-écrans : %s" % str(labels))
+			"Autres réglages", "Diagnostic : créer un fichier pour signaler un problème", "OpenRide " + f.engine_version], "réglages rangés en sous-écrans : %s" % str(labels))
 	_check(f.state()["items"][2]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
 	_check(f.state()["items"][-1]["enabled"] == false, "ligne de version non sélectionnable")
 	# Version du core différente : alerte discrète dans le détail de la ligne (lots O2 et O4).
@@ -1019,7 +1019,7 @@ func _test_who_rides_focus_before_list() -> void:
 	f.menu.handle("PLUS_SHORT")
 	f.on_profiles({"items": items, "active": "cycliste-a"})
 	st = f.menu.state()
-	_check(st["items"][st["focus"]]["id"] == "p:cycliste-b", "liste renvoyée ensuite : focus du joueur gardé")
+	_check(st["items"][st["focus"]]["id"] == "power", "liste renvoyée ensuite : focus du joueur gardé (« Ma puissance », lot PP3)")
 
 
 func _init() -> void:

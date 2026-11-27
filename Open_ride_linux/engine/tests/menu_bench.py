@@ -55,6 +55,8 @@ depuis le lot GPL1, seule la boucle est un parcours du mode, la ligne étiqueté
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
+`seances_courbe` (dossier des journaux dans le HOME, ex. `OpenRide/Profils/cycliste-1/Activities/.journal` : séances
+fabriquées d'un cycliste fictif à FTP 250 W, `openride_core.tools.courbe_fictive`, écran « Ma puissance », lot PP3).
 `course_interrompue` ({`profil`, `mode` : `race`, `grandprix` ou `survivor`, `secondes`}, lot RC3) : course roulée en
 temps accéléré par le vrai core juste avant le lancement (`openride_core.tools.course_interrompue`), laissée sans fin
 comme après un arrêt brutal du PC : le menu propose « Reprendre la course ».
@@ -174,6 +176,7 @@ from openride_core.launcher import ENGINE_DONE, ENGINE_SELF_KILLED, ENGINE_SHUTD
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 import pile_gdb  # noqa: E402
+import perf_probe  # noqa: E402
 import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
 
@@ -259,7 +262,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "depart_monde_ouvert"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
              "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels", "etapes",
-             "course_interrompue"}
+             "course_interrompue", "seances_courbe"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -330,6 +333,19 @@ def copy_render_caches(src_home: Path, dst_home: Path) -> int:
     return n
 
 
+def render_caches_empty(saved: Path | None) -> bool:
+    """Vrai si ce passage part sans cache de rendu (pas de `--caches-rendu`, ou dossier encore sans fichier) : il
+    compilera tout, comme un premier lancement. Même règle que `sim_bench.caches_empty` (lot BF1), lot BF2."""
+    if saved is None:
+        return True
+    return not any(p.is_file() for rel in RENDER_CACHES if (saved / rel).is_dir() for p in (saved / rel).rglob("*"))
+
+
+def probe_paths(cmd: list[str]) -> list[Path]:
+    """Fichiers de la sonde (`--perf-probe=CHEMIN`) passés à l'engine."""
+    return [Path(c.split("=", 1)[1]) for c in cmd if c.startswith("--perf-probe=")]
+
+
 def write_demo_copies(routes: Path, n: int) -> None:
     """`n` copies de la démo (« Copie 01 »…), parcours libres : liste des parcours aussi longue que celle du pack
     des cols, sans le compilateur (lot ML2)."""
@@ -391,9 +407,10 @@ def open_world_start(spec: dict[str, Any]) -> list[dict[str, Any]]:
         *spec.get("cap", []),
         {"capture": "cap"},
         {"touche": "Enter"},
-        {"monde": False, "delai": 300},
-        {"note": "Monde ouvert préchargé : route engagée, séance prête", "journal": "core", "motif": OPEN_WORLD_READY,
-         "delai": 600},
+        {"note": "Monde ouvert préchargé : route engagée, séance prête (attendu avant la fermeture du menu, qui en "
+                 "dépend : 300 s fixes ne suffisaient pas en montagne, Grenoble du 26/11)",
+         "journal": "core", "motif": OPEN_WORLD_READY, "delai": 900},
+        {"monde": False, "delai": 60},
         {"note": "Lot W18 : le monde prêt, l'engine envoie start de lui-même (départ au pédalage)",
          "journal": "core", "motif": "Commande start ", "delai": 60},
         {"attendre": 2},
@@ -866,6 +883,9 @@ class Run:
                             encoding="utf-8")
         for rel, members in doc.get("archives", {}).items():
             write_archive(self.home / rel, members)
+        if doc.get("seances_courbe"):   # séances fabriquées d'un cycliste fictif, FTP 250 W (« Ma puissance », lot PP3)
+            from openride_core.tools.courbe_fictive import write_sessions
+            write_sessions(self.home / doc["seances_courbe"])
         if self.args.caches_rendu is not None:   # caches de rendu d'un passage précédent (lot ML2)
             copy_render_caches(self.args.caches_rendu, self.home)
         self.state_port, self.cmd_port = free_udp_ports(2)
@@ -932,6 +952,13 @@ class Run:
         cmd += sup.engine_cmd[sup.engine_cmd.index("--"):] + [f"--routes-dir={self.routes}", "--test-mode"]
         if a.sonde:   # sonde de performance de l'engine (lot X13) : moteur.csv, saccades.csv, taches.csv (lot ML2)
             cmd.append(f"--perf-probe={self.out / f'sonde{suffix}' / 'moteur.csv'}")
+        # Lot BF2 : à caches de rendu vides, le départ se juge à froid (perf_probe report lit la marque posée à côté
+        # de moteur.csv). Banc r1097 du 26/11 : passage « chaud » d'ea1_lac jugé à 150 ms sur des caches vides.
+        cold = render_caches_empty(self.args.caches_rendu)
+        self.report.check(None, "caches de rendu", "vides avant ce passage : départ jugé à froid (premier lancement)"
+                          if cold else "gardés d'un passage précédent : départ jugé à chaud")
+        for probe in probe_paths(cmd):
+            perf_probe.write_shaders_mark(probe.parent, "froid" if cold else "chaud")
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")

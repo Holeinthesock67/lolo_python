@@ -39,6 +39,8 @@ signal bots_preview_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
 ## Collection de cartes (série BC, lot BC5, contrat 1.6) : réponse à list_collection.
 signal collection_received(msg: Dictionary)
+## Ma puissance (série PP, lot PP3, contrat 1.35) : réponse à list_power_curve.
+signal power_curve_received(msg: Dictionary)
 ## Ligue d'hiver (série CH, lot CH4a, contrat 1.30) : réponse à league_status et league_new.
 signal league_received(msg: Dictionary)
 ## Séance conseillée (série CO, lot CO5, contrat 1.12) : réponse à get_coach, set_next_race, clear_next_race,
@@ -84,6 +86,8 @@ signal profile_backups_received(msg: Dictionary)
 signal interrupted_received(msg: Dictionary)
 ## Contenus installables (lot O25, contrat 1.5) : réponse à list_contents et install_content (un seul datagramme).
 signal contents_received(msg: Dictionary)
+## Fichier de diagnostic (lot DG1, contrat 1.37) : réponse à create_diagnostic.
+signal diagnostic_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -352,6 +356,8 @@ func _poll_incoming() -> void:
 				history_session_received.emit(json_obj)
 			"collection":
 				collection_received.emit(json_obj)
+			"power_curve":
+				power_curve_received.emit(json_obj)
 			"league":
 				league_received.emit(json_obj)
 			"coach":
@@ -385,6 +391,8 @@ func _poll_incoming() -> void:
 				interrupted_received.emit(json_obj)
 			"contents":
 				contents_received.emit(json_obj)
+			"diagnostic":
+				diagnostic_received.emit(json_obj)
 			"xp_result":
 				xp_result_received.emit(json_obj)
 			"room":
@@ -720,6 +728,11 @@ func list_plans() -> int:
 ## Historique du profil en cours (lot O28, contrat 1.5). Réponse : signal history_received.
 func list_history() -> int:
 	return send_command("list_history", {})
+
+
+## Courbe de puissance et FTP estimée du profil en cours (lot PP3). Réponse : power_curve_received.
+func list_power_curve() -> int:
+	return send_command("list_power_curve", {})
 
 
 ## Collection de cartes du profil en cours (lot BC5). Réponse : collection_received.

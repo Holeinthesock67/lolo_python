@@ -119,10 +119,12 @@ const GP_PREFIX := "Grand Prix : "
 const RACE_PREFIX := "Course : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
+const PowerViewModel := preload("res://scripts/power_view_model.gd")
 const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 const LeagueViewModel := preload("res://scripts/league_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
+const DiagnosticViewModel := preload("res://scripts/diagnostic_view_model.gd")   # lot DG1
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -301,6 +303,10 @@ var start_wait: Dictionary = {}
 var profiles = ProfilesViewModel.new()
 ## Historique (lot O28) : séances, cumul par semaine, tests de FTP et bilan d'une séance passée.
 var history = HistoryViewModel.new()
+## Ma puissance (série PP, lot PP3) : courbe de puissance et FTP estimée du profil en cours.
+var power = PowerViewModel.new()
+## FTP acceptée dans « Ma puissance » : en attente de la réponse `settings`, puis courbe redemandée.
+var _power_pending := false
 ## Collection de cartes (série BC, lot BC5) : album par familles, carte agrandie, première ouverture.
 var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
@@ -316,6 +322,7 @@ var _preview_retried := ""
 var _preview_objective := ""   # objectif de la dernière réponse `bots_preview` (vélodrome : celui de l'épreuve)
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
 var contents = ContentsViewModel.new()
+var diagnostic = DiagnosticViewModel.new()   # « Réglages › Diagnostic » (lot DG1)
 
 
 func _init() -> void:
@@ -325,6 +332,8 @@ func _init() -> void:
 	menu.add_screen({"id": SETTINGS_GROUP, "title": "Réglages", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": ContentsViewModel.SCREEN, "title": "Contenus", "on_back": MenuModel.SETTINGS, "items": []})
+	menu.add_screen({"id": DiagnosticViewModel.SCREEN, "title": "Diagnostic", "on_back": MenuModel.SETTINGS,
+		"items": diagnostic.menu_items()})
 	menu.add_screen({"id": WORKOUT_CREATE, "title": "Créer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
 	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
@@ -342,6 +351,9 @@ func _init() -> void:
 	_refresh_ftp_test()
 	menu.add_screen({"id": INTERRUPTED, "title": "Séance interrompue", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": HistoryViewModel.SCREEN, "title": "Historique", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": PowerViewModel.SCREEN, "title": "Ma puissance", "on_back": ProfilesViewModel.SCREEN, "items": []})
+	menu.add_screen({"id": PowerViewModel.MONTHS, "title": "Évolution mois par mois", "on_back": PowerViewModel.SCREEN,
+		"items": []})
 	menu.add_screen({"id": HistoryViewModel.WEEKS, "title": "Cumul par semaine", "on_back": HistoryViewModel.SCREEN,
 		"items": []})
 	menu.add_screen({"id": HistoryViewModel.FTP, "title": "Tests de FTP", "on_back": HistoryViewModel.SCREEN,
@@ -568,6 +580,7 @@ func _refresh_settings() -> void:
 	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"},
 		{"id": "contents", "label": "Contenus : entraînements, plans, parcours"}]
 	items.append_array(settings.group_items())
+	items.append({"id": "diagnostic", "label": "Diagnostic : créer un fichier pour signaler un problème"})
 	if settings.items.is_empty():
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
 	items.append(SettingsViewModel.version_item(engine_version, core_version))
@@ -644,6 +657,11 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
 		return
+	if menu.current_screen() in PowerViewModel.SCREENS and code in ["busy", "setting_invalid"]:
+		_power_pending = false
+		power.message = "Échec : " + text
+		_refresh_power()
+		return
 	if menu.current_screen() in HistoryViewModel.SCREENS and code == "bad_args":
 		history.message = "Échec : " + text
 		return
@@ -655,6 +673,9 @@ func on_error(code: String, text: String) -> void:
 		return
 	if menu.current_screen() == LeagueViewModel.SCREEN and code == "bad_args":
 		league.message = "Échec : " + text
+		return
+	if diagnostic.on_error(code, text):
+		_refresh_diagnostic()
 		return
 	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
 		contents.on_error(code, text)
@@ -806,6 +827,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _plan_card("plan:" + _plan_shown)
 	if screen in PlanBuilder.SCREENS:
 		return plan_builder.sheet(PlanBuilder.names_of(_workouts_raw), PlanBuilder.plan_name(_plan_ids()))
+	if screen == PowerViewModel.SCREEN:
+		return power.card(focused, route_names)
 	if screen == FTP_TEST:
 		for t in FTP_TESTS:
 			if t[0] == focused:
@@ -815,6 +838,8 @@ func card(st: Dictionary) -> Dictionary:
 		return pairing.sheet(focused)
 	if screen == ContentsViewModel.SCREEN:
 		return contents.sheet(focused)
+	if screen == DiagnosticViewModel.SCREEN:
+		return diagnostic.sheet(focused)
 	if screen == SETTINGS_GROUP:
 		return settings.sheet(focused.substr(4)) if focused.begins_with("set:") else {}
 	if screen == WORKOUT_CREATE:
@@ -830,7 +855,7 @@ func card(st: Dictionary) -> Dictionary:
 	if screen in CoachViewModel.SCREENS:
 		return _coach_card(screen, focused)
 	if screen == LeagueViewModel.SCREEN:
-		return league.sheet(_ftp_w())
+		return league.sheet(_ftp_w(), focused)   # lot CH6 : palmarès au focus
 	if screen == RECORDS:
 		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
 	if screen == RECORD_TABLE:
@@ -1309,6 +1334,11 @@ func _handle_event(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"power_accept":   # FTP proposée confirmée dans « Ma puissance » (lot PP3) : réglage du joueur, comme partout
+			_power_pending = true
+			power.message = "Enregistrement…"
+			_refresh_power()
+			return {"action": "set_setting", "key": "rider.ftp_w", "value": int(act.get("value", 0))}
 		"reset_profile_stats":   # confirmation acceptée (lot RZ1)
 			profiles.message = "Sauvegarde puis remise à zéro…"
 			profiles.done_message = "Statistiques remises à zéro (sauvegarde faite)"
@@ -1448,6 +1478,8 @@ func _handle_event(event: String) -> Dictionary:
 		return {"action": "list_plans"}
 	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in PowerViewModel.SCREENS:
+		return _handle_power(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in HistoryViewModel.SCREENS:
 		return _handle_history(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in CollectionViewModel.SCREENS:
@@ -1486,11 +1518,21 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_contents()
 			menu.push_screen(ContentsViewModel.SCREEN)
 			return {"action": "list_contents"}
+		if item_id == "diagnostic":
+			_refresh_diagnostic()
+			menu.push_screen(DiagnosticViewModel.SCREEN)
+			return {}
 		if item_id.begins_with("group:"):
 			settings_group = item_id.substr(6)
 			_refresh_settings()
 			menu.push_screen(SETTINGS_GROUP)
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == DiagnosticViewModel.SCREEN:
+		var choice: Dictionary = diagnostic.handle(str(act["id"]))
+		_refresh_diagnostic()
+		if not choice.is_empty():
+			choice["engine_version"] = engine_version
+		return choice
 	if act.get("action", "") == "item" and act.get("screen", "") == ContentsViewModel.SCREEN:
 		var choice: Dictionary = contents.handle(str(act["id"]))
 		_refresh_contents()
@@ -2095,6 +2137,18 @@ func _handle_garage(screen: String, item_id: String) -> Dictionary:
 	return act
 
 
+# --- fichier de diagnostic (lot DG1) ------------------------------------------------------------
+
+func _refresh_diagnostic() -> void:
+	menu.set_screen_items(DiagnosticViewModel.SCREEN, diagnostic.menu_items())
+
+
+## Message `diagnostic` du core (révision 1.37) : chemin du fichier écrit ou cause de l'échec sur la ligne d'état.
+func on_diagnostic(msg: Dictionary) -> void:
+	diagnostic.on_diagnostic(msg)
+	_refresh_diagnostic()
+
+
 # --- contenus installables (lot O25) -----------------------------------------------------------
 
 func _refresh_contents() -> void:
@@ -2145,6 +2199,8 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				_open_name()
 			elif item_id == "manage":
 				menu.push_screen(ProfilesViewModel.MANAGE_LIST)
+			elif item_id == ProfilesViewModel.POWER_ID:   # « Ma puissance » du profil en cours (lot PP3)
+				return _open_power()
 			elif item_id.begins_with("p:"):
 				var id := item_id.substr(2)
 				if id == profiles.current_id():
@@ -2325,6 +2381,79 @@ func garage_preview(st: Dictionary) -> Dictionary:
 	if screen in GarageViewModel.SCREENS:
 		return garage.preview(screen, focused)
 	return {}
+
+
+## Ma puissance (lot PP3) : réponse `power_curve` à `list_power_curve`.
+func on_power_curve(msg: Dictionary) -> void:
+	power.on_power_curve(msg)
+	_refresh_power()
+
+
+func _refresh_power() -> void:
+	var name := profiles.current_name()
+	menu.set_screen_items(PowerViewModel.SCREEN, power.items(route_names),
+		"Ma puissance — " + name if name != "" else "Ma puissance")
+	menu.set_screen_items(PowerViewModel.MONTHS, power.month_items())
+
+
+## Action à lancer après une réponse `settings` : la courbe redemandée si la FTP vient d'être acceptée ici.
+func take_power_refresh() -> Dictionary:
+	if not _power_pending:
+		return {}
+	_power_pending = false
+	var saved = settings.item("rider.ftp_w").get("value", power.proposal_w())
+	power.message = "FTP enregistrée : %d W" % int(round(float(saved))) if typeof(saved) in [TYPE_INT, TYPE_FLOAT] \
+		else "FTP enregistrée"
+	return {"action": "list_power_curve"}
+
+
+func _open_power() -> Dictionary:
+	_power_pending = false
+	power.begin()
+	_refresh_power()
+	menu.push_screen(PowerViewModel.SCREEN)
+	return {"action": "list_power_curve"}
+
+
+func _handle_power(screen: String, item_id: String) -> Dictionary:
+	if screen != PowerViewModel.SCREEN:
+		return {}
+	match item_id:
+		"window":
+			power.toggle_window()
+			_refresh_power()
+		"months":
+			menu.push_screen(PowerViewModel.MONTHS)
+		"ramp":
+			menu.push_screen(FTP_TEST)
+		"accept":
+			if power.proposal_w() > 0:
+				power.message = ""
+				menu.confirm(power.accept_question(), power.accept_action())
+		PowerViewModel.CHALLENGE_ID:
+			return _launch_power_challenge()
+	return {}
+
+
+## « Rouler ce défi » (lot PP7) : parcours proposé (ou celui de l'écran Prêt pour un sprint), session libre, et un
+## bot à puissance constante à la cible, le fantôme de ton record ; écran Prêt avec le défi en mots.
+func _launch_power_challenge() -> Dictionary:
+	var c: Dictionary = power.challenge()
+	if c.is_empty():
+		return {}
+	var list: Array = []
+	if c.get("route_id") is String:
+		var rid: String = str(c["route_id"])
+		var entry := _route_entry(rid)
+		menu.set_world(rid, str(entry.get("name", c.get("route_name", rid))) if not entry.is_empty() else str(c.get("route_name", rid)))
+		list.append({"action": "select_route", "route_id": rid})
+	list.append({"action": "select_workout", "workout_id": null})
+	menu.prepare_coach_race("défi : " + PowerViewModel.duration_label(int(c["s"])),
+		{"bots": [{"kind": "constant", "power_w": int(c["target_w"])}]}, power.challenge_ready_text())
+	if menu._needs_route():   # sprint, ou aucun parcours qui convienne : la liste des parcours d'abord
+		menu._routes_return = MenuModel.READY
+		menu._open_routes(true)
+	return {"action": "sequence", "list": list}
 
 
 ## Historique (lot O28) : réponse `history` à `list_history` ; noms des parcours de la dernière liste.
@@ -2618,6 +2747,9 @@ func state() -> Dictionary:
 		st["status"] = garage.message
 	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:
 		st["status"] = interrupted_message
+	elif st["screen"] in PowerViewModel.SCREENS:
+		st["status"] = power.message
+		st["status_error"] = power.message.begins_with("Échec")
 	elif st["screen"] in HistoryViewModel.SCREENS:
 		st["status"] = history.message
 		st["status_error"] = history.message.begins_with("Échec")
@@ -2631,6 +2763,9 @@ func state() -> Dictionary:
 	elif st["screen"] in CoachViewModel.SCREENS:
 		st["status"] = coach.status(str(st["screen"]))
 		st["status_error"] = coach.message.begins_with("Échec")
+	elif st["screen"] == DiagnosticViewModel.SCREEN:
+		st["status"] = diagnostic.message
+		st["status_error"] = diagnostic.message.begins_with("Échec")
 	elif st["screen"] == ContentsViewModel.SCREEN:
 		st["status"] = contents.message
 		st["status_error"] = contents.message.begins_with("Échec")

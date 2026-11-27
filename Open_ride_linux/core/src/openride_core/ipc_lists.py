@@ -471,6 +471,29 @@ def is_valid_collection_key(key: str, cards_by_id: dict[str, Any]) -> bool:
     return True
 
 
+def curve_cache(profile_ctx: Any, journal_dir: Path, given: Path | None = None) -> Path:
+    """Cache de la courbe de puissance (série PP) : celui donné, sinon celui du profil pour ses propres journaux,
+    sinon un cache à côté des activités lues (dossier donné : jamais le cache du profil pour d'autres séances)."""
+    if given is not None:
+        return Path(given)
+    own = getattr(profile_ctx, "journal_dir", None)
+    if own is not None and Path(journal_dir) == Path(own) and getattr(profile_ctx, "mmp_cache", None) is not None:
+        return Path(profile_ctx.mmp_cache)
+    return Path(journal_dir).parent / ".cache" / "mmp.json"
+
+
+def collection_powers(profile_ctx: Any, journal_dir: Path) -> dict[str, dict[int, float]]:
+    """Meilleurs efforts par journal pour les trophées de puissance (lot PP7b), depuis le cache de la
+    courbe (lot PP1) ; un cache ou une séance illisible laisse la collection sans ces cartes."""
+    from .tools import power_curve
+
+    try:
+        return power_curve.session_powers(Path(journal_dir).parent, curve_cache(profile_ctx, journal_dir))
+    except Exception:
+        log.exception("Collection : courbe de puissance illisible, trophées de puissance ignorés")
+        return {}
+
+
 def build_collection_message(request_cmd_id: int, profile_ctx: Any,
                              journal_dir: Path | None = None,
                              table_path: Path | None = None,
@@ -489,7 +512,7 @@ def build_collection_message(request_cmd_id: int, profile_ctx: Any,
     cache = FactsCache(journal_dir / CACHE_NAME)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
                          counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
-    col = evaluate(progress, cards, table, now=now)
+    col = evaluate(progress, cards, table, now=now, powers=collection_powers(profile_ctx, journal_dir))
     seen = load_seen(seen_path(profile_ctx.root))
 
     return {
@@ -532,7 +555,8 @@ def collection_earned(profile_ctx: Any, journal_dir: Path | None = None,
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR),
                          cache=FactsCache(journal_dir / CACHE_NAME),
                          counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
-    col = evaluate(progress, load_catalogue(table=table), table, now=now)
+    col = evaluate(progress, load_catalogue(table=table), table, now=now,
+                   powers=collection_powers(profile_ctx, journal_dir))
     return [(e.start_ts, e.key) for e in col.earned if e.start_ts is not None]
 
 
@@ -558,6 +582,33 @@ def record_collection_seen(profile_ctx: Any, keys: list[str],
     return current
 
 
+def rider_curve(activities_dir: Path, cache_path: Path, sources: Any, ftp_w: float,
+                now: float | None = None) -> tuple[tuple[float, float], ...] | None:
+    """Courbe du cycliste en % de sa FTP pour l'effort des bots (série PP, lot PP6) : meilleur effort par durée,
+    libre ou ERG, des 6 semaines, sinon des 6 mois (`bot_effort.personal_curve`)."""
+    import time as _time
+
+    from . import bot_effort
+    from .tools import power_curve as pc
+
+    now = _time.time() if now is None else now
+    kept = pc.kept_sessions(pc.session_entries(activities_dir, cache_path), tuple(sources))
+    if not kept:
+        return None
+    m6 = pc.window_curve(kept, pc.WINDOWS["months6"], now)
+    w6 = pc.window_curve(kept, pc.WINDOWS["weeks6"], now)
+    return bot_effort.personal_curve(w6["points"], m6["points"], ftp_w)
+
+
+def compute_summary_power(journal_path: Path, ftp_w: float, activities_dir: Path, cache_path: Path,
+                          sources: Any, since: float | None = None) -> dict[str, Any] | None:
+    """Records de puissance et signal « FTP à revoir » du bilan (série PP, lot PP4) : `tools.power_records`.
+    `since` : remise à zéro des statistiques (lot RZ1), pour les records seulement."""
+    from .tools.power_records import session_report
+
+    return session_report(journal_path, ftp_w, activities_dir, cache_path, sources, since=since)
+
+
 def compute_summary_collection(profile_ctx: Any,
                                journal_dir: Path | None = None,
                                table_path: Path | None = None,
@@ -576,7 +627,7 @@ def compute_summary_collection(profile_ctx: Any,
     cache = FactsCache(journal_dir / CACHE_NAME)
     progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
                          counted=profile_ctx.counted_sources, owns=profile_ctx.owns, since=getattr(profile_ctx, "stats_since", None))
-    col = evaluate(progress, cards, table, now=now)
+    col = evaluate(progress, cards, table, now=now, powers=collection_powers(profile_ctx, journal_dir))
     seen = load_seen(seen_path(profile_ctx.root))
     ann = announcement(col, seen)
     if ann.card is None:
@@ -585,3 +636,79 @@ def compute_summary_collection(profile_ctx: Any,
         "card": card_line(ann.card),
         "others": ann.others,
     }
+
+
+# --- Ma puissance (série PP, lot PP3, révision 1.35) -------------------------------------------------
+
+POWER_CURVE_MAX_BYTES = 4096
+
+
+def _curve_point(p: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Point compact d'une fenêtre : {w, e, d, r, k} (watts, effort, date, parcours, entraînement), None sans effort."""
+    if not p or p.get("watts") is None:
+        return None
+    sess = p.get("session") or {}
+    return {"w": p["watts"], "e": p["effort"], "d": p["date"], "r": sess.get("route_id"),
+            "k": sess.get("workout_id")}
+
+
+def _fitness_of(activities_dir: Path, ftp_w: float, sources, now: float) -> dict[str, Any] | None:
+    """Courbe de forme (lot FO1) : condition et fatigue du coach (`coach.fitness_series`) depuis les séances
+    comptées du profil et le cache du conseil ; None si rien n'est lisible (la courbe de puissance reste)."""
+    from datetime import date
+
+    from . import coach
+
+    try:
+        table = coach.load_table()
+        today = date.fromtimestamp(now)
+        facts = coach.collect_facts(activities_dir, ftp_w, today, table, counted_sources=tuple(sources))
+        return coach.fitness_series(facts, today, table)
+    except Exception:
+        log.exception("Courbe de forme illisible pour « Ma puissance »")
+        return None
+
+
+def build_power_curve_message(request_cmd_id: int, ftp_w: float, activities_dir: Path, cache_path: Path,
+                              sources, profile_id: str | None = None, now: float | None = None,
+                              routes: list | None = None, since: float | None = None) -> dict[str, Any]:
+    """Réponse à `list_power_curve` : courbe du profil en cours (13 durées, 6 mois et 6 semaines, PP1), FTP estimée
+    et sa proposition (PP2), évolution sur 6 mois ; un seul datagramme de moins de 4 096 octets.
+
+    `since` (remise à zéro des statistiques, lot RZ1) : la courbe, le profil (PP5) et le défi (PP7) ne lisent que
+    les séances d'après ; la FTP estimée, sa proposition et son évolution mensuelle lisent toutes les séances."""
+    from .tools import ftp_estimate, power_challenge, power_curve, power_profile
+
+    now = time.time() if now is None else now
+    found = power_curve.session_entries(activities_dir, cache_path)
+    kept = power_curve.kept_sessions(found, tuple(sources))
+    stats = kept if since is None else power_curve.kept_sessions(found, tuple(sources), since)
+    m6 = power_curve.window_curve(stats, power_curve.WINDOWS["months6"], now)
+    w6 = power_curve.window_curve(stats, power_curve.WINDOWS["weeks6"], now)
+    est = ftp_estimate.estimate_from_sessions(kept, ftp_w, now)
+    e = est["estimate"]
+    msg = {"type": "power_curve", "v": 1, "request_cmd_id": request_cmd_id, "profile_id": profile_id,
+           "ftp_set_w": est["ftp_set_w"], "sessions": {"m6": m6["sessions"], "w6": w6["sessions"]},
+           "points": [{"s": a["seconds"], "m6": _curve_point(a), "w6": _curve_point(b)}
+                      for a, b in zip(m6["points"], w6["points"])],
+           "estimate": ({"ftp_w": e["ftp_w"], "source": e["source"], "source_text": e["source_text"],
+                         "date": e["date"]} if e else None),
+           "confidence": est["confidence"], "reason": est["reason"],
+           "proposal_w": est["proposal"]["ftp_w"] if est["proposal"] else None,
+           "review": est["review"], "delta_pct": est["delta_pct"],
+           "monthly": [{"m": x["month"], "ftp": x["ftp_w"], "p5": x["best_5min_w"], "p20": x["best_20min_w"]}
+                       for x in est["monthly"]],
+           "warnings": est["warnings"],
+           "profile": power_profile.profile_from_windows(m6, w6, now)}   # lot PP5 : « Se connaître »
+    chal = power_challenge.challenge(msg["profile"], m6["points"], routes or [])   # lot PP7 : défi
+    if chal is not None and chal["route_name"]:
+        chal["route_name"] = str(chal["route_name"])[:40]
+    msg["challenge"] = chal
+    msg["fitness"] = _fitness_of(activities_dir, ftp_w, sources, now)   # lot FO1 : « Ma forme »
+    if len(json.dumps(msg, ensure_ascii=False).encode("utf-8")) > POWER_CURVE_MAX_BYTES:   # noms très longs
+        for pt in msg["points"]:
+            for key in ("m6", "w6"):
+                if pt[key]:
+                    pt[key]["r"] = (pt[key]["r"] or "")[:24] or None
+                    pt[key]["k"] = None
+    return msg
