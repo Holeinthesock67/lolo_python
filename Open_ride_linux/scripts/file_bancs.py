@@ -70,8 +70,11 @@ Paquets, matrice et cloud (plan du 20 novembre, file PC trop lente) :
 - `verifier FILE` : têtes et composition des paquets, sans rien lancer ; `categorie CORPS.md` : catégorie lue dans la
   section « Recette PC » d'une PR (« - » : entrée standard).
 
-Les commandes tournent dans `<worktree>/Open_ride_linux`, avec `{sortie}` (dossier de l'étape), `{worktree}` et
-`{projet}`, `{depot}` (le dépôt du user, pour son environnement Python) remplacés ; chaque étape a PYTHONPATH sur
+Les commandes tournent dans `<worktree>/Open_ride_linux`, avec `{sortie}` (dossier de l'étape), `{commun}` (dossier
+partagé par la fumée et toutes les étapes d'une même PR, par exemple les mondes construits par la fumée), `{worktree}`
+et `{projet}`, `{depot}` (le dépôt du user, pour son environnement Python) remplacés ; `{sortie}/..` est refusé à la
+lecture de la file (27 novembre : chaque étape a son dossier, la fumée aussi, donc `{sortie}/../w` de la fumée n'est
+pas celui des étapes ; le monde cherché était vide et le banc roulait sur un autre parcours) ; chaque étape a PYTHONPATH sur
 les sources du worktree (core et compilateur), le core/.venv du dépôt en tête du PATH (lié dans le worktree),
 LC_NUMERIC=C et OPENRIDE_NO_GUI=1, comme job.sh ; le portail reçoit FILE_PR,
 FILE_ETAPE et FILE_DUREE_MIN (délai de l'étape, pour ne pas déborder sur la fenêtre du user). Verdicts :
@@ -143,6 +146,9 @@ ACOUP = re.compile(r"à-coups|pire image|images lentes", re.I)
 # rien de la PR (nuit du 20 novembre, captures #932 et #935). Ignorés dans les étapes `lieu = "cloud"` seulement.
 DELAI_CAPTURE_CLOUD = re.compile(r"images enregistrées après le chargement.*captures de l'engine", re.I)
 STRATEGIES = ("", "ours", "theirs")
+# `{sortie}/..` dans une commande : dossier de l'étape seule, jamais partagé (27 novembre, banc pile à-coups).
+COMMUN = "commun"                              # dossier `{commun}` de la PR, partagé par ses étapes
+SORTIE_PARENT = re.compile(r"\{sortie\}/\.\.")
 SCINDE = "SCINDÉ"                              # étape d'un paquet en échec, rejouée PR par PR (voir scissions)
 LIEUX = ("pc", "cloud")
 RENDU, LOGIQUE = "rendu", "logique"
@@ -248,14 +254,17 @@ def _etapes(nom: str, d: dict[str, Any], categorie: str) -> list[Etape]:
         for q in MATRICE[categorie]:
             etapes.append(Etape(q, modele.replace("{qualite}", q), float(d.get("matrice_delai_min", 40))))
     for e in d.get("etape", []):
-        if not e.get("id") or not e.get("commande") or e["id"] == FUMEE:
-            raise FileInvalide(f"{nom} : chaque étape a un `id` (pas « {FUMEE} ») et une `commande`")
+        if not e.get("id") or not e.get("commande") or e["id"] in (FUMEE, COMMUN):
+            raise FileInvalide(f"{nom} : chaque étape a un `id` (pas « {FUMEE} » ni « {COMMUN} ») et une `commande`")
         sur = e.get("sur", "branche")
         if sur not in ("branche", "main"):
             raise FileInvalide(f"{nom}/{e['id']} : `sur` vaut « branche » ou « main »")
         etapes.append(Etape(str(e["id"]), str(e["commande"]), float(e.get("delai_min", 60)), sur,
                             str(e.get("lieu", "pc"))))
     for e in etapes:
+        if SORTIE_PARENT.search(e.commande):
+            raise FileInvalide(f"{nom}/{e.id} : `{{sortie}}/..` désigne le dossier de cette étape seule, pas celui "
+                               "de la fumée ni des autres étapes ; un dossier partagé s'écrit `{commun}`")
         if e.lieu not in LIEUX:
             raise FileInvalide(f"{nom}/{e.id} : `lieu` vaut « pc » ou « cloud »")
     if len({e.id for e in etapes}) != len(etapes):
@@ -886,7 +895,10 @@ class Runner:
         dossier = self.f.sortie / ("main" if e.sur == "main" else pr.id) / (e.empreinte if e.sur == "main" else e.id)
         dossier.mkdir(parents=True, exist_ok=True)
         projet = wt / "Open_ride_linux"
-        cmd = e.commande.format(sortie=shlex.quote(str(dossier / "rapport")), worktree=shlex.quote(str(wt)),
+        commun = self.f.sortie / ("main" if e.sur == "main" else pr.id) / COMMUN
+        commun.mkdir(parents=True, exist_ok=True)
+        cmd = e.commande.format(sortie=shlex.quote(str(dossier / "rapport")), commun=shlex.quote(str(commun)),
+                                worktree=shlex.quote(str(wt)),
                                 projet=shlex.quote(str(projet)), depot=shlex.quote(str(self.f.depot)))
         env = environnement_etape(self.f.depot, projet)
         if pr.cache == "separe" and e.sur == "branche":
