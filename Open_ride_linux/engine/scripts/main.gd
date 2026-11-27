@@ -300,6 +300,13 @@ var rogue_host = RogueHost.new()
 
 
 func _ready() -> void:
+	# Revue E1-03 : la fermeture de la fenêtre (Alt+F4, bouton du gestionnaire de fenêtres) passe par _quit, comme
+	# le menu : tâches de fond attendues, ligne ENGINE_DONE pour le lanceur, puis OS.kill (lot X58).
+	get_tree().set_auto_accept_quit(false)
+	if ipc.bind_failed:
+		ipc.quit_handled = true
+		_quit(1)   # port des trames pris (contrat §2) : même séquence d'arrêt
+		return
 	var cfg := EngineArgs.current()
 	routes_dir = cfg["routes_dir"]
 	if cfg.get("sim_session", false):
@@ -1207,6 +1214,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
+	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
+		print("Fenêtre fermée par le bureau : fermeture comme depuis le menu.")
+		_quit(0)
 	elif what == NOTIFICATION_PREDELETE:
 		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : elle donne le code de sortie.
 		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
