@@ -40,10 +40,10 @@ jobs:
       GODOT: /home/runner/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
     steps:
       - name: Récupération du dépôt
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Installation de Python 3.14
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.14"
           cache: pip
@@ -54,7 +54,7 @@ jobs:
 
       - name: Cache de Godot 4.7
         id: cache-godot
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/.cache/godot-4.7.2
           key: godot-4.7.2-stable-linux-x86_64
@@ -71,7 +71,7 @@ jobs:
       # Seul le modèle linux_release.x86_64 (73 Mo) est gardé en cache, pas l'archive de 1,2 Go.
       - name: Cache du modèle d'export
         id: cache-template
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/.local/share/godot/export_templates/4.7.2.stable
           key: godot-4.7.2-stable-template-linux-release-x86_64
@@ -86,7 +86,7 @@ jobs:
 
       - name: Journal de l'export (pièce jointe)
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: export-engine
           path: Open_ride_linux/build/engine/export.log

@@ -52,11 +52,11 @@ jobs:
       OPENRIDE_TESTS_PARTIE: ${{ matrix.partie }}/3
     steps:
       - name: Récupération du dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Python 3.11 pour la compilation
         if: matrix.python-version == '3.14' && matrix.partie == 1
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
 
@@ -65,7 +65,7 @@ jobs:
         run: python3.11 -m compileall -q core/src compiler/src scripts engine/tests
 
       - name: Installation de Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -112,7 +112,7 @@ jobs:
       # et par scripts/durees_tests.py (durées qui équilibrent les parties).
       - name: Rapports JUnit
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-python-${{ matrix.python-version }}-partie-${{ matrix.partie }}
           path: Open_ride_linux/junit/
@@ -139,10 +139,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Récupération du dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Installation de Python 3.14
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.14"
           cache: pip
@@ -156,7 +156,7 @@ jobs:
 
       - name: Cache de Godot 4.7
         id: cache-godot
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/godot-4.7.2
           key: godot-4.7.2-stable-linux-x86_64
@@ -206,7 +206,7 @@ jobs:
 
       - name: Captures des flancs de colline (pièce jointe)
         if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: captures_flancs
           path: ${{ runner.temp }}/captures_flancs
@@ -220,7 +220,7 @@ jobs:
 
       - name: Rapport du banc visuel du Cyber-Rogue
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rogue_bench
           path: ${{ runner.temp }}/rogue_bench
@@ -228,7 +228,7 @@ jobs:
 
       - name: Rapport JUnit
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-engine
           path: Open_ride_linux/junit/
@@ -245,10 +245,10 @@ jobs:
         partie: [1, 2, 3]
     steps:
       - name: Récupération du dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Installation de Python 3.14
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.14"
           cache: pip
@@ -262,7 +262,7 @@ jobs:
 
       - name: Cache de Godot 4.7
         id: cache-godot
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/godot-4.7.2
           key: godot-4.7.2-stable-linux-x86_64
@@ -291,7 +291,7 @@ jobs:
 
       - name: Rapport du banc des menus
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: menu_bench-partie-${{ matrix.partie }}
           path: ${{ runner.temp }}/menu_bench
@@ -306,10 +306,10 @@ jobs:
     continue-on-error: true
     steps:
       - name: Récupération du dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Installation de Python 3.14
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.14"
           cache: pip
@@ -340,7 +340,7 @@ jobs:
 
       - name: Rapport HTML de couverture
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: couverture
           path: ${{ runner.temp }}/couverture/html
@@ -355,10 +355,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Récupération du dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Installation de Python 3.14
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.14"
 
@@ -370,7 +370,7 @@ jobs:
 
       - name: Résumé de l'audit
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dependances
           path: ${{ runner.temp }}/deps

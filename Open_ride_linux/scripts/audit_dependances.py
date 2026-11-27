@@ -5,8 +5,10 @@
 
 - **Vulnérabilités** : `pip-audit -r constraints.txt` (extra `dev` du core) ; pour chaque paquet touché,
   l'identifiant de l'avis et la version corrigée.
-- **Actions GitHub** : chaque `uses: propriétaire/action@vN` des workflows comparé à la dernière version
-  majeure publiée (étiquettes lues par `git ls-remote --tags`, sans jeton) ; sauté avec `--hors-ligne`.
+- **Actions GitHub** : chaque `uses: propriétaire/action@<sha> # vN.x.y` (épinglage par SHA, lot SHA1) ou
+  `@vN` des workflows comparé à la dernière version majeure publiée (étiquettes lues par
+  `git ls-remote --tags`, sans jeton) ; une action épinglée dont l'étiquette `vN` a avancé depuis est
+  signalée « à rafraîchir » (correctif de la même majeure, non compté en retard) ; sauté avec `--hors-ligne`.
 - **Paquets anciens** : version de `constraints.txt` publiée sur PyPI il y a plus de 12 mois.
 
 Sortie : `resume.txt` et `resume.json` dans `~/OpenRide/deps/<date>_<heure>/` (`--out` pour un autre
@@ -34,7 +36,9 @@ WORKFLOWS = REPO / ".github" / "workflows"
 DEFAULT_OUT = Path.home() / "OpenRide" / "deps"
 OLD_DAYS = 365
 EXIT_NO_NETWORK = 75
-USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*([\w.-]+/[\w.-]+)@v(\d+)\b", re.M)
+# `@vN` ou `@<sha de 40 caractères> # vN…` : la majeure vient de l'étiquette ou du commentaire.
+USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*([\w.-]+/[\w.-]+)@(?:v(\d+)\b|([0-9a-f]{40})\s+#\s*v(\d+)\b)",
+                     re.M)
 TAG_RE = re.compile(r"refs/tags/v(\d+)(?:\.\d+)*$")
 
 
@@ -42,6 +46,7 @@ TAG_RE = re.compile(r"refs/tags/v(\d+)(?:\.\d+)*$")
 class Rapport:
     vulnerabilites: list[dict] = field(default_factory=list)   # {"paquet", "version", "id", "corrige"}
     actions: list[dict] = field(default_factory=list)          # {"action", "utilise", "derniere", "fichiers", "en_retard"}
+    a_rafraichir: list[dict] = field(default_factory=list)     # {"action", "majeure", "epingle", "etiquette", "fichiers"}
     anciens: list[dict] = field(default_factory=list)          # {"paquet", "version", "publie", "jours"}
     sautes: list[str] = field(default_factory=list)
     # Éléments que l'audit n'a pas pu vérifier (revue de code vague 5, O1-10) : jamais comptés comme sains.
@@ -58,12 +63,15 @@ def read_constraints(path: Path = CONSTRAINTS) -> dict[str, str]:
 
 
 def read_workflows(folder: Path = WORKFLOWS) -> dict[str, dict]:
-    """{"actions/checkout": {"majeures": {5}, "fichiers": ["openride.yml"]}}."""
+    """{"actions/checkout": {"majeures": {5}, "fichiers": ["openride.yml"], "shas": {"<sha>": 5}}}."""
     found: dict[str, dict] = {}
     for wf in sorted(folder.glob("*.y*ml")):
         for m in USES_RE.finditer(wf.read_text(encoding="utf-8")):
-            entry = found.setdefault(m[1], {"majeures": set(), "fichiers": []})
-            entry["majeures"].add(int(m[2]))
+            entry = found.setdefault(m[1], {"majeures": set(), "fichiers": [], "shas": {}})
+            major = int(m[2] or m[4])
+            entry["majeures"].add(major)
+            if m[3]:
+                entry["shas"][m[3]] = major
             if wf.name not in entry["fichiers"]:
                 entry["fichiers"].append(wf.name)
     return found
@@ -73,6 +81,28 @@ def latest_major(ls_remote: str) -> int | None:
     """Plus grande version majeure des étiquettes `vN…` d'une sortie de `git ls-remote --tags`."""
     majors = [int(m[1]) for line in ls_remote.splitlines() if (m := TAG_RE.search(line.split("\t")[-1]))]
     return max(majors) if majors else None
+
+
+def tag_sha(ls_remote: str, major: int) -> str | None:
+    """SHA du commit visé par l'étiquette `vN` (forme déréférencée `^{}` prioritaire si l'étiquette est annotée)."""
+    refs = {}
+    for line in ls_remote.splitlines():
+        sha, _, ref = line.partition("\t")
+        refs[ref] = sha
+    return refs.get(f"refs/tags/v{major}^{{}}") or refs.get(f"refs/tags/v{major}")
+
+
+def stale_pins(used: dict[str, dict], tags: dict[str, str | None]) -> list[dict]:
+    """Épinglages dont l'étiquette `vN` désigne aujourd'hui un autre commit (correctif à reprendre)."""
+    rows = []
+    for name, entry in sorted(used.items()):
+        text = tags.get(name)
+        for sha, major in sorted(entry.get("shas", {}).items()):
+            current = tag_sha(text, major) if text else None
+            if current and current != sha:
+                rows.append({"action": name, "majeure": f"v{major}", "epingle": sha, "etiquette": current,
+                             "fichiers": entry["fichiers"]})
+    return rows
 
 
 def compare_actions(used: dict[str, dict], latest: dict[str, int | None]) -> list[dict]:
@@ -130,13 +160,19 @@ def run_pip_audit(constraints: Path) -> tuple[int, str, str]:
     return p.returncode, p.stdout, p.stderr
 
 
-def fetch_latest(action: str) -> int | None:
+def fetch_tags(action: str) -> str | None:
+    """Sortie de `git ls-remote --tags` du dépôt de l'action, None si illisible."""
     try:
         p = subprocess.run(["git", "ls-remote", "--tags", f"https://github.com/{action}"], capture_output=True,
                            text=True, timeout=60, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return None
-    return latest_major(p.stdout) if p.returncode == 0 else None
+    return p.stdout if p.returncode == 0 else None
+
+
+def fetch_latest(action: str) -> int | None:
+    text = fetch_tags(action)
+    return latest_major(text) if text is not None else None
 
 
 def fetch_published(name: str, version: str) -> datetime | None:
@@ -162,6 +198,10 @@ def format_report(rep: Rapport, when: datetime) -> str:
                      + (f", {unknown} non vérifiée{'s' if unknown > 1 else ''}" if unknown else ""))
         lines += [f"  {a['action']} : {a['utilise']} utilisée, {a['derniere']} publiée ({', '.join(a['fichiers'])})"
                   for a in late]
+        if rep.a_rafraichir:
+            lines.append(f"Épinglages à rafraîchir (étiquette avancée) : {len(rep.a_rafraichir)}")
+            lines += [f"  {r['action']} {r['majeure']} : épinglée {r['epingle'][:12]}, étiquette sur {r['etiquette'][:12]}"
+                      f" ({', '.join(r['fichiers'])})" for r in rep.a_rafraichir]
     if "anciens" not in rep.sautes:
         lines.append(f"Paquets publiés il y a plus de {OLD_DAYS} jours : {len(rep.anciens)}")
         lines += [f"  {o['paquet']} {o['version']} : publié le {o['publie']} ({o['jours']} jours)" for o in rep.anciens]
@@ -195,7 +235,10 @@ def audit(offline: bool, constraints: Path = CONSTRAINTS, workflows: Path = WORK
         rep.sautes += ["actions", "anciens"]
     else:
         used = read_workflows(workflows)
-        rep.actions = compare_actions(used, {name: fetch_latest(name) for name in used})
+        tags = {name: fetch_tags(name) for name in used}
+        rep.actions = compare_actions(used, {name: latest_major(t) if t is not None else None
+                                             for name, t in tags.items()})
+        rep.a_rafraichir = stale_pins(used, tags)
         rep.non_verifies += [f"action {a['action']} (dernière version illisible)" for a in rep.actions
                              if a["derniere"] == "?"]
         published = {}
