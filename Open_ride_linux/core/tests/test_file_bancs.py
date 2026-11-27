@@ -65,9 +65,13 @@ def _cmd(code, texte=""):
     return f"{PY} -c {json.dumps(script)} {{sortie}}"
 
 
-def _file(tmp_path, clone, prs: str) -> Path:
+def _file(tmp_path, clone, prs: str, temoin: bool = False, autocontrole: str | None = None) -> Path:
+    """File d'essai ; témoin sur main (garde-fou 2) et auto-contrôle de l'outil (garde-fou 3) coupés sauf demande :
+    chaque test juge une seule règle."""
     f = tmp_path / "file.toml"
-    f.write_text(f'[file]\ndepot = "{clone}"\nsortie = "{tmp_path / "sortie"}"\n{prs}', encoding="utf-8")
+    auto = json.dumps(autocontrole) if autocontrole else "false"
+    f.write_text(f'[file]\ndepot = "{clone}"\nsortie = "{tmp_path / "sortie"}"\n'
+                 f'temoin_main = {"true" if temoin else "false"}\nautocontrole = {auto}\n{prs}', encoding="utf-8")
     return f
 
 
@@ -310,7 +314,7 @@ def test_portail_attend_puis_apres_etape_recoit_le_verdict(tmp_path, depot):
                f"p.write_text(str(n+1)); print('Godot du user ouvert'); sys.exit(0 if n >= 2 else 1)\"")
     apres = f"{PY} -c \"import sys; open(r'{trace}','a').write(' '.join(sys.argv[1:])+chr(10))\" {{pr}} {{etape}} {{verdict}}"
     f = tmp_path / "file.toml"
-    f.write_text(f'[file]\ndepot = "{clone}"\nsortie = "{tmp_path / "sortie"}"\nattente_s = 0\n'
+    f.write_text(f'[file]\ndepot = "{clone}"\nsortie = "{tmp_path / "sortie"}"\nattente_s = 0\nautocontrole = false\n'
                  f'avant_etape = {json.dumps(portail)}\napres_etape = {json.dumps(apres)}\n'
                  f'[[pr]]\nid = "p"\nbranche = "br"\n[[pr.etape]]\nid = "low"\ncommande = {json.dumps(_cmd(0))}\n',
                  encoding="utf-8")
@@ -812,3 +816,173 @@ delai_min = 0.02
     assert fb.main(["relancer", str(f), "--sans-reseau"]) == 0                # 2,4 s : passe
     r = _etat(tmp_path)["prs"]["p"]["court"]
     assert r["verdict"] == fb.OK and r["delai_s"] >= 2
+
+
+# --- refuser plutôt que deviner (27 novembre, banc pile à-coups) ------------------------------------
+
+def test_sortie_parent_refuse_a_la_lecture(tmp_path, depot):
+    """`{sortie}/../w` de la fumée n'est pas celui des étapes : la file est refusée, avec le remède `{commun}`."""
+    _, clone = depot
+    f = _file(tmp_path, clone, """
+[[pr]]
+id = "p"
+branche = "br"
+fumee = "mkdir -p {sortie}/../w"
+[[pr.etape]]
+id = "low"
+commande = "ls {sortie}/../w"
+""")
+    with pytest.raises(fb.FileInvalide, match=r"\{commun\}"):
+        fb.lire_file(f)
+
+
+def test_etape_ne_peut_pas_sappeler_commun(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, f"""
+[[pr]]
+id = "p"
+branche = "br"
+[[pr.etape]]
+id = "commun"
+commande = {json.dumps(_cmd(0))}
+""")
+    with pytest.raises(fb.FileInvalide, match="commun"):
+        fb.lire_file(f)
+
+
+def test_commun_partage_par_la_fumee_et_les_etapes(tmp_path, depot):
+    """Ce que la fumée écrit dans `{commun}` (les mondes construits) est lu par chaque étape de la PR."""
+    _, clone = depot
+    ecrire = f"{PY} -c {json.dumps('import pathlib,sys; pathlib.Path(sys.argv[1], \"monde\").write_text(\"ok\")')} {{commun}}"
+    lire = f"{PY} -c {json.dumps('import pathlib,sys; sys.exit(0 if pathlib.Path(sys.argv[1], \"monde\").is_file() else 1)')} {{commun}}"
+    f = _file(tmp_path, clone, f"""
+[[pr]]
+id = "p"
+branche = "br"
+fumee = {json.dumps(ecrire)}
+[[pr.etape]]
+id = "low"
+commande = {json.dumps(lire)}
+[[pr.etape]]
+id = "high"
+commande = {json.dumps(lire)}
+""")
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=lambda *_: None)
+    assert r.lancer() == 0
+    etat = _etat(tmp_path)["prs"]["p"]
+    assert etat["low"]["verdict"] == fb.OK and etat["high"]["verdict"] == fb.OK
+    assert (tmp_path / "sortie" / "p" / "commun" / "monde").is_file()
+
+
+# --- témoin sur main (garde-fou 2, 27 novembre) ------------------------------------------------------
+
+def _selon_x(code_main, code_branche):
+    """Commande qui lit x.txt du worktree (« main » ou « branche ») et rend le code voulu, en comptant ses passages."""
+    script = ("import pathlib,sys; p=pathlib.Path(sys.argv[1]+'.n'); p.write_text(str(int(p.read_text())+1) if "
+              "p.exists() else '1'); x=pathlib.Path('x.txt').read_text(); print('[ÉCHEC] vitesse imposée : 49 km/h'); "
+              f"sys.exit({code_main} if x=='main' else {code_branche})")
+    return f"{PY} -c {json.dumps(script)} {{sortie}}"
+
+
+def test_echec_aussi_sur_main_ne_bloque_pas_la_pr(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, f"""
+[[pr]]
+id = "p"
+branche = "br"
+fumee = {json.dumps(_cmd(0))}
+[[pr.etape]]
+id = "medium"
+commande = {json.dumps(_selon_x(1, 1))}
+""", temoin=True)
+    journal = []
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=journal.append)
+    assert r.lancer() == 0                      # défaut de l'outil ou de main : la PR n'est pas bloquée
+    v = _etat(tmp_path)["prs"]["p"]["medium"]
+    assert v["verdict"] == fb.ECHEC_MAIN and v["temoin_main"] == fb.ECHEC
+    assert "échoue aussi" in v["detail"]
+    lancees = [l.split()[1] for l in journal if l.startswith("→")]
+    assert lancees == ["p/fumee", "p/medium", "p/fumee.main", "p/medium.main"]
+    assert "ÉCHEC AUSSI SUR MAIN" in (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+
+
+def test_echec_confirme_quand_main_passe(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, f"""
+[[pr]]
+id = "p"
+branche = "br"
+[[pr.etape]]
+id = "medium"
+commande = {json.dumps(_selon_x(0, 1))}
+""", temoin=True)
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=lambda *_: None)
+    assert r.lancer() == 1
+    v = _etat(tmp_path)["prs"]["p"]["medium"]
+    assert v["verdict"] == fb.ECHEC and v["temoin_main"] == fb.OK and "main" in v["detail"]
+    # reprise sans changement : le témoin de ce commit de main n'est pas rejoué
+    r2 = fb.Runner(fb.lire_file(f), reseau=False, log=lambda *_: None)
+    assert r2.lancer() == 1
+    mains = [d for d in (tmp_path / "sortie" / "main").iterdir() if d.name != fb.COMMUN]
+    assert sum(int((d / "rapport.n").read_text()) for d in mains) == 1
+
+
+def test_temoin_coupe_par_la_file(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, f"""
+[[pr]]
+id = "p"
+branche = "br"
+[[pr.etape]]
+id = "medium"
+commande = {json.dumps(_selon_x(1, 1))}
+""")
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=lambda *_: None)
+    assert r.lancer() == 1
+    assert _etat(tmp_path)["prs"]["p"]["medium"]["verdict"] == fb.ECHEC
+
+
+# --- auto-contrôle de l'outil (garde-fou 3, 27 novembre) -----------------------------------------------
+
+_UNE_PR = f"""
+[[pr]]
+id = "p"
+branche = "br"
+[[pr.etape]]
+id = "low"
+commande = {json.dumps(_cmd(0))}
+"""
+
+
+def test_autocontrole_en_defaut_ne_lance_rien(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, _UNE_PR, autocontrole=_cmd(1, "[ÉCHEC] pente envoyée = pente du parcours : 4,2 points"))
+    journal = []
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=journal.append)
+    assert r.lancer() == fb.CODE_OUTIL_EN_DEFAUT
+    assert _passages(tmp_path, "p", "low") == 0
+    assert any("OUTIL DE BANC EN DÉFAUT" in l for l in journal)
+    assert "OUTIL DE BANC EN DÉFAUT" in (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+
+
+def test_autocontrole_joue_une_fois_par_commit_de_main(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, _UNE_PR, autocontrole=_cmd(0))
+    journal = []
+    assert fb.Runner(fb.lire_file(f), reseau=False, log=journal.append).lancer() == 0
+    assert [l.split()[1] for l in journal if l.startswith("→")] == ["autocontrole/autocontrole", "p/low"]
+    journal.clear()
+    assert fb.Runner(fb.lire_file(f), reseau=False, log=journal.append).lancer() == 0
+    assert not [l for l in journal if "autocontrole/" in l]      # acquis sur ce commit de main
+    assert "Auto-contrôle de l'outil sur main" in (tmp_path / "sortie" / "etat.md").read_text(encoding="utf-8")
+
+
+def test_autocontrole_par_defaut_est_le_banc_simule_court(tmp_path, depot):
+    _, clone = depot
+    f = tmp_path / "file.toml"
+    f.write_text(f'[file]\ndepot = "{clone}"\nsortie = "{tmp_path / "sortie"}"\n{_UNE_PR}', encoding="utf-8")
+    auto = fb.lire_file(f).autocontrole
+    assert "sim_bench.py" in auto and "--scenario demo" in auto and "--speed-kmh" in auto and "--world demo" in auto
+    f.write_text(f.read_text(encoding="utf-8").replace("[file]\n", "[file]\nautocontrole = 3\n"), encoding="utf-8")
+    with pytest.raises(fb.FileInvalide):
+        fb.lire_file(f)

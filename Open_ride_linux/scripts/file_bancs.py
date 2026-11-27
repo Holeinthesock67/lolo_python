@@ -70,8 +70,11 @@ Paquets, matrice et cloud (plan du 20 novembre, file PC trop lente) :
 - `verifier FILE` : têtes et composition des paquets, sans rien lancer ; `categorie CORPS.md` : catégorie lue dans la
   section « Recette PC » d'une PR (« - » : entrée standard).
 
-Les commandes tournent dans `<worktree>/Open_ride_linux`, avec `{sortie}` (dossier de l'étape), `{worktree}` et
-`{projet}`, `{depot}` (le dépôt du user, pour son environnement Python) remplacés ; chaque étape a PYTHONPATH sur
+Les commandes tournent dans `<worktree>/Open_ride_linux`, avec `{sortie}` (dossier de l'étape), `{commun}` (dossier
+partagé par la fumée et toutes les étapes d'une même PR, par exemple les mondes construits par la fumée), `{worktree}`
+et `{projet}`, `{depot}` (le dépôt du user, pour son environnement Python) remplacés ; `{sortie}/..` est refusé à la
+lecture de la file (27 novembre : chaque étape a son dossier, la fumée aussi, donc `{sortie}/../w` de la fumée n'est
+pas celui des étapes ; le monde cherché était vide et le banc roulait sur un autre parcours) ; chaque étape a PYTHONPATH sur
 les sources du worktree (core et compilateur), le core/.venv du dépôt en tête du PATH (lié dans le worktree),
 LC_NUMERIC=C et OPENRIDE_NO_GUI=1, comme job.sh ; le portail reçoit FILE_PR,
 FILE_ETAPE et FILE_DUREE_MIN (délai de l'étape, pour ne pas déborder sur la fenêtre du user). Verdicts :
@@ -90,6 +93,14 @@ Cache (revue O2-05, 24 novembre) : par défaut, chaque PR a son cache séparé ;
 ~/OpenRide/Cache/monde sauf `cache = "reel"` écrit en toutes lettres, et même alors une PR qui change le schéma du
 cache (`SCHEMA_VERSION`) ou le code de génération (`compiler/src/openride_compiler/worldgen/`) depuis main est refusée
 (ENVIRONNEMENT) sans être lancée.
+Témoin sur main (garde-fou 2, 27 novembre : rDPS1 et la pile à-coups ont échoué sur des défauts de l'outil, pas des
+PR) : une étape de branche en ÉCHEC est rejouée sur main (précédée de la fumée de la PR, jouée sur main, `{commun}` à
+part), une fois par commit de main et par commande. Main passe : ÉCHEC confirmé ; main échoue aussi : ÉCHEC AUSSI SUR
+MAIN, défaut de l'outil ou de main, non bloquant pour la PR (code 0 si rien d'autre). `[file] temoin_main = false`
+le coupe.
+Auto-contrôle de l'outil (garde-fou 3) : avant la file, un banc simulé court sur main (scénario demo, vitesse imposée
+40 km/h, 150 s, low), une fois par commit de main : en défaut, rien n'est lancé (code 4, « OUTIL DE BANC EN DÉFAUT »
+en tête de etat.md). `[file] autocontrole = false` le coupe, une chaîne le remplace (`{native}` : « --native » au PC).
 Reprise : `lancer` rejoue tout ce qui n'est pas OK, CONTACTS ou À-COUPS sur la tête actuelle ; `relancer` rejoue seulement
 les étapes en échec (les OK d'une tête précédente restent acquises et sont marquées « sur tête X »).
 Délais mesurés (lot DM1, 26 novembre ; 7 h 30 de PC perdues les 25 et 26/11 sur des délais fixes trop courts) :
@@ -100,7 +111,8 @@ le double du délai précédent après un DÉLAI sans durée connue, plafonné �
 une sous-commande dont le délai interne (`--delai-s N`, `timeout N`) n'est pas sous celui de l'étape.
 Pause : un fichier `PAUSE` dans le dossier de sortie arrête la file avant l'étape suivante (« PC libre ») ;
 Ctrl-C ou SIGTERM arrête l'étape en cours sans verdict. Code de sortie : 0 si rien n'est en ÉCHEC, DÉLAI ni
-ENVIRONNEMENT, 1 sinon, 2 si l'appel ou la file est invalide, 3 si la file est en pause. Bibliothèque standard seulement.
+ENVIRONNEMENT, 1 sinon, 2 si l'appel ou la file est invalide, 3 si la file est en pause, 4 si l'auto-contrôle de
+l'outil est en défaut. Bibliothèque standard seulement.
 """
 
 from __future__ import annotations
@@ -128,6 +140,17 @@ from typing import Any
 OK, CONTACTS, ACOUPS, ECHEC, DELAI, ENV, BLOQUE, A_FAIRE, REFUSE = (
     "OK", "CONTACTS", "À-COUPS", "ÉCHEC", "DÉLAI", "ENVIRONNEMENT", "BLOQUÉ", "À FAIRE", "REFUSÉ")
 ACQUIS = (OK, CONTACTS, ACOUPS)                       # verdicts qui ne se rejouent pas sur la même tête
+# Témoin sur main (garde-fou 2, 27 novembre) : étape de branche en ÉCHEC rejouée sur main ; main en échec aussi =
+# défaut de l'outil ou de main, pas de la PR : non bloquant pour elle (rejoué à la reprise, jamais acquis).
+ECHEC_MAIN = "ÉCHEC AUSSI SUR MAIN"
+# Auto-contrôle de l'outil (garde-fou 3, 27 novembre) : banc simulé court sur main avant la file, une fois par commit de
+# main. Scénario demo exprès (appuis du Click) : la vitesse imposée doit tenir à braquet neutre (GF1b), sur la pente
+# du parcours, sur le parcours demandé (GF4). En défaut : la file ne lance rien (code 4).
+AUTOCONTROLE = "autocontrole"
+AUTOCONTROLE_CMD = ("python engine/tests/sim_bench.py {native}--muet --quality low --scenario demo --world demo "
+                    "--speed-kmh 40 --duration 150 --out {sortie}")
+AUTOCONTROLE_DELAI_MIN = 12
+CODE_OUTIL_EN_DEFAUT = 4
 EN_ECHEC = (ECHEC, DELAI, ENV, REFUSE)
 FUMEE = "fumee"
 CACHES = ("reel", "separe")
@@ -143,6 +166,9 @@ ACOUP = re.compile(r"à-coups|pire image|images lentes", re.I)
 # rien de la PR (nuit du 20 novembre, captures #932 et #935). Ignorés dans les étapes `lieu = "cloud"` seulement.
 DELAI_CAPTURE_CLOUD = re.compile(r"images enregistrées après le chargement.*captures de l'engine", re.I)
 STRATEGIES = ("", "ours", "theirs")
+# `{sortie}/..` dans une commande : dossier de l'étape seule, jamais partagé (27 novembre, banc pile à-coups).
+COMMUN = "commun"                              # dossier `{commun}` de la PR, partagé par ses étapes
+SORTIE_PARENT = re.compile(r"\{sortie\}/\.\.")
 SCINDE = "SCINDÉ"                              # étape d'un paquet en échec, rejouée PR par PR (voir scissions)
 LIEUX = ("pc", "cloud")
 RENDU, LOGIQUE = "rendu", "logique"
@@ -228,6 +254,8 @@ class File:
     avant_etape: str | None = None             # portail : code 0 = on y va, sinon on attend (fenêtre du user, Godot)
     apres_etape: str | None = None             # après chaque étape (poussage anonymisé des résultats)
     attente_s: float = 60.0
+    temoin_main: bool = True                   # étape de branche en ÉCHEC rejouée sur main (garde-fou 2)
+    autocontrole: str = ""                     # commande de l'auto-contrôle de l'outil (garde-fou 3), vide : coupé
 
     def par_risque(self) -> list[PR]:
         return sorted(self.prs, key=lambda p: (p.risque, p.rang))
@@ -248,14 +276,17 @@ def _etapes(nom: str, d: dict[str, Any], categorie: str) -> list[Etape]:
         for q in MATRICE[categorie]:
             etapes.append(Etape(q, modele.replace("{qualite}", q), float(d.get("matrice_delai_min", 40))))
     for e in d.get("etape", []):
-        if not e.get("id") or not e.get("commande") or e["id"] == FUMEE:
-            raise FileInvalide(f"{nom} : chaque étape a un `id` (pas « {FUMEE} ») et une `commande`")
+        if not e.get("id") or not e.get("commande") or e["id"] in (FUMEE, COMMUN):
+            raise FileInvalide(f"{nom} : chaque étape a un `id` (pas « {FUMEE} » ni « {COMMUN} ») et une `commande`")
         sur = e.get("sur", "branche")
         if sur not in ("branche", "main"):
             raise FileInvalide(f"{nom}/{e['id']} : `sur` vaut « branche » ou « main »")
         etapes.append(Etape(str(e["id"]), str(e["commande"]), float(e.get("delai_min", 60)), sur,
                             str(e.get("lieu", "pc"))))
     for e in etapes:
+        if SORTIE_PARENT.search(e.commande):
+            raise FileInvalide(f"{nom}/{e.id} : `{{sortie}}/..` désigne le dossier de cette étape seule, pas celui "
+                               "de la fumée ni des autres étapes ; un dossier partagé s'écrit `{commun}`")
         if e.lieu not in LIEUX:
             raise FileInvalide(f"{nom}/{e.id} : `lieu` vaut « pc » ou « cloud »")
     if len({e.id for e in etapes}) != len(etapes):
@@ -333,7 +364,15 @@ def lire_file(chemin: Path) -> File:
                       categorie, membres))
     if not prs:
         raise FileInvalide(f"{chemin} : aucune entrée [[pr]] ni [[paquet]]")
-    return File(depot, sortie, prs, tete.get("avant_etape"), tete.get("apres_etape"), float(tete.get("attente_s", 60)))
+    temoin = tete.get("temoin_main", True)
+    if not isinstance(temoin, bool):
+        raise FileInvalide("[file] temoin_main vaut true ou false")
+    auto = tete.get("autocontrole", True)
+    if not isinstance(auto, (bool, str)):
+        raise FileInvalide("[file] autocontrole vaut true, false ou une commande")
+    auto = (AUTOCONTROLE_CMD if auto is True else "") if isinstance(auto, bool) else auto
+    return File(depot, sortie, prs, tete.get("avant_etape"), tete.get("apres_etape"), float(tete.get("attente_s", 60)),
+                temoin, auto)
 
 
 # --- état ----------------------------------------------------------------------------------------
@@ -862,8 +901,9 @@ class Runner:
         self.log(f"  {verdict} {detail}")
         return verdict
 
-    def executer(self, pr: PR, e: Etape) -> str | None:
-        """Joue une étape et note son verdict ; None si la file s'est mise en pause avant."""
+    def executer(self, pr: PR, e: Etape, commun: Path | None = None) -> str | None:
+        """Joue une étape et note son verdict ; None si la file s'est mise en pause avant. `commun` : dossier
+        `{commun}` imposé (témoin sur main : celui de la fumée de la PR rejouée sur main)."""
         if not self.portail(pr, e):
             return None
         try:
@@ -886,7 +926,10 @@ class Runner:
         dossier = self.f.sortie / ("main" if e.sur == "main" else pr.id) / (e.empreinte if e.sur == "main" else e.id)
         dossier.mkdir(parents=True, exist_ok=True)
         projet = wt / "Open_ride_linux"
-        cmd = e.commande.format(sortie=shlex.quote(str(dossier / "rapport")), worktree=shlex.quote(str(wt)),
+        commun = commun or self.f.sortie / ("main" if e.sur == "main" else pr.id) / COMMUN
+        commun.mkdir(parents=True, exist_ok=True)
+        cmd = e.commande.format(sortie=shlex.quote(str(dossier / "rapport")), commun=shlex.quote(str(commun)),
+                                worktree=shlex.quote(str(wt)),
                                 projet=shlex.quote(str(projet)), depot=shlex.quote(str(self.f.depot)))
         env = environnement_etape(self.f.depot, projet)
         if pr.cache == "separe" and e.sur == "branche":
@@ -930,7 +973,28 @@ class Runner:
         v = self.etat.get(pr, fum)
         return v is not None and v["verdict"] in ACQUIS
 
+    def autocontrole(self) -> str | None:
+        """Garde-fou 3 : l'outil de banc mesure-t-il bien ce qu'on lui demande ? Banc court sur main, une fois par
+        commit de main (verdict repris ensuite). Rend le verdict, ou None si la file s'est mise en pause."""
+        cmd = self.f.autocontrole.replace("{native}", "--native " if self.lieu == "pc" else "")
+        e = Etape(AUTOCONTROLE, cmd, AUTOCONTROLE_DELAI_MIN, "main", self.lieu)
+        pr = PR(AUTOCONTROLE, "main")
+        if self.a_jouer(pr, e, "lancer"):
+            self.log("Auto-contrôle de l'outil de banc sur main (garde-fou 3)")
+            if self.executer(pr, e) is None:
+                return None
+        return (self.etat.get(pr, e) or {}).get("verdict", ENV)
+
     def lancer(self, mode: str = "lancer", seulement: set[str] | None = None, fumees_seules: bool = False) -> int:
+        if self.f.autocontrole:
+            verdict = self.autocontrole()
+            if verdict is None:
+                return 3
+            if verdict not in ACQUIS:
+                self.log(f"OUTIL DE BANC EN DÉFAUT : auto-contrôle {verdict} sur main ; file non lancée (code "
+                         f"{CODE_OUTIL_EN_DEFAUT}). Corriger l'outil, ou `[file] autocontrole = false` en connaissance de cause.")
+                ecrire_tableau(self.f, self.etat, self.tetes)
+                return CODE_OUTIL_EN_DEFAUT
         prs = [p for p in toutes(self.f, self.etat) if not seulement or p.id in seulement or p.paquet in seulement]
         code = self.jouer_liste(prs, mode, fumees_seules)
         if code is not None:
@@ -972,9 +1036,55 @@ class Runner:
                                               "empreinte": e.empreinte})
                 continue
             for e in longues:
-                if self.a_jouer(pr, e, mode) and self.executer(pr, e) is None:
+                if not self.a_jouer(pr, e, mode):
+                    continue
+                verdict = self.executer(pr, e)
+                if verdict is None:
                     return 3
+                if verdict == ECHEC and self.f.temoin_main and e.sur == "branche" and not pr.est_paquet:
+                    if self.temoin(pr, e) is None:
+                        return 3
         return None
+
+    def temoin(self, pr: PR, e: Etape) -> str | None:
+        """Garde-fou 2 (27 novembre, rDPS1 et pile à-coups : des échecs de l'outil pris pour des échecs de PR) :
+        l'étape en ÉCHEC est rejouée sur main, précédée de la fumée de la PR rejouée sur main (mêmes mondes dans un
+        `{commun}` à elle). Main en ÉCHEC aussi : la PR passe ÉCHEC AUSSI SUR MAIN (non bloquant) ; main OK : ÉCHEC
+        confirmé. Verdicts de main partagés par commit et par commande. None si la file s'est mise en pause."""
+        fum = next((x for x in self.etapes(pr) if x.id == FUMEE), None)
+        commun = self.f.sortie / "main" / COMMUN / (fum.empreinte if fum else "sans-fumee")
+        jouees = []
+        if fum is not None:
+            jouees.append(Etape(f"{FUMEE}.main", fum.commande, fum.delai_min, "main", fum.lieu))
+        jouees.append(Etape(f"{e.id}.main", e.commande, e.delai_min, "main", e.lieu))
+        temoin, quoi = {"verdict": ENV, "detail": "témoin non joué"}, "étape"
+        for t in jouees:
+            quoi = "fumée" if t.id.startswith(FUMEE + ".") else "étape"
+            self.log(f"  témoin sur main de {pr.id}/{e.id} : {t.id}")
+            deja = self.etat.get(pr, t)
+            try:
+                main_sha = self.tete("main")
+            except RuntimeError:
+                main_sha = None
+            # Déjà jugée sur ce commit de main (par une autre PR, ou à une reprise) : verdict repris, pas rejoué.
+            if not (deja and deja.get("tete") == main_sha and deja["verdict"] != ENV) \
+                    and self.executer(pr, t, commun) is None:
+                return None
+            temoin = self.etat.get(pr, t) or temoin
+            if temoin["verdict"] not in ACQUIS:
+                break
+        v = self.etat.get(pr, e) or {}
+        main = str(temoin.get("tete") or "?")[:8]
+        if temoin["verdict"] == ECHEC and quoi == "étape":
+            verdict = ECHEC_MAIN
+            detail = f"main {main} échoue aussi (défaut de l'outil ou de main) : {temoin.get('detail', '')}"
+        else:
+            verdict = ECHEC
+            detail = (f"main {main} : {quoi} {temoin['verdict']}" if temoin["verdict"] not in ACQUIS
+                      else f"main {main} passe : échec propre à la branche") + f" ; branche : {v.get('detail', '')}"
+        self.etat.put(pr, e, {**v, "verdict": verdict, "detail": detail[:300], "temoin_main": temoin["verdict"]})
+        self.log(f"  {pr.id}/{e.id} : {verdict} ({detail[:160]})")
+        return verdict
 
     def scinder(self, paquets: list[PR]) -> list[PR]:
         """Marque SCINDÉ les étapes du PC en ÉCHEC ou DÉLAI des paquets (pas ENVIRONNEMENT ni REFUSÉ : le PC ou la
@@ -1054,6 +1164,14 @@ def ecrire_tableau(f: File, etat: Etat, tetes: dict[str, str] | None = None) -> 
                 details.append(f"- {pr.id}/{e.id} : {v['verdict']}, {v['detail']}")
     for x in defauts_assemblage(f, etat):
         details.append(f"- {x} : DÉFAUT D'ASSEMBLAGE, en échec en paquet mais passée par chaque PR seule (compté en échec)")
+    auto = etat.data["main"].get(Etape(AUTOCONTROLE, f.autocontrole.replace("{native}", "--native ")).empreinte) \
+        or etat.data["main"].get(Etape(AUTOCONTROLE, f.autocontrole.replace("{native}", "")).empreinte)
+    if f.autocontrole:
+        tete = f" sur main {str(auto.get('tete') or '?')[:8]}" if auto else ""
+        txt = (f"Auto-contrôle de l'outil{tete} : {auto['verdict'] if auto else A_FAIRE}"
+               + (f", {auto['detail']}" if auto and auto.get("detail") else "")
+               + (" : OUTIL DE BANC EN DÉFAUT, file non lancée" if auto and auto["verdict"] not in ACQUIS else "")
+               + "\n\n" + txt)
     md = f"# File des bancs : {f.sortie.name}\n\n{txt}" + ("\n" + "\n".join(details) + "\n" if details else "")
     f.sortie.mkdir(parents=True, exist_ok=True)
     (f.sortie / "etat.md").write_text(md, encoding="utf-8")
