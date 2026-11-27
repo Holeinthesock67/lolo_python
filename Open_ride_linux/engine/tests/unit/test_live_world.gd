@@ -103,6 +103,20 @@ func _init() -> void:
 	_check(is_same(lw.route.parts[0], part_0), "partie 0 gardée (même objet)")
 	_check(absf(lw.route.sample(2750.0)["x"] - 2750.0) < 1e-6, "route prolongée lisible")
 
+	# Lot OW8 : révision sans changement de route (tuiles arrivées, carrefour choisi) : même objet, rien à refaire.
+	var route_2 = lw.route
+	_publish(dir, 3500.0, 3, 3, [_junction("jA", 500.0, 2), _junction("jB", 1800.0, 0)], 3)
+	lw.on_open_world({"rev": 3})
+	done = lw.wait_poll()
+	_check(done.get("same_route", false) and is_same(lw.route, route_2) and lw.revision == 3
+		and int(done["from_part"]) == route_2.parts.size(), "route inchangée : même route, révision 3 notée")
+	_check(int(lw.junctions[0]["chosen"]) == 2, "carrefours relus quand même")
+	var p3: Dictionary = JSON.parse_string(JSON.stringify(_part(3, 3500.0)))   # comme lu sur le disque
+	_check(LiveWorld.same_parts(route_2.parts, 3, [p3]), "mêmes parties lues : inchangé")
+	p3["alt_m"][5] = float(p3["alt_m"][5]) + 0.2
+	_check(not LiveWorld.same_parts(route_2.parts, 3, [p3]), "une altitude réglée de nouveau : changé")
+	_check(not LiveWorld.same_parts(route_2.parts, 2, [p3]), "une partie de moins : changé")
+
 	# Même révision annoncée deux fois, ou plus ancienne : rien à faire.
 	lw.on_open_world({"rev": 2})
 	lw.on_open_world({"rev": 1})

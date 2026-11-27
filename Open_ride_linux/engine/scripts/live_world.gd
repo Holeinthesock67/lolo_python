@@ -148,12 +148,29 @@ func _read_job(dir: String, from_part: int, base, live_rev: int) -> void:
 	if not res["ok"]:
 		_result = {"ok": false, "error": res["error"], "revision": live_rev}
 		return
+	if same_parts(base.parts, from_part, res["parts"]):
+		# Révision sans changement de route (tuiles arrivées, carrefours) : la route reste le même objet, rien
+		# à reconstruire (lot OW8 : à Tromsø, une révision identique toutes les 0,5 s refaisait route et décor).
+		_result = {"ok": true, "route": base, "same_route": true, "from_part": base.parts.size(),
+			"junctions": read_junctions(dir), "revision": live_rev}
+		return
 	var fresh = base.revised_from(from_part, res["parts"])
 	if fresh == null:
 		_result = {"ok": false, "error": base.load_error, "revision": live_rev}
 		return
 	_result = {"ok": true, "route": fresh, "from_part": from_part, "junctions": read_junctions(dir),
 		"revision": live_rev}
+
+
+## Vrai si les parties lues depuis `from_part` sont celles de la route déjà là (mêmes nombres, même nombre de
+## parties) : comparaison de contenu des dictionnaires lus en JSON.
+static func same_parts(old_parts: Array, from_part: int, new_parts: Array) -> bool:
+	if from_part < 0 or old_parts.size() != from_part + new_parts.size():
+		return false
+	for i in range(new_parts.size()):
+		if old_parts[from_part + i] != new_parts[i]:
+			return false
+	return true
 
 
 ## Fil principal : applique une lecture terminée. Renvoie {} s'il n'y a rien de neuf, sinon
@@ -226,7 +243,7 @@ func _finish() -> Dictionary:
 		check_segments(true)
 		apply_segments(route)        # la route échangée ne connaît pas encore les segments (lot W21)
 		out = {"revision": revision, "from_part": int(res["from_part"]), "route": route, "junctions": junctions,
-			"segments": route.segments}
+			"segments": route.segments, "same_route": bool(res.get("same_route", false))}
 	else:
 		last_error = str(res.get("error", "lecture impossible"))
 		_failed_rev = int(res.get("revision", 0))
