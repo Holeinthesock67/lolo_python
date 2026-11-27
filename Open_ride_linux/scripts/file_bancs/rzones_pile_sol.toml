@@ -1,0 +1,109 @@
+# Banc rZONES « pile sol » (27/11) : les 7 zones du monde ouvert (ow_multi_zones.toml), qualité medium, cache SÉPARÉ,
+# joué sur la branche de pile claude/project-thread-5rdl7m-pile-sol : main 527e4700 + 13 PR assemblées, dans cet ordre :
+#   #984 09ad7101  #1104 58e23139  #1106 383c018e  #1105 36934c3d  #1117 26fd8f09  #1128 d32b4665  #1130 d1a369b9
+#   #1134 455a968c  #1140 1f145bc9  #1119 a339a130  #1073 21bcee3e  #1120 bb08e830  #1121 c73546c8
+# Conflits résolus SUR LA PILE SEULEMENT (aucune PR n'est changée ; chaque fil fusionnera main lui-même) :
+#   - WORLDGEN : #1073 met 11, #1119 met 12 (« 11 réservé à #1073 ») ; pile à 12, les deux règles dedans. Ordre de
+#     fusion dans main : #1073 avant #1119 (sinon #1119 doit redescendre à 11 et #1073 passer à 12).
+#   - #1073 x main : menu_bench.py et son test (attente du monde prêt avant la fermeture du menu) ; version de main
+#     gardée (même correctif, déjà fusionné).
+#   - #1120 x main/#1116 : docs/contracts/world_format_v1.md (lignes 1.11 du tableau et §8) ; les deux textes gardés.
+#   - #1121 x #1105 : worldgen/process.py `_extend` ; appel `_append_leg` sans `to_node` (#1121) et retour « vrai si la
+#     route a changé » (#1105, OW8).
+# Verdict : la pile est BONNE si au moins 5 zones sur 7 passent (banc, contrôle sol / route, profil, aucune ligne
+# « [gel] ») sans qu'aucun correctif nouveau ne soit nécessaire ; une zone en échec est relue avant tout go (cause
+# dans une PR de la pile = retour à sa PR seule, cause déjà connue sur main = notée sans bloquer).
+#
+# Banc multi-zones du monde ouvert (24/11, règle du propriétaire : « corrections globales, pas au cas par cas, sinon
+# l'open world n'a pas de sens »). Même scénario (8 min, choix aux carrefours, 4 captures) sur 7 zones et 6 biomes :
+#   sevrier  lac et rive boisée (référence des bancs ea1)    biarritz  côte atlantique, mer, ville
+#   grenoble montagne, fortes pentes                          almeria   aride, désert proche, Méditerranée
+#   tromso   boréal et toundra, fjord, ponts, tunnels         funchal   île volcanique, rues de plus de 20 %
+#   lyon     ville dense, fleuves, ponts
+# Après chaque zone : contrôle sol / route et décor hors chaussée (controle_sol_route.py, balade de la zone seule :
+# `--balades-seules`, sinon les 40 parcours installés passent aussi et l'étape finit sur son délai, 26/11), profil d'altitude
+# (controle_profil_altitude.py, présent avec #961) et lignes « [gel] » (présentes avec #1054) sur la balade du cache
+# SÉPARÉ du banc. Aucune coordonnée ni trace dans le dépôt : départs trouvés par leur nom.
+# À jouer sur la pile ou le train du monde ouvert (remplir `branche` et `tete`), puis sur main après fusion.
+# Réseau obligatoire (tuiles OSM et relief des 5 zones nouvelles, quelques centaines de Mo au premier passage).
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/ow_multi_zones.toml
+# Cache SÉPARÉ obligatoire : le banc ne touche jamais ~/OpenRide/Cache/monde.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rZONES-sol"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rZONESsol-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rZONESsol"
+branche = "claude/project-thread-5rdl7m-pile-sol"   # pile de 13 PR (voir en tête) ; tête donnée par le fil
+cache = "separe"
+risque = 1                                 # jamais tourné
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); true"""
+fumee_delai_min = 8
+
+[[pr.etape]]
+id = "sevrier-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ow_zone_sevrier --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; \
+python3 scripts/controle_sol_route.py --out {sortie}/sol --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 --balades-seules --delai-s 600 || rc=1; \
+if [ -f scripts/controle_profil_altitude.py ]; then python3 scripts/controle_profil_altitude.py --out {sortie}/profil --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; fi; \
+grep -rh "\\[gel\\]" {sortie}/banc > {sortie}/gels.txt; exit $rc"""
+delai_min = 30
+
+[[pr.etape]]
+id = "biarritz-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ow_zone_biarritz --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; \
+python3 scripts/controle_sol_route.py --out {sortie}/sol --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 --balades-seules --delai-s 600 || rc=1; \
+if [ -f scripts/controle_profil_altitude.py ]; then python3 scripts/controle_profil_altitude.py --out {sortie}/profil --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; fi; \
+grep -rh "\\[gel\\]" {sortie}/banc > {sortie}/gels.txt; exit $rc"""
+delai_min = 30
+
+[[pr.etape]]
+id = "grenoble-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ow_zone_grenoble --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; \
+python3 scripts/controle_sol_route.py --out {sortie}/sol --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 --balades-seules --delai-s 600 || rc=1; \
+if [ -f scripts/controle_profil_altitude.py ]; then python3 scripts/controle_profil_altitude.py --out {sortie}/profil --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; fi; \
+grep -rh "\\[gel\\]" {sortie}/banc > {sortie}/gels.txt; exit $rc"""
+delai_min = 30
+
+[[pr.etape]]
+id = "almeria-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ow_zone_almeria --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; \
+python3 scripts/controle_sol_route.py --out {sortie}/sol --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 --balades-seules --delai-s 600 || rc=1; \
+if [ -f scripts/controle_profil_altitude.py ]; then python3 scripts/controle_profil_altitude.py --out {sortie}/profil --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; fi; \
+grep -rh "\\[gel\\]" {sortie}/banc > {sortie}/gels.txt; exit $rc"""
+delai_min = 30
+
+[[pr.etape]]
+id = "tromso-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ow_zone_tromso --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; \
+python3 scripts/controle_sol_route.py --out {sortie}/sol --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 --balades-seules --delai-s 600 || rc=1; \
+if [ -f scripts/controle_profil_altitude.py ]; then python3 scripts/controle_profil_altitude.py --out {sortie}/profil --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; fi; \
+grep -rh "\\[gel\\]" {sortie}/banc > {sortie}/gels.txt; exit $rc"""
+delai_min = 30
+
+[[pr.etape]]
+id = "funchal-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ow_zone_funchal --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; \
+python3 scripts/controle_sol_route.py --out {sortie}/sol --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 --balades-seules --delai-s 600 || rc=1; \
+if [ -f scripts/controle_profil_altitude.py ]; then python3 scripts/controle_profil_altitude.py --out {sortie}/profil --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; fi; \
+grep -rh "\\[gel\\]" {sortie}/banc > {sortie}/gels.txt; exit $rc"""
+delai_min = 30
+
+[[pr.etape]]
+id = "lyon-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ow_zone_lyon --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; \
+python3 scripts/controle_sol_route.py --out {sortie}/sol --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 --balades-seules --delai-s 600 || rc=1; \
+if [ -f scripts/controle_profil_altitude.py ]; then python3 scripts/controle_profil_altitude.py --out {sortie}/profil --seances "$OPENRIDE_BANC_CACHES/monde/seances" --dernieres 1 || rc=1; fi; \
+grep -rh "\\[gel\\]" {sortie}/banc > {sortie}/gels.txt; exit $rc"""
+delai_min = 30
