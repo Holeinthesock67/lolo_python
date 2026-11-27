@@ -10,6 +10,8 @@ uniform float intensity = 2.0;
 uniform float player_s = 0.0;
 uniform float ahead_m = 200.0;
 uniform float far_dim = 0.35;
+// Lot R30 : part de l'éclat sur toute la surface (le reste sur les arêtes). À 0,25, la route jaune éblouissait.
+uniform float surface_share = 0.12;
 
 varying float s_local;
 
@@ -24,5 +26,5 @@ void fragment() {
 	float fade = mix(1.0, far_dim, smoothstep(ahead_m, ahead_m + 40.0, s_local - player_s));
 	ALBEDO = body_color + lineaire(COLOR.rgb) * 0.08;
 	ROUGHNESS = 0.9;
-	EMISSION = lineaire(COLOR.rgb) * intensity * (0.25 + 0.75 * line) * fade;
+	EMISSION = lineaire(COLOR.rgb) * intensity * (surface_share + (1.0 - surface_share) * line) * fade;
 }
