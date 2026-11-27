@@ -75,6 +75,7 @@
     {
       "ecran": "route_import",
       "statut": "^Compilation de essai_import\\.gpx",
+      "transitoire": true,
       "delai": 10
     },
     {

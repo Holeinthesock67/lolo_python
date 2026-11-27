@@ -7,9 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
 import re
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -1097,26 +1095,9 @@ def replace_layer_dir(
     writer_fn: Any,
     chunks: dict[int, Any],
 ) -> None:
-    """Remplace atomiquement `world/<layer_name>` sans toucher aux autres couches."""
-    world = Path(world)
-    final = world / layer_name
-    tmp = world / f".{layer_name}.tmp-{os.getpid()}"
-    old = world / f".{layer_name}.old-{os.getpid()}"
-    shutil.rmtree(tmp, ignore_errors=True)
-    try:
-        writer_fn(tmp, chunks)
-        if final.exists():
-            final.rename(old)
-            try:
-                tmp.rename(final)
-            except BaseException:
-                old.rename(final)
-                raise
-            shutil.rmtree(old, ignore_errors=True)
-        else:
-            tmp.rename(final)
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+    """Remplace atomiquement `world/<layer_name>` sans toucher aux autres couches (fsync compris)."""
+    from .atomic_dir import replace_dir
+    replace_dir(Path(world) / layer_name, lambda tmp: writer_fn(tmp, chunks))
 
 
 def load_existing_near_tiles(world: Path) -> dict[tuple[int, int], np.ndarray]:
