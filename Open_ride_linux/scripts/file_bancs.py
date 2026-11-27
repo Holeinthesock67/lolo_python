@@ -93,6 +93,11 @@ Cache (revue O2-05, 24 novembre) : par défaut, chaque PR a son cache séparé ;
 ~/OpenRide/Cache/monde sauf `cache = "reel"` écrit en toutes lettres, et même alors une PR qui change le schéma du
 cache (`SCHEMA_VERSION`) ou le code de génération (`compiler/src/openride_compiler/worldgen/`) depuis main est refusée
 (ENVIRONNEMENT) sans être lancée.
+Témoin sur main (garde-fou 2, 27 novembre : rDPS1 et la pile à-coups ont échoué sur des défauts de l'outil, pas des
+PR) : une étape de branche en ÉCHEC est rejouée sur main (précédée de la fumée de la PR, jouée sur main, `{commun}` à
+part), une fois par commit de main et par commande. Main passe : ÉCHEC confirmé ; main échoue aussi : ÉCHEC AUSSI SUR
+MAIN, défaut de l'outil ou de main, non bloquant pour la PR (code 0 si rien d'autre). `[file] temoin_main = false`
+le coupe.
 Reprise : `lancer` rejoue tout ce qui n'est pas OK, CONTACTS ou À-COUPS sur la tête actuelle ; `relancer` rejoue seulement
 les étapes en échec (les OK d'une tête précédente restent acquises et sont marquées « sur tête X »).
 Délais mesurés (lot DM1, 26 novembre ; 7 h 30 de PC perdues les 25 et 26/11 sur des délais fixes trop courts) :
@@ -131,6 +136,9 @@ from typing import Any
 OK, CONTACTS, ACOUPS, ECHEC, DELAI, ENV, BLOQUE, A_FAIRE, REFUSE = (
     "OK", "CONTACTS", "À-COUPS", "ÉCHEC", "DÉLAI", "ENVIRONNEMENT", "BLOQUÉ", "À FAIRE", "REFUSÉ")
 ACQUIS = (OK, CONTACTS, ACOUPS)                       # verdicts qui ne se rejouent pas sur la même tête
+# Témoin sur main (garde-fou 2, 27 novembre) : étape de branche en ÉCHEC rejouée sur main ; main en échec aussi =
+# défaut de l'outil ou de main, pas de la PR : non bloquant pour elle (rejoué à la reprise, jamais acquis).
+ECHEC_MAIN = "ÉCHEC AUSSI SUR MAIN"
 EN_ECHEC = (ECHEC, DELAI, ENV, REFUSE)
 FUMEE = "fumee"
 CACHES = ("reel", "separe")
@@ -234,6 +242,7 @@ class File:
     avant_etape: str | None = None             # portail : code 0 = on y va, sinon on attend (fenêtre du user, Godot)
     apres_etape: str | None = None             # après chaque étape (poussage anonymisé des résultats)
     attente_s: float = 60.0
+    temoin_main: bool = True                   # étape de branche en ÉCHEC rejouée sur main (garde-fou 2)
 
     def par_risque(self) -> list[PR]:
         return sorted(self.prs, key=lambda p: (p.risque, p.rang))
@@ -342,7 +351,11 @@ def lire_file(chemin: Path) -> File:
                       categorie, membres))
     if not prs:
         raise FileInvalide(f"{chemin} : aucune entrée [[pr]] ni [[paquet]]")
-    return File(depot, sortie, prs, tete.get("avant_etape"), tete.get("apres_etape"), float(tete.get("attente_s", 60)))
+    temoin = tete.get("temoin_main", True)
+    if not isinstance(temoin, bool):
+        raise FileInvalide("[file] temoin_main vaut true ou false")
+    return File(depot, sortie, prs, tete.get("avant_etape"), tete.get("apres_etape"), float(tete.get("attente_s", 60)),
+                temoin)
 
 
 # --- état ----------------------------------------------------------------------------------------
@@ -871,8 +884,9 @@ class Runner:
         self.log(f"  {verdict} {detail}")
         return verdict
 
-    def executer(self, pr: PR, e: Etape) -> str | None:
-        """Joue une étape et note son verdict ; None si la file s'est mise en pause avant."""
+    def executer(self, pr: PR, e: Etape, commun: Path | None = None) -> str | None:
+        """Joue une étape et note son verdict ; None si la file s'est mise en pause avant. `commun` : dossier
+        `{commun}` imposé (témoin sur main : celui de la fumée de la PR rejouée sur main)."""
         if not self.portail(pr, e):
             return None
         try:
@@ -895,7 +909,7 @@ class Runner:
         dossier = self.f.sortie / ("main" if e.sur == "main" else pr.id) / (e.empreinte if e.sur == "main" else e.id)
         dossier.mkdir(parents=True, exist_ok=True)
         projet = wt / "Open_ride_linux"
-        commun = self.f.sortie / ("main" if e.sur == "main" else pr.id) / COMMUN
+        commun = commun or self.f.sortie / ("main" if e.sur == "main" else pr.id) / COMMUN
         commun.mkdir(parents=True, exist_ok=True)
         cmd = e.commande.format(sortie=shlex.quote(str(dossier / "rapport")), commun=shlex.quote(str(commun)),
                                 worktree=shlex.quote(str(wt)),
@@ -984,9 +998,55 @@ class Runner:
                                               "empreinte": e.empreinte})
                 continue
             for e in longues:
-                if self.a_jouer(pr, e, mode) and self.executer(pr, e) is None:
+                if not self.a_jouer(pr, e, mode):
+                    continue
+                verdict = self.executer(pr, e)
+                if verdict is None:
                     return 3
+                if verdict == ECHEC and self.f.temoin_main and e.sur == "branche" and not pr.est_paquet:
+                    if self.temoin(pr, e) is None:
+                        return 3
         return None
+
+    def temoin(self, pr: PR, e: Etape) -> str | None:
+        """Garde-fou 2 (27 novembre, rDPS1 et pile à-coups : des échecs de l'outil pris pour des échecs de PR) :
+        l'étape en ÉCHEC est rejouée sur main, précédée de la fumée de la PR rejouée sur main (mêmes mondes dans un
+        `{commun}` à elle). Main en ÉCHEC aussi : la PR passe ÉCHEC AUSSI SUR MAIN (non bloquant) ; main OK : ÉCHEC
+        confirmé. Verdicts de main partagés par commit et par commande. None si la file s'est mise en pause."""
+        fum = next((x for x in self.etapes(pr) if x.id == FUMEE), None)
+        commun = self.f.sortie / "main" / COMMUN / (fum.empreinte if fum else "sans-fumee")
+        jouees = []
+        if fum is not None:
+            jouees.append(Etape(f"{FUMEE}.main", fum.commande, fum.delai_min, "main", fum.lieu))
+        jouees.append(Etape(f"{e.id}.main", e.commande, e.delai_min, "main", e.lieu))
+        temoin, quoi = {"verdict": ENV, "detail": "témoin non joué"}, "étape"
+        for t in jouees:
+            quoi = "fumée" if t.id.startswith(FUMEE + ".") else "étape"
+            self.log(f"  témoin sur main de {pr.id}/{e.id} : {t.id}")
+            deja = self.etat.get(pr, t)
+            try:
+                main_sha = self.tete("main")
+            except RuntimeError:
+                main_sha = None
+            # Déjà jugée sur ce commit de main (par une autre PR, ou à une reprise) : verdict repris, pas rejoué.
+            if not (deja and deja.get("tete") == main_sha and deja["verdict"] != ENV) \
+                    and self.executer(pr, t, commun) is None:
+                return None
+            temoin = self.etat.get(pr, t) or temoin
+            if temoin["verdict"] not in ACQUIS:
+                break
+        v = self.etat.get(pr, e) or {}
+        main = str(temoin.get("tete") or "?")[:8]
+        if temoin["verdict"] == ECHEC and quoi == "étape":
+            verdict = ECHEC_MAIN
+            detail = f"main {main} échoue aussi (défaut de l'outil ou de main) : {temoin.get('detail', '')}"
+        else:
+            verdict = ECHEC
+            detail = (f"main {main} : {quoi} {temoin['verdict']}" if temoin["verdict"] not in ACQUIS
+                      else f"main {main} passe : échec propre à la branche") + f" ; branche : {v.get('detail', '')}"
+        self.etat.put(pr, e, {**v, "verdict": verdict, "detail": detail[:300], "temoin_main": temoin["verdict"]})
+        self.log(f"  {pr.id}/{e.id} : {verdict} ({detail[:160]})")
+        return verdict
 
     def scinder(self, paquets: list[PR]) -> list[PR]:
         """Marque SCINDÉ les étapes du PC en ÉCHEC ou DÉLAI des paquets (pas ENVIRONNEMENT ni REFUSÉ : le PC ou la
