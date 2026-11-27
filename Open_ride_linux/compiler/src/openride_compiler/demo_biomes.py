@@ -146,7 +146,28 @@ DEMO_SET = (("demo-biomes-paysages", "Tour des nouveaux paysages", "paysages", F
             ("demo-biomes-nord", "Route du Grand Nord", "nord", False, False, True),
             ("demo-biomes-forets", "Route des Trois Forêts", "forets", False, False, True),
             ("demo-corniche", "Boucle de la Corniche", "corniche", False, True, True),
-            ("demo-vignes", "Route des Vignes", "vignes", False, False, True))
+            ("demo-vignes", "Route des Vignes", "vignes", False, False, True),
+            # Lot DPB1 (demande du propriétaire du 27 novembre : une démonstration à chaque biome, au moins 40 km en
+            # ligne) : un seul biome, profil de `LINE_PROFILES` ; jeu de base seul (`GAME_ONLY`).
+            ("demo-alpages", "Route des Alpages", "alpine", False, False, True),
+            ("demo-littoral", "Route du Littoral", "coast", False, True, True),
+            ("demo-jungle", "Route de la Jungle", "jungle", False, False, True),
+            ("demo-savane", "Route de la Savane", "savanna", False, False, True))
+# Lot DPB1 : démonstrations d'un seul biome du jeu de base, absentes de la variante de recette (les bancs gardent
+# leur jeu de parcours d'avant). Leur profil de 40 km (`LINE_PROFILES`) remplace la pente moyenne du biome, qui, tenue
+# sur 40 km, aurait donné 3 000 m de montée à l'alpin et mené la jungle sous la mer : tronçons (longueur en km, pente
+# en %), fondus sur `PROFILE_RAMP_M`, les ondulations du biome (`GRADE` moins sa moyenne) par-dessus. Le dernier
+# tronçon va jusqu'à l'arrivée.
+GAME_ONLY = frozenset({"demo-alpages", "demo-littoral", "demo-jungle", "demo-savane"})
+LINE_PROFILES = {
+    # vallée, premier col, descente, replat, puis la grande montée finale vers le col (sommet du parcours)
+    "alpine": ((8, 2.0), (7, 6.5), (5, -5.0), (6, 1.0), (8, 7.0), (6, 4.0)),
+    # jungle : montées et descentes courtes sous la canopée, jamais sous la mer
+    "jungle": ((6, 3.0), (4, -3.0), (6, 2.0), (6, -2.0), (6, 3.0), (6, -3.0), (6, 1.0)),
+    # savane en faux plats
+    "savanna": ((8, 1.5), (4, -1.5), (8, 2.0), (4, -2.0), (8, 1.5), (8, 0.5)),
+}
+PROFILE_RAMP_M = 400.0
 # Tour des nouveaux paysages (lot DB1) : par bloc de 2 km, (biome, paysage du lot U25, sol, toits) ; le paysage,
 # le sol et les toits forment la variante régionale des tuiles du bloc (`None` : ce que donne le biome). Ordre
 # choisi pour que deux blocs voisins ne partagent aucun biome de base de leurs paysages (section `landscapes`
@@ -259,6 +280,15 @@ DEMO_LIBRARY = {
     "demo-vignes": {"description": "Boucle sinueuse de 5 km dans les vignes, de coteau en coteau, entre villages et "
                                    "domaines.",
                     "tags": ["grandprix"]},
+    # Lot DPB1 : une démonstration par biome, étiquette `biome` (filtre possible du menu).
+    "demo-alpages": {"description": "{km} km de la vallée au col, par les alpages, deux montées et un replat.",
+                     "tags": ["biome"]},
+    "demo-littoral": {"description": "{km} km au bord de la mer, de port en port, entre pointes et plages.",
+                      "tags": ["biome"]},
+    "demo-jungle": {"description": "{km} km sous la canopée de la jungle, de clairière en ruisseau, montées et descentes courtes.",
+                    "tags": ["biome"]},
+    "demo-savane": {"description": "{km} km de faux plats dans la savane, entre baobabs, acacias et villages.",
+                    "tags": ["biome"]},
 }
 
 
@@ -307,12 +337,17 @@ RETIRED_DEMOS = tuple(name for name, *_, base in DEMO_SET if not base)
 # « Fictif » d'avant le lot O37.
 SUMMIT_KEYS = frozenset({"col", "plateau", "japon_vue", "nuages"})
 PLACE_NAMES = {
-    "port": ("Port-Lanterne", "Anse aux Mouettes", "Port-Galets"),
-    "pointe": ("Pointe des Goélands", "Pointe du Phare", "Pointe aux Sternes"),
+    # Lot DPB1 : des noms en plus à la fin des listes, pour les démonstrations de 40 km d'un seul biome (les
+    # premiers noms ne changent pas : mêmes lieux sur les parcours d'avant).
+    "port": ("Port-Lanterne", "Anse aux Mouettes", "Port-Galets", "Port-Corail", "Anse des Pêcheurs",
+             "Port-Sardine", "Anse du Sémaphore"),
+    "pointe": ("Pointe des Goélands", "Pointe du Phare", "Pointe aux Sternes", "Pointe des Cormorans",
+               "Pointe du Moulin", "Pointe des Embruns", "Pointe aux Huîtres"),
     "mas": ("Mas des Oliviers", "Mas de la Cigale", "Mas des Lavandes", "Mas des Câpriers"),
     "hameau": ("Hameau des Prés", "Les Granges", "Hameau du Ruisseau"),
     "etang": ("Étang des Saules", "Étang du Moulin", "Étang aux Hérons"),
-    "col": ("Col des Edelweiss", "Belvédère du Glacier", "Belvédère des Marmottes"),
+    "col": ("Col des Edelweiss", "Belvédère du Glacier", "Belvédère des Marmottes", "Belvédère des Chamois",
+            "Belvédère de la Cascade Blanche", "Belvédère des Gentianes", "Belvédère du Lac Vert"),
     # Tour des nouveaux paysages (lot DB1) : trois blocs par biome depuis le lot DL1 (`LINE_MIN_M`), un nom par bloc.
     "fjord": ("Port-Bouleau", "Anse des Phoques", "Port-Saumon"),
     "fjord_vue": ("Belvédère du Fjord", "Pointe des Eiders", "Belvédère de la Cascade"),
@@ -344,10 +379,13 @@ PLACE_NAMES = {
     "yourtes": ("Campement des Yourtes", "Campement des Chevaux", "Campement du Puits", "Campement des Aigles"),
     "oasis": ("Oasis des Palmiers", "Oasis des Dattiers", "Oasis de la Source", "Oasis des Caravanes"),
     "dunes": ("Belvédère des Dunes", "Belvédère du Grand Erg", "Belvédère des Sables", "Belvédère du Mirage"),
-    "savane": ("Village des Baobabs", "Village des Acacias", "Village des Termitières", "Village des Gazelles"),
+    "savane": ("Village des Baobabs", "Village des Acacias", "Village des Termitières", "Village des Gazelles",
+               "Village des Marabouts", "Village du Grand Puits", "Village des Impalas"),
     "savane_vue": ("Point de vue des Girafes", "Point de vue des Éléphants", "Point de vue des Zèbres",
-                   "Point de vue des Lions"),
-    "canopee": ("Belvédère de la Canopée", "Belvédère des Toucans", "Belvédère des Lianes", "Belvédère des Orchidées"),
+                   "Point de vue des Lions", "Point de vue des Gnous", "Point de vue du Kopje",
+                   "Point de vue des Buffles"),
+    "canopee": ("Belvédère de la Canopée", "Belvédère des Toucans", "Belvédère des Lianes", "Belvédère des Orchidées",
+                "Belvédère des Singes Hurleurs", "Belvédère de la Cascade Verte", "Belvédère des Fromagers"),
     "pilotis": ("Village des Pilotis", "Village des Pêcheurs", "Village des Pirogues", "Village des Nénuphars"),
     "delta": ("Pointe des Palétuviers", "Pointe des Flamants", "Pointe des Ibis", "Pointe des Pélicans"),
     "mares": ("Mare aux Hérons", "Mare aux Grenouilles", "Mare des Caïmans", "Mare aux Aigrettes"),
@@ -430,6 +468,29 @@ GRADE = {
     "temperate_rainforest": lambda u: 4.0 + 1.5 * math.sin(u / 220.0),
     "cloud_forest": lambda u: 5.5 + 1.5 * math.sin(u / 240.0),
 }
+# Pente moyenne de chaque biome sur un bloc (lot DPB1) : les ondulations d'un parcours à profil sont `GRADE` moins elle.
+GRADE_MEAN = {b: sum(f((k + 0.5) * STEP_M) for k in range(int(BLOCK_M / STEP_M))) / int(BLOCK_M / STEP_M)
+              for b, f in GRADE.items()}
+
+
+def profile_grade(profile: tuple[tuple[float, float], ...], s: float) -> float:
+    """Pente (%) du profil `profile` (tronçons (km, %), lot DPB1) à l'abscisse `s` : celle du tronçon, fondue
+    linéairement sur `PROFILE_RAMP_M` autour de chaque changement ; le dernier tronçon se prolonge."""
+    edges, end = [], 0.0
+    for km, _pct in profile[:-1]:
+        end += km * 1000.0
+        edges.append(end)
+    grades = [pct for _km, pct in profile]
+    k = sum(1 for e in edges if s >= e)
+    g = grades[k]
+    half = PROFILE_RAMP_M / 2.0
+    if k > 0 and s - edges[k - 1] < half:          # juste après un changement
+        t = 0.5 + (s - edges[k - 1]) / PROFILE_RAMP_M
+        g = grades[k - 1] + (g - grades[k - 1]) * t
+    elif k < len(edges) and edges[k] - s < half:   # juste avant un changement
+        t = 0.5 - (edges[k] - s) / PROFILE_RAMP_M
+        g = g + (grades[k + 1] - g) * t
+    return g
 # Relief de part et d'autre de la route : (pente des flancs, pente au-delà de 160 m, amplitude des collines).
 FAR_RISE_M = 800.0   # longueur de la pente lointaine : palier à far_slope × 800 m (360 m en montagne)
 SIDES = {
@@ -471,7 +532,8 @@ class Plan:
 
     def __init__(self, biomes: tuple[str, ...], gravel: bool, sea: bool, recette: bool = False,
                  circuit: bool = False, loop: str | None = None,
-                 variants: tuple[dict | None, ...] | None = None) -> None:
+                 variants: tuple[dict | None, ...] | None = None,
+                 profile: tuple[tuple[float, float], ...] | None = None) -> None:
         loop = loop or ("circuit" if circuit else None)
         circuit = loop is not None
         if circuit and LOOPS[loop]["biome"] is not None and len(set(biomes)) != 1:
@@ -480,6 +542,10 @@ class Plan:
             raise ValueError("boucle à plusieurs blocs : 2 km par bloc, sur toute la boucle")
         if variants is not None and len(variants) != len(biomes):
             raise ValueError("une variante par bloc")
+        if profile is not None and loop is not None:
+            raise ValueError("profil (lot DPB1) : route ouverte seulement")
+        # Profil de la route ouverte (lot DPB1, `LINE_PROFILES`) ; None : pente `GRADE` de chaque biome.
+        self.profile = tuple(profile) if profile else None
         self.biomes = biomes
         # Variante régionale de chaque bloc (lot DB1) : {"ground", "roofs", "landscape"} ou None.
         self.variants = tuple(variants) if variants is not None else (None,) * len(biomes)
@@ -594,6 +660,9 @@ class Plan:
 
     def grade(self, s: float) -> float:
         u = s % BLOCK_M
+        if self.profile:
+            return (sum(w * (GRADE[b](u) - GRADE_MEAN[b]) for b, w in self.weights(s).items())
+                    + profile_grade(self.profile, s))
         return sum(w * GRADE[b](u) for b, w in self.weights(s).items())
 
     def altitude(self, s: float) -> float:
@@ -1496,13 +1565,15 @@ def _offline_compiler(payload: bytes, terrain, cache: Path):
 
 def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False, sea: bool = False,
              seed: int = 0, title: str | None = None, recette: bool = False, circuit: bool = False,
-             loop: str | None = None, variants: tuple[dict | None, ...] | None = None) -> dict:
+             loop: str | None = None, variants: tuple[dict | None, ...] | None = None,
+             profile: tuple[tuple[float, float], ...] | None = None) -> dict:
     """Écrit `out/<name>.world` et `out/<name>.json` ; renvoie le résumé (parts des biomes et des surfaces).
     `title` : nom affiché au menu (`name` du manifeste) ; sans lui ou avec `recette`, l'identifiant `name`.
     `circuit` : la boucle du circuit de démonstration (lot O38) au lieu de la route ouverte, un seul biome ;
     `loop` : une boucle de `LOOPS` (`recif` : le récif du lot SM1, seul à employer le biome `reef`) ;
-    `variants` : variante régionale de chaque bloc (lot DB1, voir `PAYSAGES`)."""
-    plan = Plan(biomes, gravel, sea, recette, circuit, loop, variants)
+    `variants` : variante régionale de chaque bloc (lot DB1, voir `PAYSAGES`) ; `profile` : profil de la route
+    ouverte (lot DPB1, `LINE_PROFILES`)."""
+    plan = Plan(biomes, gravel, sea, recette, circuit, loop, variants, profile)
     if plan.loop in LOOP_BLOCKS:
         unknown = [b for b in biomes if b != LOOPS[plan.loop]["biome"]]
     else:
@@ -1552,6 +1623,15 @@ def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False
     return info
 
 
+def line_profile(name: str, recette: bool = False) -> tuple[tuple[float, float], ...] | None:
+    """Profil de 40 km de la démonstration `name` (lot DPB1, `LINE_PROFILES`), None pour les autres et dans la
+    variante de recette (trois blocs, pente du biome)."""
+    if recette or name not in GAME_ONLY:
+        return None
+    which = next(w for n, _t, w, *_ in DEMO_SET if n == name)
+    return LINE_PROFILES.get(which)
+
+
 def paysages_variants() -> tuple[dict | None, ...]:
     """Variante régionale de chaque bloc du tour des nouveaux paysages (lot DB1)."""
     return tour_blocks("paysages")[1]
@@ -1569,12 +1649,12 @@ def write_demo_set(out: Path, seed: int = 0, recette: bool = False) -> list[dict
     parcours sortis du jeu de base (tour des six paysages, côte avec la mer, alpin, tour gravel)."""
     infos = []
     for name, title, which, gravel, sea, base in DEMO_SET:
-        if not (base or recette):
+        if not (base or recette) or (recette and name in GAME_ONLY):
             continue
         loop = which if which in LOOPS else None
         biomes, variants = tour_blocks(which, recette)
         infos.append(generate(out, name, biomes, gravel=gravel, sea=sea, seed=seed, title=title, recette=recette,
-                              loop=loop, variants=variants))
+                              loop=loop, variants=variants, profile=line_profile(name, recette)))
     return infos
 
 
@@ -1582,7 +1662,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True, type=Path, help="dossier de sortie (créé si besoin)")
     what = parser.add_mutually_exclusive_group(required=True)
-    what.add_argument("--biome", choices=TOUR + ("japan",), help="un seul biome sur 6 km (Japon : 42 km hors --recette, lot DL1)")
+    what.add_argument("--biome", choices=TOUR + ("japan",) + tuple(b for b in LINE_PROFILES if b not in TOUR),
+                      help="un seul biome sur 6 km (40 km ou plus hors --recette pour un biome à démonstration du "
+                           "jeu de base, lots DL1 et DPB1)")
     what.add_argument("--tour", action="store_true", help="les six biomes du premier jalon, 2 km chacun")
     what.add_argument("--circuit", action="store_true", help="la boucle de 3 km du circuit de démonstration (prairie)")
     what.add_argument("--paysages", action="store_true",
@@ -1624,10 +1706,11 @@ def main(argv: list[str] | None = None) -> int:
             name = args.name or ("biomes-tour" if args.tour
                                  else which if which in ("circuit", "recif", "volcan", "corniche", "vignes")
                                  else f"biomes-{which}")
+            profile = None if args.recette or loop else LINE_PROFILES.get(which)
             infos = [generate(args.out, name, biomes, gravel=args.gravel,
                               sea=args.sea or args.paysages or args.corniche,
                               seed=args.seed, title=args.title, recette=args.recette, loop=loop,
-                              variants=variants)]
+                              variants=variants, profile=profile)]
     except (RuntimeError, ValueError) as exc:
         print(f"demo_biomes : {exc}", file=sys.stderr)
         return 1

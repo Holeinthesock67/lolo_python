@@ -76,12 +76,13 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     """Jeu de base : le tour des nouveaux paysages, le circuit, le récif et le volcan (lots O38, SM1, DB1 et DB2) ;
     recette : en plus les parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    assert names == ["demo-biomes-forets.world", "demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
-                     "demo-circuit.world", "demo-corniche.world", "demo-japon.world", "demo-recif.world",
-                     "demo-vignes.world", "demo-volcan.world"]
+    game_only = ["demo-alpages.world", "demo-jungle.world", "demo-littoral.world", "demo-savane.world"]   # lot DPB1 : jeu seul, jamais dans la recette
+    assert names == sorted(["demo-biomes-forets.world", "demo-biomes-nord.world", "demo-biomes-paysages.world",
+                            "demo-biomes-sud.world", "demo-circuit.world", "demo-corniche.world", "demo-japon.world",
+                            "demo-recif.world", "demo-vignes.world", "demo-volcan.world", *game_only])
     retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
                "demo-biomes-tour.world"]
-    assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + retired)
+    assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(set(names) - set(game_only) | set(retired))
     for world in [*demo_set.glob("*.world"), *(recette_set / n for n in retired)]:
         assert verify_world(world) == [], world.name
         manifest = _json(world / "manifest.json")
@@ -151,7 +152,11 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
                       "demo-circuit": "Circuit des Prés", "demo-recif": "Récif des tortues",
                       "demo-volcan": "Volcan en flammes", "demo-biomes-sud": "Route du Sud",
                       "demo-biomes-nord": "Route du Grand Nord", "demo-corniche": "Boucle de la Corniche",
-                      "demo-vignes": "Route des Vignes", "demo-biomes-forets": "Route des Trois Forêts"}
+                      "demo-vignes": "Route des Vignes", "demo-biomes-forets": "Route des Trois Forêts",
+                      # lot DPB1
+                      "demo-alpages": "Route des Alpages",
+                      "demo-littoral": "Route du Littoral", "demo-jungle": "Route de la Jungle",
+                      "demo-savane": "Route de la Savane"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
     assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
@@ -223,7 +228,7 @@ def test_game_lines_at_least_40_km(mbw) -> None:
 
     assert demo_world.DEMO_LENGTH_M >= mbw.LINE_MIN_M and demo_world.DEMO_RECETTE_LENGTH_M == 5000.0
     lines = [which for _n, _t, which, *_, base in mbw.DEMO_SET if base and which not in mbw.LOOPS]
-    assert sorted(lines) == ["forets", "japan", "paysages", "sud"]
+    assert sorted(lines) == ["alpine", "coast", "forets", "japan", "jungle", "paysages", "savanna", "sud"]
     for which in lines:
         biomes, variants = mbw.tour_blocks(which)
         short, short_variants = mbw.tour_blocks(which, recette=True)
@@ -231,11 +236,12 @@ def test_game_lines_at_least_40_km(mbw) -> None:
         assert mbw.LINE_MIN_M <= len(biomes) * mbw.BLOCK_M < mbw.LINE_MIN_M + len(short) * mbw.BLOCK_M
         assert biomes == tuple(b for b in short for _ in range(k))
         assert variants == (None if short_variants is None else tuple(v for v in short_variants for _ in range(k)))
-    assert {w: len(mbw.tour_blocks(w)[0]) for w in lines} == {"paysages": 21, "japan": 21, "sud": 24,
-                                                          "forets": 21}
-    assert {w: len(mbw.tour_blocks(w, recette=True)[0]) for w in lines} == {"paysages": 7, "japan": 3, "sud": 6,
-                                                                        "forets": 3}
-    for which in ("tour", "coast", "alpine", "nord", "circuit", "recif", "volcan"):
+    singles = ("japan", "alpine", "coast", "jungle", "savanna")   # lots DJ1 et DPB1
+    assert {w: len(mbw.tour_blocks(w)[0]) for w in lines} == {"paysages": 21, "sud": 24, "forets": 21,
+                                                          **{w: 21 for w in singles}}
+    assert {w: len(mbw.tour_blocks(w, recette=True)[0]) for w in lines} == {"paysages": 7, "sud": 6, "forets": 3,
+                                                                        **{w: 3 for w in singles}}
+    for which in ("tour", "nord", "circuit", "recif", "volcan"):
         assert mbw.tour_blocks(which) == mbw.tour_blocks(which, recette=True), which
     assert mbw.library_of("demo-biomes-sud")["description"].startswith("48 km ")
     assert mbw.library_of("demo-biomes-sud", recette=True)["description"].startswith("12 km ")
@@ -289,8 +295,9 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
         kept[n] = f.read_bytes()
     assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and sorted(written) == ["demo-biomes-forets", "demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-corniche",
-                                                 "demo-japon", "demo-recif", "demo-vignes", "demo-volcan"]
+    assert note == "" and sorted(written) == sorted(["demo-biomes-forets", "demo-biomes-nord", "demo-biomes-sud", "demo-circuit",
+                                                 "demo-corniche", "demo-japon", "demo-recif", "demo-vignes", "demo-volcan",
+                                                 *BIOME_LINES])   # lot DPB1
     assert not gravel.exists()
     assert _json(old)["name"] == "Circuit des Prés"
     assert _json(mine / "manifest.json")["name"] == "Mes paysages"
@@ -325,7 +332,8 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
     assert "demo-corniche (Boucle de la Corniche) : 2.5 km" in out and "demo-vignes (Route des Vignes) : 5.0 km" in out
     assert "demo-biomes-forets (Route des Trois Forêts) : " in out
-    assert len(list(tmp_path.glob("*.world"))) == 10
+    assert "demo-alpages (Route des Alpages) : 42." in out   # lot DPB1
+    assert len(list(tmp_path.glob("*.world"))) == 10 + len(BIOME_LINES)
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -545,6 +553,49 @@ def test_japon_demo(demo_set: Path, mbw) -> None:
     assert mbw.Plan(("japan",) * 3, False, False).place("japon_vue", 2) == "Col des Cèdres"
     assert _json(demo_set / "demo-japon.json")["generated"]["buildings"] >= 30
     assert "demo-japon" in mbw.GAME_DEMOS
+
+
+# Lot DPB1 : démonstrations d'un seul biome, (biome, montée totale de la route en m : bornes).
+BIOME_LINES = {"demo-alpages": ("alpine", 1300.0, 1700.0),
+               "demo-littoral": ("coast", 0.0, 100.0), "demo-jungle": ("jungle", 400.0, 700.0),
+               "demo-savane": ("savanna", 300.0, 600.0)}
+
+
+def test_biome_line_demos(demo_set: Path, recette_set: Path, mbw) -> None:
+    """Lot DPB1 (demande du propriétaire du 27 novembre : une démonstration à chaque biome, au moins 40 km en ligne) :
+    un seul biome sur 42 km, profil de `LINE_PROFILES` (montée totale raisonnable, jamais sous la mer, pentes de
+    −8 à +9 %), lieux nommés et fiche étiquetée `biome` ; jeu de base seul, absentes de la variante de recette."""
+    assert set(BIOME_LINES) == mbw.GAME_ONLY and set(mbw.GAME_ONLY) <= set(mbw.GAME_DEMOS)
+    for name, (biome, lo, hi) in BIOME_LINES.items():
+        world = demo_set / f"{name}.world"
+        manifest = _json(world / "manifest.json")
+        assert manifest["layers"]["biome"]["shares"] == {biome: 100.0}, name
+        assert manifest["library"]["tags"] == ["biome"]
+        assert manifest["library"]["description"].startswith("42 km "), name
+        assert ("coast" in manifest["layers"]) == (biome == "coast"), name
+        route = _json(world / "route.json")
+        assert route["length_m"] >= mbw.LINE_MIN_M, name
+        alt = route["alt_m"]
+        climb = sum(max(0.0, b - a) for a, b in zip(alt, alt[1:]))
+        assert lo <= climb <= hi, (name, climb)
+        assert min(alt) >= 0.0 and -8.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 9.0, name
+        assert not (recette_set / f"{name}.world").exists(), name
+    alpages = _json(demo_set / "demo-alpages.world" / "route.json")["alt_m"]
+    assert max(alpages) == pytest.approx(alpages[-1], abs=5.0)      # l'arrivée au col, sommet du parcours
+    pois = "".join(f.read_text(encoding="utf-8") for f in (demo_set / "demo-alpages.world" / "poi").glob("*.json"))
+    assert mbw.PLACE_NAMES["col"][0] in pois and "Fictif" not in pois
+    # sans profil, la pente moyenne de la jungle tenue sur 42 km la mènerait sous la mer
+    assert mbw.Plan(("jungle",) * 21, False, False)._alt[-1] < 0.0
+    assert mbw.line_profile("demo-jungle", recette=True) is None and mbw.line_profile("demo-japon") is None
+
+
+def test_profile_grade_blends(mbw) -> None:
+    """Lot DPB1 : la pente du profil passe d'un tronçon au suivant en `PROFILE_RAMP_M`, sans saut."""
+    prof = ((1, 2.0), (1, -4.0))
+    assert mbw.profile_grade(prof, 0.0) == 2.0 and mbw.profile_grade(prof, 1999.0) == -4.0
+    assert mbw.profile_grade(prof, 1000.0) == pytest.approx(-1.0)
+    steps = [mbw.profile_grade(prof, float(s)) for s in range(0, 2000, 5)]
+    assert max(abs(a - b) for a, b in zip(steps, steps[1:])) <= 6.0 * 5.0 / mbw.PROFILE_RAMP_M + 1e-9
 
 
 def test_recif_loop_under_the_sea(demo_set: Path, mbw) -> None:

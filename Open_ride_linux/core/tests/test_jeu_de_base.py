@@ -37,6 +37,11 @@ FINAL = {   # identifiant de fichier → nom au menu
     "demo-biomes-forets": "Route des Trois Forêts",
     "demo-corniche": "Boucle de la Corniche",
     "demo-vignes": "Route des Vignes",
+    # lot DPB1 (27 novembre) : une démonstration d'un seul biome, 42 km en ligne
+    "demo-alpages": "Route des Alpages",
+    "demo-littoral": "Route du Littoral",
+    "demo-jungle": "Route de la Jungle",
+    "demo-savane": "Route de la Savane",
     "velodrome-250": "Vélodrome 250 m",
 }
 RETIRED = ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
