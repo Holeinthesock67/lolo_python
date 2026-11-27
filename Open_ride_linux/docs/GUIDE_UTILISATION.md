@@ -255,6 +255,8 @@ Vos séances vous font gagner des cartes à collectionner : distance cumulée, l
 
 **Une fenêtre d'erreur s'affiche au lancement.** Elle donne la cause (Godot introuvable, configuration invalide, port occupé, trainer réservé, plantages répétés) et le chemin du journal. Pour un réglage invalide, la fenêtre propose de **remettre la valeur par défaut** (ou de repartir d'un fichier neuf s'il est illisible) : répondez Oui, OpenRide garde une copie `config.toml.bak` (ou `profil.toml.bak`) et démarre.
 
+**Une fenêtre dit qu'un profil était abîmé ou illisible.** OpenRide n'efface jamais un profil abîmé. Si l'équipement, les achats ou l'avatar (`profile.json`) étaient abîmés, il les reprend de la dernière copie lisible (il en garde trois) et met l'ancien fichier de côté sous `profile.json.corrompu-…`. Si les réglages du joueur (`profil.toml`) ne se lisent plus, la fenêtre propose de les réparer : répondez Oui, l'ancien fichier est gardé sous `profil.toml.illisible-…` et tout ce qui se lit encore (nom, FTP, poids) est repris ; vérifiez ensuite vos réglages. Répondez Non pour corriger le fichier vous-même : OpenRide s'arrête plutôt que de démarrer sur le profil d'un autre joueur. Une sauvegarde du profil peut aussi être restaurée depuis « Gérer : <profil> ».
+
 **Que joindre à une demande d'aide.** Le dernier journal du lanceur dans `~/OpenRide/Logs/` (nom de la forme `openride_AAAA-MM-JJ_HH-MM-SS.log`) et, pour un problème de trainer ou de Click, le fichier `~/run_trainer.log`. Ces fichiers ne contiennent pas de mot de passe, mais relisez-les avant de les partager : ils peuvent citer les adresses Bluetooth de votre matériel.
 
 ## 10. Crédits des données
