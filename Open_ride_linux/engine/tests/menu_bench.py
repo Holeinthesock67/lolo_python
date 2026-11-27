@@ -378,6 +378,22 @@ def write_archive(path: Path, members: dict[str, Any]) -> None:
             zf.writestr(arc, content if isinstance(content, str) else json.dumps(content, ensure_ascii=False))
 
 
+
+HELLO_ACK_S = 40.0   # attente du hello_ack de l'engine (7 s d'habitude en CI)
+
+
+def hello_diagnostic(engine: Any, core: Any, waited_s: float) -> str:
+    """Pourquoi l'engine n'a pas répondu : processus vivant ou code de sortie, hello vu par le core, nombre de lignes
+    et dernières lignes de son journal (planté, bloqué au chargement, ou hello perdu)."""
+    rc = engine.p.poll()
+    etat = "engine encore vivant" if rc is None else f"engine arrêté (code {rc})"
+    vu = core is not None and bool(core.matching(r"Reçu 'hello' de l'engine"))
+    lignes = [line for _, line in engine.lines if line.strip()]
+    fin = " | ".join(line.strip()[:120] for line in lignes[-3:]) or "journal vide"
+    return (f"{etat} après {waited_s:.0f} s ; hello {'reçu' if vu else 'jamais reçu'} par le core ; "
+            f"{len(lignes)} ligne(s) au journal de l'engine, dernières : {fin}")
+
+
 class ScenarioError(Exception):
     """Scénario illisible ; le message dit où."""
 
@@ -1005,8 +1021,20 @@ class Run:
         for probe in probe_paths(cmd):
             perf_probe.write_shaders_mark(probe.parent, "froid" if cold else "chaud")
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
-        ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
-        self.report.check(ok, "engine relié au core", "hello_ack")
+        ok = self.engine.wait_for(r"hello_ack reçu", HELLO_ACK_S) is not None
+        measure = "hello_ack"
+        if not ok:
+            # 27 novembre (train #1151, passage collection) : 1 passage sur 18 sans hello_ack en 40 s, vert au rejeu, sans
+            # rien au journal pour trancher. Diagnostic écrit, puis une seule relance de l'engine, dite au rapport.
+            self.report.check(None, "engine sans hello_ack", hello_diagnostic(self.engine, self.core, HELLO_ACK_S))
+            self.stop_engine()
+            self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}_relance.log")
+            ok = self.engine.wait_for(r"hello_ack reçu", HELLO_ACK_S) is not None
+            measure = ("hello_ack après une relance de l'engine (premier lancement : voir l'INFO « engine sans "
+                       f"hello_ack », journal engine{suffix}.log)" if ok
+                       else "pas de hello_ack, même après une relance : "
+                       + hello_diagnostic(self.engine, self.core, HELLO_ACK_S))
+        self.report.check(ok, "engine relié au core", measure)
         if ok:
             self.check_quality("au départ")
         return ok and self.wait_engine_ready()
