@@ -559,3 +559,22 @@ def test_next_ride_on_the_same_road_reuses_the_ids(session, tmp_path):
     second = [m for m in s2.spy.of("segment_result") if m["kind"] == "climb"]
     assert first and {m["segment_id"] for m in second} == first
     assert all(m["rank_total"] >= 2 for m in second)            # le passage de la balade d'avant est classé
+
+
+# --- séance verrouillée en monde ouvert (essais physiques, 21/11 : la mer) -----------------------
+
+def test_locked_session_starts_once_the_world_is_ready(session):
+    s = session(7090)
+    s.cfg.depart.mode = "immediat"
+    s._play_autostart([("start_open_world", START), ("start", {})])
+    assert s.state.session_state == "LOADING" and s._autostart_pending == [("start", {})]
+    assert wait_until(s, lambda: s.state.session_state not in ("LOADING", "READY")), "séance jamais partie"
+    assert s.state.session_state == "RUNNING" and s.state.route_id.startswith("ow:")
+    assert s._autostart_pending is None
+
+
+def test_locked_session_stops_the_core_if_the_world_fails(session):
+    s = session(7092, stub_args=["--unavailable"])
+    s._play_autostart([("start_open_world", START), ("start", {})])
+    assert wait_until(s, lambda: s.stop_event.is_set())
+    assert s._autostart_pending is None and s.state.session_state == "IDLE"

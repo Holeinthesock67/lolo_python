@@ -1,48 +1,53 @@
-# Grand Prix des objets sur le Circuit des Prés : voies, objets, effets lisibles (GP11, GP4, GP12).
+# Grand Prix des objets sur le Circuit des Prés : sas, voies, objets, voiture d'équipe, bots Tempo (GP14, GP4, BT1, AS11).
+# Version du 21/11 : boîtes tous les 500 m, bots en Tempo réglés sur la consigne, consignes courtes (une action, pas de question en roulant).
 id = "gp-voies"
-but = "Grand Prix sur le Circuit des Prés : changer de voie, ramasser et utiliser des objets, effets lisibles"
+but = "Grand Prix au Circuit des Prés : départ au pédalage, changement de voie, objets avec leur son, voiture d'équipe, bots en Tempo"
 duree_max_s = 600
+bots_cible_pct = 100   # bots réglés sur la consigne du départ (contrôle de cohérence)
+bots_duree_s = 1200    # 3 tours de 3 km
 commandes = [
   { cmd = "select_route", args = { route_id = "demo-circuit" } },
   { cmd = "start", args = { mode = "grandprix" } },
 ]
 questions = [
-  "Grand Prix : plaisir et lisibilité des objets sur 5 ?",
-  "Changement de voie : fluide et lisible ? (oui/non + remarque)",
+  "Grand Prix : plaisir et lisibilité des objets et des coups, sur 5 ?",
+  "Changement de voie et niveau des bots en Tempo : bien, trop forts ou trop faibles ? (+ remarque)",
 ]
 
 [config.grandprix]
 opponents = 4
 laps = 3
 chaos = "normal"
-box_every_m = 1000
+box_every_m = 500
+
+[config.bots]
+objective = "tempo"
+
+# 21/11 (#958) : pas d'échauffement de course dans un essai de 10 min (la 1re séance reste calme au départ)
+[config.depart]
+echauffement_min = 0
 
 [[etapes]]
 quand = { kind = "event", event = "start" }
-dire = "C'est parti. Roule à {cible} watts, quatre adversaires."
+dire = "C'est parti. {cible} watts, comme les bots."
 
 [[etapes]]
-quand = { kind = "record", "distance>=" = 300 }
-dire = "Change de voie : flèche gauche, puis flèche droite. La voie change-t-elle tout de suite ?"
+quand = { kind = "record", "distance>=" = 250 }
+dire = "Flèche gauche, puis flèche droite."
 
 [[etapes]]
 quand = { kind = "gp", event = "box", rider = "me" }
-dire = "Objet ramassé. Utilise-le avec Z."
+dire = "Objet. Z pour l'utiliser."
 attendu = { kind = "gp", event = "use", rider = "me" }
-rappel = "Appuie sur Z pour utiliser ton objet."
+rappel = "Z."
 
 [[etapes]]
 quand = { kind = "gp", event = "box", rider = "me" }
-dire = "Deuxième objet. Rapproche-toi d'un adversaire avant de l'utiliser."
+dire = "Objet. Colle un adversaire, puis Z."
 attendu = { kind = "gp", event = "use", rider = "me" }
 delai_s = 60
-rappel = "Z pour utiliser l'objet."
-
-[[etapes]]
-quand = { kind = "gp", event = "hit", rider = "me" }
-dire = "Tu viens d'être touché. L'effet est-il lisible, avec un son ?"
-attente_max_s = 240
+rappel = "Z."
 
 [[etapes]]
 quand = { kind = "record", "t>=" = 480 }
-dire = "Accélère deux minutes à {cible:120} watts jusqu'à la fin."
+dire = "Fin dans deux minutes. {cible:120} watts."
