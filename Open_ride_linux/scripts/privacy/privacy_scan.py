@@ -12,7 +12,7 @@ Le dépôt est public. Ce script cherche ce qui ne doit jamais y entrer :
 
 Modes : `--all` (fichiers suivis, défaut), `--staged` (crochet pre-commit), `--commits A..B`
 (lignes ajoutées et métadonnées de chaque commit), `--paths F…`. Code de sortie 1 si un
-constat, 2 si l'appel est invalide. Les mots trouvés sont masqués dans la sortie.
+constat, 2 si l'appel est invalide. Les constats ne citent jamais la valeur trouvée (rang dans la liste, « valeur masquée »).
 
 Bibliothèque standard seulement : le crochet tourne avant toute installation.
 """
@@ -31,10 +31,17 @@ from pathlib import Path
 
 DEFAULT_DENYLIST = Path.home() / "OpenRide" / "privacy_denylist.txt"
 
-# Adresses Bluetooth fictives admises (tests, docs) : préfixes de test ou trois octets nuls.
+# Adresses Bluetooth fictives admises (tests, docs), comparées une fois écrites avec « : » en
+# majuscules : familles de test à au moins trois octets fixes, ou adresses entières (RC18, O2-11).
+# « AA » et « C1 » ne sont pas des préfixes de fabricant (bit « administré localement »).
 TEST_MAC = re.compile(
-    r"^(C1:1C|AA:|BB:|C0:FF:EE|D1:22:33|11:22:33|12:34:56|5A:1A|11:11:11|00:00:00)", re.I)
-MAC = re.compile(r"(?<![0-9A-Fa-f:])(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}(?![0-9A-Fa-f:])")
+    r"^(C1:1C:00:00:00:..|AA:00:00:00:00:..|BB:00:00:00:00:..|AA:BB:CC:..:..:..|C0:FF:EE:00:..:.."
+    r"|5A:1A:00:00:00:..|D1:22:33:44:55:66|11:22:33:44:55:66|12:34:56:78:9A:BC|11:11:11:11:11:11"
+    r"|00:00:00:00:00:00|FF:FF:FF:FF:FF:FF)$")
+# Séparateur « : », « - » ou « _ » (forme des journaux BlueZ : dev_E4_5F_…), le même partout.
+MAC = re.compile(r"(?<![0-9A-Fa-f])(?<![0-9A-Fa-f]{2}[:_-])"
+                 r"[0-9A-Fa-f]{2}([:_-])(?:[0-9A-Fa-f]{2}\1){4}[0-9A-Fa-f]{2}"
+                 r"(?![0-9A-Fa-f])(?![:_-][0-9A-Fa-f])")
 
 FORBIDDEN_SUFFIXES = (".fit", ".fit.gz", ".gpx", ".tcx", ".kml", ".kmz", ".jsonl")
 FORBIDDEN_NAMES = (".env", "run_trainer.log", "privacy_denylist.txt")
@@ -50,10 +57,16 @@ SECRETS = [
     ("clé privée", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----")),
 ]
 
-# Coordonnées : « 48.12345, 7.12345 », « lat = 48.123 … lon = 7.123 », attributs GPX.
-COORD_PAIR = re.compile(r"(-?\d{1,2}\.\d{2,})\s*[,;/ ]\s*(-?\d{1,3}\.\d{2,})")
-COORD_LAT = re.compile(r"\blat(?:itude)?\b[\"']?\s*[:=]\s*[\"']?(-?\d{1,2}\.\d+)", re.I)
-COORD_LON = re.compile(r"\b(?:lon|lng|longitude)\b[\"']?\s*[:=]\s*[\"']?(-?\d{1,3}\.\d+)", re.I)
+# Coordonnées (RC18, O2-08) : paires « 48.12345, 7.12345 » dans les deux ordres (GeoJSON met la
+# longitude d'abord), y compris à cheval sur deux lignes (tableau JSON indenté) et avec la
+# virgule décimale (« 48,12345 ; 7,12345 ») ; clés « lat = … » et « lon = … » appariées sur
+# quelques lignes (TOML, JSON indenté, attributs GPX sur deux lignes). Une seule décimale : admis.
+COORD_PAIR = re.compile(r"(?<![\d.])(?=(-?\d{1,3}\.\d{2,})[ \t]*(?:[,;/]\s*|\s+)(-?\d{1,3}\.\d{2,})(?![\d.]))")
+COORD_PAIR_COMMA = re.compile(
+    r"(?<![\d,])(?=(-?\d{1,3},\d{2,})[ \t]*(?:[;/]\s*|,\s+|\s+)(-?\d{1,3},\d{2,})(?![\d,]))")
+COORD_LAT = re.compile(r"\blat(?:itude)?\b[\"']?\s*[:=]\s*[\"']?(-?\d{1,2}[.,]\d+)", re.I)
+COORD_LON = re.compile(r"\b(?:lon|lng|long|longitude)\b[\"']?\s*[:=]\s*[\"']?(-?\d{1,3}[.,]\d+)", re.I)
+KEYED_WINDOW = 3   # lignes d'écart admises entre une latitude et sa longitude
 
 ALLOWED_EMAIL = re.compile(
     r"^(\d+\+[A-Za-z0-9-]+@users\.noreply\.github\.com|noreply@github\.com|noreply@anthropic\.com)$")
@@ -76,16 +89,28 @@ def normalize(text: str) -> str:
     return "".join(c for c in nfkd if not unicodedata.combining(c)).lower()
 
 
+class DenylistError(ValueError):
+    """Ligne illisible dans la liste. Le message ne cite jamais la valeur : le journal de la CI
+    est public et GitHub ne masque que les lignes entières du secret (RC18, O2-12)."""
+
+
 def parse_denylist(text: str) -> Denylist:
     dl = Denylist()
-    for raw in text.splitlines():
+    for no, raw in enumerate(text.splitlines(), 1):
         line = raw.split(" #", 1)[0].strip()
         if not line or line.startswith("#"):
             continue
         if line.startswith("regex:"):
-            dl.patterns.append(re.compile(line[6:].strip(), re.I))
+            try:
+                dl.patterns.append(re.compile(line[6:].strip(), re.I))
+            except re.error:
+                raise DenylistError(f"ligne {no} de la liste : expression « regex: » invalide") from None
         elif line.startswith("zone:"):
-            lat, lon, radius = (float(x) for x in line[5:].split(","))
+            try:
+                lat, lon, radius = (float(x) for x in line[5:].split(","))
+            except ValueError:
+                raise DenylistError(
+                    f"ligne {no} de la liste : « zone: » attend « latitude, longitude, rayon_km »") from None
             dl.zones.append((lat, lon, radius))
         else:
             dl.words.append(normalize(line))
@@ -101,8 +126,9 @@ def load_denylist(path: Path | None) -> Denylist:
     return parse_denylist("\n".join(parts))
 
 
-def mask(word: str) -> str:
-    return word[0] + "*" * (len(word) - 1) if word else word
+def mask(kind: str, index: int) -> str:
+    """Rang de l'entrée dans la liste, sans lettre ni longueur du mot (RC18, O2-12)."""
+    return f"{kind} n° {index} de la liste"
 
 
 def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -123,32 +149,67 @@ class Finding:
         return f"{self.where}: {self.rule} : {self.detail}"
 
 
+def _num(text: str) -> float:
+    return float(text.replace(",", "."))
+
+
+def _in_zone(lat: float, lon: float, dl: Denylist) -> bool:
+    if abs(lat) > 90 or abs(lon) > 180:
+        return False
+    return any(distance_km(lat, lon, zl, zo) <= zr for zl, zo, zr in dl.zones)
+
+
+def gps_lines(text: str, dl: Denylist) -> list[int]:
+    """Numéros des lignes (à partir de 1) où commence une coordonnée dans une zone privée."""
+    if not dl.zones:
+        return []
+    starts = [0] + [m.end() for m in re.finditer(r"\n", text)]
+
+    def line_of(pos: int) -> int:
+        lo, hi = 0, len(starts) - 1
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if starts[mid] <= pos:
+                lo = mid
+            else:
+                hi = mid - 1
+        return lo + 1
+
+    hits: set[int] = set()
+    for rx in (COORD_PAIR, COORD_PAIR_COMMA):
+        for m in rx.finditer(text):
+            a, b = _num(m.group(1)), _num(m.group(2))
+            if _in_zone(a, b, dl) or _in_zone(b, a, dl):
+                hits.add(line_of(m.start()))
+    lats = [(line_of(m.start()), _num(m.group(1))) for m in COORD_LAT.finditer(text)]
+    lons = [(line_of(m.start()), _num(m.group(1))) for m in COORD_LON.finditer(text)]
+    for la_no, lat in lats:
+        for lo_no, lon in lons:
+            if abs(la_no - lo_no) <= KEYED_WINDOW and _in_zone(lat, lon, dl):
+                hits.add(min(la_no, lo_no))
+    return sorted(hits)
+
+
 def scan_text(where: str, text: str, dl: Denylist) -> list[Finding]:
     out: list[Finding] = []
+    gps = set(gps_lines(text, dl))
     for no, line in enumerate(text.splitlines(), 1):
         loc = f"{where}:{no}"
         norm = normalize(line)
-        for w in dl.words:
+        for i, w in enumerate(dl.words, 1):
             if re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", norm):
-                out.append(Finding(loc, "mot interdit", mask(w)))
-        for pat in dl.patterns:
+                out.append(Finding(loc, "mot interdit", mask("mot", i)))
+        for i, pat in enumerate(dl.patterns, 1):
             if pat.search(line):
-                out.append(Finding(loc, "motif interdit", mask(pat.pattern)))
+                out.append(Finding(loc, "motif interdit", mask("motif", i)))
         for m in MAC.finditer(line):
-            if not TEST_MAC.match(m.group(0)):
-                out.append(Finding(loc, "adresse Bluetooth réelle ?", m.group(0)[:8] + ":**:**:**"))
+            if not TEST_MAC.match(re.sub(r"[_-]", ":", m.group(0)).upper()):
+                out.append(Finding(loc, "adresse Bluetooth réelle ?", "valeur masquée"))
         for label, pat in SECRETS:
             if pat.search(line):
                 out.append(Finding(loc, label, "valeur masquée"))
-        if dl.zones:
-            points = [(float(a), float(b)) for a, b in COORD_PAIR.findall(line)]
-            lats, lons = COORD_LAT.findall(line), COORD_LON.findall(line)
-            points += [(float(a), float(b)) for a, b in zip(lats, lons)]
-            for lat, lon in points:
-                if abs(lat) > 90 or abs(lon) > 180:
-                    continue
-                if any(distance_km(lat, lon, zl, zo) <= zr for zl, zo, zr in dl.zones):
-                    out.append(Finding(loc, "coordonnée dans une zone privée", "valeur masquée"))
+        if no in gps:
+            out.append(Finding(loc, "coordonnée dans une zone privée", "valeur masquée"))
     return out
 
 
@@ -192,11 +253,39 @@ def scan_files(paths: list[str], root: Path, dl: Denylist, staged: bool = False)
     return out
 
 
+NULL_SHA = re.compile(r"^0{7,40}$")
+
+
+def commit_range(rng: str, root: Path) -> list[str]:
+    """Plage « A..B » d'un envoi ou d'une PR. Si A est nul (branche nouvelle) ou inconnu
+    (envoi forcé, historique réécrit), seuls les commits de B absents des autres branches
+    distantes sont pris, et à défaut la seule tête B (RC18, O2-07)."""
+    base, sep, head = rng.partition("..")
+    if not sep:
+        return git("rev-list", rng, cwd=root).split()
+    head = head or "HEAD"
+    known = subprocess.run(["git", "cat-file", "-e", f"{base}^{{commit}}"], cwd=root,
+                           capture_output=True).returncode == 0 if base else False
+    if known:
+        return git("rev-list", f"{base}..{head}", cwd=root).split()
+    print(f"privacy_scan : début de plage « {base or '(vide)'} » absent ; contrôle des commits "
+          f"de {head} absents des autres branches", file=sys.stderr)
+    others = [r for r in git("for-each-ref", "--format=%(refname)", "refs/remotes", cwd=root).split()
+              if not r.endswith("/HEAD")]
+    head_sha = git("rev-parse", f"{head}^{{commit}}", cwd=root).strip()
+    others = [r for r in others if git("rev-parse", r, cwd=root).strip() != head_sha]
+    shas = git("rev-list", head, "--not", *others, cwd=root).split() if others else []
+    return shas or [head_sha]
+
+
 def scan_commits(rng: str, root: Path, dl: Denylist) -> list[Finding]:
+    """Auteur, committer et message de chaque commit, fusions comprises (une fusion faite sur
+    le PC porte la configuration git du PC) ; lignes ajoutées des commits ordinaires. Le
+    contenu apporté par une fusion est couvert par `--all` sur la tête (RC18, O2-07)."""
     out: list[Finding] = []
-    shas = git("rev-list", "--no-merges", rng, cwd=root).split()
-    for sha in shas:
+    for sha in commit_range(rng, root):
         short = sha[:9]
+        parents = git("rev-list", "--parents", "-n", "1", sha, cwd=root).split()[1:]
         meta = git("show", "-s", "--format=%an%x00%ae%x00%cn%x00%ce%x00%B", sha, cwd=root)
         an, ae, cn, ce, msg = (meta.split("\0") + [""] * 5)[:5]
         for role, email in (("auteur", ae), ("committer", ce)):
@@ -204,6 +293,8 @@ def scan_commits(rng: str, root: Path, dl: Denylist) -> list[Finding]:
                 out.append(Finding(f"commit {short}", f"adresse e-mail de l'{role}", "pas une adresse noreply"))
         out += scan_text(f"commit {short} (auteur et committer)", f"{an}\n{cn}", dl)
         out += scan_text(f"commit {short} (message)", msg, dl)
+        if len(parents) > 1:
+            continue
         diff = git("show", "--format=", "--unified=0", "--no-color", "--no-ext-diff", sha, cwd=root)
         current = "?"
         added: list[str] = []
@@ -238,7 +329,11 @@ def main(argv: list[str] | None = None) -> int:
     except (subprocess.CalledProcessError, FileNotFoundError):
         print("privacy_scan : à lancer dans un dépôt git", file=sys.stderr)
         return 2
-    dl = load_denylist(args.denylist)
+    try:
+        dl = load_denylist(args.denylist)
+    except DenylistError as exc:
+        print(f"privacy_scan : {exc}", file=sys.stderr)
+        return 2
     if dl.empty:
         msg = ("privacy_scan : aucune liste de mots interdits (fichier local ou PRIVACY_DENYLIST) ; "
                "seuls les contrôles génériques tournent")
