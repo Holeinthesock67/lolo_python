@@ -7,6 +7,7 @@ extends SceneTree
 const IpcClientScript := preload("res://scripts/ipc_client.gd")
 
 var _failures := 0
+var _checked := 0
 
 
 func _init() -> void:
@@ -14,6 +15,7 @@ func _init() -> void:
 
 
 func _check(cond: bool, msg: String) -> void:
+	_checked += 1
 	if cond:
 		print("[OK] ", msg)
 	else:
@@ -37,4 +39,5 @@ func _run() -> void:
 	var pub: Dictionary = IpcClientScript.hello_config_public(cfg)
 	_check(pub.keys().size() == 3 and pub.has("theme"), "configuration publique du journal de test")
 	_check(IpcClientScript.hello_config_log({}).ends_with("autres clés : aucune"), "configuration vide")
+	print("test_hello_log : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
