@@ -115,6 +115,8 @@ SPEED_DESCENT_PCT = 0.0     # pente envoyée sous ce seuil : descente, hors méd
 SPEED_DRAFT_MAX = 0.02      # abri au-delà : hors médiane
 SPEED_COAST_S = 15.0        # élan gardé après une descente ou un abri : hors médiane
 SPEED_MIN_SAMPLES = 30      # en dessous : médiane sur tout le parcours, avec la mention
+SPEED_DROPPED_ACTIONS = ("press", "rider")   # vitesse imposée : actions du scénario retirées (braquet neutre)
+GRADE_GAP_MAX = 0.5         # vitesse imposée : écart médian toléré entre pente envoyée et pente du parcours (points)
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 # Changement d'état de la séance au journal du core (« Séance : RUNNING -> FINISHED ») : l'état lu est le
 # NOUVEL état, après la flèche, jamais le premier mot de la ligne.
@@ -346,7 +348,10 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, circuit, village, osm, pont, tunnel, ouvert ou dossier .world)")
+        # Code 2 (environnement) et non 1 : le banc n'a rien mesuré, la PR n'est pas en cause (27 novembre).
+        print(f"ENVIRONNEMENT parcours introuvable : {kind} (demo, demo_long, circuit, village, osm, pont, tunnel, "
+              "ouvert ou dossier .world)", file=sys.stderr)
+        raise SystemExit(2)
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
@@ -388,6 +393,12 @@ class Bench:
         self.spec = spec
         self.scenario_arg = scenario_arg
         # --world donné explicitement l'emporte sur le monde du scénario (même scénario, autre parcours).
+        # Refuser plutôt que deviner (27 novembre) : un --world vide (W=$(find …) qui ne trouve rien) n'est jamais
+        # remplacé par le parcours du scénario ni par demo ; banc d'environnement invalide (code 2).
+        if args.world is not None and not str(args.world).strip():
+            print(f"ENVIRONNEMENT {name} : --world vide (monde introuvable avant le banc ?) : aucun parcours "
+                  "par défaut, banc non lancé", file=sys.stderr)
+            raise SystemExit(2)
         self.world = str(args.world or settings.get("world") or "demo")
         # Biome forcé (lot U17) : `--biome=` de l'engine, sur tout le parcours ; --biome l'emporte sur `bench.biome`.
         self.biome = str(getattr(args, "biome", None) or settings.get("biome") or "")
@@ -401,8 +412,16 @@ class Bench:
                 raise SystemExit(f"{name} : vitesse imposée avec la difficulté {self.difficulty} % : la vitesse "
                                  "imposée demande la difficulté 100 % (pente reçue = pente du parcours)")
             self.difficulty = 100.0
-            self.spec = {**spec, "rider": {"strategy": "vitesse", "speed_kmh": float(self.speed_kmh)}}
+            # Braquet neutre tenu (27 novembre, banc rDPS1 à 49 km/h pour 40, sur main aussi) : le cycliste simulé
+            # règle ses watts sur la pente REÇUE, le jeu fait la vitesse sur la pente du PARCOURS ; les 30 appuis du
+            # Click du scénario `demo` montaient le braquet de ~10 crans (+5 points reçus). Appuis du Click et
+            # changements de watts du cycliste retirés : sans effet voulu sur une vitesse imposée.
+            events = [ev for ev in spec.get("events", []) if ev.get("action") not in SPEED_DROPPED_ACTIONS]
+            self.speed_dropped = len(spec.get("events", [])) - len(events)
+            self.spec = {**spec, "events": events,
+                         "rider": {"strategy": "vitesse", "speed_kmh": float(self.speed_kmh)}}
             self.scenario_arg = ""   # scénario modifié : écrit dans un fichier
+        self.env_invalid: list[str] = []   # banc faussé par l'outil : code 2 (ENVIRONNEMENT), pas un échec de la PR
         self.ready_at = SETTLE_S     # temps relatif de la première capture comptée (après le chargement)
         self.duration = float(args.duration or settings.get("duration_s") or
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
@@ -476,6 +495,9 @@ class Bench:
                 (home / "OpenRide" / name).write_text(toml_text(table), encoding="utf-8")
         routes = home / ".local" / "share" / "openride" / "routes"
         route_id = prepare_world(self.world, routes, tmp)
+        # Garde-fou 4 (27 novembre) : ce que le banc a réellement utilisé, en tête du journal et du rapport.
+        self.provenance = provenance(self.world, route_id)
+        r.check(None, "banc joué sur", provenance_text(self.provenance))
         state_port, cmd_port = free_udp_ports(2)
         cfg_lines = [f"[ipc]\nport_state = {state_port}\nport_commands = {cmd_port}\n"]
         # Le core renvoie [render] quality à l'engine au démarrage (réglages O4) : sans cette ligne, sa valeur
@@ -818,6 +840,13 @@ class Bench:
             self.t0_wall = time.mktime(time.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")) + int(m.group(2)) / 1000
         tb = core_log.count("Traceback")
         r.check(tb == 0, "exceptions du core", f"{tb} trace(s) Python dans core.log")
+        loaded = ROUTE_LOADED.findall(core_log)
+        prov = getattr(self, "provenance", None)
+        if prov is not None:
+            prov["charge"] = [(rid, float(m)) for rid, m in loaded]
+            ok = bool(loaded) and loaded[0][0] == prov["parcours"]   # le premier ; un enchaînement en ajoute d'autres
+            r.check(ok, "parcours chargé par le core = parcours demandé",
+                    ", ".join(f"{rid} ({m / 1000:.1f} km)" for rid, m in prov["charge"]) or "aucun « Parcours … chargé »")
         # Journal de séance, FIT, bilan et log_report.
         journals = sorted((home / "OpenRide" / "Activities" / ".journal").glob("*.jsonl"))
         fits = sorted((home / "OpenRide" / "Activities").glob("*.fit"))
@@ -927,6 +956,13 @@ class Bench:
                 print(f"   pente du parcours {min(grades):.1f} à {max(grades):.1f} %, "
                       f"pente envoyée {min(sent):.1f} à {max(sent):.1f} %")
         if self.speed_kmh:
+            if getattr(self, "speed_dropped", 0):
+                r.check(None, "vitesse imposée : braquet neutre tenu",
+                        f"{self.speed_dropped} appui(s) du Click ou changement(s) de watts du scénario retirés")
+            coherent, measure = grade_coherence(recs)
+            label = "pente envoyée = pente du parcours (vitesse imposée)"
+            if not r.check(coherent, label, measure):
+                self.env_invalid.append(label)
             r.check(*speed_check(recs, float(self.speed_kmh)), f"vitesse imposée {float(self.speed_kmh):.0f} km/h")
         self._decor_checks()
         self._input_checks()
@@ -1062,6 +1098,57 @@ def riding_window(journal: Path | None, end_unix: float | None) -> tuple[float |
     return start, end_unix
 
 
+# --- provenance (garde-fou 4) -------------------------------------------------------------------
+
+ROUTE_LOADED = re.compile(r"Parcours « ([^»]+) » chargé : (\d+) m")
+
+
+def _git(*args: str) -> str:
+    try:
+        p = subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return p.stdout.strip() if p.returncode == 0 else ""
+
+
+def provenance(world: str, route_id: str) -> dict[str, Any]:
+    """Monde demandé, parcours préparé, têtes réellement utilisées (27 novembre : un banc qui s'était trompé de monde
+    ne se voyait qu'en relisant les saccades). `main` : point de départ de la tête sur origin/main (ou main)."""
+    head = _git("rev-parse", "HEAD")
+    main = _git("merge-base", "HEAD", "origin/main") or _git("merge-base", "HEAD", "main")
+    return {"monde": world, "parcours": route_id, "tete": head[:8] or "?",
+            "branche": _git("rev-parse", "--abbrev-ref", "HEAD") or "?", "main": main[:8] or "?",
+            "modifie": bool(_git("status", "--porcelain", "--untracked-files=no")), "charge": []}
+
+
+def provenance_text(p: dict[str, Any]) -> str:
+    world = p["monde"] if p["monde"] == p["parcours"] else f"{p['monde']} → parcours {p['parcours']}"
+    return (f"monde {world} ; tête {p['tete']} ({p['branche']}{', fichiers modifiés' if p['modifie'] else ''}), "
+            f"partie de main {p['main']}")
+
+
+def grade_coherence(recs: list[dict[str, Any]], warmup_s: float = SPEED_WARMUP_S,
+                    gap_max: float = GRADE_GAP_MAX) -> tuple[bool, str]:
+    """Vitesse imposée : la stratégie `vitesse` du cycliste simulé règle ses watts sur la pente reçue, la vitesse du
+    jeu se fait sur la pente du parcours. Les deux doivent rester égales (braquet neutre, difficulté 100 %), hors
+    abri (supplément de pente voulu) : écart médian au plus `gap_max` points, sinon le verdict de vitesse est faussé
+    par l'outil (27 novembre : +1,3 à +5,2 points sur rDPS1)."""
+    ts = [x["ts"] for x in recs if isinstance(x.get("ts"), (int, float))]
+    if not ts:
+        return False, "aucun échantillon de pente au journal"
+    t0 = min(ts)
+    gaps = sorted(abs(float(x["grade_sent"]) - float(x["grade"])) for x in recs
+                  if isinstance(x.get("grade_sent"), (int, float)) and isinstance(x.get("grade"), (int, float))
+                  and isinstance(x.get("ts"), (int, float)) and x["ts"] - t0 >= warmup_s
+                  and not (isinstance(x.get("draft"), (int, float)) and x["draft"] > SPEED_DRAFT_MAX))
+    if not gaps:
+        return False, "aucun échantillon de pente envoyée hors abri"
+    med = gaps[len(gaps) // 2]
+    ok = med <= gap_max
+    return ok, (f"écart médian {med:.2f} point(s) sur {len(gaps)} s (au plus {gap_max:.1f}), jusqu'à {gaps[-1]:.1f}"
+                + ("" if ok else " : vitesse jugée sur une autre pente que celle du jeu, banc faussé (ENVIRONNEMENT)"))
+
+
 # --- rapport HTML ------------------------------------------------------------------------------
 
 def svg_chart(records: list[dict[str, Any]], key: str, label: str, color: str, events: list[tuple[float, str]],
@@ -1192,6 +1279,7 @@ figcaption {{ font-size:12px; padding:4px 6px; color:var(--muted); }}
 pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overflow:auto; max-height:360px; font-size:12px; }}
 </style></head><body>
 <h1>Banc simulé : {html.escape(b.name)}</h1>
+{provenance_html(getattr(b, "provenance", None))}
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
 {f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality}){html.escape(cycle_note(b.args))}
@@ -1209,16 +1297,28 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
     (b.out / "rapport.html").write_text(doc, encoding="utf-8")
 
 
+def provenance_html(p: dict[str, Any] | None) -> str:
+    """Encadré en tête du rapport : sur quoi le banc a réellement roulé (garde-fou 4)."""
+    if not p:
+        return ""
+    charge = ", ".join(f"{rid} ({m / 1000:.1f} km)" for rid, m in p.get("charge", [])) or "inconnu"
+    return (f'<p style="border:2px solid var(--line);padding:6px 10px"><b>Joué sur :</b> {html.escape(provenance_text(p))}'
+            f"<br><b>Parcours chargé par le core :</b> {html.escape(charge)}</p>")
+
+
 def write_index(out: Path, results: list[tuple[str, Report]]) -> None:
+    def joue(r: Report) -> str:   # garde-fou 4 : ligne « banc joué sur » du passage
+        return next((m for _, label, m in r.rows if label == "banc joué sur"), "")
     rows = "".join(f'<tr><td><a href="{html.escape(n)}/rapport.html">{html.escape(n)}</a></td>'
-                   f'<td>{len(r.rows) - r.failed}/{len(r.rows)}</td><td>{"OK" if not r.failed else "ÉCHEC"}</td></tr>'
+                   f'<td>{len(r.rows) - r.failed}/{len(r.rows)}</td><td>{"OK" if not r.failed else "ÉCHEC"}</td>'
+                   f'<td>{html.escape(joue(r))}</td></tr>'
                    for n, r in results)
     (out / "index.html").write_text(
         '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Banc simulé</title>'
         '<style>body{font:15px system-ui;margin:16px;background:#fafafa;color:#222}td{padding:4px 10px;'
         'border-bottom:1px solid #ddd}@media (prefers-color-scheme: dark){body{background:#16181b;color:#eee}'
         'a{color:#8cf}}</style></head><body><h1>Banc simulé</h1><table><tr><th>Scénario</th><th>Vérifications</th>'
-        f"<th>Résultat</th></tr>{rows}</table></body></html>", encoding="utf-8")
+        f"<th>Résultat</th><th>Joué sur</th></tr>{rows}</table></body></html>", encoding="utf-8")
 
 
 
@@ -1334,6 +1434,7 @@ def main(argv: list[str] | None = None) -> int:
     real_home = Path.home()
     before = snapshot_home(real_home)
     results: list[tuple[str, Report]] = []
+    env_invalid: list[tuple[str, str]] = []
     # Bip au départ de chaque scénario et au verdict, journal guide.jsonl : utile pour l'endurance
     # d'une heure (lot X16), qu'on lance avant de faire autre chose.
     guide = Guide("Banc simulé", args.out / "guide.jsonl", sound=False if args.muet else None, screen=False)
@@ -1345,6 +1446,7 @@ def main(argv: list[str] | None = None) -> int:
                    "endurance : rien à faire, ne pas mettre le PC en veille" if bench.endurance else "",
                    index=k + 1, total=len(names))
         rep = bench.run()
+        env_invalid += [(sname, label) for label in bench.env_invalid]
         guide.measure(sname, "OK" if not rep.failed else f"{rep.failed} échec(s)", ok=not rep.failed)
         results.append((sname, rep))
     changed = home_changes(before, snapshot_home(real_home), args.out, real_home)
@@ -1358,6 +1460,10 @@ def main(argv: list[str] | None = None) -> int:
     guide.finish(not failed, f"Banc fini : {verdict}")
     guide.close()
     print("RÉSULTAT : " + verdict)
+    invalid = [f"{name} : {label}" for name, label in env_invalid]
+    if invalid:
+        print("ENVIRONNEMENT banc faussé par l'outil : " + " ; ".join(invalid), file=sys.stderr)
+        return 2
     return 0 if not failed else 1
 
 
