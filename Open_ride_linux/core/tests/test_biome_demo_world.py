@@ -73,7 +73,13 @@ BIOME_LINES_B = (("demo-landes", "Route des Landes", "atlantic_heath", 300, 600)
                  ("demo-taiga", "Route de la Taïga", "boreal_forest", 500, 800),
                  ("demo-bush", "Route du Bush", "eucalypt_woodland", 400, 650),
                  ("demo-grands-cedres", "Route des Grands Cèdres", "temperate_rainforest", 900, 1300),
-                 ("demo-nuages", "Route des Nuages", "cloud_forest", 1300, 1700))
+                 ("demo-nuages", "Route des Nuages", "cloud_forest", 1300, 1700),
+                 # après le correctif du dépassement des cyclistes du décor (lot DPS1)
+                 ("demo-chenes", "Route des Chênes", "temperate_forest", 800, 1100),
+                 ("demo-banquise", "Route de la Banquise", "polar", 300, 600),
+                 ("demo-altiplano", "Route de l'Altiplano", "high_plateau", 250, 500),
+                 ("demo-steppes", "Route des Steppes", "steppe", 250, 500),
+                 ("demo-toundra", "Route de la Toundra", "tundra", 300, 600))
 
 
 def _schema(name: str) -> dict:
@@ -90,7 +96,8 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     names = sorted(p.name for p in demo_set.glob("*.world"))
     game_only = ["demo-alpages.world", "demo-jungle.world", "demo-littoral.world", "demo-savane.world",
                  "demo-landes.world", "demo-canyons.world", "demo-dunes.world", "demo-delta.world", "demo-taiga.world",
-                 "demo-bush.world", "demo-grands-cedres.world", "demo-nuages.world"]   # lot DPB1 : jeu seul, jamais dans la recette
+                 "demo-bush.world", "demo-grands-cedres.world", "demo-nuages.world", "demo-chenes.world",
+                 "demo-banquise.world", "demo-altiplano.world", "demo-steppes.world", "demo-toundra.world"]   # lot DPB1 : jeu seul, jamais dans la recette
     assert names == sorted(["demo-biomes-forets.world", "demo-biomes-nord.world", "demo-biomes-paysages.world",
                             "demo-biomes-sud.world", "demo-circuit.world", "demo-corniche.world", "demo-japon.world",
                             "demo-recif.world", "demo-vignes.world", "demo-volcan.world", *game_only])

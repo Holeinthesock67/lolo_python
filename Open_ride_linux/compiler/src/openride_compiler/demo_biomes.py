@@ -160,14 +160,20 @@ DEMO_SET = (("demo-biomes-paysages", "Tour des nouveaux paysages", "paysages", F
             ("demo-taiga", "Route de la Taïga", "boreal_forest", False, False, True),
             ("demo-bush", "Route du Bush", "eucalypt_woodland", False, False, True),
             ("demo-grands-cedres", "Route des Grands Cèdres", "temperate_rainforest", False, False, True),
-            ("demo-nuages", "Route des Nuages", "cloud_forest", False, False, True))
+            ("demo-nuages", "Route des Nuages", "cloud_forest", False, False, True),
+            ("demo-chenes", "Route des Chênes", "temperate_forest", False, False, True),
+            ("demo-banquise", "Route de la Banquise", "polar", False, False, True),
+            ("demo-altiplano", "Route de l'Altiplano", "high_plateau", False, False, True),
+            ("demo-steppes", "Route des Steppes", "steppe", False, False, True),
+            ("demo-toundra", "Route de la Toundra", "tundra", False, False, True))
 # Lot DPB1 : démonstrations d'un seul biome du jeu de base, absentes de la variante de recette (les bancs gardent
 # leur jeu de parcours d'avant). Leur profil de 40 km (`LINE_PROFILES`) remplace la pente moyenne du biome, qui, tenue
 # sur 40 km, aurait donné 3 000 m de montée à l'alpin et mené la jungle sous la mer : tronçons (longueur en km, pente
 # en %), fondus sur `PROFILE_RAMP_M`, les ondulations du biome (`GRADE` moins sa moyenne) par-dessus. Le dernier
 # tronçon va jusqu'à l'arrivée.
 GAME_ONLY = frozenset({"demo-alpages", "demo-littoral", "demo-jungle", "demo-savane", "demo-landes", "demo-canyons",
-                       "demo-dunes", "demo-delta", "demo-taiga", "demo-bush", "demo-grands-cedres", "demo-nuages"})
+                       "demo-dunes", "demo-delta", "demo-taiga", "demo-bush", "demo-grands-cedres", "demo-nuages",
+                       "demo-chenes", "demo-banquise", "demo-altiplano", "demo-steppes", "demo-toundra"})
 LINE_PROFILES = {
     # vallée, premier col, descente, replat, puis la grande montée finale vers le col (sommet du parcours)
     "alpine": ((8, 2.0), (7, 6.5), (5, -5.0), (6, 1.0), (8, 7.0), (6, 4.0)),
@@ -187,6 +193,16 @@ LINE_PROFILES = {
     "temperate_rainforest": ((6, 4.0), (4, -3.0), (6, 4.5), (4, -3.5), (6, 4.0), (4, -2.0), (10, 3.0)),
     # forêt de nuages : la montée finit au col des Nuages (sommet du parcours)
     "cloud_forest": ((8, 3.0), (4, -3.0), (8, 5.0), (4, -2.0), (8, 5.5), (8, 4.0)),
+    # forêt de chênes : côtes et descentes de moyenne montagne
+    "temperate_forest": ((5, 3.0), (3, -3.0), (6, 4.0), (4, -2.0), (6, 3.0), (4, -4.0), (6, 4.0), (6, 2.0)),
+    # banquise : longues ondulations de la glace
+    "polar": ((10, 1.5), (6, -1.0), (10, 2.0), (6, -1.5), (8, 1.0)),
+    # hauts plateaux : faux plats en altitude
+    "high_plateau": ((8, 1.5), (6, -1.0), (8, 1.5), (6, -1.0), (12, 1.0)),
+    # steppe : faux plats et petites descentes
+    "steppe": ((8, 1.5), (4, -1.0), (8, 1.5), (4, -1.5), (8, 1.0), (8, 0.5)),
+    # toundra : ondulations douces
+    "tundra": ((8, 2.0), (6, -1.5), (8, 2.0), (6, -1.5), (12, 1.0)),
     # désert de sable et delta : pas de pente moyenne, pas de profil (pente `GRADE` du biome)
 }
 PROFILE_RAMP_M = 400.0
@@ -330,6 +346,14 @@ DEMO_LIBRARY = {
                            "tags": ["biome"]},
     "demo-nuages": {"description": "{km} km de montée dans la forêt de nuages, de finca en finca, jusqu'au col.",
                     "tags": ["biome"]},
+    "demo-chenes": {"description": "{km} km de côtes sous les chênes et les hêtres, d'étang en étang.",
+                    "tags": ["biome"]},
+    "demo-banquise": {"description": "{km} km sur la glace de la banquise, de station en station.", "tags": ["biome"]},
+    "demo-altiplano": {"description": "{km} km de faux plats sur les hauts plateaux, entre lamas et salars.",
+                       "tags": ["biome"]},
+    "demo-steppes": {"description": "{km} km dans la steppe, de campement de yourtes en campement.",
+                     "tags": ["biome"]},
+    "demo-toundra": {"description": "{km} km dans la toundra, de refuge en refuge.", "tags": ["biome"]},
 }
 
 
@@ -386,7 +410,7 @@ PLACE_NAMES = {
                "Pointe du Moulin", "Pointe des Embruns", "Pointe aux Huîtres"),
     "mas": ("Mas des Oliviers", "Mas de la Cigale", "Mas des Lavandes", "Mas des Câpriers"),
     "hameau": ("Hameau des Prés", "Les Granges", "Hameau du Ruisseau"),
-    "etang": ("Étang des Saules", "Étang du Moulin", "Étang aux Hérons"),
+    "etang": ("Étang des Saules", "Étang du Moulin", "Étang aux Hérons", "Étang des Libellules", "Étang des Joncs"),
     "col": ("Col des Edelweiss", "Belvédère du Glacier", "Belvédère des Marmottes", "Belvédère des Chamois",
             "Belvédère de la Cascade Blanche", "Belvédère des Gentianes", "Belvédère du Lac Vert"),
     # Tour des nouveaux paysages (lot DB1) : trois blocs par biome depuis le lot DL1 (`LINE_MIN_M`), un nom par bloc.
@@ -408,7 +432,8 @@ PLACE_NAMES = {
     "volcan": ("Cratère des Fumerolles", "Cratère des Cendres", "Cratère du Soufre"),
     "canyon": ("Belvédère du Canyon Rouge", "Belvédère des Arches", "Belvédère des Cheminées", "Belvédère des Mesas",
                "Belvédère de la Gorge Étroite", "Belvédère des Buttes", "Belvédère du Rocher Percé"),
-    "plateau": ("Col des Lamas", "Belvédère des Vigognes", "Belvédère de l'Altiplano"),
+    "plateau": ("Col des Lamas", "Belvédère des Vigognes", "Belvédère de l'Altiplano", "Belvédère des Alpagas",
+                "Belvédère du Salar", "Belvédère des Condors", "Belvédère de la Puna"),
     "lagon": ("Lagon des Tortues",),
     "laminaires": ("Forêt des Laminaires",),
     "corail": ("Jardin de Corail",),
@@ -420,7 +445,8 @@ PLACE_NAMES = {
     "brasier": ("Cratère du Brasier",),
     # Route du Sud (lot DB3, quatre blocs par biome depuis le lot DL1) et Route du Grand Nord (deux noms quand la
     # boucle repasse dans le même biome).
-    "yourtes": ("Campement des Yourtes", "Campement des Chevaux", "Campement du Puits", "Campement des Aigles"),
+    "yourtes": ("Campement des Yourtes", "Campement des Chevaux", "Campement du Puits", "Campement des Aigles",
+                "Campement des Grues", "Campement des Marmottes", "Campement du Lac Salé"),
     "oasis": ("Oasis des Palmiers", "Oasis des Dattiers", "Oasis de la Source", "Oasis des Caravanes",
               "Oasis des Gazelles", "Oasis du Puits Profond", "Oasis des Nomades"),
     "dunes": ("Belvédère des Dunes", "Belvédère du Grand Erg", "Belvédère des Sables", "Belvédère du Mirage",
@@ -442,9 +468,9 @@ PLACE_NAMES = {
                "Chenal des Lentilles d'Eau", "Chenal des Saules", "Chenal du Héron Cendré"),
     "trappeurs": ("Hameau des Trappeurs", "Cabanes du Lac Gelé"),
     "lac_nord": ("Lac des Huards", "Lac aux Castors"),
-    "toundra": ("Refuge du Caribou", "Refuge des Lichens"),
-    "banquise": ("Station de la Banquise",),
-    "banquise_vue": ("Belvédère des Glaces",),
+    "toundra": ("Refuge du Caribou", "Refuge des Harfangs", "Refuge du Renard Polaire", "Refuge des Lichens"),
+    "banquise": ("Station de la Banquise", "Station des Phoques"),
+    "banquise_vue": ("Belvédère des Glaces", "Belvédère des Icebergs"),
     # Route des Trois Forêts (lot V6-r4) : un bloc par biome.
     # Route des Trois Forêts : sept blocs par biome depuis le lot DL1, un nom par bloc ; le col au dernier bloc.
     "bush": ("Ferme des Kangourous", "Ferme des Émeus", "Station du Billabong", "Ferme des Wombats",

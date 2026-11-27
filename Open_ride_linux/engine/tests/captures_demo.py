@@ -46,7 +46,8 @@ ROUTES = ("demo", "demo-biomes-paysages", "demo-japon", "demo-circuit", "demo-re
           "demo-biomes-sud", "demo-biomes-nord", "demo-corniche", "demo-vignes", "demo-biomes-forets",
           # lot DPB1 : démonstrations d'un seul biome (42 km)
           "demo-alpages", "demo-littoral", "demo-jungle", "demo-savane", "demo-landes", "demo-canyons", "demo-dunes",
-          "demo-delta", "demo-taiga", "demo-bush", "demo-grands-cedres", "demo-nuages")
+          "demo-delta", "demo-taiga", "demo-bush", "demo-grands-cedres", "demo-nuages",
+          "demo-chenes", "demo-banquise", "demo-altiplano", "demo-steppes", "demo-toundra")
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
