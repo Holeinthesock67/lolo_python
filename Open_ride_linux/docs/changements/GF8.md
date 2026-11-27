@@ -1,6 +1,6 @@
 # GF8 : banc des menus, touche simulée accusée et renvoyée une fois
 
-- PR : à venir ; fil « Fiabiliser les outils de banc » (27 novembre 2026), échecs rGL2 de #1054 (24/11) ; version : 6.0
+- PR : #1166 ; fil « Fiabiliser les outils de banc » (27 novembre 2026), échecs rGL2 de #1054 (24/11) ; version : 6.0
 - CHANGELOG (section « Corrigé ») :
   - Banc des menus, voie clavier : la touche simulée part en un seul datagramme sur le port des trames `state`.
     Pendant un blocage du fil principal de l'engine (monde ouvert, « engine muet 14,5 s » des bancs rGL2 high et
