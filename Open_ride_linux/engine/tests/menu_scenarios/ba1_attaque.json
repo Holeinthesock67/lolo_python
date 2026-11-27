@@ -1,0 +1,75 @@
+{
+  "description": "Gestes des bots écrits et entendus (lot BA1, essai du propriétaire du 22 novembre en mode Course : « rien n'indique quand un bot utilise un boost ») : Course sur le parcours de démo (montée de 5 km) contre 7 bots, départ ; dès qu'un bot voisin attaque, répond ou lance son sprint, le bandeau l'écrit (« Grimpeur attaque, 40 m devant ») et le son bot_attack part. Capture ba1_bandeau pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "voies": [
+    "clavier"
+  ],
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15,
+      "elements": [
+        "race"
+      ]
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo"
+      ]
+    },
+    {
+      "choisir": "demo"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Parcours : Col du lacet"
+      ]
+    },
+    {
+      "choisir": "race"
+    },
+    {
+      "ecran": "ready",
+      "elements": [
+        "start"
+      ],
+      "delai": 10
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "journal": "core",
+      "motif": "-> RUNNING",
+      "delai": 30
+    },
+    {
+      "note": "premier geste d'un bot voisin : ligne du bandeau et son",
+      "journal": "engine",
+      "motif": "bot_move .+ (attaque|suit l'attaque|lance le sprint), ",
+      "delai": 900
+    },
+    {
+      "capture": "ba1_bandeau"
+    },
+    {
+      "journal": "engine",
+      "motif": "event_sound kind=bot_attack",
+      "delai": 10
+    },
+    {
+      "commande": "end_session",
+      "args": {
+        "save": false
+      }
+    },
+    {
+      "ecran": "summary",
+      "delai": 15
+    }
+  ]
+}

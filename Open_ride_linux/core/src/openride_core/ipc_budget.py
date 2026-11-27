@@ -193,7 +193,7 @@ def _extras_1_4(d: dict[str, Any]) -> None:
     # (T-Q2) ; la pire trame garde quand même `erg` et `powerup` ensemble.
     for bot in d["bots"]:
         bot.update({"profile": "sprinter", "cp_w": 1234.5, "mass_kg": 123.4, "wbal_pct": 100.0,
-                    "jersey": "sprint", "gap_s": -3599.99})
+                    "jersey": "sprint", "gap_s": -3599.99, "move": "respond"})   # move : lot BA1 (1.38)
     d["segment"] = {"id": _ID, "kind": "climb", "category": "HC", "d_to_start_m": 199_999.9,
                     "elapsed_s": 3599.99, "gap_to_pr_s": -3599.99}
     d["powerup"] = {"held": "power", "active": "light", "remaining_s": 120.0}
