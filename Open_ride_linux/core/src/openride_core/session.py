@@ -1812,8 +1812,10 @@ class CoreSession:
         from .ipc_lists import build_plans_message
 
         try:
+            ctx = self.profile_ctx
             msg = await asyncio.to_thread(build_plans_message, cmd_id, self.cfg.rider.ftp_w, self.plans_dir,
-                                          self.workouts_dir, self.plan_state_path, self.activities_dir)
+                                          self.workouts_dir, self.plan_state_path, self.activities_dir, None,
+                                          self._curve_cache(ctx), ctx.counted_sources)
             if created:
                 msg["created"] = created
         except Exception:
@@ -2070,12 +2072,27 @@ class CoreSession:
             return
         self._spawn(self._workout_menu(name, args, cmd_id))
 
+    def _best_effort(self, seconds: int) -> tuple[float, float]:
+        """(meilleur effort de `seconds` s sur les 6 derniers mois en W, FTP en W) pour un entraînement calé sur la
+        courbe (lot PP8b) : toutes les séances comptées du profil, comme le coach (une remise à zéro des
+        statistiques ne change pas ce que tu tiens) ; sans effort de cette durée, la courbe type × la FTP."""
+        from .ipc_lists import best_effort_w
+
+        ctx = self.profile_ctx
+        ftp = float(self.cfg.rider.ftp_w)
+        best = best_effort_w(self.journal_dir.parent, self._curve_cache(ctx), ctx.counted_sources, seconds,
+                             time.time())
+        if best is None:
+            best = ftp * bot_effort.curve_pct(seconds) / 100.0
+        return float(best), ftp
+
     async def _workout_menu(self, name: str, args: dict, cmd_id: int) -> None:
         from . import workout_menu
 
         try:
             if name == "create_workout":
-                res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args)
+                res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args,
+                                              self._best_effort)
             else:
                 res = await asyncio.to_thread(workout_menu.create_qwk_workout, self.workouts_dir, args)
             log.info("Entraînement créé : %s (%s)", res["workout_id"], "nouveau" if res["created"] else "déjà présent")

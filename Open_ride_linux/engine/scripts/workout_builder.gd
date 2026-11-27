@@ -2,8 +2,8 @@ extends RefCounted
 
 ## Création d'un entraînement par intervalles depuis le menu ERG (lot N16), sans nœud.
 ##
-## Sept paramètres réglés au Click (échauffement, répétitions, effort et récupération en durée et en
-## % de la FTP, retour au calme), envoyés au core par la commande `create_workout` (contrat v1.3,
+## Huit paramètres réglés au Click (échauffement, répétitions, effort et récupération en durée et en
+## % de la FTP, retour au calme ; base de l'effort, lot PP8b : FTP, ton 1 min ou ton 5 min), envoyés au core par la commande `create_workout` (contrat v1.3,
 ## décision D4) : le core écrit le `.zwo` dans ~/OpenRide/Workouts/. `workout_id()` et `workout_name()`
 ## reprennent les règles du core pour l'affichage. Puissances en % de la FTP (réglages du lot O4).
 ## Pas de class_name : charger par preload("res://scripts/workout_builder.gd").
@@ -18,11 +18,22 @@ const PARAMS := [
 	{"key": "warmup_min", "label": "Échauffement", "value": 10, "min": 0, "max": 30, "step": 1, "format": "min"},
 	{"key": "reps", "label": "Répétitions", "value": 5, "min": 1, "max": 20, "step": 1, "format": "n"},
 	{"key": "on_s", "label": "Effort", "value": 240, "min": 15, "max": 1200, "step": 15, "format": "s"},
+	{"key": "on_ref", "label": "Base de l'effort", "value": 0, "min": 0, "max": 2, "step": 1, "format": "ref"},
 	{"key": "on_pct", "label": "Puissance de l'effort", "value": 105, "min": 50, "max": 200, "step": 5, "format": "pct"},
 	{"key": "off_s", "label": "Récupération", "value": 180, "min": 15, "max": 1200, "step": 15, "format": "s"},
 	{"key": "off_pct", "label": "Puissance de la récupération", "value": 55, "min": 30, "max": 100, "step": 5, "format": "pct"},
 	{"key": "cooldown_min", "label": "Retour au calme", "value": 10, "min": 0, "max": 30, "step": 1, "format": "min"},
 ]
+
+## Lot PP8b : base de l'effort (`create_workout.on_ref`) : la FTP, ou ton meilleur 1 min ou 5 min des 6 derniers
+## mois (le core convertit en % de la FTP et écrit les watts dans le nom). Mots de chaque base, valeur envoyée,
+## borne haute de `on_pct` sur la courbe (core : `workout_menu.CURVE_ON_PCT`) et courbe type pour l'aperçu.
+const REF_WORDS := ["FTP", "ton 1 min", "ton 5 min"]
+const REF_OF := ["de la FTP", "de ton 1 min", "de ton 5 min"]
+const REF_SHORT := ["de la FTP", "du 1 min", "du 5 min"]   # valeur à droite d'une ligne : tient dans la colonne
+const REF_IDS := ["ftp", "best_60", "best_300"]
+const CURVE_PCT_MAX := 120
+const REF_PREVIEW := [1.0, 1.6, 1.2]   # bot_effort.POWER_CURVE : 1 min 160 %, 5 min 120 % de la FTP
 
 var values := {}
 
@@ -60,7 +71,9 @@ static func format_param(p: Dictionary, value) -> String:
 		"s":
 			return format_duration(int(value))
 		"pct":
-			return "%d %% de la FTP" % int(value)
+			return "%d %% %s" % [int(value), REF_SHORT[clampi(int(p.get("ref", 0)), 0, 2)]]
+		"ref":
+			return REF_WORDS[clampi(int(value), 0, 2)]
 	return str(int(value))
 
 
@@ -69,8 +82,25 @@ func set_value(key: String, value) -> bool:
 	var p := param(key)
 	if p.is_empty():
 		return false
-	values[key] = clampi(int(value), int(p["min"]), int(p["max"]))
+	values[key] = clampi(int(value), int(p["min"]), pct_max() if key == "on_pct" else int(p["max"]))
+	if key == "on_ref":
+		values["on_pct"] = mini(int(values["on_pct"]), pct_max())
 	return true
+
+
+## Borne haute de « Puissance de l'effort » : 200 % de la FTP, 120 % d'un meilleur effort (lot PP8b).
+func pct_max() -> int:
+	return CURVE_PCT_MAX if int(values.get("on_ref", 0)) > 0 else int(param("on_pct")["max"])
+
+
+## Arguments de `create_workout` : les paramètres, `on_ref` en mots seulement hors FTP (core plus ancien : rien
+## de nouveau envoyé tant que la base reste la FTP).
+func args() -> Dictionary:
+	var out := values.duplicate()
+	out.erase("on_ref")
+	if int(values["on_ref"]) > 0:
+		out["on_ref"] = REF_IDS[int(values["on_ref"])]
+	return out
 
 
 func duration_s() -> int:
@@ -80,8 +110,9 @@ func duration_s() -> int:
 
 ## Nom affiché : « Intervalles 5 × 4 min à 105 % ».
 func workout_name() -> String:
-	return "Intervalles %d × %s à %d %%" % [int(values["reps"]), format_duration(int(values["on_s"])),
+	var name := "Intervalles %d × %s à %d %%" % [int(values["reps"]), format_duration(int(values["on_s"])),
 		int(values["on_pct"])]
+	return name if int(values["on_ref"]) == 0 else name + " " + REF_OF[int(values["on_ref"])]
 
 
 ## Blocs [durée, début, fin] en fraction de la FTP, comme le profil d'un entraînement de la liste
@@ -92,7 +123,8 @@ func profile() -> Array:
 	if int(values["warmup_min"]) > 0:
 		out.append([int(values["warmup_min"]) * 60.0, 0.5, 0.75])
 	for i in range(int(values["reps"])):
-		out.append([float(values["on_s"]), values["on_pct"] / 100.0, values["on_pct"] / 100.0])
+		var on: float = values["on_pct"] / 100.0 * REF_PREVIEW[int(values["on_ref"])]   # aperçu : courbe type
+		out.append([float(values["on_s"]), on, on])
 		out.append([float(values["off_s"]), values["off_pct"] / 100.0, values["off_pct"] / 100.0])
 	if int(values["cooldown_min"]) > 0:
 		out.append([int(values["cooldown_min"]) * 60.0, 0.65, 0.45])
@@ -112,9 +144,10 @@ func menu_items(editing_key := "", editing_value = 0) -> Array:
 		var key := str(p["key"])
 		if KEY_PREFIX + key == editing_key:
 			out.append({"id": "param:" + key, "label": str(p["label"]),
-				"detail": "◀ %s ▶" % format_param(p, editing_value), "editing": true})
+				"detail": "◀ %s ▶" % format_param(_with_ref(p), editing_value), "editing": true})
 		else:
-			out.append({"id": "param:" + key, "label": str(p["label"]), "detail": format_param(p, values[key])})
+			out.append({"id": "param:" + key, "label": str(p["label"]),
+				"detail": format_param(_with_ref(p), values[key])})
 	out.append({"id": "save", "label": "Enregistrer et choisir",
 		"detail": "%s, %d min" % [workout_name(), int(round(duration_s() / 60.0))]})
 	return out
@@ -126,4 +159,11 @@ func edit_item(key: String) -> Dictionary:
 	if p.is_empty():
 		return {}
 	return {"key": KEY_PREFIX + key, "label": p["label"], "type": "int", "value": values[key],
-		"min": p["min"], "max": p["max"], "step": p["step"], "unit": "", "format": p["format"]}
+		"min": p["min"], "max": pct_max() if key == "on_pct" else p["max"], "step": p["step"], "unit": "",
+		"format": p["format"], "ref": int(values["on_ref"]) if key == "on_pct" else 0}
+
+
+## Paramètre avec sa base (lot PP8b) : seule la puissance de l'effort se lit sur ton 1 min ou 5 min ; la
+## récupération reste en % de la FTP.
+func _with_ref(p: Dictionary) -> Dictionary:
+	return p.merged({"ref": int(values["on_ref"]) if str(p["key"]) == "on_pct" else 0})

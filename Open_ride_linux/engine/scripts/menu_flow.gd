@@ -1624,7 +1624,7 @@ func _handle_event(event: String) -> Dictionary:
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
 		var item_id := str(act["id"])
 		if item_id == "save":
-			return {"action": "create_workout", "args": builder.values.duplicate()}
+			return {"action": "create_workout", "args": builder.args()}
 		if item_id.begins_with("param:"):
 			settings.begin_with(builder.edit_item(item_id.substr(6)))
 			_refresh_edit()
