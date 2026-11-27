@@ -190,7 +190,8 @@ func _test_tag_filter_of_shown_list() -> void:
 	f.menu.mode_routes = {"track": "velodrome"}
 	var routes: Array = []
 	for r in [["col_a", "col"], ["piste", "velodrome"], ["cratere", "volcan"]]:
-		routes.append({"id": r[0], "name": r[0], "length_m": 5000.0, "status": "ready", "library": {"tags": [r[1]]}})
+		routes.append({"id": r[0], "name": r[0], "length_m": 5000.0, "status": "ready", "library": {"tags": [r[1]]},
+			"route_type": "loop" if r[0] == "piste" else "point_to_point"})   # un parcours de mode est une boucle étiquetée
 	f.set_routes(routes)
 	f.menu.focus_item("world")
 	f.handle("A_LONG")
