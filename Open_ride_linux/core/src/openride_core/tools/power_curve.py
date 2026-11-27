@@ -338,6 +338,38 @@ def window_curve(kept: list[tuple[Path, dict]], days: int, now: float) -> dict[s
     return {"days": days, "sessions": len(inside), "points": points}
 
 
+PLAN_DURATIONS_S = (5, 60, 300, 1200)   # courbe avant et après un plan (lot PP8b) : les quatre durées de PP5
+
+
+def best_watts(kept: list[tuple[Path, dict]], seconds: int, start: float | None = None,
+               end: float | None = None) -> float | None:
+    """Meilleur effort de `seconds` s (libre ou ERG, le meilleur des deux) des séances commencées dans
+    [`start`, `end`[ ; None sans effort de cette durée."""
+    best = None
+    for _, e in kept:
+        ts = e["start_ts"]
+        if (start is not None and ts < start) or (end is not None and ts >= end):
+            continue
+        w = e["all"].get(str(seconds))
+        if w is not None and (best is None or w > best):
+            best = w
+    return best
+
+
+def plan_curve_change(kept: list[tuple[Path, dict]], start_ts: float,
+                      durations: Iterable[int] = PLAN_DURATIONS_S) -> list[dict[str, Any]]:
+    """Courbe avant et après un plan (lot PP8b) : par durée, meilleur effort des 6 mois d'avant le début du plan
+    (`before`) et depuis son début (`after`), en watts arrondis ; durées sans effort après le début écartées."""
+    out = []
+    for d in durations:
+        after = best_watts(kept, d, start=start_ts)
+        if after is None:
+            continue
+        before = best_watts(kept, d, start=start_ts - WINDOWS["months6"] * 86400.0, end=start_ts)
+        out.append({"s": d, "before": round(before) if before is not None else None, "after": round(after)})
+    return out
+
+
 def compute(directory: Path | None = None, sources: Iterable[str] | None = None, cache_path: Path | None = None,
             now: float | None = None, since: float | None = None) -> dict[str, Any]:
     """Courbe du profil en cours (ou du dossier `directory`) pour les deux fenêtres, depuis la remise à zéro des
