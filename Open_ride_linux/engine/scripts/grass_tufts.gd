@@ -37,6 +37,7 @@ const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
+const RouteRevision := preload("res://scripts/route_revision.gd")
 const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 const LoopChunks := preload("res://scripts/loop_chunks.gd")
 
@@ -208,6 +209,24 @@ func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: i
 	_far_count.resize(groups)
 	_group_visible.resize(groups)
 
+
+## Monde ouvert (revue E7-01) : route révisée, garde de distance `road` déjà construite sur elle (living_world.gd,
+## en tâche de fond ; nulle : construite ici). Les groupes dont le tronçon passe au même endroit gardent leurs
+## touffes ; seuls ceux dont la route change sont vidés et refaits par `update` (plus de disparition de toute
+## l'herbe autour du cycliste, ni de grille refaite sur toute la route dans le fil principal).
+func retarget(route_data, road = null) -> void:
+	var old = route
+	route = route_data
+	if _near_mm.is_empty() or route == null:
+		return
+	_road = road if road != null else RoadClearance.new(route)
+	for g in range(_slot_chunk.size()):
+		var k: int = _slot_chunk[g]
+		if k == NO_CHUNK:
+			continue
+		var kk := _loop.key(k)
+		if not RouteRevision.same_span(old, route, kk * CHUNK_M, (kk + 1) * CHUNK_M):
+			_slot_chunk[g] = NO_CHUNK   # `update` le recycle et le remet en file
 
 ## Matériau des touffes : balancement au vent apparent, fondu avec la distance, montrées de `lod_begin`
 ## à `lod_end` mètres (0 : sans borne).

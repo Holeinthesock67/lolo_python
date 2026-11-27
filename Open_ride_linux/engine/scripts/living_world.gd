@@ -32,6 +32,8 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
+const RoadClearance := preload("res://scripts/road_clearance.gd")
 
 const NEIGH_PERIOD_S := 0.5
 
@@ -61,6 +63,10 @@ var _zones: ExclusionZones = null       # zones sans herbe ni détail de sol (_e
 var _zones_version := -2
 var _shapes: Dictionary = {"forests": [], "buildings": [], "waters": []}
 var _route = null
+## Monde ouvert (revue E7-01, E8-01) : garde de distance de la route révisée construite en tâche de fond, puis donnée
+## à l'herbe, aux détails du sol et à la lave (`update_route`). Seule la dernière demandée est appliquée.
+var _road_jobs: Array = []            # [{task, gen, holder}]
+var _road_gen := 0
 
 
 func configure(preset_name: String, living_enabled: bool, theme: Dictionary, environment: Environment = null,
@@ -101,6 +107,7 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 
 func set_route(route, road_width_m: float = 6.0) -> void:
 	_route = route
+	_road_gen += 1   # garde de distance en préparation pour une route d'avant : jetée
 	if grass != null:
 		# Essai de coût (OPENRIDE_RENDER_DIAG `herbe=F`, render_diag.gd) : part des touffes gardée, bande large comprise.
 		var share := RenderDiag.number("herbe", 1.0)
@@ -121,6 +128,63 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 		volcano.height_at = _terrain_height(route)
 		volcano.configure(VolcanoFx.budgets_of(living), route, model)
 	_neigh_at = -INF
+
+
+## Monde ouvert (revue E7-01, E8-01) : route révisée (prolongée, branche choisie). Rien n'est vidé : la garde de
+## distance de la nouvelle route se construit en tâche de fond (elle couvre toute la route connue et grandit avec la
+## balade), puis herbe, détails du sol et lave ne refont que les tronçons dont la route change (`_poll_road_jobs`).
+func update_route(route) -> void:
+	if route == null or _route == null:
+		set_route(route)
+		return
+	_route = route
+	_road_gen += 1
+	if not enabled:   # décor vivant coupé : rien n'est dessiné, pas de garde à construire
+		for m in [grass, ground_details, volcano]:
+			if m != null:
+				m.retarget(route, null)
+		return
+	var holder := {"road": null}
+	var task := BgTasks.add(func(): holder["road"] = RoadClearance.new(route), true, "garde de la route")
+	_road_jobs.append({"task": task, "gen": _road_gen, "route": route, "holder": holder})
+
+
+## Gardes de distance finies : la dernière demandée est donnée aux trois décors du bord de route, les autres jetées.
+func _poll_road_jobs(wait: bool = false) -> void:
+	var left: Array = []
+	for job in _road_jobs:
+		if not wait and not BgTasks.done(job["task"]):
+			left.append(job)
+			continue
+		BgTasks.wait(job["task"])
+		if int(job["gen"]) != _road_gen:
+			continue
+		var route = job["route"]
+		var road = job["holder"]["road"]
+		var height := _terrain_height(route)   # tuiles proches réglées de nouveau sur la route : relues
+		if grass != null:
+			grass.height_at = height
+			grass.retarget(route, road)
+		if ground_details != null:
+			ground_details.height_at = height
+			ground_details.retarget(route, road)
+		if volcano != null:
+			volcano.height_at = height
+			volcano.retarget(route, road)
+	_road_jobs = left
+
+
+## Gardes en préparation (tests) ; `flush_road_jobs` les attend et les applique.
+func road_jobs_count() -> int:
+	return _road_jobs.size()
+
+
+func flush_road_jobs() -> void:
+	_poll_road_jobs(true)
+
+
+func _exit_tree() -> void:
+	_poll_road_jobs(true)
 
 
 func on_state(state: Dictionary, now_s: float) -> void:
@@ -149,6 +213,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	last_wind = wind.evaluate(now_s)
 	if not enabled:
 		return last_wind
+	if not _road_jobs.is_empty():
+		_poll_road_jobs()
 	_refresh_shapes()
 	TreeRenderer.apply_wind(last_wind)
 	if grass != null:

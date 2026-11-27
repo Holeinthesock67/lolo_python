@@ -1455,10 +1455,12 @@ func _poll_live_world() -> void:
 	elif upd.has("route"):
 		route = upd["route"]
 		streamer.swap_route(route, int(upd["from_part"]))
-		if living_world != null:
-			living_world.set_route(route, float(streamer.get("_road_width_m")))
+		if living_world != null:   # herbe, sol, lave : seuls les tronçons dont la route change (revue E7-01, E8-01)
+			living_world.update_route(route)
 		if living_decor != null:   # bornes, panneaux, spectateurs, véhicules… sur toute la route connue
 			living_decor.extend_route(route)
+		if atmosphere_view != null:   # biomes du brouillard et du ciel lus sur la route à jour (revue E8-03)
+			atmosphere_view.update_route(route, float(int(upd["from_part"])) * 1000.0)
 		_refresh_live_markers(float(int(upd["from_part"])) * 1000.0)
 		ipc.test_log("world_revision rev=%d length_m=%.1f from_part=%d" % [upd["revision"], route.length_m, upd["from_part"]])
 	elif upd.has("segments"):

@@ -28,6 +28,7 @@ const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
+const RouteRevision := preload("res://scripts/route_revision.gd")
 const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 const LoopChunks := preload("res://scripts/loop_chunks.gd")
 
@@ -145,6 +146,23 @@ func configure(budgets: Dictionary, route_data, model, road_width_m: float = 6.0
 	if not _layers.is_empty():
 		_road = RoadClearance.new(route, GRID_M)
 
+
+## Monde ouvert (revue E8-01) : route révisée, garde de distance `road` déjà construite sur elle (nulle : construite
+## ici). Rochers, herbes hautes, termitières et murets des tronçons dont la route ne change pas sont gardés ; les
+## autres sont refaits par `update`.
+func retarget(route_data, road = null) -> void:
+	var old = route
+	route = route_data
+	if _layers.is_empty() or route == null:
+		return
+	_road = road if road != null else RoadClearance.new(route, GRID_M)
+	for g in range(_slot_chunk.size()):
+		var k: int = _slot_chunk[g]
+		if k == NO_CHUNK:
+			continue
+		var kk := _loop.key(k)
+		if not RouteRevision.same_span(old, route, kk * CHUNK_M, (kk + 1) * CHUNK_M):
+			_slot_chunk[g] = NO_CHUNK   # `update` le remet en file
 
 ## Budgets de `configure` tirés des budgets du décor vivant `living(preset)` (quality_presets.gd).
 static func budgets(living: Dictionary) -> Dictionary:

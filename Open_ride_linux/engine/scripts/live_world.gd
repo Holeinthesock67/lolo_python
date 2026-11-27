@@ -154,7 +154,11 @@ func _read_job(dir: String, from_part: int, base, live_rev: int) -> void:
 		_result = {"ok": true, "route": base, "same_route": true, "from_part": base.parts.size(),
 			"junctions": read_junctions(dir), "revision": live_rev}
 		return
-	var fresh = base.revised_from(from_part, res["parts"])
+	# Revue E5-01 : première partie qui change vraiment (révisions sautées : `from_part` retombé à 0 ; générateur
+	# prudent) ; les parties d'avant gardées telles quelles, ruban et décor de ces kilomètres non refaits.
+	var first := first_changed_part(base.parts, from_part, res["parts"])
+	var fresh = base.revised_from(first, (res["parts"] as Array).slice(first - from_part))
+	from_part = first
 	if fresh == null:
 		_result = {"ok": false, "error": base.load_error, "revision": live_rev}
 		return
@@ -171,6 +175,17 @@ static func same_parts(old_parts: Array, from_part: int, new_parts: Array) -> bo
 		if old_parts[from_part + i] != new_parts[i]:
 			return false
 	return true
+
+
+## Indice de la première partie lue (comptée depuis 0) qui diffère de celle de la route déjà là, ou qui n'existait
+## pas ; au plus `from_part + new_parts.size()` (toutes identiques : la route a seulement raccourci).
+static func first_changed_part(old_parts: Array, from_part: int, new_parts: Array) -> int:
+	var i := 0
+	while i < new_parts.size() and from_part + i < old_parts.size() and old_parts[from_part + i] == new_parts[i]:
+		i += 1
+	if i == new_parts.size() and from_part + i < old_parts.size() and i > 0:
+		i -= 1   # route raccourcie : la dernière partie gardée est refaite (sa fin, ses amorces changent)
+	return from_part + i
 
 
 ## Fil principal : applique une lecture terminée. Renvoie {} s'il n'y a rien de neuf, sinon

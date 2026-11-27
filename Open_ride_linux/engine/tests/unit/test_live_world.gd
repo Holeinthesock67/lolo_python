@@ -97,7 +97,10 @@ func _init() -> void:
 	lw.on_open_world({"rev": 2, "next": null, "data": "cached"})
 	_check(lw.is_loading(), "lecture lancée en tâche de fond")
 	var done := lw.wait_poll()
-	_check(done.get("revision", 0) == 2 and int(done.get("from_part", -1)) == 1, "révision 2 appliquée depuis la partie 1")
+	# Revue E5-01 : le générateur annonce la partie 1, mais elle est relue identique (1 000 à 2 000 m, même ligne) :
+	# la révision ne change la route qu'à partir de la partie 2, ruban et décor des parties 0 et 1 gardés.
+	_check(done.get("revision", 0) == 2 and int(done.get("from_part", -1)) == 2,
+		"révision 2 appliquée depuis la première partie qui change (2) : %s" % str(done.get("from_part")))
 	_check(absf(lw.route.length_m - 3500.0) < 1e-9 and absf(route_1.length_m - 2000.0) < 1e-9,
 		"nouvelle route de 3 500 m, l'ancienne intacte")
 	_check(is_same(lw.route.parts[0], part_0), "partie 0 gardée (même objet)")
@@ -115,6 +118,12 @@ func _init() -> void:
 	_check(LiveWorld.same_parts(route_2.parts, 3, [p3]), "mêmes parties lues : inchangé")
 	p3["alt_m"][5] = float(p3["alt_m"][5]) + 0.2
 	_check(not LiveWorld.same_parts(route_2.parts, 3, [p3]), "une altitude réglée de nouveau : changé")
+	_check(LiveWorld.first_changed_part(route_2.parts, 0, route_2.parts) == route_2.parts.size(),
+		"première partie changée : aucune différence, même nombre (rien à refaire)")
+	_check(LiveWorld.first_changed_part(route_2.parts, 1, route_2.parts.slice(1, 3) + [p3]) == 3,
+		"première partie changée : l'altitude réglée de la partie 3")
+	_check(LiveWorld.first_changed_part(route_2.parts, 2, [route_2.parts[2]]) == 2,
+		"route raccourcie : la dernière partie gardée est refaite")
 	_check(not LiveWorld.same_parts(route_2.parts, 2, [p3]), "une partie de moins : changé")
 
 	# Même révision annoncée deux fois, ou plus ancienne : rien à faire.
@@ -127,7 +136,12 @@ func _init() -> void:
 	_publish(dir, 4200.0, 5, 3, [_junction("jA", 500.0, 2)], 3)
 	lw.on_open_world({"rev": 5})
 	done = lw.wait_poll()
-	_check(done.get("revision", 0) == 5 and int(done["from_part"]) == 0, "révisions manquées : relecture depuis la partie 0")
+	# Revue E5-01 : tout est relu depuis la partie 0, mais seules les parties qui diffèrent sont refaites (3 : 3 000 à
+	# 3 500 m devenue 3 000 à 4 000 m), au lieu de tout le ruban et de tout le décor OSM.
+	_check(done.get("revision", 0) == 5 and int(done["from_part"]) == 3,
+		"révisions manquées : relecture depuis 0, route refaite depuis la première partie qui change (3) : %s"
+		% str(done["from_part"]))
+	_check(is_same(lw.route.parts[0], part_0), "révisions manquées : partie 0 gardée (même objet)")
 	_check(absf(lw.route.length_m - 4200.0) < 1e-9, "route de 4 200 m")
 
 	# Annonce en avance sur le disque : attend.
