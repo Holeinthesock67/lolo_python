@@ -2936,46 +2936,20 @@ class CoreSession:
         journal: str | None = None
         journal_path: Path | None = None
         records_done: list[dict] | None = []
-        race, self.race = self.race, None
-        wtf, self.wtf = self.wtf, None
-        self.state.wtf = None
-        survivor, self.survivor = self.survivor, None
-        self.state.survivor = None
-        self._end_survivor_bots()
-        grandprix, self.grandprix = self.grandprix, None
-        self.state.gp = None
+        # Modes posés sur la route (lot IM2), en trois temps, chacun dans l'ordre fixe de la table des modes :
+        # objet retiré de la séance et `end` (champ de la trame vidé, bots remis, journal du Grand Prix), puis
+        # `finish` (journal, record de la piste), puis `summary` (sections du bilan, plus bas).
+        ctx = self._mode_ctx
         self.state.dir = None   # séance finie : le bilan et les menus repartent dans le sens du parcours (lot N17)
-        if grandprix is not None:
-            self._lane = self._rider_lane()
-            if self._rec:   # lot GP2 : coups, boîtes et bilan au journal
-                self._flush_grandprix_journal(grandprix)
-                self._rec.game({"kind": "gp_summary", "ts": round(time.time(), 3), **grandprix.summary()})
-        track_ev, self.track_event = self.track_event, None
-        self.state.track = None
-        self._track_choice = None
-        self._track_plan = self._race_field = None
-        for bot in self.bots:   # lot VD7 : plus de consigne d'épreuve
-            if hasattr(bot, "hint"):
-                bot.hint, bot.race_view = None, None
+        ended: list[tuple[Any, Any]] = []
+        for mode in game_modes.ROAD_MODES:
+            obj = ctx.take_mode_object(mode.attr)
+            mode.end(ctx, obj)
+            ended.append((mode, obj))
         self._log_gravel()
-        if race and self._rec:
-            for line in race.take_journal() + race.jersey_lines():
-                self._rec.game(line)
-        if wtf is not None and self._rec:
-            for line in wtf.take_journal():
-                self._rec.game({**line, "ts": round(time.time(), 3)})
-            self._rec.game({"kind": "wtf_summary", "ts": round(time.time(), 3), **wtf.summary()})
-            self.physics.p = self._base_params
-        if survivor is not None and self._rec:   # lot DS2 : éliminations et bilan au journal
-            for line in survivor.take_journal():
-                self._rec.game(line)
-            self._rec.game({"kind": "survivor_summary", "ts": round(time.time(), 3), **survivor.summary()})
-            for bot in self.bots:
-                if hasattr(bot, "power_factor"):
-                    bot.power_factor = 1.0
-        track_rank = None
-        if track_ev is not None:   # lot VD6 : faits de l'épreuve, bilan et record de la piste
-            track_rank = self._end_track(track_ev, save)
+        results = {mode.id: mode.finish(ctx, obj, save) for mode, obj in ended if obj is not None}
+        played = {mode.id: obj for mode, obj in ended}
+        survivor, grandprix, track_ev = played["survivor"], played["grandprix"], played["track"]
         elo_line = self._elo_finish(survivor, grandprix, track_ev, save)   # lot BOT-elo
         league_line, league_elo = self._league_finish(survivor, grandprix, track_ev, save)   # lot CH3 : manche de la ligue
         if league_elo is not None:
@@ -3009,14 +2983,10 @@ class CoreSession:
             }
             if rogue_summary is not None:   # lot R8 : bilan de la run
                 summary["rogue"] = rogue_summary
-            if wtf is not None:   # lot WTF2 : points et événements joués
-                summary["wtf"] = wtf.summary()
-            if survivor is not None:   # lot DS2 : place, éliminations, vainqueur
-                summary["survivor"] = survivor.summary()
-            if grandprix is not None:   # lot GP2 : place, objets lancés, reçus, esquivés, temps par objet
-                summary["gp"] = grandprix.summary()
-            if track_ev is not None:   # lot VD6 : place, temps, tours, record de la piste
-                summary["track"] = {**track_ev.summary(), "record_rank": track_rank}
+            sections = {mode.summary_key: section for mode, obj in ended if obj is not None
+                        and (section := mode.summary(obj, results[mode.id])) is not None}
+            segments = sections.pop("segments", None)   # mode classique : après les compétitions, comme avant IM2
+            summary.update(sections)   # wtf, survivor, gp, track
             if elo_line is not None:   # lot BOT-elo : cote avant, après, place
                 summary["elo"] = elo_line
             if league_line is not None:   # lot CH3 : encart « Ligue d'hiver » du bilan
@@ -3025,7 +2995,6 @@ class CoreSession:
                 summary["bots_effort"] = bots_effort
             if self.state.arrival is not None:   # lot RT2 : issue de la séance, titre commun du bilan
                 summary["arrival"] = dict(self.state.arrival)
-            segments = race.summary() if race else None
             if segments is not None:   # série T (lot T7, révision 1.4)
                 summary["segments"] = segments
             if ftp_result is not None:   # lot O12 : résultat du test au bilan, pour `accept_ftp`
@@ -3604,16 +3573,13 @@ class CoreSession:
 
     def _elo_order(self, mode: str, keys: dict[str, str], survivor: Any, grandprix: Any,
                    track_ev: Any) -> list[list[str]] | None:
-        """Classement de la course en identités Elo ; None si la course n'est pas allée à son terme pour le
-        cycliste (arrêtée avant l'arrivée ou avant son élimination)."""
-        me = bot_elo.ME
-        if mode in ("grandprix", "race") and grandprix is not None and grandprix.racers[me].finished is not None:
-            return [[r.id] for r in grandprix.order()]
-        if mode == "survivor" and survivor is not None and survivor.racers[me].place is not None:
-            return bot_elo.order_from_places(((r.id, r.place) for r in survivor.racers.values()),
-                                             unplaced_first=True)
-        if mode == "track" and track_ev is not None and track_ev.finished:
-            return [[rid] for rid in track_ev.full_ranking()]
+        """Classement de la course en identités Elo, lu par l'adaptateur du mode (`ranking`, lot IM2) ; None si la
+        course n'est pas allée à son terme pour le cycliste (arrêtée avant l'arrivée ou avant son élimination)."""
+        played = {"survivor": survivor, "grandprix": grandprix, "track": track_ev}
+        for mode_id, obj in played.items():
+            adapter = game_modes.BY_ID[mode_id]
+            if mode in adapter.elo_modes and obj is not None:
+                return adapter.ranking(obj)
         return None
 
     def _elo_finish(self, survivor: Any, grandprix: Any, track_ev: Any, save: bool) -> dict | None:
@@ -3799,13 +3765,10 @@ class CoreSession:
             for line in ev.take_journal():
                 self._rec.game(line)
 
-    def _end_track(self, ev: track_mod.TrackEvent, save: bool) -> int | None:
-        """Fin de séance : dernières lignes et bilan au journal ; record de la piste (une table par épreuve)
-        quand la séance est gardée. Rend la place du résultat dans sa table (1 : record), None sinon."""
-        if self._rec:
-            for line in ev.take_journal():
-                self._rec.game(line)
-            self._rec.game({"kind": "track_summary", "ts": round(time.time(), 3), **ev.summary()})
+    def _track_record(self, ev: track_mod.TrackEvent, save: bool) -> int | None:
+        """Fin d'une épreuve (après son journal, adaptateur `game_modes/track.py`, lot IM2) : record de la piste (une
+        table par épreuve) quand la séance est gardée. Rend la place du résultat dans sa table (1 : record), None
+        sinon."""
         result = ev.record()
         if not save or result is None or self.state.route_id is None or not self._records_writable:
             return None

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .base import GameMode, ModeContext
 
 
 class ClassicMode(GameMode):
     id, attr = "classic", "race"
+    summary_key = "segments"
 
     def fill_frame(self, ctx: ModeContext) -> None:
         """Champs de la révision 1.4 de la série T dans la trame `state`."""
@@ -26,3 +29,13 @@ class ClassicMode(GameMode):
         extra = f.get("bots_extra") or {}
         if st.bots:
             st.bots = [{**b, **extra.get(b["id"], {})} for b in st.bots]
+
+    def finish(self, ctx: ModeContext, obj: Any, save: bool) -> Any:
+        if ctx.recording:
+            for line in obj.take_journal() + obj.jersey_lines():
+                ctx.game(line)
+        return None
+
+    def summary(self, obj: Any, result: Any) -> dict | None:
+        """`summary.segments` (série T, lot T7, révision 1.4)."""
+        return obj.summary()

@@ -18,3 +18,6 @@ from .wtf import WtfGameMode
 MODES: tuple[GameMode, ...] = (ClassicMode(), WtfGameMode(), SurvivorMode(), GrandPrixGameMode(), TrackMode(),
                                RogueGameMode())
 BY_ID: dict[str, GameMode] = {m.id: m for m in MODES}
+# Modes posés sur la route, que la fin de séance parcourt (lot IM2) ; le Cyber-Rogue, mode exclusif, garde sa propre
+# fin dans la séance jusqu'au lot IM7.
+ROAD_MODES: tuple[GameMode, ...] = tuple(m for m in MODES if m.id != "rogue")
