@@ -1,0 +1,62 @@
+# File du lot EC12 (#1134, revue de code vague 3 engine : E7-02/E8-02 nature en boucle, E7-03 budget des arbres,
+# E7-05 arbres hors de l'eau). Engine seul, sans IPC ni format : cache séparé par prudence, rien d'autre à préparer.
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/ec12_nature.toml
+# Après une correction : python3 scripts/file_bancs.py relancer scripts/file_bancs/ec12_nature.toml --pr rEC12
+#
+# Recette (banc simulé sim_bench, vrai core sur BLE simulé, qualité low, sonde du moteur --probe) :
+# - « Volcan en flammes » (boucle de 8 km, demo_biomes --volcan) : 840 s à 40 km/h = un tour entier (720 s) puis
+#   120 s après la ligne. À regarder : captures autour de 720 s (herbe, rochers, coulées et lacs de lave qui restent
+#   en place au passage de la ligne), images de plus de 50 ms de la sonde vers 720 s (avant : toute la fenêtre de
+#   tronçons refaite d'un coup).
+# - Forêt dense (« Route des Trois Forêts », demo_biomes --forets, 6 km, forêt pluviale au milieu) : 600 s à 36 km/h,
+#   le parcours entier. À regarder : plus de clairières carrées à bords nets devant le cycliste ; budget d'arbres tenu
+#   (sonde : temps GPU et images > 50 ms au plus comme main).
+# - Même recette sur main (étapes « *_main », sur = "main") pour comparer les sondes.
+# Durée totale ≈ 15 min de fumée + 4 étapes × (≈ 3 min de préparation + 10 à 14 min de roulage) ≈ 75 min.
+# Tête : celle de la PR au lancement (à recopier par le fil de fusion dans `tete`), a9b212af au 27/11 (CI verte).
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rEC12"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rEC12-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rEC12"
+pr = 1134
+branche = "claude/project-thread-qdnxf5"
+cache = "separe"
+risque = 1                               # jamais tourné sur le PC
+# Fumée (~10 min) : import Godot, tests unitaires touchés par EC12.
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+for u in test_loop_chunks test_grass_tufts test_ground_details test_volcano_fx test_tree_renderer test_forest_impostors; do \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=$u bash engine/tests/run_engine_tests.sh || exit 1; done"""
+fumee_delai_min = 15
+
+[[pr.etape]]
+id = "volcan_low"                        # risque d'abord : le passage de la ligne (E7-02, E8-02)
+commande = """python -m openride_compiler.demo_biomes --out {sortie}/mondes --volcan --name demo-volcan --title "Volcan en flammes" && \
+python engine/tests/sim_bench.py --native --world {sortie}/mondes/demo-volcan.world --quality low --speed-kmh 40 --duration 840 --every 20 --probe --out {sortie}/banc"""
+delai_min = 25
+
+[[pr.etape]]
+id = "foret_low"                         # budget des arbres (E7-03) et arbres hors de l'eau (E7-05)
+commande = """python -m openride_compiler.demo_biomes --out {sortie}/mondes --forets --name demo-biomes-forets --title "Route des Trois Forêts" && \
+python engine/tests/sim_bench.py --native --world {sortie}/mondes/demo-biomes-forets.world --quality low --speed-kmh 36 --duration 600 --every 20 --probe --out {sortie}/banc"""
+delai_min = 20
+
+[[pr.etape]]
+id = "volcan_low_main"
+sur = "main"
+commande = """python -m openride_compiler.demo_biomes --out {sortie}/mondes --volcan --name demo-volcan --title "Volcan en flammes" && \
+python engine/tests/sim_bench.py --native --world {sortie}/mondes/demo-volcan.world --quality low --speed-kmh 40 --duration 840 --every 20 --probe --out {sortie}/banc"""
+delai_min = 25
+
+[[pr.etape]]
+id = "foret_low_main"
+sur = "main"
+commande = """python -m openride_compiler.demo_biomes --out {sortie}/mondes --forets --name demo-biomes-forets --title "Route des Trois Forêts" && \
+python engine/tests/sim_bench.py --native --world {sortie}/mondes/demo-biomes-forets.world --quality low --speed-kmh 36 --duration 600 --every 20 --probe --out {sortie}/banc"""
+delai_min = 20
