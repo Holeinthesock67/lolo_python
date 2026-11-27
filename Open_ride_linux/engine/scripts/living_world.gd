@@ -189,7 +189,9 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	if neon != null:
 		neon.update(cam_pos, 0.0 if paused else dt_s)
 	if neon_street != null:
+		var t_street := Time.get_ticks_usec()
 		neon_street.update(cam_s, dt_s)
+		PerfProbe.mark_since("rue", "%d" % int(floor(cam_s)), t_street)   # mobilier de rue, attribué par la sonde
 	SkyClouds.update(sky_material, last_wind, dt_s)
 	if terrain_material is ShaderMaterial:
 		var shadow := SkyClouds.terrain_shadow_params(sky_material, str(living.get("clouds", "off")))
