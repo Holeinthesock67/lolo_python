@@ -18,6 +18,10 @@ Overpass fabriquée ici (aucune donnée réelle) :
     → DOSSIER/village-simule.world/ et DOSSIER/village-simule.json (nombres et profil attendus)
     python3 engine/tests/make_sim_world.py --out DOSSIER --live
     → DOSSIER/monde-ouvert-simule.world/ : monde vivant synthétique de 20 km (lot W15)
+    python3 engine/tests/make_sim_world.py --out DOSSIER --generated [--km 6]
+    → DOSSIER/monde-ouvert-genere.world/ : monde ouvert produit par le VRAI générateur (carrés de 1 km,
+      terrain fondu avec ses routes, couches OSM) sur la base et le relief synthétiques, roulé jusqu'à 6 km
+      (vérification finale « monde ouvert au niveau des circuits », 20 novembre)
 
 Sert au banc d'essai simulé (`sim_bench.py --world village`) et à l'essai visuel des bâtiments.
 Origine : même point fictif que les tests du compilateur. Prérequis : compilateur installé
@@ -190,13 +194,60 @@ def write_live(out: Path, seed: int) -> int:
     return 0
 
 
+def write_generated(out: Path, seed: int, km: float) -> int:
+    """Monde ouvert du vrai générateur (W8) sur la base et le relief synthétiques (faux générateur W15), séance
+    menée à la main jusqu'à `km` : chaque avancée prolonge la route et tous les carrés demandés sont générés,
+    comme pendant une balade. Le dossier de séance est un vrai `.world` vivant (§13)."""
+    try:
+        from openride_compiler.worldgen.osmdb import OsmDb
+        from openride_compiler.worldgen.store import WorldCache
+        from openride_compiler.worldgen.synthetic import (ORIGIN_LAT, ORIGIN_LON, AnalyticRelief, FakeSession,
+                                                          synthetic_db)
+    except ImportError as exc:
+        print(f"make_sim_world : compilateur non installé ({exc}) ; pip install -e compiler", file=sys.stderr)
+        return 2
+    out.mkdir(parents=True, exist_ok=True)
+    work = out / "monde-ouvert-genere.cache"
+    cache = WorldCache(work / "cache", 2 * 10**9, log=lambda _m: None)
+    db_path = cache.osm_db_path("synthetic")
+    if not db_path.is_file():
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        synthetic_db(db_path, size_km=12.0, seed=seed)
+    world = out / "monde-ouvert-genere.world"
+    msgs: list[dict] = []
+    session = FakeSession(cache, AnalyticRelief(), msgs.append, {}, world, network=True,
+                          log=lambda _m: None, db=OsmDb(db_path))
+    session.open({"type": "open", "lat": ORIGIN_LAT, "lon": ORIGIN_LON, "heading_deg": 90, "nav": "ride",
+                  "target": None, "loop_km": None, "seed": seed, "network": True})
+    errors = [m for m in msgs if m.get("type") == "error"]
+    if errors or not session.opened:
+        print(f"make_sim_world : générateur refusé : {errors}", file=sys.stderr)
+        return 1
+    s = 0.0
+    while s < km * 1000.0:
+        s = min(km * 1000.0, s + 200.0)
+        session.progress(s, 8.0)
+        while session.work():
+            pass
+    info = {"length_m": round(session.length_m, 1), "ridden_m": s, "squares": len(session.ready),
+            "far_tiles": len(session.far_ready), "revisions": session.rev, **session.stats}
+    (out / "monde-ouvert-genere.json").write_text(json.dumps(info, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"make_sim_world : {world} ({', '.join(f'{k} {v}' for k, v in sorted(info.items()))})")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True, type=Path, help="dossier de sortie (créé si besoin)")
     parser.add_argument("--seed", type=int, default=0, help="graine du placement des bâtiments (défaut 0)")
     parser.add_argument("--live", action="store_true",
                         help="monde ouvert : monde vivant synthétique de 20 km (lot W15) au lieu du village")
+    parser.add_argument("--generated", action="store_true",
+                        help="monde ouvert du vrai générateur sur la base synthétique, roulé jusqu'à --km")
+    parser.add_argument("--km", type=float, default=6.0, help="distance roulée avec --generated (défaut 6)")
     args = parser.parse_args(argv)
+    if args.generated:
+        return write_generated(args.out, args.seed, args.km)
     if args.live:
         return write_live(args.out, args.seed)
     try:

@@ -362,19 +362,22 @@ static func _prepare_job(job: Dictionary) -> void:
 	var buildings := []
 	var water := {"lines": [], "areas": []}
 	var all_pois := []
+	# Monde ouvert : les couches sont en carrés `tile_<ix>_<iz>.json` (load_chunk lit ceux que touche le tronçon
+	# quand on lui donne la route), comme pour osm_streamer.gd ; sans la route, aucun bâtiment, plan d'eau ni POI
+	# n'était lu et le monde ouvert n'avait ni passants ni repères (constat du 20 novembre 2026).
 	var n := int(ceil(float(r.length_m) / CHUNK_M))
 	for k in range(maxi(1, n)):
 		if layers.has("buildings"):
-			var b := OsmLayers.load_chunk(w_dir, "buildings", k)
+			var b := OsmLayers.load_chunk(w_dir, "buildings", k, r)
 			if b.get("ok", false):
 				buildings.append_array(b.get("items", []))
 		if layers.has("water"):
-			var w := OsmLayers.load_chunk(w_dir, "water", k)
+			var w := OsmLayers.load_chunk(w_dir, "water", k, r)
 			if w.get("ok", false):
 				water["lines"].append_array(w.get("lines", []))
 				water["areas"].append_array(w.get("areas", []))
 		if layers.has("poi"):
-			var p := OsmLayers.load_chunk(w_dir, "poi", k)
+			var p := OsmLayers.load_chunk(w_dir, "poi", k, r)
 			if p.get("ok", false):
 				all_pois.append_array(p.get("items", []))
 	var road_w: float = job["road_width_m"]
