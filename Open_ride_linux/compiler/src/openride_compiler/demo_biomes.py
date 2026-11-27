@@ -68,6 +68,11 @@ le jeu de base.
 Lot DL1 (20 novembre) : dans le jeu de base, une route ouverte fait au moins 40 km (`LINE_MIN_M`) ; chaque bloc de
 2 km est répété à la suite (tour des nouveaux paysages et Route des Érables 42,5 km, Route du Sud 48,5 km) ; la
 variante de recette garde les longueurs d'avant (14, 6 et 12 km) pour les bancs.
+Lot DL2 (27 novembre) : dans le jeu de base, une boucle fait au moins 15 km (`LOOP_MIN_M`) : la boucle est agrandie
+(même forme, `loop_repeat` fois plus longue) et son décor revient à chaque tronçon de la longueur d'avant (circuit
+15 km, Corniche 15 km, Vignes 15 km, Récif 16 km), le volcan garde un seul cratère sur une boucle de 16 km, et le
+Grand Nord répète chacun de ses blocs (20 km) ; la variante de recette garde les boucles d'avant (2,5 à 10 km) pour
+les bancs.
 Vit dans le compilateur (et non plus dans `engine/tests/`) pour qu'un jeu installé sans les tests produise
 ses parcours de démonstration.
 
@@ -239,24 +244,24 @@ DEMO_LIBRARY = {
                                             "rizières, le Japon, une île volcanique et un canyon rouge."},
     "demo-japon": {"description": "{km} km de montée douce au Japon, entre forêts de cèdres, villages aux toits de "
                                   "tuiles et belvédères."},
-    "demo-circuit": {"description": "Boucle de 3 km dans les prés, pour les courses en tours.",
+    "demo-circuit": {"description": "Boucle de {km} km dans les prés, pour les courses en tours.",
                      "tags": ["grandprix"]},
-    "demo-recif": {"description": "Boucle de 8 km sous la mer, du lagon au tombant, entre laminaires et coraux, "
+    "demo-recif": {"description": "Boucle de {km} km sous la mer, du lagon au tombant, entre laminaires et coraux, "
                                   "jusqu'à une épave.",
                    "tags": ["grandprix", "libre"]},
-    "demo-volcan": {"description": "Boucle de 8 km dans un volcan en éruption, entre coulées de lave, braises et "
+    "demo-volcan": {"description": "Boucle de {km} km dans un volcan en éruption, entre coulées de lave, braises et "
                                    "fumées, jusqu'à la crête du cratère.",
                     "tags": ["grandprix", "libre"]},
     "demo-biomes-sud": {"description": "{km} km des oliviers au delta, par la steppe, les dunes, la savane et la "
                                        "jungle."},
-    "demo-biomes-nord": {"description": "Boucle de 10 km de la taïga à la banquise par la toundra, et retour.",
+    "demo-biomes-nord": {"description": "Boucle de {km} km de la taïga à la banquise par la toundra, et retour.",
                          "tags": ["grandprix", "libre"]},
     "demo-biomes-forets": {"description": "{km} km de montée du bush à eucalyptus à la forêt de nuages, par la forêt "
                                           "pluviale tempérée."},
     # Lot GP13b : les deux parcours propres au Grand Prix des objets, avec le Circuit des Prés.
-    "demo-corniche": {"description": "Boucle de 2,5 km au-dessus de la mer, entre maquis, pins et falaises.",
+    "demo-corniche": {"description": "Boucle de {km} km au-dessus de la mer, entre maquis, pins et falaises.",
                       "tags": ["grandprix"]},
-    "demo-vignes": {"description": "Boucle sinueuse de 5 km dans les vignes, de coteau en coteau, entre villages et "
+    "demo-vignes": {"description": "Boucle sinueuse de {km} km dans les vignes, de coteau en coteau, entre villages et "
                                    "domaines.",
                     "tags": ["grandprix"]},
 }
@@ -271,9 +276,16 @@ def library_of(name: str, recette: bool = False) -> dict | None:
     out = {k: list(v) if isinstance(v, list) else v for k, v in lib.items()}
     if "{km}" in out.get("description", ""):
         which = next(w for n, _t, w, *_ in DEMO_SET if n == name)
-        km = len(tour_blocks(which, recette)[0]) * BLOCK_M / 1000.0
-        out["description"] = out["description"].replace("{km}", f"{km:g}")
+        km = demo_length_m(which, recette) / 1000.0
+        out["description"] = out["description"].replace("{km}", f"{km:g}".replace(".", ","))
     return out
+
+
+def demo_length_m(which: str, recette: bool = False) -> float:
+    """Longueur (m) du parcours `which` de `DEMO_SET` dans le jeu, ou dans la variante de recette (lots DL1, DL2)."""
+    if which in LOOPS:
+        return loop_length_m(which, recette)
+    return len(tour_blocks(which, recette)[0]) * BLOCK_M
 
 
 # Volcan en flammes (lot DB2, demande du 13 novembre : « parcours démo exagéré feu et flammes », en boucle) : 8 km,
@@ -299,6 +311,14 @@ GAME_DEMOS = tuple(name for name, *_, base in DEMO_SET if base)     # écrits pa
 # variante de recette (`--recette`, demande du 20 novembre : « garder la version courte pour les bancs le temps de
 # finir le jeu ») ne changent pas.
 LINE_MIN_M = 40000.0
+# Lot DL2 (demande du propriétaire du 27 novembre : « toutes les boucles à au moins 15 km, on peut laisser 5 km pour
+# les bancs de test ») : une boucle du jeu de base fait au moins `LOOP_MIN_M`, `loop_repeat` fois sa longueur de
+# `LOOPS` (la longueur de recette, celle des bancs). Une boucle d'un seul biome au décor par tronçon (`LOOP_BLOCKS`,
+# sauf le volcan) est agrandie à l'identique (mêmes lobes, autant de lacets par kilomètre) et son décor revient à
+# chaque tronçon de la longueur de recette (`_Section`), avec d'autres noms de lieux ; le volcan (`whole`) reste une
+# seule montée jusqu'à un seul cratère, son relief suivant la boucle agrandie ; une boucle à plusieurs blocs (Grand
+# Nord) répète chacun de ses blocs à la suite, comme une route ouverte du lot DL1.
+LOOP_MIN_M = 15000.0
 RETIRED_DEMOS = tuple(name for name, *_, base in DEMO_SET if not base)
 # Lieux du jeu de base : un nom par bloc du même biome, dans l'ordre de la route, repris au début de la liste quand
 # les blocs du biome sont plus nombreux que ses noms. Un lieu de sommet (`SUMMIT_KEYS`) porte son premier nom au seul
@@ -310,8 +330,9 @@ PLACE_NAMES = {
     "port": ("Port-Lanterne", "Anse aux Mouettes", "Port-Galets"),
     "pointe": ("Pointe des Goélands", "Pointe du Phare", "Pointe aux Sternes"),
     "mas": ("Mas des Oliviers", "Mas de la Cigale", "Mas des Lavandes", "Mas des Câpriers"),
-    "hameau": ("Hameau des Prés", "Les Granges", "Hameau du Ruisseau"),
-    "etang": ("Étang des Saules", "Étang du Moulin", "Étang aux Hérons"),
+    # Circuit des Prés (lot DL2) : cinq tronçons, un hameau et un étang chacun.
+    "hameau": ("Hameau des Prés", "Les Granges", "Hameau du Ruisseau", "Hameau des Pommiers", "Les Trois Chênes"),
+    "etang": ("Étang des Saules", "Étang du Moulin", "Étang aux Hérons", "Étang des Libellules", "Étang des Joncs"),
     "col": ("Col des Edelweiss", "Belvédère du Glacier", "Belvédère des Marmottes"),
     # Tour des nouveaux paysages (lot DB1) : trois blocs par biome depuis le lot DL1 (`LINE_MIN_M`), un nom par bloc.
     "fjord": ("Port-Bouleau", "Anse des Phoques", "Port-Saumon"),
@@ -330,11 +351,12 @@ PLACE_NAMES = {
     "volcan": ("Cratère des Fumerolles", "Cratère des Cendres", "Cratère du Soufre"),
     "canyon": ("Belvédère du Canyon Rouge", "Belvédère des Arches", "Belvédère des Cheminées"),
     "plateau": ("Col des Lamas", "Belvédère des Vigognes", "Belvédère de l'Altiplano"),
-    "lagon": ("Lagon des Tortues",),
-    "laminaires": ("Forêt des Laminaires",),
-    "corail": ("Jardin de Corail",),
-    "tombant": ("Tombant Bleu",),
-    "epave": ("Épave de la Belle-Tortue",),
+    # Récif des tortues : deux tronçons depuis le lot DL2, un nom chacun.
+    "lagon": ("Lagon des Tortues", "Lagon des Raies"),
+    "laminaires": ("Forêt des Laminaires", "Forêt des Hippocampes"),
+    "corail": ("Jardin de Corail", "Jardin des Gorgones"),
+    "tombant": ("Tombant Bleu", "Tombant des Mérous"),
+    "epave": ("Épave de la Belle-Tortue", "Épave du Vieux Phare"),
     # Volcan en flammes : hameau du départ, belvédère des coulées, crête du cratère.
     "scories": ("Hameau des Scories",),
     "coulees": ("Belvédère des Coulées",),
@@ -352,11 +374,12 @@ PLACE_NAMES = {
     "delta": ("Pointe des Palétuviers", "Pointe des Flamants", "Pointe des Ibis", "Pointe des Pélicans"),
     "mares": ("Mare aux Hérons", "Mare aux Grenouilles", "Mare des Caïmans", "Mare aux Aigrettes"),
     "chenal": ("Chenal des Roseaux", "Chenal des Papyrus", "Chenal des Loutres", "Chenal des Joncs"),
-    "trappeurs": ("Hameau des Trappeurs", "Cabanes du Lac Gelé"),
-    "lac_nord": ("Lac des Huards", "Lac aux Castors"),
-    "toundra": ("Refuge du Caribou", "Refuge des Lichens"),
-    "banquise": ("Station de la Banquise",),
-    "banquise_vue": ("Belvédère des Glaces",),
+    # Grand Nord : chaque bloc deux fois depuis le lot DL2 (quatre blocs de taïga et de toundra, deux de banquise).
+    "trappeurs": ("Hameau des Trappeurs", "Cabanes des Bûcherons", "Cabanes du Lac Gelé", "Hameau des Élans"),
+    "lac_nord": ("Lac des Huards", "Lac des Ours", "Lac aux Castors", "Lac des Loups"),
+    "toundra": ("Refuge du Caribou", "Refuge des Harfangs", "Refuge du Renard Polaire", "Refuge des Lichens"),
+    "banquise": ("Station de la Banquise", "Station des Phoques"),
+    "banquise_vue": ("Belvédère des Glaces", "Belvédère des Icebergs"),
     # Route des Trois Forêts (lot V6-r4) : un bloc par biome.
     # Route des Trois Forêts : sept blocs par biome depuis le lot DL1, un nom par bloc ; le col au dernier bloc.
     "bush": ("Ferme des Kangourous", "Ferme des Émeus", "Station du Billabong", "Ferme des Wombats",
@@ -373,12 +396,23 @@ PLACE_NAMES = {
     "nuages": ("Col des Nuages", "Belvédère des Fougères Géantes", "Belvédère des Colibris", "Belvédère des Quetzals",
                "Belvédère des Palmiers à Cire", "Belvédère de la Brume", "Belvédère des Singes"),
     # Boucle de la Corniche et Route des Vignes (lot GP13b).
-    "corniche": ("Village des Câpriers",),
-    "corniche_vue": ("Belvédère de la Corniche",),
-    "pinede": ("Pointe des Pins",),
-    "vignes": ("Village des Vendanges", "Hameau des Pressoirs", "Clos des Tonneliers"),
-    "domaine": ("Domaine des Coteaux", "Domaine du Puits", "Domaine des Grives"),
-    "vignes_vue": ("Belvédère des Sarments", "Belvédère des Tonneaux", "Belvédère des Coteaux"),
+    # Lot DL2 : la Corniche a six tronçons (un village, un belvédère et une pointe chacun), les Vignes trois (trois
+    # lieux de chaque clé par tronçon).
+    "corniche": ("Village des Câpriers", "Village des Figuiers", "Village des Pêcheurs", "Village des Agaves",
+                 "Village des Cigales", "Village des Lauriers"),
+    "corniche_vue": ("Belvédère de la Corniche", "Belvédère des Calanques", "Belvédère des Mouettes",
+                     "Belvédère du Phare", "Belvédère des Criques", "Belvédère des Embruns"),
+    "pinede": ("Pointe des Pins", "Pointe des Genévriers", "Pointe du Sémaphore", "Pointe des Romarins",
+               "Pointe des Arbousiers", "Pointe des Cormorans"),
+    "vignes": ("Village des Vendanges", "Hameau des Pressoirs", "Clos des Tonneliers", "Village des Grappes",
+               "Hameau des Cuves", "Clos des Vendangeurs", "Village du Muscat", "Hameau des Sarments",
+               "Clos du Vieux Cep"),
+    "domaine": ("Domaine des Coteaux", "Domaine du Puits", "Domaine des Grives", "Domaine des Échalas",
+                "Domaine de la Treille", "Domaine des Fûts", "Domaine du Chai", "Domaine des Merles",
+                "Domaine des Terrasses"),
+    "vignes_vue": ("Belvédère des Sarments", "Belvédère des Tonneaux", "Belvédère des Coteaux",
+                   "Belvédère des Vendanges", "Belvédère des Grappes", "Belvédère des Ceps", "Belvédère du Pressoir",
+                   "Belvédère des Treilles", "Belvédère du Clos"),
 }
 RECETTE_PLACE_NAMES = {"port": "Port Fictif", "pointe": "Pointe Fictive", "mas": "Mas Fictif",
                        "hameau": "Hameau Fictif", "etang": "Étang Fictif", "col": "Col Fictif",
@@ -476,7 +510,10 @@ class Plan:
         circuit = loop is not None
         if circuit and LOOPS[loop]["biome"] is not None and len(set(biomes)) != 1:
             raise ValueError("circuit : un seul biome")
-        if circuit and LOOPS[loop]["biome"] is None and abs(BLOCK_M * len(biomes) - LOOPS[loop]["length_m"]) > 1.0:
+        # Lot DL2 : boucle du jeu de base agrandie `repeat` fois (1 en recette)
+        self.repeat = loop_repeat(loop, recette) if loop else 1
+        if circuit and LOOPS[loop]["biome"] is None and \
+                abs(BLOCK_M * len(biomes) - LOOPS[loop]["length_m"] * self.repeat) > 1.0:
             raise ValueError("boucle à plusieurs blocs : 2 km par bloc, sur toute la boucle")
         if variants is not None and len(variants) != len(biomes):
             raise ValueError("une variante par bloc")
@@ -487,13 +524,13 @@ class Plan:
         self.gravel = gravel
         self.circuit = circuit
         self.loop = loop
-        self.relief = LOOPS[loop]["relief"] if loop else None
+        # Lot DL2 : la longueur d'un tronçon de décor (celle de recette) et la boucle, agrandie dans le jeu
+        self.section_m = LOOPS[loop]["length_m"] if loop else None
         # Mer : le long des blocs `coast` de la route ouverte, ou le long du tronçon `sea` d'une boucle (lot GP13b).
         self.sea = sea and (bool(LOOPS[loop].get("sea")) if circuit else "coast" in biomes)
-        self.road = sim.LoopRoad(LOOPS[loop]["length_m"], LOOPS[loop]["lobes"], LOOPS[loop].get("wiggles", ())) \
-            if loop \
-            else sim.SRoad(BLOCK_M * len(biomes))
+        self.road = loop_road(loop, self.repeat) if loop else sim.SRoad(BLOCK_M * len(biomes))
         self.length_m = self.road.length_m
+        self.relief = loop_relief(loop, self.road, self.repeat) if loop else None
         self.offset = tuple(float(v) for v in self.road.xz(0.0))
         self._alt = [self.altitude_at(*self.road.xz(0.0), 0.0)]
         n = int(self.length_m / STEP_M)
@@ -524,9 +561,10 @@ class Plan:
             return self.relief(x, z, s, np.zeros_like(np.asarray(x, dtype=float)) if d is None else d)
         return np.interp(s, np.arange(len(self._alt)) * STEP_M, self._alt)
 
-    def place(self, key: str, i: int, nth: int | None = None) -> str:
+    def place(self, key: str, i: int, nth: int | None = None, ahead: int = 0) -> str:
         """Nom du lieu `key` dans le bloc `i` (voir `PLACE_NAMES`) ; `nth` : le n-ième nom de la clé (lieux d'une boucle
-        d'un seul bloc, lot GP13b)."""
+        d'un seul bloc, lot GP13b) ; `ahead` : lieu du tronçon suivant d'une boucle agrandie (`_Section`, lot DL2),
+        sans effet ici."""
         if self.recette:
             return RECETTE_PLACE_NAMES[key]
         names = PLACE_NAMES[key]
@@ -578,7 +616,8 @@ class Plan:
         if not self.sea:
             return []
         if self.circuit:
-            return [tuple(LOOPS[self.loop]["sea"])]
+            s0, s1 = LOOPS[self.loop]["sea"]
+            return [(j * self.section_m + s0, j * self.section_m + s1) for j in range(self.repeat)]
         return [(i * BLOCK_M, (i + 1) * BLOCK_M) for i, b in enumerate(self.biomes) if b == "coast"]
 
     def sea_weight(self, s, weights: dict):
@@ -588,9 +627,10 @@ class Plan:
         import numpy as np
         if not self.circuit:
             return weights.get("coast", 0.0)
-        s0, s1 = LOOPS[self.loop]["sea"]
         s = np.asarray(s, dtype=float)
-        return np.clip(np.minimum(s - s0, s1 - s) / SEA_RAMP_M, 0.0, 1.0)
+        # Lot DL2 : un tronçon `sea` par tronçon de décor de la boucle agrandie
+        inside = np.max([np.minimum(s - s0, s1 - s) for s0, s1 in self.sea_stretches()], axis=0)
+        return np.clip(inside / SEA_RAMP_M, 0.0, 1.0)
 
     def grade(self, s: float) -> float:
         u = s % BLOCK_M
@@ -612,25 +652,28 @@ class Plan:
         return "paved"
 
 
-def circuit_relief(x, z, s=None, d=None):
+def circuit_relief(x, z, s=None, d=None, repeat=1):
     """Relief du circuit (m) : une croupe au nord-ouest, un vallon au sud-est, une pente douce vers l'est.
-    Pente de la route de −5 à +5 % environ, 37 m de montée par tour (`test_circuit_loop`)."""
+    Pente de la route de −5 à +5 % environ, 37 m de montée par tour (`test_circuit_loop`). Lot DL2 : sur la boucle
+    agrandie `repeat` fois, la pente douce s'étale autant (même dénivelé d'un bord à l'autre, pentes gardées)."""
     import numpy as np
     x = np.asarray(x, dtype=float)
     z = np.asarray(z, dtype=float)
     return (BASE_ALT_M + 40.0 + 14.0 * np.sin(x / 210.0 + 0.6) * np.cos(z / 260.0)
-            - 12.0 * np.exp(-((x - 260.0) ** 2 + (z - 200.0) ** 2) / 90000.0) + _soft_cap(x / 60.0, 15.0, 30.0))
+            - 12.0 * np.exp(-((x - 260.0) ** 2 + (z - 200.0) ** 2) / 90000.0)
+            + _soft_cap(x / (60.0 * repeat), 15.0, 30.0))
 
 
-def corniche_relief(x, z, s=None, d=None):
+def corniche_relief(x, z, s=None, d=None, repeat=1):
     """Relief de la Boucle de la Corniche (m, lot GP13b) : la terre monte de la mer (à l'est) vers les collines de
     l'intérieur (à l'ouest), avec des croupes ; la route longe la falaise à mi-hauteur sur le côté est et passe le
     col de l'ouest. Pente de la route de −6 à +6 % environ, 30 à 45 m de montée par tour (`test_corniche_loop`) ; la falaise et la mer viennent de
-    `make_terrain` (tronçon `sea` de la boucle)."""
+    `make_terrain` (tronçon `sea` de la boucle). Lot DL2 : sur la boucle agrandie `repeat` fois, la montée de la mer
+    vers l'intérieur s'étale autant (la route reste en haut de la falaise, jamais au niveau de la mer)."""
     import numpy as np
     x = np.asarray(x, dtype=float)
     z = np.asarray(z, dtype=float)
-    return (BASE_ALT_M + 40.0 + _soft_cap(-x / 22.0, 26.0, 30.0)
+    return (BASE_ALT_M + 40.0 + _soft_cap(-x / (22.0 * repeat), 26.0, 30.0)
             + 6.0 * np.sin(x / 190.0 + 2.0) * np.cos(z / 230.0 - 0.4))
 
 
@@ -675,6 +718,14 @@ def reef_cap(h):
 _VOLCAN_ROAD = []
 
 
+def volcano_scale(length_m: float) -> tuple[float, float]:
+    """(montée de la route jusqu'à la crête, largeur du cône) du volcan sur une boucle de `length_m` (lot DL2) : celles
+    de recette sur 8 km ; sur une boucle plus longue, le cône grandit comme la boucle et la montée un peu moins
+    (puissance 3/4 : 370 m sur 16 km, pente au plus ~7 % hors ondulations)."""
+    k = length_m / VOLCAN_M
+    return VOLCAN_CLIMB_M * k ** 0.75, VOLCAN_CONE_M * k
+
+
 def volcano_road():
     """Boucle du volcan (`fake_osm.LoopRoad`), la même que celle de `Plan` : le relief se construit sur elle."""
     if not _VOLCAN_ROAD:
@@ -682,33 +733,36 @@ def volcano_road():
     return _VOLCAN_ROAD[0]
 
 
-def volcano_crater() -> tuple[float, float]:
-    """Centre du cratère : à `VOLCAN_RIM_M` de la route à mi-boucle, vers l'intérieur de la boucle (son centre)."""
-    road = volcano_road()
+def volcano_crater(road=None) -> tuple[float, float]:
+    """Centre du cratère : à `VOLCAN_RIM_M` de la route `road` (défaut : la boucle de recette) à mi-boucle, vers
+    l'intérieur de la boucle (son centre)."""
+    road = road or volcano_road()
     px, pz = road.xz(road.length_m / 2.0)
     r0 = math.hypot(px, pz)
     return px * (1.0 - VOLCAN_RIM_M / r0), pz * (1.0 - VOLCAN_RIM_M / r0)
 
 
-def volcano_relief(x, z, s, d):
+def volcano_relief(x, z, s, d, road=None):
     """Relief du volcan en flammes (lot DB2) : profil de la route en cosinus surélevé (départ au plus bas, crête du
     cratère à mi-boucle, `VOLCAN_CLIMB_M` de montée, petites ondulations) ; loin de la route, un cône centré sur le
     cratère (à l'intérieur de la boucle), creusé d'un cratère de `VOLCAN_CRATER_M` de rayon dont la route suit la crête
     (`VOLCAN_RIM_M`) ; entre les deux, fondu sur `VOLCAN_ROAD_M` (le profil de la route ne fait jamais de marche au
-    milieu de la boucle). Borné partout."""
+    milieu de la boucle). Borné partout. Lot DL2 : sur la boucle agrandie du jeu (`road`, défaut : celle de recette),
+    la montée et le cône grandissent avec elle (`volcano_scale`), les pentes restant sous 10 %."""
     import numpy as np
-    road = volcano_road()
+    road = road or volcano_road()
     length = road.length_m
-    cx, cz = volcano_crater()
-    peak = BASE_ALT_M + VOLCAN_CLIMB_M
+    cx, cz = volcano_crater(road)
+    climb, cone_m = volcano_scale(length)
+    peak = BASE_ALT_M + climb
 
     def profile(s):
-        return (BASE_ALT_M + VOLCAN_CLIMB_M * 0.5 * (1.0 - np.cos(2.0 * np.pi * s / length))
+        return (BASE_ALT_M + climb * 0.5 * (1.0 - np.cos(2.0 * np.pi * s / length))
                 + 1.2 * np.sin(2.0 * np.pi * s / 500.0) * np.sin(np.pi * s / length))
 
     def field(x, z):
         r = np.hypot(x - cx, z - cz)
-        cone = peak * np.exp(-(r / VOLCAN_CONE_M) ** 2)
+        cone = peak * np.exp(-(r / cone_m) ** 2)
         # Parois raides sur VOLCAN_WALL_M puis fond plat (lacs de lave du paysage `volcan_actif`)
         t = np.clip((VOLCAN_CRATER_M - r) / VOLCAN_WALL_M, 0.0, 1.0)
         crater = -VOLCAN_DEPTH_M * t * t * (3.0 - 2.0 * t)
@@ -735,7 +789,7 @@ def nord_road():
     return _NORD_ROAD[0]
 
 
-def nord_relief(x, z, s, d):
+def nord_relief(x, z, s, d, road=None):
     """Relief de la Route du Grand Nord (lot DB3), qui ne dépend que du point (x, z) et de la distance à la route (la
     boucle revient à son altitude de départ, aucune marche entre deux rives) : pente douce le long de l'axe du départ
     (taïga) au point le plus éloigné (banquise), `NORD_CLIMB_M` de montée en marche lissée, petites ondulations et
@@ -743,7 +797,7 @@ def nord_relief(x, z, s, d):
     (`sides` faux) : ceux de `SIDES` dépendent du bloc de la route la plus proche, ce qui ferait une marche à
     mi-chemin de deux blocs qui se font face."""
     import numpy as np
-    road = nord_road()
+    road = road or nord_road()   # lot DL2 : la boucle agrandie du jeu, ou celle de recette
     x0, z0 = road.xz(0.0)
     x1, z1 = road.xz(road.length_m / 2.0)
     ux, uz = x1 - x0, z1 - z0
@@ -804,7 +858,13 @@ def build_overpass(frame, plan: Plan, seed: int) -> sim.Overpass:
     rng = random.Random(seed)
     op = sim.Overpass(frame, rng, plan.road)
     if plan.loop in LOOP_BLOCKS:
-        LOOP_BLOCKS[plan.loop](op, rng, plan)
+        if plan.repeat == 1 or LOOPS[plan.loop].get("whole"):
+            LOOP_BLOCKS[plan.loop](op, rng, plan)
+            return op
+        # Lot DL2 : boucle agrandie, le décor de la boucle de recette à chaque tronçon
+        for j in range(plan.repeat):
+            view = _Section(op, plan, j, plan.repeat)
+            LOOP_BLOCKS[plan.loop](view, rng, view)
         return op
     for i in range(len(plan.biomes)):
         s0 = i * BLOCK_M
@@ -937,8 +997,9 @@ def _corniche(op, rng, plan):
     sea0, sea1 = LOOPS["corniche"]["sea"]
     colours = ["#f0e6d2", "#e3c9a8", "#f5efe0", "#e8b98a", "#ffffff"]
     _houses(op, rng, 30.0, sea0 - 20.0, (inside, out), colours, plan.place("corniche", 0), church=False)
-    _houses(op, rng, plan.length_m - 150.0, plan.length_m - 20.0, (inside, out), colours, plan.place("corniche", 0),
-            church=True)
+    # le village de l'arrivée est celui du départ (du tronçon suivant d'une boucle agrandie, lot DL2)
+    _houses(op, rng, plan.length_m - 150.0, plan.length_m - 20.0, (inside, out), colours,
+            plan.place("corniche", 0, ahead=1), church=True)
     _veg(op, sea0 + 20.0, sea0 + 520.0, inside, 20.0, 120.0, {"natural": "scrub"})
     _veg(op, sea0 + 560.0, sea1 + 150.0, inside, 20.0, 120.0, {"natural": "wood"})
     op.node(*op.point((sea0 + sea1) / 2.0, out * 26.0), {"tourism": "viewpoint", "name": plan.place("corniche_vue", 0)})
@@ -1237,21 +1298,103 @@ BLOCKS = {"coast": _coast, "mediterranean": _mediterranean, "temperate_grassland
 # Boucles (lots O38, SM1, DB2 et DB3) : longueur, lobes du rayon (`fake_osm.LoopRoad`), biome (`None` : un bloc de 2 km
 # par biome, décor de chaque bloc pris dans `BLOCKS`, sans entrée dans `LOOP_BLOCKS`), relief `relief(x, z, s, d)`,
 # variante régionale de toutes ses tuiles (`variant`, absente : aucune), flancs de `SIDES` (`sides`, absent : oui ;
-# lot DB1), contenu.
+# lot DB1), contenu. Lot DL2 (boucle agrandie du jeu, `loop_relief`) : `road_relief`, relief construit sur la
+# boucle (passée en `road`) ; `stretch`, relief étiré comme la boucle (le lagon du récif reste au départ) ; `trend`,
+# pente d'ensemble du relief étalée comme la boucle (passée en `repeat`, les croupes gardant leur taille) ; `whole`,
+# un seul décor sur toute la boucle (sinon un par tronçon de `length_m`).
 LOOPS = {
-    "circuit": {"length_m": CIRCUIT_M, "lobes": CIRCUIT_LOBES, "biome": CIRCUIT_BIOME, "relief": circuit_relief},
-    "recif": {"length_m": REEF_M, "lobes": REEF_LOBES, "biome": REEF_BIOME, "relief": reef_relief},
+    "circuit": {"length_m": CIRCUIT_M, "lobes": CIRCUIT_LOBES, "biome": CIRCUIT_BIOME, "relief": circuit_relief,
+                "trend": True},
+    "recif": {"length_m": REEF_M, "lobes": REEF_LOBES, "biome": REEF_BIOME, "relief": reef_relief, "stretch": True},
     "volcan": {"length_m": VOLCAN_M, "lobes": VOLCAN_LOBES, "biome": VOLCAN_BIOME, "relief": volcano_relief,
-               "variant": VOLCAN_VARIANT, "sides": False},
-    "nord": {"length_m": NORD_M, "lobes": NORD_LOBES, "biome": None, "relief": nord_relief, "sides": False},
+               "variant": VOLCAN_VARIANT, "sides": False, "road_relief": True, "whole": True},
+    "nord": {"length_m": NORD_M, "lobes": NORD_LOBES, "biome": None, "relief": nord_relief, "sides": False,
+             "road_relief": True},
     # Lot GP13b : `wiggles`, lacets de la route (`fake_osm.LoopRoad`) ; `sea`, tronçon de la route bordé par la mer à gauche ; `sea_band`, aires `sea` de tant à tant de
     # mètres de l'axe (défaut `SEA_BAND_M`) ; `shore`, côte rocheuse seulement.
     "vignes": {"length_m": VIGNES_M, "lobes": VIGNES_LOBES, "wiggles": VIGNES_WIGGLES, "biome": VIGNES_BIOME,
                "relief": vignes_relief, "sides": False},
     "corniche": {"length_m": CORNICHE_M, "lobes": CORNICHE_LOBES, "biome": CORNICHE_BIOME, "relief": corniche_relief,
-                 "sea": CORNICHE_SEA, "sea_band": CORNICHE_SEA_BAND_M, "shore": "rock"},
+                 "sea": CORNICHE_SEA, "sea_band": CORNICHE_SEA_BAND_M, "shore": "rock", "trend": True},
 }
 LOOP_BLOCKS = {"circuit": _circuit, "recif": _recif, "volcan": _volcan, "corniche": _corniche, "vignes": _vignes}
+
+
+def loop_repeat(loop: str, recette: bool = False) -> int:
+    """Nombre de fois que la boucle `loop` de `LOOPS` est agrandie (lot DL2) : assez pour qu'une boucle du jeu de base
+    (`DEMO_SET`) fasse au moins `LOOP_MIN_M` ; 1 dans la variante de recette, que les bancs gardent courte."""
+    if recette or not any(base for _n, _t, w, *_, base in DEMO_SET if w == loop):
+        return 1
+    return max(1, math.ceil(LOOP_MIN_M / LOOPS[loop]["length_m"] - 1e-9))
+
+
+def loop_length_m(loop: str, recette: bool = False) -> float:
+    """Longueur (m) de la boucle `loop` dans le jeu, ou dans la variante de recette (lot DL2)."""
+    return LOOPS[loop]["length_m"] * loop_repeat(loop, recette)
+
+
+def loop_road(loop: str, repeat: int = 1) -> sim.LoopRoad:
+    """Route de la boucle `loop` agrandie `repeat` fois (lot DL2) : mêmes lobes (même forme), lacets `repeat` fois
+    plus nombreux et de même amplitude (autant de virages par kilomètre, aucun plus serré)."""
+    spec = LOOPS[loop]
+    wiggles = tuple((n * repeat, a, phi) for n, a, phi in spec.get("wiggles", ()))
+    return sim.LoopRoad(spec["length_m"] * repeat, spec["lobes"], wiggles)
+
+
+def loop_relief(loop: str, road: sim.LoopRoad, repeat: int = 1):
+    """Relief `relief(x, z, s, d)` de la boucle `loop` sur sa route `road` (lot DL2, voir les clés de `LOOPS`)."""
+    import functools
+
+    import numpy as np
+    spec = LOOPS[loop]
+    relief = spec["relief"]
+    if spec.get("road_relief"):
+        return functools.partial(relief, road=road)
+    if spec.get("trend"):
+        return functools.partial(relief, repeat=repeat)
+    if spec.get("stretch") and repeat > 1:
+        return lambda x, z, s=None, d=None: relief(np.asarray(x, dtype=float) / repeat,
+                                                    np.asarray(z, dtype=float) / repeat)
+    return relief
+
+
+class _Section:
+    """Tronçon `j` (sur `count`) d'une boucle agrandie (lot DL2) vu par un décor de `LOOP_BLOCKS` écrit pour la boucle
+    de recette : les abscisses du décor (de 0 à `length_m`, la longueur de recette) sont décalées de `j · length_m`
+    sur la route (`op`), et ses lieux prennent les noms suivants de `PLACE_NAMES` (le n-ième nom d'une clé au tronçon
+    `j` : rang `nth · count + j`, `ahead` pour un lieu du tronçon suivant, celui de l'arrivée du tronçon)."""
+
+    def __init__(self, op: sim.Overpass, plan: "Plan", j: int, count: int) -> None:
+        self._op, self._plan, self._j, self._count = op, plan, j, count
+        self._ds = j * plan.section_m
+        self.length_m = plan.section_m
+
+    # Vue de l'Overpass : abscisses décalées
+    def point(self, s: float, offset: float):
+        return self._op.point(s + self._ds, offset)
+
+    def building(self, s: float, offset: float, tags: dict, length: float, depth: float) -> None:
+        self._op.building(s + self._ds, offset, tags, length, depth)
+
+    def band(self, s0: float, s1: float, off0: float, off1: float):
+        return self._op.band(s0 + self._ds, s1 + self._ds, off0, off1)
+
+    def rect_along(self, s: float, offset: float, length: float, depth: float):
+        return self._op.rect_along(s + self._ds, offset, length, depth)
+
+    # Vue du plan : noms des lieux du tronçon
+    def place(self, key: str, i: int, nth: int | None = None, ahead: int = 0) -> str:
+        if self._plan.recette:
+            return RECETTE_PLACE_NAMES[key]
+        names = PLACE_NAMES[key]
+        return names[((nth or 0) * self._count + (self._j + ahead) % self._count) % len(names)]
+
+    def __getattr__(self, name):
+        # le reste (way, node, counts, rng ; loop, recette…) : celui de l'Overpass, sinon celui du plan
+        try:
+            return getattr(self._op, name)
+        except AttributeError:
+            return getattr(self._plan, name)
 
 
 def line_repeat(which: str, blocks: int, recette: bool = False) -> int:
@@ -1271,6 +1414,8 @@ def tour_blocks(which: str, recette: bool = False) -> tuple[tuple[str, ...], tup
     variante de recette (`recette`)."""
     biomes, variants = _tour_blocks(which)
     k = line_repeat(which, len(biomes), recette)
+    if which in LOOPS and LOOPS[which]["biome"] is None:
+        k = loop_repeat(which, recette)   # lot DL2 : boucle à plusieurs blocs (Grand Nord), chaque bloc répété
     if k == 1:
         return biomes, variants
     return (tuple(b for b in biomes for _ in range(k)),
@@ -1584,24 +1729,28 @@ def main(argv: list[str] | None = None) -> int:
     what = parser.add_mutually_exclusive_group(required=True)
     what.add_argument("--biome", choices=TOUR + ("japan",), help="un seul biome sur 6 km (Japon : 42 km hors --recette, lot DL1)")
     what.add_argument("--tour", action="store_true", help="les six biomes du premier jalon, 2 km chacun")
-    what.add_argument("--circuit", action="store_true", help="la boucle de 3 km du circuit de démonstration (prairie)")
+    what.add_argument("--circuit", action="store_true", help="la boucle du circuit de démonstration (prairie) : 15 km, 3 km avec --recette")
     what.add_argument("--paysages", action="store_true",
                       help="le tour des nouveaux paysages (lot DB1) : sept paysages de 6 km (2 km avec --recette), "
                            "mer le long du fjord")
-    what.add_argument("--recif", action="store_true", help="la boucle de 8 km du récif sous la mer (fond marin)")
+    what.add_argument("--recif", action="store_true", help="la boucle du récif sous la mer (fond marin) : 16 km, 8 km avec --recette")
     what.add_argument("--volcan", action="store_true",
-                      help="la boucle de 8 km du volcan en flammes (paysage volcan_actif, crête du cratère à mi-boucle)")
+                      help="la boucle du volcan en flammes (paysage volcan_actif, crête du cratère à mi-boucle) : "
+                           "16 km, 8 km avec --recette")
     what.add_argument("--sud", action="store_true",
                       help="la Route du Sud (lot DB3) : six biomes de 8 km (2 km avec --recette), du méditerranéen "
                            "aux zones humides")
     what.add_argument("--nord", action="store_true",
-                      help="la Route du Grand Nord (lot DB3) : boucle de 10 km, taïga, toundra et banquise")
+                      help="la Route du Grand Nord (lot DB3) : boucle de 20 km (10 km avec --recette), "
+                           "taïga, toundra et banquise")
     what.add_argument("--forets", action="store_true",
                       help="la Route des Trois Forêts (lot V6-r4) : bush à eucalyptus, forêt pluviale, forêt de nuages")
     what.add_argument("--corniche", action="store_true",
-                      help="la Boucle de la Corniche (lot GP13b, Grand Prix) : boucle de 2,5 km au-dessus de la mer")
+                      help="la Boucle de la Corniche (lot GP13b, Grand Prix) : boucle de 15 km (2,5 km "
+                           "avec --recette) au-dessus de la mer")
     what.add_argument("--vignes", action="store_true",
-                      help="la Route des Vignes (lot GP13b, Grand Prix) : boucle sinueuse de 5 km dans les vignes")
+                      help="la Route des Vignes (lot GP13b, Grand Prix) : boucle sinueuse de 15 km (5 km "
+                           "avec --recette) dans les vignes")
     what.add_argument("--demo-set", action="store_true", help="les parcours de demo-biomes (le tour gravel en plus avec --recette)")
     parser.add_argument("--gravel", action="store_true", help="un tiers de la route en gravel ou dirt")
     parser.add_argument("--sea", action="store_true", help="côte inventée et mer le long du biome coast")

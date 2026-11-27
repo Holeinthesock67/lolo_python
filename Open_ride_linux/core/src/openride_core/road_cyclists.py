@@ -736,8 +736,11 @@ class RoadCyclists:
         alongside = self._caught_groups(g)
         own = self._base_lateral(g, members[0])
         cur = g.lateral()
+        # Lot DL2 (circuit de 15 km : un groupe de quatre entrait dans la queue d'un groupe de deux dont la tête
+        # s'était déjà écartée) : un groupe gêne par chacun de ses membres, pas seulement par sa tête
         near_groups = [h for h in alongside
-                       if abs(h.lateral() - own) < MIN_CENTRE_M or abs(h.lateral() - cur) < MIN_CENTRE_M]
+                       if any(abs(m.lateral - own) < MIN_CENTRE_M or abs(m.lateral - cur) < MIN_CENTRE_M
+                              for m in h.members)]
         if near_groups:
             # Bots à moins de BOT_LOOK_M : on ne double pas sur leur ligne, ni en la traversant (file longue)
             lanes = alongside + [b for b in self._bot_groups if b not in alongside
@@ -760,7 +763,8 @@ class RoadCyclists:
             for h in near_groups:
                 slowest = min(slowest, speed_of(h))
                 # encore derrière lui, un de ses membres sur sa ligne (la queue se décale après la tête)
-                if (g.s - h.s) * direction < 0.0 and min(abs(m.lateral - h.lateral()) for m in members) < MIN_CENTRE_M - 0.05:
+                if (g.s - h.s) * direction < 0.0 and min(abs(m.lateral - o.lateral) for m in members
+                                                         for o in h.members) < MIN_CENTRE_M - 0.05:
                     blocking = True
             crossing = False
             for h in lanes:
