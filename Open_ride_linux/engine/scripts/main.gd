@@ -140,6 +140,13 @@ var world_menu_view = null
 var _route_job: Dictionary = {}
 ## Préchauffage unique (lot PI2) : une étape par image, dès le chargement du parcours.
 var _warmup = WarmupPlan.new()
+## Chargement d'un parcours en étapes (lot AC5) : une par image, comme le préchauffage, au lieu d'une seule image
+## de 180 à 220 ms (banc PC de la PR #981 : vidage du monde, streamer, ciel, décor, portiques, menu).
+var _load_plan = WarmupPlan.new()
+var _load_job: Dictionary = {}       # chargement dont les étapes sont en cours
+var _load_phases: Dictionary = {}    # durées des étapes pour la ligne « Phases du chargement »
+var _load_world_pending := false     # étapes en cours, monde du nouveau parcours pas encore posé (streamer)
+var _menu_frame_ms := 0.0             # affichage du menu dans l'image (_flush_menu) : image déjà chargée (lot AC5)
 var _wtf_warm_queued := false
 var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
 var _quit_code := 0
@@ -728,7 +735,7 @@ func _apply_theme(name: String) -> void:
 	_theme_dict = theme_dict
 	streamer.set_theme(theme_dict, theme_res.get("theme_dir", ""))
 	_apply_sky_params(theme_dict)
-	if _route_loaded_id != "" and _route_job.is_empty():   # monde vidé (run Cyber-Rogue) : rechargé au retour
+	if _route_loaded_id != "" and _route_job.is_empty() and not _load_world_pending:   # monde vidé (run Cyber-Rogue) : rechargé au retour
 		streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le thème
 	print("Thème : ", name)
 
@@ -1107,7 +1114,7 @@ func _step_start_wait(delta: float) -> void:
 	# Cyber-Rogue : la scène du mode, préchauffée pendant l'attente (lot Y20), tient lieu de décor du départ.
 	var rogue_scene: bool = rogue_host.is_active()
 	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
-			_warmup.pending() + (0 if rogue_scene else streamer.pending_count()), delta * 1000.0):
+			_warmup.pending() + (0 if rogue_scene else streamer.pending_count() + _load_plan.pending()), delta * 1000.0):
 		print("Décor du départ prêt : %s (à %d ms)" % [_start_wait.route_id, Time.get_ticks_msec()])
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
@@ -1152,6 +1159,7 @@ func _flush_menu() -> void:
 		if str(st["screen"]) == "summary" else []
 	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	_menu_frame_ms = ms
 	PerfProbe.mark("menu", "affichage " + str(st["screen"]), ms)
 	_menu_perf["n"] += 1
 	_menu_perf["total_ms"] += ms
@@ -1243,14 +1251,14 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	_menu_frame_ms = 0.0
 	_flush_menu()
 	var menu_shown: bool = menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible)
 	var mouse := DisplayMode.mouse_mode(menu_shown)
 	if Input.mouse_mode != mouse:
 		Input.mouse_mode = mouse
 	_poll_route_job()
-	if _warmup.step() != "" and _warmup.pending() == 0:
-		print("Préchauffage fini (ms) : %s (à %d ms)" % [_warmup.summary(), Time.get_ticks_msec()])
+	_step_loading()
 	_poll_live_world()
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
@@ -1552,16 +1560,6 @@ func _load_route_job(job: Dictionary) -> void:
 	job["ok"] = job["route"].load_world_dir(job["path"])      # un monde vivant (manifeste `live`) est reconnu par le manifeste
 
 
-## Phase du chargement d'un parcours (lot PI1) : durée depuis la phase précédente, étape « chargement » de la sonde
-## (cause nommée d'une saccade) et ligne « Phases du chargement » du journal de l'engine.
-func _load_phase(phases: Dictionary, name: String) -> void:
-	var now := Time.get_ticks_usec()
-	var ms := (now - int(phases["t"])) / 1000.0
-	PerfProbe.mark("chargement", name, ms)
-	(phases["list"] as Array).append("%s %.0f" % [name, ms])
-	phases["t"] = now
-
-
 ## Étapes du préchauffage d'un parcours (lot PI2), jouées une par image par warmup_plan.gd : premier dessin des
 ## portiques (et du portique d'élimination si le mode est préparé), des spectateurs, des passants et des
 ## cyclistes du décor (lots Y21 et AS7), puis des forêts lointaines (lot Y5). Avant, toutes dans la même image.
@@ -1569,9 +1567,9 @@ func _warmup_steps() -> Array:
 	var steps: Array = [["portiques", func(): segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")]]
 	if living_decor != null:
 		if living_decor.crowd_view != null:
-			steps.append(["spectateurs", func(): living_decor.crowd_view.warm_up(camera)])
+			steps.append_array(living_decor.crowd_view.warm_steps(camera))   # un MultiMesh par image (lot AC5)
 		if living_decor.passersby_view != null:
-			steps.append(["passants", func(): living_decor.passersby_view.warm_up(camera)])
+			steps.append_array(living_decor.passersby_view.warm_steps(camera))
 		if living_decor.cyclists_view != null and int(living_decor.living.get("cyclists", 0)) > 0:
 			steps.append_array(living_decor.cyclists_view.warm_steps(camera))   # un temps par image (lot AC4)
 	if streamer.forest_impostors != null:
@@ -1594,7 +1592,76 @@ func _poll_route_job() -> void:
 	if not job["ok"]:
 		banner.show_message("route", "Parcours « %s » invalide : %s" % [job["id"], job["route"].load_error])
 		return
-	var phases := {"t": Time.get_ticks_usec(), "list": []}
+	# Lot AC5 : les étapes du chargement, une par image (_step_loading), dans l'ordre d'avant.
+	_load_job = job
+	_load_phases = {"list": []}
+	_load_plan.kind = "chargement"   # étapes notées « chargement <nom> » dans la sonde, comme les phases du lot PI1
+	_load_world_pending = true
+	_load_plan.start([
+		["vidage", _load_clear],
+		["streamer", _load_streamer.bind(job)],
+		["suite", _load_rest.bind(job)],
+	])
+
+
+## Étape « suite » du chargement : les parties légères (quelques ms chacune au banc #981), dans une seule image, chacune
+## notée dans la sonde (« chargement <partie> ») et dans la ligne « Phases du chargement ». Sous un rendu lent (Xvfb,
+## lavapipe), chaque image après le streamer prend plusieurs secondes : une étape par partie retardait le parcours d'une
+## minute dans les tests graphiques.
+func _load_rest(job: Dictionary) -> void:
+	var parts: Array = [
+		["velodrome", _load_velodrome],
+		["ciel", func(): _apply_sky_params(streamer._theme_dict)],
+		["decor", _load_decor.bind(job)],
+		["portiques_gp", _load_markers],
+		["segments", _load_segments.bind(job)],
+		["menu", _load_menu],
+		["fenetre", func(): streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))],
+	]
+	for part in parts:
+		var t0 := Time.get_ticks_usec()
+		(part[1] as Callable).call()
+		var ms := (Time.get_ticks_usec() - t0) / 1000.0
+		PerfProbe.mark("chargement", str(part[0]), ms)
+		(_load_phases["list"] as Array).append("%s %.0f" % [part[0], ms])
+	_load_end(job)
+
+
+## Une image : une étape du chargement, sinon une étape du préchauffage, jamais les deux (lot AC5), et aucune si
+## l'affichage du menu a déjà pris plus de BUSY_MS dans l'image (warmup_plan.gd). Un chargement remplacé par une
+## nouvelle demande de parcours (ou par une run Cyber-Rogue) est abandonné : le suivant refait tout.
+func _step_loading() -> void:
+	# Seul l'affichage du menu compte (écran de bilan : 46 ms au banc #981) : sous un rendu lent, tout le début de
+	# l'image dépassait le seuil et le préchauffage allait deux fois moins vite (tour « flancs » de la CI).
+	var busy_ms := _menu_frame_ms
+	if _load_plan.pending() > 0:
+		if _load_job.is_empty() or str(_load_job["id"]) != str(_route_id_requested):
+			_load_plan.start([])
+			_load_job = {}
+			_load_world_pending = false
+		elif _load_plan.may_step(busy_ms):
+			var t0 := Time.get_ticks_usec()
+			var name: String = _load_plan.step()
+			(_load_phases["list"] as Array).append("%s %.0f" % [name, (Time.get_ticks_usec() - t0) / 1000.0])
+		return
+	# Décor du départ encore en route (tuiles, arbres, tronçons OSM et leurs doublures de shaders) : le préchauffage
+	# attend, pour ne pas compiler ses shaders dans les mêmes images (banc rJ25J du 25/11, warmup_plan.gd STREAM_WAIT_MS).
+	var streaming: bool = session_state != "RUNNING" and not rogue_host.is_active() and streamer.pending_count() > 0
+	if _warmup.may_step(busy_ms, streaming) and _warmup.step() != "" and _warmup.pending() == 0:
+		print("Préchauffage fini (ms) : %s (à %d ms)" % [_warmup.summary(), Time.get_ticks_msec()])
+
+
+## Étape « vidage » : tuiles, arbres, bâtiments et horizon du parcours d'avant libérés ; son décor de route caché
+## jusqu'à l'étape « decor » (un instant sans sol sous le menu, comme pendant la reconstruction des tuiles).
+func _load_clear() -> void:
+	streamer.clear()
+	if living_decor != null:
+		living_decor.visible = false
+	if living_world != null:
+		living_world.visible = false
+
+
+func _load_streamer(job: Dictionary) -> void:
 	route = job["route"]
 	_route_loaded_id = job["id"]
 	_random_season = ""   # saisons « au hasard » (lot U13b) : nouveau tirage pour ce parcours
@@ -1607,43 +1674,50 @@ func _poll_route_job() -> void:
 	bots_model.loop_length_m = follow.loop_length_m
 	follow.reset()
 	_menu_s = 0.0
-	_load_phase(phases, "debut")
 	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
 	streamer.set_world(route, job["path"])
 	if living_world != null:
 		living_world.set_route(route, float(streamer.get("_road_width_m")))
 		living_world.terrain_material = streamer.get("_terrain_material")
-	_load_phase(phases, "streamer")
-	# Piste du vélodrome (plan VD §7.2, lots VD4 et VD5) : salle couverte à la place du monde ouvert (ni ciel,
-	# météo, herbe, personnages, animaux ni engins du décor de route) ; ambiance de la salle posée par
-	# _apply_sky_params, celle d'avant rendue au parcours suivant.
+	_load_world_pending = false
+
+
+## Piste du vélodrome (plan VD §7.2, lots VD4 et VD5) : salle couverte à la place du monde ouvert (ni ciel,
+## météo, herbe, personnages, animaux ni engins du décor de route) ; ambiance de la salle posée par
+## _apply_sky_params, celle d'avant rendue au parcours suivant.
+func _load_velodrome() -> void:
+	if velodrome_hall == null:
+		return
+	if route.is_track():
+		velodrome_hall.build(route, _quality_name)
+		print("Salle du vélodrome : %d spectateurs (préréglage %s)" % [velodrome_hall.crowd_count, _quality_name])
+	else:
+		velodrome_hall.clear()
+		velodrome_hall.restore(world_env.environment, sun)
+
+
+func _load_decor(job: Dictionary) -> void:
 	var track: bool = route.is_track()
-	if velodrome_hall != null:
-		if track:
-			velodrome_hall.build(route, _quality_name)
-			print("Salle du vélodrome : %d spectateurs (préréglage %s)" % [velodrome_hall.crowd_count, _quality_name])
-		else:
-			velodrome_hall.clear()
-			velodrome_hall.restore(world_env.environment, sun)
-	_load_phase(phases, "velodrome")
-	_apply_sky_params(streamer._theme_dict)
-	_load_phase(phases, "ciel")
 	if living_decor != null:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 		living_decor.visible = not track
 	if living_world != null:
 		living_world.visible = not track
-	_load_phase(phases, "decor")
+
+
+## Portiques, Grand Prix, puis préchauffage unique (lot PI2) : une étape par image dès le menu, le départ attend
+## la fin du plan ; il ne commence qu'après la dernière étape du chargement (_step_loading).
+func _load_markers() -> void:
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	gp_scene.set_route(route)
-	_load_phase(phases, "portiques_gp")
-	# Préchauffage unique (lot PI2) : une étape par image dès le menu, le départ attend la fin du plan.
 	_warmup.start(_warmup_steps())
 	_wtf_warm_queued = false
-	_load_phase(phases, "prechauffage_plan")
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
+
+
+func _load_segments(job: Dictionary) -> void:
 	segment_hud.set_segments(route.segments)
 	var seg_profiles := {}   # profil de chaque segment pour la carte des records (lot N20)
 	for seg in route.segments:
@@ -1653,21 +1727,23 @@ func _poll_route_job() -> void:
 	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
 	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
-	_load_phase(phases, "segments")
+
+
+func _load_menu() -> void:
 	_refresh_menu()
 	if route.segments_present:
 		print("Segments du parcours : %d" % route.segments.size())
-	_load_phase(phases, "menu")
-	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
-	_load_phase(phases, "fenetre")
+
+
+func _load_end(job: Dictionary) -> void:
 	banner.clear_message("route")
 	banner.clear_message("cue")
 	if _cues.load_for_route(job["id"]):
 		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
 	elif _cues.load_error != "":
 		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
-	_load_phase(phases, "fin")
-	print("Phases du chargement (ms) : ", ", ".join(PackedStringArray(phases["list"])))
+	_load_job = {}
+	print("Phases du chargement (ms) : ", ", ".join(PackedStringArray(_load_phases["list"])), ", fin")
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s) (à %d ms)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"], Time.get_ticks_msec()])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
@@ -2172,7 +2248,7 @@ func _apply_biome(id: String) -> void:
 	if id == "auto" or BiomeIds.is_biome(id):
 		if _biome_setting != "" and id != _biome_setting and id != streamer.forced_biome:
 			streamer.forced_biome = id
-			if _route_loaded_id != "" and _route_job.is_empty():   # monde vidé (run Cyber-Rogue) : rechargé au retour
+			if _route_loaded_id != "" and _route_job.is_empty() and not _load_world_pending:   # monde vidé (run Cyber-Rogue) : rechargé au retour
 				streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le biome
 			_apply_sky_params(_theme_dict)
 			print("Biome : ", id)

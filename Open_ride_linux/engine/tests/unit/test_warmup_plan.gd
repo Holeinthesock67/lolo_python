@@ -70,5 +70,32 @@ func _init() -> void:
 	plan.start([["normale", func() -> bool: return false]])
 	_check(plan.step() == "normale" and plan.pending() == 0, "une étape normale qui renvoie faux n'est pas rejouée")
 
+	# Lot AC5 : pas d'étape dans une image qui a déjà beaucoup travaillé (menu affiché), sans jamais bloquer le plan.
+	plan.start([["x", _note.bind("x")]])
+	_check(plan.may_step(0.0), "image légère : l'étape peut jouer")
+	var skipped := 0
+	while not plan.may_step(plan.BUSY_MS + 30.0):
+		skipped += 1
+		if skipped > 100:
+			break
+	_check(skipped == plan.MAX_SKIPS, "image chargée : étape remise au plus %d images de suite (%d)" % [plan.MAX_SKIPS, skipped])
+	_check(not plan.may_step(plan.BUSY_MS + 30.0) and plan.may_step(1.0), "après une étape jouée, le compte des remises repart")
+	plan.start([])
+	_check(not plan.may_step(0.0), "plan vide : rien à jouer")
+	# Banc rJ25J du 25/11 : le plan attend que le décor du départ soit arrivé, au plus STREAM_WAIT_MS.
+	plan.start([["y", _note.bind("y")]])
+	_check(not plan.may_step(0.0, true, 1000), "décor du départ en route : pas d'étape")
+	_check(not plan.may_step(0.0, true, 1000 + int(plan.STREAM_WAIT_MS * 1000.0) - 1000), "toujours en attente avant la borne")
+	_check(plan.may_step(0.0, false, 2000), "décor arrivé : l'étape joue")
+	_check(plan.may_step(0.0, true, 1000 + int(plan.STREAM_WAIT_MS * 1000.0)), "borne atteinte : le plan avance quoi qu'il arrive")
+	plan.start([["z", _note.bind("z")]])
+	_check(not plan.may_step(0.0, true, 5_000_000_000), "nouveau plan : l'attente repart de zéro")
+	# Plan du chargement : même règle, étapes notées sous un autre type dans la sonde.
+	var load_plan = WarmupPlan.new()
+	load_plan.kind = "chargement"
+	load_plan.start([["vidage", _note.bind("v")], ["streamer", _note.bind("t")]])
+	_check(load_plan.step() == "vidage" and load_plan.pending() == 1 and plan.kind == "préchauffage",
+		"plan du chargement : une étape par image, type propre à chaque plan")
+
 	print("test_warmup_plan : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
