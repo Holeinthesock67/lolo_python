@@ -125,6 +125,9 @@ var _far_index: Dictionary = {}
 var _wanted: Dictionary = {}         # clé -> description du travail {kind, ...}
 var _instances: Dictionary = {}      # clé -> MeshInstance3D
 var _jobs: Dictionary = {}           # clé -> {task, arrays, origin, gen}
+## Travaux de ruban d'une route remplacée (lot OW8) : finissent en fond, résultat jeté, jamais attendus sur le fil
+## principal pendant la séance.
+var _orphans: Array = []
 var _ready: Array = []               # travaux terminés, à instancier : {key, arrays, origin}
 var _generation := 0
 ## Monde ouvert (22/11, règle sol / route) : le générateur règle de nouveau le sol d'une tuile proche quand la route
@@ -491,7 +494,7 @@ func _biome_tile_arrived(level: String, t: Vector2i) -> void:
 func _drop_road_chunks(from_part: int) -> void:
 	for key in _jobs.keys():
 		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
-			BgTasks.wait(_jobs[key]["task"])
+			_orphans.append(_jobs[key]["task"])   # l'ancienne route ne change plus : le travail finit seul
 			_jobs.erase(key)
 	_ready = _ready.filter(func(r): return not ((r["key"] as String).begins_with("road:")
 			and int((r["key"] as String).get_slice(":", 1)) >= from_part))
@@ -838,6 +841,7 @@ static func _display_height_fn(w_dir: String, r) -> Callable:
 
 
 func _poll_jobs(wait: bool) -> void:
+	_drain_orphans(wait)
 	for key in _jobs.keys():
 		var job: Dictionary = _jobs[key]
 		if not wait and not BgTasks.done(job["task"]):
@@ -863,6 +867,23 @@ func _poll_jobs(wait: bool) -> void:
 func _wait_all_jobs() -> void:
 	for key in _jobs.keys():
 		BgTasks.wait(_jobs[key]["task"])
+	_drain_orphans(true)
+
+
+## Libère les travaux orphelins finis (tous, en les attendant, si `wait`).
+func _drain_orphans(wait: bool) -> void:
+	var left: Array = []
+	for task in _orphans:
+		if wait or BgTasks.done(task):
+			BgTasks.wait(task)
+		else:
+			left.append(task)
+	_orphans = left
+
+
+## Travaux orphelins encore en cours (tests).
+func orphan_count() -> int:
+	return _orphans.size()
 
 
 ## Relève les travaux terminés et crée au plus `max_new` objets de scène (fil principal).

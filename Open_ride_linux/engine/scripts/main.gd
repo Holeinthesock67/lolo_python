@@ -1448,7 +1448,11 @@ func _poll_live_world() -> void:
 	if live_world.route == null:
 		return
 	var upd: Dictionary = live_world.poll()
-	if upd.has("route"):
+	if upd.get("same_route", false):
+		# Route inchangée (lot OW8) : seules les tuiles nouvelles sont lues ; ruban, OSM et décor gardés.
+		streamer.swap_route(route, route.parts.size())
+		ipc.test_log("world_revision rev=%d length_m=%.1f from_part=%d same=1" % [upd["revision"], route.length_m, route.parts.size()])
+	elif upd.has("route"):
 		route = upd["route"]
 		streamer.swap_route(route, int(upd["from_part"]))
 		if living_world != null:
