@@ -157,7 +157,7 @@ def test_core_twin_gives_the_same_ground() -> None:
     core_rg = pytest.importorskip("openride_core.road_ground")
     for name in ("ROAD_HALF_WIDTH_M", "ROAD_SINK_M", "SHOULDER_WIDTH_M", "SKIRT_DROP_M", "SKIRT_OUT_M", "RELIEF_MAX",
                  "FOOT_GAP_M", "ALONG_STEP_M", "ACROSS_STEP_M", "TILE_ROUNDS",
-                 "PROJECT_STEPS", "FOOT_COVER_M", "SAME_PART_M"):
+                 "PROJECT_STEPS", "FOOT_COVER_M", "SAME_PART_M", "COVER_MARGIN_M", "RESCUE_CLEAR_M", "RESCUE_SLOPE"):
         mine = getattr(RG, name) if hasattr(RG, name) else getattr(C, name)
         assert getattr(core_rg, name) == pytest.approx(mine), name
     r = _bend(radius=12.0, grade=0.10)
@@ -174,3 +174,86 @@ def test_core_twin_gives_the_same_ground() -> None:
     core_rg.fit_tiles(lists, 10.0, up, lo)
     for k, g in tiles.items():
         assert np.allclose(np.asarray(lists[k]).reshape(g.shape), g, atol=2e-4), k
+
+
+def _serpentine(gap: float, length: float = 200.0) -> dict:
+    """Trois passages parallèles de la même route à `gap` m d'axe à axe (nord, sud, nord), demi-tours de rayon
+    gap / 2, à plat à 500 m : la balade qui repasse trois ou quatre fois au même endroit (Funchal, 26/11)."""
+    rad = gap / 2
+    pts: list[tuple[float, float]] = []
+
+    def line(x: float, z0: float, z1: float) -> list:
+        n = int(abs(z1 - z0) // C.DS_M)
+        return [(x, z0 + (z1 - z0) * k / n) for k in range(n)]
+
+    def arc(cx: float, cz: float, a0: float, a1: float) -> list:
+        n = max(int(abs(a1 - a0) * rad // 2.0), 2)
+        return [(cx + rad * math.cos(a0 + (a1 - a0) * k / n), cz + rad * math.sin(a0 + (a1 - a0) * k / n))
+                for k in range(n)]
+
+    pts += line(-gap, 0.0, -length) + arc(-rad, -length, math.pi, 2 * math.pi)
+    pts += line(0.0, -length, 0.0) + arc(rad, 0.0, math.pi, 0.0)
+    pts += line(gap, 0.0, -length) + [(gap, -length)]
+    x, z = np.array([p[0] for p in pts]), np.array([p[1] for p in pts])
+    s = np.concatenate(([0.0], np.cumsum(np.hypot(np.diff(x), np.diff(z)))))
+    n = len(x)
+    return {"n": n, "ds_m": float(s[-1] / (n - 1)), "length_m": float(s[-1]), "type": "open",
+            "x": x.tolist(), "z": z.tolist(), "alt_m": [500.0] * n, "lat": [0.0] * n, "lon": [0.0] * n,
+            "grade_pct": [0.0] * n, "heading_deg": _heading(x, z, False).tolist()}
+
+
+@pytest.mark.parametrize("gap", [5.0, 8.0])
+def test_route_that_passes_again_keeps_its_banks(gap: float) -> None:
+    """Bancs d'Almería et de Funchal (26/11) : la balade repasse au même endroit, à quelques mètres de côté et à la
+    même hauteur. Chaque passage couvrait les pieds de talus des autres, qui étaient retirés : plus aucun pied ne
+    demandait d'appui et la route du milieu flottait à 10 m au-dessus du sol. Un pied n'est retiré que si sa borne
+    contredit celle de la chaussée qui le couvre."""
+    r = _serpentine(gap)
+    up, lo = RG.corridor_s(r["x"], r["z"], r["alt_m"], r["heading_deg"])
+
+    def lowest(keep_compatible: bool) -> float:
+        y = np.full((31, 9), 490.0)        # sol 10 m sous la route : x de −40 à 40, z de −250 à 50, maille de 10 m
+        feet = RG.drop_covered_feet(up, lo, up[3], lo[3], keep_compatible=keep_compatible)
+        RG.fit_grid(y, -40.0, -250.0, 10.0, up[:3], feet, rounds=RG.TILE_ROUNDS)
+
+        def gather(gi, gj):
+            li, lj = gi + 4, gj + 25
+            out = np.full(len(gi), np.nan)
+            ok = (li >= 0) & (li < 9) & (lj >= 0) & (lj < 31)
+            out[ok] = y[lj[ok], li[ok]]
+            return out
+        hu = RG.heights(gather, 10.0, up[0], up[1])
+        mid = (np.asarray(up[1]) < -40.0) & (np.asarray(up[1]) > -160.0)
+        return float(np.nanmin((hu - up[2])[mid]))
+    assert lowest(False) < -9.0                                   # règle d'avant : la route du milieu flotte
+    assert lowest(True) >= -RG.FOOT_GAP_M - RG.SHOULDER_DROP_M - 1e-3   # sol sous la chaussée : talus appuyé
+
+
+def test_road_over_another_drops_its_feet() -> None:
+    """Pied de talus d'une route qui passe 6 m au-dessus d'une autre (sa borne contredit la chaussée d'en dessous) :
+    toujours retiré."""
+    low = _straight(n=12, x0=0.0)
+    high = _straight(n=12, x0=4.0)
+    high["alt_m"] = [506.0] * high["n"]
+    ul, ll = RG.corridor_s(low["x"], low["z"], low["alt_m"], low["heading_deg"])
+    uh, lh = RG.corridor_s(high["x"], high["z"], high["alt_m"], high["heading_deg"])
+    up = [np.concatenate([a, b]) for a, b in zip(ul, uh)]
+    up[3] = np.concatenate([ul[3], uh[3] + 1e7])
+    lo = [np.concatenate([a, b]) for a, b in zip(ll, lh)]
+    lo[3] = np.concatenate([ll[3], lh[3] + 1e7])
+    fx, _, fl = RG.drop_covered_feet(up, lo, up[3], lo[3])
+    fx, fl = np.asarray(fx), np.asarray(fl)
+    foot = RG.FOOT_OFFSET_M
+    assert not ((np.abs(fx - (4.0 - foot)) < 0.1) & (fl > 505.0)).any()   # pied gauche de la route haute : retiré
+    assert ((np.abs(fx - foot) < 0.1) & (fl < 500.0)).any()      # pied droit de la basse, sous la haute : gardé
+
+
+def test_core_twin_keeps_the_same_feet_on_a_route_that_passes_again() -> None:
+    core_rg = pytest.importorskip("openride_core.road_ground")
+    r = _serpentine(5.0)
+    up, lo = RG.corridor_s(r["x"], r["z"], r["alt_m"], r["heading_deg"])
+    mine = RG.drop_covered_feet(up, lo, up[3], lo[3])
+    cu, cl, us, ls = core_rg.corridor_s(r)
+    theirs = core_rg.drop_covered_feet(cu, cl, us, ls)
+    assert abs(len(theirs) - len(mine[0])) <= 0.02 * len(mine[0])
+    assert len(mine[0]) > 0.9 * len(lo[0])          # passages à la même hauteur : pieds presque tous gardés

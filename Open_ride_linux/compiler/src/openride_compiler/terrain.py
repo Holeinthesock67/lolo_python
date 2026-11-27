@@ -23,8 +23,6 @@
 
 from __future__ import annotations
 
-import os
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -455,23 +453,6 @@ def load_terrain_tiles(world: Path) -> dict[str, dict[tuple[int, int], np.ndarra
 
 
 def replace_terrain_dir(world: Path, tiles: dict[str, dict[tuple[int, int], np.ndarray]]) -> None:
-    """Remplace `world/terrain` de façon atomique : dossier temporaire voisin, puis renommage."""
-    world = Path(world)
-    final = world / "terrain"
-    tmp = world / f".terrain.tmp-{os.getpid()}"
-    old = world / f".terrain.old-{os.getpid()}"
-    shutil.rmtree(tmp, ignore_errors=True)
-    try:
-        write_terrain(tmp, tiles)
-        if final.exists():
-            final.rename(old)
-            try:
-                tmp.rename(final)
-            except BaseException:
-                old.rename(final)
-                raise
-            shutil.rmtree(old, ignore_errors=True)
-        else:
-            tmp.rename(final)
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+    """Remplace `world/terrain` de façon atomique et durable (`atomic_dir.replace_dir`)."""
+    from .atomic_dir import replace_dir
+    replace_dir(Path(world) / "terrain", lambda tmp: write_terrain(tmp, tiles))
