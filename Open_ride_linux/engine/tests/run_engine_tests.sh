@@ -323,12 +323,29 @@ if python3 "$ENGINE_DIR/tests/make_sim_world.py" --live --out "$HERBE_DIR" >/dev
 else
   echo "monde ouvert simulé non produit (compilateur installé ?) : contrôle incomplet, compté en échec"
 fi
+# Monde d'essai des ponts (lot EA4) : route sur un pont de 20 m au-dessus d'une ravine et un de 400 m au-dessus d'une
+# vallée ; le tablier porte la route, pas de talus ni d'appui demandé (22 novembre 2026, banc ea1_lac au relief ×2,5).
+if python3 "$ENGINE_DIR/tests/make_bridge_world.py" --out "$HERBE_DIR" >/dev/null 2>&1; then
+  HERBE_WORLDS+=("$HERBE_DIR/pont-essai.world")
+else
+  echo "monde d'essai des ponts non produit (compilateur installé ?) : contrôle incomplet, compté en échec"
+fi
+# Monde d'essai des tunnels (lot EA5) : tunnel de 300 m sous une crête de 45 m ; la colline reste au-dessus du tube,
+# le terrain n'y est pas dessiné (tunnel_cut.gd) : pas d'échec « sol au-dessus de la chaussée » dans le tube, portails
+# et approches contrôlés comme ailleurs (26 novembre 2026, Tromsø : +63 m dans les tunnels sous la ville).
+# Dossier à part : les mondes d'essai gardent leurs données OSM dans <out>/osm-cache, et celui des ponts, produit juste
+# avant, ferait lire au tunnel la trace sans tunnel (« aucun tunnel trouvé sur la trace »).
+if python3 "$ENGINE_DIR/tests/make_tunnel_world.py" --out "$HERBE_DIR/tunnel" >/dev/null 2>&1; then
+  HERBE_WORLDS+=("$HERBE_DIR/tunnel/tunnel-essai.world")
+else
+  echo "monde d'essai des tunnels non produit (compilateur installé ?) : contrôle incomplet, compté en échec"
+fi
 HERBE_OUT="$(timeout -k 5 600 "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_herbe_route.gd -- "${HERBE_WORLDS[@]}" 2>&1)"
 herbe_rc=$?
 echo "$HERBE_OUT" | grep -v "^Godot Engine" || true
 herbe_count="$(echo "$HERBE_OUT" | grep -E "^test_herbe_route : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
 if [ -z "$herbe_count" ] || echo "$HERBE_OUT" | grep -q -E "SCRIPT ERROR|ERROR:"; then herbe_rc=1; fi
-if [ "${#HERBE_WORLDS[@]}" -lt 7 ]; then herbe_rc=1; fi
+if [ "${#HERBE_WORLDS[@]}" -lt 8 ]; then herbe_rc=1; fi
 record "test_herbe_route (paysage hors de la chaussée, route posée sur le sol, ${#HERBE_WORLDS[@]} parcours)" "$herbe_rc" "${herbe_count#*: }"
 rm -rf "$HERBE_DIR"
 
