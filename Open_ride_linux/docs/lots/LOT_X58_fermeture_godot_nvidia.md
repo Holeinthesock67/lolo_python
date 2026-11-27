@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X : trouver pourquoi Godot ne se ferme pas en `--native` sur le pilote NVIDIA (fils vk/cuda en attente) et retirer si possible le contournement de 3 s du lanceur | Python + GDScript | X55 | Petite | Cause et correction livrées le 12 novembre (PR #805) ; passage sur le PC à faire |
+| Série X : trouver pourquoi Godot ne se ferme pas en `--native` sur le pilote NVIDIA (fils vk/cuda en attente) et retirer si possible le contournement de 3 s du lanceur | Python + GDScript | X55 | Petite | **Livré le 12 novembre** (PR #805) ; passage sur le PC à faire |
 
 Suite du lot X55 (31 octobre) : sur le PC cible, la fermeture par la souris bloque après « scène libérée, arrêt des serveurs de Godot », seulement en `--native` (fils `vk*` et `cuda` en futex) ; le lanceur tue Godot au bout de 3 s (`launcher.ENGINE_SHUTDOWN_S`). Le cahier X55 renvoyait la cause « après la 1.0 », sans lot. Cahier rédigé le 8 novembre.
 
@@ -61,7 +61,7 @@ Les quatre piles sont identiques. Le fil principal attend dans `pthread_cond_wai
 le Godot 4.7.2 officiel) ; le désassemblage de cet endroit est la boucle de `WorkerThreadPool::exit_languages_threads`
 (appelée par `Main::cleanup`) : `_switch_runlevel(RUNLEVEL_PRE_EXIT_LANGUAGES)` puis attente que
 `num_idle_threads` vaille le nombre de fils. Les quatre `WorkerThread` dorment dans leur attente de tâche (même
-verrou `task_mutex`). Dans `core/object/worker_thread_pool.cpp` (4.7.2), un fil ne se compte inactif que si
+verrou `task_mutex`). Dans core/object/worker_thread_pool.cpp du code source de Godot (4.7.2), un fil ne se compte inactif que si
 `task_queue` ET `low_priority_task_queue` sont vides : une tâche de basse priorité restée dans sa file au moment de
 quitter (avec 4 fils, une seule tâche de basse priorité tourne à la fois) bloque donc le décompte sans fin, alors
 que les fils n'ont rien à faire. Le jeu lance toutes ses tâches en basse priorité (fonds sonores, décor, forêt,
