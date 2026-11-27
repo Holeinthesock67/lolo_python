@@ -301,8 +301,11 @@ class RogueMode:
         self.buttons.clear()
 
     def resync(self) -> list[dict]:
-        """Messages `room` et `loot` récents, pour `rogue_resync`."""
-        return list(self.sent)
+        """Messages pour `rogue_resync` : salles récentes déjà envoyées, puis l'état courant reconstruit (salle en
+        cours, offre ouverte, portes du couloir ; revue de code E10-01). L'offre courante part seule et en dernier :
+        une offre plus ancienne du même couloir (avant une relance des cartes) la remplacerait à l'écran."""
+        rooms = [m for m in self.sent if m.get("type") == "room"]
+        return rooms + self.engine.current_messages()
 
 
 def choose(chassis_table: tuple[Chassis, ...] | None, stats: RogueStats | None, chassis_id: str) -> Chassis | None:
