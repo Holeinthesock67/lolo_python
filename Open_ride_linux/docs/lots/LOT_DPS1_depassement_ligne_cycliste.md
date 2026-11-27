@@ -53,5 +53,5 @@ Mêmes changements dans le core et l'engine ; relevé de parité régénéré. P
 
 ## Livraison
 
-- Branche `claude/project-thread-pul5ey`, depuis main ; indépendante de #1144 (DL2) et de #1132 (EC8), aucune ligne
+- PR #1148, branche `claude/project-thread-pul5ey`, depuis main ; indépendante de #1144 (DL2) et de #1132 (EC8), aucune ligne
   commune (même résultat avec #1144 appliquée en plus).
