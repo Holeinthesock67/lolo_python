@@ -213,6 +213,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
   - juste avant de fusionner un train : `python3 scripts/avant_poussee.py --avant-fusion` (lot BM1 : main changé depuis la base du train sur un fichier commun ou partagé = fusionner main dans le train et attendre sa CI) ;
   - messages de commit en français ;
   - fusion dans `main` (`--no-ff`) seulement quand tout est vert ;
+  - PR qui change le contrat IPC : ajouter dans `core/src/openride_core/revisions_ipc/a_numeroter/` un fichier `LOT.txt` (une ligne : sa ligne de journal), sans toucher `CONTRACT_REV`, son assertion ni `historique.txt` ; le fil de fusion lance `python3 scripts/numeroter_revisions.py --ecrire` sur la branche du train (lot CF2) ; PR d'avant le registre : `git merge origin/main` puis `--migrer LOT` ;
   - juste après chaque fusion dans main (train ou PR) : `python3 scripts/conflits_ouverts.py --gh` (ou `--liste` « NUMÉRO BRANCHE ») liste en quelques secondes les PR ouvertes que la fusion met en conflit ou dont le numéro IPC / WORLDGEN / SCHEMA est désormais pris (lot CF1) ; prévenir aussitôt leurs fils ;
   - après une fusion, le propriétaire fait `git checkout main && git pull` sur son PC.
 - **Fichiers à ne pas versionner :** `.venv/`, `spike_reports/`, `*.fit`, `*.jsonl`, `.coverage`.
