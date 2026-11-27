@@ -88,6 +88,7 @@ const LANE_FREE_M := 100.0
 const MIN_CENTRE_M := MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
 const GUARD_RIDER_WIDTH_M := MIN_CENTRE_M - 1.5e-3   # lot DPS1 : garde finale, en travers du cycliste
 const GUARD_STEPS := 8                # lot DPS1 : corrections au plus par groupe et par pas
+const GUARD_REACH_M := GUARD_LEN_M + GUARD_STEPS * (2.0 * GUARD_LEN_M + 0.01)   # portée de la garde autour d'une file
 const GROUP_CLEAR_M := 30.0
 const VEHICLE_CLEAR_M := 60.0         # pas d'apparition à moins de 60 m d'un véhicule de traffic_model.gd (lot P32)
 ## Lot DB3 (banc rDB3) : un groupe ne double jamais un véhicule du même sens ; il se cale sur sa vitesse de
@@ -756,6 +757,8 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 ## à sa vitesse au plus ; touché par derrière ou par un usager d'en face, il s'écarte à la place libre la plus proche,
 ## sinon son groupe est avancé devant, à la vitesse de l'autre. Corrections comptées dans `guard_total`.
 func _guard(rider_s: float, rider_v: float) -> void:
+	if not _guard_needed(rider_s):
+		return
 	var placed: Array = [[rider_s, rider_lane, rider_v, 1, GUARD_RIDER_WIDTH_M]]   # le cycliste : à MIN_CENTRE_M au moins en travers
 	for b in _bot_groups:
 		placed.append([float(b["s"]), float(b["members"][0]["lateral"]), float(b["speed_mps"]), int(b["dir"]), GUARD_WIDTH_M])
@@ -766,6 +769,56 @@ func _guard(rider_s: float, rider_v: float) -> void:
 		for m in g["members"]:
 			placed.append([float(g["s"]) - float(g["dir"]) * float(m["dl"]), float(m["lateral"]), _step_mps(g), int(g["dir"]), GUARD_WIDTH_M])
 
+
+## Lot DPS1 : vrai si deux occupants se touchent (au sens de `_touch`) ; sinon la garde ne changerait rien et elle est
+## sautée. Comparaisons directes, sans tableau ni tri : quelques groupes près du cycliste, à chaque pas.
+func _guard_needed(rider_s: float) -> bool:
+	var n := groups.size()
+	var lo := PackedFloat64Array()
+	var hi := PackedFloat64Array()
+	lo.resize(n)
+	hi.resize(n)
+	for gi in range(n):   # étendue de chaque file le long de la route : les files éloignées ne se comparent pas
+		var g: Dictionary = groups[gi]
+		var d_lo := INF
+		var d_hi := -INF
+		for m in g["members"]:
+			var ms := float(g["s"]) - float(g["dir"]) * float(m["dl"])
+			d_lo = minf(d_lo, ms)
+			d_hi = maxf(d_hi, ms)
+		lo[gi] = d_lo - GUARD_LEN_M
+		hi[gi] = d_hi + GUARD_LEN_M
+	for gi in range(n):
+		var near_rider := rider_s > lo[gi] and rider_s < hi[gi]
+		var near_bot := false
+		for b in _bot_groups:
+			if float(b["s"]) > lo[gi] and float(b["s"]) < hi[gi]:
+				near_bot = true
+		var near_h: Array = []
+		for hi_ in range(gi + 1, n):
+			if lo[hi_] < hi[gi] and hi[hi_] > lo[gi]:
+				near_h.append(groups[hi_])
+		if not near_rider and not near_bot and near_h.is_empty():
+			continue
+		var g: Dictionary = groups[gi]
+		var g_s := float(g["s"])
+		var g_dir := float(g["dir"])
+		for m in g["members"]:
+			var s := g_s - g_dir * float(m["dl"])
+			var lat := float(m["lateral"])
+			if near_rider and absf(rider_s - s) < GUARD_LEN_M and absf(rider_lane - lat) < GUARD_RIDER_WIDTH_M:
+				return true
+			if near_bot:
+				for b in _bot_groups:
+					if absf(float(b["s"]) - s) < GUARD_LEN_M and absf(float(b["members"][0]["lateral"]) - lat) < GUARD_WIDTH_M:
+						return true
+			for h in near_h:
+				var h_s := float(h["s"])
+				var h_dir := float(h["dir"])
+				for o in h["members"]:
+					if absf(h_s - h_dir * float(o["dl"]) - s) < GUARD_LEN_M and absf(float(o["lateral"]) - lat) < GUARD_WIDTH_M:
+						return true
+	return false
 
 ## Lot DPS1 : vrai si aucun membre d'un autre groupe de son sens n'est sur la ligne `lat` (à moins de MIN_CENTRE_M) à
 ## hauteur de `g`, de sa queue à sa tête, à SIDE_LOOK_M près.
@@ -791,9 +844,25 @@ static func _touch(s: float, lat: float, placed: Array) -> int:
 	return -1
 
 
-func _guard_group(g: Dictionary, placed: Array) -> void:
+func _guard_group(g: Dictionary, all_placed: Array) -> void:
 	var dir := int(g["dir"])
 	var edge := _edge_lateral(_half_at(float(g["s"])))
+	# Seuls comptent les occupants à portée : un pas de la garde déplace le groupe de moins de 2 × GUARD_LEN_M, d'où
+	# GUARD_REACH_M autour de sa file (même résultat qu'avec tous les occupants, beaucoup moins de calcul).
+	var lo := INF
+	var hi := -INF
+	for m in g["members"]:
+		var m_s0 := float(g["s"]) - float(dir) * float(m["dl"])
+		lo = minf(lo, m_s0)
+		hi = maxf(hi, m_s0)
+	lo -= GUARD_REACH_M
+	hi += GUARD_REACH_M
+	var placed: Array = []
+	for o in all_placed:
+		if float(o[0]) > lo and float(o[0]) < hi:
+			placed.append(o)
+	if placed.is_empty():
+		return
 	for _k in range(GUARD_STEPS):
 		var hit_m: Dictionary = {}
 		var hit_o: Array = []
