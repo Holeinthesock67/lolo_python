@@ -104,6 +104,42 @@ def test_level_does_not_depend_on_the_window() -> None:
     assert np.array_equal(small.at(pts[:, 0], pts[:, 1]), big.at(pts[:, 0], pts[:, 1]))
 
 
+def test_level_is_bounded_at_the_end_of_a_narrow_arm() -> None:
+    """K3-02 : un bras étroit (aucun nœud dedans) au bout d'une partie large de quelques nœuds dont le plan
+    monte vite : le niveau au bout du bras reste entre le plus bas et le plus haut des nœuds."""
+    def h(xs, zs):
+        xs, zs = np.asarray(xs, float), np.asarray(zs, float)
+        return 100.0 + 0.1 * xs          # 2 m entre les nœuds de x = 0 et x = 20 : plan raide
+    wide = [(-5.0, -5.0), (25.0, -5.0), (25.0, 15.0), (-5.0, 15.0)]   # nœuds (0|10|20, 0|10)
+    lv = RS.RiverLevels([(wide, [])], h)
+    assert len(lv.nodes) == 6
+    lo, hi = float(lv.node_y.min()), float(lv.node_y.max())
+    xs = np.array([45.0, 85.0, 125.0])   # bout du bras, sans nœud, de 25 à 105 m du dernier nœud
+    ys = lv.at(xs, np.full(3, 5.0))
+    assert np.all(ys >= lo - 1e-9) and np.all(ys <= hi + 1e-9)
+    assert ys.max() == pytest.approx(hi)   # sans borne : 104,5, 108,5 et 112,5 m (plan prolongé)
+    down = RS.RiverLevels([(wide, [])], lambda x, z: 100.0 - 0.1 * np.asarray(x, float))
+    assert down.at([125.0], [5.0])[0] == pytest.approx(float(down.node_y.min()))   # ni creusée dessous
+
+
+def test_level_bound_does_not_change_a_regular_channel() -> None:
+    h = valley()
+    lv = RS.RiverLevels([RIVER], h)
+    xs = np.arange(0.0, 3001.0, 250.0)
+    ys = lv.at(xs, np.full(len(xs), 150.0))
+    assert np.all(np.abs(ys - (300.0 - 0.002 * xs)) < 1.0)
+
+
+def test_square_inside_a_large_island_has_no_water() -> None:
+    """K3-03 : un carré entièrement sur une île (anneau intérieur) n'est pas un carré d'eau plein."""
+    outer = [(-3000.0, -3000.0), (4000.0, -3000.0), (4000.0, 4000.0), (-3000.0, 4000.0)]
+    island = [(-500.0, -500.0), (-500.0, 1500.0), (1500.0, 1500.0), (1500.0, -500.0)]
+    assert RS.clip_to_rect(outer, [island], 0, 0, 1000, 1000) == []
+    full = RS.clip_to_rect(outer, [island], 2000, 2000, 3000, 3000)   # hors de l'île : tout eau
+    assert len(full) == 1 and area(full[0]) == pytest.approx(1_000_000.0)
+    assert RS.clip_to_rect(outer, [island], 5000, 5000, 6000, 6000) == []   # hors de la rivière
+
+
 def test_lines_are_cut_inside_the_surface() -> None:
     lv = RS.RiverLevels([RIVER], valley())
     line = {"id": "w1", "kind": "river", "width_m": 6.0,
@@ -188,6 +224,23 @@ def test_compiled_river_surface_descends_and_ground_is_sunk(river_world) -> None
     assert np.all(tile[mid] <= expect - C.WATER_SINK_M + 1.5)
     road = np.abs(gx) < 2
     assert np.allclose(tile[road], 1000.0 - 0.05 * gz[road], atol=0.2)
+
+
+def test_verify_checks_river_levels(river_world, capsys) -> None:
+    """K3-07 : `verify` contrôle `outer_y` (une altitude finie par sommet) et `holes_y` (une liste par île)."""
+    world = river_world
+    p = next(p for p in sorted((world / "water").glob("chunk_*.json"))
+             if any(a["kind"] == "river" for a in json.loads(p.read_text(encoding="utf-8"))["areas"]))
+    data = json.loads(p.read_text(encoding="utf-8"))
+    river = next(a for a in data["areas"] if a["kind"] == "river")
+    river["outer_y"] = river["outer_y"][:-1]
+    river["holes_y"] = [[]]
+    p.write_text(json.dumps(data), encoding="utf-8")
+    capsys.readouterr()
+    assert cli.main(["verify", str(world)]) != 0
+    out = capsys.readouterr()
+    text = out.out + out.err
+    assert "outer_y invalide" in text and "holes_y invalide" in text
 
 
 def test_add_layer_water_gives_the_same_world(river_world) -> None:
