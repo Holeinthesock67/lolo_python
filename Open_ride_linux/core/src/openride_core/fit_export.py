@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -415,9 +416,27 @@ def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[fl
     act.local_timestamp = int(s.end_ts + (offset.total_seconds() if offset else 0)) - FIT_EPOCH_S
     b.add(act)
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    b.build().to_file(str(path))
+    write_atomic(b.build().to_bytes(), path)
     return s
+
+
+def write_atomic(data: bytes, path: Path) -> None:
+    """Écrit `path` d'un coup (revue S1-02) : fichier `.part` à côté, vidé sur le disque, puis renommé.
+    Un arrêt en cours d'écriture laisse au pire un `.part`, jamais un FIT tronqué sous le vrai nom."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".part")
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def default_fit_path(start_ts: float, route_name: str | None) -> Path:
