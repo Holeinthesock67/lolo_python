@@ -99,7 +99,8 @@
         "u_turn",
         "bots_preview",
         "league_status",
-        "league_new"
+        "league_new",
+        "create_diagnostic"
       ]
     },
     "args": {

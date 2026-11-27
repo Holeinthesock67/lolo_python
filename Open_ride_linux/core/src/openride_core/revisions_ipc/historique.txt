@@ -29,3 +29,4 @@
 1.34 | RT2 | fin de séance commune, `arrival` de `state` et du bilan
 1.35 | PP3 | « Ma puissance », `list_power_curve` et `power_curve` (fusionnée après la 1.36)
 1.36 | SV1 | copies automatiques du profil, `list_profile_backups`, `restore_profile_backup`, `profile_backups`
+1.37 | DG1 | fichier de diagnostic, `create_diagnostic` et `diagnostic`
