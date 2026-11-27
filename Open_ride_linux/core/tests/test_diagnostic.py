@@ -113,6 +113,19 @@ def test_same_device_keeps_same_mark():
     assert out == "<appareil-1> puis <appareil-2> puis <appareil-1> puis dev_<appareil-1>"
 
 
+@pytest.mark.parametrize("line", [
+    # hello_ack écrit par l'engine (GDScript, Dictionary) et en JSON (revue E1-07)
+    f'hello_ack reçu : configuration {{ "open_world": {{ "lat": {SECRET_GPS[0]}, "lon": {SECRET_GPS[1]} }} }}',
+    f'hello_ack config={{"open_world":{{"lat":{SECRET_GPS[0]},"lon":{SECRET_GPS[1]}}}}}',
+    "dernier départ 'lat': 12, 'lon': -98",
+])
+def test_position_in_dict_form_is_masked(line):
+    out = diagnostic.Masker().mask(line)
+    assert SECRET_GPS[0] not in out and SECRET_GPS[1] not in out, out
+    assert "12" not in out and "98" not in out, out
+    assert out.count("<position>") == 2
+
+
 @pytest.mark.parametrize("dest, folder", [("openride", "OpenRide/Diagnostics"), ("bureau", "Desktop"),
                                           ("telechargements", "Téléchargements")])
 def test_dest_dir(tmp_path, dest, folder):

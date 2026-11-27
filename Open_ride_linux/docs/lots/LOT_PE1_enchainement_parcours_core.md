@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Enchaînement de parcours en session libre : qui peut enchaîner, parcours suivant, phases « choix » et « en route », un seul journal et un seul FIT avec un tour par parcours | Python | RT2, AC5 | Moyenne | En cours (module pur et tours FIT codés le 23 novembre ; branchement dans la séance après RT2 et AC5) |
+| Enchaînement de parcours en session libre : qui peut enchaîner, parcours suivant, phases « choix » et « en route », un seul journal et un seul FIT avec un tour par parcours | Python | RT2, AC5 | Moyenne | **Livré le 25 novembre** (PR #1016) ; module pur et tours du FIT ; branchement dans la séance à faire |
 
 Demande du propriétaire du 22 novembre 2026 : à l'arrivée d'un parcours en ligne en session libre, enchaîner sur un
 autre parcours sans s'arrêter ni repasser par l'accueil, avec une courte animation « hyperespace » pendant le

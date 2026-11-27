@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Courbe de puissance du profil (13 durées, 6 mois et 6 semaines, libre ou ERG) | Python | R16, MJ1 | Moyenne | PR ouverte le 21 novembre (série PP, 6.0) |
+| Courbe de puissance du profil (13 durées, 6 mois et 6 semaines, libre ou ERG) | Python | R16, MJ1 | Moyenne | **Livré le 24 novembre** (PR #971) |
 
 ## 1. Objectif
 

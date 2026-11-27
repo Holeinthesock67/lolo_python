@@ -60,8 +60,9 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Poids, FTP et puissance critique : la valeur suit le mot (« FTP 250 W », « poids=72.5 »)
     (re.compile(r"(?i)\b(ftp(?:_w)?|cp_w|poids|masse|mass(?:_kg)?|weight)\b([^\d\n]{0,12}?)\d+(?:[.,]\d+)?"),
      r"\1\2" + MASK),
-    # Position : « lat=48.12345 », « lon : 7.0412 »
-    (re.compile(r"(?i)\b(lat(?:itude)?|lon(?:gitude)?|lng)\b(\s*[:=]?\s*)-?\d{1,3}[.,]\d+"), r"\1\2<position>"),
+    # Position : « lat=48.12345 », « lon : 7.0412 », et la forme JSON ou GDScript « "lat": 48.12 » (revue E1-07)
+    (re.compile(r"(?i)\b(lat(?:itude)?|lon(?:gitude)?|lng)\b([\"']?\s*[:=]?\s*)-?\d{1,3}(?:[.,]\d+)?"),
+     r"\1\2<position>"),
     # Couple de coordonnées « 48.8712, 7.1234 » (au moins trois décimales chacune)
     (re.compile(r"-?\b\d{1,3}\.\d{3,}\s*[,; ]\s*-?\d{1,3}\.\d{3,}\b"), "<position>"),
     # Adresse IPv4 (hors boucle locale)

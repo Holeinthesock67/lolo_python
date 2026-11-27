@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Même fin dans tous les modes : l'arrivée ne coupe plus la séance, même résultat écrit en séance et en tête du bilan, objectif sur l'écran de départ | Python, GDScript | RT1, EL1, CR1 | Moyenne | En revue (captures à valider) |
+| Même fin dans tous les modes : l'arrivée ne coupe plus la séance, même résultat écrit en séance et en tête du bilan, objectif sur l'écran de départ | Python, GDScript | RT1, EL1, CR1 | Moyenne | **Livré le 24 novembre** (PR #1000) |
 
 ## 1. Objectif
 

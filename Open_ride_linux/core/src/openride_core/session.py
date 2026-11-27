@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import functools
 import json
 import logging
 import math
@@ -56,7 +57,7 @@ from . import powerups as powerups_mod, profiles
 from . import profile_backups
 from .powerups import PowerUpError, load_table
 from .records import DATE_FORMAT as RECORDS_DATE_FORMAT, RecordBook, RecordsError
-from .recorder import SessionRecorder
+from .recorder import FitExporter, SessionRecorder
 from . import __version__, race_resume
 from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
@@ -103,6 +104,9 @@ STATS_PERIOD_S = 60.0
 START_CANCEL_COMMANDS = ("pause", "end_session", "select_workout", "start_run", "start_open_world",
                          "select_profile")
 SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
+# Attente du FIT en cours à l'arrêt (revue S1-02), sous les 10 s que le lanceur laisse au core (`stop_timeout_s`) ;
+# l'export d'une séance de 3 h prenait 7,1 s dans le cloud (revue).
+FIT_SHUTDOWN_WAIT_S = 8.0
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 # Biais ERG par appui de + ou − (§7.1) : petit pas ± 2 %, grand pas ± 10 % (cinq pas de BIAS_STEP_PCT).
 # Commandes de l'import d'entraînements (lot N16), retirées en révision 1.15 : refusées par `workout_invalid`.
@@ -453,6 +457,10 @@ class CoreSession:
                  cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
+        # Revue S1-02 : FIT écrit dans un fil à part pendant `run` (la boucle à 50 Hz) ; hors de `run` (tests,
+        # appels directs), écrit tout de suite par `_finish` comme avant.
+        self.fit_exports = FitExporter()
+        self.fit_in_background = False
 
         self._t_session = 0.0
         self._grade_sent = 0.0
@@ -2943,6 +2951,15 @@ class CoreSession:
                 self._rec.device(dev, "up" if up else "down", now)
         self._device_up = states
 
+    def _fit_done(self, summary: dict | None, path: Path | None, error: str | None) -> None:
+        """Fin d'un export FIT fait hors de la boucle (revue S1-02), dans le fil de la boucle : en cas d'échec,
+        le bilan ne cite plus de fichier et l'engine reçoit la même erreur qu'avant."""
+        if error is None:
+            return
+        if isinstance(summary, dict):
+            summary["fit_path"] = None
+        self.server.send_error("recording_failed", f"FIT non produit : {error}")
+
     def _on_recording_failure(self, exc: Exception) -> None:
         """Panne d'écriture du journal : erreur à l'écran et pause (contrat IPC §6)."""
         self.server.send_error("recording_failed", f"Écriture du journal impossible : {exc}")
@@ -2954,6 +2971,7 @@ class CoreSession:
         journal: str | None = None
         journal_path: Path | None = None
         records_done: list[dict] | None = []
+        fit_job = fit_path = None
         race, self.race = self.race, None
         wtf, self.wtf = self.wtf, None
         self.state.wtf = None
@@ -3012,7 +3030,12 @@ class CoreSession:
                 rogue_summary = self.rogue.summary()
                 rec.game(self.rogue.run_line(time.time()))
                 self.progress_svc.use_lives(self.rogue.engine.lives_used)   # vies rattrapant une défaite (R9)
-            fit_path, s, fit_error = rec.finish(save, ts=ts, private_start_m=privacy_zone.radius_m(self.cfg))
+            fit_job, s, fit_error = rec.close_session(save, ts=ts, private_start_m=privacy_zone.radius_m(self.cfg))
+            fit_path = None
+            if fit_job is not None and not self.fit_in_background:
+                fit_path, fit_error = fit_job.run()
+            elif fit_job is not None:   # revue S1-02 : écrit dans un fil à part, le bilan annonce le chemin prévu
+                fit_path = fit_job.path
             records, events = rec.records, rec.events
             records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
             if fit_error and save:
@@ -3051,6 +3074,8 @@ class CoreSession:
                                        "previous_ftp_w": ftp_result.previous_ftp_w,
                                        "warnings": list(ftp_result.warnings), "reliable": ftp_result.reliable}
         self.state.summary = summary
+        if fit_job is not None and fit_path is not None and self.fit_in_background:
+            self.fit_exports.submit(fit_job, lambda path, error, bilan=summary: self._fit_done(bilan, path, error))
         ow = self.openworld
         if ow is not None and save and ow.route is not None and ow.route.ready:
             try:   # lot W14 : la route parcourue devient un parcours de la bibliothèque
@@ -5469,6 +5494,7 @@ class CoreSession:
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
         self._spawn(self._refresh_rider_curve())   # courbe du cycliste pour les bots (lot PP6)
         self._resumed_journal = resume
+        self.fit_in_background = True   # revue S1-02 : plus d'export FIT dans la boucle
         self._publish_interrupted()   # lot O34 : dans le premier hello_ack
         profile_backups.start_weekly(self.profile_ctx, self.profiles_base)   # lot SV1 : copie de la semaine
         self.server.start()
@@ -5640,6 +5666,7 @@ class CoreSession:
             dt = min(now - last, MAX_STEP_S)
             last = now
             self._safe_step(dt, now)
+            self.fit_exports.poll()   # fins des exports FIT faits dans un fil à part (revue S1-02)
             step_s = mono() - t0
             self.stats.add(step_s, lag)
 
@@ -5693,8 +5720,19 @@ class CoreSession:
             # Une panne du journal ou du FIT ne doit pas empêcher de relâcher le trainer.
             log.exception("Fin de séance incomplète")
         finally:
-            await self._stop_drivers(tasks)
-            self.server.stop()
+            try:
+                await self._stop_drivers(tasks)   # le trainer se relâche pendant que le FIT s'écrit
+            finally:
+                # Revue S1-02 : l'arrêt attend le FIT en cours (écriture atomique : jamais de fichier tronqué).
+                if self.fit_exports.busy:
+                    await asyncio.get_running_loop().run_in_executor(
+                        None, functools.partial(self.fit_exports.wait, FIT_SHUTDOWN_WAIT_S, process=False))
+                    self.fit_exports.poll()   # fins traitées ici, dans le fil de la boucle
+                    if self.fit_exports.busy:
+                        log.error("Export FIT inachevé après %.0f s : le journal de la séance reste (openride-core "
+                                  "recover).", FIT_SHUTDOWN_WAIT_S)
+                self.fit_exports.close()
+                self.server.stop()
 
     async def _stop_drivers(self, tasks: list[asyncio.Task]) -> None:
         """Annule la consigne, arrête les pilotes et leur laisse le temps de rendre le trainer."""

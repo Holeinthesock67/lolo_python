@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Paysage `ville_neon` du thème (membre `neon`), énumération du contrat des parcours, validation et règle unique de l'engine ; premier lot du parcours « Avenue de la Lagune » | GDScript, Python | U25, DB2 | Petite | **En revue** (26 novembre) |
+| Paysage `ville_neon` du thème (membre `neon`), énumération du contrat des parcours, validation et règle unique de l'engine ; premier lot du parcours « Avenue de la Lagune » | GDScript, Python | U25, DB2 | Petite | **Livré le 26 novembre** (PR #1085) |
 
 Demande du propriétaire du 26 novembre 2026 : une ambiance de ville de bord de mer des années 80 (néons rose et cyan, coucher de soleil, palmiers, route mouillée). Après deux prototypes au cloud, choix « parcours vitrine d'abord » puis « lots cloud tout de suite, date libre ». Cadrage hors dépôt : `/mnt/project-files/plans/CADRAGE_AVENUE_LAGUNE_2026-11-26.md` (lots NV0 à NV7).
 

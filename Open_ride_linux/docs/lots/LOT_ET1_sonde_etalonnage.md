@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| `openride-ble-diag spindown` : le trainer fait-il vraiment l'étalonnage qu'il annonce ? Sans écran | Python | — | Petite | En revue (PR à venir) |
+| `openride-ble-diag spindown` : le trainer fait-il vraiment l'étalonnage qu'il annonce ? Sans écran | Python | — | Petite | **Livré le 23 novembre** (PR #1009) |
 
 ## 1. Objectif
 
