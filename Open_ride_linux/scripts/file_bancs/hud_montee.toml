@@ -12,7 +12,8 @@
 #    des images et les images de plus de 50 et 100 ms, surtout après le sommet (plus de montée devant).
 # Parcours classique, pas de monde ouvert : le cache du monde n'est pas lu. Pas de changement IPC ni WORLDGEN.
 # main n'a pas le scénario avant la fusion : l'étape main le reprend de la branche (git show).
-# La tête est celle de la CI verte du 27/11 ; le fil de fusion la remplace si la branche a bougé.
+# Pas de `tete` fixée (facultative pour une [[pr]]) : la file prend la tête de la branche ; le fil de fusion
+# peut en fixer une.
 
 [file]
 depot = "~/Games/lolo_python"
@@ -25,7 +26,6 @@ attente_s = 60
 id = "r1130"
 pr = 1130
 branche = "claude/project-thread-q0tehc"
-tete = "d1a369b9"
 categorie = "logique"
 risque = 1
 fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
