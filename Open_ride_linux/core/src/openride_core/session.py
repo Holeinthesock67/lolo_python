@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import functools
 import json
 import logging
 import math
@@ -56,10 +57,12 @@ from . import powerups as powerups_mod, profiles
 from . import profile_backups
 from .powerups import PowerUpError, load_table
 from .records import DATE_FORMAT as RECORDS_DATE_FORMAT, RecordBook, RecordsError
-from .recorder import SessionRecorder
+from .recorder import FitExporter, SessionRecorder
 from . import __version__, race_resume
 from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
+from .game_modes import registry as game_modes
+from .game_modes.base import ModeContext
 
 ROGUE_SCENE_ID = "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 from .demo_world import ensure_demo_world
@@ -101,6 +104,9 @@ STATS_PERIOD_S = 60.0
 START_CANCEL_COMMANDS = ("pause", "end_session", "select_workout", "start_run", "start_open_world",
                          "select_profile")
 SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
+# Attente du FIT en cours à l'arrêt (revue S1-02), sous les 10 s que le lanceur laisse au core (`stop_timeout_s`) ;
+# l'export d'une séance de 3 h prenait 7,1 s dans le cloud (revue).
+FIT_SHUTDOWN_WAIT_S = 8.0
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 # Biais ERG par appui de + ou − (§7.1) : petit pas ± 2 %, grand pas ± 10 % (cinq pas de BIAS_STEP_PCT).
 # Commandes de l'import d'entraînements (lot N16), retirées en révision 1.15 : refusées par `workout_invalid`.
@@ -415,6 +421,7 @@ class CoreSession:
         self.grandprix_path: Path = grandprix_path or gp_items.GRANDPRIX_FILE   # objets et valeurs (lot GP2)
         self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
+        self._mode_ctx = ModeContext(self)   # vue de la séance lue par les adaptateurs de mode (lot IM1)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
         self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
         # Courbe du cycliste en % de sa FTP (lot PP6), calculée hors de la boucle au lancement, au changement de
@@ -450,6 +457,10 @@ class CoreSession:
                  cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
+        # Revue S1-02 : FIT écrit dans un fil à part pendant `run` (la boucle à 50 Hz) ; hors de `run` (tests,
+        # appels directs), écrit tout de suite par `_finish` comme avant.
+        self.fit_exports = FitExporter()
+        self.fit_in_background = False
 
         self._t_session = 0.0
         self._grade_sent = 0.0
@@ -879,6 +890,63 @@ class CoreSession:
             self._handle_collection_seen(args, cmd_id)
         elif name in ("league_status", "league_new"):   # révision 1.30 (lot CH3) : ligue d'hiver
             self._on_league_command(name, cmd_id)
+        elif name == "create_diagnostic":
+            self._on_create_diagnostic(args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- fichier de diagnostic (lot DG1, contrat IPC révision 1.37) ----------------------------
+
+    def _on_create_diagnostic(self, args: dict, cmd_id: int) -> None:
+        """`create_diagnostic` : archive masquée écrite dans le dossier choisi, réponse `diagnostic`.
+        Accepté à tout moment (lecture seule, écrite hors de la boucle) ; rien n'est envoyé."""
+        from . import diagnostic
+
+        dest = str(args.get("dest") or "openride")
+        if dest not in diagnostic.DESTS:
+            self.server.send_error("bad_args", f"Diagnostic : destination inconnue « {dest} ».")
+            return
+        try:
+            entries = [(c.id or "", c.name) for c in profiles.list_contexts(self.profiles_base)]
+        except (profiles.ProfileContextError, OSError):
+            entries = []
+        if self.profile_ctx.id:
+            entries.append((self.profile_ctx.id, self.profile_ctx.name))
+        kwargs = dict(home=self.import_home, devices=self._build_devices(), profile_entries=entries,
+                      engine_version=str(args.get("engine_version") or "")[:40],
+                      gpu=str(args.get("gpu") or "")[:80], session_state=self.state.session_state,
+                      extra={"trainer_puissance_w": list(getattr(self.driver, "power_range", ()) or ())})
+
+        def done(res: dict | None, reason: str = "") -> None:
+            msg = {"type": "diagnostic", "v": 1, "request_cmd_id": cmd_id, "ok": res is not None, "dest": dest}
+            if res is not None:
+                msg.update(path=res["path"], size_kb=res["size_kb"], masked=res["masked"])
+                log.info("Diagnostic écrit : %s (%d ko, %d valeurs masquées).", res["path"], res["size_kb"],
+                         res["masked"])
+            else:
+                msg["reason"] = reason[:200]
+                log.warning("Diagnostic refusé : %s", reason)
+            self.server.send_raw(msg)
+
+        def run() -> None:
+            try:
+                done(diagnostic.write(self.cfg, dest, **kwargs))
+            except diagnostic.DiagnosticError as exc:
+                done(None, str(exc))
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : sur place
+            run()
+            return
+
+        async def bg() -> None:
+            try:
+                res = await asyncio.to_thread(diagnostic.write, self.cfg, dest, **kwargs)
+            except diagnostic.DiagnosticError as exc:
+                done(None, str(exc))
+            else:
+                done(res)
+
+        self._spawn(bg())
 
     # --- contenus installables depuis le menu (lot O25, contrat IPC révision 1.5) ---------------
 
@@ -1404,6 +1472,7 @@ class CoreSession:
         except RuntimeError:   # hors boucle (essais) : bilan envoyé une fois
             msg = self._build_xp_result(journal, records)
             self.server.send_raw(msg)
+            self._send_progression_after_session()
             return
         self._spawn(self._send_xp_result(journal, records))
 
@@ -1415,16 +1484,33 @@ class CoreSession:
         self._publish_rogue()   # châssis débloqués, vies et dernière run pour la prochaine connexion de l'engine
         return msg
 
+    def _send_progression_after_session(self) -> None:
+        """Message `progression` (sans demande, `request_cmd_id` 0) après le bilan d'une séance (revue de code
+        E10-08) : pièces gagnées et vies du Cyber-Rogue consommées. Sans lui, l'engine gardait jusqu'au
+        lancement suivant le solde et la réserve de vies d'avant la run (« Vies : 3 / 3 · Réserve pleine »),
+        et la vie perdue ne pouvait pas être rachetée. Même message qu'après un achat au Garage."""
+        try:
+            if self.progress_svc.progression_dict() is not None:
+                self.server.send_raw(self.progress_svc.progression_message(0))
+        except Exception:
+            log.exception("Progression après la séance non envoyée")
+
     async def _send_xp_result(self, journal: str, records: list[dict] | None) -> None:
         """`xp_result` à la fin de la séance, répété chaque seconde tant qu'elle reste `FINISHED`."""
         try:
             msg = await asyncio.to_thread(self._build_xp_result, journal, records)
+            prog_sent = False
             for i in range(XP_RESULT_REPEATS):
                 if self.state.session_state != "FINISHED":
                     break
                 self.server.send_raw(msg)
+                if not prog_sent:
+                    prog_sent = True
+                    self._send_progression_after_session()
                 if i < XP_RESULT_REPEATS - 1:
                     await asyncio.sleep(XP_RESULT_PERIOD_S)
+            if not prog_sent:                  # séance déjà quittée : les vies et pièces à jour partent quand même
+                self._send_progression_after_session()
         except Exception:
             log.exception("Bilan d'expérience impossible (%s)", journal)
 
@@ -2865,6 +2951,15 @@ class CoreSession:
                 self._rec.device(dev, "up" if up else "down", now)
         self._device_up = states
 
+    def _fit_done(self, summary: dict | None, path: Path | None, error: str | None) -> None:
+        """Fin d'un export FIT fait hors de la boucle (revue S1-02), dans le fil de la boucle : en cas d'échec,
+        le bilan ne cite plus de fichier et l'engine reçoit la même erreur qu'avant."""
+        if error is None:
+            return
+        if isinstance(summary, dict):
+            summary["fit_path"] = None
+        self.server.send_error("recording_failed", f"FIT non produit : {error}")
+
     def _on_recording_failure(self, exc: Exception) -> None:
         """Panne d'écriture du journal : erreur à l'écran et pause (contrat IPC §6)."""
         self.server.send_error("recording_failed", f"Écriture du journal impossible : {exc}")
@@ -2876,6 +2971,7 @@ class CoreSession:
         journal: str | None = None
         journal_path: Path | None = None
         records_done: list[dict] | None = []
+        fit_job = fit_path = None
         race, self.race = self.race, None
         wtf, self.wtf = self.wtf, None
         self.state.wtf = None
@@ -2934,7 +3030,12 @@ class CoreSession:
                 rogue_summary = self.rogue.summary()
                 rec.game(self.rogue.run_line(time.time()))
                 self.progress_svc.use_lives(self.rogue.engine.lives_used)   # vies rattrapant une défaite (R9)
-            fit_path, s, fit_error = rec.finish(save, ts=ts, private_start_m=privacy_zone.radius_m(self.cfg))
+            fit_job, s, fit_error = rec.close_session(save, ts=ts, private_start_m=privacy_zone.radius_m(self.cfg))
+            fit_path = None
+            if fit_job is not None and not self.fit_in_background:
+                fit_path, fit_error = fit_job.run()
+            elif fit_job is not None:   # revue S1-02 : écrit dans un fil à part, le bilan annonce le chemin prévu
+                fit_path = fit_job.path
             records, events = rec.records, rec.events
             records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
             if fit_error and save:
@@ -2973,6 +3074,8 @@ class CoreSession:
                                        "previous_ftp_w": ftp_result.previous_ftp_w,
                                        "warnings": list(ftp_result.warnings), "reliable": ftp_result.reliable}
         self.state.summary = summary
+        if fit_job is not None and fit_path is not None and self.fit_in_background:
+            self.fit_exports.submit(fit_job, lambda path, error, bilan=summary: self._fit_done(bilan, path, error))
         ow = self.openworld
         if ow is not None and save and ow.route is not None and ow.route.ready:
             try:   # lot W14 : la route parcourue devient un parcours de la bibliothèque
@@ -3047,20 +3150,12 @@ class CoreSession:
         return True
 
     def _fill_rogue_frame(self) -> None:
-        """Objet `rogue` de la trame : état du dernier pas et événements de tous les pas depuis la trame
-        précédente (lot R23 : la boucle tourne à 50 Hz, la trame part à 30 Hz)."""
-        if self.rogue is None:
-            return
-        frame = self.rogue.take_frame()
-        if frame is not None:
-            self.state.rogue = frame
+        """Partie `rogue` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["rogue"].fill_frame(self._mode_ctx)
 
     def _fill_wtf_frame(self) -> None:
-        st = self.state
-        if self.wtf is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.wtf = None
-            return
-        st.wtf = self.wtf.frame(self._t_session, self.physics.s)
+        """Partie `wtf` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["wtf"].fill_frame(self._mode_ctx)
 
     # --- mode « Dernier survivant » (série DS, lot DS2) ------------------------------------
 
@@ -3366,7 +3461,7 @@ class CoreSession:
             season = league.new_season(self._league_today(), previous=previous, roster=roster)
             try:
                 if previous is not None:   # saison close gardée à part, classement et trophée compris (revue F1-07)
-                    league.save(self._league_path().with_name(f"ligue_saison_{previous.number}.json"), previous)
+                    league.save(league.archive_path(self._league_path(), previous.number), previous)
                 rivals.save(self._rivals_path(), roster)   # rivaux d'abord : jamais une saison sans ses rivaux
                 league.save(self._league_path(), season)
             except OSError as exc:
@@ -3376,7 +3471,8 @@ class CoreSession:
                      season.end_day(self._league_today()))
             if self._rec:
                 self._rec.game({"kind": "league_new", "ts": round(time.time(), 3), "number": season.number})
-        self.server.send_raw(league.status(season, self._league_today(), cmd_id))
+        self.server.send_raw(league.status(season, self._league_today(), cmd_id,   # palmarès : lot CH6
+                                           past=league.history(self._league_path(), season)))
 
     def _league_field(self, args: dict, mode: str | None) -> list[Any] | None:
         """Plateau de la manche de la semaine : les 11 rivaux dans l'ordre de la saison, niveau = « Niveau des
@@ -3778,24 +3874,12 @@ class CoreSession:
         return added.rank
 
     def _fill_track_frame(self) -> None:
-        st = self.state
-        if self.track_event is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.track = None
-            return
-        st.track = self.track_event.frame()
+        """Partie `track` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["track"].fill_frame(self._mode_ctx)
 
     def _fill_survivor_frame(self) -> None:
-        st = self.state
-        if self.survivor is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.survivor = None
-            return
-        st.survivor = self.survivor.frame()
-        ahead = st.survivor.get("ahead")
-        if ahead is not None:
-            ahead["catch_w"] = self._survivor_catch_w(ahead["id"])
-        if st.bots:
-            st.bots = [{**b, "out": self.survivor.racers[b["id"]].out_arch}
-                       if b["id"] in self._survivor_out else b for b in st.bots]
+        """Partie `survivor` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["survivor"].fill_frame(self._mode_ctx)
 
     # --- mode « Grand Prix des objets » (série GP, lot GP2) --------------------------------
 
@@ -4006,14 +4090,8 @@ class CoreSession:
                 self._rec.game({**line, "ts": round(time.time(), 3)})
 
     def _fill_grandprix_frame(self) -> None:
-        st = self.state
-        gp = self.grandprix
-        if gp is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.gp = None
-            return
-        st.gp = gp.frame(GP_ME)
-        if st.bots:   # objet en réserve et effets en cours de chaque bot
-            st.bots = [{**b, **gp.bot_frame(b["id"])} if b["id"] in gp.racers else b for b in st.bots]
+        """Partie `grandprix` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["grandprix"].fill_frame(self._mode_ctx)
 
     # --- options des modes (lot GP2 : commandes génériques, celles du Mode WTF en alias) -------
 
@@ -4239,22 +4317,8 @@ class CoreSession:
         self._spawn(asyncio.to_thread(save))
 
     def _fill_race_frame(self) -> None:
-        """Champs de la révision 1.4 de la série T dans la trame `state`."""
-        st = self.state
-        race = self.race
-        if race is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.segment = st.powerup = st.jerseys = None
-            st.bot_ahead = st.bot_behind = None
-            return
-        f = race.frame(self._t_session, self.physics.s, self.physics.v, self.bots)
-        st.segment, st.powerup, st.jerseys = f.get("segment"), f.get("powerup"), f.get("jerseys")
-        st.bot_ahead, st.bot_behind = f.get("bot_ahead"), f.get("bot_behind")
-        if self.physics.direction < 0:   # à rebours (lot N17) : ni segment à venir ni voisin dans la course
-            st.segment = None
-            st.bot_ahead = st.bot_behind = None
-        extra = f.get("bots_extra") or {}
-        if st.bots:
-            st.bots = [{**b, **extra.get(b["id"], {})} for b in st.bots]
+        """Partie `classic` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["classic"].fill_frame(self._mode_ctx)
 
     def _write_ftp_test(self, rec: SessionRecorder) -> FtpResult | None:
         """Séance de test de FTP : résultat au journal (ligne `ftp_test`), rien dans `config.toml`."""
@@ -5438,6 +5502,7 @@ class CoreSession:
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
         self._spawn(self._refresh_rider_curve())   # courbe du cycliste pour les bots (lot PP6)
         self._resumed_journal = resume
+        self.fit_in_background = True   # revue S1-02 : plus d'export FIT dans la boucle
         self._publish_interrupted()   # lot O34 : dans le premier hello_ack
         profile_backups.start_weekly(self.profile_ctx, self.profiles_base)   # lot SV1 : copie de la semaine
         self.server.start()
@@ -5500,18 +5565,20 @@ class CoreSession:
                                        if b.get("lane_m") is not None else b for b in self.state.bots]
             else:
                 self.state.bots = None
-            self._fill_race_frame()
+            self._fill_frame()
             self._fill_wind_frame()
             self._fill_vehicles_frame()
             self._fill_riders_frame()
-            self._fill_wtf_frame()
-            self._fill_survivor_frame()
-            self._fill_grandprix_frame()
-            self._fill_track_frame()
-            self._fill_rogue_frame()
             self._lighten_bots_frame()
         except Exception as exc:
             self._mode_failed(exc, "trame", now_mono)
+
+    def _fill_frame(self) -> None:
+        """Partie de la trame propre à chaque mode (lot IM1) : tous les modes de la table, dans l'ordre fixe, chacun
+        remplit son champ (ou le vide hors séance) et décore la liste `bots`."""
+        ctx = self._mode_ctx
+        for mode in game_modes.MODES:
+            mode.fill_frame(ctx)
 
     def _active_mode(self) -> str:
         """Nom du mode en cours, pour le journal : le plus particulier d'abord."""
@@ -5607,6 +5674,7 @@ class CoreSession:
             dt = min(now - last, MAX_STEP_S)
             last = now
             self._safe_step(dt, now)
+            self.fit_exports.poll()   # fins des exports FIT faits dans un fil à part (revue S1-02)
             step_s = mono() - t0
             self.stats.add(step_s, lag)
 
@@ -5660,8 +5728,19 @@ class CoreSession:
             # Une panne du journal ou du FIT ne doit pas empêcher de relâcher le trainer.
             log.exception("Fin de séance incomplète")
         finally:
-            await self._stop_drivers(tasks)
-            self.server.stop()
+            try:
+                await self._stop_drivers(tasks)   # le trainer se relâche pendant que le FIT s'écrit
+            finally:
+                # Revue S1-02 : l'arrêt attend le FIT en cours (écriture atomique : jamais de fichier tronqué).
+                if self.fit_exports.busy:
+                    await asyncio.get_running_loop().run_in_executor(
+                        None, functools.partial(self.fit_exports.wait, FIT_SHUTDOWN_WAIT_S, process=False))
+                    self.fit_exports.poll()   # fins traitées ici, dans le fil de la boucle
+                    if self.fit_exports.busy:
+                        log.error("Export FIT inachevé après %.0f s : le journal de la séance reste (openride-core "
+                                  "recover).", FIT_SHUTDOWN_WAIT_S)
+                self.fit_exports.close()
+                self.server.stop()
 
     async def _stop_drivers(self, tasks: list[asyncio.Task]) -> None:
         """Annule la consigne, arrête les pilotes et leur laisse le temps de rendre le trainer."""

@@ -35,6 +35,9 @@ PROJECT_STEPS = 4
 
 FOOT_COVER_M = SKIRT_OUT_M + 0.5
 SAME_PART_M = 25.0
+COVER_MARGIN_M = 0.5
+RESCUE_CLEAR_M = 15.0
+RESCUE_SLOPE = 0.3
 
 
 def corridor(route: dict, sink: float = ROAD_SINK_M) -> tuple[list, list]:
@@ -48,7 +51,7 @@ def corridor(route: dict, sink: float = ROAD_SINK_M) -> tuple[list, list]:
 def drop_covered_feet(upper: list, lower: list, upper_s: list, lower_s: list) -> list:
     """Comme le compilateur : pied de talus retiré s'il tombe sur une chaussée (à moins de 1,5 fois `ACROSS_STEP_M`
     d'un de ses points), ou à moins de `FOOT_COVER_M` de celle d'une autre partie de la route (abscisses à plus de
-    `SAME_PART_M`)."""
+    `SAME_PART_M`), sauf si la même route repasse à sa hauteur (`_rescued`, 26/11)."""
     cell = FOOT_COVER_M
     grid: dict[tuple[int, int], list[int]] = {}
     for n, (x, z, _) in enumerate(upper):
@@ -61,6 +64,10 @@ def drop_covered_feet(upper: list, lower: list, upper_s: list, lower_s: list) ->
     for n in range(len(upper_s)):              # un point sur deux de chaque coupe, et ses bords (comme le compilateur)
         pos = 0 if n == 0 or upper_s[n] != upper_s[n - 1] else pos + 1
         sub.append(edge[n] or pos % 2 == 0)
+    rescue: dict[tuple[int, int], list[int]] = {}
+    for n, (x, z, _) in enumerate(upper):
+        if sub[n]:
+            rescue.setdefault((math.floor(x / RESCUE_CLEAR_M), math.floor(z / RESCUE_CLEAR_M)), []).append(n)
     out = []
     for (fx, fz, fl), fs in zip(lower, lower_s, strict=True):
         gi, gj = math.floor(fx / cell), math.floor(fz / cell)
@@ -77,9 +84,30 @@ def drop_covered_feet(upper: list, lower: list, upper_s: list, lower_s: list) ->
                     break
             if covered:
                 break
-        if not covered:
+        if not covered or _rescued(fx, fz, fl, fs, upper, upper_s, sub, rescue):
             out.append((fx, fz, fl))
     return out
+
+
+def _rescued(fx: float, fz: float, fl: float, fs: float, upper: list, upper_s: list, sub: list, rescue: dict) -> bool:
+    """Comme le compilateur (26/11) : pied couvert gardé si une autre partie de la route au moins est à moins de
+    `RESCUE_CLEAR_M` et qu'aucune ne contredit sa borne (`fl` − `ul` − `RESCUE_SLOPE` × d ≤ −`COVER_MARGIN_M`)."""
+    cell = RESCUE_CLEAR_M
+    gi, gj = math.floor(fx / cell), math.floor(fz / cell)
+    seen = False
+    for di in (-1, 0, 1):
+        for dj in (-1, 0, 1):
+            for n in rescue.get((gi + di, gj + dj), ()):
+                if abs(upper_s[n] - fs) <= SAME_PART_M:
+                    continue
+                ux, uz, ul = upper[n]
+                d = math.hypot(ux - fx, uz - fz)
+                if d > cell:
+                    continue
+                seen = True
+                if fl - ul - RESCUE_SLOPE * d > -COVER_MARGIN_M:
+                    return False
+    return seen
 
 
 def corridor_s(route: dict, sink: float = ROAD_SINK_M) -> tuple[list, list, list, list]:

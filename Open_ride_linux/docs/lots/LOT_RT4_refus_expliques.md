@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Chaque refus (départ refusé, appui sans effet, bonus refusé, trainer muet ou perdu) dit en mots simples pourquoi et quoi faire, avec le bandeau commun « × REFUSÉ » | GDScript | RT1, NI1 | Petite | En revue (captures à valider) |
+| Chaque refus (départ refusé, appui sans effet, bonus refusé, trainer muet ou perdu) dit en mots simples pourquoi et quoi faire, avec le bandeau commun « × REFUSÉ » | GDScript | RT1, NI1 | Petite | **Livré le 25 novembre** (PR #990) |
 
 ## 1. Objectif
 

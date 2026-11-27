@@ -298,6 +298,14 @@ def default_id(base: Path | None = None, config_path: Path | None = None) -> str
     last = last_player(config_path if config_path is not None else base.parent / "config.toml")
     if last in players:
         return last
+    # Revue S5-05 : un profil illisible n'est jamais remplacé en silence par un autre joueur ni par un
+    # `principal` neuf. Le dernier choisi (ou, sans joueur lisible, le premier illisible) est rendu tel
+    # quel : `ProfileContext.for_id` lève alors `ProfileContextError`, que le lanceur propose de réparer.
+    broken = [pid for pid, _ in unreadable(base) if pid != TRIAL_ID]
+    if last in broken:
+        return last
+    if not players and broken:
+        return MAIN_ID if MAIN_ID in broken else broken[0]
     if len(players) == 1 or (players and MAIN_ID not in players):
         return players[0]   # le seul, ou le premier par nom sans `principal`
     return MAIN_ID
@@ -317,7 +325,8 @@ def last_player(config_path: Path) -> str | None:
 # --- liste, création, renommage, suppression (lot MJ7) ---------------------------------------
 
 def list_contexts(base: Path | None = None) -> list[ProfileContext]:
-    """Profils du dossier (les illisibles sont sautés), joueurs triés par nom, puis le profil d'essai."""
+    """Profils du dossier, joueurs triés par nom, puis le profil d'essai. Les illisibles sont sautés ici :
+    `unreadable` les liste, le lanceur propose de les réparer et `default_id` ne les remplace pas (S5-05)."""
     base = base if base is not None else profiles_dir()
     out: list[ProfileContext] = []
     if base.is_dir():
@@ -329,6 +338,122 @@ def list_contexts(base: Path | None = None) -> list[ProfileContext]:
             except ProfileContextError:
                 continue
     return sorted(out, key=lambda c: (c.is_trial, c.name.casefold(), c.id or ""))
+
+
+def unreadable(base: Path | None = None) -> list[tuple[str, str]]:
+    """Profils sautés par `list_contexts` parce que leur `profil.toml` est illisible (revue S5-05) :
+    `(identifiant, raison)`, par identifiant. Les dossiers au nom refusé ne sont pas des profils."""
+    base = base if base is not None else profiles_dir()
+    out: list[tuple[str, str]] = []
+    if not base.is_dir():
+        return out
+    for d in sorted(base.iterdir()):
+        if not d.is_dir() or d.name.startswith("."):
+            continue
+        try:
+            check_id(d.name)
+        except ProfileContextError:
+            continue
+        try:
+            read_description(d, d.name)
+        except ProfileContextError as exc:
+            out.append((d.name, str(exc)))
+    return out
+
+
+UNREADABLE_SUFFIX = ".illisible-"   # `profil.toml.illisible-AAAAMMJJ-HHMMSS` : ancien fichier mis de côté
+
+
+def _salvage_profile_section(text: str, profile_id: str) -> dict[str, Any]:
+    """Valeurs de `[profil]` gardées une à une si elles sont valides ; les autres prennent leur défaut."""
+    desc = default_description(profile_id)
+    try:
+        section = tomllib.loads(text).get("profil", {})
+    except tomllib.TOMLDecodeError:
+        section = {}
+    if not isinstance(section, dict):
+        section = {}
+    name = section.get("nom")
+    if isinstance(name, str) and name.strip():
+        desc["nom"] = name
+    if section.get("type") in TYPES:
+        desc["type"] = section["type"]
+    counted = section.get("seances_comptees")
+    if isinstance(counted, list) and counted and all(c in SOURCES for c in counted):
+        desc["seances_comptees"] = counted
+    created = section.get("cree")
+    if isinstance(created, date):
+        desc["cree"] = created.isoformat()
+    elif isinstance(created, str):
+        try:
+            desc["cree"] = date.fromisoformat(created).isoformat()
+        except ValueError:
+            pass
+    return desc
+
+
+def _toml_blocks(text: str) -> list[tuple[str, str]]:
+    """Découpe un TOML en blocs `(en-tête, texte)` à chaque ligne `[table]` ou `[[table]]` ; « » avant la première."""
+    blocks: list[tuple[str, list[str]]] = [("", [])]
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and "]" in stripped and not stripped.startswith("[ ]"):
+            blocks.append((stripped.split("]", 1)[0].lstrip("[").strip(), [line]))
+        else:
+            blocks[-1][1].append(line)
+    return [(head, "\n".join(lines) + "\n") for head, lines in blocks if any(x.strip() for x in lines)]
+
+
+def set_aside_description(root: Path, profile_id: str, now: datetime | None = None) -> tuple[Path, list[str]]:
+    """Profil au `profil.toml` illisible (revue S5-05) : l'ancien fichier est MIS DE CÔTÉ (jamais effacé) sous
+    `profil.toml.illisible-AAAAMMJJ-HHMMSS`, puis un `profil.toml` lisible est écrit avec tout ce qui se lit
+    encore : identité `[profil]` valeur par valeur (identifiant = dossier), et chaque autre table qui se lit
+    seule (FTP, poids…). Les séances et le reste du profil ne bougent pas. Renvoie le fichier mis de côté et
+    les tables perdues (remises par défaut)."""
+    path = root / FILE_NAME
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    when = now or datetime.now()
+    kept = path.with_name(f"{FILE_NAME}{UNREADABLE_SUFFIX}{when:%Y%m%d-%H%M%S}")
+    n = 2
+    while kept.exists():
+        kept = path.with_name(f"{FILE_NAME}{UNREADABLE_SUFFIX}{when:%Y%m%d-%H%M%S}-{n}")
+        n += 1
+    blocks = _toml_blocks(raw)
+    profile_text = "".join(t for head, t in blocks if head == "profil")
+    desc = _salvage_profile_section(profile_text, profile_id)
+    others: list[tuple[str, str]] = []
+    lost: list[str] = []
+    for head, block in blocks:
+        if head == "profil":
+            continue
+        try:
+            tomllib.loads(block)
+            others.append((head, block))
+        except tomllib.TOMLDecodeError:
+            lost.append(f"[{head}]" if head else "(début du fichier)")
+    counted = ", ".join(_toml_str(c) for c in desc["seances_comptees"])
+    created = f"cree = {desc['cree']}\n" if desc["cree"] else ""
+    head_text = (f"# Profil de joueur OpenRide (série MJ). Réparé le {when:%d/%m/%Y à %H:%M} : "
+                 f"l'ancien fichier est gardé sous {kept.name}.\n"
+                 "[profil]\n"
+                 f"id = {_toml_str(profile_id)}\n"
+                 f"nom = {_toml_str(desc['nom'])}\n"
+                 f"type = {_toml_str(desc['type'])}\n"
+                 f"{created}"
+                 f"seances_comptees = [{counted}]\n")
+    root_keys = "".join(b for h, b in others if not h)   # clés hors table : avant `[profil]`, sinon elles y entreraient
+    text = root_keys + head_text + "".join("\n" + b for h, b in others if h)
+    try:
+        tomllib.loads(text)   # tables en double ou clés à cheval : on ne garde que l'identité
+    except tomllib.TOMLDecodeError:
+        lost.extend(f"[{h}]" if h else "(début du fichier)" for h, _ in others)
+        text = head_text
+    os.replace(path, kept)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+    read_description(root, profile_id)   # contrôle : lève si la réparation n'a pas suffi
+    return kept, lost
 
 
 def check_name(name: Any, others: list[ProfileContext], own_id: str | None = None) -> str:

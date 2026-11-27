@@ -1,0 +1,47 @@
+# File du lot EC8 (#1132, décor vivant : E6-01 véhicule retenu, E6-02 bots en pause, E6-03 cyclistes proches toujours
+# dessinés). Le risque est le coût en `low` : en E6-03, une file de cyclistes du décor à moins de 60 m est dessinée en
+# entier au lieu de 4 ; la mesure est le GPU médian, les images lentes et le poste « cyclistes » de la sonde, comparés
+# à main sur le même scénario. circulation_proche vérifie la circulation (abri, aspiration, 0 contact) avec la
+# vitesse réelle des véhicules retenus. Ni monde ouvert ni cache : rien ne touche ~/OpenRide/Cache/monde.
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/ec8_decor_vivant.toml
+# Après une correction de #1132 : python3 scripts/file_bancs.py relancer scripts/file_bancs/ec8_decor_vivant.toml --pr rEC8
+# Sans `tete` fixée, la file prend la tête de la branche relue par git fetch.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rEC8"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rEC8-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rEC8"
+pr = 1132
+branche = "claude/project-thread-jyug75"
+# tete : la dernière de la branche (ce fichier est dans son dernier commit) ; le fil de fusion peut la fixer ici.
+cache = "separe"
+risque = 1                               # jamais tourné
+# Fumée (~5 min) : import Godot, tests unitaires du lot (budget des dessinés, bots en pause, circulation).
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_drawn_budget bash engine/tests/run_engine_tests.sh && \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_bots_view_model bash engine/tests/run_engine_tests.sh && \
+python -m pytest -q core/tests/test_traffic.py"""
+fumee_delai_min = 10
+
+[[pr.etape]]
+id = "decor-low"                         # décor vivant complet (cyclistes, circulation, faune), 5 min, sonde
+commande = "python engine/tests/sim_bench.py --native --scenario decor_vivant_2 --quality low --probe --out {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "circulation-low"                   # tracteur lent et camion qui double toutes les 40 s, 6 min
+commande = "python engine/tests/sim_bench.py --native --scenario circulation_proche --quality low --probe --out {sortie}"
+delai_min = 25
+
+# Référence main, même scénario et même qualité (une fois par commit de main pour toute la file).
+[[pr.etape]]
+id = "main-decor-low"
+sur = "main"
+commande = "python engine/tests/sim_bench.py --native --scenario decor_vivant_2 --quality low --probe --out {sortie}"
+delai_min = 25
