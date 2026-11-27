@@ -62,7 +62,7 @@ from ..tunnels import TUNNELS_VERSION
 from . import biome_tiles
 from . import session_ground as SG
 from .squares import (FAR_LAKE_SEARCH_M, FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox,
-                      zone_frame)
+                      square_bbox, zone_frame)
 from .store import WorldCache, read_open_world_config
 
 GRID_M = 5000                 # origine de séance et cellules de chargement du graphe
@@ -202,6 +202,8 @@ class WorldSession:
         self.tile_net = None              # accès HTTP des tuiles (doublure dans les tests)
         self.tilejson_url: str | None = None   # autre serveur de tuiles (`--tiles-url`, X28)
         self.partial_cells: dict[tuple[int, int], tuple[float, float, float, float]] = {}
+        self.partial_squares: set[SquareKey] = set()   # carrés écrits sans toutes leurs tuiles (K1-04, lot RC23)
+        self.osm_key: str | None = None        # entrée du cache de la base OSM ouverte (K1-05, lot RC23)
         self.opened = False
         self.closed = False
         self.legs: list[Leg] = []
@@ -290,6 +292,7 @@ class WorldSession:
             self._unavailable("aucune région OpenStreetMap du cache ne contient le départ "
                               "(openride-compiler region-add) et aucune tuile vectorielle n'est disponible")
             return
+        self._hold_osm_db()
         self.status("dem", "relief du départ", "cached" if self.network else "offline")
         self.node_alt = NodeAltitudes(self.provider, self.frame)
         self.graph = RoadGraph(self.frame)
@@ -319,6 +322,15 @@ class WorldSession:
         self.opened = True
         self.status("ready")
         self._publish(0)
+
+    def _hold_osm_db(self) -> None:
+        """Base OSM de la séance comptée en usage (revue de code K1-05, lot RC23) : jamais évincée pendant la séance,
+        et touchée à l'ouverture (sa date d'usage n'était que celle de son ajout)."""
+        path = getattr(self.db, "path", None)
+        if path is None:
+            return
+        self.osm_key = self.cache.key_of(Path(path)) or f"osm:{Path(path).stem}"
+        self.cache.touch(self.osm_key)
 
     def _open_tiles(self, lat: float, lon: float) -> OsmDb | None:
         """Sans extrait régional : tuiles vectorielles OpenFreeMap (W13) versées dans `tuiles.sqlite`."""
@@ -362,6 +374,10 @@ class WorldSession:
         if self.session_dir is None:
             stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
             self.session_dir = self.cache.sessions_dir() / f"ow-{stamp}.world"
+        try:
+            self.cache.prune_sessions(current=self.session_dir)   # K1-12, lot RC23 : anciennes séances réduites
+        except OSError as exc:
+            self.log(f"séances anciennes non réduites : {exc}")
         for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges", "tunnels",
                     "coast"):
             (self.session_dir / sub).mkdir(parents=True, exist_ok=True)
@@ -457,6 +473,36 @@ class WorldSession:
                 del self.partial_cells[cell]
             if len(now_left) < len(left):
                 self.graph.extend(self.db, bbox)
+        self._redo_partial_squares()
+
+    def _square_partial(self, key: SquareKey, fetch: bool = False) -> bool:
+        """Vrai si une tuile vectorielle de l'emprise du carré manque (K1-04). `fetch` : tuiles manquantes demandées
+        d'abord (sans attendre, recul X28 respecté) ; l'emprise d'un carré déborde parfois des cellules du graphe."""
+        if self.tiles is None:
+            return False
+        bbox = square_bbox(key, self.frame)
+        left = self.tiles.missing(bbox)
+        if left and fetch and self.network and any(self.tiles.due(k) for k in left):
+            self.tiles.ensure(bbox)
+            left = self.tiles.missing(bbox)
+        return bool(left)
+
+    def _redo_partial_squares(self) -> None:
+        """Carrés écrits sans toutes leurs tuiles dont les tuiles sont arrivées : remis en file (K1-04, lot RC23).
+
+        Avant, un carré prêt n'était jamais refait : routes, bâtiments et eaux de la tuile manquante absents pour
+        toujours, la séance suivante le reprenant du cache pour bon."""
+        if not self.partial_squares:
+            return
+        rx, rz = self._rider_xz() if self.legs else (0.0, 0.0)
+        for key in sorted(self.partial_squares, key=lambda k: (k.ix, k.i_n)):
+            if self._square_partial(key, fetch=True):
+                continue
+            self.partial_squares.discard(key)
+            self.ready.discard(key)
+            x0, z0 = key.corner
+            self.queue.request(key, math.hypot(x0 + 500.0 - rx, z0 + 500.0 - rz), 0.0)
+            self.log(f"carré {key.ix}_{key.i_n} : tuiles arrivées, refait")
 
     def _ensure_around_node(self, node: int) -> None:
         n = self.graph.nodes[node]
@@ -857,9 +903,11 @@ class WorldSession:
             if not self.network and not relief_has(self.provider, *self._latlon_of_square(key)):
                 self.failed.add(key)
                 return True
-            had = self.cache.is_valid(key.cache_key, _square_versions(self.db, self.provider))
+            partial = self._square_partial(key)
+            had = self.cache.is_valid(key.cache_key, _square_versions(self.db, self.provider)) or (
+                partial and self.cache.is_valid(key.cache_key, _square_versions(self.db, self.provider, False)))
             try:
-                generate_square(key, self.db, self.provider, self.cache)
+                generate_square(key, self.db, self.provider, self.cache, tiles_complete=not partial)
             except CompileError as exc:
                 self.log(f"carré {key.ix}_{key.i_n} non généré : {exc}")
                 self.failed.add(key)
@@ -874,6 +922,8 @@ class WorldSession:
                 self.ground.add((ix, iz), src)
                 self._fit_ground({(ix, iz)})      # avant que l'engine ne voie la tuile
             self.ready.add(key)
+            if partial and not self.cache.is_valid(key.cache_key, _square_versions(self.db, self.provider)):
+                self.partial_squares.add(key)     # refait quand ses tuiles arrivent (K1-04)
             self.dirty_tiles = True
             return True
         if self.far_wanted:
@@ -994,14 +1044,19 @@ class WorldSession:
     def in_use(self) -> set[str]:
         biome = {self.cache.biome_key(k.zone, biome_tiles.level_of(k).name, k.ix, k.i_n)
                  for k in (*self.ready, *self.far_ready)}
-        return {k.cache_key for k in self.ready} | {k.cache_key for k in self.far_ready} | biome
+        base = {self.osm_key} if self.osm_key else set()      # base OSM de la séance (K1-05)
+        return {k.cache_key for k in self.ready} | {k.cache_key for k in self.far_ready} | biome | base
 
     def _maybe_evict(self) -> None:
         now = self.clock()
         if now - self._last_evict < EVICT_EVERY_S:
             return
         self._last_evict = now
-        removed = self.cache.evict(in_use=self.in_use())
+        try:
+            sessions = self.cache.sessions_bytes()        # dossiers des séances comptés dans le plafond (K1-12)
+        except OSError:
+            sessions = 0
+        removed = self.cache.evict(in_use=self.in_use(), extra_bytes=sessions)
         if removed:
             self.log(f"cache : {len(removed)} entrée(s) supprimée(s)")
 
@@ -1022,9 +1077,9 @@ class WorldSession:
         self.send({"type": "closed"})
 
 
-def _square_versions(db: OsmDb, provider: ElevationProvider) -> dict[str, Any]:
+def _square_versions(db: OsmDb, provider: ElevationProvider, tiles_complete: bool = True) -> dict[str, Any]:
     from .squares import square_versions
-    return square_versions(db, provider)
+    return square_versions(db, provider, tiles_complete)
 
 
 def _part_of(s: float) -> int:

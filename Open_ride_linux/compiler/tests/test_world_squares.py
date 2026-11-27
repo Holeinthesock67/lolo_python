@@ -131,12 +131,14 @@ def test_narrow_track_and_terrain_independent_of_session(db, tmp_path) -> None:
     key = SquareKey(ZONE, IX, IN)
     p1, p2 = generate_square(key, db, provider(), cache(tmp_path / "c1")), \
         generate_square(key, db, provider(), cache(tmp_path / "c2"))
-    for name in ("near.f32", "edges.json", "meta.json", "buildings.json", "vegetation.json", "water.json", "poi.json"):
+    assert not (p1 / "edges.json").exists()   # K2-08 (lot RC23) : plus écrit
+    for name in ("near.f32", "meta.json", "buildings.json", "vegetation.json", "water.json", "poi.json"):
         assert (p1 / name).read_bytes() == (p2 / name).read_bytes(), name
     meta = load(p1, "meta")
     assert meta["versions"]["worldgen"] == squares.WORLDGEN_VERSION and meta["versions"]["osm_date"].startswith("2026")
-    edges = load(p1, "edges")["edges"]
-    assert {e["road_class"] for e in edges} == {"s", "t", "c"} and meta["counts"]["edges"] >= len(edges)
+    graph, profiles = squares.square_edges(key, db, provider())
+    edges = [graph.edges[k] for k in profiles if key.contains(*graph.edges[k].points[0])]
+    assert {e.road_class for e in edges} == {"s", "t", "c"} and meta["counts"]["edges"] >= len(edges)
 
 
 def test_roads_axis_widths_and_spans() -> None:
