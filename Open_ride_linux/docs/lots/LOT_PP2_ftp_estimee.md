@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| FTP estimée (3 sources, confiance en mots, proposition à accepter, évolution par mois) | Python | PP1, O10, R16, MJ4 | Petite | PR ouverte le 21 novembre (série PP, 6.0) |
+| FTP estimée (3 sources, confiance en mots, proposition à accepter, évolution par mois) | Python | PP1, O10, R16, MJ4 | Petite | **Livré le 24 novembre** (PR #973) |
 
 ## 1. Objectif
 

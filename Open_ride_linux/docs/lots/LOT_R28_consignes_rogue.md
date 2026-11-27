@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Consignes du Cyber-Rogue : la consigne écrite est celle qui gagne et qui charge l'adrénaline, la puissance n'est écrite qu'une fois, l'adrénaline monte de 1 par seconde quelle que soit la cadence (contrat révision 1.39, provisoire) | Python, GDScript | R26 | Petite | En revue, **version 2.0** |
+| Consignes du Cyber-Rogue : la consigne écrite est celle qui gagne et qui charge l'adrénaline, la puissance n'est écrite qu'une fois, l'adrénaline monte de 1 par seconde quelle que soit la cadence (contrat révision 1.39, provisoire) | Python, GDScript | R26 | Petite | **Livré le 27 novembre** (PR #1010) |
 
 ## 1. Constat
 
@@ -53,3 +53,7 @@ Précision compatible des champs `target_pct` et `in_target` (révision 1.39 **p
 - `test_rogue_r23_retours.py`, `test_rogue_r26_debut_run.py`, `test_contract_ipc.py` mis à jour.
 - Engine : `test_rogue_guide_model.gd` (62), `test_rogue_r23_retours.gd` (85), `test_rogue_hud_model.gd` (32).
 - Galerie du Cyber-Rogue en low, medium et high ; planche à valider par le propriétaire ; essai vélo de 10 minutes.
+
+## Livraison
+
+Fusionné dans `main` le 27 novembre 2026 (PR #1010), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En revue, **version 2.0** »).

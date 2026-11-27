@@ -7,7 +7,8 @@ extends RefCounted
 ##
 ## Position : 30 m devant le joueur à pleins PV, 60 m à zéro (l'ennemi recule quand ses PV baissent).
 ## Fin de salle : `room_fled` et `room_skipped` le font fuir (il s'éloigne à 40 m/s et s'éteint en 2 s),
-## `room_won` l'éteint sur place en 0,5 s. Le tout reste figé jusqu'à la salle suivante (`room_id` change).
+## `room_won` l'éteint sur place en 0,5 s, avec le dernier archétype vu (la trame de fin n'en porte plus). Le tout
+## reste figé jusqu'à la salle suivante (`room_id` change).
 
 const MIN_DIST_M := 30.0
 const MAX_DIST_M := 60.0
@@ -34,6 +35,9 @@ var _last_seq: int = -1
 var _pose: Dictionary = {"visible": false}
 var _impacts: Array = []
 var _seen_events: Array = []
+## Dernier archétype vu dans la salle (revue de code E10-09) : la trame qui porte `room_won` ou `room_fled` a déjà
+## quitté la salle (`archetype` nul, phase suivante) ; sans lui, l'extinction et la fuite n'étaient jamais vues.
+var _last_arch = null
 
 
 func pose() -> Dictionary:
@@ -70,6 +74,9 @@ func update(rogue: Variant, seq: int, grade_pct: float, dt: float, effects_ok: b
 		_state = "hold"
 		_alpha = 1.0
 		_distance = want
+		_last_arch = null
+	if arch != null:
+		_last_arch = arch
 	var fresh := seq < 0 or seq != _last_seq
 	_last_seq = seq
 	var events: Array = rogue.get("events", []) if fresh else []
@@ -93,7 +100,10 @@ func update(rogue: Variant, seq: int, grade_pct: float, dt: float, effects_ok: b
 			_alpha = maxf(_alpha - dt / DEATH_FADE_S, 0.0)
 	var phase := String(rogue.get("phase", ""))
 	var in_fight := phase in ENEMY_PHASES
-	var shown := arch != null and (in_fight or (_state != "hold" and _alpha > 0.0))
+	var ending := _state != "hold" and _alpha > 0.0     # animation de fin de salle en cours
+	var shown := (arch != null and in_fight) or (ending and _last_arch != null)
+	if arch == null and ending:
+		arch = _last_arch
 	var lift_target := clampf(grade_pct, 0.0, LIFT_MAX_PCT) * LIFT_PER_PCT_M
 	_lift = lerpf(_lift, lift_target, clampf(dt * LIFT_SMOOTH_PER_S, 0.0, 1.0))
 
@@ -114,7 +124,8 @@ func update(rogue: Variant, seq: int, grade_pct: float, dt: float, effects_ok: b
 		"lift_m": _lift,
 		"charge": kinds.has("tunnel"),                              # Diesel : éclairs de charge
 		"prelight": kinds.has("parry_zone"),                        # Puncheur : zone allumée
-		"cloaked": float(rogue.get("firewall_gap_m", 1000.0)) < CLOAK_GAP_M,   # Sprinteur
+		# Sprinteur ; en salle seulement : hors salle l'écart nul du core le cachait pendant sa fin (revue E10-09)
+		"cloaked": in_fight and float(rogue.get("firewall_gap_m", 1000.0)) < CLOAK_GAP_M,
 		"glitch": typeof(hack) == TYPE_DICTIONARY,                  # Saboteur : grésille pendant un piratage
 		"scatter": kinds.has("purge"),                              # Saboteur : essaim dispersé
 		"swarm": SWARM_SIZE,

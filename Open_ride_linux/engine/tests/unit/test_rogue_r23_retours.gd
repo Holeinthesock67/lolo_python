@@ -42,7 +42,10 @@ func _rogue(over: Dictionary = {}) -> Dictionary:
 
 func _run() -> void:
 	var g = GuideModel.new()
-	var st := {"route_length_m": 1120.0, "v": 8.0}
+	# Trame comme le vrai core l'envoie en mode Rogue : `route_length_m` nul ; la longueur de la salle vient du message
+	# `room` (revue de code E10-02 : les tests posaient 1120 m dans la trame, « N m restants » ne s'affichait jamais en jeu).
+	var st := {"route_length_m": null, "v": 8.0}
+	g.set_room(3, [], 1120.0)
 
 	# Z accepté : un retour immédiat par action, et l'anneau or.
 	for action in ["strike", "charges", "rock", "rock_chip", "parry", "purge", "reroll"]:
@@ -230,15 +233,17 @@ func _run() -> void:
 
 	# Essai du 15 novembre : fin de salle annoncée avec ce qu'il reste à l'ennemi ; au boss, la phase 3 seulement.
 	var hp := {"enemy_hp": 60.0, "enemy_hp_max": 100.0}
-	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0}))) == "Fin de salle dans 200 m : ennemi encore à 60 %",
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0})), 1120.0) == "Fin de salle dans 200 m : ennemi encore à 60 %",
 		"fin de salle dans 200 m, ennemi à 60 %")
-	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 500.0}))) == "", "loin de la fin : rien")
-	_check(GuideModel.room_end_text(st, _rogue({"s_room": 920.0, "enemy_hp": 0.0, "enemy_hp_max": 100.0})) == "", "ennemi à terre : rien")
-	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 2}))) == "",
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 500.0})), 1120.0) == "", "loin de la fin : rien")
+	_check(GuideModel.room_end_text(st, _rogue({"s_room": 920.0, "enemy_hp": 0.0, "enemy_hp_max": 100.0}), 1120.0) == "", "ennemi à terre : rien")
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 2})), 1120.0) == "",
 		"boss phase 2 : rien (seule la phase 3 décide)")
-	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 3}))) == "Fin du boss dans 200 m : boss encore à 60 %",
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 3})), 1120.0) == "Fin du boss dans 200 m : boss encore à 60 %",
 		"boss phase 3 : fin annoncée")
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0}))) == "", "longueur inconnue (trame du core seule) : rien")
 	var g_end = GuideModel.new()
+	g_end.set_room(3, [], 1120.0)
 	var out2: Dictionary = g_end.compute(st, _rogue(hp.merged({"s_room": 920.0, "adrenaline": 10.0})), 72.0, [])
 	_check(out2["hint"] == "Fin de salle dans 200 m : ennemi encore à 60 %" and out2["tone"] == "warn", "fin de salle au guide : %s" % out2["hint"])
 

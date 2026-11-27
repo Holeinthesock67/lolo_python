@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série IM (interface commune des modes) : séances scriptées par mode, empreintes de référence comparées octet pour octet | Python | — | Moyenne | En revue |
+| Série IM (interface commune des modes) : séances scriptées par mode, empreintes de référence comparées octet pour octet | Python | — | Moyenne | **Livré le 26 novembre** (PR #1092) |
 
 Série IM, premier lot du cadrage « une interface commune pour les modes de jeu » (22 novembre 2026, dossier du projet :
 `plans/CADRAGE_INTERFACE_MODES_2026-11-22.md`, §4 et §5.2). Tests seulement : aucune ligne du jeu ne change, ni l'IPC,

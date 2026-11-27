@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Vie privée : aucune position à moins de 500 m du départ dans les FIT exportés et le GPX des balades du monde ouvert, réglage « Zone privée au départ » coupé par défaut (audit de cohérence du 22 novembre) | Python, GDScript (une ligne) | X56, W14 | Petite | **En revue** (branche `claude/project-thread-v3ups8`) |
+| Vie privée : aucune position à moins de 500 m du départ dans les FIT exportés et le GPX des balades du monde ouvert, réglage « Zone privée au départ » coupé par défaut (audit de cohérence du 22 novembre) | Python, GDScript (une ligne) | X56, W14 | Petite | **Livré le 25 novembre** (PR #1015) |
 
 ## 1. Objectif
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Reprise d'une course après un plantage du core : instantané `race_snapshot` au journal, Course, Grand Prix et Dernier survivant repris, ligue comptée à l'arrivée | Python | N8, CR1 (#939), CH3 (#989) | Moyenne | En PR le 23 novembre 2026 ; core seul, bouton au lancement suivant au lot RC3 |
+| Reprise d'une course après un plantage du core : instantané `race_snapshot` au journal, Course, Grand Prix et Dernier survivant repris, ligue comptée à l'arrivée | Python | N8, CR1 (#939), CH3 (#989) | Moyenne | **Livré le 25 novembre** (PR #1036) (avec RC3) |
 
 Audit du 22 novembre 2026, constats L10 et M2. Cadrage validé le 22 novembre (`plans/CADRAGE_REPRISE_COURSE_2026-11-22.md`
 du dossier du projet) : RC1 (Course et Dernier survivant), RC2 (Grand Prix), RC3 (lancement suivant). RC2 tient dans

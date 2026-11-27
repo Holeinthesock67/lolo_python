@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| À-coups de main : le préchauffage des cyclistes du décor attend les fils de travail image par image (étape d'attente du plan unique), une apparence par image | GDScript | PI2, AS7 | Petite | En cours (codé le 22 novembre, banc PC à faire) |
+| À-coups de main : le préchauffage des cyclistes du décor attend les fils de travail image par image (étape d'attente du plan unique), une apparence par image | GDScript | PI2, AS7 | Petite | **Livré le 25 novembre** (PR #981) ; banc PC à faire |
 
 Fil global « Supprimer les à-coups récurrents de main » (21-22/11).
 
@@ -33,3 +33,7 @@ Fil global « Supprimer les à-coups récurrents de main » (21-22/11).
 ## Recette PC
 Catégorie : logique. Medium : galerie Cyber-Rogue (`rogue_galerie.py`) et `grand_prix_onze` ; attendu : aucune image
 de plus de 150 ms due aux cyclistes (`cyclistes …` dans `saccades.csv`), délai jusqu'au départ à peu près le même.
+
+## Livraison
+
+Fusionné dans `main` le 25 novembre 2026 (PR #981), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En cours (codé le 22 novembre, banc PC à faire) »).
