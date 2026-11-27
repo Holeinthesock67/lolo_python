@@ -278,10 +278,13 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	heights.fill(GROUND_Y)
 	var route := StraightRoute.new()
 	var t0 := Time.get_ticks_usec()
+	# L'étang est une aire d'eau OSM : pas d'arbre dedans (revue E7-05), comme en jeu (world_streamer.gd)
+	var pond_area := {"id": "etang", "kind": "pond", "level_y": GROUND_Y, "holes": [], "outer": [[POND.position.x, POND.position.y],
+		[POND.end.x, POND.position.y], [POND.end.x, POND.end.y], [POND.position.x, POND.end.y]]}
 	for tz in range(-2, 1):
 		for tx in range(-1, 1):
 			trees.add_tile(trees.prepare_tile(tx, tz, heights, route, theme,
-				float(QualityPresets.preset(preset)["vegetation_density_factor"])))
+				float(QualityPresets.preset(preset)["vegetation_density_factor"]), [], [], [pond_area]))
 	var prep_ms := (Time.get_ticks_usec() - t0) / 1000.0 / 6.0
 	trees.enforce_budget(Vector3(0.0, GROUND_Y, 0.0))
 

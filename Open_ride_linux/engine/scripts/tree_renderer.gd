@@ -7,8 +7,10 @@ extends Node3D
 ## Chaque case avec arbres possède deux MultiMeshInstance3D :
 ## - LOD 0 (0 à 450 m) : modèle polygonal bas (tronc + cônes, <= 120 triangles), ombres actives.
 ## - LOD 1 (450 à 1 500 m) : quadrilatères croisés (4 triangles), sans ombre.
-## Le budget global d'instances (QualityPresets.tree_budget) est respecté en éliminant les cases
-## les plus éloignées en cas de dépassement.
+## Le budget global d'instances (QualityPresets.tree_budget) est respecté en mettant de côté les cases
+## les plus éloignées en cas de dépassement : nœuds cachés, tampons gardés, et la case revient dès qu'elle
+## repasse parmi les plus proches (revue E7-03 : une case retirée ne revenait jamais tant que sa tuile restait
+## chargée, d'où des clairières carrées de 250 m atteintes ensuite par le cycliste).
 ## Vent (Lot P5) : quand `QualityPresets.living(preset).tree_sway` est vrai, les deux LOD utilisent le
 ## shader `tree_sway.gdshader` ; sinon les StandardMaterial3D d'origine (rendu inchangé).
 ## `apply_wind(eval)` met à jour une fois par image les paramètres globaux du vent du shader.
@@ -25,6 +27,7 @@ const ViewCulling := preload("res://scripts/view_culling.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const RenderDiag := preload("res://scripts/render_diag.gd")
+const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LOD 1
 
 const CELL_SIZE_M := 250.0
@@ -51,6 +54,9 @@ const BUF_STRIDE := 16   # flottants par arbre du tampon MultiMesh.buffer : tran
 const SHADOW_STRIDE := BUF_STRIDE
 ## Lot S1 : distance ajoutée au rang d'une case hors du champ, pour qu'elle passe avant toute case visible.
 const OUT_OF_VIEW_RANK_M := 1.0e6
+## Revue E7-03 : avec des cases mises de côté, le budget est revu quand la caméra a bougé de BUDGET_STEP_M
+## (ou quand une tuile entre ou sort), pas à chaque image.
+const BUDGET_STEP_M := 25.0
 ## Distance minimale entre un tronc et le mur d'un bâtiment OSM (houppier compris).
 const BUILDING_CLEARANCE_M := 3.0
 
@@ -79,6 +85,10 @@ var winter := false
 var _tiles: Dictionary = {}
 var _active_tree_count := 0
 var _budget := 20000
+## Arbres des cases mises de côté par le budget (cachées, tampons gardés : `parked` dans la case).
+var _parked_tree_count := 0
+var _budget_cam := Vector3(INF, INF, INF)
+var _budget_dirty := true
 ## Limite de l'ombre portée des arbres proches (m, 0 : sans borne) ; dernière position de la caméra traitée.
 var shadow_end_m := 0.0
 var _shadow_cam := Vector3(INF, INF, INF)
@@ -116,6 +126,7 @@ func _init_materials() -> void:
 
 func set_preset(preset_name: String, living_enabled: bool = true) -> void:
 	_budget = QualityPresets.tree_budget(preset_name)
+	_budget_dirty = true
 	var sway: bool = QualityPresets.living(preset_name, living_enabled)["tree_sway"]
 	if sway != _tree_sway:
 		_tree_sway = sway
@@ -227,12 +238,19 @@ func get_active_tree_count() -> int:
 	return _active_tree_count
 
 
+## Arbres des cases mises de côté par le budget (cachées, prêtes à revenir).
+func get_parked_tree_count() -> int:
+	return _parked_tree_count
+
+
 ## Génère les données de placement des arbres d'une tuile (exécutable en thread secondaire).
 ## `heights` : hauteurs réelles (pente, limite des arbres et biomes jugés sur le vrai relief) ; les arbres gardés sont
 ## posés à la hauteur affichée de la route (`route.display_y`, relief exagéré des lots Q2 et Y15).
+## `waters` : aires d'eau OSM de la tuile (couche `water`, `outer` et `holes`, mer comprise) : aucun arbre dedans,
+## les îles (trous) gardent les leurs (revue E7-05).
 ## Renvoie un dictionnaire avec la clé de tuile et les listes d'arbres par case [0..15].
 func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
-		density_factor: float, areas: Array = [], buildings: Array = []) -> Dictionary:
+		density_factor: float, areas: Array = [], buildings: Array = [], waters: Array = []) -> Dictionary:
 	var t_start := Time.get_ticks_usec()
 	# Seule la section `vegetation` change : copie superficielle du thème, copie de cette section.
 	var tile_theme := theme.duplicate()
@@ -336,6 +354,8 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 	var t_buildings := Time.get_ticks_usec()
 	if not buildings.is_empty():
 		trees = exclude_buildings(trees, buildings)
+	if not waters.is_empty():
+		trees = exclude_water(trees, waters)
 	var tree_species := PackedByteArray()
 	if biomes_on:
 		var assigned := VegetationPlacer.assign_species(trees, biome_model, float(veg["max_density_per_ha"]) / maxf(clampf(density_factor, 0.0, 1.0), 1e-6), near_water)
@@ -497,6 +517,38 @@ static func exclude_buildings(trees: PackedVector4Array, buildings: Array) -> Pa
 	return out
 
 
+## Retire les arbres posés dans un plan d'eau (anneau `outer` d'une aire de la couche `water` : lac, étang,
+## réservoir, rivière en surface, mer), sauf sur ses îles (anneaux `holes`). Revue E7-05 : ni le placeur ni le
+## semis hors zones ne connaissaient l'eau, des arbres sortaient de la surface des lacs. Zones indexées
+## (exclusion_zones.gd) : coût par arbre indépendant de la taille des contours (côtes de la mer). Exécutable en
+## thread secondaire.
+static func exclude_water(trees: PackedVector4Array, waters: Array) -> PackedVector4Array:
+	var outers := []
+	var holes := []
+	for w in waters:
+		if typeof(w) != TYPE_DICTIONARY or typeof(w.get("outer", null)) != TYPE_ARRAY:
+			continue
+		var ring := VegetationPlacer._packed_ring(w["outer"])
+		if ring.size() < 3:
+			continue
+		outers.append(ring)
+		var hs = w.get("holes", [])
+		if typeof(hs) == TYPE_ARRAY:
+			for h in hs:
+				if typeof(h) == TYPE_ARRAY and (h as Array).size() >= 3:
+					holes.append(VegetationPlacer._packed_ring(h))
+	if outers.is_empty():
+		return trees
+	var water := ExclusionZones.new(outers)
+	var islands := ExclusionZones.new(holes)
+	var out := PackedVector4Array()
+	for tree in trees:
+		if water.contains(tree.x, tree.z) and not islands.contains(tree.x, tree.z):
+			continue
+		out.append(tree)
+	return out
+
+
 static func _ring_distance(p: Vector2, ring: PackedVector2Array) -> float:
 	var best := INF
 	var n := ring.size()
@@ -521,6 +573,7 @@ func add_tile(data: Dictionary) -> void:
 		_shadow_cam = Vector3(INF, INF, INF)   # nouvelle case : ombres à recalculer au prochain update_shadows
 		_active_tree_count += int(cell["count"])
 	_tiles[tile_key] = tile_cells
+	_budget_dirty = true
 
 
 ## Paire de MultiMeshInstance3D (LOD 0 et LOD 1) d'une partie de build_part (une espèce dans une case).
@@ -596,9 +649,13 @@ func remove_tile(tile_key: Vector2i) -> void:
 	var tile_cells: Dictionary = _tiles[tile_key]
 	for cell_idx in tile_cells.keys():
 		var cell_info: Dictionary = tile_cells[cell_idx]
-		_active_tree_count -= int(cell_info["count"])
+		if bool(cell_info.get("parked", false)):
+			_parked_tree_count -= int(cell_info["count"])
+		else:
+			_active_tree_count -= int(cell_info["count"])
 		_free_cell(cell_info)
 	_tiles.erase(tile_key)
+	_budget_dirty = true
 
 
 func clear() -> void:
@@ -608,6 +665,8 @@ func clear() -> void:
 			_free_cell(tile_cells[cell_idx])
 	_tiles.clear()
 	_active_tree_count = 0
+	_parked_tree_count = 0
+	_budget_dirty = true
 
 
 ## Ajoute un arbre au carré de SHADOW_BUCKET_M qui contient son pied ({Vector2i: PackedFloat32Array}), dans l'ordre
@@ -633,7 +692,7 @@ func update_shadows(cam_pos: Vector3) -> void:
 	var half_bucket := Vector3(SHADOW_BUCKET_M * 0.5, 0.0, SHADOW_BUCKET_M * 0.5)
 	for tile_cells in _tiles.values():
 		for cell_info in tile_cells.values():
-			if not casts_shadow(cell_info["center"], cam_pos, shadow_end_m):
+			if bool(cell_info.get("parked", false)) or not casts_shadow(cell_info["center"], cam_pos, shadow_end_m):
 				continue
 			for part in cell_info["parts"]:
 				var buckets: Dictionary = part.get("buckets", {})
@@ -689,13 +748,22 @@ static func casts_shadow(center: Vector3, cam_pos: Vector3, limit_m: float, size
 	return Vector2(dx, dz).length() <= limit_m + SPECIES_LOD_BLEND_M
 
 
-## Vérifie et applique le budget d'instances en retirant les cases les plus lointaines. Lot S1 : avec la
-## vue de la caméra active (view_culling.gd), les cases hors du champ partent avant celles du champ.
+## Vérifie et applique le budget d'instances : les cases sont rangées de la plus proche à la plus lointaine et
+## affichées tant que le total tient dans le budget ; les suivantes sont mises de côté (nœuds cachés, tampons
+## gardés) et reviennent quand elles repassent parmi les plus proches (revue E7-03). Lot S1 : avec la vue de la
+## caméra active (view_culling.gd), les cases hors du champ passent après celles du champ. Revu quand le budget
+## est dépassé, ou, avec des cases de côté, quand la caméra a bougé de BUDGET_STEP_M ou qu'une tuile a changé.
 func enforce_budget(cam_pos: Vector3, view: Dictionary = {}) -> void:
 	if _active_tree_count <= _budget:
-		return
+		if _parked_tree_count == 0:
+			_budget_dirty = false
+			return
+		if not _budget_dirty and Vector2(cam_pos.x - _budget_cam.x, cam_pos.z - _budget_cam.z).length() < BUDGET_STEP_M:
+			return
+	_budget_cam = cam_pos
+	_budget_dirty = false
 
-	# Collecter toutes les cases actives avec leur distance au point de vue
+	# Toutes les cases (affichées ou de côté) avec leur rang
 	var all_cells := []
 	for tile_key in _tiles.keys():
 		var tile_cells: Dictionary = _tiles[tile_key]
@@ -706,17 +774,37 @@ func enforce_budget(cam_pos: Vector3, view: Dictionary = {}) -> void:
 			if not view.is_empty() and not ViewCulling.rect_in_view(Rect2(center.x - CELL_SIZE_M * 0.5,
 					center.z - CELL_SIZE_M * 0.5, CELL_SIZE_M, CELL_SIZE_M), view):
 				dist += OUT_OF_VIEW_RANK_M
-			all_cells.append({"tile_key": tile_key, "cell_idx": cell_idx, "dist": dist, "cell": cell_info})
+			all_cells.append({"dist": dist, "cell": cell_info})
 
-	all_cells.sort_custom(func(a, b) -> bool: return a["dist"] > b["dist"])
+	all_cells.sort_custom(func(a, b) -> bool: return a["dist"] < b["dist"])
 
+	var total := 0
+	var full := false
 	for item in all_cells:
-		if _active_tree_count <= _budget:
-			break
 		var cell_info: Dictionary = item["cell"]
-		_active_tree_count -= int(cell_info["count"])
-		_free_cell(cell_info)
-		_tiles[item["tile_key"]].erase(item["cell_idx"])
+		var n := int(cell_info["count"])
+		if not full and total + n <= _budget:
+			total += n
+			_set_parked(cell_info, false)
+		else:
+			full = true   # la plus proche qui ne tient pas : elle et toutes les suivantes de côté
+			_set_parked(cell_info, true)
+
+
+## Met une case de côté (nœuds cachés, comptée à part) ou la rend à l'affichage.
+func _set_parked(cell_info: Dictionary, parked: bool) -> void:
+	if bool(cell_info.get("parked", false)) == parked:
+		return
+	cell_info["parked"] = parked
+	var n := int(cell_info["count"])
+	_active_tree_count += -n if parked else n
+	_parked_tree_count += n if parked else -n
+	_shadow_cam = Vector3(INF, INF, INF)   # arbres « ombre seule » à reprendre
+	for part in cell_info["parts"]:
+		for key in ["lod0", "lod1"]:
+			var mmi: MultiMeshInstance3D = part[key]
+			if mmi != null:
+				mmi.visible = not parked
 
 
 # --- Génération des maillages LOD 0 et LOD 1 ---

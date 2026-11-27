@@ -134,6 +134,31 @@ func _test_placement() -> void:
 		for i in range(TerrainTiles.SAMPLES):
 			steep[j * TerrainTiles.SAMPLES + i] = 300.0 + i * 50.0 * 0.6   # pente de 31°
 	_check(int(forest.prepare_tile(0, 0, steep, null, theme)["count"]) == 0, "pente au-delà du seuil : aucun bouquet")
+	# Revue E7-05 : pas de bouquet sur un grand lac (eau lointaine du lot EA2, niveau 300 m sur la moitié ouest)
+	var levels := PackedFloat32Array()
+	levels.resize(TerrainTiles.SAMPLES * TerrainTiles.SAMPLES)
+	for j in range(TerrainTiles.SAMPLES):
+		for i in range(TerrainTiles.SAMPLES):
+			levels[j * TerrainTiles.SAMPLES + i] = 300.5 if i <= 40 else NAN
+	var wet := _instances(forest.prepare_tile(0, 0, flat, route, theme, levels))
+	var west_dry := 0
+	var west_wet := 0
+	var east_dry := 0
+	var east_wet := 0
+	for it in inst:
+		if it[0] < 1950.0:
+			west_dry += 1
+		elif it[0] > 2100.0:
+			east_dry += 1
+	for it in wet:
+		if it[0] < 1950.0:
+			west_wet += 1
+		elif it[0] > 2100.0:
+			east_wet += 1
+	_check(west_dry > 100 and west_wet == 0 and east_wet == east_dry,
+		"grand lac : %d bouquets sur l'eau avant, %d après ; rive est inchangée (%d)" % [west_dry, west_wet, east_wet])
+	_check(not ForestImpostors.in_water(levels, 10, 10, 305.0) and ForestImpostors.in_water(levels, 10, 10, 300.0)
+		and not ForestImpostors.in_water(levels, 60, 10, 290.0), "in_water : niveau du lac, rive haute, hors du lac")
 	# Coupé ou sans hauteurs
 	forest.enabled = false
 	_check(forest.prepare_tile(0, 0, flat, route, theme).is_empty(), "--forest=off : aucune préparation")
