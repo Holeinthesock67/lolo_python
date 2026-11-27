@@ -24,8 +24,8 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
 - `bridges.json` (lot EA4) et `tunnels.json` (lot EA5) : ponts et tunnels des arêtes, rangés dans le carré du
   milieu de leur portion ; la colline reste au-dessus d'un tunnel (ni fondu ni entaille), l'engine ne dessine pas
   le terrain dans le tube ;
-- `edges.json` : arêtes dont le premier nœud est dans le carré, avec leur profil, dans le repère
-  de zone (pour la route engagée, W8) ;
+- plus d'`edges.json` (revue de code K2-08, lot RC23) : profil de chaque arête à 7 décimales, sans lecteur (la
+  route engagée recalcule ses profils) ; place perdue sous le plafond et coordonnées précises écrites sans usage ;
 - `meta.json` : versions (générateur, schéma et date de la base, relief) et nombres d'objets.
 
 Le bord commun de deux carrés voisins est identique au bit près : mêmes coordonnées entières,
@@ -38,7 +38,9 @@ import heapq
 import json
 import math
 import os
+import re
 import shutil
+import threading
 from dataclasses import dataclass
 from itertools import count
 from pathlib import Path
@@ -50,6 +52,7 @@ from scipy.spatial import cKDTree
 from .. import constants as C
 from .. import osm_layers as L
 from ..elevation import ElevationProvider
+from ..errors import CompileError
 from ..frame import LocalFrame, utm_transformer
 from ..terrain import blend
 from .. import river_surface as RS
@@ -254,11 +257,24 @@ def half_width(road_class: str) -> float:
 
 # --- génération -------------------------------------------------------------------------------
 
-def square_versions(db: OsmDb, provider: ElevationProvider) -> dict[str, Any]:
-    return {"worldgen": WORLDGEN_VERSION, "osm_schema": db.meta.get("schema_version"),
-            "osm_date": db.meta.get("osm_date") or None, "osm_region": db.meta.get("region"),
-            "relief": getattr(provider, "name", "inconnu"),
-            "coast": COAST_SQUARE_VERSION if db.has_coast else None}   # lot W23 : carré refait avec la mer
+def square_versions(db: OsmDb, provider: ElevationProvider, tiles_complete: bool = True) -> dict[str, Any]:
+    """Versions d'un carré. `tiles_complete` faux (revue de code K1-04, lot RC23) : des tuiles vectorielles de
+    l'emprise manquaient (coupure, 429, 503) ; le carré porte `"tiles": "partial"`, qu'une séance suivante, qui attend
+    un carré complet (sans la clé, donc sans changer les versions des carrés complets déjà en cache), refait."""
+    out = {"worldgen": WORLDGEN_VERSION, "osm_schema": db.meta.get("schema_version"),
+           "osm_date": db.meta.get("osm_date") or None, "osm_region": db.meta.get("region"),
+           "relief": getattr(provider, "name", "inconnu"),
+           "coast": COAST_SQUARE_VERSION if db.has_coast else None}   # lot W23 : carré refait avec la mer
+    if not tiles_complete:
+        out["tiles"] = "partial"
+    return out
+
+
+def square_bbox(key: SquareKey, frame: LocalFrame | None = None) -> tuple[float, float, float, float]:
+    """Emprise (lon, lat) des arêtes d'un carré, élargie de MARGIN_M (`square_edges`)."""
+    frame = frame or zone_frame(key.zone)
+    x0, z0 = key.corner
+    return lonlat_bbox(frame, x0 - MARGIN_M, z0 - MARGIN_M, x0 + key.size_m + MARGIN_M, z0 + key.size_m + MARGIN_M)
 
 
 def far_versions(provider: ElevationProvider, db: OsmDb | None = None,
@@ -283,9 +299,7 @@ def square_edges(key: SquareKey, db: OsmDb, provider: ElevationProvider,
     Les arêtes sans longueur n'ont pas de profil : ni terrain, ni liste d'arêtes.
     """
     frame = frame or zone_frame(key.zone)
-    x0, z0 = key.corner
-    bbox = lonlat_bbox(frame, x0 - MARGIN_M, z0 - MARGIN_M, x0 + key.size_m + MARGIN_M, z0 + key.size_m + MARGIN_M)
-    graph = RoadGraph.build(db, bbox, frame)
+    graph = RoadGraph.build(db, square_bbox(key, frame), frame)
     node_alt = NodeAltitudes(provider, frame)
     return graph, {k: edge_profile(graph.edges[k], provider, frame, node_alt) for k in sorted(graph.edges)
                    if not graph.edges[k].degenerate}
@@ -695,51 +709,65 @@ def _round(a: np.ndarray, digits: int) -> list[float]:
     return [round(float(v), digits) for v in a]
 
 
-def edges_payload(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile]) -> dict[str, Any]:
-    out = []
-    for k in sorted(profiles):
-        e, p = graph.edges[k], profiles[k]
-        if not key.contains(*e.points[0]):
-            continue
-        out.append({
-            "id": e.id, "raw_a": e.raw_a, "raw_b": e.raw_b, "road_class": e.road_class, "oneway": e.oneway,
-            "name": e.name, "roundabout": e.roundabout, "length_m": round(e.length_m, 3), "spans": e.spans,
-            "osm_nodes": e.osm_nodes,
-            "profile": {"s": _round(p.s, 2), "x": _round(p.x, 2), "z": _round(p.z, 2), "alt_m": _round(p.alt_m, 2),
-                        "grade_pct": _round(p.grade_pct, 2), "heading_deg": _round(p.heading_deg, 1),
-                        "lat": _round(p.lat, 7), "lon": _round(p.lon, 7)}})
-    return {"version": WORLDGEN_VERSION, "frame": "zone", "edges": out}
-
-
 def _write_atomic(final: Path, files: dict[str, bytes]) -> None:
-    """Écrit les fichiers dans un dossier temporaire voisin, puis le renomme à la place de `final`."""
+    """Écrit les fichiers dans un dossier temporaire voisin, puis le renomme à la place de `final`.
+
+    Revue de code K2-07 (lot RC23) : les restes `.<nom>.tmp-*` et `.<nom>.old-*` d'un arrêt forcé entre deux
+    renommages sont supprimés à l'écriture suivante (ils n'étaient ni comptés ni retirés) ; un autre processus
+    qui pose le même carré au même moment (séance et préchargement) ne fait plus échouer celui-ci : son carré,
+    calculé des mêmes données, est gardé."""
     final.parent.mkdir(parents=True, exist_ok=True)
-    tmp = final.parent / f".{final.name}.tmp-{os.getpid()}"
-    old = final.parent / f".{final.name}.old-{os.getpid()}"
-    shutil.rmtree(tmp, ignore_errors=True)
+    tag = f"{os.getpid()}-{threading.get_ident()}"
+    tmp = final.parent / f".{final.name}.tmp-{tag}"
+    old = final.parent / f".{final.name}.old-{tag}"
+    for stale in [*final.parent.glob(f".{final.name}.tmp-*"), *final.parent.glob(f".{final.name}.old-*")]:
+        m = re.search(r"\.(?:tmp|old)-(\d+)(?:-\d+)?$", stale.name)
+        if m is None or int(m.group(1)) == os.getpid() or _pid_alive(int(m.group(1))):
+            continue                                   # écriture en cours (ce processus ou un autre, vivant)
+        shutil.rmtree(stale, ignore_errors=True)
     try:
         tmp.mkdir()
         for name, data in files.items():
             (tmp / name).write_bytes(data)
-        if final.exists():
-            final.rename(old)
-            tmp.rename(final)
-            shutil.rmtree(old, ignore_errors=True)
-        else:
-            tmp.rename(final)
+        try:
+            if final.exists():
+                final.rename(old)
+                tmp.rename(final)
+            else:
+                tmp.rename(final)
+        except OSError:
+            if not final.is_dir():
+                raise CompileError(f"carré {final.name} non écrit (renommage refusé)")
+            # posé entre-temps par un autre processus : le sien est gardé
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        shutil.rmtree(old, ignore_errors=True)
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def _json(obj: Any) -> bytes:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
-def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cache: WorldCache) -> Path:
-    """Carré dans le cache ; rien n'est recalculé s'il y est déjà avec les mêmes versions."""
-    versions = square_versions(db, provider)
+def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cache: WorldCache,
+                    tiles_complete: bool = True) -> Path:
+    """Carré dans le cache ; rien n'est recalculé s'il y est déjà avec les mêmes versions.
+
+    `tiles_complete` faux (tuiles vectorielles manquantes, K1-04) : un carré complet déjà en cache est gardé ; sinon le
+    carré est écrit marqué partiel (`square_versions`)."""
+    versions = square_versions(db, provider, tiles_complete)
     final = cache.square_dir(key.zone, key.ix, key.i_n)
-    if cache.is_valid(key.cache_key, versions):
+    if cache.is_valid(key.cache_key, versions) or (
+            not tiles_complete and cache.is_valid(key.cache_key, square_versions(db, provider))):
         cache.touch(key.cache_key)
         return final
     frame = zone_frame(key.zone)
@@ -758,7 +786,6 @@ def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cach
     meta = {"zone": key.zone, "ix": key.ix, "in": key.i_n, "corner": list(key.corner), "versions": versions,
             "counts": counts}
     files = {"near.f32": np.ascontiguousarray(near, dtype="<f4").tobytes(),
-             "edges.json": _json(edges_payload(key, graph, profiles)),
              "meta.json": _json(meta)}
     files.update({f"{name}.json": _json(payload) for name, payload in layers.items()})
     _write_atomic(final, files)

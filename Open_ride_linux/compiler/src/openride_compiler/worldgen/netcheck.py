@@ -16,7 +16,8 @@ Vérifications (une ligne chacune, `[OK]` / `[ÉCHEC]`) :
 5. tuiles redemandées après chaque panne servie ;
 6. recul entre deux demandes d'un même chemin (aucune rafale) ;
 7. cache plafonné : les vieilles entrées de remplissage sont évincées, jamais au-dessus du plafond ;
-8. retour au même endroit : aucun téléchargement (serveur et bilan du générateur) ;
+8. retour au même endroit : rien de ce que la première séance a reçu n'est redemandé (serveur et bilan du
+   générateur ; lot RC23 : les tuiles d'un carré resté incomplet peuvent l'être, jamais deux fois) ;
 9. scénario en moins d'une minute.
 
 Scénarios intégrés (`reseau/<nom>.json`) : `lent`, `coupure`, `erreurs`, `tronque` ; ou un
@@ -56,7 +57,7 @@ TRIP_DEFAULTS: dict[str, Any] = {
     # fermetures) une marge sous `MAX_SCENARIO_S` même sur une CI chargée (25 s à ×40 jusqu'au 25/11 :
     # 58 à 61 s une fois les départs alourdis par la règle sol / route du 21/11)
     "duree_s": 20.0,            # trajet de la première séance, en secondes réelles
-    "retour_s": 2.0,            # seconde séance au même départ (vérifie seulement : aucun téléchargement)
+    "retour_s": 2.0,            # seconde séance au même départ (vérifie seulement : rien de téléchargé deux fois)
     "vitesse_mps": 12.0,        # vitesse simulée du cycliste
     "acceleration": 50.0,       # temps simulé / temps réel
     "cache_max_mo": 20.0,       # plafond du cache de la séance
@@ -382,9 +383,15 @@ def run_scenario(name: str, generator: list[str] | None = None, work: Path | Non
               + (" ; au-dessus du plafond" if above else "")))
     c += session_checks("seconde séance", second)
     dl = downloads_in_bilan(second.stderr)
-    c.append((second.ready and not again and dl == 0, "retour au même endroit : aucun téléchargement",
-              f"{len(again)} demande(s) au serveur, bilan : {dl} téléchargement(s), départ "
-              + (f"{second.open_s:.1f} s" if second.open_s is not None else "manqué")))
+    # Lot RC23 (revue de code K1-04) : un carré préparé avant que toutes ses tuiles soient là (bout de l'horizon, au
+    # bord des cellules du graphe) est marqué incomplet et refait à la séance suivante ; ses tuiles, jamais demandées
+    # à la première, peuvent l'être au retour. Rien de ce que la première séance a reçu n'est redemandé.
+    seen = {q["path"] for q in first_requests if q.get("outcome") == 200}   # reçues entières
+    twice = [q for q in again if q["path"] in seen]
+    c.append((second.ready and not twice and (dl or 0) <= len(again),
+              "retour au même endroit : rien de téléchargé deux fois",
+              f"{len(again)} demande(s) au serveur dont {len(twice)} déjà reçue(s), bilan : {dl} téléchargement(s), "
+              "départ " + (f"{second.open_s:.1f} s" if second.open_s is not None else "manqué")))
     c.append((report.elapsed_s < MAX_SCENARIO_S, f"scénario en moins de {MAX_SCENARIO_S:g} s",
               f"{report.elapsed_s:.0f} s"))
     return report
