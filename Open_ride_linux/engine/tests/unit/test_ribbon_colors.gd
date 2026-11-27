@@ -39,6 +39,10 @@ func _run() -> void:
 	var mid := Colors.brightness(220.0, 0.0)
 	_check(mid < 1.0 and mid > Colors.FAR_DIM, "fondu entre 200 et 240 m (%.2f)" % mid)
 	_check(Colors.brightness(50.0, 400.0) == 1.0, "derrière le joueur : franche")
+	# lot R30 : la surface ne garde que 12 % de l'éclat (la route jaune éblouissait), les arêtes le gardent entier
+	_check(is_equal_approx(Colors.SURFACE_SHARE, 0.12), "surface du ruban : 12 % de l'éclat (R30)")
+	var sh: String = (load("res://scripts/rogue/ribbon.gdshader") as Shader).code
+	_check("uniform float surface_share = 0.12" in sh and "surface_share + (1.0 - surface_share) * line" in sh, "shader : surface 12 %, arêtes franches (R30)")
 	await process_frame
 	print("test_ribbon_colors : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

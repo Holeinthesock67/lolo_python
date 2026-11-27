@@ -160,6 +160,7 @@ func set_style(new_preset: String, new_adapted: bool) -> void:
 	_ribbon_mat.set_shader_parameter("intensity", Palette.INTENSITY.get(preset, 1.6))
 	_ribbon_mat.set_shader_parameter("ahead_m", RibbonColors.AHEAD_M)
 	_ribbon_mat.set_shader_parameter("far_dim", RibbonColors.FAR_DIM)
+	_ribbon_mat.set_shader_parameter("surface_share", RibbonColors.SURFACE_SHARE)
 	if shown_room_id >= 0 and store != null and store.has_room(shown_room_id):
 		_build_room(shown_room_id)
 

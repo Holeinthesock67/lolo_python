@@ -1240,6 +1240,8 @@ func _process(delta: float) -> void:
 	_poll_live_world()
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
+	if living_world != null:
+		_probe.wind = living_world.last_wind
 	_probe.frame(delta, streamer)
 	_step_start_wait(delta)
 	_step_load_guard(delta)

@@ -8,11 +8,17 @@ extends RefCounted
 ##   `WIRE_TIMEOUT_S`, le vent du thème (`set_theme_wind`) sert de vent décoratif, sinon calme ;
 ## - `evaluate(now_s)` rend `{dir, strength, gust, phase}` : `dir` est la direction vers où souffle le
 ##   vent dans le repère de Godot (nord = −z, est = +x), `strength` de 0 à 1 (1 = 60 km/h), `gust` de
-##   0 à 1, `phase` en secondes, continue (elle avance plus vite par vent fort, sans saut) ;
+##   0 à 1, `phase` en secondes, continue (elle avance plus vite par vent fort et en rafale, sans saut) ;
 ## - `apparent(rider_speed_mps, heading_deg)` : vent apparent (m/s) pour l'animation proche.
 ##
 ## Lissage du premier ordre : `DIR_TAU_S = 2.0` pour la direction, `STRENGTH_TAU_S = 0.5` pour la force
 ## et la rafale (90 % de la cible en 1,15 s, sans dépassement).
+##
+## Phase (revue E12-51, 27/11) : toute variation de vitesse due au vent ou à la rafale est intégrée ICI, dans
+## la vitesse d'avance de `phase`. Les shaders (`tree_sway`, `flag`, `terrain_shade`, `sky_clouds`) ne la
+## multiplient que par des constantes : un facteur variable appliqué à une phase qui grandit sans fin
+## (`phase × (1 + 0,6 × rafale)`) faisait varier la vitesse apparente de `phase × d(facteur)/dt`, donc de plus en
+## plus fort avec la durée de la séance (herbe à ~65 Hz après 2 h). La phase reste en double précision ici.
 
 const MAX_SPEED_MPS := 60.0 / 3.6
 const WIRE_TIMEOUT_S := 2.0
@@ -20,6 +26,7 @@ const DIR_TAU_S := 2.0
 const STRENGTH_TAU_S := 0.5
 const PHASE_RATE_MIN := 0.4      # vitesse d'avance de la phase par vent nul (s par s)
 const PHASE_RATE_MAX := 2.0      # par vent de 60 km/h
+const PHASE_GUST_GAIN := 0.6     # en pleine rafale, la phase avance 1,6 fois plus vite (ex-facteur du shader des arbres)
 const THEME_GUST_PERIOD_S := 23.0
 
 var _theme_speed_mps: float = 0.0
@@ -54,6 +61,11 @@ static func heading_vector(heading_deg: float) -> Vector3:
 
 static func shortest_delta_deg(from_deg: float, to_deg: float) -> float:
 	return fposmod(to_deg - from_deg + 180.0, 360.0) - 180.0
+
+
+## Vitesse d'avance de la phase (s par s) pour une force (0 à 1) et une rafale (0 à 1).
+static func phase_rate(strength: float, gust: float) -> float:
+	return lerpf(PHASE_RATE_MIN, PHASE_RATE_MAX, clampf(strength, 0.0, 1.0)) * (1.0 + PHASE_GUST_GAIN * clampf(gust, 0.0, 1.0))
 
 
 func reset() -> void:
@@ -120,7 +132,7 @@ func settle(now_s: float) -> void:
 	_from_deg = fposmod(float(t[1]), 360.0)
 	_gust = float(t[2])
 	_dir_ready = true
-	_phase = maxf(now_s, 0.0) * lerpf(PHASE_RATE_MIN, PHASE_RATE_MAX, clampf(_speed_mps / MAX_SPEED_MPS, 0.0, 1.0))
+	_phase = maxf(now_s, 0.0) * phase_rate(_speed_mps / MAX_SPEED_MPS, _gust)
 	_last_eval_s = now_s
 
 
@@ -143,7 +155,7 @@ func evaluate(now_s: float) -> Dictionary:
 	_from_deg = fposmod(_from_deg + shortest_delta_deg(_from_deg, target_from) * k_dir, 360.0)
 
 	var strength := clampf(_speed_mps / MAX_SPEED_MPS, 0.0, 1.0)
-	_phase += dt * lerpf(PHASE_RATE_MIN, PHASE_RATE_MAX, strength)
+	_phase += dt * phase_rate(strength, _gust)
 	_out["dir"] = heading_vector(_from_deg + 180.0) if blowing else Vector3.ZERO
 	_out["strength"] = strength
 	_out["gust"] = _gust
