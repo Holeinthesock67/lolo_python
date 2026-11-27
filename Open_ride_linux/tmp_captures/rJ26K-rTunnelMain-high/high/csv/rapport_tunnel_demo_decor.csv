@@ -1,0 +1,37 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+10.0;19;0;0;0;0;4;0;
+16.0;19;0;0;0;0;4;0;
+22.0;19;0;0;0;0;4;0;
+28.0;19;0;0;0;0;4;0;
+34.0;19;0;0;0;0;4;0;
+40.0;19;0;0;0;0;4;0;
+46.0;19;0;0;0;0;4;0;
+52.0;19;0;0;0;0;4;0;
+58.0;19;0;0;0;0;5;0;airliner_rumble=1
+62.0;19;0;0;0;0;5;0;airliner_rumble=1
+64.0;19;0;0;0;0;5;0;airliner_rumble=1
+70.0;19;0;0;0;0;5;0;airliner_rumble=1
+76.0;19;0;0;0;1;5;0;airliner_rumble=1
+77.0;19;0;0;0;1;5;0;airliner_rumble=1
+82.0;19;0;0;0;1;5;0;airliner_rumble=1
+88.0;19;0;0;0;1;5;0;airliner_rumble=1
+92.0;19;0;0;0;1;5;0;airliner_rumble=1
+94.0;19;0;0;0;1;5;0;airliner_rumble=1
+100.0;19;0;0;0;1;5;0;airliner_rumble=1
+106.0;19;0;0;0;1;6;0;airliner_rumble=2
+112.0;19;0;0;0;1;6;0;airliner_rumble=2
+118.0;19;0;0;0;1;6;0;airliner_rumble=2
+124.0;19;0;0;0;2;6;0;airliner_rumble=2
+130.0;19;0;0;0;1;6;0;airliner_rumble=2
+136.0;19;0;0;0;1;6;0;airliner_rumble=2
+142.0;19;0;0;0;1;6;0;airliner_rumble=2
+148.0;19;0;0;0;1;6;0;airliner_rumble=2
+152.0;19;0;0;0;1;6;0;airliner_rumble=2
+154.0;19;0;0;0;1;6;0;airliner_rumble=2
+160.0;19;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=1
+166.0;19;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=1
+172.0;19;0;0;0;3;6;0;airliner_rumble=2 raptor_cry=1
+178.0;19;0;0;0;2;6;0;airliner_rumble=2 raptor_cry=1
+184.0;19;0;0;0;2;6;0;airliner_rumble=2 raptor_cry=1
+202.0;19;0;0;0;2;6;0;airliner_rumble=2 raptor_cry=2
+216.1;19;0;0;0;2;6;0;airliner_rumble=2 raptor_cry=2
