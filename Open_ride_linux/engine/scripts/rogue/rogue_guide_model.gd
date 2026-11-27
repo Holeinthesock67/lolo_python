@@ -101,6 +101,9 @@ const NO_TARGET_TEXT := {
 
 var _markers: Array = []          # repères de la salle affichée (message `room`)
 var _room_id := -1
+## Longueur de la salle affichée (message `room`, revue de code E10-02) : le core envoie `route_length_m` nul en
+## mode Rogue, « N m restants » et l'avertissement de fin de salle ne s'affichaient jamais.
+var _room_length_m := 0.0
 var seen_legends: Dictionary = {} # sortes d'objets déjà expliquées
 ## Fichier où garder les légendes déjà vues d'une run à l'autre (vide : en mémoire seulement, tests).
 var store_path := ""
@@ -134,9 +137,19 @@ func _save_seen() -> void:
 
 
 ## Repères de la salle `room_id` (message `room`) : sert aux consignes et au sens des arches.
-func set_room(room_id: int, markers: Array) -> void:
+func set_room(room_id: int, markers: Array, length_m: float = 0.0) -> void:
 	_room_id = room_id
 	_markers = markers
+	_room_length_m = maxf(length_m, 0.0)
+
+
+## Longueur de la salle de la trame : celle du message `room` si c'est la salle affichée, sinon `route_length_m`
+## (le contrat la promet en mode Rogue, le core l'envoie nulle) ; 0 si inconnue.
+func room_length(state: Dictionary, rogue: Dictionary) -> float:
+	if _room_length_m > 0.0 and int(rogue.get("room_id", -1)) == _room_id:
+		return _room_length_m
+	var raw_len = state.get("route_length_m", null)
+	return float(raw_len) if raw_len is float or raw_len is int else 0.0
 
 
 ## Retours à afficher depuis le dernier appel : [{title, sub, tone}] (tone : ok, warn, danger, info).
@@ -240,8 +253,7 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 			out["title"] = "Couloir"
 			out["panel"] = false            # l'écran du couloir a son propre bandeau
 	if phase in FIGHT_PHASES:
-		var raw_len = state.get("route_length_m", null)
-		var length := float(raw_len) if raw_len is float or raw_len is int else 0.0
+		var length := room_length(state, rogue)
 		if length > 0.0:
 			out["title_right"] = "%d m restants" % int(maxf(length - float(rogue.get("s_room", 0.0)), 0.0))
 	for st in nxt:
@@ -251,7 +263,11 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 			var lead := "Prochaine étape" if out["next_lines"].is_empty() else "Puis"
 			out["next_lines"].append(("%s : %s" % [lead, name]) if when == "" or lead == "Puis" else ("%s : %s dans %s" % [lead, name, when]))
 	# Firewall (salle et boss) ou consigne de puissance (échauffement, retour au calme).
-	if phase in FIGHT_PHASES or phase == "RECOVERY":
+	if phase == "RECOVERY":
+		# Revue E10-06 : le mur est arrêté pendant la récupération (écart figé à 0 par le core) : ni contact, ni
+		# bouclier qui fond, ni or perdu ; l'ancien panneau rouge « TE TOUCHE ! » le faisait croire.
+		out["fw"] = {"title": "Firewall arrêté", "text": "Récupération", "sub": "Rien ne se perd : roule souple", "level": "ok"}
+	elif phase in FIGHT_PHASES:
 		var gap_s = rogue.get("firewall_gap_s", null)
 		var gap_m := float(rogue.get("firewall_gap_m", 0.0))
 		if gap_s == null:
@@ -333,7 +349,7 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 		var gap_m := float(rogue.get("firewall_gap_m", 1.0))
 		var hack = rogue.get("hack", null)
 		var ups := upcoming(float(rogue.get("s_room", 0.0)))
-		var end_warn := room_end_text(state, rogue)
+		var end_warn := room_end_text(state, rogue, room_length(state, rogue))
 		var limit := int(tgt_hi) if tgt_hi != null else 75
 		if gap_m <= 0.0:
 			hint = "Accélère ! Le Firewall te touche"
@@ -397,10 +413,11 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 
 
 ## Fin proche d'une salle encore debout (lot R23) : « Fin de salle dans 200 m : ennemi encore à 60 % » ; au boss,
-## seule la phase 3 décide de la run. "" loin de la fin, ennemi à terre ou longueur inconnue.
-static func room_end_text(state: Dictionary, rogue: Dictionary) -> String:
+## seule la phase 3 décide de la run. "" loin de la fin, ennemi à terre ou longueur inconnue. `room_length_m` :
+## longueur de la salle (message `room`, revue E10-02) ; 0 : `route_length_m` de la trame.
+static func room_end_text(state: Dictionary, rogue: Dictionary, room_length_m: float = 0.0) -> String:
 	var raw_len = state.get("route_length_m", null)
-	var length := float(raw_len) if raw_len is float or raw_len is int else 0.0
+	var length := room_length_m if room_length_m > 0.0 else (float(raw_len) if raw_len is float or raw_len is int else 0.0)
 	var hp_max := float(rogue.get("enemy_hp_max", 0.0))
 	var hp := float(rogue.get("enemy_hp", 0.0))
 	var phase = rogue.get("boss_phase", null)
