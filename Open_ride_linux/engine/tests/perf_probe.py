@@ -258,8 +258,38 @@ def percentile(vals: list[float], q: float) -> float:
     return s[min(int(len(s) * q), len(s) - 1)]
 
 
-def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Médiane, p99 et maximum de chaque mesure ; dérive (dernière minute − première minute)."""
+Window = tuple[float | None, float | None]   # roulage en heures Unix : (premier mètre, ordre end_session)
+
+
+def _unix(row: dict[str, Any]) -> float | None:
+    u = row.get("unix_s")
+    return float(u) if isinstance(u, (int, float)) else None
+
+
+def phase_of(row: dict[str, Any], window: Window | None) -> str:
+    """« avant » (préparation, avant le premier mètre), « roulage » ou « après » (écran de bilan, après
+    `end_session`) d'une ligne datée en heure Unix ; sans fenêtre ou sans heure : « roulage »."""
+    u = _unix(row)
+    if window is None or u is None:
+        return "roulage"
+    start, end = window
+    if start is not None and u < start:
+        return "avant"
+    if end is not None and u > end:
+        return "après"
+    return "roulage"
+
+
+def until_end(rows: list[dict[str, Any]], window: Window | None) -> list[dict[str, Any]]:
+    """Lignes jusqu'à l'ordre `end_session` (fil « Bilan des à-coups », 27 novembre) : l'écran de bilan n'est
+    plus jugé avec le roulage. Le début n'est pas coupé : chargement et départ ont leurs propres seuils."""
+    return [r for r in rows if phase_of(r, window) != "après"]
+
+
+def summarize(rows: list[dict[str, Any]], window: Window | None = None) -> dict[str, Any]:
+    """Médiane, p99 et maximum de chaque mesure ; dérive (dernière minute − première minute). Avec `window`, la
+    première minute est celle qui suit le premier mètre (l'écran de chargement à froid n'y est plus) et la
+    dernière celle qui précède `end_session`."""
     out: dict[str, Any] = {"rows": len(rows), "duration_s": 0.0, "stats": {}, "drift": {}}
     ts = values(rows, "t_s")
     if ts:
@@ -273,11 +303,15 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     cap = values(rows, "capture")
     if cap and sum(cap) > 0:
         out["captures"] = {"frames": int(sum(cap)), "max_ms": max(values(rows, "capture_max_ms"), default=0.0)}
-    if ts and out["duration_s"] >= 120.0:
-        t_first, t_last = min(ts) + 60.0, max(ts) - 60.0
+    riding = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and phase_of(r, window) == "roulage"]
+    rts = values(riding, "t_s")
+    if window is not None and window != (None, None):
+        out["drift_window"] = "roulage"
+    if rts and max(rts) - min(rts) >= 120.0:
+        t_first, t_last = min(rts) + 60.0, max(rts) - 60.0
         for key in DRIFT:
-            first = [float(r[key]) for r in rows if isinstance(r.get(key), (int, float)) and r["t_s"] <= t_first]
-            last = [float(r[key]) for r in rows if isinstance(r.get(key), (int, float)) and r["t_s"] >= t_last]
+            first = [float(r[key]) for r in riding if isinstance(r.get(key), (int, float)) and r["t_s"] <= t_first]
+            last = [float(r[key]) for r in riding if isinstance(r.get(key), (int, float)) and r["t_s"] >= t_last]
             if first and last:
                 out["drift"][key] = statistics.median(last) - statistics.median(first)
     return out
@@ -721,9 +755,23 @@ def read_stalls(engine_dir: Path) -> dict[str, Any] | None:
     return {"saccades": read_engine_csv(sac), "tasks": read_engine_csv(tasks), "startup_ms": startup}
 
 
-def stall_summary(stalls: dict[str, Any]) -> dict[str, Any]:
-    """Compte des saccades par cause (nombre, pire), les STALL_TOP pires, durées des tâches par type."""
-    sac = [r for r in stalls["saccades"] if isinstance(r.get("frame_ms"), float)]
+PHASE_LABELS = {"avant": "avant le premier mètre (préparation)", "après": "après end_session (écran de bilan)"}
+
+
+def stall_summary(stalls: dict[str, Any], window: Window | None = None) -> dict[str, Any]:
+    """Compte des saccades par cause (nombre, pire), les STALL_TOP pires, durées des tâches par type. Avec
+    `window`, les totaux par cause et les pires ne gardent que le roulage ; la préparation et l'écran de bilan
+    sont comptés à part (`phases`)."""
+    every = [r for r in stalls["saccades"] if isinstance(r.get("frame_ms"), float)]
+    phases: dict[str, dict[str, float]] = {}
+    for r in every:
+        ph = phase_of(r, window)
+        if ph != "roulage":
+            c = phases.setdefault(ph, {"count": 0, "worst_ms": 0.0, "total_ms": 0.0})
+            c["count"] += 1
+            c["worst_ms"] = max(c["worst_ms"], r["frame_ms"])
+            c["total_ms"] += r["frame_ms"]
+    sac = [r for r in every if phase_of(r, window) == "roulage"]
     causes: dict[str, dict[str, float]] = {}
     for r in sac:
         c = causes.setdefault(str(r.get("cause") or "inconnue"), {"count": 0, "worst_ms": 0.0, "total_ms": 0.0})
@@ -743,15 +791,20 @@ def stall_summary(stalls: dict[str, Any]) -> dict[str, Any]:
             "top": sorted(sac, key=lambda r: -r["frame_ms"])[:STALL_TOP], "tasks": tasks,
             "startup_ms": stalls["startup_ms"], "clipped": len(clipped),
             "pipelines": sum(pipes) if pipes else None,
-            "with_pipelines": sum(1 for n in pipes if n > 0)}
+            "with_pipelines": sum(1 for n in pipes if n > 0),
+            "phases": {k: phases[k] for k in ("avant", "après") if k in phases}}
 
 
 def stall_text(st: dict[str, Any]) -> str:
     lines = ["Démarrage : " + (f"première image jouable à {st['startup_ms'] / 1000:.1f} s"
                                if st["startup_ms"] is not None else "pas de première image jouable notée"),
-             "", f"Saccades (images de plus de 33 ms) : {st['count']}"]
+             "", f"Saccades (images de plus de 33 ms) : {st['count']}"
+             + (" pendant le roulage" if st.get("phases") else "")]
     for cause, c in st["causes"].items():
         lines.append(f"  {cause:<10} {c['count']:>5} image(s), pire {c['worst_ms']:.0f} ms, total {c['total_ms'] / 1000:.1f} s")
+    for ph, c in (st.get("phases") or {}).items():
+        lines.append(f"  hors roulage, {PHASE_LABELS[ph]} : {c['count']} image(s), pire {c['worst_ms']:.0f} ms, "
+                     f"total {c['total_ms'] / 1000:.1f} s")
     if st.get("pipelines") is not None:
         lines.append(f"  pipelines compilés pendant les saccades : {st['pipelines']} "
                      f"(dans {st['with_pipelines']} image(s))")
@@ -836,27 +889,35 @@ def read_shaders_mark(directory: Path) -> str | None:
 
 
 def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de performance du moteur",
-                 real_window: bool = True, engine_dir: Path | None = None, shaders: str = "chaud") -> dict[str, Any]:
+                 real_window: bool = True, engine_dir: Path | None = None, shaders: str = "chaud",
+                 window: Window | None = None) -> dict[str, Any]:
     """Écrit sonde.csv, sonde.txt et rapport.html dans `out` ; renvoie le résumé. Avec `engine_dir` (dossier
     du fichier de l'engine), y ajoute les saccades, les tâches de fond et le démarrage (lot X15), recopiés
-    dans `out`."""
+    dans `out`. Avec `window` (heures Unix du premier mètre et de `end_session`, sim_bench), budgets et
+    à-coups s'arrêtent à `end_session`, la dérive part du premier mètre et les saccades de la préparation et de
+    l'écran de bilan sont relevées à part (fil « Bilan des à-coups », 27 novembre). sonde.csv reste entier."""
     out.mkdir(parents=True, exist_ok=True)
     write_csv(rows, out / "sonde.csv")
-    summary = summarize(rows)
+    summary = summarize(rows, window)
+    judged = until_end(rows, window)
     text = summary_text(summary, title)
     # O3-02 : budgets jugés dès qu'il y a des relevés, même sans colonne d'images/s (échec « pas de mesure »).
-    summary["budgets"] = budget_checks(rows, real_window=real_window) if rows else []
+    summary["budgets"] = budget_checks(judged, real_window=real_window) if judged else []
     if summary["budgets"]:
         text += "\nBudgets du préréglage (engine/tests/perf_targets.json, lot X14) :\n" + budget_text(summary["budgets"]) + "\n"
     stalls = read_stalls(engine_dir) if engine_dir is not None else None
-    hitches = hitch_checks(rows, stalls["saccades"] if stalls is not None else None, real_window=real_window,
-                           shaders=shaders) \
-        if rows else []
+    hitches = hitch_checks(judged, until_end(stalls["saccades"], window) if stalls is not None else None,
+                           real_window=real_window, shaders=shaders) \
+        if judged else []
+    after = values([r for r in rows if phase_of(r, window) == "après"], "frame_max_ms")
+    if after and hitches:   # écran de bilan relevé à part, jamais jugé (fil « Bilan des à-coups »)
+        hitches.append((None, "à-coups : écran de bilan", f"pire image {max(after):.0f} ms sur {len(after)} s "
+                                                          "après end_session (relevé, non jugé)"))
     if hitches:
         summary["budgets"] += hitches
         text += "\nÀ-coups (seuils « hitches » de perf_targets.json) :\n" + budget_text(hitches) + "\n"
     if stalls is not None:
-        summary["stalls"] = stall_summary(stalls)
+        summary["stalls"] = stall_summary(stalls, window)
         text += "\n" + stall_text(summary["stalls"])
         for name in ("saccades.csv", "taches.csv", "demarrage.txt"):
             if (engine_dir / name).is_file() and (engine_dir / name).resolve() != (out / name).resolve():

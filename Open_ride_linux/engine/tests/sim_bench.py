@@ -575,6 +575,7 @@ class Bench:
             r.check(alive, "engine vivant jusqu'à la fin",
                     f"{self.duration:.0f} s" if alive else f"code de sortie {engine.p.returncode}")
             t_end = now()
+            self.end_unix = time.time()   # fin du roulage jugé par la sonde (fenêtre des à-coups, 27 novembre)
             send_cmd(cmd_port, CMD_ID_BASE, "end_session", {"save": True})
             core.wait_for(r"Séance : \S+ -> FINISHED", 10.0, after=t_end)
             time.sleep(1.0)
@@ -764,11 +765,20 @@ class Bench:
         a = self.args
         if self.sampler is not None:
             rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
+            journals = sorted((home / "OpenRide" / "Activities" / ".journal").glob("*.jsonl"))
+            window = riding_window(journals[-1] if journals else None, getattr(self, "end_unix", None))
             self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}",
                                                          real_window=a.native, engine_dir=self.out,
-                                                         shaders=getattr(self, "shaders_judged", a.shaders))   # lot BF1
+                                                         shaders=getattr(self, "shaders_judged", a.shaders),   # lot BF1
+                                                         window=window)
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
+            if window is not None:
+                start, end = window
+                r.check(None, "fenêtre jugée par la sonde",
+                        ("du premier mètre" if start is not None else "du début (premier mètre non trouvé au journal)")
+                        + (" à l'ordre end_session" if end is not None else " à la fin des relevés")
+                        + " ; préparation et écran de bilan relevés à part")
             if self.endurance:
                 for ok, label, measure in perf_probe.endurance_checks(rows, real_window=a.native):
                     r.check(ok, label, measure)
@@ -1030,6 +1040,26 @@ def speed_check(recs: list[dict[str, Any]], target_kmh: float, tolerance: float 
     ok = abs(med - target_kmh) <= tolerance * target_kmh
     return ok, (f"médiane {med:.1f} km/h sur {len(v)} s (attendu {target_kmh:.1f} ± {tolerance * target_kmh:.1f}), "
                 f"de {v[0]:.1f} à {v[-1]:.1f} km/h{note}")
+
+
+def riding_window(journal: Path | None, end_unix: float | None) -> tuple[float | None, float | None] | None:
+    """Fenêtre du roulage pour la sonde (fil « Bilan des à-coups », 27 novembre) : premier enregistrement du journal à
+    1 m parcouru au moins, jusqu'à l'envoi de `end_session` (heures Unix). L'écran de bilan (29 à 37 images « menu
+    affichage summary » à chaque passage) et la barre de préparation ne sont plus jugés avec le roulage."""
+    start = None
+    if journal is not None and journal.is_file():
+        for line in journal.read_text(encoding="utf-8").splitlines():
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if row.get("kind") == "record" and isinstance(row.get("distance"), (int, float)) \
+                    and row["distance"] >= perf_probe.START_DISTANCE_M and isinstance(row.get("ts"), (int, float)):
+                start = float(row["ts"])
+                break
+    if start is None and end_unix is None:
+        return None
+    return start, end_unix
 
 
 # --- rapport HTML ------------------------------------------------------------------------------
