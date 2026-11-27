@@ -669,8 +669,23 @@ class Run:
             time.sleep(0.15)
             st = self.state()
 
+    def settled_items(self, item: str, delay: float) -> dict[str, Any]:
+        """État d'un menu posé qui montre `item` avec un focus (lot BM2) : une liste remplie par une réponse du core
+        (écran « Contenus » juste ouvert, #1108 : « choisir « content:starter » : focus «  » ») n'a d'abord ni
+        éléments ni focus. Relu jusqu'à `delay` secondes, silences de l'engine non comptés ; le dernier état sinon."""
+        deadline = now() + delay
+        since = self.silent_s
+        while True:
+            st = self.state()
+            ids = [it["id"] for it in st.get("items", []) if it["enabled"]]
+            if (item in ids and st.get("focus_id") in ids) or now() >= deadline + min(self.silent_s - since,
+                                                                                     ENGINE_SILENT_S):
+                return st
+            time.sleep(0.15)
+
     def move_focus(self, item: str) -> bool:
         """Focus sur l'élément `item` par appuis courts sur + ou − (le plus court chemin, la liste boucle)."""
+        self.settled_items(item, 5.0 * self.slowdown())
         for _ in range(40):
             st = self.state()
             if st.get("focus_id") == item:

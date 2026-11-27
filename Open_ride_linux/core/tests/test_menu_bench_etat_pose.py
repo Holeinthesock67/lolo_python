@@ -100,3 +100,18 @@ def test_scenario_import_marque_l_ecran_de_compilation_transitoire():
     compil = [e for e in doc["etapes"] if str(e.get("statut", "")).startswith("^Compilation")]
     assert compil and all(e.get("transitoire") for e in compil)
     mb.load_scenario(TESTS / "menu_scenarios" / "parcours_import.json")   # clé connue du banc
+
+
+def test_liste_remplie_par_le_core_attendue_avant_de_deplacer_le_focus():
+    FakeRun.settled_items = mb.Run.settled_items
+    vide = {**_etat("contents", items=()), "focus_id": ""}
+    run = FakeRun([vide, vide, _etat("contents", "content:starter", items=("content:starter", "content:pack"))])
+    st = run.settled_items("content:pack", 5.0)
+    assert st["focus_id"] == "content:starter"
+
+
+def test_liste_jamais_remplie_rend_le_dernier_etat():
+    FakeRun.settled_items = mb.Run.settled_items
+    vide = {**_etat("contents", items=()), "focus_id": ""}
+    run = FakeRun([vide])
+    assert run.settled_items("content:pack", 0.3)["items"] == []
