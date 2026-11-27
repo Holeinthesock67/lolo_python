@@ -1,0 +1,66 @@
+# Banc « pile à-coups » (27/11) : départ à froid puis à chaud, joué sur la branche de pile
+# claude/project-thread-gn65yi-pile-acoups : main 77337747 + 5 PR assemblées, dans cet ordre :
+#   #1097 54d95ac1 (PG1, contient #1066 84c10410, AC6)  #953 2dd7f522 (AC1/AC2)  #985 d1d3f381 (AC5)
+#   #964 35937764 (AC3b, empilée sur #953)
+# Assemblage sans aucun conflit ; aucune PR n'est changée. Ordre de fusion dans main : #1066 avant #1097, #953 avant
+# #964, #985 libre.
+#
+# Ce que la pile doit montrer (critères BF1, #1094, et banc j26r2 de #1097) :
+#   - froid (low, high, medium) : « préparation des graphismes : finie » (plus « interrompue ») ; ses images relevées
+#     à part (INFO « à-coups : préparation des graphismes ») ; départ jugé sous 1 s ; aucune image de plus de 1 s
+#     après le chargement du parcours. Les images de 200 à 600 ms juste après le chargement (pipelines absents du
+#     catalogue) sont connues : à-coup « pire image » encore possible, catalogue à refaire ensuite (pas un correctif
+#     de la pile) ;
+#   - chaud (medium, second passage sur les caches du premier) : départ sous 150 ms, budgets GPU inchangés, sous-étape
+#     « decor cyclistes » plus courte (#964) ;
+#   - monde ouvert ea1_lac medium (cache SÉPARÉ, second passage sur les caches de rendu du premier) : étapes
+#     « préchauffage osm <sorte> » une par image (#953). L'écran « Chargement de la carte » qui ne finit pas (j26r2) est
+#     un défaut connu de main, hors pile (lot à part : redemander world_map après 5 s) : noté, pas bloquant.
+#
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/pile_acoups.toml
+# Durée attendue : environ 3 h 30. Cache SÉPARÉ obligatoire : le banc ne touche jamais ~/OpenRide/Cache/monde.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rPILE-acoups"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rPILEacoups-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rPILEacoups"
+branche = "claude/project-thread-gn65yi-pile-acoups"   # pile de 5 PR (voir en tête) ; tête donnée par le fil
+categorie = "rendu"
+cache = "separe"
+risque = 2                                  # déjà échoué (j26r2), correctifs depuis
+fumee = """G=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64; (cd engine && timeout 300 $G --headless --path . --import >/dev/null 2>&1); rm -rf {sortie}/../w {sortie}/../shaders {sortie}/../caches_ow; python -m openride_compiler.demo_biomes --out {sortie}/../w --demo-set && find {sortie}/../w -maxdepth 2 -name "demo-biomes-paysages.world" | grep -q ."""
+fumee_delai_min = 10
+
+# Froid : caches de shaders vides, premier lancement (préparation des graphismes comprise).
+[[pr.etape]]
+id = "low-froid"
+commande = """G=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64; W=$(find {sortie}/../w -maxdepth 2 -name "demo-biomes-paysages.world" | head -1); python engine/tests/sim_bench.py --godot $G --native --probe --muet --shaders froid --quality low --scenario nominal --world "$W" --speed-kmh 50 --duration 1150 --at-m 1000,7000,13000 --out {sortie}/db1"""
+delai_min = 35
+
+[[pr.etape]]
+id = "high-froid"
+commande = """G=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64; W=$(find {sortie}/../w -maxdepth 2 -name "demo-biomes-paysages.world" | head -1); python engine/tests/sim_bench.py --godot $G --native --probe --muet --shaders froid --quality high --scenario nominal --world "$W" --speed-kmh 50 --duration 1150 --at-m 1000,7000,13000 --out {sortie}/db1"""
+delai_min = 35
+
+[[pr.etape]]
+id = "medium-froid"
+commande = """G=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64; W=$(find {sortie}/../w -maxdepth 2 -name "demo-biomes-paysages.world" | head -1); python engine/tests/sim_bench.py --godot $G --native --probe --muet --shaders froid --quality medium --scenario nominal --world "$W" --speed-kmh 50 --duration 1150 --at-m 1000,7000,13000 --out {sortie}/db1"""
+delai_min = 35
+
+# Chaud : un premier passage remplit les caches de la pile (jugé à froid, indicatif), le second est le verdict.
+[[pr.etape]]
+id = "medium-chaud"
+commande = """G=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64; W=$(find {sortie}/../w -maxdepth 2 -name "demo-biomes-paysages.world" | head -1); python engine/tests/sim_bench.py --godot $G --native --probe --muet --shaders chaud --shader-cache-dir {sortie}/../shaders --quality medium --scenario nominal --world "$W" --speed-kmh 50 --duration 300 --out {sortie}/remplissage; python engine/tests/sim_bench.py --godot $G --native --probe --muet --shaders chaud --shader-cache-dir {sortie}/../shaders --quality medium --scenario nominal --world "$W" --speed-kmh 50 --duration 1150 --at-m 1000,7000,13000 --out {sortie}/db1"""
+delai_min = 45
+
+# Monde ouvert : même règle, caches de rendu repris du premier passage.
+[[pr.etape]]
+id = "ow-medium"
+commande = """python engine/tests/menu_bench.py --native --scenario ea1_lac --voies clavier --qualite medium --caches-rendu {sortie}/../caches_ow --out {sortie}/remplissage; python engine/tests/menu_bench.py --native --scenario ea1_lac --voies clavier --qualite medium --caches-rendu {sortie}/../caches_ow --sonde --captures ecrans --out {sortie}/banc"""
+delai_min = 60
