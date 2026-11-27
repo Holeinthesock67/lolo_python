@@ -214,6 +214,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
   - juste avant de fusionner un train : `python3 scripts/avant_poussee.py --avant-fusion` (lot BM1 : main changé depuis la base du train sur un fichier commun ou partagé = fusionner main dans le train et attendre sa CI) ;
   - messages de commit en français ;
   - fusion dans `main` (`--no-ff`) seulement quand tout est vert ;
+  - juste après chaque fusion dans main (train ou PR) : `python3 scripts/conflits_ouverts.py --gh` (ou `--liste` « NUMÉRO BRANCHE ») liste en quelques secondes les PR ouvertes que la fusion met en conflit ou dont le numéro IPC / WORLDGEN / SCHEMA est désormais pris (lot CF1) ; prévenir aussitôt leurs fils ;
   - après une fusion, le propriétaire fait `git checkout main && git pull` sur son PC.
 - **Fichiers à ne pas versionner :** `.venv/`, `spike_reports/`, `*.fit`, `*.jsonl`, `.coverage`.
 
