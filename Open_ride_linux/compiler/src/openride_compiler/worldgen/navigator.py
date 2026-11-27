@@ -76,7 +76,7 @@ def _bearing(a: XZ, b: XZ) -> float:
 class Navigator:
     def __init__(self, graph: RoadGraph, mode: str, start_xz: XZ, start_heading_deg: float, seed: int,
                  target_xz: XZ | None = None, loop_m: float | None = None,
-                 allowed: Callable[[Edge], bool] | None = None) -> None:
+                 allowed: Callable[[Edge], bool] | None = None, home_node: int | None = None) -> None:
         if mode not in MODES:
             raise ValueError(f"mode de navigation inconnu : {mode}")
         if mode == "destination" and target_xz is None:
@@ -94,7 +94,16 @@ class Navigator:
         r = [_hash01(seed, "derive", k) for k in range(4)]
         self._drift = [(0.6, 20_000.0 + 20_000.0 * r[0], 2 * math.pi * r[1]),
                        (0.4, 10_000.0 + 10_000.0 * r[2], 2 * math.pi * r[3])]
-        self._start_node = nearest(graph.nodes.values(), self.start_xz) if mode == "loop" else None
+        # Maison de la boucle gardée en nœud OSM (K2-01 : l'identifiant d'un nœud de choix peut changer quand le
+        # graphe grandit). `home_node` : bout de l'arête du départ, donné par le générateur (K2-04 : le nœud le plus
+        # proche à vol d'oiseau pouvait être sur une voie isolée, sans aucun retour possible).
+        self._home_raw: int | None = None
+        if mode == "loop":
+            self._home_raw = int(home_node) if home_node is not None else nearest(graph.nodes.values(), self.start_xz)
+
+    @property
+    def _start_node(self) -> int | None:
+        return None if self._home_raw is None else self.graph.resolve(self._home_raw)
 
     # --- cap de balade ------------------------------------------------------------------------
 
@@ -166,16 +175,20 @@ class Navigator:
 
     # --- choix --------------------------------------------------------------------------------
 
-    def arriving_heading(self, node: int, arriving_edge: str | None) -> float:
+    def arriving_heading(self, node: int, arriving_edge: str | None, arriving_forward: bool | None = None) -> float:
         if arriving_edge is None:
             return self.start_heading
         e = self.graph.edges[arriving_edge]
-        into = e.points if self.graph.cluster.get(e.raw_b) == node else e.points[::-1]
+        if arriving_forward is None:
+            arriving_forward = self.graph.cluster.get(e.raw_b) == node
+        into = e.points if arriving_forward else e.points[::-1]
         return (heading_of(into[::-1]) + 180.0) % 360.0
 
-    def choose(self, node: int, arriving_edge: str | None, history: History = ()) -> Choice:
+    def choose(self, node: int, arriving_edge: str | None, history: History = (),
+               arriving_forward: bool | None = None) -> Choice:
+        """`arriving_forward` : sens de l'arête d'arrivée (le générateur le connaît) ; sans lui, déduit du nœud."""
         ids, seen, recent, ridden = self._history(history)
-        arr = self.arriving_heading(node, arriving_edge)
+        arr = self.arriving_heading(node, arriving_edge, arriving_forward)
         branches = self.graph.out_edges(node, arr, arriving_edge)
         if self.allowed is not None:
             branches = [b for b in branches if self.allowed(b.edge)]
@@ -183,7 +196,15 @@ class Navigator:
             if arriving_edge is None:
                 raise ValueError(f"nœud {node} sans aucune branche")
             e = self.graph.edges[arriving_edge]
-            fwd = self.graph.cluster.get(e.raw_a) == node and e.allows(True)
+            # K2-02 : le demi-tour repart toujours dans le sens opposé à l'arrivée, permis ou non ; c'est au
+            # générateur de constater qu'il est interdit (« plus de route connue »). Avant, une arête à sens
+            # unique rangée à l'envers était reprise dans le sens d'arrivée, sans fin.
+            if arriving_forward is not None:
+                fwd = not arriving_forward
+            else:
+                at_a = self.graph.cluster.get(e.raw_a) == node
+                at_b = self.graph.cluster.get(e.raw_b) == node
+                fwd = at_a if at_a != at_b else at_a and e.allows(True)   # boucle sur un nœud : sens inconnu
             return Choice(e.id, fwd, e.b if fwd else e.a, {"total": 0.0}, phase="u_turn")
         n = len(ids)
         here = (self.graph.nodes[node].x, self.graph.nodes[node].z)
@@ -224,6 +245,10 @@ class Navigator:
                 return Choice(br.edge.id, br.forward, br.to_node, sc, phase="loop_out")
             budget = self.loop_m - LOOP_MARGIN_M
             ret = [ridden + br.edge.length_m + to_home.get(br.to_node, math.inf) for br in branches]
+            if min(ret) == math.inf:
+                # K2-04 : aucun retour connu (maison hors du graphe relié, ou pas encore chargé) : viser le cap
+                # du départ plutôt que l'ordre des identifiants des arêtes.
+                return self._pick_ride(branches, _bearing(here, self.start_xz), seen, recent, n, phase="loop_return")
             if min(ret) >= budget:
                 k = min(range(len(branches)), key=lambda i: (ret[i], branches[i].edge.id))
                 br = branches[k]

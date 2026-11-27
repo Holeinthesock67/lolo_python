@@ -129,7 +129,7 @@ def relief_has(provider: ElevationProvider, lat: float, lon: float) -> bool:
 class Leg:
     edge_id: str
     forward: bool
-    to_node: int
+    to_raw: int                   # nœud OSM au bout de l'étape, relu par `RoadGraph.resolve` à chaque usage (K2-01)
     profile: EdgeProfile          # orienté dans le sens de marche, repère de zone
     s0: float = 0.0
 
@@ -309,7 +309,8 @@ class WorldSession:
         loop_km = msg.get("loop_km")
         self.nav = Navigator(self.graph, mode, (x, z), float(msg.get("heading_deg", 0.0)), int(msg.get("seed", 0)),
                              target_xz=target_xz, loop_m=float(loop_km) * 1000.0 if loop_km else None,
-                             allowed=None if self.network else self._edge_available)
+                             allowed=None if self.network else self._edge_available,
+                             home_node=self._home_node(x, z) if mode == "loop" else None)
         self._make_session_dir()
         self._extend()
         self._write_manifest()
@@ -367,9 +368,18 @@ class WorldSession:
         tt = t if forward else e.length_m - t
         if p.length_m - tt >= C.DS_M:
             p = tail_profile(p, tt)
-        self.legs = [Leg(e.id, forward, e.b if forward else e.a, p, 0.0)]
+        self.legs = [Leg(e.id, forward, e.raw_b if forward else e.raw_a, p, 0.0)]
         self.log(f"départ accroché à l'arête {e.id} ({best[0]:.0f} m), sens {'direct' if forward else 'inverse'}")
         return True
+
+    def _home_node(self, x: float, z: float) -> int:
+        """Maison de la boucle (K2-04) : un bout de l'arête où le départ est accroché, donc relié à la route
+        roulée ; le plus proche du départ, ou celui vers lequel on part si l'arête est à sens unique."""
+        first = self.legs[0]
+        e = self.graph.edges[first.edge_id]
+        if e.oneway:
+            return first.to_raw
+        return min((e.raw_a, e.raw_b), key=lambda n: (math.hypot(self.graph.pos[n][0] - x, self.graph.pos[n][1] - z), n))
 
     def _make_session_dir(self) -> None:
         if self.session_dir is None:
@@ -507,8 +517,10 @@ class WorldSession:
             self.queue.request(key, math.hypot(x0 + 500.0 - rx, z0 + 500.0 - rz), 0.0)
             self.log(f"carré {key.ix}_{key.i_n} : tuiles arrivées, refait")
 
-    def _ensure_around_node(self, node: int) -> None:
-        n = self.graph.nodes[node]
+    def _ensure_around_node(self, raw: int) -> None:
+        """Charge le graphe autour d'un nœud OSM ; le nœud de choix qui le contient peut ensuite changer
+        d'identifiant (K2-01) : le relire par `graph.resolve` après cet appel."""
+        n = self.graph.nodes[self.graph.resolve(raw)]
         self._ensure_graph(n.x, n.z)
 
     def _profile(self, e: Edge, forward: bool = True) -> EdgeProfile:
@@ -559,7 +571,7 @@ class WorldSession:
     def _history(self, upto: int) -> list[str]:
         return [leg.edge_id for leg in self.legs[:upto + 1]]
 
-    def _append_leg(self, edge_id: str, forward: bool, to_node: int, turnaround: bool = False) -> None:
+    def _append_leg(self, edge_id: str, forward: bool, turnaround: bool = False) -> None:
         """Étape suivante ; `turnaround` : demi-tour au bout d'une impasse, la même arête reprise en sens inverse
         après une boucle de retournement (14 novembre : plus de cap retourné sur place)."""
         e = self.graph.edges[edge_id]
@@ -574,7 +586,7 @@ class WorldSession:
                 p = with_turnaround(p, prev, self.provider, self.frame)
         if self.legs:          # arête courte fondue dans un nœud, rond-point : raccord au lieu d'un saut
             p = with_link(self.legs[-1].profile, p)
-        self.legs.append(Leg(edge_id, forward, to_node, p, self.length_m))
+        self.legs.append(Leg(edge_id, forward, e.raw_b if forward else e.raw_a, p, self.length_m))
 
     def _extend(self) -> bool:
         """Prolonge la route engagée jusqu'à l'horizon (plus une marge) ; vrai si elle a changé.
@@ -589,8 +601,8 @@ class WorldSession:
         while self.length_m < goal:
             i = len(self.legs) - 1
             last = self.legs[i]
-            self._ensure_around_node(last.to_node)
-            c = self.nav.choose(last.to_node, last.edge_id, self._history(i))
+            self._ensure_around_node(last.to_raw)
+            c = self.nav.choose(self.graph.resolve(last.to_raw), last.edge_id, self._history(i), last.forward)
             self.nav_default[i] = (c.branch_edge_id, c.forward)
             if c.arrived and self.finish_leg is None and self.nav.mode != "ride":
                 self.finish_leg = i
@@ -600,7 +612,7 @@ class WorldSession:
                     self.data_state = "missing"
                     self.status("ready", "plus de route connue", "missing")
                 break
-            self._append_leg(c.branch_edge_id, c.forward, c.to_node, turnaround=c.phase == "u_turn")
+            self._append_leg(c.branch_edge_id, c.forward, turnaround=c.phase == "u_turn")
         return len(self.legs) != legs0 or self.finish_leg != finish0
 
     def _route_columns(self) -> dict[str, Any]:
@@ -613,8 +625,9 @@ class WorldSession:
 
     def _branches_at(self, i: int) -> list[Branch]:
         leg = self.legs[i]
-        arr = self.nav.arriving_heading(leg.to_node, leg.edge_id)
-        brs = self.graph.out_edges(leg.to_node, arr, leg.edge_id)
+        node = self.graph.resolve(leg.to_raw)
+        arr = self.nav.arriving_heading(node, leg.edge_id, leg.forward)
+        brs = self.graph.out_edges(node, arr, leg.edge_id)
         if not self.network:
             brs = [b for b in brs if self._edge_available(b.edge)]
         return brs
@@ -637,7 +650,8 @@ class WorldSession:
                 keys = [keys[k] for k in sorted(keep)]
             default_key = self.nav_default.get(i, self.legs[i + 1].key)
             default = keys.index(default_key) if default_key in keys else keys.index(self.legs[i + 1].key)
-            j = Junction(f"j{leg.to_node}-{i}", i, leg.to_node, leg.s1, brs, default)
+            # identifiant pris sur le nœud OSM, stable même si le nœud de choix change d'identifiant (K2-01)
+            j = Junction(f"j{leg.to_raw}-{i}", i, self.graph.resolve(leg.to_raw), leg.s1, brs, default)
             j.previews = [self._preview(i, b) for b in brs]
             out.append(j)
         return out
@@ -649,14 +663,16 @@ class WorldSession:
             return self._preview_cache[key]
         profiles = [self._profile(br.edge, br.forward)]
         history = self._history(i) + [br.edge.id]
-        node, edge_id, total = br.to_node, br.edge.id, profiles[0].length_m
+        raw, edge_id, fwd, total = br.to_raw, br.edge.id, br.forward, profiles[0].length_m
         while total < self.preview_m:
-            self._ensure_around_node(node)
-            c = self.nav.choose(node, edge_id, history)
-            p = self._profile(self.graph.edges[c.branch_edge_id], c.forward)
+            self._ensure_around_node(raw)
+            c = self.nav.choose(self.graph.resolve(raw), edge_id, history, fwd)
+            e = self.graph.edges[c.branch_edge_id]
+            p = self._profile(e, c.forward)
             profiles.append(p)
             history.append(c.branch_edge_id)
-            node, edge_id, total = c.to_node, c.branch_edge_id, total + p.length_m
+            raw = e.raw_b if c.forward else e.raw_a
+            edge_id, fwd, total = c.branch_edge_id, c.forward, total + p.length_m
         joined = concat(profiles)
         keep = joined["s"] <= self.preview_m + 1e-6
         x, y, z = joined["x"][keep] - self.e0, joined["alt_m"][keep], joined["z"][keep] + self.n0
@@ -840,7 +856,7 @@ class WorldSession:
         for k in [k for k in self.nav_default if k > j.leg]:
             del self.nav_default[k]
         self._preview_cache = {k: v for k, v in self._preview_cache.items() if k[0] <= j.leg}
-        self._append_leg(br.edge.id, br.forward, br.to_node)
+        self._append_leg(br.edge.id, br.forward)
         self._extend()
         self._request_squares()
         self._publish(_part_of(j.s_m - REWRITE_BACK_M))
