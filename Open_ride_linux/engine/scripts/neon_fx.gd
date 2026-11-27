@@ -13,6 +13,10 @@ extends Node3D
 const LEVEL_RATE := 0.5       # montée et descente de `neon_level` par seconde
 const DUSK_HOLD_S := 120.0    # coucher du soleil tenu au départ
 const NIGHT_AT_S := 600.0     # nuit complète
+# La nuit tombe par paliers (banc PC du 27 novembre) : chaque changement de `night` fait reposer le ciel, le brouillard
+# et la lumière (atmosphere_view.gd, toutes les 0,25 s) ; en continu, c'était 4 fois par seconde pendant 8 minutes,
+# et une image en retard dans la plupart des secondes. 96 paliers : un toutes les 5 s en moyenne, invisible à l'œil.
+const NIGHT_STEPS := 96
 
 var biome_model = null
 var neon_level := 0.0
@@ -46,6 +50,11 @@ static func night_at(t: float) -> float:
 	return smoothstep(DUSK_HOLD_S, NIGHT_AT_S, t)
 
 
+## `night_at` par paliers de 1 / `NIGHT_STEPS` : ce que reçoit le rendu.
+static func night_step_at(t: float) -> float:
+	return roundf(night_at(t) * NIGHT_STEPS) / float(NIGHT_STEPS)
+
+
 ## Une fois par image : `neon_level` vers 1 dans une tuile en ville néon, vers 0 ailleurs ; la nuit avance tant
 ## que la caméra y roule (pas en pause : `dt_s` nul).
 func update(cam_pos: Vector3, dt_s: float) -> void:
@@ -60,7 +69,7 @@ func update(cam_pos: Vector3, dt_s: float) -> void:
 	_started = true
 	if neon_level > 0.0:
 		_clock += maxf(dt_s, 0.0)
-	night = night_at(_clock) if is_nan(night_override) else clampf(night_override, 0.0, 1.0)
+	night = night_step_at(_clock) if is_nan(night_override) else clampf(night_override, 0.0, 1.0)
 	apply_globals(neon_level, palette)
 
 

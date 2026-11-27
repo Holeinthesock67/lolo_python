@@ -113,6 +113,20 @@ func _test_fx(theme: Dictionary) -> void:
 	for i in range(300):
 		fx.update(Vector3(0.0, 0.0, -100.0), 1.0)
 	_check(fx.night == 1.0, "nuit complète à %d s" % int(NeonFx.NIGHT_AT_S))
+	# La nuit tombe par paliers : le ciel et la lumière ne sont pas reposés à chaque image (banc PC du 27 novembre)
+	var stepped = NeonFx.new()
+	stepped.configure(_model(theme, "ville_neon"))
+	var changes := 0
+	var last := -1.0
+	var biggest := 0.0
+	for i in range(int(NeonFx.NIGHT_AT_S + 10.0) * 20):
+		stepped.update(Vector3(0.0, 0.0, -100.0), 0.05)
+		if stepped.night != last:
+			changes += 1
+			biggest = maxf(biggest, stepped.night - maxf(last, 0.0))
+			last = stepped.night
+	_check(changes == NeonFx.NIGHT_STEPS + 1 and stepped.night == 1.0 and biggest < 0.011,
+		"nuit par paliers : %d changements en 10 min à 20 images/s (un palier d'au plus 1,1 %%)" % changes)
 	fx.night_override = 0.25
 	fx.update(Vector3(0.0, 0.0, -100.0), 1.0)
 	_check(fx.night == 0.25, "nuit imposée pour les captures")
@@ -153,6 +167,25 @@ func _test_atmosphere(theme: Dictionary) -> void:
 		and (night[0] as Color).get_luminance() < (dusk[0] as Color).get_luminance()
 		and (night[2] as Color).get_luminance() < (dusk[2] as Color).get_luminance(),
 		"nuit : lumière faible d'en haut, étoiles, ciel assombri")
+	# Nuit par paliers : l'atmosphère n'est reposée qu'à chaque palier, pas tous les quarts de seconde
+	var counts := {}
+	for stepped: bool in [true, false]:
+		var prev := {}
+		var applied := 0
+		var t := 0.0
+		while t <= NeonFx.NIGHT_AT_S + 10.0:
+			var q := base.duplicate()
+			q["fog_end_factor"] = 1.0
+			q["heat_haze"] = 0.0
+			av.set_neon(1.0, NeonFx.night_step_at(t) if stepped else NeonFx.night_at(t), palette)
+			av._with_neon(q)
+			if AtmosphereView._differs(q, prev):
+				applied += 1
+				prev = q
+			t += AtmosphereView.PERIOD_S
+		counts[stepped] = applied
+	_check(int(counts[true]) == NeonFx.NIGHT_STEPS + 1 and int(counts[false]) > 10 * int(counts[true]),
+		"atmosphère reposée %d fois par paliers (%d fois en continu)" % [int(counts[true]), int(counts[false])])
 	var half := base.duplicate()
 	av.set_neon(0.5, 0.0, palette)
 	av._with_neon(half)

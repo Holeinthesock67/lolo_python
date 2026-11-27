@@ -67,6 +67,7 @@ const StreetLights := preload("res://scripts/street_lights.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 const AtmosphereModel := preload("res://scripts/atmosphere_model.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
 
@@ -568,6 +569,7 @@ func _valley_alt_at(s: float) -> float:
 
 func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: float, alt_m: float,
 		paused: bool, wind_eval: Dictionary, state: Dictionary = {}, beep_active: bool = false) -> void:
+	var t_begin := Time.get_ticks_usec()
 	_poll_job()
 	if not enabled or _route == null:
 		return
@@ -610,10 +612,12 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 			RenderQuality.apply_weather_fog(environment, _fog_base, boost, _fog_vol_base)
 			fog_updates += 1
 	# Oiseaux et animaux (P11, P22 à P24), éoliennes, drapeaux et eau (P12)
+	PerfProbe.mark_since("decor_meteo", "", t_begin)
 	var t_fauna := Time.get_ticks_usec()
 	fauna.update(cam_pos, rider_pos, now_s)
 	wave2_us += Time.get_ticks_usec() - t_fauna
 	wave2_frames += 1
+	PerfProbe.mark_since("decor_faune", "", t_fauna)
 	turbines.update(wind_eval, cam_pos, dt_s)
 	flags.update(wind_eval, dt_s)
 	wrecks.update(cam_pos)
@@ -660,6 +664,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		cyclists.sync_core(_core_list(state["riders"]), int(state["seq"]), _model_s, core_s, part, parts)
 	cyclists.update(_model_s, rider_v, dt_s, paused, bots_m, _dir * _rider_lane_m)   # lot AS10 : à sa vraie place (repère du décor)
 	cyclists_view.update(dt_s, paused, _model_s)
+	PerfProbe.mark_since("decor_cyclistes", "", t_wave2)
+	var t_part := Time.get_ticks_usec()
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	var others: Array = cyclists.riders()
@@ -676,6 +682,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	road_traffic.update(cam_pos, dt_s, paused)
 	road_traffic_view.set_lights(headlights)
 	road_traffic_view.update()
+	PerfProbe.mark_since("decor_trafic", "", t_part)
+	t_part = Time.get_ticks_usec()
 	# Ciel (P26), figé en pause
 	sky.update(cam_pos, dt_s, wind_eval, weather_eval, paused)
 	sky_view.update()
@@ -684,6 +692,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	boats_view.set_lights(headlights)
 	boats_view.update()
 	wave2_us += Time.get_ticks_usec() - t_wave2
+	PerfProbe.mark_since("decor_ciel_bateaux", "", t_part)
+	t_part = Time.get_ticks_usec()
 	# Spectateurs (P15) et passants (P21)
 	crowd.update(rider_pos, cam_s, now_s)
 	if not bots.is_empty():
@@ -691,8 +701,11 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var power := float(state["power"]) if typeof(state.get("power")) in [TYPE_INT, TYPE_FLOAT] else NAN
 	last_cheer = crowd.cheer(cam_s, now_s, power, ftp_w if ftp_w > 0.0 else NAN)
 	crowd_view.update(cam_pos, now_s, last_cheer)
+	PerfProbe.mark_since("decor_foule", "", t_part)
+	t_part = Time.get_ticks_usec()
 	last_event = passersby.update(rider_pos, cam_s, now_s, beep_active)
 	passersby_view.update_passersby(cam_pos, cam_s, now_s, last_event)
+	PerfProbe.mark_since("decor_passants", "", t_part)
 	_poll_sounds(now_s)
 
 
