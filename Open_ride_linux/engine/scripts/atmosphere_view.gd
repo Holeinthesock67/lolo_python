@@ -153,6 +153,18 @@ func set_world(theme: Dictionary, biome_model, route, terrain: bool) -> void:
 	_apply(_params_at(0.0, {}))
 
 
+## Monde ouvert (revue E8-03) : route révisée depuis `from_s`. Les poids des biomes sont lus sur elle (avant : sur la
+## première route, bornée à sa longueur, donc l'atmosphère du bout de la première route pour toute la balade) ; ceux
+## déjà lus avant `from_s` sont gardés.
+func update_route(route, from_s: float) -> void:
+	if atmosphere == null or route == null or route.n < 1:
+		return
+	atmosphere.set_positions(func(s: float) -> Vector2:
+		var p: Vector3 = route.sample_point(route.wrap_s(s))
+		return Vector2(p.x, p.z), from_s)
+	_at = -INF
+
+
 ## Jour et nuit (lot P19) : lumière de l'heure, posée tout de suite ; {} : retour au soleil fixe.
 func set_cycle(light: Dictionary) -> void:
 	cycle = light

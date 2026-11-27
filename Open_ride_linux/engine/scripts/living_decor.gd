@@ -334,6 +334,11 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 func extend_route(route) -> void:
 	if route == null or _route == null or not enabled:
 		return
+	# Revue E6-04 : véhicules et cyclistes du décor posés tout de suite sur la nouvelle route (le core les fait déjà
+	# rouler dessus) ; villages et montées d'avant gardés jusqu'à la fin de la tâche, qui les remet à jour.
+	if prepared:
+		traffic.extend_route(route, pois)
+		cyclists.extend_route(route, climbs, pois)
 	if not _job.is_empty():
 		_pending_extend = route
 		return

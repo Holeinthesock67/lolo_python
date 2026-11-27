@@ -136,7 +136,9 @@ var _generation := 0
 ## à chaque révision (`swap_route`) et avant d'afficher un maillage, fichier relu : s'il a changé, la tuile est
 ## refaite en tâche de fond et l'ancien maillage reste affiché jusqu'au nouveau (pas de trou).
 var _near_md5: Dictionary = {}       # clé "near:x:z" -> empreinte du fichier du maillage affiché
-var _stale_near: Dictionary = {}     # clé -> vrai : fichier réécrit, maillage à refaire
+## Revue EC2 (E5-01, E5-04, E7-10) : même règle pour toute clé (tronçon de ruban, tuile proche ou lointaine) :
+## l'objet affiché reste jusqu'à ce que son remplaçant soit prêt (`integrate`, travaux marqués `rebuild`).
+var _stale_near: Dictionary = {}     # clé -> vrai : maillage à refaire, l'ancien reste affiché jusque-là
 var _live_tiles := false             # vrai dès la première révision : tuiles proches susceptibles de changer
 var _road_material: Material
 ## Lot P17 : marquages de P14 (`set_road_markings`), un matériau par tronçon qui porte des chiffres
@@ -379,35 +381,51 @@ func _has_layer(layer_name: String) -> bool:
 	return false
 
 
-func _get_vegetation_areas(t: Vector2i) -> Array:
-	return _get_osm_items(t, "vegetation")
+func _get_vegetation_areas(t: Vector2i, r = null, w_dir: String = "") -> Array:
+	return _get_osm_items(t, "vegetation", r, w_dir)
 
 
 ## Bâtiments OSM des tronçons proches d'une tuile proche (arbres exclus de leur emprise).
-func _get_buildings(t: Vector2i) -> Array:
-	return _get_osm_items(t, "buildings")
+func _get_buildings(t: Vector2i, r = null, w_dir: String = "") -> Array:
+	return _get_osm_items(t, "buildings", r, w_dir)
 
 
 ## Aires d'eau OSM des tronçons proches d'une tuile proche (lacs, rivières en surface, mer : arbres exclus,
 ## revue E7-05) ; les lignes d'eau (ruisseaux) ne sont pas des aires et ne retirent rien.
-func _get_water_areas(t: Vector2i) -> Array:
-	return _get_osm_items(t, "water").filter(func(w): return typeof(w) == TYPE_DICTIONARY and w.has("outer"))
+func _get_water_areas(t: Vector2i, r = null, w_dir: String = "") -> Array:
+	return _get_osm_items(t, "water", r, w_dir).filter(func(w): return typeof(w) == TYPE_DICTIONARY and w.has("outer"))
 
 
-func _get_osm_items(t: Vector2i, layer: String) -> Array:
-	if not _has_layer(layer) or world_dir == "":
+## Éléments OSM d'une couche autour de la tuile proche `t`. Fil secondaire : `r` et `w_dir` sont ceux de la tâche
+## (revue E5-12 : `route` du nœud peut changer pendant la tâche), ceux du nœud par défaut.
+func _get_osm_items(t: Vector2i, layer: String, r = null, w_dir: String = "") -> Array:
+	if r == null:
+		r = route
+	if w_dir == "":
+		w_dir = world_dir
+	if not _has_layer(layer) or w_dir == "":
 		return []
+	if r != null and r.live:
+		# Monde ouvert (revue E5-03) : carrés de la tuile et de ses voisines lus directement, quel que soit le tronçon
+		# à qui ils sont confiés (sinon un carré confié à un tronçon dont la boîte ne touche pas la tuile manquait :
+		# arbres sans forêts OSM ni exclusion des bâtiments)
+		var tiles := []
+		for dz in range(-1, 2):
+			for dx in range(-1, 2):
+				tiles.append(Vector2i(t.x + dx, t.y + dz))
+		var live_res := OsmLayers.load_tiles_live(w_dir, layer, tiles)
+		return live_res.get("items", [])
 	var areas := []
 	var tile_rect := Rect2(t.x * 1000.0, t.y * 1000.0, 1000.0, 1000.0)
-	var count := RoadBuilder.chunk_count(route) if route != null else 0
+	var count := RoadBuilder.chunk_count(r) if r != null else 0
 	for k in range(count):
 		var s0 := k * RoadBuilder.CHUNK_LENGTH_M
 		var s1 := (k + 1) * RoadBuilder.CHUNK_LENGTH_M
-		var p0: Vector3 = route.sample_point(s0)
-		var p1: Vector3 = route.sample_point(s1)
+		var p0: Vector3 = r.sample_point(s0)
+		var p1: Vector3 = r.sample_point(s1)
 		var r_bounds := Rect2(Vector2(p0.x, p0.z), Vector2.ZERO).expand(Vector2(p1.x, p1.z)).grow(100.0)
 		if r_bounds.intersects(tile_rect):
-			var res := OsmLayers.load_chunk(world_dir, layer, k, route)
+			var res := OsmLayers.load_chunk(w_dir, layer, k, r)
 			if res.get("ok", false):
 				areas.append_array(res.get("items", []))
 	return areas
@@ -451,6 +469,7 @@ func rideable_half(s: float, road_width_m: float = RoadBuilder.ROAD_WIDTH_M) -> 
 func swap_route(new_route, from_part: int) -> void:
 	_drop_road_chunks(from_part)
 	route = new_route
+	var arrived: Array = []   # tuiles proches nouvelles (carrés du monde ouvert arrivés)
 	if has_terrain or _has_layer("terrain"):
 		var near_new := TerrainTiles.scan_index(world_dir, "near")
 		var far_new := TerrainTiles.scan_index(world_dir, "far")
@@ -462,6 +481,7 @@ func swap_route(new_route, from_part: int) -> void:
 				_near_index[t] = true
 				_free_flat_tile(t)
 				_biome_tile_arrived("near", t)
+				arrived.append(t)
 		for t in far_new:
 			if not _far_index.has(t):
 				_biome_tile_arrived("far", t)
@@ -469,8 +489,55 @@ func swap_route(new_route, from_part: int) -> void:
 		has_terrain = not (_near_index.is_empty() and _far_index.is_empty())
 		_live_tiles = true
 		_mark_rewritten_near()
+		_mark_arrived_near(arrived)
+		if new_route != null and from_part < new_route.parts.size():
+			_mark_under_new_road(float(from_part) * RoadBuilder.CHUNK_LENGTH_M)
 	if osm_streamer != null:
-		osm_streamer.swap_route(new_route, from_part)
+		osm_streamer.swap_route(new_route, from_part, arrived)
+
+
+## Revue E5-04 : tuiles proches arrivées après leurs voisines. La tuile lointaine qui les contient a été construite
+## sans elles (`sink_under_near`), et les tuiles proches voisines affichées ont leur bord raccordé au lointain
+## (`blend_to_far`) : refaites en tâche de fond, ancien maillage gardé jusque-là.
+func _mark_arrived_near(arrived: Array) -> void:
+	for t in arrived:
+		var c := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(1.0, 0.0, 1.0)
+		var ft := TerrainTiles.tile_of("far", c.x, c.z)
+		_mark_stale("far:%d:%d" % [ft.x, ft.y])
+		for dt in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			_mark_stale("near:%d:%d" % [t.x + dt.x, t.y + dt.y])
+
+
+## Pas d'échantillonnage de la route nouvelle et marge autour de son axe pour trouver les tuiles qu'elle traverse.
+const NEW_ROAD_STEP_M := 50.0
+const NEW_ROAD_MARGIN_M := 60.0
+
+
+## Revue E5-04 et E7-10 : route nouvelle depuis `from_s` (prolongement, branche choisie). Les tuiles lointaines
+## qu'elle traverse ont été construites sans le creusement sous cette portion (`carve_under_route`), et les arbres des
+## tuiles proches affichées sans son couloir : refaites en tâche de fond, ancien maillage gardé jusque-là.
+func _mark_under_new_road(from_s: float) -> void:
+	if route == null or route.n < 2:
+		return
+	var s := maxf(from_s, 0.0)
+	var length: float = route.length_m
+	var m := NEW_ROAD_MARGIN_M
+	while true:
+		var p: Vector3 = route.sample_point(minf(s, length))
+		for off in [Vector2(-m, -m), Vector2(m, -m), Vector2(-m, m), Vector2(m, m)]:
+			var nt := TerrainTiles.tile_of("near", p.x + off.x, p.z + off.y)
+			_mark_stale("near:%d:%d" % [nt.x, nt.y])
+			var ft := TerrainTiles.tile_of("far", p.x + off.x, p.z + off.y)
+			_mark_stale("far:%d:%d" % [ft.x, ft.y])
+		if s >= length:
+			break
+		s += NEW_ROAD_STEP_M
+
+
+## Objet affiché (ou en construction) à refaire, l'ancien gardé jusqu'au nouveau ; rien s'il n'existe pas.
+func _mark_stale(key: String) -> void:
+	if _instances.has(key) or _jobs.has(key):
+		_stale_near[key] = true
 
 
 ## Tuiles proches affichées dont le fichier a changé depuis leur construction : à refaire (voir `_near_md5`).
@@ -487,7 +554,16 @@ func _near_file_md5(key: String) -> String:
 
 ## Tuiles proches à refaire (fichier réécrit par le générateur), pour les tests.
 func stale_near_count() -> int:
-	return _stale_near.size()
+	var n := 0
+	for key in _stale_near:
+		if (key as String).begins_with("near:"):
+			n += 1
+	return n
+
+
+## Objets à refaire de la sorte `kind` (road, near, far), ancien maillage affiché en attendant (tests).
+func stale_keys(kind: String) -> Array:
+	return _stale_near.keys().filter(func(k): return (k as String).begins_with(kind + ":"))
 
 
 ## Tuile de terrain arrivée en cours de séance (monde vivant) : sa tuile de biome, liée avant elle par le
@@ -497,7 +573,8 @@ func _biome_tile_arrived(level: String, t: Vector2i) -> void:
 		biome_model.layer.forget_missing(level, t.x, t.y)
 
 
-## Tronçons de ruban k ≥ `from_part` oubliés (travaux, maillages prêts, instances) : refaits au fil des images.
+## Tronçons de ruban k ≥ `from_part` à refaire au fil des images : travaux et maillages prêts oubliés, maillages
+## affichés gardés jusqu'à leur remplaçant (revue E5-01 : plus d'image sans chaussée sous le vélo).
 func _drop_road_chunks(from_part: int) -> void:
 	for key in _jobs.keys():
 		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
@@ -507,7 +584,7 @@ func _drop_road_chunks(from_part: int) -> void:
 			and int((r["key"] as String).get_slice(":", 1)) >= from_part))
 	for key in _instances.keys():
 		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
-			_free_instance(key)
+			_stale_near[key] = true
 
 
 ## Amorces voulues, telles que `live_world.previews(s)` les décrit : crée celles qui manquent, libère
@@ -733,9 +810,9 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 		var osm_behind := float(chunks_behind) * 1000.0
 		var osm_ahead := float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S
 		if direction > 0:
-			osm_streamer.update_window(s_pos - osm_behind, s_pos + osm_ahead)
+			osm_streamer.update_window(s_pos - osm_behind, s_pos + osm_ahead, Vector2(cam_pos.x, cam_pos.z))
 		else:
-			osm_streamer.update_window(s_pos - osm_ahead, s_pos + osm_behind)
+			osm_streamer.update_window(s_pos - osm_ahead, s_pos + osm_behind, Vector2(cam_pos.x, cam_pos.z))
 
 
 func _start_jobs() -> void:
@@ -819,7 +896,8 @@ func _build_job(job: Dictionary) -> void:
 				var t_trees := Time.get_ticks_usec()
 				# Hauteurs réelles : pente et limite des arbres jugées sur le vrai relief, arbres posés à la hauteur affichée.
 				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
-					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t), _get_water_areas(t))
+					vegetation_density_factor, _get_vegetation_areas(t, r, job["world_dir"]), _get_buildings(t, r, job["world_dir"]),
+					_get_water_areas(t, r, job["world_dir"]))
 				PerfProbe.task("arbres", "%d:%d" % [t.x, t.y], (Time.get_ticks_usec() - t_trees) / 1000.0)
 		"flat":
 			var t: Vector2i = spec["tile"]
@@ -913,10 +991,13 @@ func integrate(max_new: int) -> int:
 			if _instances.has(r["key"]):
 				_stale_near[r["key"]] = true     # lue avant la réécriture : refaite, l'ancien maillage reste
 			continue                             # sans maillage affiché : `_start_jobs` la relance
-		if _instances.has(r["key"]):
+		var replaced: bool = _instances.has(r["key"])
+		if replaced:
 			if not r.get("rebuild", false):
 				continue
-			_free_instance(r["key"])             # tuile refaite : l'ancien maillage laisse la place au nouveau
+			# Tuile refaite : l'ancien maillage laisse la place au nouveau ; forêts lointaines gardées (même relief
+			# réel, rien à replacer : pas de trou dans les forêts pendant leur file)
+			_free_instance(r["key"], r["kind"] == "far")
 		var t0 := Time.get_ticks_usec()
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
@@ -940,7 +1021,7 @@ func integrate(max_new: int) -> int:
 		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
 			tree_renderer.add_tile(r["trees_data"])
 			PerfProbe.mark("arbres", r["key"], (Time.get_ticks_usec() - t1) / 1000.0)
-		if r.has("forest_heights") and forest_impostors != null:
+		if r.has("forest_heights") and forest_impostors != null and not (replaced and r["kind"] == "far"):
 			var ft: Vector2i = TerrainTiles.tile_of("far", r["origin"].x + 1.0, r["origin"].z + 1.0)
 			forest_impostors.request_tile(ft.x, ft.y, r["forest_heights"], route, _theme_dict,
 				r.get("forest_water", PackedFloat32Array()))
@@ -1034,7 +1115,7 @@ func wait_jobs() -> void:
 	_poll_jobs(true)
 
 
-func _free_instance(key: String) -> void:
+func _free_instance(key: String, keep_forests: bool = false) -> void:
 	var mi: MeshInstance3D = _instances[key]
 	_instances.erase(key)
 	_near_md5.erase(key)
@@ -1047,7 +1128,7 @@ func _free_instance(key: String) -> void:
 	if key.begins_with("near:") and tree_renderer != null:
 		var parts := key.split(":")
 		tree_renderer.remove_tile(Vector2i(int(parts[1]), int(parts[2])))
-	elif key.begins_with("far:") and forest_impostors != null:
+	elif key.begins_with("far:") and forest_impostors != null and not keep_forests:
 		var parts := key.split(":")
 		forest_impostors.remove_tile(Vector2i(int(parts[1]), int(parts[2])))
 

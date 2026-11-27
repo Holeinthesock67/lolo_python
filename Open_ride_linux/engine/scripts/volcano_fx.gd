@@ -25,6 +25,7 @@ extends Node3D
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
+const RouteRevision := preload("res://scripts/route_revision.gd")
 const LavaShader := preload("res://shaders/lava.gdshader")
 const LoopChunks := preload("res://scripts/loop_chunks.gd")
 
@@ -130,6 +131,23 @@ func configure(p_budgets: Dictionary, route_data, model, seed_value: int = 0) ->
 		_lights.append(l)
 		add_child(l)
 
+
+## Monde ouvert (revue E8-01) : route révisée, garde de distance `road` déjà construite sur elle (nulle : construite
+## ici). Lave, panaches et gerbes des tronçons dont la route ne change pas sont gardés ; les autres sont refaits par
+## `update`.
+func retarget(route_data, road = null) -> void:
+	var old = route
+	route = route_data
+	if not active() or route == null:
+		return
+	_road = road if road != null else RoadClearance.new(route, GRID_M)
+	for g in range(_slot_chunk.size()):
+		var k: int = _slot_chunk[g]
+		if k == NO_CHUNK:
+			continue
+		var kk := _loop.key(k)
+		if not RouteRevision.same_span(old, route, kk * CHUNK_M, (kk + 1) * CHUNK_M):
+			_slot_chunk[g] = NO_CHUNK   # `update` le refait
 
 ## Budgets de `configure` tirés du décor vivant `living(preset)` (quality_presets.gd).
 static func budgets_of(living: Dictionary) -> Dictionary:
