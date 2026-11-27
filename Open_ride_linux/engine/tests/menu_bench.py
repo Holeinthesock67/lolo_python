@@ -203,6 +203,12 @@ COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 # revenu dans les ClickPair.DEDUP_S (relais du boîtier « − », 5 à 40 ms plus tard) ; en dessous, deux
 # « + » enchaînés n'en font qu'un.
 CLICK_GAP_S = ClickPair.DEDUP_S + 0.1
+# Touche simulée (voie clavier) : un seul datagramme UDP vers le port des trames `state`. Pendant un blocage du fil
+# principal de l'engine (gels du monde ouvert, bancs rGL2 du 24/11 : « engine muet 14,5 s »), le tampon du noyau se
+# remplit de trames `state` et le datagramme de la touche peut être perdu. Accusé : « [test] key done=<touche> »,
+# attendu KEY_DONE_S après l'appui (silences de l'engine non comptés), sinon la touche est renvoyée une fois
+# (lot GF8, fil « Fiabiliser les outils de banc »).
+KEY_DONE_S = 4.0
 
 # Un seul tableau bouton → geste : événement du Click -> (bouton du Click V2 simulé, durée en s),
 # (touche Godot, Maj, durée en ms), geste de souris (None : pas de geste, repli au clavier). « − » au Click : bouton
@@ -527,6 +533,7 @@ class Run:
         self.report = Report()
         self.shots: list[dict[str, Any]] = []
         self.replis = 0
+        self.renvois: list[str] = []   # touches perdues par le banc et renvoyées (lot GF8)
         self.state_port = self.cmd_port = 0
         self.engine: BenchProc | None = None
         self.core: BenchProc | None = None
@@ -664,7 +671,7 @@ class Run:
         elif voie == "clavier":
             key, shift, hold_ms = g["clavier"]
             hold = hold_ms / 1000.0
-            self._send({"type": "_test", "action": "key", "key": key, "shift": shift, "hold_ms": hold_ms})
+            t = self.send_key(ev, key, shift, hold_ms, t)
         else:
             hold = 0.0
             item = ""
@@ -682,6 +689,20 @@ class Run:
         ok = self._received(ev, t, hold, menu_shown)
         self.state()
         return ok
+
+    def send_key(self, ev: str, key: str, shift: bool, hold_ms: int, t: float) -> float:
+        """Envoie la touche simulée et attend son accusé « [test] key done » ; sans accusé (datagramme perdu
+        pendant un blocage de l'engine), la renvoie une seule fois. Renvoie l'instant de l'envoi retenu."""
+        msg = {"type": "_test", "action": "key", "key": key, "shift": shift, "hold_ms": hold_ms}
+        done = r"\[test\] key done=" + re.escape(key) + r" "
+        self._send(msg)
+        since = self.silent_s
+        if self.wait_engine(done, hold_ms / 1000.0 + KEY_DONE_S, t) is not None or self.engine.p.poll() is not None:
+            return t
+        self.renvois.append(f"{ev} à {t - self.engine.t_start:.0f} s" + self.silence(since))
+        t = now()
+        self._send(msg)
+        return t
 
     def settled_focus(self, delay: float) -> str:
         """Élément sous le focus d'un menu posé (lot BM2). Un écran reconstruit après une réponse du core (écran Prêt
@@ -1192,6 +1213,9 @@ class Run:
                         break
                 if self.replis:
                     self.report.check(None, "souris : gestes joués au clavier (pas de geste de souris)", str(self.replis))
+                if self.renvois:
+                    self.report.check(None, "touches perdues par le banc, renvoyées une fois (sans accusé de l'engine)",
+                                      ", ".join(self.renvois))
         finally:
             self.stop()
             self.cleanup()
