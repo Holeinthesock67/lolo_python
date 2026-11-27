@@ -92,6 +92,11 @@ class Branch:
     def points(self) -> list[Point]:
         return self.edge.oriented(self.forward)
 
+    @property
+    def to_raw(self) -> int:
+        """Nœud OSM au bout de la branche : il ne change jamais, contrairement à `to_node` (K2-01)."""
+        return self.edge.raw_b if self.forward else self.edge.raw_a
+
 
 def heading_of(points: list[Point], dist_m: float = HEADING_M) -> float:
     """Cap moyen sur les `dist_m` premiers mètres (direction du début vers le point à cette distance)."""
@@ -363,12 +368,19 @@ class RoadGraph:
         groups: dict[int, list[int]] = {}
         for n, c in self.cluster.items():
             groups.setdefault(c, []).append(n)
+        # Arêtes de rond-point rangées une fois par groupe (K2-03 : la recherche dans toutes les arêtes pour
+        # chaque nœud coûtait nœuds × arêtes à chaque cellule chargée). Même ordre que l'ancienne recherche.
+        rings: dict[int, list[Point]] = {}
+        for e in self.edges.values():
+            if e.roundabout:
+                c = self.cluster.get(e.raw_a)
+                if c is not None:
+                    rings.setdefault(c, []).extend(e.points)
         self.nodes = {}
         for c, members in groups.items():
             xs = [self.pos[m][0] for m in members]
             zs = [self.pos[m][1] for m in members]
-            ring = [p for e in self.edges.values() if e.roundabout and self.cluster.get(e.raw_a) == c
-                    for p in e.points] or None
+            ring = rings.get(c) or None
             if ring:
                 xs, zs = [p[0] for p in ring], [p[1] for p in ring]
             self.nodes[c] = Node(c, float(np.mean(xs)), float(np.mean(zs)),
@@ -385,6 +397,12 @@ class RoadGraph:
 
     def node_of(self, osm_node: int) -> Node:
         return self.nodes[self.cluster[osm_node]]
+
+    def resolve(self, osm_node: int) -> int:
+        """Nœud de choix actuel d'un nœud OSM (K2-01) : l'identifiant d'un nœud de choix est le plus petit de ses
+        membres et change quand le groupe grandit (rond-point complété par une cellule chargée après coup) ;
+        tout identifiant gardé d'un appel à l'autre doit être un nœud OSM relu ici."""
+        return self.cluster.get(osm_node, osm_node)
 
     def branches(self, node: int) -> list[tuple[Edge, bool]]:
         """Toutes les sorties permises d'un nœud de choix (arête, sens), sans cap."""
