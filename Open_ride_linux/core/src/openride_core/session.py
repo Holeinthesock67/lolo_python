@@ -1464,6 +1464,7 @@ class CoreSession:
         except RuntimeError:   # hors boucle (essais) : bilan envoyé une fois
             msg = self._build_xp_result(journal, records)
             self.server.send_raw(msg)
+            self._send_progression_after_session()
             return
         self._spawn(self._send_xp_result(journal, records))
 
@@ -1475,16 +1476,33 @@ class CoreSession:
         self._publish_rogue()   # châssis débloqués, vies et dernière run pour la prochaine connexion de l'engine
         return msg
 
+    def _send_progression_after_session(self) -> None:
+        """Message `progression` (sans demande, `request_cmd_id` 0) après le bilan d'une séance (revue de code
+        E10-08) : pièces gagnées et vies du Cyber-Rogue consommées. Sans lui, l'engine gardait jusqu'au
+        lancement suivant le solde et la réserve de vies d'avant la run (« Vies : 3 / 3 · Réserve pleine »),
+        et la vie perdue ne pouvait pas être rachetée. Même message qu'après un achat au Garage."""
+        try:
+            if self.progress_svc.progression_dict() is not None:
+                self.server.send_raw(self.progress_svc.progression_message(0))
+        except Exception:
+            log.exception("Progression après la séance non envoyée")
+
     async def _send_xp_result(self, journal: str, records: list[dict] | None) -> None:
         """`xp_result` à la fin de la séance, répété chaque seconde tant qu'elle reste `FINISHED`."""
         try:
             msg = await asyncio.to_thread(self._build_xp_result, journal, records)
+            prog_sent = False
             for i in range(XP_RESULT_REPEATS):
                 if self.state.session_state != "FINISHED":
                     break
                 self.server.send_raw(msg)
+                if not prog_sent:
+                    prog_sent = True
+                    self._send_progression_after_session()
                 if i < XP_RESULT_REPEATS - 1:
                     await asyncio.sleep(XP_RESULT_PERIOD_S)
+            if not prog_sent:                  # séance déjà quittée : les vies et pièces à jour partent quand même
+                self._send_progression_after_session()
         except Exception:
             log.exception("Bilan d'expérience impossible (%s)", journal)
 
