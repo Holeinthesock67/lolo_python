@@ -1,6 +1,6 @@
 # EC2 : affichage du monde ouvert, l'ancien décor gardé jusqu'au nouveau
 
-- PR : à venir ; revue de code vague 3 engine (E5-01, E5-03, E5-04, E5-05, E5-12, E6-04, E7-01, E7-10, E8-01, E8-03 ;
+- PR : #1140 ; revue de code vague 3 engine (E5-01, E5-03, E5-04, E5-05, E5-12, E6-04, E7-01, E7-10, E8-01, E8-03 ;
   E5-02 déjà corrigé par OW8, #1105) ; engine seul, sans IPC ni format ; branche partie de main + #1105 (OW8) + #1134 (EC12)
 - CHANGELOG (section « Corrigé ») :
   - Monde ouvert : à chaque révision de la route (prolongement, branche choisie), la chaussée, les bâtiments, l'eau,
