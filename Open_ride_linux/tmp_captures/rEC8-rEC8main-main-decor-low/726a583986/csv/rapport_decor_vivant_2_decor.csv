@@ -1,0 +1,12 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+11.5;19;5;0;6;0;4;0;
+41.5;19;5;0;6;0;4;0;
+71.5;19;5;0;6;1;4;0;airliner_rumble=1
+101.5;19;5;0;6;2;4;0;airliner_rumble=2
+131.5;19;5;0;6;1;4;0;airliner_rumble=2 raptor_cry=1
+161.5;19;5;0;6;2;4;0;airliner_rumble=2 raptor_cry=2
+191.5;19;5;0;6;2;4;0;airliner_rumble=2 raptor_cry=2
+221.5;19;5;0;6;0;4;0;airliner_rumble=2 raptor_cry=2
+251.5;19;5;0;6;1;4;0;airliner_rumble=2 raptor_cry=2
+281.5;19;5;1;6;0;4;0;airliner_rumble=2 raptor_cry=2 vehicle_pass=1
+301.0;19;5;1;6;0;4;0;airliner_rumble=2 raptor_cry=2 vehicle_pass=1
