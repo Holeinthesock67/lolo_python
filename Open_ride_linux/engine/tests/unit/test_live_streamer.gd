@@ -112,7 +112,20 @@ func _init() -> void:
 	lw.on_open_world({"rev": 2})
 	var upd := lw.wait_poll()
 	_check(upd.has("route"), "révision 2 lue")
+	# Lot OW8 : travaux du ruban lancés sur l'ancienne route, pas attendus par swap_route (orphelins jetés).
+	st._free_instance("road:2")       # refait sur l'ancienne route : un travail en cours au moment de la révision
+	st.update_window(1500.0, 0.0, Vector3(1500.0, 1.4, 0.0))
+	var running := 0
+	for key in st._jobs:
+		if int((key as String).get_slice(":", 1)) >= 2 and (key as String).begins_with("road:"):
+			running += 1
 	st.swap_route(upd["route"], int(upd["from_part"]))
+	var still := 0
+	for key in st._jobs:
+		if int((key as String).get_slice(":", 1)) >= 2 and (key as String).begins_with("road:"):
+			still += 1
+	_check(running == 1 and still == 0 and st.orphan_count() <= running,
+		"travaux de l'ancienne route mis de côté (%d sur %d)" % [st.orphan_count(), running])
 	_check(st._instances.has("road:0") and st._instances.has("road:1"), "tronçons 0 et 1 gardés")
 	_check(is_same(st._instances["road:0"], roads_before["road:0"]) and is_same(st._instances["road:1"], roads_before["road:1"]),
 		"tronçons 0 et 1 : mêmes nœuds")
@@ -122,6 +135,7 @@ func _init() -> void:
 	_check(st._instances.has("road:2") and st._instances.has("road:3") and st._instances.has("road:4"),
 		"tronçons 2 à 4 construits sur la route prolongée")
 	_check(not is_same(st._instances["road:2"], roads_before["road:2"]), "tronçon 2 refait")
+	_check(st.orphan_count() == 0, "travaux orphelins libérés")
 	_check(st.preview_count() == 1, "amorces conservées par la révision")
 
 	st.clear()

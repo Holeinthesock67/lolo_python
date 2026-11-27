@@ -74,6 +74,9 @@ var _shores_by_chunk: Dictionary = {}  # k -> Array[PackedVector2Array] (lignes 
 var _chunk_instances: Dictionary = {}
 var _wanted_chunks: Dictionary = {} # k -> true
 var _jobs: Dictionary = {}          # k -> {task, result, gen}
+## Travaux d'une route remplacée (lot OW8) : laissés finir en fond, résultat jeté, jamais attendus sur le fil
+## principal pendant la séance (à Tromsø, attendre un tronçon de bâtiments figeait l'image 0,6 à 1,6 s).
+var _orphans: Array = []
 var _ready_chunks: Array = []       # [ {k, meshes_data: [ {arrays, kind} ] } ]
 var _generation := 0
 var _theme: Dictionary = {}
@@ -174,7 +177,7 @@ func set_world(new_route, new_world_dir: String, manifest: Dictionary = {}, them
 func swap_route(new_route, from_k: int) -> void:
 	for k in _jobs.keys():
 		if k >= from_k:
-			BgTasks.wait(_jobs[k]["task"])
+			_orphans.append(_jobs[k]["task"])   # l'ancienne route ne change plus : le travail finit seul
 			_jobs.erase(k)
 	route = new_route
 	_ready_chunks = _ready_chunks.filter(func(item): return item["k"] < from_k)
@@ -207,6 +210,23 @@ func clear() -> void:
 func _wait_all_jobs() -> void:
 	for k in _jobs.keys():
 		BgTasks.wait(_jobs[k]["task"])
+	_drain_orphans(true)
+
+
+## Libère les travaux orphelins finis (tous, en les attendant, si `wait`).
+func _drain_orphans(wait: bool) -> void:
+	var left: Array = []
+	for task in _orphans:
+		if wait or BgTasks.done(task):
+			BgTasks.wait(task)
+		else:
+			left.append(task)
+	_orphans = left
+
+
+## Travaux orphelins encore en cours (tests).
+func orphan_count() -> int:
+	return _orphans.size()
 
 
 func _free_chunk(k: int) -> void:
@@ -734,6 +754,7 @@ static func _arrays_from_mesh_dict(d: Dictionary) -> Array:
 
 
 func _poll_jobs(wait: bool) -> void:
+	_drain_orphans(wait)
 	for k in _jobs.keys():
 		var job: Dictionary = _jobs[k]
 		if not wait and not BgTasks.done(job["task"]):

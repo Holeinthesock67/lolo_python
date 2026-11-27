@@ -407,6 +407,34 @@ def test_ride_into_a_dead_end_turns_back_without_gap_or_pause(tmp_path) -> None:
     assert float(np.max(np.abs(np.asarray(route["grade_pct"])[turn]))) <= 15.0   # la boucle suit le relief (garde-fou : 15 % au plus)
 
 
+def test_stopped_route_publishes_no_identical_revision(tmp_path) -> None:
+    """Lot OW8 (banc de Tromsø, 26/11) : sens unique au bout d'une impasse, plus de route connue. Avant, chaque
+    `progress` (deux par seconde) publiait une révision identique, que l'engine reconstruisait chaque fois."""
+    w = OsmDbWriter(tmp_path / "sens.sqlite", "test", "test/sens-unique")
+    pts = list(range(-5000, 3001, 100))
+    w.add_road(700, {"highway": "tertiary", "oneway": "yes"}, [30_000 + k for k in range(len(pts))],
+               [lonlat(E_REF + d, N_REF) for d in pts])
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    s, rec = session(tmp_path, tmp_path / "sens.sqlite")
+    s.handle(open_msg(E_REF + 100, N_REF, 90.0))
+    for k in range(1, 30):
+        s.handle({"type": "progress", "s_m": 50.0 * k, "v_mps": 8})
+        while s.has_work():
+            s.work()
+    assert s.data_state == "missing" and s.length_m == pytest.approx(2900.0, abs=1.0)
+    stopped = [r for r in rec.of("revision") if r["length_m"] == round(s.length_m, 2)]
+    tiles = s.stats["squares_generated"] + s.stats["squares_cached"] + s.stats["far_generated"]
+    # Une révision quand la route s'arrête, puis seulement celles des tuiles arrivées (au plus une par tuile).
+    assert len(stopped) <= 1 + tiles and len(stopped) < 29
+    n = len(rec.of("revision"))
+    for k in range(10):                            # tuiles toutes là : la balade continue, rien ne change
+        s.handle({"type": "progress", "s_m": 1450.0 + 10.0 * k, "v_mps": 8})
+        assert not s.has_work()
+    assert len(rec.of("revision")) == n
+    missing = [m for m in rec.of("status") if m.get("message") == "plus de route connue"]
+    assert len(missing) == 1                       # annoncé une fois
+
+
 def test_turnaround_loop_closes_on_the_dead_end() -> None:
     from openride_compiler.worldgen.edge_profile import turnaround_points
     for prev in ((0.0, 0.0), (10.0, -7.0), (-3.0, 12.0)):
