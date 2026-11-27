@@ -4671,7 +4671,11 @@ class CoreSession:
             felt = self.physics.p
             self.physics.p = replace(felt, wind_mps=felt.wind_mps + gp_wind)
         s_before = self.physics.s
+        ridden_before = (self.physics.distance, self.physics.v)
         self.physics.step(power_used, grade, alt, dt, alpha_draft=draft)
+        if race:   # temps gagné par le bonus, contre une ombre sans bonus (lot TT-BONUS)
+            race.track_gain(self._t_session, self.physics.p, power_used, grade, alt, dt, draft, ridden_before,
+                            (self.physics.distance, self.physics.v))
         if gp_wind:
             self.physics.p = felt
         if track is not None:   # rouler plus haut dans un virage allonge le tour (plan VD §4.2)
