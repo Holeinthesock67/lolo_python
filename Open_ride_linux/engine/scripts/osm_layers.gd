@@ -226,6 +226,17 @@ static func _tiles_of_rect(r: Rect2) -> Array:
 	return out
 
 
+## Rectangle aligné sur la grille des carrés qui contient tous les carrés que touche la boîte du tronçon k (marge de
+## lecture comprise) : les carrés confiés au tronçon k en font partie (revue E5-03 et E5-05).
+static func chunk_tile_rect(route, k: int) -> Rect2:
+	var b := chunk_bounds(route, k, LIVE_MARGIN_M)
+	var x0 := floorf(b.position.x / TILE_M) * TILE_M
+	var z0 := floorf(b.position.y / TILE_M) * TILE_M
+	var x1 := (floorf(b.end.x / TILE_M) + 1.0) * TILE_M
+	var z1 := (floorf(b.end.y / TILE_M) + 1.0) * TILE_M
+	return Rect2(x0, z0, x1 - x0, z1 - z0)
+
+
 ## Carrés à lire pour le tronçon k : ceux que touche sa boîte, sauf ceux déjà confiés à un tronçon
 ## plus bas (un carré n'est affiché qu'une fois, par le premier tronçon qui le touche).
 static func chunk_tiles(route, k: int) -> Array:
@@ -246,11 +257,16 @@ static func chunk_tiles(route, k: int) -> Array:
 ## Monde vivant : fusionne les carrés du tronçon k. Un carré absent est ignoré (il n'est pas encore
 ## prêt) ; `ok` est vrai si au moins un carré a été lu ou si aucun n'était attendu.
 static func load_chunk_live(world_dir: String, layer: String, k: int, route) -> Dictionary:
+	return load_tiles_live(world_dir, layer, chunk_tiles(route, k))
+
+
+## Monde vivant : fusionne les carrés `tiles` (Vector2i) d'une couche, coordonnées absolues ; carré absent ignoré.
+static func load_tiles_live(world_dir: String, layer: String, tiles: Array) -> Dictionary:
 	var res := {"ok": true, "items": [], "ignored": 0, "error": "", "version": "1.0"}
 	var lists: Array = _LISTS.get(layer, [])
 	for key in lists:
 		res[key] = []
-	for t in chunk_tiles(route, k):
+	for t in tiles:
 		var path := tile_path(world_dir, layer, t.x, t.y)
 		if not FileAccess.file_exists(path):
 			continue

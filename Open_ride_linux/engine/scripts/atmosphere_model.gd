@@ -184,6 +184,16 @@ static func route_underwater(biome_model, route) -> float:
 	return total / ROUTE_PROBES
 
 
+## Nouvelle position le long de la route (route révisée du monde ouvert, revue E8-03) : poids lus à partir de
+## `from_s` oubliés, ceux d'avant gardés (même route jusque-là).
+func set_positions(position_at: Callable, from_s: float) -> void:
+	pos_at = position_at
+	var first := floori(from_s / STEP_M)
+	for k in _cache.keys():
+		if int(k) >= first:
+			_cache.erase(k)
+
+
 func _weights_at_step(k: int) -> Dictionary:
 	var hit = _cache.get(k, null)
 	if hit != null:

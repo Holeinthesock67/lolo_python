@@ -436,6 +436,9 @@ func _run() -> void:
 	dec.cyclists.groups.append({"s": 120.0, "members": [], "témoin": true})
 	dec.extend_route(r_short)   # première révision encore en préparation…
 	dec.extend_route(r_full)    # …la suivante attend, et seule la dernière compte
+	# Revue E6-04 : véhicules et cyclistes sur la nouvelle route dès la révision, sans attendre la tâche de fond
+	_check(dec.traffic.route == r_full and dec.cyclists.route == r_full,
+		"monde ouvert : véhicules et cyclistes posés tout de suite sur la route révisée")
 	dec.flush()
 	dec.flush()
 	_check(dec.extensions == ext0 + 2 and dec.prepared, "monde ouvert : deux prolongations appliquées dans l'ordre (%d)" % (dec.extensions - ext0))

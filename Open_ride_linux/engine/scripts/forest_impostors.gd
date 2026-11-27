@@ -14,7 +14,8 @@ extends Node3D
 ## de densité (VegetationPlacer.density_noise). Les forêts lointaines continuent donc les forêts proches.
 ## Espèce tirée comme pour les arbres proches (biome selon les poids du point, puis `weight` des espèces) ;
 ## plantes basses et rangs de vigne (houppiers `box` et `hedge` de TreeSpecies.CROWNS) écartés. Exclusions : couloir de la route, pente
-## du terrain au-dessus du seuil du thème, altitude au-dessus de la limite des arbres du biome.
+## du terrain au-dessus du seuil du thème, altitude au-dessus de la limite des arbres du biome, grands lacs de la
+## tuile (`water_levels`, eau lointaine du lot EA2 : revue E7-05, des bouquets sortaient de la surface des lacs).
 ## Hauteur : terrain lointain réel (avant l'enfoncement sous le proche), au relief affiché (route.display_y),
 ## FAR_DROP_M et SINK_M plus bas que le sol pour ne jamais flotter.
 ##
@@ -44,6 +45,8 @@ const STEP_M := 32.0
 const CLUMP_WIDTH_M := STEP_M * 1.3
 ## Cases d'affichage (alignées sur les tuiles proches : 25 par tuile lointaine).
 const CELL_M := 1000.0
+## Revue E7-05 : marge au-dessus du niveau d'un grand lac sous laquelle un bouquet est dans l'eau (m).
+const WATER_MARGIN_M := 0.5
 ## Pied des bouquets sous le sol lointain dessiné (déjà FAR_DROP_M sous ses valeurs).
 const SINK_M := 1.0
 ## Plus petit arbre gardé (m) : en dessous, invisible au-delà de 1,5 km.
@@ -162,14 +165,17 @@ func is_warming() -> bool:
 
 ## Demande la préparation des forêts de la tuile lointaine (tile_x, tile_z) ; remplace une demande en attente
 ## de la même tuile. `heights` : relief réel de la tuile (avant l'enfoncement sous le proche).
-func request_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary) -> void:
+## `water_levels` : niveaux de l'eau lointaine de la tuile (far_water.gd, 101 × 101, NaN hors de l'eau), vide sans lac.
+func request_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
+		water_levels: PackedFloat32Array = PackedFloat32Array()) -> void:
 	if not enabled:
 		return
 	var key := Vector2i(tile_x, tile_z)
 	_queue = _queue.filter(func(q): return q["key"] != key)
 	if _task_id >= 0 and _task_key == key:
 		_task_cancelled = true
-	_queue.append({"key": key, "tile_x": tile_x, "tile_z": tile_z, "heights": heights, "route": route, "theme": theme})
+	_queue.append({"key": key, "tile_x": tile_x, "tile_z": tile_z, "heights": heights, "route": route, "theme": theme,
+		"water": water_levels})
 	_pump()
 
 
@@ -202,7 +208,8 @@ func _pump(wait := false) -> void:
 
 func _prepare_task(q: Dictionary) -> void:
 	var t0 := Time.get_ticks_usec()
-	_task_result = prepare_tile(int(q["tile_x"]), int(q["tile_z"]), q["heights"], q["route"], q["theme"])
+	_task_result = prepare_tile(int(q["tile_x"]), int(q["tile_z"]), q["heights"], q["route"], q["theme"],
+		q.get("water", PackedFloat32Array()))
 	PerfProbe.task("foret", "%d:%d" % [q["tile_x"], q["tile_z"]], (Time.get_ticks_usec() - t0) / 1000.0)
 
 
@@ -292,9 +299,12 @@ static func crown_look(kind: String) -> Dictionary:
 
 
 ## Bouquets d'une tuile lointaine. `heights` : hauteurs de la tuile (101 × 101, maille 50 m) avant
-## l'enfoncement sous le terrain proche. Renvoie {tile_key, cells: {index de case: {buffer, count, aabb}}, count},
+## l'enfoncement sous le terrain proche ; `water_levels` : niveaux de l'eau lointaine (même maille, NaN hors de
+## l'eau, vide sans lac) : pas de bouquet dans une maille dont un coin est dans l'eau, sous le niveau du lac.
+## Renvoie {tile_key, cells: {index de case: {buffer, count, aabb}}, count},
 ## ou {} sans hauteurs ou coupé. Ne touche à aucun nœud : exécutable dans une tâche de fond.
-func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary) -> Dictionary:
+func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
+		water_levels: PackedFloat32Array = PackedFloat32Array()) -> Dictionary:
 	if not enabled or heights.size() != TerrainTiles.SAMPLES * TerrainTiles.SAMPLES:
 		return {}
 	var t_start := Time.get_ticks_usec()
@@ -373,6 +383,8 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 				continue
 			var y := TerrainTiles.mesh_height_at(heights, "far", tile_x, tile_z, px, pz)
 			if not is_finite(y):
+				continue
+			if not water_levels.is_empty() and in_water(water_levels, ci, cj, y):
 				continue
 			# Espèce et densité du point (biome tiré selon les poids, comme VegetationPlacer.assign_species)
 			var look_c: Dictionary = generic
@@ -454,6 +466,20 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 			"center": Vector3(x0 + (cx + 0.5) * CELL_M, 0.5 * (y_lo + y_hi), z0 + (cz + 0.5) * CELL_M)}
 	last_profile = {"total_ms": (Time.get_ticks_usec() - t_start) / 1000.0, "bouquets": total, "candidats": per_side * per_side}
 	return {"tile_key": Vector2i(tile_x, tile_z), "cells": cells, "count": total}
+
+
+## Vrai si le bouquet de hauteur `y` de la maille (ci, cj) est dans un grand lac : un coin de la maille dans l'eau
+## (niveau non NaN) et le sol sous le plus haut de ces niveaux, plus WATER_MARGIN_M (rive basse comprise).
+static func in_water(levels: PackedFloat32Array, ci: int, cj: int, y: float) -> bool:
+	var n := TerrainTiles.SAMPLES
+	if levels.size() != n * n:
+		return false
+	var best := NAN
+	for k in [cj * n + ci, cj * n + ci + 1, (cj + 1) * n + ci, (cj + 1) * n + ci + 1]:
+		var v: float = levels[k]
+		if not is_nan(v) and (is_nan(best) or v > best):
+			best = v
+	return not is_nan(best) and y <= best + WATER_MARGIN_M
 
 
 ## Crée les MultiMeshInstance3D d'une tuile préparée (fil principal).

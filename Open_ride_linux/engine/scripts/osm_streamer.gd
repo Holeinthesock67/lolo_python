@@ -74,7 +74,17 @@ var _shores_by_chunk: Dictionary = {}  # k -> Array[PackedVector2Array] (lignes 
 var _chunk_instances: Dictionary = {}
 var _wanted_chunks: Dictionary = {} # k -> true
 var _jobs: Dictionary = {}          # k -> {task, result, gen}
+## Travaux d'une route remplacée (lot OW8) : laissés finir en fond, résultat jeté, jamais attendus sur le fil
+## principal pendant la séance (à Tromsø, attendre un tronçon de bâtiments figeait l'image 0,6 à 1,6 s).
+var _orphans: Array = []
 var _ready_chunks: Array = []       # [ {k, meshes_data: [ {arrays, kind} ] } ]
+## Revue EC2 (E5-01, E5-05) : tronçons affichés à refaire ; les anciens nœuds restent jusqu'à l'intégration des nouveaux.
+var _stale_chunks: Dictionary = {}  # k -> true
+## Monde ouvert (revue E5-03) : rectangle des carrés de chaque tronçon (OsmLayers.chunk_tile_rect), par route.
+var _tile_rects: Dictionary = {}    # k -> Rect2
+## Monde ouvert (revue E5-03) : un tronçon est voulu tant que la caméra est à moins de cette distance d'un de ses
+## carrés, même sorti de la fenêtre (un carré appartient au premier tronçon qui le touche).
+const OWN_KEEP_M := 500.0
 var _generation := 0
 var _theme: Dictionary = {}
 var _pois_by_chunk: Dictionary = {}
@@ -171,16 +181,46 @@ func set_world(new_route, new_world_dir: String, manifest: Dictionary = {}, them
 
 ## Monde vivant (lot W10) : nouvelle route après une révision ; les tronçons d'indice >= from_k sont
 ## reconstruits, les autres gardés (leurs travaux en cours gardent l'ancienne route, qui ne change plus).
-func swap_route(new_route, from_k: int) -> void:
+## Revue EC2 : les nœuds affichés des tronçons refaits restent jusqu'à leurs remplaçants (E5-01) ; `arrived` (carrés
+## du monde ouvert arrivés à cette révision, Vector2i) : tronçons plus bas déjà construits sans eux refaits (E5-05).
+func swap_route(new_route, from_k: int, arrived: Array = []) -> void:
 	for k in _jobs.keys():
 		if k >= from_k:
-			BgTasks.wait(_jobs[k]["task"])
+			_orphans.append(_jobs[k]["task"])   # l'ancienne route ne change plus : le travail finit seul
 			_jobs.erase(k)
 	route = new_route
 	_ready_chunks = _ready_chunks.filter(func(item): return item["k"] < from_k)
+	for k in _tile_rects.keys():
+		if k >= from_k:
+			_tile_rects.erase(k)
 	for k in _chunk_instances.keys():
 		if k >= from_k:
-			_free_chunk(k)
+			_stale_chunks[k] = true
+	if arrived.is_empty() or route == null or not route.live:
+		return
+	var touched := {}
+	for k in _chunk_instances.keys() + _jobs.keys():
+		if k >= from_k or touched.has(k):
+			continue
+		var rect := _tile_rect(k)
+		for t in arrived:
+			if rect.has_point(Vector2(t.x * OsmLayers.TILE_M + 1.0, t.y * OsmLayers.TILE_M + 1.0)):
+				touched[k] = true
+				break
+	for k in touched:
+		_stale_chunks[k] = true
+
+
+## Rectangle des carrés du tronçon k sur la route courante (gardé jusqu'à la révision qui change ce tronçon).
+func _tile_rect(k: int) -> Rect2:
+	if not _tile_rects.has(k):
+		_tile_rects[k] = OsmLayers.chunk_tile_rect(route, k)
+	return _tile_rects[k]
+
+
+## Tronçons affichés à refaire (tests).
+func stale_chunk_keys() -> Array:
+	return _stale_chunks.keys()
 
 
 func clear() -> void:
@@ -189,6 +229,8 @@ func clear() -> void:
 	_jobs.clear()
 	_ready_chunks.clear()
 	_wanted_chunks.clear()
+	_stale_chunks.clear()
+	_tile_rects.clear()
 	for k in _chunk_instances.keys():
 		_free_chunk(k)
 	_pois_by_chunk.clear()
@@ -207,6 +249,23 @@ func clear() -> void:
 func _wait_all_jobs() -> void:
 	for k in _jobs.keys():
 		BgTasks.wait(_jobs[k]["task"])
+	_drain_orphans(true)
+
+
+## Libère les travaux orphelins finis (tous, en les attendant, si `wait`).
+func _drain_orphans(wait: bool) -> void:
+	var left: Array = []
+	for task in _orphans:
+		if wait or BgTasks.done(task):
+			BgTasks.wait(task)
+		else:
+			left.append(task)
+	_orphans = left
+
+
+## Travaux orphelins encore en cours (tests).
+func orphan_count() -> int:
+	return _orphans.size()
 
 
 func _free_chunk(k: int) -> void:
@@ -221,6 +280,7 @@ func _free_chunk(k: int) -> void:
 				(mi as MeshInstance3D).mesh = null   # maillage libéré avant le nœud (rendu factice sans écran)
 			mi.free()
 	_chunk_instances.erase(k)
+	_stale_chunks.erase(k)
 	TunnelCut.remove_chunk(k)
 	_pois_by_chunk.erase(k)
 	_shores_by_chunk.erase(k)
@@ -229,7 +289,10 @@ func _free_chunk(k: int) -> void:
 	chunk_freed.emit(k)
 
 
-func update_window(s_from: float, s_to: float) -> void:
+## `cam` : position (x, z) de la caméra ; en monde ouvert, les tronçons propriétaires des carrés proches d'elle sont
+## voulus aussi (revue E5-03 : bâtiments, pont ou tunnel du carré où l'on roule plus retirés avec un tronçon passé,
+## carré repassé plus tard affiché de nouveau).
+func update_window(s_from: float, s_to: float, cam: Vector2 = Vector2(NAN, NAN)) -> void:
 	if route == null or world_dir.is_empty():
 		return
 
@@ -237,6 +300,10 @@ func update_window(s_from: float, s_to: float) -> void:
 	var wanted := {}
 	for k in wanted_k:
 		wanted[k] = true
+	if route.live and is_finite(cam.x) and is_finite(cam.y) and route.n >= 2:
+		for k in range(int(floor(route.length_m / OsmLayers.CHUNK_LENGTH_M)) + 1):
+			if not wanted.has(k) and _rect_distance(_tile_rect(k), cam) < OWN_KEEP_M:
+				wanted[k] = true
 	_wanted_chunks = wanted
 
 	# Libérer les tronçons sortis
@@ -247,6 +314,12 @@ func update_window(s_from: float, s_to: float) -> void:
 	_ready_chunks = _ready_chunks.filter(func(item): return _wanted_chunks.has(item["k"]))
 	_start_jobs()
 	_update_sound_pois()
+
+
+static func _rect_distance(r: Rect2, p: Vector2) -> float:
+	var dx := maxf(maxf(r.position.x - p.x, 0.0), p.x - r.end.x)
+	var dz := maxf(maxf(r.position.y - p.y, 0.0), p.y - r.end.y)
+	return Vector2(dx, dz).length()
 
 
 ## Anneau d'horizon (lot U9) : suit la caméra active à l'horizontale ; trou du terrain des tunnels proches de la
@@ -269,8 +342,10 @@ func _start_jobs() -> void:
 		queued[item["k"]] = true
 
 	for k in _wanted_chunks:
-		if not _chunk_instances.has(k) and not _jobs.has(k) and not queued.has(k):
+		if (not _chunk_instances.has(k) or _stale_chunks.has(k)) and not _jobs.has(k) and not queued.has(k):
+			_stale_chunks.erase(k)
 			var job := {
+				"rebuild": _chunk_instances.has(k),
 				"k": k,
 				"gen": _generation,
 				"world_dir": world_dir,
@@ -734,6 +809,7 @@ static func _arrays_from_mesh_dict(d: Dictionary) -> Array:
 
 
 func _poll_jobs(wait: bool) -> void:
+	_drain_orphans(wait)
 	for k in _jobs.keys():
 		var job: Dictionary = _jobs[k]
 		if not wait and not BgTasks.done(job["task"]):
@@ -741,7 +817,9 @@ func _poll_jobs(wait: bool) -> void:
 		BgTasks.wait(job["task"])
 		_jobs.erase(k)
 		if job["gen"] == _generation and _wanted_chunks.has(k):
-			_ready_chunks.append(job["result"])
+			var item: Dictionary = job["result"]
+			item["rebuild"] = job.get("rebuild", false)
+			_ready_chunks.append(item)
 
 
 func integrate(max_new: int) -> int:
@@ -750,8 +828,15 @@ func integrate(max_new: int) -> int:
 	while created < max_new and not _ready_chunks.is_empty():
 		var item: Dictionary = _ready_chunks.pop_front()
 		var k: int = item["k"]
-		if not _wanted_chunks.has(k) or _chunk_instances.has(k):
+		if not _wanted_chunks.has(k):
 			continue
+		if _chunk_instances.has(k):
+			if not item.get("rebuild", false):
+				continue
+			var still_stale := _stale_chunks.has(k)   # refait de nouveau depuis le lancement de ce travail
+			_free_chunk(k)                            # tronçon refait : les anciens nœuds laissent la place
+			if still_stale:
+				_stale_chunks[k] = true
 		var t0 := Time.get_ticks_usec()
 
 		var nodes: Array[MeshInstance3D] = []

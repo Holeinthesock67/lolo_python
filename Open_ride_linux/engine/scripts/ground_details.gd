@@ -28,7 +28,9 @@ const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
+const RouteRevision := preload("res://scripts/route_revision.gd")
 const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
+const LoopChunks := preload("res://scripts/loop_chunks.gd")
 
 const CHUNK_M := 60.0
 const CHUNKS_BEHIND := 1
@@ -88,6 +90,8 @@ var _slot_chunk := PackedInt64Array()
 var _queue: Array = []               # [groupe, tronçon, indice de couche, place suivante, stations]
 var _grass_material: ShaderMaterial = null
 var _road: RoadClearance = null      # distance à la route sur tout le parcours (road_clearance.gd)
+## Numéros des tronçons sur une boucle (loop_chunks.gd, revue E8-02) : même décor au même endroit à chaque tour.
+var _loop: LoopChunks = LoopChunks.new()
 var _placed := {}                    # couche -> PackedVector3Array des positions placées (tests)
 var _rock_colors := {}
 
@@ -105,6 +109,7 @@ func configure(budgets: Dictionary, route_data, model, road_width_m: float = 6.0
 	_placed.clear()
 	_rock_colors.clear()
 	_road = null
+	_loop = LoopChunks.new(route, CHUNK_M)
 	if route == null or biome_model == null:
 		return
 	var groups := CHUNKS_BEHIND + CHUNKS_AHEAD + 1
@@ -141,6 +146,23 @@ func configure(budgets: Dictionary, route_data, model, road_width_m: float = 6.0
 	if not _layers.is_empty():
 		_road = RoadClearance.new(route, GRID_M)
 
+
+## Monde ouvert (revue E8-01) : route révisée, garde de distance `road` déjà construite sur elle (nulle : construite
+## ici). Rochers, herbes hautes, termitières et murets des tronçons dont la route ne change pas sont gardés ; les
+## autres sont refaits par `update`.
+func retarget(route_data, road = null) -> void:
+	var old = route
+	route = route_data
+	if _layers.is_empty() or route == null:
+		return
+	_road = road if road != null else RoadClearance.new(route, GRID_M)
+	for g in range(_slot_chunk.size()):
+		var k: int = _slot_chunk[g]
+		if k == NO_CHUNK:
+			continue
+		var kk := _loop.key(k)
+		if not RouteRevision.same_span(old, route, kk * CHUNK_M, (kk + 1) * CHUNK_M):
+			_slot_chunk[g] = NO_CHUNK   # `update` le remet en file
 
 ## Budgets de `configure` tirés des budgets du décor vivant `living(preset)` (quality_presets.gd).
 static func budgets(living: Dictionary) -> Dictionary:
@@ -188,7 +210,8 @@ func update(cam_s: float) -> void:
 		return
 	# Fenêtre dans le sens de la marche (lot N22) : CHUNKS_BEHIND derrière et CHUNKS_AHEAD devant la caméra,
 	# devant = s décroissant à rebours après un demi-tour (N17) ; tronçons pris du plus proche au plus loin
-	var cam_k := int(floor(cam_s / CHUNK_M))
+	# Boucle (revue E8-02) : numéro continu au passage de la ligne, tirages sur le numéro dans le tour (job[5])
+	var cam_k := _loop.unwrap(int(floor(cam_s / CHUNK_M)))
 	var groups := _slot_chunk.size()
 	for n in range(groups):
 		var k := cam_k + direction * (n - CHUNKS_BEHIND)
@@ -198,12 +221,12 @@ func update(cam_s: float) -> void:
 			for i in range(_queue.size() - 1, -1, -1):
 				if _queue[i][0] == g:
 					_queue.remove_at(i)
-			_queue.append([g, k, 0, 0, PackedVector4Array()])
+			_queue.append([g, k, 0, 0, PackedVector4Array(), _loop.key(k)])
 	var budget := MAX_PER_FRAME
 	while budget > 0 and not _queue.is_empty():
 		var job: Array = _queue[0]
 		var g: int = job[0]
-		var k: int = job[1]
+		var k: int = job[5]   # numéro du tronçon dans le tour (placement) ; numéro d'origine hors boucle
 		var li: int = job[2]
 		var j: int = job[3]
 		if (job[4] as PackedVector4Array).is_empty():
@@ -250,7 +273,11 @@ func chunk_stations(k: int) -> PackedVector4Array:
 
 ## Objet de la place `slot` du tronçon `k` pour la sorte `kind` (forme `shape` des rochers) :
 ## {xf, color, biome} ou null (hors route, trop près de la route, exclu, pas dans ce biome).
+## Sur une boucle, `k` est ramené au numéro du tronçon dans le tour (loop_chunks.gd) ; rien au-delà du tour.
 func detail_at(kind: String, shape: int, k: int, slot: int, stations: PackedVector4Array = PackedVector4Array()) -> Variant:
+	if _loop.is_loop() and _loop.key(k) != k:
+		k = _loop.key(k)
+		stations = PackedVector4Array()
 	if LAYOUT[kind] == "row":
 		return _row_at(kind, k, slot, stations)
 	var salt := (KINDS.find(kind) + 1) * 0x1F3 + shape * 0x3B
@@ -261,6 +288,8 @@ func detail_at(kind: String, shape: int, k: int, slot: int, stations: PackedVect
 	var side := 1.0 if h2 & 1 == 0 else -1.0
 	var s_pos := (float(k) + u) * CHUNK_M
 	if not route.is_loop() and (s_pos < 0.0 or s_pos > route.length_m):
+		return null
+	if not _loop.in_lap(s_pos):
 		return null
 	if stations.is_empty():
 		stations = chunk_stations(k)
@@ -307,6 +336,8 @@ func _row_at(kind: String, k: int, slot: int, stations: PackedVector4Array) -> V
 	var piece := slot / 2
 	var s_mid := float(k) * CHUNK_M + (float(piece) + 0.5) * WALL_PIECE_M
 	if not route.is_loop() and (s_mid - WALL_PIECE_M * 0.5 < 0.0 or s_mid + WALL_PIECE_M * 0.5 > route.length_m):
+		return null
+	if _loop.is_loop() and not _loop.in_lap(s_mid + WALL_PIECE_M * 0.5 - 0.01):   # dernier tronçon d'une boucle
 		return null
 	if stations.is_empty():
 		stations = chunk_stations(k)

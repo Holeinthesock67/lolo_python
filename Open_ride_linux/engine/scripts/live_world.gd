@@ -148,12 +148,44 @@ func _read_job(dir: String, from_part: int, base, live_rev: int) -> void:
 	if not res["ok"]:
 		_result = {"ok": false, "error": res["error"], "revision": live_rev}
 		return
-	var fresh = base.revised_from(from_part, res["parts"])
+	if same_parts(base.parts, from_part, res["parts"]):
+		# Révision sans changement de route (tuiles arrivées, carrefours) : la route reste le même objet, rien
+		# à reconstruire (lot OW8 : à Tromsø, une révision identique toutes les 0,5 s refaisait route et décor).
+		_result = {"ok": true, "route": base, "same_route": true, "from_part": base.parts.size(),
+			"junctions": read_junctions(dir), "revision": live_rev}
+		return
+	# Revue E5-01 : première partie qui change vraiment (révisions sautées : `from_part` retombé à 0 ; générateur
+	# prudent) ; les parties d'avant gardées telles quelles, ruban et décor de ces kilomètres non refaits.
+	var first := first_changed_part(base.parts, from_part, res["parts"])
+	var fresh = base.revised_from(first, (res["parts"] as Array).slice(first - from_part))
+	from_part = first
 	if fresh == null:
 		_result = {"ok": false, "error": base.load_error, "revision": live_rev}
 		return
 	_result = {"ok": true, "route": fresh, "from_part": from_part, "junctions": read_junctions(dir),
 		"revision": live_rev}
+
+
+## Vrai si les parties lues depuis `from_part` sont celles de la route déjà là (mêmes nombres, même nombre de
+## parties) : comparaison de contenu des dictionnaires lus en JSON.
+static func same_parts(old_parts: Array, from_part: int, new_parts: Array) -> bool:
+	if from_part < 0 or old_parts.size() != from_part + new_parts.size():
+		return false
+	for i in range(new_parts.size()):
+		if old_parts[from_part + i] != new_parts[i]:
+			return false
+	return true
+
+
+## Indice de la première partie lue (comptée depuis 0) qui diffère de celle de la route déjà là, ou qui n'existait
+## pas ; au plus `from_part + new_parts.size()` (toutes identiques : la route a seulement raccourci).
+static func first_changed_part(old_parts: Array, from_part: int, new_parts: Array) -> int:
+	var i := 0
+	while i < new_parts.size() and from_part + i < old_parts.size() and old_parts[from_part + i] == new_parts[i]:
+		i += 1
+	if i == new_parts.size() and from_part + i < old_parts.size() and i > 0:
+		i -= 1   # route raccourcie : la dernière partie gardée est refaite (sa fin, ses amorces changent)
+	return from_part + i
 
 
 ## Fil principal : applique une lecture terminée. Renvoie {} s'il n'y a rien de neuf, sinon
@@ -226,7 +258,7 @@ func _finish() -> Dictionary:
 		check_segments(true)
 		apply_segments(route)        # la route échangée ne connaît pas encore les segments (lot W21)
 		out = {"revision": revision, "from_part": int(res["from_part"]), "route": route, "junctions": junctions,
-			"segments": route.segments}
+			"segments": route.segments, "same_route": bool(res.get("same_route", false))}
 	else:
 		last_error = str(res.get("error", "lecture impossible"))
 		_failed_rev = int(res.get("revision", 0))

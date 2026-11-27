@@ -37,7 +37,9 @@ const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
+const RouteRevision := preload("res://scripts/route_revision.gd")
 const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
+const LoopChunks := preload("res://scripts/loop_chunks.gd")
 
 const CHUNK_M := 40.0
 const CHUNKS_BEHIND := 1
@@ -134,6 +136,9 @@ var exclusions: ExclusionZones = ExclusionZones.new()
 var height_at: Callable = Callable() # (x, z) -> hauteur du terrain ; vide : hauteur de la route
 
 var _road: RoadClearance = null       # distance à la route sur tout le parcours
+## Numéros des tronçons sur une boucle (loop_chunks.gd, revue E7-02) : fenêtre continue au passage de la ligne,
+## placement haché sur le numéro du tronçon dans le tour.
+var _loop: LoopChunks = LoopChunks.new()
 var _budget := 0
 var _per_chunk := 0
 var _narrow_per_chunk := 0   # places de la bande du bord (BAND_MIN_M à BAND_MAX_M) ; les suivantes : bande large
@@ -180,6 +185,7 @@ func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: i
 	_near_material = null
 	_far_material = null
 	_road = null
+	_loop = LoopChunks.new(route, CHUNK_M)
 	if _per_chunk <= 0:
 		return
 	_road = RoadClearance.new(route)
@@ -203,6 +209,24 @@ func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: i
 	_far_count.resize(groups)
 	_group_visible.resize(groups)
 
+
+## Monde ouvert (revue E7-01) : route révisée, garde de distance `road` déjà construite sur elle (living_world.gd,
+## en tâche de fond ; nulle : construite ici). Les groupes dont le tronçon passe au même endroit gardent leurs
+## touffes ; seuls ceux dont la route change sont vidés et refaits par `update` (plus de disparition de toute
+## l'herbe autour du cycliste, ni de grille refaite sur toute la route dans le fil principal).
+func retarget(route_data, road = null) -> void:
+	var old = route
+	route = route_data
+	if _near_mm.is_empty() or route == null:
+		return
+	_road = road if road != null else RoadClearance.new(route)
+	for g in range(_slot_chunk.size()):
+		var k: int = _slot_chunk[g]
+		if k == NO_CHUNK:
+			continue
+		var kk := _loop.key(k)
+		if not RouteRevision.same_span(old, route, kk * CHUNK_M, (kk + 1) * CHUNK_M):
+			_slot_chunk[g] = NO_CHUNK   # `update` le recycle et le remet en file
 
 ## Matériau des touffes : balancement au vent apparent, fondu avec la distance, montrées de `lod_begin`
 ## à `lod_end` mètres (0 : sans borne).
@@ -306,7 +330,8 @@ func update(cam_s: float) -> void:
 		return
 	# Fenêtre dans le sens de la marche (lot N22) : CHUNKS_BEHIND derrière et CHUNKS_AHEAD devant la caméra,
 	# devant = s décroissant à rebours après un demi-tour (N17) ; tronçons pris du plus proche au plus loin
-	var cam_k := int(floor(cam_s / CHUNK_M))
+	# Boucle (revue E7-02) : numéro continu au passage de la ligne, tirages sur le numéro dans le tour (job[4])
+	var cam_k := _loop.unwrap(int(floor(cam_s / CHUNK_M)))
 	var groups := _slot_chunk.size()
 	for n in range(groups):
 		var k := cam_k + direction * (n - CHUNKS_BEHIND)
@@ -317,7 +342,7 @@ func update(cam_s: float) -> void:
 				if _queue[i][0] == g:
 					_queue.remove_at(i)
 			_recycle(g)
-			_queue.append([g, k, 0, PackedVector4Array()])
+			_queue.append([g, k, 0, PackedVector4Array(), _loop.key(k)])
 	var budget := maxi(MAX_PER_FRAME, ceili(float(_per_chunk) / FILL_FRAMES))
 	var t_start := Time.get_ticks_usec()
 	var far_min_keep := keep_at(LOD_SWITCH_M - LOD_BLEND_M)
@@ -326,6 +351,7 @@ func update(cam_s: float) -> void:
 		var job: Array = _queue[qi]
 		var g: int = job[0]
 		var k: int = job[1]
+		var kk: int = job[4]   # numéro du tronçon dans le tour (placement) ; k hors boucle
 		var ahead := direction * (k - cam_k)
 		var urgent := ahead >= -CHUNKS_BEHIND and ahead <= URGENT_AHEAD
 		if Time.get_ticks_usec() - t_start >= (URGENT_FRAME_US if urgent else MAX_FRAME_US):
@@ -333,7 +359,7 @@ func update(cam_s: float) -> void:
 		var j: int = job[2]
 		var stations: PackedVector4Array = job[3]
 		if stations.is_empty():
-			stations = chunk_stations(k)
+			stations = chunk_stations(kk)
 			job[3] = stations
 			_start_box(g, stations)
 			budget -= STATION_COST
@@ -351,17 +377,17 @@ func update(cam_s: float) -> void:
 			var idx := g * _per_chunk + slot
 			_placed[idx] = 0
 			near_mm.set_instance_transform(slot, HIDDEN)
-			var xf: Variant = tuft_transform(k, slot, stations)
+			var xf: Variant = tuft_transform(kk, slot, stations)
 			if xf == null:
 				continue
 			var x: Transform3D = xf
-			var style := style_draw(k, slot, x.origin)
+			var style := style_draw(kk, slot, x.origin)
 			if style < 0:
 				continue
-			var col: Color = (STYLE_TINTS[style] as Array)[tint_index(k, slot)]
+			var col: Color = (STYLE_TINTS[style] as Array)[tint_index(kk, slot)]
 			if style == 0:   # bout de l'herbe fondu dans la teinte du sol (Y22-13)
-				col = col.lerp(GROUND_TINT, GROUND_BLEND * smoothstep(GROUND_BLEND_FROM_M, WIDE_BAND_MAX_M, lateral_at(k, slot)))
-			var pick := pick_of(k, slot)
+				col = col.lerp(GROUND_TINT, GROUND_BLEND * smoothstep(GROUND_BLEND_FROM_M, WIDE_BAND_MAX_M, lateral_at(kk, slot)))
+			var pick := pick_of(kk, slot)
 			var custom := Color(pick, 0.0, 0.0, 0.0)
 			near_mm.set_instance_transform(slot, x)
 			near_mm.set_instance_color(slot, col)
@@ -484,8 +510,13 @@ func chunk_stations(k: int) -> PackedVector4Array:
 	return out
 
 
-## Transformation de la place `slot` du tronçon `k`, ou null (hors route, exclue ou trop pentue).
+## Transformation de la place `slot` du tronçon `k`, ou null (hors route, exclue ou trop pentue). Sur une boucle,
+## `k` est ramené au numéro du tronçon dans le tour (loop_chunks.gd) et la fin du dernier tronçon, au-delà de la
+## longueur du tour, reste vide.
 func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVector4Array()) -> Variant:
+	if _loop.is_loop() and _loop.key(k) != k:
+		k = _loop.key(k)
+		stations = PackedVector4Array()
 	var h := VegetationPlacer.hash3(tuft_seed ^ 0x6A55, k, slot)
 	var h2 := VegetationPlacer.hash3(tuft_seed ^ 0x7B66, k, slot)
 	var u := float(h & 0xFFFF) / 65536.0
@@ -494,6 +525,8 @@ func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVect
 	var side := 1.0 if h2 & 1 == 0 else -1.0
 	var s_pos := (float(k) + u) * CHUNK_M
 	if not route.is_loop() and (s_pos < 0.0 or s_pos > route.length_m):
+		return null
+	if not _loop.in_lap(s_pos):
 		return null
 	if stations.is_empty():
 		stations = chunk_stations(k)
