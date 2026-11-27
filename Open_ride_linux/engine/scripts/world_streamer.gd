@@ -161,6 +161,10 @@ var _preview_material: Material = null
 ## Talus des bords de la route (road_builder.gd build_skirt_arrays), couleur du sol : second matériau des tronçons.
 var _skirt_material: StandardMaterial3D = null
 
+## Premier affichage à froid (lot AC6, shader_warm.gd, posé par main.gd) : tuiles et arbres nouveaux cachés
+## le temps que leurs shaders soient dessinés une fois par des doublures, une par image ; null : affichage direct.
+var shader_warm = null
+
 ## Mesures pour le rapport de performance : clé de type -> [nombre, µs cumulées].
 var build_stats: Dictionary = {}
 var _stats_mutex := Mutex.new()
@@ -901,9 +905,13 @@ func integrate(max_new: int) -> int:
 			_near_md5[r["key"]] = r["md5"]
 		var t1 := Time.get_ticks_usec()
 		PerfProbe.mark("route" if r["kind"] == "road" else "tuile", r["key"], (t1 - t0) / 1000.0)
+		var warm_nodes: Array = [mi]
 		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
 			tree_renderer.add_tile(r["trees_data"])
 			PerfProbe.mark("arbres", r["key"], (Time.get_ticks_usec() - t1) / 1000.0)
+			warm_nodes.append_array(tree_renderer.tile_nodes(r["trees_data"]["tile_key"]))
+		if shader_warm != null:
+			shader_warm.hold(warm_nodes)   # premier affichage à froid (lot AC6) : hors de la scène le temps des doublures
 		if r.has("forest_heights") and forest_impostors != null:
 			var ft: Vector2i = TerrainTiles.tile_of("far", r["origin"].x + 1.0, r["origin"].z + 1.0)
 			forest_impostors.request_tile(ft.x, ft.y, r["forest_heights"], route, _theme_dict)
@@ -985,7 +993,7 @@ func loaded_tile_counts() -> Dictionary:
 ## Tuiles voulues autour de la caméra pas encore affichées (en calcul ou en attente) : 0 quand la vue est
 ## complète (tour visuel, lot X21).
 func pending_count() -> int:
-	var n := 0
+	var n := 0 if shader_warm == null else int(shader_warm.pending())
 	for key in _wanted:
 		if not _instances.has(key):
 			n += 1
@@ -1002,7 +1010,8 @@ func _free_instance(key: String) -> void:
 	_instances.erase(key)
 	_near_md5.erase(key)
 	_stale_near.erase(key)
-	remove_child(mi)
+	if mi.get_parent() == self:   # tuile retirée de la scène en attendant ses doublures (lot AC6) : pas d'enfant
+		remove_child(mi)
 	if biome_textures != null and not key.begins_with("road:"):
 		biome_textures.release(mi.mesh.surface_get_material(0))
 	mi.mesh = null   # maillage libéré avant le nœud (évite une erreur du rendu factice sans écran)

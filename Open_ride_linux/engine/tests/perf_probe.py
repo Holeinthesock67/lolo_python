@@ -567,12 +567,21 @@ def hitch_period(distances: list[float], min_m: float = 10.0, max_m: float = 100
 
 
 START_DISTANCE_M = 1.0   # image lente à moins de 1 m : le cycliste n'a pas encore roulé (départ)
+# Étape notée par l'engine à chaque image de la préparation des graphismes (lot PG1, graphics_prep.gd PROBE_KIND et
+# PROBE_ID) : image sous la barre de préparation, le parcours n'est pas encore chargé (banc j26r2).
+PREP_STEP = "préparation graphismes"
+
+
+def is_prep_saccade(sac: dict[str, Any]) -> bool:
+    """Image lente de saccades.csv prise pendant la préparation des graphismes (étape PREP_STEP)."""
+    return PREP_STEP in str(sac.get("steps") or "")
 
 
 def _start_or_capture(steady: list[dict[str, Any]], saccades: list[dict[str, Any]], hitch_ms: float) -> dict[int, str]:
-    """Secondes lentes du régime établi (id de la ligne -> « départ » ou « capture ») dont la pire image de
-    saccades.csv, à moins d'une seconde, est une capture du banc ou une image d'avant le départ (moins de
-    `START_DISTANCE_M` parcourus). Les autres restent jugées."""
+    """Secondes lentes du régime établi (id de la ligne -> « préparation », « capture » ou « départ ») dont la pire
+    image de saccades.csv, à moins d'une seconde, est une image de la préparation des graphismes (PREP_STEP), une
+    capture du banc ou une image d'avant le départ (moins de `START_DISTANCE_M` parcourus). Les autres restent
+    jugées."""
     sac = [r for r in saccades if isinstance(r.get("t_s"), float) and isinstance(r.get("frame_ms"), float)]
     out: dict[int, str] = {}
     for row in steady:
@@ -583,7 +592,9 @@ def _start_or_capture(steady: list[dict[str, Any]], saccades: list[dict[str, Any
         if not near:
             continue
         top = max(near, key=lambda r: r["frame_ms"])
-        if str(top.get("cause") or "") == "capture":
+        if is_prep_saccade(top):
+            out[id(row)] = "préparation"
+        elif str(top.get("cause") or "") == "capture":
             out[id(row)] = "capture"
         elif isinstance(top.get("distance_m"), float) and top["distance_m"] < START_DISTANCE_M:
             out[id(row)] = "départ"
@@ -613,22 +624,30 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
     steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
     # Lot PL1 : une seconde lente du régime établi que saccades.csv explique par une capture du banc (déjà mise à
     # part) ou par une image d'avant le départ (cycliste encore à 0 m : chargement plus long, peloton) n'en est pas.
-    held = _start_or_capture(steady, saccades, hitch_ms) if saccades is not None else {}
+    loaded = min(ts) + float(t.get("warmup_s", 0))
+    # Banc j26r2 : les secondes de la préparation des graphismes (barre affichée, parcours pas encore chargé) sont
+    # mises à part dès la fin du chargement, départ compris.
+    timed = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= loaded]
+    held = _start_or_capture(timed, saccades, hitch_ms) if saccades is not None else {}
+    prep = values([r for r in timed if held.get(id(r)) == "préparation"], "frame_max_ms")
     worst = values([r for r in steady if id(r) not in held], "frame_max_ms")
     note = "" if real_window else ", indicatif sous Xvfb"
     out: list[tuple[bool | None, str, str]] = []
     # Départ : après le chargement (warmup_s général), avant le régime établi ; seuil propre, plus large.
     cold = shaders.startswith("froid")   # froid, froid-pilote, froid-godot (sim_bench)
     start_ms = float(lim.get("cold_start_freeze_ms", 1000.0) if cold else lim.get("start_freeze_ms", 150.0))
-    loaded = min(ts) + float(t.get("warmup_s", 0))
     if cold:   # premier lancement : écran du chargement, indicatif (lot BF1)
         load = values([r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] < loaded],
                       "frame_max_ms")
         if load:
             out.append((None, "à-coups : chargement à froid",
                         f"pire image {max(load):.0f} ms avant {loaded - min(ts):.0f} s (indicatif, écran de chargement)"))
-    start = values([r for r in rows if isinstance(r.get("t_s"), (int, float))
-                    and (loaded <= r["t_s"] < warm or held.get(id(r)) == "départ")], "frame_max_ms")
+    if prep:
+        out.append((None, "à-coups : préparation des graphismes",
+                    f"pire image {max(prep):.0f} ms sur {len(prep)} seconde(s) lente(s) "
+                    "(indicatif, barre de préparation, parcours pas encore chargé)"))
+    start = values([r for r in timed if (r["t_s"] < warm and held.get(id(r)) != "préparation")
+                    or (r["t_s"] >= warm and held.get(id(r)) == "départ")], "frame_max_ms")
     if start:
         top_start = max(start)
         out.append(((top_start <= start_ms) if real_window else None, "à-coups : départ",

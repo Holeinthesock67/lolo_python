@@ -103,6 +103,7 @@ DECOR_KINDS = {"birds": ("oiseaux", "#2980b9"), "animals": ("animaux", "#8e5a2b"
                "aircraft": ("ciel", "#8e44ad"), "boats": ("bateaux", "#16a085")}
 CMD_ID_BASE = 20_000
 SETTLE_S = 5.0          # après route_loaded : premières tuiles et premier décor avant la première capture
+PREP_TIMEOUT_S = 300.0   # préparation des graphismes au premier lancement (lot PG1) : 49 doublures, ~25 s sur la GTX 1060
 SHOT_TIMEOUT_S = 5.0    # attente de la réponse d'une capture, une fois redemandée
 SPEED_TOLERANCE = 0.10  # vitesse imposée : médiane à ± 10 %
 LATENCY_MIN_PRESSES = 10   # lot X7 : appuis du Click appariés de bout en bout
@@ -538,7 +539,8 @@ class Bench:
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
                     f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
-                    f"--forest={a.forest}", f"--load-guard={a.load_guard}", f"--crowd={a.crowd}"]
+                    f"--forest={a.forest}", f"--load-guard={a.load_guard}", f"--crowd={a.crowd}",
+                    "--graphics-prep=on"]   # lot PG1 : le banc mesure le jeu tel quel, préparation comprise
             if a.camera_height is not None:   # vue follow_far plus haute (lot Y5 : voir les forêts lointaines)
                 cmd.append(f"--camera-height={a.camera_height:g}")
             if self.biome:
@@ -551,6 +553,13 @@ class Bench:
             ack = engine.wait_for(r"hello_ack reçu", 30.0)
             r.check(ack is not None, "engine relié au core",
                     f"hello_ack {self.rel(ack[0]):.1f} s après le démarrage du core" if ack else "pas de hello_ack en 30 s")
+            if engine.matching(r"Préparation des graphismes : \d+ doublures"):
+                # Lot PG1 : au premier lancement, le parcours attend la préparation des graphismes (une doublure par
+                # image) ; ses 30 s comptent depuis la fin de la préparation, notée à part (banc r1097 du 26/11).
+                prep = engine.wait_for(r"Préparation des graphismes (finie|interrompue)", PREP_TIMEOUT_S)
+                r.check(None, "préparation des graphismes",
+                        f"{prep[1].group(1)} à {self.rel(prep[0]):.1f} s" if prep
+                        else f"pas finie en {PREP_TIMEOUT_S:.0f} s")
             loaded = engine.wait_for(rf"route_loaded id={re.escape(route_id)}", 30.0)
             r.check(loaded is not None, "parcours chargé par l'engine",
                     f"{route_id} à {self.rel(loaded[0]):.1f} s" if loaded else f"{route_id} non chargé en 30 s")
