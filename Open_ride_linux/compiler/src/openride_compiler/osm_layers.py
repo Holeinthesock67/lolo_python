@@ -58,19 +58,68 @@ def _segments_intersect(
     return False
 
 
+_PAIR_BATCH = 1 << 20   # paires d'arêtes testées par lot (mémoire bornée sur un très grand anneau)
+
+
 def is_self_intersecting(ring: list[list[float]]) -> bool:
-    """Détecte une auto-intersection simple entre arêtes non adjacentes d'un anneau."""
+    """Détecte une auto-intersection simple entre arêtes non adjacentes d'un anneau.
+
+    Même règle que `_segments_intersect` (croisement strict), en numpy (K3-06) : les arêtes sont triées sur leur
+    début selon l'axe le plus étendu, et seules les paires dont les intervalles se chevauchent sur cet axe sont
+    testées. Un anneau de 20 000 sommets se contrôle en une fraction de seconde au lieu d'une minute et demie.
+    """
     m = len(ring)
     if m < 4:
         return False
-    for i in range(m):
-        a, b = ring[i], ring[(i + 1) % m]
-        for j in range(i + 2, m):
-            if i == 0 and j == m - 1:
-                continue
-            c, d = ring[j], ring[(j + 1) % m]
-            if _segments_intersect(a, b, c, d):
-                return True
+    p = np.asarray([(float(q[0]), float(q[1])) for q in ring], dtype=float)
+    a = p
+    b = np.roll(p, -1, axis=0)
+    ax = 0 if np.ptp(p[:, 0]) >= np.ptp(p[:, 1]) else 1
+    lo = np.minimum(a[:, ax], b[:, ax])
+    hi = np.maximum(a[:, ax], b[:, ax])
+    order = np.argsort(lo, kind="stable")
+    lo_sorted = lo[order]
+    # arêtes candidates de la r-ième (dans l'ordre trié) : rangs r+1 .. end[r]-1, dont le début est avant sa fin
+    end = np.searchsorted(lo_sorted, hi[order], side="right")
+    counts = np.maximum(end - np.arange(1, m + 1), 0)
+    total = int(counts.sum())
+    if total == 0:
+        return False
+    ob = 1 - ax
+    olo = np.minimum(a[:, ob], b[:, ob])
+    ohi = np.maximum(a[:, ob], b[:, ob])
+    csum = np.cumsum(counts)
+    r0 = 0
+    while r0 < m:
+        # lot de rangs [r0, r1) dont les paires tiennent dans _PAIR_BATCH (au moins un rang)
+        base = int(csum[r0 - 1]) if r0 else 0
+        r1 = int(np.searchsorted(csum, base + _PAIR_BATCH, side="right"))
+        r1 = max(r1, r0 + 1)
+        cnt = counts[r0:r1]
+        n_pairs = int(cnt.sum())
+        if n_pairs:
+            rr = np.repeat(np.arange(r0, r1), cnt)
+            offs = np.arange(n_pairs) - np.repeat(np.cumsum(cnt) - cnt, cnt)
+            ss = rr + 1 + offs
+            i = order[rr]
+            j = order[ss]
+            # arêtes voisines (i et i+1, la dernière et la première) : jamais testées, comme avant
+            d = np.abs(i - j)
+            keep = (d > 1) & (d != m - 1)
+            keep &= (olo[i] <= ohi[j]) & (olo[j] <= ohi[i])
+            i, j = i[keep], j[keep]
+            if i.size:
+                pa, pb, pc, pd = a[i], b[i], a[j], b[j]
+
+                def ccw(p1, p2, p3):
+                    return (p2[:, 0] - p1[:, 0]) * (p3[:, 1] - p1[:, 1]) - (p2[:, 1] - p1[:, 1]) * (p3[:, 0] - p1[:, 0])
+
+                d1, d2 = ccw(pa, pb, pc), ccw(pa, pb, pd)
+                d3, d4 = ccw(pc, pd, pa), ccw(pc, pd, pb)
+                hit = (((d1 > 0) & (d2 < 0)) | ((d1 < 0) & (d2 > 0))) & (((d3 > 0) & (d4 < 0)) | ((d3 < 0) & (d4 > 0)))
+                if hit.any():
+                    return True
+        r0 = r1
     return False
 
 
@@ -572,20 +621,20 @@ def _vegetation_kind_and_density(tags: dict[str, Any]) -> tuple[str, float] | No
     return None
 
 
-def vegetation_chunk_and_y(
+def area_chunk_and_y(
     outer: list[list[float]],
-    kind: str,
     route: dict[str, Any],
     axis: RouteAxis,
 ) -> tuple[int | None, float]:
-    """Tronçon et altitude de la route pour une zone de végétation (lots I4 et P22).
+    """Tronçon et altitude de la route pour une aire (végétation, plan d'eau, morceau de rivière ; K3-04).
 
-    Le centre de la zone décide. Un pré, un champ ou une prairie dont le centre est hors du couloir
-    de 400 m reste gardé s'il y entre par un bord : le sommet de l'anneau le plus proche du parcours décide.
+    Le centre de l'aire décide. Une aire dont le centre est hors du couloir de 400 m reste gardée si elle y entre
+    par un bord : le sommet du contour le plus proche du parcours décide (grand lac, rivière large ou forêt longés
+    par la route ; règle du bord des terrains ouverts du lot P22, étendue à toutes les aires).
     """
     cx, cz = ring_centroid(outer)
     k, y_route = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
-    if k is not None or kind not in C.VEGETATION_OPEN_KINDS:
+    if k is not None:
         return k, y_route
     xs = np.array([p[0] for p in outer], dtype=float)
     zs = np.array([p[1] for p in outer], dtype=float)
@@ -594,6 +643,17 @@ def vegetation_chunk_and_y(
         return None, float("nan")
     i = int(np.nanargmin(np.where(np.isfinite(dists), dists, np.inf)))
     return nearest_chunk_and_y(float(xs[i]), float(zs[i]), route, axis, C.OSM_BAND_M)
+
+
+def vegetation_chunk_and_y(
+    outer: list[list[float]],
+    kind: str,
+    route: dict[str, Any],
+    axis: RouteAxis,
+) -> tuple[int | None, float]:
+    """Tronçon et altitude de la route pour une zone de végétation (lots I4 et P22) : règle de `area_chunk_and_y`,
+    pour toutes les sortes depuis K3-04 (une forêt qui touche le couloir par un bord est gardée comme un pré)."""
+    return area_chunk_and_y(outer, route, axis)
 
 
 def road_lanes(kind: str, tags: dict[str, Any]) -> int:
@@ -774,13 +834,17 @@ def build_osm_layers(
                     for vx, vz in dense_xz:
                         vk, vy_route = nearest_chunk_and_y(vx, vz, route, axis, C.OSM_BAND_M)
                         if vk is None:
+                            # coupure hors du couloir (K3-05) : la rentrée commence un nouveau morceau, sans faux
+                            # tronçon droit entre la sortie et la rentrée (comme les routes voisines)
+                            if pieces_by_chunk and pieces_by_chunk[-1][0] != -1:
+                                pieces_by_chunk.append((-1, []))
                             continue
                         if not pieces_by_chunk or pieces_by_chunk[-1][0] != vk:
                             pieces_by_chunk.append((vk, [(vx, vz, vy_route)]))
                         else:
                             pieces_by_chunk[-1][1].append((vx, vz, vy_route))
 
-                    valid_pieces = [(ck, pts) for ck, pts in pieces_by_chunk if len(pts) >= 2]
+                    valid_pieces = [(ck, pts) for ck, pts in pieces_by_chunk if ck >= 0 and len(pts) >= 2]
                     for piece_idx, (ck, pts) in enumerate(valid_pieces):
                         px_arr = np.array([p[0] for p in pts], dtype=float)
                         pz_arr = np.array([p[1] for p in pts], dtype=float)
@@ -900,9 +964,11 @@ def build_osm_layers(
                 item_id = obj_id if len(polys) == 1 else f"{obj_id}_{poly_idx}"
                 if veg_info is not None and not is_building and water_area_kind is None:
                     k, y_route = vegetation_chunk_and_y(outer, veg_info[0], route, axis)
-                else:
+                elif is_building:
                     cx, cz = ring_centroid(outer)
                     k, y_route = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
+                else:   # plan d'eau : gardé s'il entre dans le couloir par un bord (K3-04)
+                    k, y_route = area_chunk_and_y(outer, route, axis)
                 if k is None:
                     continue
 

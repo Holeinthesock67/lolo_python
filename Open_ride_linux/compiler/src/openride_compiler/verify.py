@@ -21,7 +21,7 @@ import numpy as np
 
 from . import constants as C
 from . import segments_layer as SEG
-from .osm_layers import nearest_chunk_and_y, ring_centroid, signed_area, vegetation_chunk_and_y
+from .osm_layers import area_chunk_and_y, nearest_chunk_and_y, ring_centroid, signed_area, vegetation_chunk_and_y
 from .terrain import ALL_LEVELS, NEAR, TILE_BYTES, RouteAxis, read_tile, tile_coords, tile_filename
 
 TILE_RE = re.compile(r"tile_(-?\d+)_(-?\d+)\.f32")
@@ -615,8 +615,7 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
             if outer_ok and item.get("kind") == "sea":
                 _check_sea_area(item, label, problems)
             elif outer_ok and route is not None and axis is not None:
-                cx, cz = ring_centroid(outer)
-                expected_k, _ = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
+                expected_k, _ = area_chunk_and_y(outer, route, axis)   # règle du bord (K3-04)
                 if expected_k != k:
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
 
