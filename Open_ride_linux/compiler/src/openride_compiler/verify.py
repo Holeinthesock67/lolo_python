@@ -612,6 +612,8 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
             outer_ok = _check_ring(outer, True, label, problems)
             for h in holes:
                 _check_ring(h, False, label, problems)
+            if outer_ok and item.get("kind") == "river":
+                _check_river_levels(item, outer, holes, label, problems)
             if outer_ok and item.get("kind") == "sea":
                 _check_sea_area(item, label, problems)
             elif outer_ok and route is not None and axis is not None:
@@ -619,6 +621,25 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
                 expected_k, _ = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
                 if expected_k != k:
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
+
+
+def _check_river_levels(item: dict, outer: list, holes: list, label: str, problems: list[str]) -> None:
+    """Aire `river` (format 1.10, §8) : `outer_y` de la longueur de `outer`, `holes_y` parallèle à `holes`,
+    altitudes finies (K3-07). Facultatifs : absents, l'engine prend `level_y`."""
+    oy = item.get("outer_y")
+    if oy is not None:
+        if not isinstance(oy, list) or len(oy) != len(outer) or not all(_is_number(v) for v in oy):
+            problems.append(f"{label} : outer_y invalide (une altitude finie par sommet de outer)")
+    hy = item.get("holes_y")
+    if hy is not None:
+        if not isinstance(hy, list) or len(hy) != len(holes):
+            problems.append(f"{label} : holes_y invalide (une liste par île)")
+        else:
+            for h, ys in zip(holes, hy):
+                if (not isinstance(ys, list) or not isinstance(h, list) or len(ys) != len(h)
+                        or not all(_is_number(v) for v in ys)):
+                    problems.append(f"{label} : holes_y invalide (une altitude finie par sommet de l'île)")
+                    break
 
 
 def _check_bridges(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
