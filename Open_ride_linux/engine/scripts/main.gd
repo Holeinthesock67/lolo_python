@@ -2548,6 +2548,7 @@ func _update_grandprix(state: Dictionary, in_session: bool) -> void:
 			gp_scene.reset()
 		return
 	var t_step := Time.get_ticks_usec()
+	gp_scene.set_paused(str(state.get("session_state", "")) == "PAUSED", Time.get_ticks_msec() / 1000.0)   # E11-04
 	for snd in gp_sounds.on_state(gp):   # roulette, lancer, sonnette, klaxon (lot GP7)
 		_play_event(snd)
 		gp_sounds.me_played(Time.get_ticks_msec() / 1000.0)
