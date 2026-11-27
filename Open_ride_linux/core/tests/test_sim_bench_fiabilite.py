@@ -291,3 +291,24 @@ def test_grade_coherence_flags_a_received_grade_far_from_the_course():
     recs = [_rec(i, 2.0, 2.0) for i in range(60)] + [_rec(60 + i, 2.0, 6.0, draft=0.3) for i in range(60)]
     assert sb.grade_coherence(recs)[0] is True
     assert sb.grade_coherence([])[0] is False
+
+
+# --- refuser plutôt que deviner (27 novembre) ----------------------------------------------------
+
+def test_empty_world_is_refused_not_replaced_by_demo(tmp_path, capsys):
+    """Banc pile à-coups du 27/11 : W=$(find …) vide, --world "" roulait sans le dire sur le Col du lacet."""
+    spec = sim_scenarios.load_scenario("nominal")
+    for vide in ("", "  "):
+        with pytest.raises(SystemExit) as exc:
+            sb.Bench(_args(world=vide, speed_kmh=50.0), "nominal", spec, {}, "nominal", tmp_path)
+        assert exc.value.code == 2
+    assert "aucun parcours par défaut" in capsys.readouterr().err
+    # sans --world : le monde du scénario, puis demo, comme avant
+    assert sb.Bench(_args(world=None), "nominal", spec, {"world": "village"}, "nominal", tmp_path).world == "village"
+    assert sb.Bench(_args(world=None), "nominal", spec, {}, "nominal", tmp_path).world == "demo"
+
+
+def test_missing_world_folder_is_an_environment_failure(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        sb.prepare_world(str(tmp_path / "absent.world"), tmp_path / "routes", tmp_path)
+    assert exc.value.code == 2

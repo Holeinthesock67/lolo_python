@@ -348,7 +348,10 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, circuit, village, osm, pont, tunnel, ouvert ou dossier .world)")
+        # Code 2 (environnement) et non 1 : le banc n'a rien mesuré, la PR n'est pas en cause (27 novembre).
+        print(f"ENVIRONNEMENT parcours introuvable : {kind} (demo, demo_long, circuit, village, osm, pont, tunnel, "
+              "ouvert ou dossier .world)", file=sys.stderr)
+        raise SystemExit(2)
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
@@ -390,6 +393,12 @@ class Bench:
         self.spec = spec
         self.scenario_arg = scenario_arg
         # --world donné explicitement l'emporte sur le monde du scénario (même scénario, autre parcours).
+        # Refuser plutôt que deviner (27 novembre) : un --world vide (W=$(find …) qui ne trouve rien) n'est jamais
+        # remplacé par le parcours du scénario ni par demo ; banc d'environnement invalide (code 2).
+        if args.world is not None and not str(args.world).strip():
+            print(f"ENVIRONNEMENT {name} : --world vide (monde introuvable avant le banc ?) : aucun parcours "
+                  "par défaut, banc non lancé", file=sys.stderr)
+            raise SystemExit(2)
         self.world = str(args.world or settings.get("world") or "demo")
         # Biome forcé (lot U17) : `--biome=` de l'engine, sur tout le parcours ; --biome l'emporte sur `bench.biome`.
         self.biome = str(getattr(args, "biome", None) or settings.get("biome") or "")
