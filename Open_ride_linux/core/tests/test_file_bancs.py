@@ -812,3 +812,59 @@ delai_min = 0.02
     assert fb.main(["relancer", str(f), "--sans-reseau"]) == 0                # 2,4 s : passe
     r = _etat(tmp_path)["prs"]["p"]["court"]
     assert r["verdict"] == fb.OK and r["delai_s"] >= 2
+
+
+# --- refuser plutôt que deviner (27 novembre, banc pile à-coups) ------------------------------------
+
+def test_sortie_parent_refuse_a_la_lecture(tmp_path, depot):
+    """`{sortie}/../w` de la fumée n'est pas celui des étapes : la file est refusée, avec le remède `{commun}`."""
+    _, clone = depot
+    f = _file(tmp_path, clone, """
+[[pr]]
+id = "p"
+branche = "br"
+fumee = "mkdir -p {sortie}/../w"
+[[pr.etape]]
+id = "low"
+commande = "ls {sortie}/../w"
+""")
+    with pytest.raises(fb.FileInvalide, match=r"\{commun\}"):
+        fb.lire_file(f)
+
+
+def test_etape_ne_peut_pas_sappeler_commun(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, f"""
+[[pr]]
+id = "p"
+branche = "br"
+[[pr.etape]]
+id = "commun"
+commande = {json.dumps(_cmd(0))}
+""")
+    with pytest.raises(fb.FileInvalide, match="commun"):
+        fb.lire_file(f)
+
+
+def test_commun_partage_par_la_fumee_et_les_etapes(tmp_path, depot):
+    """Ce que la fumée écrit dans `{commun}` (les mondes construits) est lu par chaque étape de la PR."""
+    _, clone = depot
+    ecrire = f"{PY} -c {json.dumps('import pathlib,sys; pathlib.Path(sys.argv[1], \"monde\").write_text(\"ok\")')} {{commun}}"
+    lire = f"{PY} -c {json.dumps('import pathlib,sys; sys.exit(0 if pathlib.Path(sys.argv[1], \"monde\").is_file() else 1)')} {{commun}}"
+    f = _file(tmp_path, clone, f"""
+[[pr]]
+id = "p"
+branche = "br"
+fumee = {json.dumps(ecrire)}
+[[pr.etape]]
+id = "low"
+commande = {json.dumps(lire)}
+[[pr.etape]]
+id = "high"
+commande = {json.dumps(lire)}
+""")
+    r = fb.Runner(fb.lire_file(f), reseau=False, log=lambda *_: None)
+    assert r.lancer() == 0
+    etat = _etat(tmp_path)["prs"]["p"]
+    assert etat["low"]["verdict"] == fb.OK and etat["high"]["verdict"] == fb.OK
+    assert (tmp_path / "sortie" / "p" / "commun" / "monde").is_file()
