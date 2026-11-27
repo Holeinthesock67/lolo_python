@@ -26,6 +26,7 @@ import os
 import platform
 import shutil
 import statistics
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -65,11 +66,13 @@ PAVED_ONLY_CLASSES = {"path", "track"}
 
 
 def default_cache_dir() -> Path:
-    return Path.home() / "OpenRide" / "Cache" / "monde"
+    """Cache à part de la mesure (revue de code K2-06, lot RC23) : jamais le cache du jeu (`~/OpenRide/Cache/monde`),
+    où les tuiles posées sans entrée d'index échappaient au plafond et l'extrait complet n'était jamais repris."""
+    return Path.home() / "OpenRide" / "Mesures" / "monde" / "cache"
 
 
 def default_out_dir() -> Path:
-    return default_cache_dir() / "mesures" / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    return Path.home() / "OpenRide" / "Mesures" / "monde" / datetime.now().strftime("%Y-%m-%d_%H%M%S")
 
 
 # --- réseau -----------------------------------------------------------------------------------
@@ -115,10 +118,16 @@ class Net:
     def download(self, url: str, dest: Path) -> int:
         """Écrit `dest` de façon atomique (fichier temporaire voisin puis renommage)."""
         dest.parent.mkdir(parents=True, exist_ok=True)
-        tmp = dest.with_name(f".{dest.name}.tmp-{os.getpid()}")
+        tmp = dest.with_name(f".{dest.name}.tmp-{os.getpid()}-{threading.get_ident()}")
         try:
             with self._open(url) as resp, open(tmp, "wb") as out:
                 shutil.copyfileobj(resp, out, length=1 << 20)
+                announced = resp.headers.get("Content-Length") if getattr(resp, "headers", None) else None
+            got = tmp.stat().st_size
+            # Revue de code K2-05 (lot RC23) : un corps plus court que `Content-Length` (coupure entre deux couches
+            # d'une tuile, que le décodage ne voit pas) est refusé comme `Net.get`, jamais renommé à sa place.
+            if announced and str(announced).isdigit() and got != int(announced):
+                raise CompileError(f"{url} : réponse incomplète ({got} octets sur {announced} annoncés)")
             os.replace(tmp, dest)
         except (http.client.HTTPException, OSError) as exc:   # réponse tronquée, coupure en cours de lecture
             raise CompileError(f"{url} : réponse incomplète ({exc!r})") from exc
@@ -442,7 +451,9 @@ class Measure:
         try:
             data = self.net.get(OPENFREEMAP_TILEJSON)
             cached.parent.mkdir(parents=True, exist_ok=True)
-            cached.write_bytes(data)
+            tmp = cached.with_name(f".{cached.name}.tmp-{os.getpid()}")
+            tmp.write_bytes(data)
+            os.replace(tmp, cached)
         except CompileError:
             if not cached.is_file():
                 raise
@@ -533,7 +544,7 @@ class Measure:
         dt = time.perf_counter() - t0
         self.log(f"extrait {region} : {size / 1e6:.0f} Mo en {dt:.0f} s")
         return {"region": region, "en_cache": False, "octets_annonces": announced, "octets": size,
-                "secondes": round(dt, 2), "mo_par_s": _rate_mb_s(size, dt), "fichier": str(dest)}
+                "secondes": round(dt, 2), "mo_par_s": _rate_mb_s(size, dt), "fichier": dest.name}   # sans le dossier personnel (K2-06)
 
     # -- 4. génération --------------------------------------------------------------------------
 
@@ -727,8 +738,8 @@ def add_arguments(p) -> None:
     p.add_argument("--km", type=float, default=10.0, help="longueur du couloir en km (défaut : 10)")
     p.add_argument("--region", help="extrait Geofabrik à mesurer, par exemple europe/france/provence-alpes-cote-d-azur")
     p.add_argument("--out", type=Path, default=None,
-                   help="dossier du rapport (défaut : ~/OpenRide/Cache/monde/mesures/<date>)")
-    p.add_argument("--cache-dir", type=Path, default=None, help="cache du monde (défaut : ~/OpenRide/Cache/monde)")
+                   help="dossier du rapport (défaut : ~/OpenRide/Mesures/monde/<date>)")
+    p.add_argument("--cache-dir", type=Path, default=None, help="cache de la mesure (défaut : ~/OpenRide/Mesures/monde/cache, jamais le cache du jeu)")
     p.add_argument("--offline", action="store_true", help="aucune requête : tout depuis le cache")
     p.add_argument("--synthetic", action="store_true", help="relief et routes synthétiques, sans réseau")
     p.add_argument("--yes", action="store_true", help="pas de confirmation avant un gros téléchargement")

@@ -272,7 +272,7 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | `openride-core recover` | Convertit un journal de séance en FIT après un plantage |
 | `python -m openride_core.tools.workouts check FICHIER.zwo` | Lecture et charge d'un entraînement ERG |
 | `python -m openride_core.tools.route_vectors` | Vecteurs de test de la route, partagés core et engine |
-| `openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]` | Monde ouvert (lot W0) : volumes du relief, des tuiles vectorielles et de l'extrait régional, temps de génération par carré de 1 km ; rapport dans `~/OpenRide/Cache/monde/mesures/<date>/` |
+| `openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]` | Monde ouvert (lot W0) : volumes du relief, des tuiles vectorielles et de l'extrait régional, temps de génération par carré de 1 km ; rapport dans `~/OpenRide/Mesures/monde/<date>/`, cache à part `~/OpenRide/Mesures/monde/cache` (jamais celui du jeu, lot RC23) |
 | `openride-compiler compare-garmin PARCOURS.world --pente-max P --dplus D [--longueur KM] [--fenetre 100] [--json]` | Recette 1.0 ligne 22 (lot X31) : pente maximale du parcours sur la même fenêtre glissante que Garmin (100 m), D+ et longueur face aux valeurs lues dans Garmin Connect ; OK à ± 1 point, ± 5 % et ± 1 %, code 1 sinon ; rien n'est écrit |
 | `python -m openride_core.ipc_budget` | Taille de la trame `state` la plus lourde de chaque révision du contrat face à sa limite : 1 400 octets jusqu'à la révision 1.2, 4 096 octets depuis la 1.3 (lot X25) ; une trame trop grande est allégée par le core au lieu d'être jetée |
 

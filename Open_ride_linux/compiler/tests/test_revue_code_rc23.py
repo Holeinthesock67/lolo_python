@@ -198,3 +198,75 @@ def test_session_open_prunes_old_sessions_but_not_its_own(tmp_path) -> None:
     assert not (old[0] / "terrain").exists() and (old[0] / "route" / "part_0.json").is_file()
     assert (old[1] / "terrain" / "near" / "tile_0_0.f32").is_file()
     assert (s.session_dir / "route" / "part_0.json").is_file()
+
+
+# --- K2-05 : tuile plus courte que Content-Length --------------------------------------------------
+
+class _Resp:
+    def __init__(self, body: bytes, announced: int) -> None:
+        import io
+        self._buf = io.BytesIO(body)
+        self.headers = {"Content-Length": str(announced)}
+
+    def read(self, n: int = -1) -> bytes:
+        return self._buf.read(n)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        return None
+
+
+def test_tile_download_shorter_than_announced_is_refused(tmp_path) -> None:
+    import pytest
+    from openride_compiler.worldgen import measure
+    net = measure.Net(sleep=lambda _s: None)
+    dest = tmp_path / "t" / "1.mvt"
+    net._open = lambda url, method="GET": _Resp(b"x" * 76, 152)
+    with pytest.raises(CompileError, match="76 octets sur 152"):
+        net.download("https://t.invalid/14/1/1.pbf", dest)
+    assert not dest.exists() and list(dest.parent.iterdir()) == []      # ni la tuile, ni le temporaire
+    net._open = lambda url, method="GET": _Resp(b"x" * 152, 152)
+    assert net.download("https://t.invalid/14/1/1.pbf", dest) == 152
+
+
+# --- K2-06 : world-measure hors du cache du jeu ----------------------------------------------------
+
+def test_world_measure_never_defaults_to_the_game_cache() -> None:
+    from openride_compiler.worldgen import measure
+    game = Path.home() / "OpenRide" / "Cache" / "monde"
+    for d in (measure.default_cache_dir(), measure.default_out_dir()):
+        assert game not in d.parents and d != game
+
+
+# --- K2-07 : restes d'écriture d'un carré ---------------------------------------------------------
+
+def test_square_write_removes_stale_leftovers_and_tolerates_a_concurrent_writer(tmp_path, monkeypatch) -> None:
+    from openride_compiler.worldgen import squares as sq
+    final = tmp_path / "genere" / "31T" / "622_4761"
+    final.parent.mkdir(parents=True)
+    dead = 999_999_999                                         # aucun processus de ce numéro
+    for name in (f".622_4761.tmp-{dead}", f".622_4761.old-{dead}-12"):
+        (final.parent / name).mkdir()
+        (final.parent / name / "near.f32").write_bytes(b"\0")
+    live = final.parent / f".622_4761.tmp-{os.getppid()}-7"     # processus vivant : laissé
+    live.mkdir()
+    sq._write_atomic(final, {"meta.json": b"{}"})
+    assert (final / "meta.json").read_bytes() == b"{}"
+    assert sorted(p.name for p in final.parent.iterdir()) == sorted(["622_4761", live.name])
+    # Un autre processus a posé le carré entre-temps : le renommage échoue, son carré est gardé, pas d'erreur.
+    real_rename = Path.rename
+
+    def racy(self, target):
+        if Path(target) == final and not final.exists():
+            final.mkdir()
+            (final / "meta.json").write_bytes(b"autre")
+        return real_rename(self, target)
+
+    import shutil
+    shutil.rmtree(final)
+    monkeypatch.setattr(Path, "rename", racy)
+    sq._write_atomic(final, {"meta.json": b"moi"})
+    assert (final / "meta.json").read_bytes() == b"autre"
+    assert sorted(p.name for p in final.parent.iterdir()) == sorted(["622_4761", live.name])
