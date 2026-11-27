@@ -285,6 +285,8 @@ var garage = GarageViewModel.new()
 var progress = ProgressViewModel.new()
 var xp_result: Dictionary = {}
 var _xp_announced := false
+## Fichier des records imposé (tests visuels, `OPENRIDE_RECORDS_FILE`) ; vide : celui du profil en cours
+## (`records_file()`, lot EC9).
 var records_path := ""
 var _record_segment := ""
 var _record_bonus := false
@@ -2559,11 +2561,20 @@ func shown_summary() -> Dictionary:
 	return history.detail if menu.current_screen() == HistoryViewModel.SESSION else summary
 
 
+## Fichier des records lu par l'écran (lot EC9, constat E12-01) : `records_path` s'il est imposé, sinon
+## celui du profil en cours (`profiles.current_id()` : dernier annoncé par le hello ou `profiles`), où le core écrit depuis
+## les profils ; sans profil : l'ancien `~/OpenRide/records.json`.
+func records_file() -> String:
+	if records_path != "":
+		return records_path
+	return RecordsViewModel.default_path(profiles.current_id())
+
+
 ## Écrans des records (lot T10) : « Records du parcours » (écran Prêt) relit le fichier et liste les
 ## segments ; un segment ouvre sa table « sans bonus » ; « A : voir les temps avec bonus » bascule.
 func _handle_records(screen: String, item_id: String) -> void:
 	if screen == MenuModel.READY and item_id == "records":
-		records.load_file(records_path)
+		records.load_file(records_file())
 		var title: String = "Records : " + (menu.world_name if menu.world_name != "" else menu.world_id)
 		menu.set_screen_items(RECORDS, records.segment_items(menu.world_id), title)
 		menu.push_screen(RECORDS)

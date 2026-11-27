@@ -1622,7 +1622,7 @@ func _poll_route_job() -> void:
 		seg_profiles[str(seg["id"])] = hud.vm.profile(route, float(seg["s_start"]), 0.0,
 			float(seg["s_end"]) - float(seg["s_start"]), SEGMENT_PROFILE_COLUMNS)
 	menu_flow.records.set_segments(route.segments, seg_profiles)
-	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
+	# Fichier des records de remplacement (tests visuels) ; vide : celui du profil en cours (lot EC9).
 	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
 	_load_phase(phases, "segments")
