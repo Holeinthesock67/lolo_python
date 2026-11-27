@@ -27,6 +27,7 @@ where = ["src"]
 # Copies embarquées des entraînements et plans de référence (lot J4) : `data/workouts/`, `data/plans/`.
 openride_core = [
     "data/*.toml", "data/*.json", "data/workouts/*", "data/plans/*.toml", "data/essais/*.toml", "rogue/*.toml", "tactical/*.toml",
+    "revisions_ipc/*.txt", "revisions_ipc/a_numeroter/*.txt",
 ]
 
 [tool.pytest.ini_options]

@@ -66,6 +66,7 @@ def test_versions_comparees_a_main_actuelle(tmp_path, monkeypatch):
     """Révision IPC montée par la branche, mais déjà prise sur main par une autre PR : échec, numéro proposé."""
     valeurs = {("base", "révision IPC"): "1.35", ("HEAD", "révision IPC"): "1.36", ("main", "révision IPC"): "1.36"}
     monkeypatch.setattr(ap, "version", lambda rev, nom: valeurs.get((rev, nom), "9"))
+    monkeypatch.setattr(ap, "montrer", lambda rev, chemin: None)          # branche d'avant le registre (CF2)
     b = ap.Bilan()
     ap.controle_versions("base", "main", b)
     assert b.echecs == 1 and "renuméroter en 1.37" in b.lignes[0][1]
@@ -74,6 +75,31 @@ def test_versions_comparees_a_main_actuelle(tmp_path, monkeypatch):
     ap.controle_versions("base", "main", b)
     assert b.echecs == 0 and b.lignes[0][0] == ap.OK
     assert ap.cle_version("1.10") > ap.cle_version("1.9") and ap.suivante("1.9") == "1.10"
+
+
+def test_registre_ipc_lot_cf2(monkeypatch):
+    """Avec le registre : la révision IPC n'est plus comparée à main, mais une branche de lot ne la numérote pas."""
+    fichiers = {"HEAD": {"core/src/openride_core/revisions_ipc/historique.txt": "1.36 | SV1 | x\n",
+                         "core/src/openride_core/ipc_server.py": "CONTRACT_REV = revisions_ipc.revision_courante()\n"},
+                "base": {"core/src/openride_core/revisions_ipc/historique.txt": "1.36 | SV1 | x\n"}}
+    monkeypatch.setattr(ap, "montrer", lambda rev, chemin: fichiers.get(rev, {}).get(chemin))
+    monkeypatch.setattr(ap, "version", lambda rev, nom: {"HEAD": "1.37", "main": "1.37"}.get(rev, "1.36")
+                        if nom == "révision IPC" else "9")
+    b = ap.Bilan()
+    ap.controle_versions("base", "main", b)
+    assert b.echecs == 0                                                    # deux révisions en attente : pas de faute
+    monkeypatch.setattr(ap, "git", lambda *a, **k: "Open_ride_linux/core/src/openride_core/revisions_ipc/historique.txt")
+    b = ap.Bilan()
+    ap.controle_registre_ipc("base", "claude/lot", b)
+    assert b.echecs == 1 and "seul le fil de fusion" in b.lignes[0][1]
+    b = ap.Bilan()
+    ap.controle_registre_ipc("base", "train/1126-2000", b)
+    assert b.echecs == 0
+    fichiers["HEAD"]["core/src/openride_core/ipc_server.py"] = 'CONTRACT_REV = "1.37"\n'
+    monkeypatch.setattr(ap, "git", lambda *a, **k: "")
+    b = ap.Bilan()
+    ap.controle_registre_ipc("base", "claude/lot", b)
+    assert b.echecs == 1 and "écrite à la main" in b.lignes[0][1]
 
 
 def test_tests_touches_par_la_branche():
