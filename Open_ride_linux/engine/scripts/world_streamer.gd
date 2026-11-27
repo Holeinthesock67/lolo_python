@@ -384,6 +384,12 @@ func _get_buildings(t: Vector2i) -> Array:
 	return _get_osm_items(t, "buildings")
 
 
+## Aires d'eau OSM des tronçons proches d'une tuile proche (lacs, rivières en surface, mer : arbres exclus,
+## revue E7-05) ; les lignes d'eau (ruisseaux) ne sont pas des aires et ne retirent rien.
+func _get_water_areas(t: Vector2i) -> Array:
+	return _get_osm_items(t, "water").filter(func(w): return typeof(w) == TYPE_DICTIONARY and w.has("outer"))
+
+
 func _get_osm_items(t: Vector2i, layer: String) -> Array:
 	if not _has_layer(layer) or world_dir == "":
 		return []
@@ -782,6 +788,8 @@ func _build_job(job: Dictionary) -> void:
 					job["forest_heights"] = heights
 				# Lot EA2 : grands lacs de la tuile lointaine (monde ouvert), au niveau du lac, au-dessus du sol abaissé
 				var far_levels := FarWater.load_levels(job["world_dir"], t.x, t.y)
+				if forest_impostors != null and not far_levels.is_empty():
+					job["forest_water"] = far_levels   # pas de forêt lointaine sur les grands lacs (revue E7-05)
 				if not far_levels.is_empty():
 					var t_fw := Time.get_ticks_usec()
 					job["water_arrays"] = FarWater.build_arrays(far_levels, t.x, t.y,
@@ -803,7 +811,7 @@ func _build_job(job: Dictionary) -> void:
 				var t_trees := Time.get_ticks_usec()
 				# Hauteurs réelles : pente et limite des arbres jugées sur le vrai relief, arbres posés à la hauteur affichée.
 				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
-					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t))
+					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t), _get_water_areas(t))
 				PerfProbe.task("arbres", "%d:%d" % [t.x, t.y], (Time.get_ticks_usec() - t_trees) / 1000.0)
 		"flat":
 			var t: Vector2i = spec["tile"]
@@ -853,6 +861,8 @@ func _poll_jobs(wait: bool) -> void:
 				ready_item["trees_data"] = job["trees_data"]
 			if job.has("forest_heights"):
 				ready_item["forest_heights"] = job["forest_heights"]
+			if job.has("forest_water"):
+				ready_item["forest_water"] = job["forest_water"]
 			if job.has("skirt_arrays"):
 				ready_item["skirt_arrays"] = job["skirt_arrays"]
 			if job.has("water_arrays"):
@@ -906,7 +916,8 @@ func integrate(max_new: int) -> int:
 			PerfProbe.mark("arbres", r["key"], (Time.get_ticks_usec() - t1) / 1000.0)
 		if r.has("forest_heights") and forest_impostors != null:
 			var ft: Vector2i = TerrainTiles.tile_of("far", r["origin"].x + 1.0, r["origin"].z + 1.0)
-			forest_impostors.request_tile(ft.x, ft.y, r["forest_heights"], route, _theme_dict)
+			forest_impostors.request_tile(ft.x, ft.y, r["forest_heights"], route, _theme_dict,
+				r.get("forest_water", PackedFloat32Array()))
 		if test_log and r["kind"] == "near":
 			_test_check_tile(r["key"], r["arrays"][Mesh.ARRAY_VERTEX])
 		created += 1

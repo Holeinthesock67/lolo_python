@@ -26,6 +26,7 @@ extends Node3D
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
 const LavaShader := preload("res://shaders/lava.gdshader")
+const LoopChunks := preload("res://scripts/loop_chunks.gd")
 
 const CHUNK_M := 100.0
 const CHUNKS_BEHIND := 3
@@ -52,6 +53,8 @@ var glow_color := Color("#ff6a20")
 var budgets := {"embers": 0, "plumes": 0, "fountains": 0, "lights": 0}
 
 var _road: RoadClearance = null
+## Numéros des tronçons sur une boucle (loop_chunks.gd, revue E8-02) : même lave au même endroit à chaque tour.
+var _loop: LoopChunks = LoopChunks.new()
 var _slot_chunk := PackedInt64Array()
 var _chunk_nodes: Array = []          # MeshInstance3D par emplacement (null : rien)
 var _chunk_feats: Array = []          # éléments du tronçon par emplacement
@@ -83,6 +86,7 @@ func configure(p_budgets: Dictionary, route_data, model, seed_value: int = 0) ->
 	_chunk_nodes.clear()
 	_chunk_feats.clear()
 	_road = null
+	_loop = LoopChunks.new(route_data, CHUNK_M)
 	fire_level = 0.0
 	_fire_started = false
 	_pick_at = -INF
@@ -159,10 +163,13 @@ func road_distance(x: float, z: float) -> float:
 
 ## Éléments du tronçon `k` : [{"kind": "flow", "points": PackedVector2Array, "width": float}, {"kind": "pool",
 ## "center": Vector2, "radius": float}, {"kind": "vent", "center": Vector2}] ; vide hors feu ou hors route.
+## Sur une boucle, `k` est ramené au numéro du tronçon dans le tour (loop_chunks.gd) et rien ne part au-delà du
+## tour (fin du dernier tronçon, déjà couverte par le tronçon 0).
 func features_of_chunk(k: int) -> Array:
 	var out := []
 	if route == null or _road == null:
 		return out
+	k = _loop.key(k)
 	var s0 := float(k) * CHUNK_M
 	if not route.is_loop() and (s0 < 0.0 or s0 + CHUNK_M > route.length_m):
 		return out
@@ -181,7 +188,7 @@ func features_of_chunk(k: int) -> Array:
 		var h := VegetationPlacer.hash3(fx_seed ^ 0x3E21, k, slot)
 		# Places 0 à 2 : mares près de la route ; place 3 : grand lac loin d'elle (fond de cratère, plaine)
 		var big := slot == 3
-		if float(h & 0xFF) / 256.0 < (0.2 if big else 0.25) * density:
+		if float(h & 0xFF) / 256.0 < (0.2 if big else 0.25) * density and _loop.in_lap(s0 + float((h >> 16) & 0xFF) / 255.0 * CHUNK_M):
 			var r := (30.0 + float((h >> 8) & 0xFF) / 255.0 * 35.0) if big else (10.0 + float((h >> 8) & 0xFF) / 255.0 * 20.0)
 			var reach := 220.0 if big else 130.0
 			var c := _offset_point(s0 + float((h >> 16) & 0xFF) / 255.0 * CHUNK_M, (1.0 if h & 0x1000000 == 0 else -1.0),
@@ -190,7 +197,7 @@ func features_of_chunk(k: int) -> Array:
 				out.append({"kind": "pool", "center": c, "radius": r})
 	for slot in range(2):
 		var h := VegetationPlacer.hash3(fx_seed ^ 0x51C3, k, slot)
-		if float(h & 0xFF) / 256.0 < 0.3 * density:
+		if float(h & 0xFF) / 256.0 < 0.3 * density and _loop.in_lap(s0 + float((h >> 8) & 0xFF) / 255.0 * CHUNK_M):
 			var c := _offset_point(s0 + float((h >> 8) & 0xFF) / 255.0 * CHUNK_M, (1.0 if h & 0x10000 == 0 else -1.0),
 				ROAD_CLEAR_M + 16.0 + float((h >> 17) & 0xFF) / 255.0 * 200.0)
 			if road_distance(c.x, c.y) >= ROAD_CLEAR_M + 4.0 and not fire_at(c.x, c.y).is_empty():
@@ -207,6 +214,8 @@ func _flow(k: int, side_i: int, h: int) -> Dictionary:
 	var off0 := ROAD_CLEAR_M + width * 0.5 + 10.0 + float((h >> 16) & 0xFF) / 255.0 * 30.0
 	var len_m := 70.0 + float((h >> 24) & 0x3F) / 63.0 * 30.0
 	var start := float(k) * CHUNK_M + (CHUNK_M - len_m) * float((h >> 4) & 0xF) / 15.0
+	if not _loop.in_lap(start):   # fin du dernier tronçon d'une boucle : couverte par le tronçon 0
+		return {}
 	var phase := float((h >> 12) & 0xF)
 	var best := PackedVector2Array()
 	var cur := PackedVector2Array()
@@ -341,7 +350,8 @@ func update(cam_pos: Vector3, cam_s: float, dt_s: float) -> void:
 		return
 	_clock += dt_s
 	var groups := _slot_chunk.size()
-	var first := int(floor(cam_s / CHUNK_M)) - CHUNKS_BEHIND
+	# Boucle (revue E8-02) : numéro continu au passage de la ligne (le placement replie, features_of_chunk)
+	var first := _loop.unwrap(int(floor(cam_s / CHUNK_M))) - CHUNKS_BEHIND
 	for k in range(first, first + groups):
 		var g := posmod(k, groups)
 		if _slot_chunk[g] != k:
@@ -386,7 +396,7 @@ func _build_chunk(g: int, k: int) -> void:
 	_chunk_feats[g] = feats
 	if feats.is_empty():
 		return
-	var mid: Dictionary = route.sample(float(k) * CHUNK_M + CHUNK_M * 0.5)
+	var mid: Dictionary = route.sample(float(_loop.key(k)) * CHUNK_M + CHUNK_M * 0.5)
 	var mesh := build_mesh(feats, float(mid["y"]))
 	if mesh == null:
 		return
