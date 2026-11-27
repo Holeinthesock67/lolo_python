@@ -31,7 +31,7 @@ LABELS = ("power_caption", "speed_caption", "cadence_caption", "hr_caption", "gr
 # Panneaux qui ne doivent ni sortir de l'écran ni se chevaucher (le contenu d'un panneau le recouvre, d'où
 # des panneaux seulement).
 PANELS = ("panel_left", "panel_right", "panel", "wind", "draft", "segment_panel", "bonus_panel", "bots_panel",
-          "profile")
+          "profile", "minimap")
 # Libellés et valeurs de chaque colonne : ils doivent rester dans le rectangle de la colonne.
 COLUMNS = {"panel_left": ("power", "power_caption", "cadence", "cadence_caption", "hr", "hr_caption"),
            "panel_right": ("speed", "speed_caption", "grade", "grade_caption", "gear", "distance", "time")}

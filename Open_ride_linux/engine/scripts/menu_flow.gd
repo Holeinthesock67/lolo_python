@@ -215,6 +215,15 @@ var ride_mode := ""
 ## ERG en cours (`state.erg` présent : entraînement, ERG libre, ERG cadence) : la Difficulté de la pause est alors
 ## sans effet et cachée (lot NI2, R4, même règle que les lignes sans effet des Réglages).
 var erg_active := false
+## Zoom de la mini-carte du monde ouvert (lot W24), texte de MinimapModel.ZOOM_TEXTS ; vide hors monde ouvert :
+## pas de ligne « Zoom de la carte » à la pause. main.gd le pose à chaque trame et relit le choix enregistré.
+## Le changer recalcule les lignes de la pause (sans cela, la ligne n'apparaissait jamais : banc PC du 25/11).
+var minimap_zoom := "":
+	set(value):
+		if value == minimap_zoom:
+			return
+		minimap_zoom = value
+		_refresh_pause_rows()
 var erg_target_w := 0
 var cadence_target_rpm := 0
 ## Dernier objet `devices` reçu (une trame sur 30 le porte, contrat §3) : gardé jusqu'au suivant.
@@ -2693,6 +2702,8 @@ func _pause_value(key: String):
 		return erg_target_w
 	if key == SettingsViewModel.PAUSE_CADENCE:
 		return cadence_target_rpm
+	if key == SettingsViewModel.PAUSE_MINIMAP_ZOOM:
+		return minimap_zoom
 	return difficulty_pct
 
 
@@ -2706,6 +2717,8 @@ func _refresh_pause_rows() -> void:
 		keys.append(SettingsViewModel.PAUSE_TARGET_W)
 	elif ride_mode == "cadence":
 		keys.append(SettingsViewModel.PAUSE_CADENCE)
+	if minimap_zoom != "":   # monde ouvert : largeur de la mini-carte (lot W24)
+		keys.append(SettingsViewModel.PAUSE_MINIMAP_ZOOM)
 	var rows: Array = []
 	for key in keys:
 		var it: Dictionary = SettingsViewModel.pause_item(key, _pause_value(key))
@@ -2747,6 +2760,10 @@ func _handle_edit(event: String) -> Dictionary:
 				menu.handle("Y_SHORT")
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
+			if act.get("action", "") == "set_minimap_zoom":   # réglage de l'engine seul : main.gd le relit et l'enregistre
+				minimap_zoom = str(act["zoom"])
+				_refresh_edit()
+				return {}
 			if act.get("action", "") == "set_ride_mode":   # affiché tout de suite, la trame suivante confirme
 				ride_mode = str(act["args"]["mode"])
 				erg_active = ride_mode != "sim"

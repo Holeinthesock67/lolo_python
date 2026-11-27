@@ -1,0 +1,126 @@
+{
+  "description": "Lot W24 (mini-carte du monde ouvert), recette sur le PC : départ de Sevrier trouvé par son nom (réseau, caches réels), Boucle de 10 km, cycliste simulé. Vérifie la mini-carte en bas à gauche (route devant en trait plein, route roulée en pointillés, branches des carrefours proches, « N », échelle « 200 m »), le carrefour écrit dessous et le but « Départ : … à vol d'oiseau » épinglé au bord. Zoom réglable à la pause (« Zoom de la carte », 1,2 km puis 6 km de large, gardé pour la suite). Captures à 0,5, 2 (avant et après le zoom) et 3,5 km (banc PC du 25/11 : en Boucle de 10 km depuis Sevrier, le générateur republie sans fin la même route de 4,5 km et la séance s'arrête à 4,3 km en pause « route en cours de chargement », défaut du générateur hors du lot W24 ; la balade s'arrête donc avant). À lancer en low, medium et high, cache du monde ouvert séparé (cache=\"separe\").",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "depart_monde_ouvert": {
+        "recherche": "sevrier",
+        "contient": "Sevrier",
+        "cap": [
+          {
+            "note": "Ligne suivante (navigation), Balade -> Destination -> Boucle",
+            "touche": "Plus"
+          },
+          {
+            "touche": "Right"
+          },
+          {
+            "touche": "Right"
+          },
+          {
+            "note": "Ligne de la longueur : 30 km par défaut, ramenée à 10 km",
+            "touche": "Plus"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "touche": "Left"
+          },
+          {
+            "monde": "setup",
+            "contient": [
+              "Boucle",
+              "Longueur : 10 km"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "note": "Lot W24 : la mini-carte s'affiche avec le but de la boucle (retour au départ)",
+      "journal": "engine",
+      "motif": "minimap shown goal=Départ",
+      "delai": 120
+    },
+    {
+      "distance_km": 0.5,
+      "delai": 300
+    },
+    {
+      "capture": "carte_0_5km"
+    },
+    {
+      "distance_km": 2,
+      "delai": 600
+    },
+    {
+      "capture": "carte_2km"
+    },
+    {
+      "note": "Zoom réglable (retour du 24 novembre) : pause, « Zoom de la carte » de 1,2 km à 6 km, reprise",
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "pause",
+      "contient": [
+        "Zoom de la carte",
+        "1,2 km"
+      ]
+    },
+    {
+      "choisir": "minimap_zoom"
+    },
+    {
+      "ecran": "pause",
+      "edition": true
+    },
+    {
+      "appui": [
+        "PLUS_SHORT",
+        "PLUS_SHORT",
+        "A_LONG"
+      ]
+    },
+    {
+      "journal": "engine",
+      "motif": "minimap zoom=6 km"
+    },
+    {
+      "ecran": "pause",
+      "edition": false,
+      "contient": [
+        "6 km"
+      ]
+    },
+    {
+      "capture": "pause_zoom_6km"
+    },
+    {
+      "choisir": "resume"
+    },
+    {
+      "menu_cache": true
+    },
+    {
+      "capture": "carte_2km_zoom_6km"
+    },
+    {
+      "distance_km": 3.5,
+      "delai": 900
+    },
+    {
+      "capture": "carte_3_5km"
+    }
+  ]
+}
