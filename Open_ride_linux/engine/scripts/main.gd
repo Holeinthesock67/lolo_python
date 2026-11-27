@@ -2277,6 +2277,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
+	menu_flow.on_command_failed(cmd_name)
 	if cmd_name in IpcClientScript.LIST_COMMANDS:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
