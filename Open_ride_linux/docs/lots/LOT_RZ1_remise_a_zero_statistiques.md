@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Profils : « Remettre à zéro mes statistiques » et « Annuler la remise à zéro » dans « Gérer : <profil en cours> » (commandes `reset_profile_stats`, `undo_profile_reset`, champ `resets` de `profiles`, révision 1.31) | Python + GDScript | MJ7, MJ8, O33 (livrés) | Petite | En PR (22 novembre) |
+| Profils : « Remettre à zéro mes statistiques » et « Annuler la remise à zéro » dans « Gérer : <profil en cours> » (commandes `reset_profile_stats`, `undo_profile_reset`, champ `resets` de `profiles`, révision 1.31) | Python + GDScript | MJ7, MJ8, O33 (livrés) | Petite | **Livré le 23 novembre** (PR #991) |
 
 ## 1. Objectif
 
@@ -54,3 +54,7 @@ saison de la ligue.
 
 Série PP (courbe de puissance, records de puissance, trophées) : ses recalculs devront lire `ctx.stats_since`
 comme `progression.recompute` pour repartir de la remise (à faire dans la pile PP ou juste après sa fusion).
+
+## Livraison
+
+Fusionné dans `main` le 23 novembre 2026 (PR #991), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En PR (22 novembre) »).

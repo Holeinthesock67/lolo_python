@@ -7,7 +7,9 @@ tire un cycliste virtuel du lot X27 (`sim_rider`, stratégie `pente` : puissance
 ± 2 %), de FTP 200 à 320 W et de 70 à 95 % de FTP sur le plat, et une masse (cycliste et vélo) de 70 à 95 kg.
 Deux copies du même cycliste roulent les mêmes watts sur le même terrain, l'une avec le bonus lancé à t = 0,
 l'autre sans ; le gain est l'avance prise au bout de 60 s, en secondes (mètres d'avance / vitesse moyenne
-sans bonus). Repère du plan (`docs/4.0/PLAN_SERIE_TT.md` §2) : **1,5 à 2,5 s dans le terrain idéal**.
+sans bonus). Repère du plan (`docs/4.0/PLAN_SERIE_TT.md` §2) : **1,5 à 2,5 s dans le terrain idéal** ; lot
+TT-BONUS (essai vélo du 22/11, « bonus trop courts et trop faibles ») : **3,5 à 7 s** pour la Plume, le Casque
+aéro et la Puissance, au-dessus du bruit du trainer (0,7 s par minute), comme un objet du Grand Prix.
 
 Terrain idéal tiré à chaque passage :
 
@@ -56,6 +58,13 @@ from ..sim_rider import SimRider
 DT = 0.02
 HORIZON_S = 60.0
 TARGET_S = (1.5, 2.5)
+STRONG_TARGET_S = (3.5, 7.0)                    # lot TT-BONUS
+STRONG = ("feather", "aero", "power")
+
+
+def target_s(kind: str) -> tuple[float, float]:
+    """Cible du gain médian d'un bonus dans son terrain idéal."""
+    return STRONG_TARGET_S if kind in STRONG else TARGET_S
 CDA, CRR = 0.32, 0.004
 GRAVEL_FACTORS = (2.0, 2.5, 3.0)   # chemin compact, gravier, terre (`config.GravelSettings`)
 KINDS = ("feather", "aero", "power", "anvil", "draft_plus", "breakaway", "roller")
@@ -231,8 +240,10 @@ def bench(table: PowerUpTable, passes: int = 50, seed: int = 8) -> dict[str, Any
             ideal.append(gain_s(table, kind, p))
             away.append(gain_s(table, kind, _elsewhere(kind, p)))
         spec = table.specs[kind]
-        inside = sum(TARGET_S[0] <= g <= TARGET_S[1] for g in ideal)
+        lo, hi = target_s(kind)
+        inside = sum(lo <= g <= hi for g in ideal)
         rows[kind] = {"label": spec.label, "factor": spec.factor, "duration_s": spec.duration_s,
+                      "target_s": [lo, hi],
                       "median_s": round(statistics.median(ideal), 2), "min_s": round(min(ideal), 2),
                       "max_s": round(max(ideal), 2), "in_target_pct": round(100 * inside / passes),
                       "elsewhere_median_s": round(statistics.median(away), 2)}
@@ -241,16 +252,16 @@ def bench(table: PowerUpTable, passes: int = 50, seed: int = 8) -> dict[str, Any
 
 
 def verdict(report: dict[str, Any]) -> list[str]:
-    lo, hi = TARGET_S
-    return [k for k, r in report["gains"].items() if not lo <= r["median_s"] <= hi]
+    return [k for k, r in report["gains"].items() if not r["target_s"][0] <= r["median_s"] <= r["target_s"][1]]
 
 
 def markdown(report: dict[str, Any]) -> str:
     lines = [f"Banc des bonus : {report['passes']} passages par bonus, graine {report['seed']}.", "",
-             "| Bonus | Facteur | Durée | Gain médian | Min – max | Dans la cible | Ailleurs |",
-             "| --- | --- | --- | --- | --- | --- | --- |"]
+             "| Bonus | Facteur | Durée | Cible | Gain médian | Min – max | Dans la cible | Ailleurs |",
+             "| --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in report["gains"].values():
-        lines.append(f"| {r['label']} | {r['factor']:g} | {r['duration_s']:g} s | {r['median_s']:.2f} s | "
+        cible = f"{r['target_s'][0]:g} – {r['target_s'][1]:g} s".replace(".", ",")
+        lines.append(f"| {r['label']} | {r['factor']:g} | {r['duration_s']:g} s | {cible} | {r['median_s']:.2f} s | "
                      f"{r['min_s']:.2f} – {r['max_s']:.2f} s | {r['in_target_pct']} % | "
                      f"{r['elsewhere_median_s']:.2f} s |")
     lines += ["", "| Bonus | Refus (sur les appuis) |", "| --- | --- |"]

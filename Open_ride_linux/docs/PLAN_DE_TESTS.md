@@ -21,7 +21,7 @@ Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment 
 | Compilateur | GPX, FIT, TCX, route, terrain, OSM, thèmes, biomes, monde ouvert | `(cd compiler && pytest -q)` | Cloud, PC | ~1 min | 0 échec, sans réseau |
 | Contrats | Schémas JSON, exemples du §7 d'`ipc_v1.md`, taille des trames, vecteurs de route | dans les suites core ; `python -m openride_core.tools.route_vectors --check` ; `python -m openride_core.ipc_budget` | Cloud | < 1 min | Exemples valides, pire trame sous 4 096 octets |
 | Bluetooth simulé | Vrais pilotes devant un trainer, un Click et une ceinture simulés, pannes | `core/tests/test_ble_sim.py`, `core/tests/test_sim_matrix.py` ; `scripts/openride-dev.sh --trainer sim --input sim --hr sim --sim-scenario NOM` | Cloud, PC | ~1 min | Reprises sans reconnexion inutile, pauses attendues |
-| Engine | Tests unitaires GDScript (découverte), rendus Xvfb, couches OSM, rendu par tronçons, ERG, 8 scénarios IPC face au faux core | `engine/tests/run_engine_tests.sh` | Cloud, PC | ~3 min | Toutes les lignes `[OK]`, aucune erreur Godot |
+| Engine | Tests unitaires GDScript (découverte), rendus Xvfb, couches OSM, rendu par tronçons, ERG, 9 scénarios IPC face au faux core | `engine/tests/run_engine_tests.sh` | Cloud, PC | ~3 min | Toutes les lignes `[OK]`, aucune erreur Godot |
 | Bout en bout | Vrai core (`mock`) et vrai engine | `engine/tests/run_e2e.sh` | Cloud, PC | ~10 s | 9 vérifications OK (§3.6) |
 | Menus | Tous les menus au Click simulé, au clavier et à la souris | `python3 engine/tests/menu_bench.py` | Cloud (`--rotation`), PC (trois voies) | 10 à 25 min | Chaque scénario OK sur chaque voie |
 | Graphique | Scène principale, HUD, lisibilité, débordements, qualité appliquée | `engine/tests/run_visual_tests.sh`, `engine/tests/hud_galerie.py` | PC | ~2 min | Contrôles OK, captures rendues |
@@ -82,7 +82,7 @@ Une panne vue sur le vélo se rejoue : `python -m openride_core.tools.log_scenar
 
 ### 3.5 Engine sans écran (`engine/tests/run_engine_tests.sh`)
 
-Étapes : tests unitaires de `engine/tests/unit/` (un fichier par sujet : HUD, menus, ERG, réglages, clavier, thème, décor, biomes…), couches OSM, rendu par tronçons, coutures du sol multi-biome, ERG face au faux core (bips à T − 3 s), 8 scénarios IPC face à `engine/tests/fake_core.py` (hello, renvois toutes les 200 ms, abandon à 3 s, core muet 1,5 s, `shutdown`, trames en désordre, `error`, heartbeats à 2 Hz), puis contrôle de la sortie de Godot. Détail des vérifications : [engine/tests/README.md](../engine/tests/README.md).
+Étapes : tests unitaires de `engine/tests/unit/` (un fichier par sujet : HUD, menus, ERG, réglages, clavier, thème, décor, biomes…), couches OSM, rendu par tronçons, coutures du sol multi-biome, ERG face au faux core (bips à T − 3 s), 9 scénarios IPC face à `engine/tests/fake_core.py` (hello, renvois toutes les 200 ms, abandon à 3 s, core muet 1,5 s, commande pendant un gel du core exécutée une fois, `shutdown`, trames en désordre, `error`, heartbeats à 2 Hz), puis contrôle de la sortie de Godot. Détail des vérifications : [engine/tests/README.md](../engine/tests/README.md).
 
 - `UNIT=test_free_erg_menu engine/tests/run_engine_tests.sh` ne lance qu'un test unitaire.
 - `OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_tests.sh` : passage dédié aux budgets de temps.

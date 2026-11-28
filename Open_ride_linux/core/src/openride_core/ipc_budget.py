@@ -309,6 +309,12 @@ def _extras_1_13(d: dict[str, Any]) -> None:
                         "refused": {"kind": "draft_plus", "reason": "near_finish"}}
 
 
+def _extras_1_41(d: dict[str, Any]) -> None:
+    # Temps gagné par le bonus fini (lot TT-BONUS), affiché 6 s, en même temps qu'un refus au plus lourd.
+    if "powerup" in d:
+        d["powerup"]["gain"] = {"kind": "draft_plus", "gain_s": -999.9}
+
+
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
 REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.1": _extras_1_1,
@@ -320,6 +326,7 @@ REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.7": _extras_1_7,
     "1.9": _extras_1_9,
     "1.13": _extras_1_13,
+    "1.41": _extras_1_41,
 }
 
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : palmarès des saisons closes (place, points, vainqueur, trophée), ligne « Palmarès » de l'écran de la ligue, contrat IPC 1.40 | Python, GDScript | CH3c (#1020), CH4a | Petite | En revue |
+| Série CH : palmarès des saisons closes (place, points, vainqueur, trophée), ligne « Palmarès » de l'écran de la ligue, contrat IPC 1.40 | Python, GDScript | CH3c (#1020), CH4a | Petite | **Livré le 27 novembre** (PR #1047) |
 
 Ce lot répond au choix du propriétaire du 24 novembre 2026 : rappel d'abord (CH7), palmarès ensuite. Cadrage :
 `plans/ch-ligue/CADRAGE_PALMARES_RAPPEL_2026-11-23.md` (dossier du projet).
@@ -41,3 +41,7 @@ Ce lot répond au choix du propriétaire du 24 novembre 2026 : rappel d'abord (C
 ## 3. Pour plus tard
 
 - Ta meilleure place à chaque manche du calendrier, et ton record de points.
+
+## Livraison
+
+Fusionné dans `main` le 27 novembre 2026 (PR #1047), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En revue »).

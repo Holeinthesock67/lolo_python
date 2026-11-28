@@ -62,6 +62,8 @@ const SPAWN_BEHIND_M := 150.0
 const REMOVE_BEHIND_M := 300.0
 const REMOVE_AHEAD_M := 1200.0
 const PASS_START_M := 30.0
+const MERGE_LOOK_S := 6.0             # lot DPS1 : un `overtake` ne se rabat pas derrière un groupe plus lent rattrapé avant
+const PASS_HORIZON_S := 60.0          # lot DPS1 : durée de dépassement au plus, pour savoir si le cycliste sera à hauteur
 const MERGE_AHEAD_M := 20.0
 const GIVE_UP_S := 60.0
 const YIELD_S := 3.0                  # lot AS8 : un groupe de l'engine s'écarte d'un groupe du core à 3 s de sa queue
@@ -72,6 +74,8 @@ const CORE_SHIFT_MAX_M := 50.0        # lot AS9 : écart cycliste affiché / du 
 const ABREAST_M := 0.6
 const FILE_GAP_M := 2.1               # d'axe à axe en file : vélo de 1,7 m et 0,4 m de roue à roue
 const RIDER_HALF_WIDTH_M := 0.3
+const GUARD_LEN_M := RoadRules.BIKE_LENGTH_M + 0.35  # lot DPS1 : garde finale, en long : contact à 1,7 m, plus une marge (2,05 m, sous FILE_GAP_M)
+const GUARD_WIDTH_M := 2.0 * RIDER_HALF_WIDTH_M + 0.05   # ... et en travers (contact à 0,6 m)
 const MIN_GAP_M := 0.7                # d'épaule à épaule, comme un cycliste qui en double un autre
 const EDGE_IN_M := 0.5                # roues à 0,5 m du bord de la chaussée
 const SHOULDER_M := 0.5
@@ -82,6 +86,9 @@ const FALL_BACK_MPS := 0.5
 const CATCH_M := 4.0                  # un groupe en rattrape un autre à 4 m de sa queue (lot P32)
 const LANE_FREE_M := 100.0
 const MIN_CENTRE_M := MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
+const GUARD_RIDER_WIDTH_M := MIN_CENTRE_M - 1.5e-3   # lot DPS1 : garde finale, en travers du cycliste
+const GUARD_STEPS := 8                # lot DPS1 : corrections au plus par groupe et par pas
+const GUARD_REACH_M := GUARD_LEN_M + GUARD_STEPS * (2.0 * GUARD_LEN_M + 0.01)   # portée de la garde autour d'une file
 const GROUP_CLEAR_M := 30.0
 const VEHICLE_CLEAR_M := 60.0         # pas d'apparition à moins de 60 m d'un véhicule de traffic_model.gd (lot P32)
 ## Lot DB3 (banc rDB3) : un groupe ne double jamais un véhicule du même sens ; il se cale sur sa vitesse de
@@ -117,6 +124,7 @@ var groups: Array = []             # {id, case, s, speed_mps, power_w, members: 
 var spawned_total: int = 0
 var passed_total: int = 0          # groupes `ahead` doublés par le cycliste
 var overtook_total: int = 0        # groupes `overtake` qui ont doublé le cycliste
+var guard_total: int = 0           # lot DPS1 : corrections de la garde finale (doivent rester rares)
 var last_event: Dictionary = {}    # {kind, pos} d'une voix à jouer, vidé à chaque image
 var _villages: Array = []
 var _climbs: Array = []            # Vector2(start_s, summit_s)
@@ -243,6 +251,7 @@ func reset() -> void:
 	spawned_total = 0
 	passed_total = 0
 	overtook_total = 0
+	guard_total = 0
 	last_event = {}
 	_next_slot = 0
 	_started = false
@@ -399,6 +408,7 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, b
 		if not gone and rel >= -REMOVE_BEHIND_M and rel <= REMOVE_AHEAD_M and float(g["s"]) >= 0.0 and float(g["s"]) <= route.length_m:
 			kept.append(g)
 	groups = kept
+	_guard(rider_s, rider_v)
 
 
 func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots: Array = [], at_s: float = NAN) -> void:
@@ -621,11 +631,13 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		# Lot AS11 (« rabattre plus tôt », 17/11) : fenêtre de la règle commune (draft.pass_window du core)
 		var win := overtake_window(spd_now - rider_v, absf(_group_lateral(g) - (rider_lane - MIN_CENTRE_M)))
 		if str(g["side"]) == "right" and rel_now >= win.x and rel_now < -SIDE_LOOK_M and tail_now < win.y:
-			if near:
+			# lot DPS1 : ni bot à côté, ni autre groupe déjà sur la ligne de dépassement à sa hauteur (il attend derrière,
+			# sur la droite, au lieu de s'y glisser entre ses membres)
+			if near or not _line_free(g, rider_lane - MIN_CENTRE_M):
 				spd_now = minf(spd_now, rider_v)       # un bot à côté : attend derrière, sur la droite
 			else:
 				g["side"] = "left"
-		elif str(g["side"]) == "left" and tail_now > win.y and not near:
+		elif str(g["side"]) == "left" and tail_now > win.y and not near and not _lane_closing(g, spd_now):
 			g["side"] = "right"
 		# Lot AS9 : sorti tout près derrière le cycliste, il ne s'approche pas à moins de SIDE_LOOK_M de sa roue tant
 		# qu'il n'est pas hors de sa ligne
@@ -651,6 +663,12 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		for b in _bot_groups:
 			if not alongside.has(b) and absf(float(b["s"]) - float(g["s"])) < BOT_LOOK_M + float(members.size()) * FILE_GAP_M:
 				lanes.append(b)
+		# Lot DPS1 : le cycliste est un usager comme un bot : on ne double pas sur sa ligne, ni en la traversant, s'il
+		# sera à hauteur pendant le dépassement (fenêtre en temps, `_rider_lane_group`)
+		if dir == 1:
+			var rider_g := _rider_lane_group(g, near_groups, rider_s, rider_v, spd_now)
+			if not rider_g.is_empty():
+				lanes.append(rider_g)
 		var pass_lat := own
 		for _i in range(3):
 			for h in lanes:
@@ -734,6 +752,219 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 ## leurs écarts. Rend la vitesse du pas.
 ## Vitesse bornée par celle d'un véhicule du même sens juste devant ou à sa hauteur (lot DB3) : un groupe ne double
 ## jamais la circulation (traffic_model.gd), ni à droite ni à gauche.
+## Garde finale du registre commun (lot DPS1, comme `_guard` de road_cyclists.py) : après que chaque groupe a avancé
+## selon sa règle, personne ne chevauche personne. Le cycliste et les bots d'abord, immobiles ; puis les groupes, du plus
+## avancé au plus en retrait dans leur sens : un membre qui touche un usager posé devant lui fait reculer son groupe,
+## à sa vitesse au plus ; touché par derrière ou par un usager d'en face, il s'écarte à la place libre la plus proche,
+## sinon son groupe est avancé devant, à la vitesse de l'autre. Corrections comptées dans `guard_total`.
+func _guard(rider_s: float, rider_v: float) -> void:
+	if not _guard_needed(rider_s):
+		return
+	var placed: Array = [[rider_s, rider_lane, rider_v, 1, GUARD_RIDER_WIDTH_M]]   # le cycliste : à MIN_CENTRE_M au moins en travers
+	for b in _bot_groups:
+		placed.append([float(b["s"]), float(b["members"][0]["lateral"]), float(b["speed_mps"]), int(b["dir"]), GUARD_WIDTH_M])
+	var order: Array = groups.duplicate()
+	order.sort_custom(func(a, b): return -float(a["dir"]) * float(a["s"]) < -float(b["dir"]) * float(b["s"]))
+	for g in order:
+		_guard_group(g, placed)
+		for m in g["members"]:
+			placed.append([float(g["s"]) - float(g["dir"]) * float(m["dl"]), float(m["lateral"]), _step_mps(g), int(g["dir"]), GUARD_WIDTH_M])
+
+
+## Lot DPS1 : vrai si deux occupants se touchent (au sens de `_touch`) ; sinon la garde ne changerait rien et elle est
+## sautée. Comparaisons directes, sans tableau ni tri : quelques groupes près du cycliste, à chaque pas.
+func _guard_needed(rider_s: float) -> bool:
+	var n := groups.size()
+	var lo := PackedFloat64Array()
+	var hi := PackedFloat64Array()
+	lo.resize(n)
+	hi.resize(n)
+	for gi in range(n):   # étendue de chaque file le long de la route : les files éloignées ne se comparent pas
+		var g: Dictionary = groups[gi]
+		var d_lo := INF
+		var d_hi := -INF
+		for m in g["members"]:
+			var ms := float(g["s"]) - float(g["dir"]) * float(m["dl"])
+			d_lo = minf(d_lo, ms)
+			d_hi = maxf(d_hi, ms)
+		lo[gi] = d_lo - GUARD_LEN_M
+		hi[gi] = d_hi + GUARD_LEN_M
+	for gi in range(n):
+		var near_rider := rider_s > lo[gi] and rider_s < hi[gi]
+		var near_bot := false
+		for b in _bot_groups:
+			if float(b["s"]) > lo[gi] and float(b["s"]) < hi[gi]:
+				near_bot = true
+		var near_h: Array = []
+		for hi_ in range(gi + 1, n):
+			if lo[hi_] < hi[gi] and hi[hi_] > lo[gi]:
+				near_h.append(groups[hi_])
+		if not near_rider and not near_bot and near_h.is_empty():
+			continue
+		var g: Dictionary = groups[gi]
+		var g_s := float(g["s"])
+		var g_dir := float(g["dir"])
+		for m in g["members"]:
+			var s := g_s - g_dir * float(m["dl"])
+			var lat := float(m["lateral"])
+			if near_rider and absf(rider_s - s) < GUARD_LEN_M and absf(rider_lane - lat) < GUARD_RIDER_WIDTH_M:
+				return true
+			if near_bot:
+				for b in _bot_groups:
+					if absf(float(b["s"]) - s) < GUARD_LEN_M and absf(float(b["members"][0]["lateral"]) - lat) < GUARD_WIDTH_M:
+						return true
+			for h in near_h:
+				var h_s := float(h["s"])
+				var h_dir := float(h["dir"])
+				for o in h["members"]:
+					if absf(h_s - h_dir * float(o["dl"]) - s) < GUARD_LEN_M and absf(float(o["lateral"]) - lat) < GUARD_WIDTH_M:
+						return true
+	return false
+
+## Lot DPS1 : vrai si aucun membre d'un autre groupe de son sens n'est sur la ligne `lat` (à moins de MIN_CENTRE_M) à
+## hauteur de `g`, de sa queue à sa tête, à SIDE_LOOK_M près.
+func _line_free(g: Dictionary, lat: float) -> bool:
+	var dir := int(g["dir"])
+	var head := float(g["s"]) * float(dir)
+	var tail := head - float((g["members"] as Array).size() - 1) * FILE_GAP_M
+	for h in groups:
+		if is_same(h, g) or int(h["dir"]) != dir:
+			continue
+		for m in h["members"]:
+			var ms := (float(h["s"]) - float(h["dir"]) * float(m["dl"])) * float(h["dir"])
+			if ms > tail - SIDE_LOOK_M and ms < head + SIDE_LOOK_M and absf(float(m["lateral"]) - lat) < MIN_CENTRE_M:
+				return false
+	return true
+
+
+static func _touch(s: float, lat: float, placed: Array) -> int:
+	for i in range(placed.size()):
+		var o: Array = placed[i]
+		if absf(float(o[0]) - s) < GUARD_LEN_M and absf(float(o[1]) - lat) < float(o[4]):
+			return i
+	return -1
+
+
+func _guard_group(g: Dictionary, all_placed: Array) -> void:
+	var dir := int(g["dir"])
+	var edge := _edge_lateral(_half_at(float(g["s"])))
+	# Seuls comptent les occupants à portée : un pas de la garde déplace le groupe de moins de 2 × GUARD_LEN_M, d'où
+	# GUARD_REACH_M autour de sa file (même résultat qu'avec tous les occupants, beaucoup moins de calcul).
+	var lo := INF
+	var hi := -INF
+	for m in g["members"]:
+		var m_s0 := float(g["s"]) - float(dir) * float(m["dl"])
+		lo = minf(lo, m_s0)
+		hi = maxf(hi, m_s0)
+	lo -= GUARD_REACH_M
+	hi += GUARD_REACH_M
+	var placed: Array = []
+	for o in all_placed:
+		if float(o[0]) > lo and float(o[0]) < hi:
+			placed.append(o)
+	if placed.is_empty():
+		return
+	for _k in range(GUARD_STEPS):
+		var hit_m: Dictionary = {}
+		var hit_o: Array = []
+		for m in g["members"]:
+			var i := _touch(float(g["s"]) - float(dir) * float(m["dl"]), float(m["lateral"]), placed)
+			if i >= 0:
+				hit_m = m
+				hit_o = placed[i]
+				break
+		if hit_o.is_empty():
+			return
+		var o_s := float(hit_o[0])
+		var o_lat := float(hit_o[1])
+		var o_v := float(hit_o[2])
+		var o_dir := int(hit_o[3])
+		var o_w := float(hit_o[4])
+		var m_s := float(g["s"]) - float(dir) * float(hit_m["dl"])
+		var ahead := (o_s - m_s) * float(dir)
+		guard_total += 1
+		var rider_o := o_w == GUARD_RIDER_WIDTH_M
+		if o_dir == dir and ahead >= 0.0 and not rider_o:
+			g["s"] = float(g["s"]) - float(dir) * (GUARD_LEN_M - ahead + 1e-3)
+			g["step_mps"] = minf(_step_mps(g), maxf(0.0, o_v))
+			continue
+		var best := NAN
+		for lat in [o_lat - o_w - 1e-3, o_lat + o_w + 1e-3]:
+			if lat >= -edge and lat <= edge and _touch(m_s, lat, placed) < 0 and (
+					is_nan(best) or absf(lat - float(hit_m["lateral"])) < absf(best - float(hit_m["lateral"]))):
+				best = lat
+		if not is_nan(best):
+			hit_m["lateral"] = best
+			hit_m["lat_v"] = 0.0
+		elif o_dir == dir and rider_o and ahead >= 0.0:
+			# à côté du cycliste ou juste derrière lui, sans place libre en travers : retenu derrière lui
+			g["s"] = float(g["s"]) - float(dir) * (GUARD_LEN_M - ahead + 1e-3)
+			g["step_mps"] = minf(_step_mps(g), maxf(0.0, o_v))
+		elif o_dir == dir and rider_o:
+			g["s"] = float(g["s"]) + float(dir) * (GUARD_LEN_M + ahead + 1e-3)
+			g["step_mps"] = maxf(_step_mps(g), o_v)
+		elif o_dir == dir:
+			# un membre d'un groupe plus avancé, à côté ou derrière lui (files mêlées) : il passe derrière ce membre
+			g["s"] = float(g["s"]) - float(dir) * (GUARD_LEN_M - ahead + 1e-3)
+			g["step_mps"] = minf(_step_mps(g), maxf(0.0, o_v))
+		else:
+			return
+
+
+## Lot DPS1 (hauts plateaux, toundra, forêt boréale) : vrai si un groupe `overtake` qui vient de doubler le cycliste
+## se rabattrait derrière un groupe plus lent de son sens, sur la place où il revient, qu'il rattraperait en moins de
+## MERGE_LOOK_S : il freinerait net juste devant le cycliste, à moitié rabattu. Il reste sur sa ligne de dépassement.
+func _lane_closing(g: Dictionary, spd_now: float) -> bool:
+	var back := _edge_lateral(float(g["half"]))
+	var dir := int(g["dir"])
+	var head := float(g["s"]) * float(dir)
+	for h in groups + _bot_groups:
+		if is_same(h, g) or int(h["dir"]) != dir:
+			continue
+		var v_h := _step_mps(h)
+		if v_h >= spd_now:
+			continue
+		var on_back := false
+		for m in h["members"]:
+			if absf(float(m["lateral"]) - back) < MIN_CENTRE_M:
+				on_back = true
+				break
+		if not on_back:
+			continue
+		var gap := float(h["s"]) * float(dir) - float((h["members"] as Array).size() - 1) * FILE_GAP_M - head
+		if gap > -CATCH_M and gap < CATCH_M + (spd_now - v_h) * MERGE_LOOK_S:
+			return true
+	return false
+
+
+## Le cycliste vu comme un groupe d'un cycliste sur sa ligne (`rider_lane`), comme un bot (lot P32), s'il sera à
+## hauteur du groupe `g` pendant le dépassement de `ahead` (lot DPS1) : à moins de PASS_START_M de lui maintenant, ou
+## rattrapé (ou rattrapant) avant la fin du dépassement, au plus PASS_HORIZON_S, plus SIDE_CROSS_S ; sinon {}.
+func _rider_lane_group(g: Dictionary, ahead: Array, rider_s: float, rider_v: float, spd_now: float) -> Dictionary:
+	var size := float((g["members"] as Array).size())
+	var rel := rider_s - float(g["s"])
+	var lo := -(size - 1.0) * FILE_GAP_M - SIDE_LOOK_M - RoadRules.BIKE_LENGTH_M
+	var hi := SIDE_LOOK_M + RoadRules.BIKE_LENGTH_M
+	var hit := rel >= lo - PASS_START_M and rel <= hi + PASS_START_M
+	if not hit:
+		var slowest := spd_now
+		var span := 0.0
+		var first := true
+		for h in ahead:
+			var v_h := _step_mps(h)
+			var d := float(h["s"]) - float(g["s"]) + (float((h["members"] as Array).size()) + size) * FILE_GAP_M
+			slowest = v_h if first else minf(slowest, v_h)
+			span = d if first else maxf(span, d)
+			first = false
+		var t_pass := minf(maxf(span, 0.0) / maxf(spd_now - slowest, 0.1), PASS_HORIZON_S) + SIDE_CROSS_S
+		var rel_t := rel + (rider_v - spd_now) * t_pass
+		hit = minf(rel, rel_t) <= hi and maxf(rel, rel_t) >= lo
+	if not hit:
+		return {}
+	return {"id": "rider", "case": "ahead", "dir": 1, "s": rider_s, "speed_mps": rider_v, "step_mps": rider_v,
+		"members": [{"lateral": rider_lane}]}
+
+
 func _behind_vehicles(g: Dictionary, spd_now: float) -> float:
 	if traffic == null:
 		return spd_now

@@ -1,0 +1,49 @@
+# File du lot EC10 (revue de code vague 3 engine, constat E12-51, PR #1127) : le vent du décor ne doit plus
+# s'emballer avec la durée de la séance. Scénario `vent_duree` du banc simulé : 15 min de boucles du village en
+# SIM à 220 W, vent en rafales de 25 km/h (± 60 %), sonde avec la phase du vent chaque seconde, une capture par minute.
+# Trois qualités (règle du user), medium d'abord. Après chaque qualité, `wind_phase_check.py` lit la sonde :
+# phase à la vitesse prévue par le vent au début ET à la fin, avance bornée ; il affiche aussi la fréquence qu'aurait
+# eue l'herbe avec l'ancienne formule des shaders (comparaison, sans banc de main).
+# À l'œil (captures `banc/.../captures/`) : feuillage, herbe, drapeaux et nuages comparables à 1 min et à 15 min.
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/vent_ec10.toml
+# Après une correction : python3 scripts/file_bancs.py relancer scripts/file_bancs/vent_ec10.toml --pr rEC10
+# La tête est à remplir par le fil de fusion au moment du lancement (`tete`).
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rEC10"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rEC10-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rEC10"
+pr = 1127
+branche = "claude/project-thread-e4qe5t"
+cache = "separe"                         # pas de monde ouvert, mais jamais le vrai cache du user
+risque = 1                               # jamais tourné
+# Fumée (~5 min) : import Godot, tests du modèle du vent et de la sonde, contrôle du script de lecture.
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_wind_model bash engine/tests/run_engine_tests.sh && \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_perf_probe bash engine/tests/run_engine_tests.sh && \
+python -m pytest -q core/tests/test_wind_phase_check.py"""
+fumee_delai_min = 10
+
+[[pr.etape]]
+id = "medium"                            # risque d'abord : medium
+commande = """python engine/tests/sim_bench.py --native --scenario vent_duree --probe --quality medium --out {sortie}/banc; rc=$?; \
+python engine/tests/wind_phase_check.py {sortie}/banc || rc=1; exit $rc"""
+delai_min = 30
+
+[[pr.etape]]
+id = "high"
+commande = """python engine/tests/sim_bench.py --native --scenario vent_duree --probe --quality high --out {sortie}/banc; rc=$?; \
+python engine/tests/wind_phase_check.py {sortie}/banc || rc=1; exit $rc"""
+delai_min = 30
+
+[[pr.etape]]
+id = "low"
+commande = """python engine/tests/sim_bench.py --native --scenario vent_duree --probe --quality low --out {sortie}/banc; rc=$?; \
+python engine/tests/wind_phase_check.py {sortie}/banc || rc=1; exit $rc"""
+delai_min = 30
