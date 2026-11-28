@@ -1,0 +1,11 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+22.3;1;7;0;0;0;1;0;
+34.2;1;7;0;0;1;1;0;voice_allez=1
+202.8;8;3;0;0;1;4;0;airliner_rumble=2 voice_allez=2
+388.9;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 voice_allez=3
+389.6;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 voice_allez=3
+390.8;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 voice_allez=3
+391.7;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 voice_allez=3
+392.5;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 voice_allez=3
+566.0;0;20;0;0;2;4;0;airliner_rumble=2 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=2 voice_allez=4
+794.4;1;0;0;0;0;4;0;airliner_rumble=2 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=2 voice_allez=5
