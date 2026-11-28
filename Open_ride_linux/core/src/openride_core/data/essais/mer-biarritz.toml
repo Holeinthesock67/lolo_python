@@ -1,0 +1,24 @@
+# Monde ouvert au départ de Biarritz : mer, écume, plages, sol sous la route (W23 #907, #936), allure calme.
+# Départ du banc w23_mer (centre de Biarritz, data/places.json), vers le nord le long de la côte.
+id = "mer-biarritz"
+but = "Monde ouvert sur la côte basque : mer et plages visibles, sol posé sous la route, pas d'à-coup"
+duree_max_s = 600
+commandes = [
+  { cmd = "start_open_world", args = { lat = 43.473, lon = -1.562, heading_deg = 0, nav = "ride", seed = 0 } },
+  { cmd = "start", args = {} },
+]
+questions = [
+  "Mer, écume et plages : réussies, sur 5 ?",
+  "Route posée sur le sol et fluidité, sans à-coup ? (oui/non + remarque)",
+]
+
+[config.open_world]
+network = true
+
+[[etapes]]
+quand = { kind = "event", event = "start" }
+dire = "Côte basque, allure calme, {cible:90} watts. Regarde la mer et les plages."
+
+[[etapes]]
+quand = { kind = "record", "t>=" = 540 }
+dire = "Dernière minute, tranquille."

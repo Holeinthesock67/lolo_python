@@ -114,8 +114,11 @@ def journal_line(text: str, ts: float, t: float) -> dict | None:
     if len(parts) < 2 or parts[0] != "rogue":
         return None
     name = parts[1]
+    rest = parts[2:]
+    if "=" in name:   # `rogue phase=ROOM step=1` (run.py) : le nom est la clé du premier champ (21/11)
+        name, rest = name.split("=", 1)[0], parts[1:]
     fields: dict[str, Any] = {}
-    for tok in parts[2:]:
+    for tok in rest:
         if "=" in tok:
             k, v = tok.split("=", 1)
             if k == "hash":

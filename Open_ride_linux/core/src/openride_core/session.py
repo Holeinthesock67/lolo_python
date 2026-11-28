@@ -471,6 +471,7 @@ class CoreSession:
         self._next_record = 0.0
         self._trainer_lost_since: float | None = None
         self._autoresume = False
+        self._autostart_pending: list[tuple[str, dict]] | None = None   # suite d'une séance en monde ouvert
         self._shift_pending = False
         self._workout: Workout | None = None     # entraînement choisi (select_workout)
         self._workout_id: str | None = None
@@ -1536,7 +1537,10 @@ class CoreSession:
         self._set_state("LOADING")
         # L'équipement de la série V ne s'applique pas dans ce mode : les châssis en tiennent lieu (lot V5).
         plain = PhysicsParams.from_config(self.cfg)
-        self.rogue = rogue_mode.RogueMode(self.cfg, request, chassis=chassis, lives=lives, params=plain)
+        from .rogue.balance import run_balance
+
+        self.rogue = rogue_mode.RogueMode(self.cfg, request, run_balance(), chassis=chassis, lives=lives,
+                                          params=plain)
         self.route, self._segments, self.race = None, (), None
         self.erg, self._workout, self._workout_id, self._ramp_watch = None, None, None, None
         self.physics = RiderPhysics(plain)
@@ -2503,6 +2507,10 @@ class CoreSession:
             if ow.failed:
                 self._close_open_world()
                 self._set_state(self._ow_previous)
+                if self._autostart_pending is not None:
+                    log.error("Séance verrouillée : le monde ouvert n'a pas pu se préparer ; arrêt du core.")
+                    self._autostart_pending = None
+                    self.stop_event.set()
             elif ow.ready and ow.route is not None and ow.route.ready:
                 self.route = ow.route
                 if self._track is not None:   # monde ouvert : plus de piste, vent de la configuration
@@ -2521,6 +2529,7 @@ class CoreSession:
                 self._set_session_clock(0.0)
                 log.info("Monde ouvert prêt : %.0f m de route engagée.", ow.route.length_m)
                 self._set_state("READY")
+                self._play_autostart_pending()
             return
         if st not in ("READY", "RUNNING", "PAUSED"):
             return
@@ -5451,6 +5460,18 @@ class CoreSession:
                  self.rogue.phase)
         return rs
 
+    def _play_autostart_pending(self) -> None:
+        """Suite d'une séance verrouillée en monde ouvert, jouée quand le monde est prêt ; un refus arrête le
+        core, comme au lancement (aucune séance ne part à moitié réglée)."""
+        pending, self._autostart_pending = self._autostart_pending, None
+        if pending is None:
+            return
+        try:
+            self._play_autostart(pending)
+        except AutostartError as exc:
+            log.error("%s ; arrêt du core.", exc)
+            self.stop_event.set()
+
     def check_autostart_commands(self, commands: list[tuple[str, dict]]) -> None:
         """Vérifie les parcours et entraînements d'une séance verrouillée avant d'ouvrir les ports (lot EP1)."""
         for name, args in commands:
@@ -5474,10 +5495,14 @@ class CoreSession:
 
         self.server.send_error = note   # type: ignore[method-assign]
         try:
-            for name, args in commands:
+            for i, (name, args) in enumerate(commands):
                 self._on_command(name, dict(args), 0)
                 if refused:
                     raise AutostartError(f"séance verrouillée refusée à « {name} » ({refused[0]})")
+                if name == "start_open_world" and self.state.session_state == "LOADING":
+                    # le monde se prépare : la suite part quand il est prêt (`_open_world_tick`)
+                    self._autostart_pending = list(commands[i + 1:])
+                    return
         finally:
             self.server.send_error = send_error   # type: ignore[method-assign]
         if self.state.session_state == "READY" and self._start_gate is None:

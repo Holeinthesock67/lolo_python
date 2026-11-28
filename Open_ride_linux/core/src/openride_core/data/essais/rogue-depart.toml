@@ -1,4 +1,7 @@
 # Cyber-Rogue : début de run en endurance (R22, R23), consignes calées sur les vraies phases de la run.
+# 21/11 : le jeu donne lui-même la puissance visée (échauffement, salles) : le guide ne dit jamais de watts.
+# 21/11 : échauffement d'une minute pour l'essai (6 min dans le jeu, sur 10 min d'essai) : table de la run d'essai
+# passée au core par OPENRIDE_ROGUE_BALANCE, la table du jeu ne change pas.
 id = "rogue-depart"
 but = "Cyber-Rogue : fin de l'échauffement annoncée, première salle, Z expliqué, écart de l'ennemi lisible"
 duree_max_s = 600
@@ -9,22 +12,27 @@ commandes = [
 questions = [
   "Cyber-Rogue : savoir quoi faire à tout moment, sur 5 ?",
   "Z et ses refus expliqués, avec un son ? (oui/non + remarque)",
+  "En high : brouillard et halo du Cyber-Rogue réussis, sur 5 ? (ciel gris, halo trop large ?)",
 ]
+
+[rogue_balance]
+warmup_relic_s = 30.0
+
+[rogue_balance.calendars]
+"30" = [1.0, 2, 4.5, 0.75, 8.5, [2.0, 3.0, 1.0], 5.0]
 
 [[etapes]]
 quand = { kind = "event", event = "start" }
-dire = "Échauffement à {cible:80} watts. Le jeu dit-il le temps restant et la suite ?"
-
-[[etapes]]
-quand = { kind = "rogue", event = "phase", "phase!=" = "WARMUP" }
-dire = "L'échauffement est fini. Roule à {cible} watts."
-attente_max_s = 480
+dire = "Échauffement court, une minute. Suis la puissance affichée par le jeu."
 
 [[etapes]]
 quand = { kind = "rogue", event = "room_start" }
-dire = "Première salle. Appuie sur Z quand l'anneau est plein. Le jeu te dit-il pourquoi s'il refuse ?"
+dire = "Première salle. Z quand l'anneau est plein. Regarde aussi le brouillard au loin et le halo des portes."
 
 [[etapes]]
 quand = { kind = "rogue", event = "room_won" }
-dire = "Salle gagnée. Regarde l'écart de l'ennemi derrière, en secondes."
-attente_max_s = 300
+dire = "Salle gagnée. Regarde l'écart de l'ennemi derrière."
+
+[[etapes]]
+quand = { kind = "rogue", event = "room_fled" }
+dire = "Salle perdue : l'ennemi t'a échappé. Regarde l'écart."
