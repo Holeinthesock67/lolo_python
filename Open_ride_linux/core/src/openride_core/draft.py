@@ -99,6 +99,8 @@ VEHICLE_REJOIN_M = 2.0     # lot AS6 : on ne se rabat qu'à 2 m de la carrosseri
 # BLOCK_SIDE_M (coincé dans un paquet), est enfermé (`Lane.blocked`, posé par update_lanes) : un bot lève le pied
 # (et freine roue contre roue) le temps que son placement le sorte de la ligne.
 BLOCK_SIDE_M = 0.75
+PARKED_APART_M = 2.0      # coureur rangé (placement coupé) à 2 m ou plus de côté : hors de notre ligne, ni roue ni
+                          # dépassement (sortis rangés en haut du vélodrome, essai du 22 novembre)
 BLOCK_MIN_GAP_M = 0.3
 BLOCK_LOOK_S = 1.0
 BLOCKED_PASS_DV_MPS = -0.2     # enfermé : il double un coureur à peine plus lent que lui (il a levé le pied pour lui)
@@ -470,7 +472,7 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     left_bound, right_bound = pass_min, lane_max
     lead: tuple[float, float, Lane, float] | None = None
     leads = False
-    others = list(others)
+    others = [o for o in others if o[2].auto or abs(o[2].m - lane.m) < PARKED_APART_M]
     for o_s, o_v, o_lane in others:
         d = ahead_distance(s, o_s, length_m, is_loop)
         reach = 0.5 * (lane.length + o_lane.length)  # BIKE_LENGTH_M entre deux vélos

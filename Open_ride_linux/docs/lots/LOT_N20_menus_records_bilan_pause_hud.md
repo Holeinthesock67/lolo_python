@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Présentation des menus, étape 4 : records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | GDScript | N19 | Moyenne | En partie : 4a à 4e fusionnées (PR #483, #511, #531, #631, #634) ; reste le bilan en tuiles et le profil du segment (§9) |
+| Présentation des menus, étape 4 : records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | GDScript | N19 | Moyenne | **Livré le 9 novembre** (étapes 4a à 4e : PR #483, #511, #531, #631, #634 ; 4f : PR #788) |
 
 ## 1. Objectif
 
@@ -91,3 +91,7 @@ Reste à faire (une PR, engine seul, sans vélo) :
 - **bilan en tuiles** (§4.2) : `summary_view.gd` affiche encore les lignes sur deux colonnes ; à faire : six tuiles sans tuile vide, graphique de la puissance (série à accumuler côté engine), records battus en `GOLD` avec l'ancien temps, résultat du test de FTP ; capture de référence `bilan` à refaire et à faire valider ;
 - **profil du segment** et catégorie de la montée dans la carte des records (§4.1) ;
 - `menu_bench.py` avant/après sur le PC (3 qualités) et lecture du bilan à 2 m par le propriétaire.
+
+## Livraison
+
+Fusionné dans `main` le 9 novembre 2026 (étape 4f, PR #788 ; 4a à 4e : PR #483, #511, #531, #631, #634), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En partie : 4a à 4e fusionnées (PR #483, #511, #531, #631, #634) ; reste le bilan en tuiles et le profil du segment (§9) »).

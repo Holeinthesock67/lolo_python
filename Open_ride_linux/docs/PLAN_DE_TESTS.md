@@ -21,7 +21,7 @@ Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment 
 | Compilateur | GPX, FIT, TCX, route, terrain, OSM, thèmes, biomes, monde ouvert | `(cd compiler && pytest -q)` | Cloud, PC | ~1 min | 0 échec, sans réseau |
 | Contrats | Schémas JSON, exemples du §7 d'`ipc_v1.md`, taille des trames, vecteurs de route | dans les suites core ; `python -m openride_core.tools.route_vectors --check` ; `python -m openride_core.ipc_budget` | Cloud | < 1 min | Exemples valides, pire trame sous 4 096 octets |
 | Bluetooth simulé | Vrais pilotes devant un trainer, un Click et une ceinture simulés, pannes | `core/tests/test_ble_sim.py`, `core/tests/test_sim_matrix.py` ; `scripts/openride-dev.sh --trainer sim --input sim --hr sim --sim-scenario NOM` | Cloud, PC | ~1 min | Reprises sans reconnexion inutile, pauses attendues |
-| Engine | Tests unitaires GDScript (découverte), rendus Xvfb, couches OSM, rendu par tronçons, ERG, 8 scénarios IPC face au faux core | `engine/tests/run_engine_tests.sh` | Cloud, PC | ~3 min | Toutes les lignes `[OK]`, aucune erreur Godot |
+| Engine | Tests unitaires GDScript (découverte), rendus Xvfb, couches OSM, rendu par tronçons, ERG, 9 scénarios IPC face au faux core | `engine/tests/run_engine_tests.sh` | Cloud, PC | ~3 min | Toutes les lignes `[OK]`, aucune erreur Godot |
 | Bout en bout | Vrai core (`mock`) et vrai engine | `engine/tests/run_e2e.sh` | Cloud, PC | ~10 s | 9 vérifications OK (§3.6) |
 | Menus | Tous les menus au Click simulé, au clavier et à la souris | `python3 engine/tests/menu_bench.py` | Cloud (`--rotation`), PC (trois voies) | 10 à 25 min | Chaque scénario OK sur chaque voie |
 | Graphique | Scène principale, HUD, lisibilité, débordements, qualité appliquée | `engine/tests/run_visual_tests.sh`, `engine/tests/hud_galerie.py` | PC | ~2 min | Contrôles OK, captures rendues |
@@ -44,6 +44,7 @@ Périmètre : tout le code Python du core, sans matériel. Familles principales 
 | Trainer FTMS | `core/tests/test_ftms_spec.py`, `core/tests/test_ble_sim.py` | Conformité FTMS v1.0, Control Point, erreurs ATT 0x80 et 0xFE, relâche à l'arrêt |
 | Séance | `core/tests/test_session_serie_t.py`, `core/tests/test_free_erg.py`, `core/tests/test_rogue_session.py` | États, pauses, ERG, ERG d'une session libre (O18), segments, Cyber-Rogue |
 | IPC | `core/tests/test_contract_ipc.py` | Chaque trame émise valide contre son schéma, exemples du contrat, révisions 1.1 à 1.5, limite de 4 096 octets |
+| Modes à l'identique | `core/tests/test_modes_identique.py` | Lot IM0 : chaque mode rejoué par une séance scriptée, journal, trames, bilan, consignes du trainer et messages identiques octet pour octet à la référence (`scripts/modes_identique.py`) ; aucune empreinte ne doit changer dans une PR de la série IM |
 | Réglages | `core/tests/test_settings_persistance.py` | Chaque réglage de la liste écrit puis relu après relance (X37) |
 | Documentation | `core/tests/test_docs_coherence.py` | Liens, chemins cités, modules de CLAUDE.md, nombres de tests, raccourcis du guide, statut des lots |
 
@@ -81,7 +82,7 @@ Une panne vue sur le vélo se rejoue : `python -m openride_core.tools.log_scenar
 
 ### 3.5 Engine sans écran (`engine/tests/run_engine_tests.sh`)
 
-Étapes : tests unitaires de `engine/tests/unit/` (un fichier par sujet : HUD, menus, ERG, réglages, clavier, thème, décor, biomes…), couches OSM, rendu par tronçons, coutures du sol multi-biome, ERG face au faux core (bips à T − 3 s), 8 scénarios IPC face à `engine/tests/fake_core.py` (hello, renvois toutes les 200 ms, abandon à 3 s, core muet 1,5 s, `shutdown`, trames en désordre, `error`, heartbeats à 2 Hz), puis contrôle de la sortie de Godot. Détail des vérifications : [engine/tests/README.md](../engine/tests/README.md).
+Étapes : tests unitaires de `engine/tests/unit/` (un fichier par sujet : HUD, menus, ERG, réglages, clavier, thème, décor, biomes…), couches OSM, rendu par tronçons, coutures du sol multi-biome, ERG face au faux core (bips à T − 3 s), 9 scénarios IPC face à `engine/tests/fake_core.py` (hello, renvois toutes les 200 ms, abandon à 3 s, core muet 1,5 s, commande pendant un gel du core exécutée une fois, `shutdown`, trames en désordre, `error`, heartbeats à 2 Hz), puis contrôle de la sortie de Godot. Détail des vérifications : [engine/tests/README.md](../engine/tests/README.md).
 
 - `UNIT=test_free_erg_menu engine/tests/run_engine_tests.sh` ne lance qu'un test unitaire.
 - `OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_tests.sh` : passage dédié aux budgets de temps.
@@ -90,6 +91,8 @@ Une panne vue sur le vélo se rejoue : `python -m openride_core.tools.log_scenar
 ### 3.6 Bout en bout (`engine/tests/run_e2e.sh`)
 
 Vrai core sur trainer `mock` et vrai engine, HOME temporaire. Attendu : `hello_ack` en moins de 3 s ; au moins 25 trames `state` par seconde ; `input_event` relayé (bip) ; engine arrêté puis `PAUSED (engine_lost)` en moins de 3 s ; braquet de 12 à 13 ; même longueur de parcours vue par le core et l'engine ; `FINISHED` avec un bilan conforme au schéma ; FIT écrit ; aucune erreur Godot, core sorti avec le code 0, vrai HOME inchangé, moins de 60 s au total.
+
+**Sur l'engine exporté (lot EX2, essai E1 du cadrage J9) :** `scripts/export_engine.sh` construit le binaire « release » de Godot et `openride.pck` dans `build/engine/` (préréglage `engine/export_presets.cfg`), puis `python3 engine/tests/e2e_check.py --exported build/engine/openride.x86_64` rejoue les mêmes vérifications sans `--path`. Job CI « Export de l'engine » (`.github/workflows/openride-export.yml`) sur les PR qui touchent `engine/` ou `core/`. Un fichier lu à l'exécution mais absent des filtres d'export le fait échouer. Cloud et CI ; la performance du binaire exporté se mesure au PC seulement.
 
 ### 3.7 Tests graphiques
 

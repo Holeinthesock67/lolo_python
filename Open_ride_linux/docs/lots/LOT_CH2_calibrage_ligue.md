@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : cotes des rivaux par manche pour environ 10 % de chances de victoire, cote du cycliste tenue contre elles, banc `ligue_campagne` | Python | CH1, BOT-elo (#941) | Petite | En PR ; core seul, branché par CH3 |
+| Série CH : cotes des rivaux par manche pour environ 10 % de chances de victoire, cote du cycliste tenue contre elles, banc `ligue_campagne` | Python | CH1, BOT-elo (#941) | Petite | **Livré le 22 novembre** (PR #987) |
 
 Plan : `docs/6.0/PLAN_SERIE_CH.md` §3.3. Décision du propriétaire du 21 novembre : bots calés sur la FTP pour environ
 10 % de chances de gagner une manche (part juste à 12 coureurs : 8 %), tenus par la cote Elo.

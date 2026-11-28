@@ -1,7 +1,8 @@
 """Réseau dégradé du monde ouvert (lot X28) : faux serveur, recul des tuiles, scénarios de netcheck.
 
 Les scénarios complets lancent le vrai générateur (sous-processus) sur le faux serveur : une
-vingtaine de secondes chacun. Le critère 2 du cahier (un générateur qui ne réessaie pas échoue au
+quarantaine à une cinquantaine de secondes
+chacun, sous la borne d'une minute (`MAX_SCENARIO_S`). Le critère 2 du cahier (un générateur qui ne réessaie pas échoue au
 scénario `erreurs`) est joué avec `TILE_RETRY_S = ()` dans le sous-processus.
 """
 

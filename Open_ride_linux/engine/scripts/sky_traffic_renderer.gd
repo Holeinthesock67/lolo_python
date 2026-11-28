@@ -100,7 +100,13 @@ func visible_count(kind: String = "") -> int:
 	return n
 
 
-func update() -> void:
+## Vrai tant que la séance est en pause : lecteurs arrêtés (E9-03).
+var muted := false
+
+
+## `paused` vrai (pause de la séance) : aéronefs figés et muets (E9-03).
+func update(paused: bool = false) -> void:
+	muted = paused
 	var used := {}
 	for kind in POOL:
 		used[kind] = 0
@@ -132,7 +138,10 @@ func update() -> void:
 		if slot["rotor"] != null:
 			(slot["rotor"] as Node3D).rotation = Vector3(0.0, float(c["rotor"]), 0.0)
 		var audio = slot["audio"]
-		if audio != null and audio.stream != null and is_inside_tree() and not audio.playing:
+		if audio != null and paused:
+			if audio.playing:
+				audio.stop()
+		elif audio != null and audio.stream != null and is_inside_tree() and not audio.playing:
 			audio.play()
 	for kind in POOL:
 		for i in range(int(used[kind]), POOL[kind]):

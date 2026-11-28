@@ -61,6 +61,11 @@ func room(room_id: int) -> Dictionary:
 func should_resync(room_id: int, now_s: float) -> bool:
 	if room_id < 0 or rooms.has(room_id):
 		return false
+	return resync_due(now_s)
+
+
+## Vrai au plus une fois par seconde (toute demande de resynchronisation : salle ou offre manquante, revue E10-01).
+func resync_due(now_s: float) -> bool:
 	if now_s - _last_resync_s < RESYNC_MIN_INTERVAL_S:
 		return false
 	_last_resync_s = now_s

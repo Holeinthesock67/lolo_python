@@ -8,6 +8,8 @@ Toutes les constantes sont dans `RogueBalance`.
 
 from __future__ import annotations
 
+import math
+
 import bisect
 import random
 from dataclasses import dataclass, replace
@@ -122,10 +124,33 @@ def target_grace(target: float, ftp_w: float, b: RogueBalance) -> float:
 
 
 def in_target(shown: float, target: float, ftp_w: float, was_in: bool, b: RogueBalance) -> bool:
-    """Puissance jugée à la consigne (lot R26), règle unique de l'échauffement, des salles et du boss : on y entre à
-    la consigne moins la tolérance, on n'en sort qu'à la consigne moins `target_exit_mult` fois la tolérance."""
+    """Puissance jugée à la consigne, règle unique de l'échauffement, des salles et du boss. Lot R28 (choix du
+    propriétaire, « affiche une vraie consigne ») : on y entre à la consigne écrite ; la tolérance (lot R26, 10 %)
+    ne sert plus qu'à la sortie : on n'en sort qu'à la consigne moins `target_exit_mult` fois la tolérance."""
     g = target_grace(target, ftp_w, b)
-    return shown >= target - (b.target_exit_mult * g if was_in else g)
+    return shown >= target - (b.target_exit_mult * g if was_in else 0.0)
+
+
+def judged_band_pct(lo: float, hi: float | None, ftp_w: float, b: RogueBalance) -> dict:
+    """Plage affichée = plage jugée (lot R28, essai du 22 novembre : « 170–195 W » affichés, adrénaline dès 153 W).
+    `lo` et `hi` en fraction de la FTP : on entre dans la plage à `lo` ; la surchauffe part au-dessus de `hi` plus la
+    tolérance. Arrondis vers l'intérieur : à la puissance écrite, on est dans la plage. `hi` nul : « au moins `lo` »."""
+    g = target_grace(lo, ftp_w, b)
+    out_lo = max(math.ceil(lo * 100 - 1e-6), 0)
+    out_hi = None if hi is None else math.floor((hi + g) * 100 + 1e-6)
+    return {"lo": out_lo, "hi": out_hi}
+
+
+def hp_factor(room: Room, b: RogueBalance) -> float:
+    """PV de l'ennemi = facteur × cible moyenne × durée : le boss (`boss_hp_factor`) ou l'objectif de la salle."""
+    return b.boss_hp_factor if room.archetype == "boss" else getattr(b, f"hp_factor_{room.objective}")
+
+
+def win_target(room: Room, s: float, b: RogueBalance) -> float:
+    """Consigne écrite d'une salle ou du boss (lot R28, « affiche une vraie consigne ») : la puissance qui vide la
+    barre de l'ennemi à temps (cible du profil × facteur de PV), au braquet de référence et sans frappe. Avant, le
+    boss du seuil demandait 11,8 % de plus que la consigne écrite."""
+    return target_at(room, s) * hp_factor(room, b)
 
 
 def m_gear(gear: int, b: RogueBalance) -> float:
@@ -179,8 +204,7 @@ def apply_gear_buttons(gear: int, buttons, hack_kind: str | None, forced_gear: i
 def combat_start(room: Room, seed: int, balance: RogueBalance = DEFAULT_BALANCE,
                  shield: float | None = None, gear: int | None = None) -> CombatState:
     b = balance
-    factor = b.boss_hp_factor if room.archetype == "boss" else getattr(b, f"hp_factor_{room.objective}")
-    hp = factor * target_mean(room) * room.nominal_s
+    hp = hp_factor(room, b) * target_mean(room) * room.nominal_s
     g = b.gear_ref if gear is None else gear
     return CombatState(seed=seed, enemy_hp=hp, enemy_hp_max=hp,
                        shield=b.shield_max if shield is None else shield, gear=g, prev_gear=g)
@@ -227,7 +251,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
     ftp = max(inp.ftp_w, 1.0)
     frac = inp.power_w / ftp                                   # brute : dégâts par seconde
     shown = (inp.power_avg_w if inp.power_avg_w is not None else inp.power_w) / ftp   # affichée : consignes
-    tgt = target_at(room, s)
+    tgt = win_target(room, s, b)                               # lot R28 : la consigne écrite, celle qui gagne
     grace = target_grace(tgt, ftp, b)                          # lot R26 : 10 % de la consigne, au moins 5 W
     boss = room.archetype == "boss"
 

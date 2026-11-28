@@ -80,6 +80,7 @@ extends RefCounted
 ## dans la carte et ouvre l'écran « Aide Grand Prix » (grandprix/gp_help.gd), un sujet par ligne.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
+const RefusalModel := preload("res://scripts/refusal_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
 const RiddenDistance := preload("res://scripts/ridden_distance.gd")
 const SummaryViewModel := preload("res://scripts/summary_view_model.gd")
@@ -89,7 +90,6 @@ const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const PlanBuilder := preload("res://scripts/plan_builder.gd")
 const WorkoutHelp := preload("res://scripts/workout_help.gd")
-const QwkEditor := preload("res://scripts/qwk_editor.gd")
 const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
@@ -103,14 +103,14 @@ const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et surviv
 const SURVIVOR_SPACING_KM := [1, 3]
 ## Aide des touches sur une ligne de réglage de l'écran Prêt d'un mode (essai du 4 novembre).
 const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
-const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread",
-	"survivor.after_out"]
+## Lot NI3 : plus de « Niveau des bots » ; la force se choisit sur la ligne « Intensité du jour » seule.
+const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "survivor.spread", "survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
 ## Grand Prix des objets (lot GP9) : réglages de l'écran Prêt dans l'ordre du plan (§4.4), tours du circuit
 ## seulement (lot GPL1 : le Grand Prix se court sur une boucle), et préfixe des libellés du core.
-## Objectif des bots : ligne « Intensité » (lot R1).
-const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "bots.level_pct", "grandprix.chaos",
-	"grandprix.box_every_m"]
+## Objectif des bots : ligne « Intensité » (lot R1) ; lot NI3 : plus de « Niveau des bots », la force se choisit
+## sur la ligne « Intensité du jour » seule.
+const GRANDPRIX_KEYS := ["grandprix.opponents", "grandprix.laps", "grandprix.chaos", "grandprix.box_every_m"]
 ## Course (lot CR1) en ligne la plus courte (`grandprix.boxes.MIN_COURSE_M` du core) ; le Grand Prix des objets
 ## se court sur une boucle (lot GPL1).
 const GP_MIN_COURSE_M := 1000.0
@@ -119,11 +119,14 @@ const GP_PREFIX := "Grand Prix : "
 const RACE_PREFIX := "Course : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
+const PowerViewModel := preload("res://scripts/power_view_model.gd")
 const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 const LeagueViewModel := preload("res://scripts/league_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
+const DiagnosticViewModel := preload("res://scripts/diagnostic_view_model.gd")   # lot DG1
 
+const OW_PREFIX := "ow:"   # balade du monde ouvert : pas un parcours du catalogue
 const SUMMARY := "summary"
 const CONNECT := "connect"
 const PAIRING := PairingViewModel.SCREEN
@@ -135,7 +138,6 @@ const ROUTE_IMPORT := "route_import"
 ## Ligne d'état pendant la compilation d'une trace importée (lot O23) : secondes écoulées.
 const ROUTE_COMPILING := "Compilation de %s… %d s (la 1re fois dans une région, l'altitude se télécharge)"
 const WORKOUT_HELP := WorkoutHelp.SCREEN
-const WORKOUT_QWK := QwkEditor.SCREEN
 const ROUTE_HELP := RouteHelp.SCREEN
 ## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
 const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
@@ -165,6 +167,10 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
 	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
+## Lot RC3 : pause d'une course reprise après un plantage (même raison `core_restarted`, course en cours).
+const PAUSE_RACE_RESTORED := "OpenRide a redémarré : course retrouvée, tout le monde repart arrêté"
+## Noms des courses reprises (`race.mode` d'une séance interrompue, lot RC3).
+const RACE_MODE_NAMES := {"race": "Course", "grandprix": "Grand Prix", "survivor": "Dernier survivant"}
 ## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
 ## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
 const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
@@ -172,7 +178,7 @@ const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer e
 const PAUSE_ARRIVAL := "Arrivée passée : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create",
-	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
+	MenuModel.HELP_WORKOUT_ID: "choose"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -221,8 +227,6 @@ var route_names := {}
 var builder = WorkoutBuilder.new()
 ## Plan maison en cours de composition (lot O30).
 var plan_builder = PlanBuilder.new()
-## Texte QWKcode en cours de saisie (lot O21) : gardé en sortant de l'écran, vidé après l'enregistrement.
-var qwk = QwkEditor.new()
 ## Ligne d'état de la liste des entraînements (créé, erreur).
 var workout_message := ""
 var _focus_workout := ""
@@ -236,9 +240,8 @@ var route_message_error := false
 var _route_compiling := false
 var _route_import_done := -1
 var _focus_route := ""
-## Dernière demande au core (« create » ou « qwk ») et dernier request_cmd_id traité : le core
-## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
-var _workout_request := ""
+## Dernier request_cmd_id traité : le core répond à chaque copie renvoyée d'une commande, une seule
+## réponse compte.
 var _last_saved_cmd_id := -1
 ## Séances interrompues proposées (`hello_ack.config.interrupted`, puis réponse `interrupted`) et ligne d'état.
 var interrupted: Array = []
@@ -259,8 +262,15 @@ var _workouts_raw: Array = []
 ## Résultat du test de FTP du bilan (summary.ftp_test) tant qu'il reste à accepter ou garder ({} sinon).
 var ftp_offer: Dictionary = {}
 var summary_message := ""
-## Ligne d'état de l'écran Prêt (bots refusés par le core, lot O7).
+## Commande qui a lancé la dernière séance (20 novembre) : « start » (écran Prêt), « start_run » (Cyber-Rogue)
+## ou « start_open_world » (monde ouvert, note_launch depuis main.gd). Seule source de « Rejouer » : la fin de
+## séance rouvre l'écran par lequel ce lancement était passé, avec les mêmes choix, quel que soit le mode.
+var last_launch := ""
+## Ligne d'état de l'écran Prêt (départ refusé par le core : lots O7 et RT4, refusal_model.gd).
 var ready_message := ""
+## Codes d'erreur d'un `start` refusé, affichés sur l'écran Prêt avec leur raison et quoi faire (lot RT4).
+## Les erreurs de parcours (`route_*`) et du trainer (`trainer_control_refused`, séance en ERROR) gardent leur bandeau.
+const READY_REFUSALS := ["bot_invalid", "bad_args", "workout_invalid", "plan_invalid", "busy"]
 var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
@@ -270,17 +280,25 @@ var wtf = WtfRulesModel.new()
 var gp_items = GpItemsMenuModel.new()
 ## `start_run` accusé par le core depuis le dernier lancement : l'écran d'attente peut céder la place à Prêt.
 var _rogue_acked := false
+## Vrai entre l'envoi de `start_run` et le départ : le core a peut-être une run préparée, donc plus de parcours.
+var _run_prepared := false
+## Vrai tant que le bilan affiché est celui d'une séance arrêtée par une erreur (état ERROR du core).
+var _error_summary := false
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
 var garage = GarageViewModel.new()
 ## Bilan de progression de la séance (lot V9) : dernier message `xp_result` ({} sans), et qu'il a déjà été annoncé.
 var progress = ProgressViewModel.new()
 var xp_result: Dictionary = {}
 var _xp_announced := false
+## Fichier des records imposé (tests visuels, `OPENRIDE_RECORDS_FILE`) ; vide : celui du profil en cours
+## (`records_file()`, lot EC9).
 var records_path := ""
 var _record_segment := ""
 var _record_bonus := false
 ## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
 var pause_reason := ""
+## Lot RC3 : course en cours (objet `gp` ou `survivor` de la trame), pour la ligne d'état d'une pause `core_restarted`.
+var race_active := false
 ## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
 var workout_done := false
 ## Issue de la séance connue (`state.arrival`, révision 1.34, lot RT2) : sorte, "" sans arrivée.
@@ -292,6 +310,10 @@ var start_wait: Dictionary = {}
 var profiles = ProfilesViewModel.new()
 ## Historique (lot O28) : séances, cumul par semaine, tests de FTP et bilan d'une séance passée.
 var history = HistoryViewModel.new()
+## Ma puissance (série PP, lot PP3) : courbe de puissance et FTP estimée du profil en cours.
+var power = PowerViewModel.new()
+## FTP acceptée dans « Ma puissance » : en attente de la réponse `settings`, puis courbe redemandée.
+var _power_pending := false
 ## Collection de cartes (série BC, lot BC5) : album par familles, carte agrandie, première ouverture.
 var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
@@ -307,6 +329,7 @@ var _preview_retried := ""
 var _preview_objective := ""   # objectif de la dernière réponse `bots_preview` (vélodrome : celui de l'épreuve)
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
 var contents = ContentsViewModel.new()
+var diagnostic = DiagnosticViewModel.new()   # « Réglages › Diagnostic » (lot DG1)
 
 
 func _init() -> void:
@@ -316,13 +339,13 @@ func _init() -> void:
 	menu.add_screen({"id": SETTINGS_GROUP, "title": "Réglages", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": ContentsViewModel.SCREEN, "title": "Contenus", "on_back": MenuModel.SETTINGS, "items": []})
+	menu.add_screen({"id": DiagnosticViewModel.SCREEN, "title": "Diagnostic", "on_back": MenuModel.SETTINGS,
+		"items": diagnostic.menu_items()})
 	menu.add_screen({"id": WORKOUT_CREATE, "title": "Créer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
 	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
 	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
 		"items": WorkoutHelp.items()})
-	menu.add_screen({"id": WORKOUT_QWK, "title": QwkEditor.TITLE, "on_back": MenuModel.WORKOUTS,
-		"items": qwk.menu_items()})
 	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
 		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
@@ -335,6 +358,9 @@ func _init() -> void:
 	_refresh_ftp_test()
 	menu.add_screen({"id": INTERRUPTED, "title": "Séance interrompue", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": HistoryViewModel.SCREEN, "title": "Historique", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": PowerViewModel.SCREEN, "title": "Ma puissance", "on_back": ProfilesViewModel.SCREEN, "items": []})
+	menu.add_screen({"id": PowerViewModel.MONTHS, "title": "Évolution mois par mois", "on_back": PowerViewModel.SCREEN,
+		"items": []})
 	menu.add_screen({"id": HistoryViewModel.WEEKS, "title": "Cumul par semaine", "on_back": HistoryViewModel.SCREEN,
 		"items": []})
 	menu.add_screen({"id": HistoryViewModel.FTP, "title": "Tests de FTP", "on_back": HistoryViewModel.SCREEN,
@@ -360,7 +386,7 @@ func _init() -> void:
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
-	menu.add_screen({"id": RogueMenuModel.LOADING, "title": "Composition de la run…", "on_back": "", "items": []})
+	menu.add_screen({"id": RogueMenuModel.LOADING, "title": "Composition de la run…", "on_back": RogueMenuModel.SCREEN, "items": []})
 	menu.set_screen_items(RogueMenuModel.LOADING, [{"id": "wait", "label": "Composition de la run…", "enabled": false}])
 	menu.add_screen({"id": WtfRulesModel.SCREEN, "title": "Mode WTF", "on_back": MenuModel.HOME, "items": []})
 	_refresh_wtf()
@@ -379,6 +405,8 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": ProfilesViewModel.RESTORE, "title": "Restaurer un profil supprimé",
 		"on_back": ProfilesViewModel.MANAGE_LIST, "items": []})
+	menu.add_screen({"id": ProfilesViewModel.BACKUPS, "title": "Restaurer une sauvegarde",
+		"on_back": ProfilesViewModel.MANAGE, "items": []})   # lot SV1
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -421,6 +449,13 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	race_active = state.get("gp") is Dictionary or state.get("survivor") is Dictionary
+	if race_active and str(state.get("session_state", "")) in ["PAUSED", "RUNNING"] \
+			and not menu.mode in MenuModel.SETTINGS_MODES and menu.mode != "league":
+		# Lot RC3 : course reprise depuis l'accueil (séance interrompue) : la pause est celle d'une course à plateau
+		# composé par le core (pas de lignes de bots modifiables, `set_bots` refusé)
+		menu.mode = "survivor" if state.get("survivor") is Dictionary \
+			else ("race" if str(state["gp"].get("mode", "")) == "race" else "grandprix")
 	workout_done = state.get("workout_done", null) is Dictionary or state.get("arrival", null) is Dictionary
 	arrival_kind = str(state["arrival"].get("kind", "")) if state.get("arrival", null) is Dictionary else ""
 	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
@@ -456,9 +491,13 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	if not connect_done and menu.current_screen() == CONNECT:
 		_update_connect(with_devices(state), now_s)
 	var rid = state.get("route_id", null)
-	if rid != null and str(rid) != "" and str(rid) != menu.world_id:
+	# Balade du monde ouvert (`ow:<id>`) : ce n'est pas un parcours du catalogue, le menu garde le sien
+	# (revue de code E2-01 : « Menu principal » demandait ensuite au core un parcours introuvable).
+	if rid != null and str(rid) != "" and str(rid) != menu.world_id and not str(rid).begins_with(OW_PREFIX):
 		menu.set_world(str(rid), str(route_names.get(str(rid), rid)))
-	if st == "FINISHED" and state.get("summary") is Dictionary:
+	# Séance finie par une erreur (contrôle du trainer refusé) : le core l'a enregistrée, son bilan est dans la trame.
+	var failed_ride: bool = st == "ERROR" and (session_state in ["RUNNING", "PAUSED"] or _error_summary)
+	if (st == "FINISHED" or failed_ride) and state.get("summary") is Dictionary:
 		# Courbe du bilan (lot N20) retirée d'une trame trop lourde par le core (allègement) : la dernière reçue reste.
 		var kept = summary.get("power_profile", null) if session_state == "FINISHED" else null
 		summary = state["summary"]
@@ -473,14 +512,22 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 				if workout_done:   # entraînement fini : Y puis A maintenu termine et enregistre
 					menu.focus_item("end_save")
 			"FINISHED":
-				show_details = false
-				ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
-				summary_message = ""   # résultat du test au bandeau du bilan (summary_view.gd, lot N20)
-				_refresh_summary()
-				menu.open_screen(SUMMARY)
+				_open_summary()
+			"ERROR":
+				# Revue de code E2-05 : sans cela le menu réaffichait « Pause » ou « Prêt » aux actions sans effet.
+				if prev in ["RUNNING", "PAUSED"]:
+					if state.get("summary") is Dictionary:
+						_error_summary = true
+						_open_summary()
+					else:
+						menu.reset()
 			"IDLE", "READY":
 				if prev in ["RUNNING", "PAUSED"]:
 					menu.reset()
+		if st != "ERROR":
+			_error_summary = false
+		if st == "RUNNING":
+			_run_prepared = false
 		if st != "FINISHED":
 			xp_result = {}
 			_xp_announced = false
@@ -494,6 +541,15 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 		_lists_requested = true
 		out.append({"action": "list"})
 	return out
+
+
+## Bilan de fin de séance ouvert (séance finie, ou arrêtée par une erreur avec son bilan).
+func _open_summary() -> void:
+	show_details = false
+	ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
+	summary_message = ""   # résultat du test au bandeau du bilan (summary_view.gd, lot N20)
+	_refresh_summary()
+	menu.open_screen(SUMMARY)
 
 
 ## Trame complétée du dernier objet `devices` reçu (affichage des appareils à chaque image).
@@ -542,6 +598,7 @@ func _leave_connect() -> void:
 
 
 func _refresh_pairing() -> void:
+	pairing.sim_session = menu.sim_session
 	menu.set_screen_items(PAIRING, pairing.menu_items())
 
 
@@ -551,6 +608,7 @@ func _refresh_settings() -> void:
 	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"},
 		{"id": "contents", "label": "Contenus : entraînements, plans, parcours"}]
 	items.append_array(settings.group_items())
+	items.append({"id": "diagnostic", "label": "Diagnostic : créer un fichier pour signaler un problème"})
 	if settings.items.is_empty():
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
 	items.append(SettingsViewModel.version_item(engine_version, core_version))
@@ -592,7 +650,13 @@ func on_scan_results(msg: Dictionary) -> void:
 		menu.focus_item("save")
 
 
-## Erreur du core : écrans Créer un entraînement / QWKcode (bad_args, busy, workout_invalid,
+## Vrai quand l'écran Prêt explique ce refus du core en mots (lot RT4) : le bandeau technique « Erreur du core »
+## n'est alors pas montré par-dessus.
+func explains_error(code: String) -> bool:
+	return is_visible() and menu.current_screen() == MenuModel.READY and code in READY_REFUSALS
+
+
+## Erreur du core : écran Créer un entraînement (bad_args, busy, workout_invalid,
 ## workout_write_failed), sinon écran Appareils (busy, scan_failed, pairing_failed).
 func on_error(code: String, text: String) -> void:
 	if _ftp_pending and code in ["ftp_result_missing", "ftp_result_doubtful", "setting_invalid", "busy"]:
@@ -621,6 +685,11 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
 		return
+	if menu.current_screen() in PowerViewModel.SCREENS and code in ["busy", "setting_invalid"]:
+		_power_pending = false
+		power.message = "Échec : " + text
+		_refresh_power()
+		return
 	if menu.current_screen() in HistoryViewModel.SCREENS and code == "bad_args":
 		history.message = "Échec : " + text
 		return
@@ -633,12 +702,17 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() == LeagueViewModel.SCREEN and code == "bad_args":
 		league.message = "Échec : " + text
 		return
+	if diagnostic.on_error(code, text):
+		_refresh_diagnostic()
+		return
 	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
 		contents.on_error(code, text)
 		_refresh_contents()
 		return
-	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league" or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
-		ready_message = "Échec : " + text
+	if menu.current_screen() == MenuModel.READY and code in READY_REFUSALS:
+		# Départ refusé (lot RT4) : pourquoi et quoi faire, sur tous les écrans Prêt (séance libre comprise :
+		# un entraînement ou un plan refusés ne laissaient aucune trace)
+		ready_message = RefusalModel.launch_text(code, text)
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
 		_plan_request = ""
@@ -649,13 +723,21 @@ func on_error(code: String, text: String) -> void:
 		route_message = "Échec : " + text
 		route_message_error = true
 		return
-	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_QWK] \
+	if menu.current_screen() == WORKOUT_CREATE \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
 		return
 	if code in ["busy", "scan_failed", "pairing_failed"]:
 		pairing.on_error(code, text)
 		_refresh_pairing()
+
+
+## Commande abandonnée sans accusé du core (3 s). Revue de code E2-04 : l'attente de la run n'avait pas de sortie.
+func on_command_failed(cmd_name: String) -> void:
+	if cmd_name == "start_run" and menu.current_screen() == RogueMenuModel.LOADING:
+		rogue.message = "Échec : le core n'a pas répondu. Relance la run."
+		_refresh_rogue()
+		menu.open_screen(RogueMenuModel.SCREEN)
 
 
 func on_command_acked(cmd_name: String) -> void:
@@ -733,7 +815,11 @@ func _cycle_routes(item_id: String) -> void:
 	if item_id == MenuModel.SORT_ROUTES_ID:
 		route_sort = (route_sort + 1) % CatalogModel.ROUTE_SORTS.size()
 	else:
-		var tags: Array = [""] + CatalogModel.route_tags(routes_raw)
+		# Étiquettes de la liste affichée (revue de code E2-03) : celles d'un parcours d'un autre mode remettaient
+		# le filtre à « toutes », et les étiquettes classées après elles restaient hors d'atteinte.
+		var by_mode: Dictionary = CatalogModel.mode_route_ids(routes_raw, menu.mode_routes)
+		var shown: Array = CatalogModel.routes_of_mode(routes_raw, by_mode, menu.routes_mode, menu.free_route_tag)
+		var tags: Array = [""] + CatalogModel.route_tags(shown)
 		route_tag = tags[(tags.find(route_tag) + 1) % tags.size()]
 	set_routes(routes_raw)
 	menu.focus_item(item_id)
@@ -775,14 +861,14 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
 	if screen == WORKOUT_HELP:
 		return WorkoutHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
-	if screen == WORKOUT_QWK:
-		return WorkoutHelp.sheet("qwk")
 	if screen == PLANS:
 		return _plan_card(focused)
 	if screen == PLAN:
 		return _plan_card("plan:" + _plan_shown)
 	if screen in PlanBuilder.SCREENS:
 		return plan_builder.sheet(PlanBuilder.names_of(_workouts_raw), PlanBuilder.plan_name(_plan_ids()))
+	if screen == PowerViewModel.SCREEN:
+		return power.card(focused, route_names)
 	if screen == FTP_TEST:
 		for t in FTP_TESTS:
 			if t[0] == focused:
@@ -792,6 +878,8 @@ func card(st: Dictionary) -> Dictionary:
 		return pairing.sheet(focused)
 	if screen == ContentsViewModel.SCREEN:
 		return contents.sheet(focused)
+	if screen == DiagnosticViewModel.SCREEN:
+		return diagnostic.sheet(focused)
 	if screen == SETTINGS_GROUP:
 		return settings.sheet(focused.substr(4)) if focused.begins_with("set:") else {}
 	if screen == WORKOUT_CREATE:
@@ -807,7 +895,7 @@ func card(st: Dictionary) -> Dictionary:
 	if screen in CoachViewModel.SCREENS:
 		return _coach_card(screen, focused)
 	if screen == LeagueViewModel.SCREEN:
-		return league.sheet(_ftp_w())
+		return league.sheet(_ftp_w(), focused)   # lot CH6 : palmarès au focus
 	if screen == RECORDS:
 		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
 	if screen == RECORD_TABLE:
@@ -1189,9 +1277,6 @@ func on_workout_saved(msg: Dictionary) -> bool:
 		return false
 	_last_saved_cmd_id = rid
 	var name := str(msg.get("name", msg.get("workout_id", "")))
-	if _workout_request == "qwk":
-		qwk.clear()
-		_refresh_qwk()
 	var text := "Créé : " + name
 	if not msg.get("created", true):
 		text += " (déjà présent)"
@@ -1212,52 +1297,6 @@ func workout_added(workout_id: String, message: String) -> void:
 
 func workout_failed(message: String) -> void:
 	workout_message = message
-
-
-# --- saisie du QWKcode au clavier (lot O21) -----------------------------------------------------
-
-func _refresh_qwk() -> void:
-	menu.set_screen_items(WORKOUT_QWK, qwk.menu_items())
-
-
-## Élément choisi (A maintenu, Entrée sur « Enregistrer » ou « Tout effacer », clic) sur l'écran de saisie.
-func _qwk_item(item_id: String) -> Dictionary:
-	if item_id == QwkEditor.SAVE_ID and not qwk.is_empty():
-		workout_message = "Enregistrement…"
-		_workout_request = "qwk"
-		return {"action": "create_workout_qwk", "text": qwk.text()}
-	if item_id == QwkEditor.CLEAR_ID:
-		qwk.clear()
-		workout_message = ""
-		_refresh_qwk()
-		menu.focus_item(qwk.last_line_id())
-	return {}
-
-
-## Touche du clavier sur l'écran de saisie : vrai si elle a servi. Un caractère imprimable s'écrit (même
-## « + », « - », « a » ou « y », utiles au QWKcode) ; Entrée commence une ligne, ou choisit
-## « Enregistrer » ou « Tout effacer » sous le focus ; Retour arrière efface. Flèches et Échap restent
-## des boutons (key_map.gd).
-func qwk_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
-	if menu.current_screen() != WORKOUT_QWK:
-		return {"used": false}
-	var focused := _focused_id()
-	if enter and focused in [QwkEditor.SAVE_ID, QwkEditor.CLEAR_ID]:
-		return {"used": true, "action": _qwk_item(focused)}
-	var used := true
-	if enter:
-		qwk.new_line()
-	elif backspace:
-		qwk.backspace()
-	elif ch != "":
-		qwk.type_char(ch)
-	else:
-		used = false
-	if used:
-		workout_message = ""
-		_refresh_qwk()
-		menu.focus_item(qwk.last_line_id())
-	return {"used": used, "action": {}}
 
 
 ## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit ; pour le conseil,
@@ -1285,9 +1324,49 @@ func handle(event: String) -> Dictionary:
 	if pick != "":   # parcours du mode, ou retour au parcours libre (lot GP13) : envoyé au core
 		var route_act := {"action": "select_route", "route_id": pick}
 		act = route_act if act.is_empty() else {"action": "sequence", "list": [act, route_act]}
+	act = _restore_route_after_run(act)
 	if menu.mode in MenuModel.SETTINGS_MODES or menu.mode == "league":
 		_refresh_mode_ready()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
+	_note_launch_of(act)
 	return act
+
+
+## Run Cyber-Rogue préparée puis quittée pour un autre mode (revue de code E2-02) : le core a retiré son parcours
+## en composant la run, le menu lui renvoie le sien ; sans cela la séance partait sans parcours côté core.
+func _restore_route_after_run(act: Dictionary) -> Dictionary:
+	if not _run_prepared:
+		return act
+	var parts: Array = [act] if act.get("action", "") != "sequence" else act.get("list", [])
+	for a in parts:
+		if a is Dictionary and str(a.get("action", "")) in ["select_route", "start_run"]:
+			_run_prepared = str(a["action"]) == "start_run"
+			return act
+	if menu.mode == "rogue" or menu.current_screen() in [RogueMenuModel.SCREEN, RogueMenuModel.LOADING, MenuModel.CONFIRM]:
+		return act   # la run est encore celle que le joueur prépare
+	if menu.world_id == "" or menu.world_id.begins_with(OW_PREFIX):
+		return act
+	_run_prepared = false
+	var route_act := {"action": "select_route", "route_id": menu.world_id}
+	if act.is_empty():
+		return route_act
+	return {"action": "sequence", "list": parts + [route_act]}
+
+
+## Lancement envoyé par le menu (seul ou dans une séquence) : retenu pour « Rejouer ». Le « Démarrer » du
+## Cyber-Rogue suit son `start_run` : la run reste le lancement à rejouer.
+func _note_launch_of(act: Dictionary) -> void:
+	for a in ([act] if act.get("action", "") != "sequence" else act.get("list", [])):
+		match str(a.get("action", "")) if a is Dictionary else "":
+			"start_run":
+				last_launch = "start_run"
+			"start":
+				if menu.mode != "rogue":
+					last_launch = "start"
+
+
+## Lancement fait hors de ce menu (monde ouvert : menu du globe, main.gd).
+func note_launch(command: String) -> void:
+	last_launch = command
 
 
 func _handle_event(event: String) -> Dictionary:
@@ -1317,9 +1396,20 @@ func _handle_event(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"power_accept":   # FTP proposée confirmée dans « Ma puissance » (lot PP3) : réglage du joueur, comme partout
+			_power_pending = true
+			power.message = "Enregistrement…"
+			_refresh_power()
+			return {"action": "set_setting", "key": "rider.ftp_w", "value": int(act.get("value", 0))}
 		"reset_profile_stats":   # confirmation acceptée (lot RZ1)
 			profiles.message = "Sauvegarde puis remise à zéro…"
 			profiles.done_message = "Statistiques remises à zéro (sauvegarde faite)"
+			_refresh_profiles()
+			return act
+		"restore_profile_backup":   # confirmation acceptée (lot SV1)
+			profiles.message = "Copie du profil actuel puis restauration…"
+			profiles.done_message = "Sauvegarde restaurée (profil d'avant copié)"
+			profiles.restoring = true
 			_refresh_profiles()
 			return act
 		"undo_profile_reset":   # lot RZ1
@@ -1423,7 +1513,7 @@ func _handle_event(event: String) -> Dictionary:
 		if str(act["id"]) == "ftp":
 			menu.push_screen(FTP_TEST)
 			return {}
-		if str(act["id"]) == "history":
+		if str(act["id"]) in ["history", "week"]:   # « Semaine : … » (lot OS1) ouvre aussi l'Historique
 			history.begin()
 			_refresh_history()
 			menu.push_screen(HistoryViewModel.SCREEN)
@@ -1450,6 +1540,8 @@ func _handle_event(event: String) -> Dictionary:
 		return {"action": "list_plans"}
 	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in PowerViewModel.SCREENS:
+		return _handle_power(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in HistoryViewModel.SCREENS:
 		return _handle_history(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in CollectionViewModel.SCREENS:
@@ -1488,11 +1580,21 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_contents()
 			menu.push_screen(ContentsViewModel.SCREEN)
 			return {"action": "list_contents"}
+		if item_id == "diagnostic":
+			_refresh_diagnostic()
+			menu.push_screen(DiagnosticViewModel.SCREEN)
+			return {}
 		if item_id.begins_with("group:"):
 			settings_group = item_id.substr(6)
 			_refresh_settings()
 			menu.push_screen(SETTINGS_GROUP)
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == DiagnosticViewModel.SCREEN:
+		var choice: Dictionary = diagnostic.handle(str(act["id"]))
+		_refresh_diagnostic()
+		if not choice.is_empty():
+			choice["engine_version"] = engine_version
+		return choice
 	if act.get("action", "") == "item" and act.get("screen", "") == ContentsViewModel.SCREEN:
 		var choice: Dictionary = contents.handle(str(act["id"]))
 		_refresh_contents()
@@ -1516,21 +1618,13 @@ func _handle_event(event: String) -> Dictionary:
 		if str(act["id"]) == MenuModel.HELP_WORKOUT_ID:
 			menu.push_screen(WORKOUT_HELP)
 			return {}
-		if str(act["id"]) == MenuModel.QWK_WORKOUT_ID:
-			_refresh_qwk()
-			menu.push_screen(WORKOUT_QWK)
-			menu.focus_item(qwk.last_line_id())
-			return {}
 		return {}
-	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_QWK:
-		return _qwk_item(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
 		var item_id := str(act["id"])
 		if item_id == "save":
-			_workout_request = "create"
-			return {"action": "create_workout", "args": builder.values.duplicate()}
+			return {"action": "create_workout", "args": builder.args()}
 		if item_id.begins_with("param:"):
 			settings.begin_with(builder.edit_item(item_id.substr(6)))
 			_refresh_edit()
@@ -1552,6 +1646,9 @@ func _handle_event(event: String) -> Dictionary:
 			"confirm_pair":
 				menu.confirm(str(act["title"]), {"action": "pair_devices", "args": act["args"]})
 				act = {}
+			"confirm_sim":   # lot NI4 : session simulée rangée dans Appareils
+				menu.confirm(str(act["title"]), act["then"])
+				act = {}
 		_refresh_pairing()
 		return act
 	if act.get("action", "") == "item" and act.get("screen", "") == SUMMARY:
@@ -1571,24 +1668,48 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_garage()
 			menu.push_screen(GarageViewModel.SCREEN)
 			return {"action": "list_garage"}
-		act = summary_model.handle_action(str(act["id"]), menu)
+		var item_id := str(act["id"])
+		if item_id == "replay" and last_launch in ["start_run", "start_open_world"]:
+			menu.reset()   # l'accueil derrière l'écran de départ du mode, comme pour un lancement depuis l'accueil
+			_leave_summary()
+			if last_launch == "start_run":   # écran de départ du Cyber-Rogue, mêmes choix ; « Lancer » refait la run
+				_refresh_rogue()
+				menu.push_screen(RogueMenuModel.SCREEN)
+				return _reload_world()
+			# route du monde ouvert générée à la volée : pas de select_route, le globe en relance une
+			return {"action": "sequence", "list": [{"action": "list"}, {"action": "open_world_menu"}]}
+		act = summary_model.handle_action(item_id, menu)
 		match act.get("action", ""):
 			"new_session":
-				show_details = false
-				xp_result = {}
-				_xp_announced = true   # les copies du bilan encore envoyées par le core ne rouvrent rien
-				summary = {}
-				ftp_offer = {}
-				summary_message = ""
-				_refresh_summary()
-				# Le core reste en FINISHED jusqu'au prochain select_route : le monde choisi est rechargé.
-				if menu.world_id != "":
-					return {"action": "list", "route_id": menu.world_id}
-				return {"action": "list"}
+				_leave_summary()
+				if item_id == "replay":
+					return _reload_world()
+				# « Menu principal » : même accueil après tous les modes, sans entraînement gardé par le core
+				# (sinon un parcours choisi ensuite partirait en ERG sous un écran « session libre »).
+				return {"action": "sequence", "list": [{"action": "select_workout", "workout_id": null},
+					_reload_world()]}
 			"details":
 				show_details = not show_details
 				return {}
 	return act
+
+
+## Fin de séance quittée (Rejouer ou Menu principal) : bilan, expérience et FTP proposée oubliés.
+func _leave_summary() -> void:
+	show_details = false
+	xp_result = {}
+	_xp_announced = true   # les copies du bilan encore envoyées par le core ne rouvrent rien
+	summary = {}
+	ftp_offer = {}
+	summary_message = ""
+	_refresh_summary()
+
+
+## Le core reste en FINISHED jusqu'au prochain select_route : listes redemandées, monde choisi rechargé.
+func _reload_world() -> Dictionary:
+	if menu.world_id != "" and not menu.world_id.begins_with(OW_PREFIX):
+		return {"action": "list", "route_id": menu.world_id}
+	return {"action": "list"}
 
 
 # --- Écran Prêt des modes à réglages : Dernier survivant (lot DS7), Grand Prix des objets (lot GP9) ---------
@@ -1653,7 +1774,7 @@ static func mode_label(label: String, prefix: String) -> String:
 
 # --- effort des bots en watts sur l'écran Prêt (lot GP-niv) et cote Elo (lot BOT-elo) ----------------------
 
-const PREVIEW_KEYS := ["bots.level_pct", "bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
+const PREVIEW_KEYS := ["bots.objective", "bots.elo", "rider.ftp_w", "survivor.opponents",
 	"survivor.spacing_km", "grandprix.opponents", "grandprix.laps",
 	"race.opponents", "race.laps"]   # race.* : Course (lot CR1), la durée suit les tours et le plateau
 
@@ -1718,7 +1839,20 @@ static func bots_info_row(msg: Dictionary) -> Dictionary:
 		return {}
 	return {"watts": "≈ %d W" % int(msg["power_w"]),
 		"cote": ("%d" % int(msg["elo"].get("rating", 1500))) if msg.get("elo") is Dictionary else "",
-		"duration": ("≈ " + duration_text(float(msg["duration_s"]))) if msg.get("duration_s") != null else ""}
+		"duration": ("≈ " + duration_text(float(msg["duration_s"]))) if msg.get("duration_s") != null else "",
+		"hold": hold_text(msg), "mine": ("environ " + duration_text(float(msg["my_time_s"])))
+			if msg.get("my_time_s") != null else ""}
+
+
+## Lot PP6b (contrat 1.37) : durée que tu tiens à l'allure des bots, en mots (« environ 12 min », « jusqu'au
+## bout » quand elle dépasse la durée estimée) ; "" sans le champ (core plus ancien).
+static func hold_text(msg: Dictionary) -> String:
+	if msg.get("hold_s") == null:
+		return ""
+	var hold := float(msg["hold_s"])
+	if msg.get("duration_s") != null and hold >= float(msg["duration_s"]):
+		return "jusqu'au bout"
+	return ("environ %d s" % int(round(hold))) if hold < 60.0 else "environ " + duration_text(hold)
 
 
 # --- intensité du jour (lot R1) : la dose en mots, réglage commun `bots.objective` ---------------------------
@@ -1733,15 +1867,26 @@ const INTENSITY_HELP := "Intensité du jour : A pour facile, moyen ou dur. Les b
 
 
 ## Ligne d'état sur « Intensité du jour » : l'aide, puis la durée estimée de la course et ta cote quand le core
-## les a données (« Course estimée à ≈ 9 min. Ta cote : 1540. »).
+## les a données (« Course estimée à ≈ 9 min. Ta cote : 1540. ») ; avec la courbe (lot PP6b, contrat 1.37), la
+## durée que tu tiens à l'allure des bots et ton temps à fond, en une ligne qui tient sur l'écran (« Course ≈ 13 min :
+## allure tenue jusqu'au bout, toi à fond ≈ 11 min. Cote : 1500. »).
 func intensity_help() -> String:
 	var parts: Array = []
 	var d := str(menu.bots_info.get("duration", ""))
 	var c := str(menu.bots_info.get("cote", ""))
-	if d != "":
+	var h := str(menu.bots_info.get("hold", ""))
+	var m := str(menu.bots_info.get("mine", ""))
+	if d != "" and (h != "" or m != ""):   # lot PP6b : une ligne courte, la cote reste visible
+		var bits: Array = []
+		if h != "":
+			bits.append("allure tenue " + h)
+		if m != "":
+			bits.append("toi à fond " + m.replace("environ ", "≈ "))
+		parts.append("Course " + d + " : " + ", ".join(bits) + ".")
+	elif d != "":
 		parts.append("Course estimée à " + d + ".")
 	if c != "":
-		parts.append("Ta cote : " + c + ".")
+		parts.append(("Cote : " if h != "" or m != "" else "Ta cote : ") + c + ".")
 	return INTENSITY_HELP + ("" if parts.is_empty() else "\n" + " ".join(parts))
 
 
@@ -1818,7 +1963,7 @@ static func grandprix_launch(laps: int, route: Dictionary) -> Dictionary:
 ## Réglages de l'écran Prêt de la Course (lot CR1) : tours sur une boucle ; en ligne, la course va jusqu'à l'arrivée.
 static func race_keys(route: Dictionary) -> Array:
 	var line := not route.is_empty() and str(route.get("route_type", "")) != "loop"
-	return ["race.opponents"] + ([] if line else ["race.laps"]) + ["bots.level_pct"]   # objectif : ligne « Intensité » (R1)
+	return ["race.opponents"] + ([] if line else ["race.laps"])   # force des bots : ligne « Intensité » seule (R1, NI3)
 
 
 ## Ligne « Lancer » de la Course (lot CR1) : {enabled, detail, advice}. Boucle : tours et longueur ; en ligne :
@@ -1832,7 +1977,7 @@ static func race_launch(laps: int, route: Dictionary) -> Dictionary:
 			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
 	if float(length) < GP_MIN_COURSE_M:
 		return {"enabled": false, "detail": "parcours trop court",
-			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours." % [
+			"advice": RefusalModel.TAG + " · Lancer grisé : parcours de %s, %d km au moins.\nÀ faire : choisis un autre parcours." % [
 				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
 	return {"enabled": true, "detail": "%s en ligne" % CatalogModel._format_fr_km(float(length)),
 		"advice": ""}
@@ -1863,12 +2008,12 @@ static func survivor_advice(opponents: int, spacing_km: int, length_m: float) ->
 		var n := mini(int(floor(length_m / (sp * 1000.0) + 1e-9)), SURVIVOR_OPPONENTS[1])
 		if n >= SURVIVOR_OPPONENTS[0]:
 			fits.append(("%d adversaires à %d km d'écart" if fits.is_empty() else "%d à %d km") % [n, sp])
-	var text := "Lancer grisé : %d arches × %d km = %d km, parcours de %s.\n" % [
+	var text := RefusalModel.TAG + " · Lancer grisé : %d arches × %d km = %d km, parcours de %s.\n" % [
 		opponents, spacing_km, opponents * spacing_km, CatalogModel._format_fr_km(length_m)]
 	if fits.is_empty():
-		return text + "Choisis un parcours plus long ou une boucle."
+		return text + "À faire : choisis un parcours plus long ou une boucle."
 	var listed := str(fits[0]) if fits.size() == 1 else ", ".join(fits.slice(0, fits.size() - 1)) + " ou " + str(fits[-1])
-	return text + "Possible : " + listed + ", sinon change de parcours."
+	return text + "À faire : règle " + listed + ", ou change de parcours."
 
 
 func _route_entry(route_id: String) -> Dictionary:
@@ -1892,6 +2037,8 @@ func on_interrupted(msg: Dictionary) -> void:
 	interrupted = rest.duplicate() if rest is Array else []
 	interrupted_message = "Séance enregistrée dans tes séances" if bool(msg.get("saved", false)) \
 		else "Séance non enregistrée"
+	if bool(msg.get("resumed", false)):   # lot RC3 : la séance repart en pause, l'écran de pause suit la trame
+		interrupted_message = "Séance reprise"
 	_refresh_interrupted()
 	if interrupted.is_empty() and menu.current_screen() in [INTERRUPTED, MenuModel.CONFIRM]:
 		menu.open_screen(MenuModel.HOME)
@@ -1903,12 +2050,45 @@ func _refresh_interrupted() -> void:
 		menu.set_interrupted("", "")
 		menu.set_screen_items(INTERRUPTED, [{"id": "none", "label": "Aucune séance à rattraper", "enabled": false}])
 		return
-	var detail := interrupted_detail(interrupted[0], route_names)
+	var item: Dictionary = interrupted[0]
+	var detail := interrupted_detail(item, route_names)
 	var more := interrupted.size() - 1
-	menu.set_interrupted("Séance interrompue à enregistrer" + ("" if more == 0 else " (+%d)" % more), detail)
-	menu.set_screen_items(INTERRUPTED, [
-		{"id": "save", "label": "Enregistrer la séance", "detail": detail},
-		{"id": "discard", "label": "Ne pas l'enregistrer"}])
+	var race = item.get("race", null)
+	var is_race: bool = race is Dictionary
+	var resumable := bool(item.get("resumable", false))
+	var title := "Séance interrompue à enregistrer"
+	if resumable:   # lot RC3 : moins de 2 h après l'arrêt, même version du jeu
+		title = "Course interrompue à reprendre" if is_race else "Séance interrompue à reprendre"
+	menu.set_interrupted(title + ("" if more == 0 else " (+%d)" % more),
+		interrupted_race_detail(race) if is_race else detail)
+	var rows: Array = []
+	if resumable:
+		rows.append({"id": "resume", "label": "Reprendre la course" if is_race else "Reprendre la séance",
+			"detail": interrupted_race_detail(race) if is_race else detail})
+	rows.append({"id": "save", "label": "Enregistrer sans finir" if is_race else "Enregistrer la séance",
+		"detail": detail})
+	rows.append({"id": "discard", "label": "Ne pas l'enregistrer"})
+	menu.set_screen_items(INTERRUPTED, rows)
+
+
+## « Course · tour 3 sur 6 · tu étais 4e sur 12 » de `race` {mode, place, of, lap, alive, league} (lot RC3).
+static func interrupted_race_detail(race: Dictionary) -> String:
+	var mode := str(race.get("mode", ""))
+	var name := str(RACE_MODE_NAMES.get(mode, "Course"))
+	if bool(race.get("league", false)):
+		name += " de la ligue"
+	var parts: Array = [name]
+	var lap = race.get("lap", null)
+	if lap is Array and lap.size() == 2:
+		parts.append("tour %d sur %d" % [int(lap[0]), int(lap[1])])
+	var place = race.get("place", null)
+	var of = race.get("of", null)
+	if (place is int or place is float) and (of is int or of is float):
+		var p := int(place)
+		parts.append("tu étais %s sur %d" % ["1er" if p == 1 else "%de" % p, int(of)])
+	elif mode == "survivor" and (race.get("alive", null) is int or race.get("alive", null) is float):
+		parts.append("%d coureurs encore en course" % int(race["alive"]))
+	return " · ".join(parts)
 
 
 ## « 30/10 à 18:05 · Vosges · 12,3 km · 32 min » d'un élément {start, route_id, distance_m, duration_s}.
@@ -1930,6 +2110,9 @@ func _handle_interrupted(item_id: String) -> Dictionary:
 		return {}
 	var sid := str(interrupted[0].get("id", ""))
 	interrupted_message = ""
+	if item_id == "resume":   # lot RC3
+		interrupted_message = "Reprise…"
+		return {"action": "recover_session", "id": sid, "resume": true}
 	if item_id == "save":
 		interrupted_message = "Enregistrement…"
 		return {"action": "recover_session", "id": sid, "save": true}
@@ -1963,6 +2146,7 @@ func _handle_rogue(item_id: String) -> Dictionary:
 
 func _launch_rogue(act: Dictionary) -> Dictionary:
 	_rogue_acked = false
+	_run_prepared = true
 	menu.open_screen(RogueMenuModel.LOADING)
 	return act
 
@@ -2040,6 +2224,18 @@ func _handle_garage(screen: String, item_id: String) -> Dictionary:
 	return act
 
 
+# --- fichier de diagnostic (lot DG1) ------------------------------------------------------------
+
+func _refresh_diagnostic() -> void:
+	menu.set_screen_items(DiagnosticViewModel.SCREEN, diagnostic.menu_items())
+
+
+## Message `diagnostic` du core (révision 1.37) : chemin du fichier écrit ou cause de l'échec sur la ligne d'état.
+func on_diagnostic(msg: Dictionary) -> void:
+	diagnostic.on_diagnostic(msg)
+	_refresh_diagnostic()
+
+
 # --- contenus installables (lot O25) -----------------------------------------------------------
 
 func _refresh_contents() -> void:
@@ -2070,6 +2266,7 @@ func _refresh_profiles() -> void:
 	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
 	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
 	menu.set_screen_items(ProfilesViewModel.RESTORE, profiles.restore_items())
+	menu.set_screen_items(ProfilesViewModel.BACKUPS, profiles.backup_items())
 	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
 
 
@@ -2089,6 +2286,8 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				_open_name()
 			elif item_id == "manage":
 				menu.push_screen(ProfilesViewModel.MANAGE_LIST)
+			elif item_id == ProfilesViewModel.POWER_ID:   # « Ma puissance » du profil en cours (lot PP3)
+				return _open_power()
 			elif item_id.begins_with("p:"):
 				var id := item_id.substr(2)
 				if id == profiles.current_id():
@@ -2130,6 +2329,19 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				var u := profiles.undo_confirm()
 				menu.confirm(u["title"], {"action": "undo_profile_reset", "id": u["id"]}, u["yes"], u["no"],
 					u["yes_detail"], u["no_detail"])
+			elif item_id == ProfilesViewModel.BACKUPS_ID:   # lot SV1 : liste demandée au core
+				profiles.message = ""
+				profiles.backups_loaded = false
+				profiles.backups = []
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.BACKUPS)
+				act = {"action": "list_profile_backups"}
+		ProfilesViewModel.BACKUPS:
+			if item_id.begins_with("b:"):
+				profiles.message = ""
+				var b := profiles.backup_confirm(item_id.substr(2))
+				menu.confirm(b["title"], {"action": "restore_profile_backup", "id": b["id"]}, b["yes"], b["no"],
+					b["yes_detail"], b["no_detail"])
 	_refresh_profiles()
 	return act
 
@@ -2205,6 +2417,15 @@ func on_profiles(msg: Dictionary) -> void:
 	_refresh_profiles()
 
 
+## `profile_backups` (lot SV1) : liste des copies ; après une restauration, retour à « Gérer », message gardé.
+func on_profile_backups(msg: Dictionary) -> void:
+	var restored: bool = profiles.take_restored()
+	profiles.on_backups(msg)
+	if restored and menu.current_screen() == ProfilesViewModel.BACKUPS:
+		menu.handle("Y_SHORT")
+	_refresh_profiles()
+
+
 ## `hello_ack.config.profile` (démarrage ou changement de profil) : accueil du nouveau profil.
 func on_hello_profile(block) -> void:
 	var changed: bool = profiles.on_hello(block)
@@ -2247,6 +2468,79 @@ func garage_preview(st: Dictionary) -> Dictionary:
 	if screen in GarageViewModel.SCREENS:
 		return garage.preview(screen, focused)
 	return {}
+
+
+## Ma puissance (lot PP3) : réponse `power_curve` à `list_power_curve`.
+func on_power_curve(msg: Dictionary) -> void:
+	power.on_power_curve(msg)
+	_refresh_power()
+
+
+func _refresh_power() -> void:
+	var name := profiles.current_name()
+	menu.set_screen_items(PowerViewModel.SCREEN, power.items(route_names),
+		"Ma puissance — " + name if name != "" else "Ma puissance")
+	menu.set_screen_items(PowerViewModel.MONTHS, power.month_items())
+
+
+## Action à lancer après une réponse `settings` : la courbe redemandée si la FTP vient d'être acceptée ici.
+func take_power_refresh() -> Dictionary:
+	if not _power_pending:
+		return {}
+	_power_pending = false
+	var saved = settings.item("rider.ftp_w").get("value", power.proposal_w())
+	power.message = "FTP enregistrée : %d W" % int(round(float(saved))) if typeof(saved) in [TYPE_INT, TYPE_FLOAT] \
+		else "FTP enregistrée"
+	return {"action": "list_power_curve"}
+
+
+func _open_power() -> Dictionary:
+	_power_pending = false
+	power.begin()
+	_refresh_power()
+	menu.push_screen(PowerViewModel.SCREEN)
+	return {"action": "list_power_curve"}
+
+
+func _handle_power(screen: String, item_id: String) -> Dictionary:
+	if screen != PowerViewModel.SCREEN:
+		return {}
+	match item_id:
+		"window":
+			power.toggle_window()
+			_refresh_power()
+		"months":
+			menu.push_screen(PowerViewModel.MONTHS)
+		"ramp":
+			menu.push_screen(FTP_TEST)
+		"accept":
+			if power.proposal_w() > 0:
+				power.message = ""
+				menu.confirm(power.accept_question(), power.accept_action())
+		PowerViewModel.CHALLENGE_ID:
+			return _launch_power_challenge()
+	return {}
+
+
+## « Rouler ce défi » (lot PP7) : parcours proposé (ou celui de l'écran Prêt pour un sprint), session libre, et un
+## bot à puissance constante à la cible, le fantôme de ton record ; écran Prêt avec le défi en mots.
+func _launch_power_challenge() -> Dictionary:
+	var c: Dictionary = power.challenge()
+	if c.is_empty():
+		return {}
+	var list: Array = []
+	if c.get("route_id") is String:
+		var rid: String = str(c["route_id"])
+		var entry := _route_entry(rid)
+		menu.set_world(rid, str(entry.get("name", c.get("route_name", rid))) if not entry.is_empty() else str(c.get("route_name", rid)))
+		list.append({"action": "select_route", "route_id": rid})
+	list.append({"action": "select_workout", "workout_id": null})
+	menu.prepare_coach_race("défi : " + PowerViewModel.duration_label(int(c["s"])),
+		{"bots": [{"kind": "constant", "power_w": int(c["target_w"])}]}, power.challenge_ready_text())
+	if menu._needs_route():   # sprint, ou aucun parcours qui convienne : la liste des parcours d'abord
+		menu._routes_return = MenuModel.READY
+		menu._open_routes(true)
+	return {"action": "sequence", "list": list}
 
 
 ## Historique (lot O28) : réponse `history` à `list_history` ; noms des parcours de la dernière liste.
@@ -2352,11 +2646,20 @@ func shown_summary() -> Dictionary:
 	return history.detail if menu.current_screen() == HistoryViewModel.SESSION else summary
 
 
+## Fichier des records lu par l'écran (lot EC9, constat E12-01) : `records_path` s'il est imposé, sinon
+## celui du profil en cours (`profiles.current_id()` : dernier annoncé par le hello ou `profiles`), où le core écrit depuis
+## les profils ; sans profil : l'ancien `~/OpenRide/records.json`.
+func records_file() -> String:
+	if records_path != "":
+		return records_path
+	return RecordsViewModel.default_path(profiles.current_id())
+
+
 ## Écrans des records (lot T10) : « Records du parcours » (écran Prêt) relit le fichier et liste les
 ## segments ; un segment ouvre sa table « sans bonus » ; « A : voir les temps avec bonus » bascule.
 func _handle_records(screen: String, item_id: String) -> void:
 	if screen == MenuModel.READY and item_id == "records":
-		records.load_file(records_path)
+		records.load_file(records_file())
 		var title: String = "Records : " + (menu.world_name if menu.world_name != "" else menu.world_id)
 		menu.set_screen_items(RECORDS, records.segment_items(menu.world_id), title)
 		menu.push_screen(RECORDS)
@@ -2518,7 +2821,7 @@ func state() -> Dictionary:
 	elif st["screen"] in [MenuModel.ROUTES, ROUTE_IMPORT]:
 		st["status"] = route_message
 		st["status_error"] = route_message_error
-	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_QWK]:
+	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN] or st["screen"] in PlanBuilder.SCREENS:
 		st["status"] = plan_message
@@ -2528,6 +2831,7 @@ func state() -> Dictionary:
 		st["status"] = summary_message
 	elif st["screen"] == MenuModel.READY:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
+		st["status_error"] = ready_message != ""
 		if menu.mode in MenuModel.SETTINGS_MODES and ready_message == "":
 			_mode_status(st)
 		var ready_items: Array = st.get("items", [])
@@ -2539,6 +2843,9 @@ func state() -> Dictionary:
 		st["status"] = garage.message
 	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:
 		st["status"] = interrupted_message
+	elif st["screen"] in PowerViewModel.SCREENS:
+		st["status"] = power.message
+		st["status_error"] = power.message.begins_with("Échec")
 	elif st["screen"] in HistoryViewModel.SCREENS:
 		st["status"] = history.message
 		st["status_error"] = history.message.begins_with("Échec")
@@ -2552,6 +2859,9 @@ func state() -> Dictionary:
 	elif st["screen"] in CoachViewModel.SCREENS:
 		st["status"] = coach.status(str(st["screen"]))
 		st["status_error"] = coach.message.begins_with("Échec")
+	elif st["screen"] == DiagnosticViewModel.SCREEN:
+		st["status"] = diagnostic.message
+		st["status_error"] = diagnostic.message.begins_with("Échec")
 	elif st["screen"] == ContentsViewModel.SCREEN:
 		st["status"] = contents.message
 		st["status_error"] = contents.message.begins_with("Échec")
@@ -2565,6 +2875,8 @@ func state() -> Dictionary:
 		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
+		if pause_reason == "core_restarted" and race_active:
+			st["status"] = PAUSE_RACE_RESTORED
 		if st["status"] == "" and workout_done:
 			st["status"] = PAUSE_WORKOUT_DONE if arrival_kind in ["", "workout"] else PAUSE_ARRIVAL
 	st["card"] = card(st)
@@ -2588,6 +2900,7 @@ func on_coach(msg: Dictionary) -> void:
 
 func _refresh_coach() -> void:
 	menu.set_coach_home(coach.home_detail())
+	menu.set_week_home(coach.week_label(), coach.week_detail())   # lot OS1
 	var rows: Array = []
 	for key in CoachViewModel.SETTING_KEYS:
 		var it: Dictionary = settings.item(key)

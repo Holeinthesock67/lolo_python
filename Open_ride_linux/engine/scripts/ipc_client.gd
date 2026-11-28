@@ -22,8 +22,8 @@ signal list_failed(list_name: String, error_message: String)
 signal scan_results_received(msg: Dictionary)
 ## Réglages du menu (lots O3 et O4, contrat v1.3), réponse à list_settings ou set_setting.
 signal settings_received(msg: Dictionary)
-## Sous-menu ERG (lot N16, contrat v1.3, décision D4) : entraînement écrit par le core (create_workout,
-## create_workout_qwk) ; l'import de fichiers (list_imports, import_workout) est retiré en révision 1.15.
+## Sous-menu ERG (lot N16, contrat v1.3, décision D4) : entraînement écrit par le core (create_workout ;
+## create_workout_qwk n'est plus envoyé depuis le lot NI4) ; l'import de fichiers (list_imports, import_workout) est retiré en révision 1.15.
 signal workout_saved_received(msg: Dictionary)
 ## Traces importées depuis le menu des parcours (lot O23, contrat 1.5) : traces importables
 ## (list_route_imports, en parties comme routes) et avancement de l'import (import_route).
@@ -39,6 +39,8 @@ signal bots_preview_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
 ## Collection de cartes (série BC, lot BC5, contrat 1.6) : réponse à list_collection.
 signal collection_received(msg: Dictionary)
+## Ma puissance (série PP, lot PP3, contrat 1.35) : réponse à list_power_curve.
+signal power_curve_received(msg: Dictionary)
 ## Ligue d'hiver (série CH, lot CH4a, contrat 1.30) : réponse à league_status et league_new.
 signal league_received(msg: Dictionary)
 ## Séance conseillée (série CO, lot CO5, contrat 1.12) : réponse à get_coach, set_next_race, clear_next_race,
@@ -78,10 +80,14 @@ signal mode_options_received(msg: Dictionary)
 ## Profils de joueurs (lot MJ8, contrat 1.5) : réponse à list_profiles, create_profile, rename_profile,
 ## delete_profile (un seul datagramme).
 signal profiles_received(msg: Dictionary)
+## Copies du profil en cours (lot SV1) : réponse à list_profile_backups et restore_profile_backup.
+signal profile_backups_received(msg: Dictionary)
 ## Séance interrompue d'un lancement précédent (lot O34, contrat 1.5) : réponse à recover_session.
 signal interrupted_received(msg: Dictionary)
 ## Contenus installables (lot O25, contrat 1.5) : réponse à list_contents et install_content (un seul datagramme).
 signal contents_received(msg: Dictionary)
+## Fichier de diagnostic (lot DG1, contrat 1.37) : réponse à create_diagnostic.
+signal diagnostic_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -127,7 +133,7 @@ var _peer := PacketPeerUDP.new()
 ## _poll_incoming lit tout à l'image suivante et garde la trame la plus récente (seq).
 const STATE_RECV_BUFFER := 1 << 20
 var _cmd_id_counter := 0
-## Commandes en attente d'accusé : {cmd_id, name, args, first_us, last_us, sends}.
+## Commandes en attente d'accusé : {cmd_id, name, args, first_us, last_us, sends, hello_gen, cut}.
 var _pending: Array[Dictionary] = []
 ## Relance des listes v1.1 (contrat §4) : une seconde sans réponse complète, 3 fois au plus.
 const LIST_RETRY_S := 1.0
@@ -148,6 +154,12 @@ var _hello_acked := false
 var _hello_lock := Mutex.new()
 var _hello_wanted := false
 var _hello_now := false
+## Nombre de hello envoyés par le fil d'horloge (sous _hello_lock). Le core remet son last_cmd_id à 0 à chaque
+## hello (contrat §4) : une copie d'une commande envoyée avant un hello serait exécutée une seconde fois si le core
+## avait déjà traité la première (core gelé plus d'une seconde, revue E1-02). Une commande n'est donc renvoyée
+## que tant qu'aucun hello n'est parti depuis son premier envoi ; envois et hello passent sous le même verrou, pour
+## que l'ordre reçu par le core soit celui vu ici.
+var _hello_gen := 0
 var _last_state_us := 0
 ## Écarts entre trames state reçues (lot X17) : histogramme fixe, une ligne [gigue] par minute.
 ## La lecture se fait à chaque image : l'écart mesuré comprend la cadence de l'affichage.
@@ -155,10 +167,23 @@ var _gap_counts := PackedInt32Array()
 var _gap_n := 0
 var _gap_max_ms := 0.0
 var _gap_next_us := 0
+## Pertes de trames state (essai du 22 novembre, gels de 9 à 10 s à Biarritz) : compteurs de la minute, publiés
+## avec la ligne [gigue] dans une ligne « [ipc] state reçues … » (ipc_loss_line), et un trou de plus de
+## LONG_GAP_MS noté tout de suite avec les seq avant et après : seq qui avance = le core a envoyé et la trame
+## s'est perdue en route ; seq qui suit = le core n'a rien envoyé.
+const LONG_GAP_MS := 2000.0
+var _win_received := 0
+var _win_late := 0
+var _win_seq_skipped := 0
+var _win_max_bytes := 0
+var _win_long_gaps := 0
 var _core_reachable := true
 var _hb_thread: Thread
 var _hb_stop := false
 var _bound := false
+## Port des trames pris (contrat §2) : l'engine doit s'arrêter avec le code 1. quit_handled : main.gd s'en charge.
+var bind_failed := false
+var quit_handled := false
 
 
 func _ready() -> void:
@@ -171,7 +196,10 @@ func _ready() -> void:
 		# Contrat §2 : port occupé, arrêt avec un message explicite.
 		printerr("Port UDP %d indisponible (code %d) : un autre engine tourne-t-il déjà ? "
 				% [state_port, err] + "Choisir un autre port avec -- --ipc-state-port=N.")
-		get_tree().quit(1)
+		# Revue E1-03 : main.gd ferme par sa séquence propre (_quit, tâches de fond attendues) en lisant
+		# bind_failed dans son _ready ; repli pour un IpcClient seul (tests) : arrêt direct en fin d'image.
+		bind_failed = true
+		_quit_if_unhandled.call_deferred()
 		return
 	_bound = true
 	print("IpcClient attaché sur ", SERVER_HOST, ":", state_port, ", commandes vers le port ", cmd_port)
@@ -182,6 +210,11 @@ func _ready() -> void:
 	# Socket propre à ce fil.
 	_hb_thread = Thread.new()
 	_hb_thread.start(_clock_loop)
+
+
+func _quit_if_unhandled() -> void:
+	if not quit_handled:
+		get_tree().quit(1)
 
 
 func _clock_loop() -> void:
@@ -208,6 +241,7 @@ func _clock_loop() -> void:
 			next_hello = now
 		if _hello_wanted and now >= next_hello:
 			sock.put_packet(_hello_payload())
+			_hello_gen += 1
 			next_hello = now + HELLO_PERIOD_MS
 		_hello_lock.unlock()
 		OS.delay_msec(CLOCK_TICK_MS)
@@ -282,6 +316,7 @@ func _process(delta: float) -> void:
 func _poll_incoming() -> void:
 	while _peer.get_available_packet_count() > 0:
 		var pkt := _peer.get_packet()
+		_win_max_bytes = maxi(_win_max_bytes, pkt.size())
 		var json_obj = JSON.parse_string(pkt.get_string_from_utf8())
 		if typeof(json_obj) != TYPE_DICTIONARY:
 			invalid_datagram_count += 1
@@ -307,8 +342,9 @@ func _poll_incoming() -> void:
 					# Même version majeure : compatible, les champs inconnus sont ignorés (contrat §8).
 					print("Révisions du contrat différentes : core %s, engine %s"
 						% [core_rev if core_rev != "" else "avant 1.3", CONTRACT_REV])
-				print("hello_ack reçu : core ", core_version, ", configuration ", core_config)
-				test_log("hello_ack config=%s" % JSON.stringify(core_config))
+				# Revue E1-07 : pas la configuration entière (dernier départ du monde ouvert, FTP, profil, dossiers).
+				print("hello_ack reçu : core ", core_version, ", configuration ", hello_config_log(core_config))
+				test_log("hello_ack config=%s" % JSON.stringify(hello_config_public(core_config)))
 				hello_ack_received.emit(json_obj)
 			"error":
 				_on_error(str(json_obj.get("code", "")), str(json_obj.get("message", "")))
@@ -339,6 +375,8 @@ func _poll_incoming() -> void:
 				history_session_received.emit(json_obj)
 			"collection":
 				collection_received.emit(json_obj)
+			"power_curve":
+				power_curve_received.emit(json_obj)
 			"league":
 				league_received.emit(json_obj)
 			"coach":
@@ -366,10 +404,14 @@ func _poll_incoming() -> void:
 				progression_received.emit(json_obj)
 			"profiles":
 				profiles_received.emit(json_obj)
+			"profile_backups":
+				profile_backups_received.emit(json_obj)
 			"interrupted":
 				interrupted_received.emit(json_obj)
 			"contents":
 				contents_received.emit(json_obj)
+			"diagnostic":
+				diagnostic_received.emit(json_obj)
 			"xp_result":
 				xp_result_received.emit(json_obj)
 			"room":
@@ -395,6 +437,8 @@ func note_state_gap(gap_ms: float, now_us: int) -> void:
 	_gap_max_ms = maxf(_gap_max_ms, gap_ms)
 	if now_us >= _gap_next_us:
 		print(state_gap_line())
+		print(ipc_loss_line())
+		_reset_loss_window()
 		_gap_counts.fill(0)
 		_gap_n = 0
 		_gap_max_ms = 0.0
@@ -412,6 +456,36 @@ func state_gap_percentile(q: float) -> float:
 	return _gap_max_ms
 
 
+## Ligne de la minute sur les pertes de trames state (essai du 22 novembre).
+func ipc_loss_line() -> String:
+	return "[ipc] state reçues %d ; en retard %d ; seq sautés %d ; trous de plus de %d s %d ; plus gros datagramme %d o" % [
+		_win_received, _win_late, _win_seq_skipped, int(LONG_GAP_MS / 1000.0), _win_long_gaps, _win_max_bytes]
+
+
+func _reset_loss_window() -> void:
+	_win_received = 0
+	_win_late = 0
+	_win_seq_skipped = 0
+	_win_max_bytes = 0
+	_win_long_gaps = 0
+
+
+## Trame state acceptée : `prev_seq` dernier seq compté (-1 au premier), `seq` celui-ci, `gap_ms` écart en temps.
+## Renvoie la ligne d'un trou de plus de LONG_GAP_MS (vide sinon), déjà écrite au journal.
+func note_state_seq(prev_seq: int, seq: int, gap_ms: float) -> String:
+	_win_received += 1
+	var skipped := seq - prev_seq - 1 if prev_seq >= 0 else 0
+	_win_seq_skipped += maxi(skipped, 0)
+	if gap_ms < LONG_GAP_MS:
+		return ""
+	_win_long_gaps += 1
+	var line := "[ipc] trou de %d ms entre deux trames state : seq %d -> %d (%d trames du core manquantes : %s)" % [
+		int(gap_ms), prev_seq, seq, maxi(skipped, 0),
+		"perdues en route" if skipped > 0 else "le core n'a rien envoyé"]
+	print(line)
+	return line
+
+
 func state_gap_line() -> String:
 	return "[gigue] state : écart entre trames p50 %.1f p99 %.1f max %.1f ms (%d trames)" % [
 		state_gap_percentile(0.5), state_gap_percentile(0.99), _gap_max_ms, _gap_n]
@@ -422,14 +496,18 @@ func _on_state(msg: Dictionary) -> void:
 	if seq <= last_state_seq:
 		# Contrat §3 et §6 : seule la trame au seq le plus élevé compte.
 		late_state_count += 1
+		_win_late += 1
 		test_log("state_late seq=%d late=%d" % [seq, late_state_count])
 		return
 	if last_state_seq >= 0 and seq > last_state_seq + 1:
 		seq_gap_count += seq - last_state_seq - 1
+	var prev_seq := last_state_seq
 	last_state_seq = seq
 	var now_us := Time.get_ticks_usec()
 	if _core_reachable and _hello_acked:
-		note_state_gap((now_us - _last_state_us) / 1000.0, now_us)
+		var gap_ms := (now_us - _last_state_us) / 1000.0
+		note_state_seq(prev_seq, seq, gap_ms)
+		note_state_gap(gap_ms, now_us)
 	_last_state_us = now_us
 	if not _core_reachable:
 		_core_reachable = true
@@ -639,12 +717,6 @@ func create_workout(args: Dictionary) -> int:
 	return send_command("create_workout", args)
 
 
-## QWKcode saisi au clavier (lot O21), relu et écrit en `.qwk` par le core. Réponse : workout_saved, ou
-## error (bad_args, workout_invalid avec le numéro de ligne, busy, workout_write_failed).
-func create_workout_qwk(text: String) -> int:
-	return send_command("create_workout_qwk", {"text": text})
-
-
 ## Traces importables depuis le menu des parcours (lot O23, contrat 1.5). Réponse : signal route_imports_received.
 func list_route_imports() -> int:
 	var cmd_id := send_command("list_route_imports", {})
@@ -675,6 +747,11 @@ func list_plans() -> int:
 ## Historique du profil en cours (lot O28, contrat 1.5). Réponse : signal history_received.
 func list_history() -> int:
 	return send_command("list_history", {})
+
+
+## Courbe de puissance et FTP estimée du profil en cours (lot PP3). Réponse : power_curve_received.
+func list_power_curve() -> int:
+	return send_command("list_power_curve", {})
 
 
 ## Collection de cartes du profil en cours (lot BC5). Réponse : collection_received.
@@ -805,11 +882,39 @@ func send_command(cmd_name: String, args: Dictionary = {}) -> int:
 	_cmd_id_counter += 1
 	var now := Time.get_ticks_usec()
 	var cmd := {"cmd_id": _cmd_id_counter, "name": cmd_name, "args": args,
-			"first_us": now, "last_us": now, "sends": 1}
+			"first_us": now, "last_us": now, "sends": 1, "cut": false}
 	_pending.append(cmd)
+	_hello_lock.lock()
+	cmd["hello_gen"] = _hello_gen
 	_send_cmd(cmd)
+	_hello_lock.unlock()
 	test_log("cmd_sent name=%s id=%d" % [cmd_name, _cmd_id_counter])
 	return _cmd_id_counter
+
+
+## Clés de hello_ack.config écrites telles quelles au journal (revue E1-07) : rien de personnel. Les autres
+## (last_choices et sa position du monde ouvert, ftp_w, profile, open_world_dir…) ne sont nommées que par leur clé.
+const HELLO_LOG_KEYS: Array[String] = ["gears_total", "theme", "chart", "difficulty_pct", "modes",
+		"free_route_tag"]
+
+
+static func hello_config_public(cfg: Dictionary) -> Dictionary:
+	var out := {}
+	for key in HELLO_LOG_KEYS:
+		if cfg.has(key):
+			out[key] = cfg[key]
+	return out
+
+
+## Ligne du journal pour hello_ack.config : clés sûres avec leur valeur, autres clés nommées seulement.
+static func hello_config_log(cfg: Dictionary) -> String:
+	var others: Array[String] = []
+	for key in cfg.keys():
+		if not str(key) in HELLO_LOG_KEYS:
+			others.append(str(key))
+	others.sort()
+	return "%s ; autres clés : %s" % [JSON.stringify(hello_config_public(cfg)),
+			", ".join(others) if not others.is_empty() else "aucune"]
 
 
 func _send_cmd(cmd: Dictionary) -> void:
@@ -835,20 +940,35 @@ func _ack_pending(last_cmd_id: int) -> void:
 
 func _resend_pending(now: int) -> void:
 	var kept: Array[Dictionary] = []
+	var failed: Array[String] = []
+	_hello_lock.lock()   # aucun hello entre le test de _hello_gen et le renvoi (revue E1-02)
 	for cmd in _pending:
+		if not cmd["cut"] and int(cmd["hello_gen"]) != _hello_gen:
+			# Un hello est parti depuis le premier envoi : plus aucune copie (le core la rejouerait), la commande
+			# reste en attente de son accusé jusqu'au délai habituel.
+			cmd["cut"] = true
+			print("Commande « %s » (id %d) plus renvoyée : hello envoyé au core depuis" % [cmd["name"], cmd["cmd_id"]])
+			test_log("cmd_cut name=%s id=%d sends=%d" % [cmd["name"], cmd["cmd_id"], cmd["sends"]])
 		if now - int(cmd["first_us"]) >= CMD_TIMEOUT_US:
 			# Un appui abandonné n'est pas rejoué : la commande est simplement oubliée.
-			print("Commande « %s » (id %d) abandonnée : aucun accusé du core en 3 s" % [cmd["name"], cmd["cmd_id"]])
-			test_log("cmd_failed name=%s id=%d after_ms=%d sends=%d"
-					% [cmd["name"], cmd["cmd_id"], (now - int(cmd["first_us"])) / 1000, cmd["sends"]])
-			command_failed.emit(cmd["name"])
+			print("Commande « %s » (id %d) abandonnée : aucun accusé du core en 3 s%s" % [cmd["name"], cmd["cmd_id"],
+					" (coupée par un hello : peut-être exécutée)" if cmd["cut"] else ""])
+			test_log("cmd_failed name=%s id=%d after_ms=%d sends=%d cut=%d"
+					% [cmd["name"], cmd["cmd_id"], (now - int(cmd["first_us"])) / 1000, cmd["sends"], int(cmd["cut"])])
+			# Coupée par un hello : le core était injoignable (son bandeau est déjà là) et l'a peut-être exécutée ;
+			# pas de second bandeau « sans réponse ».
+			if not cmd["cut"]:
+				failed.append(str(cmd["name"]))
 			continue
-		if now - int(cmd["last_us"]) >= CMD_RESEND_US:
+		if not cmd["cut"] and now - int(cmd["last_us"]) >= CMD_RESEND_US:
 			cmd["last_us"] = now
 			cmd["sends"] = int(cmd["sends"]) + 1
 			_send_cmd(cmd)
 		kept.append(cmd)
+	_hello_lock.unlock()
 	_pending = kept
+	for cmd_name in failed:
+		command_failed.emit(cmd_name)
 
 
 func _exit_tree() -> void:

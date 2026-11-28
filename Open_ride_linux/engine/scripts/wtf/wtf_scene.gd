@@ -87,6 +87,13 @@ func step(view: Dictionary, route, s_route: float, bot_anchor: Callable, sun: Di
 	_used.clear()
 	_on_rider.clear()
 	var active := is_active()
+	if not active and route == null:
+		# nettoyage de fin de séance (main.gd) : `apply_camera` n'est plus appelé derrière les menus, roulis,
+		# vue imposée et taille du cycliste reviennent à la normale tout de suite, pas à la séance suivante (E11-06)
+		_roll = 0.0
+		_cam_blend = 0.0
+		_cam_mode = ""
+		_rider_scale = 1.0
 	if active and not _warmed and is_inside_tree():
 		warm_up(get_viewport().get_camera_3d())
 	else:

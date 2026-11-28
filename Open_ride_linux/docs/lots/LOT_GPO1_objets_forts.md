@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : tout effet dure, valeurs renforcées, boîtes de famille par voie, boîtes et objets des bots visibles | Python, GDScript | GP1 à GP14 | Moyenne | **Livré le 21 novembre** (PR à fusionner, recette PC à faire) |
+| Série GP : tout effet dure, valeurs renforcées, boîtes de famille par voie, boîtes et objets des bots visibles | Python, GDScript | GP1 à GP14 | Moyenne | **Livré le 24 novembre** (PR #957) ; recette PC à faire |
 
 Série GP (mode « Grand Prix des objets »). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`. Demande du propriétaire du 21 novembre 2026, pendant un essai du Grand Prix : « les objets ont une durée trop limitée et un effet trop faible », « quand un bot prend un objet, pas d'effet visuel », « changement de voies pas assez exploité, quasi inutile ». Proposition : `/mnt/project-files/plans/PROPOSITION_GP_OBJETS_2026-11-21.md` (dossier du projet) ; choix « Tout : valeurs, bots, voies A » sur la carte du 21 novembre.
 

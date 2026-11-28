@@ -1,0 +1,442 @@
+{
+ "description": "Répétition du samedi 28/11 (ligue d'hiver) sur un profil d'essai du HOME temporaire du banc, jamais le vrai profil ni ~/OpenRide/Cache/monde : profil « principal » rempli comme un vrai (records, cote Elo 1620 sur 14 courses, saison d'essai n° 2 dans ligue.json). 1) Sauvegarde SV1 : copie « semaine » faite seule au lancement du core. 2) Restauration de cette copie depuis « Gérer › Restaurer une sauvegarde » (profil d'avant copié). 3) Remise à zéro RZ1 (copie « remise-a-zero » faite avant, ligue.json et records mis de côté, cote Elo du cycliste gardée). 4) « Commencer la saison 1 » (et non saison 3). 5) Manche 1 courue jusqu'à l'arrivée, puis Y puis A maintenu = bilan (vrai geste du Click, pas la commande end_session), manche faite dans ligue.json. FTP fictive 250 W. Banc PC : --native --qualite medium.",
+ "voies": [
+  "click"
+ ],
+ "config": {
+  "rider.ftp_w": 250,
+  "profils.dernier": "principal"
+ },
+ "grand_prix_parcours": true,
+ "fichiers": {
+  "OpenRide/Profils/.migration": "fini\n",
+  "OpenRide/Profils/principal/profil.toml": "[profil]\nid = \"principal\"\nnom = \"Cycliste A\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n",
+  "OpenRide/Profils/principal/records.json": "{}",
+  "OpenRide/Profils/principal/elo.json": {
+   "version": 1,
+   "rating": 1620.0,
+   "races": 14,
+   "offsets": {
+    "climber#1": 35.0,
+    "rouleur#2": -20.0
+   },
+   "history": []
+  },
+  "OpenRide/Profils/principal/ligue.json": {
+   "version": 1,
+   "number": 2,
+   "seed": 4242,
+   "start": "2026-11-16",
+   "rivals": [
+    {
+     "key": "climber#1",
+     "profile": "climber",
+     "name": "Hugo Sommet",
+     "team": "Équipe Coquelicot",
+     "color": "#d93a4a"
+    },
+    {
+     "key": "climber#2",
+     "profile": "climber",
+     "name": "Félix Crête",
+     "team": "Équipe Glacier",
+     "color": "#7fc4d9"
+    },
+    {
+     "key": "climber#3",
+     "profile": "climber",
+     "name": "Simon Perché",
+     "team": "Équipe Ocre",
+     "color": "#c48a2d"
+    },
+    {
+     "key": "rouleur#1",
+     "profile": "rouleur",
+     "name": "Max Laroue",
+     "team": "Équipe Braise",
+     "color": "#c4472d"
+    },
+    {
+     "key": "rouleur#2",
+     "profile": "rouleur",
+     "name": "Luc Plaine",
+     "team": "Équipe Lavande",
+     "color": "#8a6fbf"
+    },
+    {
+     "key": "rouleur#3",
+     "profile": "rouleur",
+     "name": "Oscar Lebidon",
+     "team": "Équipe Granit",
+     "color": "#7a7a7a"
+    },
+    {
+     "key": "sprinter#1",
+     "profile": "sprinter",
+     "name": "Théo Turbo",
+     "team": "Équipe Prairie",
+     "color": "#8ab83d"
+    },
+    {
+     "key": "sprinter#2",
+     "profile": "sprinter",
+     "name": "Kévin Lafusée",
+     "team": "Équipe Sable",
+     "color": "#d9c48a"
+    },
+    {
+     "key": "sprinter#3",
+     "profile": "sprinter",
+     "name": "Basile Flèche",
+     "team": "Équipe Ardoise",
+     "color": "#3d4a5c"
+    },
+    {
+     "key": "diesel#1",
+     "profile": "diesel",
+     "name": "Henri Tracteur",
+     "team": "Équipe Brume",
+     "color": "#4f7bbf"
+    },
+    {
+     "key": "diesel#2",
+     "profile": "diesel",
+     "name": "Gaston Lentrain",
+     "team": "Équipe Cèdre",
+     "color": "#2f8a4c"
+    }
+   ],
+   "results": {},
+   "classic_day": null,
+   "classic": null,
+   "pauses": [],
+   "closed": null,
+   "last_seen": null
+  },
+  "OpenRide/Profils/cycliste-b/profil.toml": "[profil]\nid = \"cycliste-b\"\nnom = \"Cycliste B\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n"
+ },
+ "etapes": [
+  {
+   "note": "0. Profil d'essai au lancement",
+   "ecran": "profiles",
+   "titre": "Qui roule ?",
+   "delai": 20
+  },
+  {
+   "note": "1. SAUVEGARDE SV1 : copie de la semaine faite au lancement du core (aucune copie avant)",
+   "fichier": "OpenRide/Sauvegardes/profils/principal/*_semaine/ligue.json",
+   "delai": 30
+  },
+  {
+   "fichier": "OpenRide/Sauvegardes/profils/principal/*_semaine/copie.toml"
+  },
+  {
+   "choisir": "p:principal"
+  },
+  {
+   "ecran": "home",
+   "titre": "OpenRide — Cycliste A",
+   "elements": [
+    "league"
+   ],
+   "absent": [
+    "8 semaines contre 11 rivaux"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "r1_accueil_avant"
+  },
+  {
+   "note": "2. RESTAURATION de la copie de la semaine",
+   "choisir": "profile"
+  },
+  {
+   "ecran": "profiles",
+   "delai": 10
+  },
+  {
+   "choisir": "manage"
+  },
+  {
+   "ecran": "profile_manage_list"
+  },
+  {
+   "choisir": "p:principal"
+  },
+  {
+   "ecran": "profile_manage",
+   "contient": [
+    "Restaurer une sauvegarde — copie faite chaque semaine",
+    "Remettre à zéro mes statistiques — sauvegarde faite avant, annulable"
+   ]
+  },
+  {
+   "choisir": "backups"
+  },
+  {
+   "ecran": "profile_backups",
+   "contient": [
+    "Copie de la semaine"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "r2_sauvegardes"
+  },
+  {
+   "choisir": "b:*_semaine"
+  },
+  {
+   "ecran": "confirm",
+   "focus": "no",
+   "contient": [
+    "Non, garder mon profil",
+    "Oui, restaurer"
+   ]
+  },
+  {
+   "choisir": "yes"
+  },
+  {
+   "ecran": "profile_manage",
+   "contient": [
+    "Sauvegarde restaurée (profil d'avant copié)"
+   ],
+   "delai": 20
+  },
+  {
+   "fichier": "OpenRide/Sauvegardes/profils/principal/*_restauration/ligue.json"
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/ligue.json"
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/elo.json"
+  },
+  {
+   "capture": "r3_restauree"
+  },
+  {
+   "note": "3. REMISE À ZÉRO RZ1",
+   "choisir": "reset_stats"
+  },
+  {
+   "ecran": "confirm",
+   "focus": "no",
+   "contient": [
+    "Non, garder mes statistiques",
+    "Oui, remettre à zéro"
+   ]
+  },
+  {
+   "capture": "r4_remise_confirmation"
+  },
+  {
+   "choisir": "yes"
+  },
+  {
+   "ecran": "profile_manage",
+   "contient": [
+    "Statistiques remises à zéro (sauvegarde faite)",
+    "Annuler la remise à zéro"
+   ],
+   "delai": 20
+  },
+  {
+   "fichier": "OpenRide/Sauvegardes/profils/principal/*_remise-a-zero/ligue.json"
+  },
+  {
+   "fichier": "OpenRide/Profils/.remises_a_zero/principal_*/ligue.json"
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/ligue.json",
+   "existe": false
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/records.json",
+   "existe": false
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/elo.json"
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/remise_stats.toml"
+  },
+  {
+   "capture": "r5_remise_faite"
+  },
+  {
+   "note": "retour à l'accueil : Y deux fois (Gérer → Gérer un profil → Qui roule ?), puis le profil en cours",
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "profile_manage_list",
+   "delai": 10
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "profiles",
+   "delai": 10
+  },
+  {
+   "choisir": "p:principal"
+  },
+  {
+   "note": "4. COMMENCER LA SAISON 1 : plus de saison d'essai (sinon « saison 3 »)",
+   "ecran": "home",
+   "titre": "OpenRide — Cycliste A",
+   "elements": [
+    "league"
+   ],
+   "contient": [
+    "Ligue d'hiver — 8 semaines contre 11 rivaux"
+   ],
+   "delai": 15
+  },
+  {
+   "choisir": "league"
+  },
+  {
+   "ecran": "league",
+   "titre": "Ligue d'hiver",
+   "elements": [
+    "league_new"
+   ],
+   "contient": [
+    "Commencer la saison 1"
+   ],
+   "absent": [
+    "saison 3"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "r6_ligue_vide"
+  },
+  {
+   "choisir": "league_new"
+  },
+  {
+   "ecran": "league",
+   "elements": [
+    "league_run"
+   ],
+   "contient": [
+    "Courir la manche 1 : Course en tours",
+    "Classement général"
+   ],
+   "delai": 10
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/ligue.json"
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/rivaux.json"
+  },
+  {
+   "capture": "r7_saison_1"
+  },
+  {
+   "note": "5. MANCHE 1 jusqu'au bilan",
+   "choisir": "league_run"
+  },
+  {
+   "ecran": "ready",
+   "contient": [
+    "manche 1 sur 8"
+   ],
+   "elements": [
+    "start"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "r8_pret"
+  },
+  {
+   "choisir": "start"
+  },
+  {
+   "journal": "core",
+   "motif": "Ligue d'hiver : manche 1/8",
+   "delai": 15
+  },
+  {
+   "attendre": 30
+  },
+  {
+   "capture": "r9_course"
+  },
+  {
+   "note": "fin commune (lot RT2) : l'arrivée ne coupe pas la séance",
+   "journal": "core",
+   "motif": "Arrivée \\(",
+   "delai": 900
+  },
+  {
+   "attendre": 3
+  },
+  {
+   "capture": "r10_course_finie"
+  },
+  {
+   "note": "le geste du samedi : Y ouvre la pause sur « Terminer et enregistrer »",
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "pause",
+   "focus": "end_save",
+   "contient": [
+    "Arrivée passée : A maintenu pour terminer et enregistrer"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "r11_pause"
+  },
+  {
+   "appui": "A_LONG"
+  },
+  {
+   "ecran": "summary",
+   "delai": 20
+  },
+  {
+   "attendre": 3
+  },
+  {
+   "capture": "r12_bilan"
+  },
+  {
+   "fichier": "OpenRide/Profils/principal/Activities/*.fit",
+   "delai": 20
+  },
+  {
+   "choisir": "new_session"
+  },
+  {
+   "ecran": "home",
+   "delai": 10
+  },
+  {
+   "choisir": "league"
+  },
+  {
+   "ecran": "league",
+   "contient": [
+    "Manche 1 faite"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "r13_ligue_apres"
+  },
+  {
+   "note": "la cote Elo du cycliste a été gardée par la remise puis mise à jour par la manche",
+   "fichier": "OpenRide/Profils/principal/elo.json"
+  }
+ ]
+}

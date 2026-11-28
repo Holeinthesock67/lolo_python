@@ -277,6 +277,22 @@
         "null"
       ],
       "properties": {
+        "mode_error": {
+          "type": "object",
+          "description": "Facultatif (filet de la boucle, audit du 22 novembre, R3) : séance terminée parce qu'un mode de jeu a levé une erreur ; `mode` : mode en cours (rogue, grandprix, survivor, wtf, track, race, open_world, erg, sim), `error` : type de l'erreur. Le reste du bilan est celui d'une séance normale.",
+          "required": [
+            "mode",
+            "error"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            }
+          }
+        },
         "duration_s": {
           "type": "number"
         },
@@ -1039,6 +1055,92 @@
             }
           }
         },
+        "power_records": {
+          "type": "array",
+          "maxItems": 4,
+          "description": "Facultatif, révision 1.35 (série PP, lot PP4) : records de puissance de la séance face aux 6 derniers mois du profil (séance exclue), au plus 4, rangés par durée ; absent sans record, à la première séance du profil et pour une séance non comptée. Ajouté au bilan quelques instants après la fin.",
+          "items": {
+            "type": "object",
+            "required": [
+              "s",
+              "w",
+              "prev_w",
+              "e"
+            ],
+            "properties": {
+              "s": {
+                "type": "integer",
+                "enum": [
+                  5,
+                  15,
+                  30,
+                  60,
+                  120,
+                  180,
+                  300,
+                  480,
+                  720,
+                  1200,
+                  1800,
+                  2700,
+                  3600
+                ],
+                "description": "Durée (s)."
+              },
+              "w": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Meilleure puissance moyenne de la séance sur la durée (W)."
+              },
+              "prev_w": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Ancien record sur 6 mois (W) ; null : premier effort de cette durée."
+              },
+              "e": {
+                "type": "string",
+                "enum": [
+                  "libre",
+                  "ERG"
+                ],
+                "description": "Effort libre ou en ERG (le mot est affiché)."
+              }
+            }
+          }
+        },
+        "ftp_review": {
+          "type": "object",
+          "description": "Facultatif, révision 1.35 (série PP, lot PP4) : signal « FTP à revoir », quand la FTP estimée (lot PP2, séance comprise) s'écarte de plus de 5 % de la FTP réglée ; simple proposition, acceptée au menu (« Ma puissance »), jamais écrite par le core.",
+          "required": [
+            "estimate_w",
+            "ftp_set_w",
+            "delta_pct",
+            "confidence"
+          ],
+          "properties": {
+            "estimate_w": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ftp_set_w": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "delta_pct": {
+              "type": "number"
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "Fiable",
+                "Indicative"
+              ]
+            }
+          }
+        },
         "elo": {
           "type": "object",
           "description": "Facultatif, révision 1.22 (lot BOT-elo) : cote Elo du cycliste mise à jour par cette course (Grand Prix, Dernier survivant, épreuve de piste en groupe, réglage `bots.elo` = on) ; absent si la course ne compte pas (arrêtée avant l'arrivée, séance non gardée).",
@@ -1409,8 +1511,8 @@
           "lane_m": {
             "type": "number",
             "minimum": -3,
-            "maximum": 3,
-            "description": "Facultatif, révision 1.5 (lot AS2) : écart du bot à l'axe de la route en m, positif à droite, au centimètre."
+            "maximum": 7,
+            "description": "Facultatif, révision 1.5 (lot AS2) : écart du bot à l'axe de la route en m, positif à droite, au centimètre. Vélodrome (révision 1.33) : hauteur sur la piste depuis la ligne de mesure, de 0 à 7 m (coureur sorti rangé en haut, 5,5 m)."
           },
           "profile": {
             "type": [
@@ -1457,6 +1559,15 @@
           "gap_s": {
             "type": "number",
             "description": "Révision 1.4 : écart en temps de passage (T16), positif si le bot est devant."
+          },
+          "move": {
+            "type": "string",
+            "enum": [
+              "attack",
+              "respond",
+              "sprint"
+            ],
+            "description": "Révision 1.38 (lot BA1) : geste en cours d'un bot à profil (attaque, réponse à un départ, pic du sprint), absent sinon ; seulement pour les 5 bots les plus proches d'un peloton allégé."
           },
           "out": {
             "type": "integer",
@@ -1754,7 +1865,7 @@
     },
     "powerup": {
       "type": "object",
-      "description": "Facultatif, révision 1.4 (T6) : absent en ERG (T-Q2). Révision 1.13 (TT1) : valeurs des bonus tactiques, `light` gardé comme ancien nom de `feather` pendant une révision, champ facultatif `refused`.",
+      "description": "Facultatif, révision 1.4 (T6) : absent en ERG (T-Q2). Révision 1.13 (TT1) : valeurs des bonus tactiques, `light` gardé comme ancien nom de `feather` pendant une révision, champ facultatif `refused`. Révision à la fusion, lot TT-BONUS : champ facultatif `gain`.",
       "required": [
         "held",
         "active",
@@ -1821,6 +1932,26 @@
                 "no_gravel",
                 "erg"
               ]
+            }
+          }
+        },
+        "gain": {
+          "type": "object",
+          "description": "Facultatif, révision à la fusion, lot TT-BONUS : temps gagné (positif) ou perdu par le dernier bonus de masse, de CdA ou de puissance fini, mesuré contre le même cycliste sans bonus (élan des 60 s suivantes compris) ; présent 6 s après la fin du bonus.",
+          "required": [
+            "kind",
+            "gain_s"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "maxLength": 16,
+              "description": "Bonus fini (une valeur de `held`)."
+            },
+            "gain_s": {
+              "type": "number",
+              "minimum": -999.9,
+              "maximum": 999.9
             }
           }
         }

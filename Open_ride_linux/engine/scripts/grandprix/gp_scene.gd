@@ -65,8 +65,30 @@ func set_quality(q: String) -> void:
 		sparks.amount = maxi(Model.particles(q, "halo"), 1)
 
 
+## Fin de séance (main.gd hors séance, revue E11-03) : modèle vidé et scène cachée tout de suite, averses et
+## étincelles arrêtées ; sans cela, `step` n'étant plus appelé derrière les menus, boîtes, objets et effets
+## restaient figés dans le décor jusqu'à la séance suivante.
 func reset() -> void:
 	_model.reset()
+	_hide()
+
+
+func _hide() -> void:
+	_active = false
+	if visible:
+		visible = false
+	for rig in _rigs:   # appelé à chaque image hors séance : rien n'est reposé s'il est déjà arrêté
+		var rain: CPUParticles3D = rig["rain"]
+		if rain.emitting:
+			rain.emitting = false
+		var sparks: CPUParticles3D = rig["sparks"]
+		if sparks.emitting:
+			sparks.emitting = false
+
+
+## Pause de la séance : l'horloge des répétitions de `gp_hit` et `gp_event` s'arrête (revue E11-04).
+func set_paused(paused: bool, now_s: float) -> void:
+	_model.set_paused(paused, now_s)
 
 
 ## Message `gp_hit` du core ; vrai s'il est nouveau (onomatopée posée).
@@ -82,9 +104,10 @@ func on_event(msg: Dictionary, now_s: float) -> bool:
 ## sol, ou null), heading (rad), fx}] du cycliste et des bots ; `camera` : pour le préchauffage.
 func step(gp, riders: Array, now_s: float, camera: Camera3D) -> void:
 	_active = gp is Dictionary and _route != null
-	visible = _active
 	if not _active:
+		_hide()
 		return
+	visible = true
 	if _warm_left < 0:
 		_warm_left = WARM_FRAMES
 	_step_boxes(gp, now_s)

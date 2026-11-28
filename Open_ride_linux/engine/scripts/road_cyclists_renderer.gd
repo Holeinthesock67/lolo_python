@@ -33,6 +33,7 @@ const AvatarModel := preload("res://scripts/avatar_model.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const DrawnBudget := preload("res://scripts/drawn_budget.gd")
 
 const MAX_CYCLISTS := 16
 const SPARE_PER_VARIANT := 3
@@ -189,29 +190,70 @@ func _ensure_level(root: Node3D, n: int) -> AvatarView:
 
 
 ## Préchauffage (après la route, au chargement) : niveaux du préréglage des VARIANTS apparences construits
-## (dans les fils de travail, attendus ici), une racine de réserve par apparence, et sans `camera` rien de
-## plus ; avec `camera`, ces racines minuscules devant elle pendant WARM_FRAMES images. Retourne le nombre
-## d'avatars prêts.
+## (dans les fils de travail), une racine de réserve par apparence, et sans `camera` rien de plus ; avec `camera`,
+## ces racines minuscules devant elle pendant WARM_FRAMES images. Le plan unique du chargement (main.gd,
+## warmup_plan.gd) joue ces temps un par image avec `warm_steps` ; `warm_up` les enchaîne dans l'appel (tests),
+## en attendant les fils de travail. Retourne le nombre d'avatars prêts.
 func warm_up(camera: Node3D = null) -> int:
 	var t0 := Time.get_ticks_usec()
-	var levels := _levels()
-	for v in range(RoadCyclistLook.VARIANTS):
-		for n in levels:
-			AvatarView.request_parts(n, RoadCyclistLook.settings_for(v), RoadCyclistLook.looks_for(v))
+	warm_request()
 	AvatarView.wait_parts()
 	var count := 0
 	for v in range(RoadCyclistLook.VARIANTS):
-		if (_spare.get(v, []) as Array).is_empty():
-			_release(_new_root(v))
-		for root in _spare[v]:
-			for n in levels:
-				_ensure_level(root, n)
-				count += 1
+		count += warm_variant(v)
+	warm_show(camera)
+	PerfProbe.mark_since("cyclistes", "préchauffage", t0)
+	return count
+
+
+## Lot AC4 (fil « à-coups de main », 21-22/11) : les mêmes temps pour le plan unique, un par image. Avant, une seule
+## étape demandait les maillages puis les attendait sur le fil principal : 0,5 à 1 s figées au chargement de chaque
+## parcours (départ du Cyber-Rogue 532-571 ms, Grand Prix 860-996 ms aux bancs de la nuit). Ici l'attente est une
+## étape d'attente (warmup_plan.ATTENTE) qui repasse chaque image tant que les fils de travail n'ont pas fini.
+## Retourne [[nom, Callable] ou [nom, Callable, "attente"], …].
+func warm_steps(camera: Node3D) -> Array:
+	var steps: Array = [["cyclistes demande", func(): warm_request()],
+		["cyclistes attente", func(): return warm_parts_ready(), "attente"]]
+	for v in range(RoadCyclistLook.VARIANTS):
+		steps.append(["cyclistes apparence %d" % v, func(): warm_variant(v)])
+	steps.append(["cyclistes affichage", func(): warm_show(camera)])
+	return steps
+
+
+## Maillages de toutes les apparences et de tous les niveaux du préréglage demandés aux fils de travail, sans attendre.
+func warm_request() -> void:
+	for v in range(RoadCyclistLook.VARIANTS):
+		for n in _levels():
+			AvatarView.request_parts(n, RoadCyclistLook.settings_for(v), RoadCyclistLook.looks_for(v))
+
+
+## Vrai quand les maillages demandés par warm_request sont prêts.
+func warm_parts_ready() -> bool:
+	for v in range(RoadCyclistLook.VARIANTS):
+		for n in _levels():
+			if not AvatarView.parts_ready(n, RoadCyclistLook.settings_for(v), RoadCyclistLook.looks_for(v)):
+				return false
+	return true
+
+
+## Racine de réserve de l'apparence `v` (créée s'il n'y en a pas) et ses niveaux du préréglage construits ; renvoie
+## le nombre de niveaux construits ou déjà là.
+func warm_variant(v: int) -> int:
+	if (_spare.get(v, []) as Array).is_empty():
+		_release(_new_root(v))
+	var count := 0
+	for root in _spare[v]:
+		for n in _levels():
+			_ensure_level(root, n)
+			count += 1
+	return count
+
+
+## Racines de réserve minuscules devant `camera` pendant WARM_FRAMES images (rien sans caméra).
+func warm_show(camera: Node3D) -> void:
 	_warm_cam = camera
 	_warm_left = WARM_FRAMES if camera != null else 0
 	_place_warm()
-	PerfProbe.mark_since("cyclistes", "préchauffage", t0)
-	return count
 
 
 ## Racines de réserve devant la caméra, tous niveaux visibles (préchauffage), ou rangées et cachées à la fin.
@@ -284,16 +326,9 @@ func _distance(pos: Vector3, s: float, cam_s: float) -> float:
 
 ## Lot AS11 : cyclistes dessinés. Le core fait rouler tous les cyclistes du décor (`core_full`) ; le préréglage ne
 ## règle plus que le nombre dessiné (`budget` du modèle) : les plus proches de la caméra, dans l'ordre du modèle.
+## Revue E6-03 : ceux à moins de DrawnBudget.ALWAYS_DRAWN_M de la caméra sont toujours dessinés (drawn_budget.gd).
 static func drawn_riders(m, cam_s: float) -> Array:
-	var all: Array = m.riders()
-	if m.get("core_full") != true or all.size() <= int(m.budget) or is_nan(cam_s):
-		return all
-	var by_dist := all.duplicate()
-	by_dist.sort_custom(func(a, b): return absf(float(a["s"]) - cam_s) < absf(float(b["s"]) - cam_s))
-	var keep := {}
-	for r in by_dist.slice(0, int(m.budget)):
-		keep[r["id"]] = true
-	return all.filter(func(r): return keep.has(r["id"]))
+	return DrawnBudget.keep(m.riders(), m.get("core_full") == true, int(m.budget), cam_s)
 
 
 func update(dt_s: float, paused: bool = false, cam_s: float = NAN) -> void:

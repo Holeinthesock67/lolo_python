@@ -15,6 +15,10 @@ texture_level = "low"  # choisi au menu avant le lot NI2
 
 [rider]
 ftp_w = 250
+
+[bots]
+level_pct = 50         # choisi au menu avant le lot NI3
+objective = "endurance"
 """
 
 
@@ -50,13 +54,15 @@ def test_retired_draft_gauge_lot_ni1(tmp_path: Path):
 def test_migration_comments_the_retired_lines_once_and_keeps_the_rest(tmp_path: Path):
     home = _home(tmp_path)
     done = migration_reglages.migrate(home, date(2026, 11, 21))
-    assert len(done) == 2 and "render.texture_level" in done[0]
+    assert len(done) == 2 and "render.texture_level" in done[0] and "bots.level_pct" in done[0]
     text = (home / "config.toml").read_text(encoding="utf-8")
     assert '# texture_level = "low"  # choisi au menu avant le lot NI2   # réglage retiré du menu (lot NI2)' in text
     assert "le 21/11/2026" in text and 'quality = "medium"     # préréglage' in text and "# ma configuration" in text
     assert (home / "config.toml.bak").read_text(encoding="utf-8") == CONFIG
     cfg = config_mod.load(home / "config.toml", None)
     assert cfg.render.texture_level == "auto" and cfg.render.quality == "medium" and cfg.rider.ftp_w == 250
+    # Lot NI3 : niveau des bots remis à 100 %, l'objectif (Intensité du jour) gardé
+    assert '# level_pct = 50' in text and cfg.bots.level_pct == 100 and cfg.bots.objective == "endurance"
     profil = (home / "Profils" / "principal" / "profil.toml").read_text(encoding="utf-8")
     assert '# texture_level = "high"' in profil and 'nom = "Essai"' in profil
     assert not (home / "Profils" / "second" / "profil.toml.bak").exists()   # rien à changer : pas de copie
@@ -70,3 +76,17 @@ def test_launcher_runs_the_migration(tmp_path: Path, capsys):
     assert len(launcher.migrate_settings(home)) == 2
     assert "retiré du menu" in capsys.readouterr().out
     assert launcher.migrate_settings(tmp_path / "absent") == []
+
+
+def test_lot_ni4_living_off_is_put_back_on(tmp_path: Path):
+    """Lot NI4 (R10) : « Décor vivant : non » retiré du menu ; un `living = false` choisi avant est mis en
+    commentaire, le décor vivant repart (son coût suit la Qualité graphique)."""
+    home = tmp_path / "OpenRide"
+    home.mkdir()
+    (home / "config.toml").write_text('[render]\nquality = "low"\nliving = false\n', encoding="utf-8")
+    done = migration_reglages.migrate(home, date(2026, 11, 21))
+    assert len(done) == 1 and "render.living" in done[0]
+    text = (home / "config.toml").read_text(encoding="utf-8")
+    assert "# living = false   # réglage retiré du menu (lot NI4)" in text
+    cfg = config_mod.load(home / "config.toml", None)
+    assert cfg.render.living is True and cfg.render.quality == "low"

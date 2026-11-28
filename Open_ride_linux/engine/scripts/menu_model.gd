@@ -25,8 +25,9 @@ extends RefCounted
 ##
 ## Accueil (menu principal, demande du 26 octobre) : « Parcours : … » (choix du parcours, retour à
 ## l'accueil), « Session libre » (SIM, sans entraînement), « Session ERG » (choix de l'entraînement),
-## « Session simulée » (OpenRide relancé sans matériel ; en session simulée : « Revenir au matériel
-## réel »), « Réglages », « Quitter ». Sans monde choisi, les sessions passent d'abord par les parcours.
+## « Réglages », « Quitter ». « Session simulée » (OpenRide relancé sans matériel ; en session simulée :
+## « Revenir au matériel réel ») est un outil d'essai : sortie de l'accueil au lot NI4, elle est dans
+## « Réglages › Appareils » (pairing_view_model.gd, menu_flow.gd). Sans monde choisi, les sessions passent d'abord par les parcours.
 ## « Session ERG » ouvre la liste des entraînements, qui finit par « Créer un entraînement » (lot N16,
 ## traité par menu_flow.gd ; « Importer un fichier » retiré le 12 novembre, révision 1.15).
 ## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
@@ -39,15 +40,14 @@ extends RefCounted
 ## libre l'annule. La liste des parcours finit par le tri et le filtre par étiquette (SORT_ROUTES_ID,
 ## FILTER_ROUTES_ID), traités par menu_flow.gd.
 ##
-## Bots (lots O7 et O35) : l'écran Prêt gagne « Bot 1 : … » (A long change : aucun, 200, 250, 300 W, 90,
-## 100, 110 % de la FTP, profils) et « Fantôme de la dernière séance : non/oui » ; `start` les transmet dans
-## l'argument `bots` (contrat 1.3) quand l'un d'eux est choisi, sinon n'envoie rien. Jusqu'à MAX_BOTS bots
-## (lot O35, la limite du core) : la ligne « Bot n+1 : aucun » n'apparaît que quand « Bot n » est choisi ;
-## remettre un bot à « aucun » le retire et remonte les suivants. Un nouvel accueil les remet à zéro.
+## Bots (lot O7) : l'écran Prêt gagne « Fantôme de la dernière séance : non/oui » ; `start` le transmet dans
+## l'argument `bots` (contrat 1.3) quand il est choisi, sinon n'envoie rien.
 ## Peloton (lot PL1, 3.0) : sous le fantôme, « Peloton : aucun » (A long : 4, 8, 11 bots) ajoute des bots à profil
-## (rouleur, grimpeur, sprinteur, diesel, en cycle) au niveau des bots du réglage `bots.level_pct` (élément
-## `{kind: "profile", profile}` sans `level_pct`), après les bots choisis un par un, sans dépasser
-## MAX_RIDER_BOTS bots en tout (la limite du core).
+## (rouleur, grimpeur, sprinteur, diesel, en cycle ; élément `{kind: "profile", profile}` sans `level_pct`),
+## réglés par la ligne « Intensité du jour » et la cote, au plus MAX_RIDER_BOTS bots (la limite du core).
+## Lot NI3 (un seul réglage de difficulté) : les lignes « Bot 1 » à « Bot 4 » (19 choix : watts fixes, % de la FTP,
+## profils à 90, 100 et 110 %, lots O35, T12 et T13) sont retirées ; le peloton les remplace. Les bots de la ligne
+## de commande (`--bot 200`) restent ceux du core.
 ## Records (série T, lot T10) : l'écran Prêt finit par « Records du parcours », qui renvoie une action
 ## « item » de l'écran Prêt (écrans des records ouverts par menu_flow.gd).
 ##
@@ -120,26 +120,14 @@ const GP_HELP_ID := "_gp_help"
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 ## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
-## « Saisir du QWKcode (clavier) » ouvre la saisie du QWKcode de GoldenCheetah (qwk_editor.gd, lot O21).
-const QWK_WORKOUT_ID := "_qwk"
+## Saisie du QWKcode au clavier (lot O21) retirée au lot NI4 : « Créer un entraînement » couvre le besoin, et un
+## fichier .qwk posé dans ~/OpenRide/Workouts/ reste lu par le core.
 const HELP_WORKOUT_ID := "_help"
-## Lignes « Bot n » de l'écran Prêt, fantôme en plus (lot O35).
-const MAX_BOTS := 4
-## Bots en tout, peloton compris, fantôme en plus (lot PL1) : MAX_CONSTANT_BOTS du core (bots.py).
+## Bots du peloton, fantôme en plus (lot PL1) : MAX_CONSTANT_BOTS du core (bots.py).
 const MAX_RIDER_BOTS := 11
 ## Tailles du peloton (lot PL1), dans l'ordre du cycle, et profils de ses bots, en cycle.
 const PELOTON_CHOICES := [0, 4, 8, 11]
 const PELOTON_PROFILES := ["rouleur", "climber", "sprinter", "diesel"]
-## Bots de l'écran Prêt (lots O7 et O35), dans l'ordre du cycle : libellé et élément de l'argument `bots` de `start`.
-## Bots à profil (lots T12 et T13) : chaque profil à 90, 100 et 110 % de ta FTP, calibré par le core.
-const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 200}],
-	["250 W", {"kind": "constant", "power_w": 250}], ["300 W", {"kind": "constant", "power_w": 300}],
-	["90 % de la FTP", {"kind": "constant", "ftp_pct": 90}], ["100 % de la FTP", {"kind": "constant", "ftp_pct": 100}],
-	["110 % de la FTP", {"kind": "constant", "ftp_pct": 110}],
-	["Grimpeur 90 %", {"kind": "profile", "profile": "climber", "level_pct": 90}], ["Grimpeur 100 %", {"kind": "profile", "profile": "climber", "level_pct": 100}], ["Grimpeur 110 %", {"kind": "profile", "profile": "climber", "level_pct": 110}],
-	["Rouleur 90 %", {"kind": "profile", "profile": "rouleur", "level_pct": 90}], ["Rouleur 100 %", {"kind": "profile", "profile": "rouleur", "level_pct": 100}], ["Rouleur 110 %", {"kind": "profile", "profile": "rouleur", "level_pct": 110}],
-	["Sprinteur 90 %", {"kind": "profile", "profile": "sprinter", "level_pct": 90}], ["Sprinteur 100 %", {"kind": "profile", "profile": "sprinter", "level_pct": 100}], ["Sprinteur 110 %", {"kind": "profile", "profile": "sprinter", "level_pct": 110}],
-	["Diesel 90 %", {"kind": "profile", "profile": "diesel", "level_pct": 90}], ["Diesel 100 %", {"kind": "profile", "profile": "diesel", "level_pct": 100}], ["Diesel 110 %", {"kind": "profile", "profile": "diesel", "level_pct": 110}]]
 ## Fin de la liste des parcours (bibliothèque, lot O12) : tri et filtre par étiquette, en cycle.
 const SORT_ROUTES_ID := "_sort"
 const FILTER_ROUTES_ID := "_filter"
@@ -206,7 +194,8 @@ var _pending_route := ""
 var track_events: Dictionary = {}
 var track_event := "free"
 var track_values: Dictionary = {}
-## Engine lancé en session simulée (--sim-session) : l'accueil propose de revenir au matériel réel.
+## Engine lancé en session simulée (--sim-session) : le titre de l'accueil le dit, et « Réglages › Appareils »
+## propose de revenir au matériel réel (lot NI4).
 var sim_session := false
 var _routes_return := HOME
 ## Modes annoncés par le core (set_modes) ; les modes inconnus de HOME_MODES sont ignorés.
@@ -227,9 +216,7 @@ var collection_detail := ""
 ## Séance préparée par prepare_start() : nom affiché sur l'écran Prêt et arguments de `start` ({} sinon).
 var start_name := ""
 var start_args: Dictionary = {}
-## Bots choisis (index de BOT_CHOICES, jamais 0, au plus MAX_BOTS, dans l'ordre des lignes) et fantôme
-## demandé, pour la séance préparée (lots O7 et O35).
-var bot_choices: Array[int] = []
+## Fantôme demandé pour la séance préparée (lot O7).
 var ghost := false
 ## Taille du peloton choisie (une valeur de PELOTON_CHOICES, lot PL1) ; celle de la dernière séance.
 var peloton := 0
@@ -238,8 +225,7 @@ var last_peloton := 0
 ## l'ouverture de la pause (envoyés par `set_bots` avant `resume`).
 var _pause_rows: Array = []
 var pause_bots_changed := false
-## Derniers choix du profil (lot O32) : bots et fantôme remis par reset(), entraînement mis sous le focus.
-var last_bots: Array[int] = []
+## Derniers choix du profil (lot O32) : peloton et fantôme remis par reset(), entraînement mis sous le focus.
 var last_ghost := false
 var last_workout := ""
 ## Cyber-Rogue (lot R13) : rappel des choix affiché sur l'écran Prêt quand `mode` vaut « rogue ».
@@ -266,6 +252,18 @@ var league_detail := ""
 var league_ready: Dictionary = {"enabled": true, "detail": ""}
 ## Mode de course de la manche (lot CH4c : race, survivor, grandprix ou track), envoyé dans `start.mode`.
 var league_mode := "race"
+## Objectif de la semaine (lot OS1) : ligne de l'accueil sous la ligue (« Semaine : 1 séance sur 2 », détail
+## « il reste 4 jours » ou « objectif atteint ») ; "" : pas de ligne. Elle ouvre l'Historique.
+var week_label := ""
+var week_detail := ""
+
+
+func set_week_home(label: String, detail: String) -> void:
+	if label == week_label and detail == week_detail:
+		return
+	week_label = label
+	week_detail = detail
+	_refresh_home()
 
 
 func set_league_home(shown: bool, detail: String) -> void:
@@ -351,6 +349,8 @@ func _refresh_home() -> void:
 func _build_home_and_ready() -> void:
 	var world := free_world_name if free_world_name != "" else "à choisir"   # dernier parcours libre (lot GP13)
 	var items := [_item("world", "Parcours : " + world)]
+	if week_label != "":
+		items.push_front(_item("week", week_label, true, week_detail))
 	if league_shown:
 		items.push_front(_item("league", "Ligue d'hiver", true, league_detail))
 	if coach_detail != "":
@@ -365,8 +365,7 @@ func _build_home_and_ready() -> void:
 			items.append(_item(m, HOME_MODES[m], true, str(HOME_DETAILS.get(m, ""))))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
 		_item("history", "Historique", true, "séances, semaines, tests de FTP"),
-		_item("collection", "Collection", true, collection_detail),
-		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
+		_item("collection", "Collection", true, collection_detail)])
 	if garage:
 		items.append(_item("garage", "Garage"))
 	items.append_array([_item("settings", "Réglages"), _item("quit", "Quitter")])
@@ -405,14 +404,13 @@ func _build_home_and_ready() -> void:
 		return
 	if mode == "wtf":
 		_screens[READY]["items"] = [_item("start", "Démarrer")] + _intensity_items() + [_item("wtf_rules", "Changer les règles"),
-			_item("change_route", "Changer de parcours")] + _bot_items() \
-			+ [_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")), _peloton_item()]
+			_item("change_route", "Changer de parcours"),
+			_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")), _peloton_item()]
 		_screens[READY]["title"] = "Prêt : mode WTF" + ("" if world_name == "" else " — " + world_name)
 		return
 	_screens[READY]["items"] = [_item("start", "Démarrer")] + _intensity_items() + [
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
 		_item("change_route", "Changer de parcours"),
-	] + _bot_items() + [
 		_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")),
 		_peloton_item(),
 		_item("records", "Records du parcours")]
@@ -678,7 +676,6 @@ func prepare_coach_race(name: String, args: Dictionary, ready_text: String) -> D
 	coach_ready = ready_text
 	mode = "coach"
 	route_mode = ""
-	bot_choices = []
 	peloton = 0
 	ghost = false
 	_refresh_home()
@@ -788,11 +785,9 @@ func _start_args() -> Dictionary:
 	return out
 
 
-## Liste `bots` des lignes « Bot n », du peloton et du fantôme (argument de `start` et de `set_bots`).
+## Liste `bots` du peloton et du fantôme (argument de `start` et de `set_bots`).
 func _bots_list() -> Array:
 	var bots: Array = []
-	for c in bot_choices:
-		bots.append(BOT_CHOICES[c][1].duplicate())
 	for i in range(peloton_size()):
 		bots.append({"kind": "profile", "profile": PELOTON_PROFILES[i % PELOTON_PROFILES.size()]})
 	if ghost:
@@ -806,8 +801,7 @@ func _bots_list() -> Array:
 ## puissance ou cadence cible (set_ride_mode). `rows` : rangées de SettingsViewModel.row() (valeur,
 ## curseur, mode édition en place) ; leur `id` est renvoyé par une action « item » de l'écran de pause.
 ## Le focus reste sur la même ligne quand la liste change.
-## Lot N18 : puis, en séance libre, ERG ou WTF, les lignes des bots de l'écran Prêt (« Bot 1 » à « Bot n »,
-## fantôme, peloton), modifiées de la même façon (A) et appliquées à la reprise.
+## Lot N18 : puis, en séance libre, ERG ou WTF, les lignes des bots de l'écran Prêt (fantôme, peloton), modifiées de la même façon (A) et appliquées à la reprise.
 func set_pause_rows(rows: Array) -> void:
 	_pause_rows = rows.duplicate()
 	_refresh_pause()
@@ -831,7 +825,6 @@ func _refresh_pause() -> void:
 		it["editing"] = bool(row.get("editing", false))
 		items.append(it)
 	if pause_bots_shown():
-		items.append_array(_bot_items())
 		items.append_array([_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")),
 			_peloton_item()])
 	var focused_id := ""
@@ -842,13 +835,13 @@ func _refresh_pause() -> void:
 		_focus = _first_enabled_from(_index_of(focused_id), 1)
 
 
-## Derniers choix du profil (`hello_ack.config.last_choices`, lot O32 ; null ou absent : aucun). Un bot
-## inconnu de BOT_CHOICES (ligne de commande, ancienne liste) est sauté ; MAX_BOTS bots au plus (lot O35).
+## Derniers choix du profil (`hello_ack.config.last_choices`, lot O32 ; null ou absent : aucun). Seuls le
+## fantôme et les bots du peloton sont repris ; un autre bot (ligne de commande, lignes « Bot n » retirées au
+## lot NI3) est sauté.
 func set_last_choices(choices) -> void:
 	var c: Dictionary = choices if choices is Dictionary else {}
 	last_workout = str(c["workout_id"]) if c.get("workout_id") is String else ""
 	last_mode_routes = c["mode_routes"].duplicate() if c.get("mode_routes") is Dictionary else {}   # lot GP13
-	last_bots = []
 	last_ghost = false
 	var in_peloton := 0
 	var bots = c.get("bots", [])
@@ -857,44 +850,23 @@ func set_last_choices(choices) -> void:
 			last_ghost = true
 		elif b is Dictionary and _is_peloton_bot(b):
 			in_peloton += 1
-		elif b is Dictionary and last_bots.size() < MAX_BOTS and bot_index(b) > 0:
-			last_bots.append(bot_index(b))
 	last_peloton = 0
-	for n in PELOTON_CHOICES:   # la plus petite taille qui donne ce nombre de bots (11 coupé à 7 après 4 bots)
-		if last_peloton == 0 and in_peloton > 0 and mini(int(n), MAX_RIDER_BOTS - last_bots.size()) >= in_peloton:
+	for n in PELOTON_CHOICES:   # la plus petite taille qui donne ce nombre de bots (7 d'un ancien choix : 8)
+		if last_peloton == 0 and in_peloton > 0 and int(n) >= in_peloton:
 			last_peloton = int(n)
-	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
 	_refresh_home()
 
 
-## Index de BOT_CHOICES d'un élément de `bots` (nombres du JSON comparés en valeur), 0 s'il est inconnu.
-static func bot_index(bot: Dictionary) -> int:
-	for i in range(1, BOT_CHOICES.size()):
-		var ref: Dictionary = BOT_CHOICES[i][1]
-		if ref.size() != bot.size():
-			continue
-		var same := true
-		for k in ref:
-			var v = bot.get(k)
-			if ref[k] is String:
-				same = same and v is String and v == ref[k]
-			else:
-				same = same and (v is int or v is float) and is_equal_approx(float(v), float(ref[k]))
-		if same:
-			return i
-	return 0
-
-
-## Bot du peloton (lot PL1) : bot à profil sans `level_pct` (les bots choisis un par un en ont toujours un).
+## Bot du peloton (lot PL1) : bot à profil sans `level_pct` (les anciennes lignes « Bot n » en avaient toujours un).
 static func _is_peloton_bot(b: Dictionary) -> bool:
 	return str(b.get("kind", "")) == "profile" and not b.has("level_pct") and PELOTON_PROFILES.has(str(b.get("profile", "")))
 
 
-## Bots du peloton envoyés à `start` : la taille choisie, sans dépasser MAX_RIDER_BOTS avec les bots choisis un par un.
+## Bots du peloton envoyés à `start` : la taille choisie, au plus MAX_RIDER_BOTS.
 func peloton_size() -> int:
-	return clampi(peloton, 0, maxi(MAX_RIDER_BOTS - bot_choices.size(), 0))
+	return clampi(peloton, 0, MAX_RIDER_BOTS)
 
 
 ## Ligne « Peloton : … » de l'écran Prêt (lot PL1).
@@ -904,41 +876,15 @@ func _peloton_item() -> Dictionary:
 	return _item("peloton", label, true, "" if n == 0 else "rouleurs, grimpeurs, sprinteurs, diesels")
 
 
-## A long sur « Bot n » (lot O35) : choix suivant de BOT_CHOICES ; « aucun » retire le bot, les suivants
-## remontent d'une ligne. La ligne vide (après le dernier bot) en ajoute un.
-## Lignes « Bot 1 » à « Bot n+1 » de l'écran Prêt (lot O35, séance libre, ERG et mode WTF) : une ligne vide
-## sous le dernier bot choisi, au plus MAX_BOTS.
-func _bot_items() -> Array:
-	var out: Array = []
-	for i in range(mini(bot_choices.size() + 1, MAX_BOTS)):
-		var label: String = BOT_CHOICES[bot_choices[i]][0] if i < bot_choices.size() else BOT_CHOICES[0][0]
-		out.append(_item("bot%d" % (i + 1), "Bot %d : %s" % [i + 1, label]))
-	return out
-
-
 ## Reprise depuis la pause (Reprendre ou Y) ; lot N18 : bots changés envoyés par `set_bots` avant `resume`,
 ## et gardés comme derniers choix (le core les note aussi).
 func _resume_action() -> Dictionary:
 	if not pause_bots_changed:
 		return {"action": "resume"}
 	pause_bots_changed = false
-	last_bots = bot_choices.duplicate()
 	last_ghost = ghost
 	last_peloton = peloton
 	return {"action": "resume", "bots": _bots_list()}
-
-
-func _cycle_bot(i: int) -> void:
-	var next := (bot_choices[i] if i < bot_choices.size() else 0) + 1
-	next %= BOT_CHOICES.size()
-	if i >= bot_choices.size():
-		bot_choices.append(next)
-	elif next == 0:
-		bot_choices.remove_at(i)
-	else:
-		bot_choices[i] = next
-	_refresh_home()
-	_refresh_pause()
 
 
 func set_sim_session(on: bool) -> void:
@@ -956,23 +902,23 @@ func reset() -> void:
 	_focus_stack.clear()
 	_pending = {}
 	_clear_start()
-	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
-	if mode in ["rogue", "wtf", "coach", "league"] or mode in SETTINGS_MODES:
-		mode = "free"
+	mode = "free"   # le même accueil après tous les modes (20 novembre : plus de liste de modes à part)
 	route_mode = ""
 	_refresh_home()
 	_open(HOME, false)
 
 
-## « Rejouer » de la fin de séance : même parcours, même mode et mêmes choix (bots, fantôme, épreuve, réglages
-## du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours : l'accueil.
+## « Rejouer » d'une séance lancée par `start` : même parcours, même mode et mêmes choix (bots, fantôme, épreuve,
+## réglages du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours :
+## l'accueil. La séance du jour d'un plan est rejouée comme entraînement (le core l'a gardé choisi) : `plan_day`
+## demanderait la séance du jour suivante. Cyber-Rogue et monde ouvert : menu_flow.gd (`last_launch`).
 func replay() -> void:
 	_stack.clear()
 	_focus_stack.clear()
 	_pending = {}
-	bot_choices = last_bots.duplicate()
+	start_args.erase("plan_day")
 	ghost = last_ghost
 	peloton = last_peloton
 	_refresh_home()
@@ -1004,7 +950,6 @@ func set_items(screen_id: String, items: Array) -> void:
 		if clean.size() == 1:
 			clean.append(_item("empty", "Aucun entraînement", false))
 		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
-		clean.append(_item(QWK_WORKOUT_ID, "Saisir du QWKcode (clavier)"))
 		clean.append(_item(HELP_WORKOUT_ID, "Comment ça marche ?"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
@@ -1278,16 +1223,11 @@ func _validate() -> Dictionary:
 					_open(WORKOUTS)
 				"open_world":
 					return {"action": "open_world_menu"}
-				"sim":
-					if sim_session:
-						_confirm("Revenir au matériel réel ? OpenRide redémarre", {"action": "relaunch"})
-					else:
-						_confirm("Session simulée ? OpenRide redémarre sans matériel", {"action": "relaunch_sim"})
 				"settings":
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "race", "track", "interrupted", "coach", "league":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "race", "track", "interrupted", "coach", "league", "week":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -1303,22 +1243,19 @@ func _validate() -> Dictionary:
 				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
-			if id in [CREATE_WORKOUT_ID, QWK_WORKOUT_ID, HELP_WORKOUT_ID]:
+			if id in [CREATE_WORKOUT_ID, HELP_WORKOUT_ID]:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
 			return choose_workout(null if id == NO_WORKOUT_ID else id)
 		READY:
 			match id:
 				"start":
 					if not (mode in ["rogue", "coach", "league"] or mode in SETTINGS_MODES):   # bots de la séance notés aussi par le core (lot O32)
-						last_bots = bot_choices.duplicate()
 						last_ghost = ghost
 						last_peloton = peloton
 					var args := _start_args()
 					if args.is_empty():
 						return {"action": "start"}
 					return {"action": "start", "args": args}
-				"bot1", "bot2", "bot3", "bot4":
-					_cycle_bot(int(id.substr(3)) - 1)
 				TRACK_EVENT_ID:
 					return _cycle_track_event()
 				"ghost":
@@ -1355,10 +1292,6 @@ func _validate() -> Dictionary:
 			match id:
 				"resume":
 					return _resume_action()
-				"bot1", "bot2", "bot3", "bot4":
-					if pause_bots_shown():
-						_cycle_bot(int(id.substr(3)) - 1)
-						pause_bots_changed = true
 				"ghost":
 					if pause_bots_shown():
 						ghost = not ghost

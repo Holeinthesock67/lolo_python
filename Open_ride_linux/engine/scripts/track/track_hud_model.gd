@@ -21,6 +21,7 @@ extends RefCounted
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const TrackNames := preload("res://scripts/track/track_names.gd")
+const BotReserve := preload("res://scripts/bot_reserve.gd")   # jauge W′ des bots (lot RW)
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 
 const ME := "me"
@@ -53,6 +54,7 @@ var _m_out := {}                 # coureurs déjà annoncés sortis (moments)
 var _m_last := false             # cycliste dernier à la trame précédente (moments)
 var _m_me_out := false           # cycliste déjà annoncé éliminé (moments)
 var _m_seen := false             # première trame vue : les sortis d'avant ne sont pas annoncés
+var _m_sub := -1                 # sous-épreuve de l'omnium à la trame précédente (moments, revue E11-02)
 
 
 func reset() -> void:
@@ -67,14 +69,17 @@ func reset() -> void:
 	_m_last = false
 	_m_me_out = false
 	_m_seen = false
+	_m_sub = -1
 
 
 func remember_names(bots) -> void:
 	if not bots is Array:
 		return
 	for b in bots:
-		if b is Dictionary and str(b.get("id", "")) != "":
-			names[str(b["id"])] = str(b.get("name", b["id"]))
+		# trame allégée du core (au-delà de 5 bots, les bots loin n'ont `name` qu'une trame sur N) : le nom
+		# n'est mémorisé que s'il est envoyé, comme au Dernier survivant et au Grand Prix (revue E11-01)
+		if b is Dictionary and str(b.get("id", "")) != "" and b.has("name"):
+			names[str(b["id"])] = str(b["name"])
 
 
 func name_of(id: String) -> String:
@@ -97,7 +102,7 @@ func view(state) -> Dictionary:
 	var shown := ev
 	if ev == "omnium":
 		shown = str(tr.get("sub", "scratch"))
-	var out := {"visible": true, "event": ev, "banner": banner(tr), "laps": laps_block(tr), "list": list_block(tr),
+	var out := {"visible": true, "event": ev, "banner": banner(tr), "laps": laps_block(tr), "list": list_block(tr, state.get("bots", null)),
 		"pursuit": {}, "chrono": {}, "pacer": {}, "gaps": gaps_block(tr)}
 	if ev in ["pursuit", "team_pursuit", "team_sprint"]:
 		out["pursuit"] = pursuit_block(tr)
@@ -155,6 +160,13 @@ func moments(state) -> Array:
 	var finished := bool(tr.get("finished", false))
 	var out_ids: Array = tr.get("eliminated", []) if tr.get("eliminated") is Array else []
 	var ranking: Array = tr.get("ranking", []) if tr.get("ranking") is Array else []
+	# omnium : chaque sous-épreuve a ses sortis ; une élimination n'y finit pas la course (revue E11-02)
+	if ev == "omnium":
+		var sub_i := int(tr.get("sub_index", 1))
+		if _m_sub != -1 and sub_i != _m_sub:
+			_m_out.clear()
+			_m_last = false
+		_m_sub = sub_i
 	for id in out_ids:
 		var rid := str(id)
 		if _m_out.has(rid):
@@ -162,7 +174,17 @@ func moments(state) -> Array:
 		_m_out[rid] = true
 		if not _m_seen:
 			continue
-		if rid == ME or rid == HOME:
+		if (rid == ME or rid == HOME) and ev == "omnium":
+			# moment passager : pas de consigne de fin, l'omnium continue ; place dans l'élimination
+			# (coureurs encore en course + 1), pas au classement général
+			var alive_o = tr.get("alive", null)
+			var of_o := ranking.size()
+			var pl_o := ("%s sur %d" % [place_text(int(alive_o) + 1), of_o]) if alive_o != null and of_o > 0 else ""
+			var nxt := int(tr.get("sub_index", 1)) < int(tr.get("subs", 4))
+			out.append({"family": "attention", "title": ("Éliminé · " + pl_o) if pl_o != "" else "Éliminé de l'épreuve",
+				"sub": "L'omnium continue à l'épreuve suivante" if nxt else "Fin de l'épreuve pour toi",
+				"sound": "jingle_elim"})
+		elif rid == ME or rid == HOME:
 			_m_me_out = true
 			var place := ranking.find(rid) + 1
 			var of := ranking.size()
@@ -385,6 +407,11 @@ func laps_block(tr: Dictionary) -> Dictionary:
 		return {"label": "TOURS", "value": str(int(lap) - 1 if lap != null else 0),
 			"extra": ("meilleur %s s" % fr2(float(best))) if best != null else "", "bar": -1.0}
 	var shown := str(tr.get("sub", ev)) if ev == "omnium" else ev
+	if shown == "elimination" and bool(tr.get("finished", false)):   # classement figé (essai du 22 novembre)
+		var place := my_place(tr)
+		var of := (tr.get("ranking", []) as Array).size()
+		return {"label": "CLASSEMENT", "value": ("1er" if place == 1 else "%de" % place) if place > 0 else "–",
+			"extra": "sur %d" % of, "bar": -1.0}
 	if shown == "elimination":
 		var alive := int(tr.get("alive", (tr.get("ranking", []) as Array).size() - (tr.get("eliminated", []) as Array).size()))
 		var total := (tr.get("ranking", []) as Array).size()
@@ -399,8 +426,11 @@ func laps_block(tr: Dictionary) -> Dictionary:
 		"bar": clampf(float(lap) / maxf(float(laps), 1.0), 0.0, 1.0)}
 
 
-## Liste de gauche : {title, rows [{pos, name, value, kind}]} ; kind : me, ok, danger, out, team.
-func list_block(tr: Dictionary) -> Dictionary:
+## Liste de gauche : {title, rows [{pos, name, value, kind, wbal}]} ; kind : me, ok, danger, out, team ; `wbal` :
+## réserve W′ du bot de 0 à 1 d'après `bots` de la trame, −1 sans barre (cycliste, ton équipe, sorti, bot sans
+## `wbal_pct` ; lot RW, bot_reserve.gd).
+func list_block(tr: Dictionary, bots = null) -> Dictionary:
+	var reserve := BotReserve.by_id(bots)
 	var ev := str(tr.get("event", ""))
 	var shown := str(tr.get("sub", ev)) if ev == "omnium" else ev
 	var ranking: Array = tr.get("ranking", []) if tr.get("ranking") is Array else []
@@ -428,6 +458,9 @@ func list_block(tr: Dictionary) -> Dictionary:
 			if _team.has(str(id)) or str(id) == ME:
 				mine.append(id)
 		out_ids = mine     # les sortis de l'autre équipe ne sont pas dans la liste
+	if shown == "elimination" and bool(tr.get("finished", false)):   # classement final, places figées (essai du 22/11)
+		title = "CLASSEMENT FINAL"
+		out_ids = []
 	var rows: Array = []
 	var racing: Array = []
 	for id in ranking:
@@ -451,12 +484,35 @@ func list_block(tr: Dictionary) -> Dictionary:
 			value = "en tête"
 		if title == "DERRIÈRE LE DERNY" and i == 0:
 			value = "derny"
-		rows.append({"pos": "%d." % (i + 1), "name": name_of(rid), "value": value, "kind": kind})
+		rows.append({"pos": "%d." % (i + 1), "name": name_of(rid), "value": value, "kind": kind,
+			"wbal": float(reserve.get(rid, -1.0))})
 	var gone := out_ids.duplicate()
 	gone.reverse()
 	for id in gone:
-		rows.append({"pos": "", "name": name_of(str(id)), "value": "", "kind": "out"})
-	return {"title": title, "rows": rows.slice(0, MAX_LINES)}
+		rows.append({"pos": "", "name": name_of(str(id)), "value": "", "kind": "out", "wbal": -1.0})
+	return {"title": title, "rows": window_rows(rows, MAX_LINES)}
+
+
+## Au plus `n` lignes dans l'ordre (revue E11-05) : celle du cycliste (`me`) et celle du dernier menacé (`danger`)
+## sont toujours gardées, les autres places sont prises dans l'ordre de la liste (les sortis en dernier).
+static func window_rows(rows: Array, n: int) -> Array:
+	if n <= 0:
+		return []
+	if rows.size() <= n:
+		return rows
+	var keep := {}
+	for i in rows.size():
+		if str(rows[i]["kind"]) in ["me", "danger"]:
+			keep[i] = true
+	for i in rows.size():
+		if keep.size() >= n:
+			break
+		keep[i] = true
+	var out: Array = []
+	for i in rows.size():
+		if keep.has(i):
+			out.append(rows[i])
+	return out
 
 
 ## Poursuite : {gap_s, gap_text, good, me_frac, opp_frac, left} (anneau de 250 m, A en bas, B en haut).
@@ -531,11 +587,12 @@ func board_text(state) -> String:
 	if not lb.is_empty():
 		lines.append("%s %s" % [str(lb["label"]), str(lb["value"])])
 	var lst := list_block(tr)
+	var racing: Array = []
 	for r in (lst.get("rows", []) as Array):
-		if lines.size() >= BOARD_LINES:
-			break
 		if str(r["kind"]) != "out":
-			lines.append(("%s %s %s" % [str(r["pos"]), str(r["name"]).to_upper(), str(r["value"])]).strip_edges())
+			racing.append(r)
+	for r in window_rows(racing, maxi(BOARD_LINES - lines.size(), 0)):   # Toi et le dernier gardés (E11-05)
+		lines.append(("%s %s %s" % [str(r["pos"]), str(r["name"]).to_upper(), str(r["value"])]).strip_edges())
 	return "\n".join(lines)
 
 

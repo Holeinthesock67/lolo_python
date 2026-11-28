@@ -86,6 +86,7 @@ class RenderConfig:
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
+    auto_photos: str = "on"   # photos automatiques à l'arrivée et aux records, dans ~/OpenRide/Captures/ : on ou off
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des biomes de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
@@ -257,6 +258,7 @@ class RaceConfig:
 class AudioConfig:
     """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
     suite par l'engine sur ses bus audio (audio_mix.gd)."""
+    enabled: bool = True           # son coupé d'un seul choix (lot NI4), volumes gardés
     master_pct: int = 100          # volume général (bus Master)
     ride_pct: int = 100            # vélo : vent dans les oreilles, roue libre, « clac » de reprise
     ambience_pct: int = 100        # ambiance : fonds, cloches, points sonores, véhicules, foule, passants
@@ -292,11 +294,19 @@ class CoachConfig:
     temps disponible par séance, réglés au menu ; seuils des règles dans `data/coach.toml`."""
     objectif: str = "endurance"    # endurance, courses (et championnat) ou grimpeur
     temps_disponible_min: int = 60  # durée conseillée quand la règle ne fixe pas la sienne (30 à 120 min)
+    seances_semaine: int = 2        # objectif de la semaine à l'accueil, en séances (lot OS1, 0 : aucun)
 
 
 @dataclass
 class LogConfig:
     latence: bool = False   # journal de latence des appuis du Click, `[latence]` (lot X7, docs/OUTILS_DE_TEST.md)
+
+
+@dataclass
+class PrivacyConfig:
+    """Zone privée au départ (lot PZ1, audit du 22 novembre) : aucune position à moins de 500 m du départ
+    dans les FIT et le GPX du monde ouvert (`privacy_zone.py`) ; coupée par défaut."""
+    hide_start: str = "off"        # "on" ou "off"
 
 
 @dataclass
@@ -332,6 +342,7 @@ class Config:
     coach: CoachConfig = field(default_factory=CoachConfig)
     log: LogConfig = field(default_factory=LogConfig)
     profils: ProfilsConfig = field(default_factory=ProfilsConfig)
+    privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -427,6 +438,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("depart", "attente_decor_s"): (0, 600),
     ("depart", "echauffement_min"): (0, 20),
     ("coach", "temps_disponible_min"): (30, 120),
+    ("coach", "seances_semaine"): (0, 7),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -447,6 +459,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "texture_level"): ("auto", "low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
+    ("render", "auto_photos"): ("on", "off"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("render", "day_night"): ("off", "theme", "real", "accelerated"),
@@ -472,6 +485,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
     ("bots", "objective"): ("recovery", "endurance", "tempo", "threshold", "max"),   # bot_effort.OBJECTIVES
     ("bots", "elo"): ("on", "off"),   # lot BOT-elo
+    ("privacy", "hide_start"): ("on", "off"),   # lot PZ1
 }
 
 
@@ -488,7 +502,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"), ("depart", "echauffement_min"),
     ("survivor", "opponents"), ("survivor", "spacing_km"), ("survivor", "spread"), ("survivor", "after_out"),
-    ("coach", "objectif"), ("coach", "temps_disponible_min"),
+    ("coach", "objectif"), ("coach", "temps_disponible_min"), ("coach", "seances_semaine"),
     ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "chaos"),
     ("grandprix", "box_every_m"),
     ("race", "opponents"), ("race", "laps"),
@@ -496,6 +510,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),
     ("drivers", "hr"), ("drivers", "hr_address"), ("drivers", "hr_name"),
+    ("privacy", "hide_start"),
 )
 PROFILE_SECTION = "profil"   # identité du profil dans `profil.toml` (profiles.py), pas un réglage
 
@@ -534,7 +549,10 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gearing", "step_pct"): "boîte de vitesses virtuelle",
     ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
+    ("render", "living"): "décor vivant coupé pour les bancs, retiré du menu au lot NI4 (coût réglé par la qualité)",
     ("render", "texture_level"): "niveau des textures imposé pour les bancs, retiré du menu au lot NI2 (auto suit la qualité)",
+    ("bots", "level_pct"): "niveau des bots imposé pour les bancs et la séance conseillée, retiré du menu au lot NI3 "
+                           "(la ligne « Intensité » règle seule la force des bots)",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
     ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",

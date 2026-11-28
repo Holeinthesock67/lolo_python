@@ -404,6 +404,7 @@ load_guard = true    # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow pui
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
 fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU et GPU, essais) (« Afficher les images/s » dans Réglages)
+auto_photos = "on"  # photos automatiques à l'arrivée et aux records, ~/OpenRide/Captures/ : on, off (« Photos automatiques »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 biome = "auto"           # biome du décor (lot U16, « Biome du décor ») : auto (biomes du parcours) ou un des seize biomes, forcé sur tout le parcours
 texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high ; retiré du menu au lot NI2 (auto suit la Qualité graphique), une valeur écrite avant est mise en commentaire au lancement (migration_reglages.py)
@@ -476,6 +477,7 @@ after_out = "ride"           # cycliste éliminé : "ride" (continuer à rouler)
 [coach]                      # séance conseillée (série CO, lot CO3), réglable dans le menu ; suit le profil du joueur
 objectif = "endurance"       # "endurance", "courses" (et championnat) ou "grimpeur" : répartition visée sur 4 semaines
 temps_disponible_min = 60    # durée conseillée quand la règle ne fixe pas la sienne, 30 à 120 min par pas de 15
+seances_semaine = 2          # objectif de la semaine à l'accueil, en séances d'au moins 20 min (lot OS1), 0 à 7, 0 : aucun
 [grandprix]                  # mode « Grand Prix des objets » (série GP, lot GP2), réglable dans le menu
 opponents = 4                # adversaires, 2 à 4 (bots à profil)
 laps = 3                     # tours du circuit, 1 à 5 (le Grand Prix se court sur une boucle, lot GPL1)
@@ -485,6 +487,7 @@ box_every_m = 500            # écart des rangées de boîtes, 500 à 3 000 m pa
 opponents = 7                # adversaires, 2 à 11 (bots à profil)
 laps = 3                     # tours sur une boucle, 1 à 10 (en ligne : jusqu'à l'arrivée)
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
+enabled = true               # son : false coupe tout d'un seul choix, volumes gardés (lot NI4)
 master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre
 ambience_pct = 100           # ambiance : fonds, cloches, véhicules, foule, passants
@@ -493,6 +496,8 @@ rogue_sfx_pct = 70           # Cyber-Rogue : bruitages de jeu (lot R18, bus Rogu
 rogue_music_pct = 40         # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 [log]
 latence = false              # journal de latence des appuis du Click, lignes [latence] (lot X7 ; --latence)
+[privacy]
+hide_start = "off"           # zone privée au départ (lot PZ1) : "on", aucune position à moins de 500 m du départ dans les FIT et le GPX du monde ouvert ; réglable dans le menu (Avancé), suit le profil
 [profils]
 dernier = ""                 # dernier profil de joueur choisi, profil par défaut au lancement (série MJ, lot MJ7 ; écrit par le core)
 [rogue]

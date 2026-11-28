@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRidePowerCurveMessage",
+  "description": "Réponse à cmd list_power_curve (révision 1.35, série PP, lot PP3) : courbe de puissance du profil en cours (13 durées, 6 derniers mois et 6 dernières semaines), FTP estimée et sa proposition, évolution sur 6 mois ; un seul datagramme de moins de 4 096 octets.",
+  "type": "object",
+  "required": ["type", "v", "request_cmd_id", "profile_id", "ftp_set_w", "sessions", "points", "estimate",
+               "confidence", "reason", "proposal_w", "review", "delta_pct", "monthly", "warnings"],
+  "$defs": {
+    "point": {
+      "type": ["object", "null"],
+      "required": ["w", "e", "d", "r", "k"],
+      "properties": {
+        "w": {"type": "integer", "minimum": 0},
+        "e": {"enum": ["libre", "ERG", "inconnu"]},
+        "d": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "r": {"type": ["string", "null"]},
+        "k": {"type": ["string", "null"]}
+      }
+    }
+  },
+  "properties": {
+    "type": {"const": "power_curve"},
+    "v": {"type": "integer", "const": 1},
+    "request_cmd_id": {"type": "integer", "minimum": 0},
+    "profile_id": {"type": ["string", "null"]},
+    "ftp_set_w": {"type": "integer", "minimum": 0},
+    "sessions": {"type": "object", "required": ["m6", "w6"],
+                 "properties": {"m6": {"type": "integer", "minimum": 0}, "w6": {"type": "integer", "minimum": 0}}},
+    "points": {
+      "type": "array", "minItems": 13, "maxItems": 13,
+      "items": {"type": "object", "required": ["s", "m6", "w6"],
+                "properties": {"s": {"type": "integer", "minimum": 1}, "m6": {"$ref": "#/$defs/point"},
+                               "w6": {"$ref": "#/$defs/point"}}}
+    },
+    "estimate": {
+      "type": ["object", "null"],
+      "required": ["ftp_w", "source", "source_text", "date"],
+      "properties": {
+        "ftp_w": {"type": "integer", "minimum": 0},
+        "source": {"enum": ["ramp", "cp", "best20"]},
+        "source_text": {"type": "string"},
+        "date": {"type": "string"}
+      }
+    },
+    "confidence": {"enum": ["Fiable", "Indicative", "Pas assez de données"]},
+    "reason": {"type": ["string", "null"]},
+    "proposal_w": {"type": ["integer", "null"]},
+    "review": {"type": "boolean"},
+    "delta_pct": {"type": ["number", "null"]},
+    "monthly": {
+      "type": "array", "maxItems": 6,
+      "items": {"type": "object", "required": ["m", "ftp", "p5", "p20"],
+                "properties": {"m": {"type": "string", "pattern": "^\\d{4}-\\d{2}$"},
+                               "ftp": {"type": ["integer", "null"]}, "p5": {"type": ["integer", "null"]},
+                               "p20": {"type": ["integer", "null"]}}}
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "profile": {
+      "description": "Facultatif, lot PP5 (même révision 1.35) : « Se connaître ». kind : sprinteur, puncheur, grimpeur, rouleur, complet, ou null s'il manque un effort à fond (durées dans missing) ; strong et weak : durées du point fort et du point faible ; form_pct : forme du moment (6 semaines / 6 mois, médiane, %) ; aging : record des 6 mois le plus ancien s'il a plus de 120 jours ; gaps : plages de durées sans effort libre depuis 6 semaines (3 au plus).",
+      "type": "object",
+      "required": ["kind", "strong", "weak", "missing", "form_pct", "aging", "gaps"],
+      "properties": {
+        "kind": {"enum": ["sprinteur", "puncheur", "grimpeur", "rouleur", "complet", null]},
+        "strong": {"type": ["integer", "null"]},
+        "weak": {"type": ["integer", "null"]},
+        "missing": {"type": "array", "items": {"enum": [5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600]}},
+        "form_pct": {"type": ["integer", "null"], "minimum": 0},
+        "aging": {"type": ["object", "null"], "required": ["s", "age_d", "left_d"],
+                  "properties": {"s": {"enum": [5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600]}, "age_d": {"type": "integer", "minimum": 0},
+                                 "left_d": {"type": "integer", "minimum": 0}}},
+        "gaps": {"type": "array", "maxItems": 3,
+                 "items": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"enum": [5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600]}}}
+      }
+    },
+    "challenge": {
+      "description": "Facultatif, lot PP7 (même révision 1.35) : défi « bats ton record ». s : durée (point faible, sinon record vieillissant, sinon 5 min) ; target_w : record des 6 mois + 1 W ; record_w ; why : weak, aging ou default ; route_id, route_name (40 caractères au plus), climb_s : parcours prêt dont la montée principale dure au moins s à la puissance visée, null en dessous d'une minute ou sans parcours qui convient. null sans record sur la durée retenue.",
+      "type": ["object", "null"],
+      "required": ["s", "target_w", "record_w", "why", "route_id", "route_name", "climb_s"],
+      "properties": {
+        "s": {"enum": [5, 15, 30, 60, 120, 180, 300, 480, 720, 1200, 1800, 2700, 3600]},
+        "target_w": {"type": "integer", "minimum": 1},
+        "record_w": {"type": "integer", "minimum": 0},
+        "why": {"enum": ["weak", "aging", "default"]},
+        "route_id": {"type": ["string", "null"]},
+        "route_name": {"type": ["string", "null"], "maxLength": 40},
+        "climb_s": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "fitness": {
+      "description": "Facultatif, lot FO1 (révision numérotée à la fusion) : « Ma forme », condition (CTL, 42 jours) et fatigue (ATL, 7 jours) du coach en points de charge (TSS), jamais de watts. days : fenêtre en jours ; step_days : écart des points ; ctl et atl : un entier par point, le dernier est aujourd'hui ; weeks : séances comptées par semaine de 7 jours, de la plus ancienne à la plus récente ; ctl_now, atl_now, form (condition moins fatigue) ; trend : up, down ou flat sur 7 jours ; weeks_up : semaines de suite où la condition monte ; label et label_text : mot de la fraîcheur (data/coach.toml, [fitness]). null sans séance.",
+      "type": ["object", "null"],
+      "required": ["days", "step_days", "ctl", "atl", "weeks", "ctl_now", "atl_now", "form", "trend", "weeks_up", "label", "label_text"],
+      "properties": {
+        "days": {"type": "integer", "minimum": 7},
+        "step_days": {"type": "integer", "minimum": 1},
+        "ctl": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "atl": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "weeks": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "ctl_now": {"type": "number"},
+        "atl_now": {"type": "number"},
+        "form": {"type": "number"},
+        "trend": {"enum": ["up", "down", "flat"]},
+        "weeks_up": {"type": "integer", "minimum": 0},
+        "label": {"type": ["string", "null"]},
+        "label_text": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

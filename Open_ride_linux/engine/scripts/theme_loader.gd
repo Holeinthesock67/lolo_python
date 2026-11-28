@@ -342,6 +342,10 @@ static func _validate_biome(b: Variant, label: String, errors: PackedStringArray
 			errors.append(label + ".ground.slope_threshold_deg : doit être dans [0, 90]")
 		if g.has("high_line_m") and g["high_line_m"] != null and not _is_number(g["high_line_m"]):
 			errors.append(label + ".ground.high_line_m : nombre ou null")
+		if g.has("strata"):
+			_validate_look(g["strata"], STRATA_KEYS, label + ".ground.strata", errors)
+		if g.has("terraces"):
+			_validate_look(g["terraces"], TERRACES_KEYS, label + ".ground.terraces", errors)
 	elif bd.has("ground"):
 		errors.append(label + ".ground : doit être un objet")
 	if typeof(bd.get("vegetation", null)) == TYPE_DICTIONARY:
@@ -362,6 +366,8 @@ static func _validate_biome(b: Variant, label: String, errors: PackedStringArray
 	if typeof(bd.get("water", null)) == TYPE_DICTIONARY:
 		_check_color_key(bd["water"], "color", label + ".water", errors)
 		_check_unit_key(bd["water"], "turbidity", label + ".water", errors)
+		if bd["water"].has("falls"):
+			_validate_look(bd["water"]["falls"], FALLS_KEYS, label + ".water.falls", errors)
 	if typeof(bd.get("sky", null)) == TYPE_DICTIONARY:
 		var sk: Dictionary = bd["sky"]
 		_check_color_key(sk, "light_tint", label + ".sky", errors)
@@ -428,6 +434,8 @@ static func _validate_v2(data: Dictionary, errors: PackedStringArray) -> void:
 							_validate_biome(la["biomes"][b], label + ".biomes." + str(b), errors)
 					if la.has("fire"):
 						_validate_fire(la["fire"], label + ".fire", errors)
+					if la.has("neon"):
+						_validate_neon(la["neon"], label + ".neon", errors)
 	if data.has("surfaces"):
 		if typeof(data["surfaces"]) != TYPE_DICTIONARY:
 			errors.append("surfaces : doit être un objet")
@@ -442,7 +450,7 @@ static func _validate_v2(data: Dictionary, errors: PackedStringArray) -> void:
 
 
 static func _resolve_tex_path(theme_dir: String, rel_path: String) -> String:
-	var base := ProjectSettings.globalize_path(theme_dir).simplify_path()
+	var base := theme_dir.simplify_path()
 	var full := base.path_join(rel_path).simplify_path()
 	if not full.begins_with(base + "/") and full != base:
 		return ""
@@ -498,7 +506,7 @@ static func load_theme(theme_dir: String) -> Dictionary:
 	var warnings := PackedStringArray()
 	var errors := PackedStringArray()
 
-	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(theme_dir)):
+	if not DirAccess.dir_exists_absolute(theme_dir):
 		errors.append("dossier de thème introuvable : " + theme_dir)
 		print("[theme] erreur : ", errors[0], " ; repli sur default")
 		return {"theme": default_theme, "warnings": warnings, "errors": errors, "theme_dir": DEFAULT_THEME_DIR}
@@ -559,7 +567,7 @@ static func load_theme(theme_dir: String) -> Dictionary:
 	# Le pack de biomes du thème par défaut n'est jamais prêté à un autre thème : un thème 1.x décrit
 	# tous les biomes, et un biome absent d'un thème 2.0 prend ses clés 1.x (Format .world v1 §9).
 	var base := default_theme
-	if ProjectSettings.globalize_path(theme_dir).simplify_path() != ProjectSettings.globalize_path(DEFAULT_THEME_DIR).simplify_path():
+	if theme_dir.simplify_path() != DEFAULT_THEME_DIR.simplify_path():
 		base = without_biomes(default_theme)
 	var merged := _deep_merge(base, dict_data)
 	return {"theme": merged, "warnings": warnings, "errors": errors, "theme_dir": theme_dir}
@@ -668,3 +676,54 @@ static func _validate_fire(fire: Variant, label: String, errors: PackedStringArr
 				errors.append(label + ".density : nombre de 0 à 2 attendu")
 		else:
 			errors.append(label + " : clé inconnue " + str(k))
+
+
+## Section `neon` d'un paysage (lot NV1, ville néon) : couleurs #RRGGBB et densité de 0 à 2, toutes
+## facultatives ; clé inconnue refusée.
+const NEON_COLORS := ["pink", "cyan", "violet", "orange", "sky_top", "sky_mid", "sky_horizon", "fog"]
+
+
+static func _validate_neon(neon: Variant, label: String, errors: PackedStringArray) -> void:
+	if typeof(neon) != TYPE_DICTIONARY:
+		errors.append(label + " : doit être un objet")
+		return
+	for k in neon.keys():
+		if k in NEON_COLORS:
+			if not _is_hex_color(neon[k]):
+				errors.append(label + "." + str(k) + " : couleur #RRGGBB invalide")
+		elif k == "density":
+			if not (typeof(neon[k]) in [TYPE_INT, TYPE_FLOAT]) or float(neon[k]) < 0.0 or float(neon[k]) > 2.0:
+				errors.append(label + ".density : nombre de 0 à 2 attendu")
+		else:
+			errors.append(label + " : clé inconnue " + str(k))
+
+
+## Aspect du sol et de l'eau (lot U25-p2, biome_model.gd `surface_look`) : clé -> [min, max] d'un nombre, "color"
+## (#RRGGBB) ou "colors" (1 à 4 couleurs) ; toutes facultatives sauf `strata.colors` ; clé inconnue refusée.
+const STRATA_KEYS := {"colors": "colors", "band_m": [0.5, 200.0], "strength": [0.0, 1.0]}
+const TERRACES_KEYS := {"step_m": [0.2, 20.0], "max_slope_deg": [0.0, 90.0], "flooded": [0.0, 1.0]}
+const FALLS_KEYS := {"density": [0.0, 1.0], "min_slope_deg": [0.0, 90.0], "width_m": [0.2, 50.0], "color": "color"}
+
+
+static func _validate_look(d: Variant, keys: Dictionary, label: String, errors: PackedStringArray) -> void:
+	if typeof(d) != TYPE_DICTIONARY:
+		errors.append(label + " : doit être un objet")
+		return
+	if keys.has("colors") and not d.has("colors"):
+		errors.append(label + ".colors : obligatoire")
+	for k in d.keys():
+		if not keys.has(k):
+			errors.append(label + " : clé inconnue " + str(k))
+		elif typeof(keys[k]) == TYPE_ARRAY:
+			if not _is_number(d[k]) or float(d[k]) < float(keys[k][0]) or float(d[k]) > float(keys[k][1]):
+				errors.append(label + "." + str(k) + " : nombre de %s à %s attendu" % [str(keys[k][0]), str(keys[k][1])])
+		elif keys[k] == "color":
+			if not _is_hex_color(d[k]):
+				errors.append(label + "." + str(k) + " : couleur #RRGGBB invalide")
+		else:
+			var ok: bool = typeof(d[k]) == TYPE_ARRAY and not (d[k] as Array).is_empty() and (d[k] as Array).size() <= 4
+			if ok:
+				for c in d[k]:
+					ok = ok and _is_hex_color(c)
+			if not ok:
+				errors.append(label + "." + str(k) + " : de 1 à 4 couleurs #RRGGBB")

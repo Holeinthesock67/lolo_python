@@ -126,6 +126,14 @@ func _run() -> void:
 	_check(m.consigne(_st(win)).is_empty(), "victoire : plus de consigne du mode (consigne de fin commune)")
 	_check(v["list"]["rows"][0]["name"] == "Toi" and v["list"]["rows"][0]["value"] == "" and v["list"]["rows"][0]["kind"] == "me",
 		"victoire : Toi premier, plus « dernier » (%s)" % str(v["list"]["rows"][0]))
+	_check(v["laps"]["label"] == "CLASSEMENT" and v["laps"]["value"] == "1er" and v["laps"]["extra"] == "sur 3",
+		"victoire : classement figé au lieu de « encore en course » (%s)" % str(v["laps"]))
+	var fin_rows: Array = v["list"]["rows"]
+	_check(v["list"]["title"] == "CLASSEMENT FINAL" and fin_rows.size() == 3 and fin_rows[2]["pos"] == "3." and fin_rows[2]["kind"] == "ok",
+		"fin : classement final numéroté, éliminés compris (%s)" % str(v["list"]))
+	var lost := win.duplicate(true)
+	lost.merge({"ranking": ["b1", "b2", "me"], "eliminated": ["me", "b2"], "last": "b1"}, true)
+	_check(m.view(_st(lost))["laps"]["value"] == "3e", "fin : 3e sur 3")
 	# Moments communs (lot RT1) : bot éliminé, cycliste dernier, victoire, place, cycliste éliminé ; une fois chacun
 	var ws = Model.new()
 	var run := win.duplicate()
@@ -298,5 +306,78 @@ func _run() -> void:
 	view.queue_free()
 	_check(View.ring_point(0.0, 20.0, 10.0) == Vector2(0, 10) and View.ring_point(0.5, 20.0, 10.0).is_equal_approx(Vector2(0, -10)), "anneau : A en bas, B en haut")
 
+	_revue_e11()
 	print("test_track_hud : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Revue de code vague 3, lot EC4 : trame allégée (E11-01), omnium suivi sur plusieurs sous-épreuves (E11-02),
+## peloton de plus de 8 coureurs (E11-05).
+func _revue_e11() -> void:
+	# E11-01 : un bot loin sans `name` une trame sur deux garde son nom
+	var m = Model.new()
+	var pts := _points()
+	m.view({"session_state": "RUNNING", "bots": BOTS, "track": pts})
+	var light := [{"id": "b1", "name": "Bastien"}, {"id": "b2"}, {"id": "b3"}]
+	var v: Dictionary = m.view({"session_state": "RUNNING", "bots": light, "track": pts})
+	var names: Array = []
+	for r in v["list"]["rows"]:
+		names.append(r["name"])
+	_check(names == ["Bastien", "Toi", "Léa", "Marco"], "trame allégée : les noms restent (%s)" % str(names))
+	_check(m.name_of("b2") == "Léa", "trame allégée : nom mémorisé gardé")
+	var fresh = Model.new()
+	fresh.view({"session_state": "RUNNING", "bots": [{"id": "b9"}], "track": pts})
+	_check(fresh.name_of("b9") == "b9", "bot jamais nommé : identifiant en repli")
+
+	# E11-02 : omnium, cycliste éliminé à la 3e épreuve, puis course aux points, puis fin
+	var om = Model.new()
+	var el := {"event": "omnium", "sub": "elimination", "sub_index": 3, "subs": 4, "neutral": false, "t_s": 900.0,
+		"lap": 10, "laps": 24, "laps_to_go": 14, "bell": false, "ranking": ["b1", "b2", "me", "b3", "b4", "b5"],
+		"points": [40, 36, 34, 30, 20, 10], "eliminated": ["b5"], "finished": false, "last": "me", "alive": 5}
+	om.moments(_st(el))
+	el.merge({"eliminated": ["b5", "me"], "last": "b4", "alive": 4}, true)
+	var mo: Array = om.moments(_st(el))
+	_check(mo.size() == 1 and mo[0]["family"] == "attention" and not mo[0].has("done_k"),
+		"omnium : éliminé de l'épreuve, moment passager sans consigne de fin (%s)" % str(mo))
+	_check(mo.size() == 1 and mo[0]["title"] == "Éliminé · 5e sur 6" and mo[0]["sub"] == "L'omnium continue à l'épreuve suivante",
+		"omnium : place dans l'élimination, pas au général (%s)" % (str(mo[0]) if mo.size() > 0 else ""))
+	var pr := {"event": "omnium", "sub": "points", "sub_index": 4, "subs": 4, "neutral": false, "t_s": 1300.0,
+		"lap": 2, "laps": 20, "laps_to_go": 19, "bell": false, "ranking": ["b1", "me", "b2", "b3", "b4", "b5"],
+		"points": [40, 38, 36, 30, 20, 10], "eliminated": [], "finished": false, "next_sprint_lap": 10}
+	_check(om.moments(_st(pr)).is_empty() and not om.consigne(_st(pr)).is_empty(),
+		"omnium : course aux points suivante avec sa consigne")
+	pr.merge({"finished": true}, true)
+	var fin: Array = om.moments(_st(pr))
+	_check(fin.size() == 1 and fin[0]["family"] == "resultat" and fin[0]["title"] == "ARRIVÉE · 2e sur 6",
+		"omnium : résultat final annoncé (%s)" % str(fin))
+	var solo := {"event": "elimination", "t_s": 200.0, "lap": 6, "laps": 24, "laps_to_go": 18, "bell": false,
+		"ranking": ["b1", "b2", "me"], "points": null, "eliminated": [], "finished": false, "last": "me", "alive": 3}
+	var se = Model.new()
+	se.moments(_st(solo))
+	solo.merge({"eliminated": ["me"], "alive": 2}, true)
+	var so: Array = se.moments(_st(solo))
+	_check(so.size() == 1 and so[0]["family"] == "resultat" and str(so[0].get("done_k", "")).begins_with("COURSE FINIE POUR TOI"),
+		"élimination seule : course finie pour toi, inchangé")
+
+	# E11-05 : peloton de 12, cycliste 10e, dernier 12e : leurs lignes restent dans les 8
+	var big_bots: Array = []
+	var ranking: Array = []
+	for i in range(1, 12):
+		big_bots.append({"id": "b%d" % i, "name": "Nom%d" % i})
+	for i in range(1, 10):
+		ranking.append("b%d" % i)
+	ranking += ["me", "b10", "b11"]
+	var mass := {"event": "elimination", "t_s": 100.0, "lap": 3, "laps": 40, "laps_to_go": 37, "bell": false,
+		"ranking": ranking, "points": null, "eliminated": [], "finished": false, "last": "b11", "alive": 12}
+	var mb = Model.new()
+	var rows: Array = mb.view({"session_state": "RUNNING", "bots": big_bots, "track": mass})["list"]["rows"]
+	var kinds: Array = []
+	for r in rows:
+		kinds.append("%s:%s" % [r["pos"], r["kind"]])
+	_check(rows.size() == Model.MAX_LINES and rows[rows.size() - 2]["pos"] == "10." and rows[rows.size() - 2]["kind"] == "me"
+		and rows.back()["pos"] == "12." and rows.back()["kind"] == "danger", "12 coureurs : Toi et le dernier gardés (%s)" % str(kinds))
+	_check(rows[0]["pos"] == "1." and rows[5]["pos"] == "6.", "12 coureurs : la tête ensuite, dans l'ordre")
+	var board: String = mb.board_text({"session_state": "RUNNING", "bots": big_bots, "track": mass})
+	_check(board.split("\n").size() <= Model.BOARD_LINES and board.contains("10. TOI") and board.contains("12. NOM11"),
+		"tableau de la salle : Toi et le dernier y sont (%s)" % board.replace("\n", " | "))
+	_check(Model.window_rows([1, 2], 0).is_empty(), "fenêtre de 0 ligne : vide")

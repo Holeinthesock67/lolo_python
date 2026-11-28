@@ -48,15 +48,17 @@ from .. import __version__
 from .. import constants as C
 from .. import koppen
 from ..cache import Downloader, Log
-from ..elevation import COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider, copernicus_tile_name
+from ..elevation import (COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider,
+                         check_tile_list, check_tiff, copernicus_tile_name)
 from ..errors import CompileError
 from ..pipeline import sample_positions
 from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts, turnaround_points,
-                           with_turnaround)
+                           with_link, with_turnaround)
 from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
 from ..bridges import BRIDGES_VERSION
+from ..tunnels import TUNNELS_VERSION
 from . import biome_tiles
 from . import session_ground as SG
 from .squares import (FAR_LAKE_SEARCH_M, FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox,
@@ -360,7 +362,8 @@ class WorldSession:
         if self.session_dir is None:
             stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
             self.session_dir = self.cache.sessions_dir() / f"ow-{stamp}.world"
-        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges", "coast"):
+        for sub in ("route", "terrain/near", "terrain/far", "buildings", "vegetation", "water", "poi", "bridges", "tunnels",
+                    "coast"):
             (self.session_dir / sub).mkdir(parents=True, exist_ok=True)
         self.ground = SG.SessionGround(self.session_dir)
 
@@ -387,6 +390,7 @@ class WorldSession:
                 "poi": {"present": True, "version": C.POI_VERSION},
                 "water": {"present": True, "version": C.WATER_VERSION},
                 "bridges": {"present": True, "version": BRIDGES_VERSION},   # lot EA4
+                "tunnels": {"present": True, "version": TUNNELS_VERSION},   # lot EA5
                 "coast": {"present": True, "version": C.COAST_VERSION},     # lot W23 : mer et plages
                 "biome": biome_tiles.manifest_block(self._biome_sources()),
             },
@@ -519,6 +523,8 @@ class WorldSession:
             lat, lon = self.frame.to_latlon(np.array([far[0]]), np.array([far[1]]))
             if relief_has(self.provider, float(lat[0]), float(lon[0])):   # hors ligne au bord du relief : sur place
                 p = with_turnaround(p, prev, self.provider, self.frame)
+        if self.legs:          # arête courte fondue dans un nœud, rond-point : raccord au lieu d'un saut
+            p = with_link(self.legs[-1].profile, p)
         self.legs.append(Leg(edge_id, forward, to_node, p, self.length_m))
 
     def _extend(self) -> bool:
@@ -968,9 +974,10 @@ class WorldSession:
         name = copernicus_tile_name(la, lo)
         dl = Downloader(log=self.log)
         try:
-            listing = dl.fetch(f"{prov.base_url}/tileList.txt", prov.dir / "tileList.txt", "liste des tuiles")
+            listing = dl.fetch(f"{prov.base_url}/tileList.txt", prov.dir / "tileList.txt", "liste des tuiles",
+                               validate=check_tile_list)
             if name in listing.read_text():
-                dl.fetch(f"{prov.base_url}/{name}/{name}.tif", prov.tile_path(la, lo), name)
+                dl.fetch(f"{prov.base_url}/{name}/{name}.tif", prov.tile_path(la, lo), name, validate=check_tiff)
                 self.stats["downloads"] += 1
         except Exception as exc:  # noqa: BLE001 - réessayé au prochain passage
             self.log(f"relief {name} non téléchargé : {exc}")

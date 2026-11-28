@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : manche de la ligue lancée par la séance (CH3a : la Course), résultat dans `ligue.json`, cote tenue, encart du bilan, contrat IPC 1.30 | Python | CH1, CH2, CR1 (#939), BOT-elo (#941) | Moyenne | En PR le 22 novembre 2026 ; core seul, écrans au lot CH4 |
+| Série CH : manche de la ligue lancée par la séance (CH3a : la Course), résultat dans `ligue.json`, cote tenue, encart du bilan, contrat IPC 1.30 | Python | CH1, CH2, CR1 (#939), BOT-elo (#941) | Moyenne | **Livré le 23 novembre** (PR #989) |
 
 Plan : `docs/6.0/PLAN_SERIE_CH.md` §3.1 et §3.4. Objectif du propriétaire (22 novembre) : démarrer un championnat le
 week-end du 28-29 novembre. CH3a branche la manche 1 (Course en tours) ; CH3b branchera les autres modes avant leur
@@ -22,8 +22,9 @@ semaine (Dernier survivant en semaine 2).
   points, place au général avant et après, mouvement écrit, intensité facile, cinq lignes du classement) et
   `summary.elo` (`mode` = `league`) ; journal : `league_start`, `league_round`, `elo`.
 - **Manche arrêtée avant l'arrivée** : rien n'est compté, elle se recourt dans la semaine.
-- **Plantage du core pendant une manche** : la reprise ne restaure pas les courses ; aucun résultat n'est écrit,
-  la manche compte comme abandonnée et se recourt dans la semaine (audit du 22 novembre, L10).
+- **Plantage du core pendant une manche** : aucun résultat n'est écrit au plantage ; la manche compte comme
+  abandonnée et se recourt dans la semaine (audit du 22 novembre, L10). Depuis le lot RC1, la reprise rend la course
+  entière : une manche reprise et menée à l'arrivée compte normalement.
 - **Horloge qui recule** : `ligue.json` garde le dernier jour vu (`last_seen`) ; la ligue ne revient jamais avant
   lui (pile du BIOS, double amorçage ; audit L11).
 - **Refus** (`bad_args`, rien ne démarre) : sans saison ou manche déjà faite, mode qui n'est pas celui de la
@@ -65,3 +66,7 @@ Catégorie : logique
 - Cloud : tests du core (`test_league_session.py`, contrat IPC).
 - PC : fumée + medium (une manche de Course en mode simulé, 11 rivaux) ; pas de capture (aucun écran ajouté).
 - Versions : révision IPC 1.30 (WORLDGEN_VERSION et SCHEMA_VERSION inchangés)
+
+## Livraison
+
+Fusionné dans `main` le 23 novembre 2026 (PR #989), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En PR le 22 novembre 2026 ; core seul, écrans au lot CH4 »).

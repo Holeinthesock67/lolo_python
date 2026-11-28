@@ -58,7 +58,9 @@ class RaceHint(NamedTuple):
     `power_cp` : puissance demandée en part de la CP (None : la stratégie du bot) ; `peak` : son pic de sprint
     s'il en a un ; `tactical` : il quitte la roue suivie (sprint, relais en tête, allure) ; `wheel` : roue
     imposée (écart en m, vitesse en m/s : le derny du keirin), qu'il ne double pas ; `lane_m` : place voulue
-    (`lane.home`, écart d'AS2 ; None : la sienne) ; `key` : occasion du pic (un pic par ligne)."""
+    (`lane.home`, écart d'AS2 ; None : la sienne) ; `key` : occasion du pic (un pic par ligne) ; `parked` : coureur
+    sorti de l'épreuve, rangé à `lane_m` sans placement automatique (ni roue ni dépassement, les autres l'évitent ;
+    essai du 22 novembre)."""
 
     power_cp: float | None = None
     peak: bool = False
@@ -66,6 +68,7 @@ class RaceHint(NamedTuple):
     wheel: tuple[float, float] | None = None
     lane_m: float | None = None
     key: Any = None
+    parked: bool = False
 
 
 class BotError(Exception):
@@ -394,6 +397,8 @@ class ProfileBot(ConstantPowerBot):
         self.effort_target: tuple[float, float] | None = None
         # lot DS3 : (distance à l'arche en m, menacé, à l'abri, distance de début du sprint) ; None hors mode
         self.survival: tuple[float, bool, bool, float] | None = None
+        # lot BR5 : le mode tient le bot ce pas (voie d'esquive du Grand Prix), posé par la séance
+        self.mode_hold = False
         # lot Y10 : tactique (mode « none » jusqu'au départ de séance, `bot_tactics.start_race`)
         self.tactics = Tactics(self.id, self.spec.character, name=self.name)
         # lot VD7 : consigne de l'épreuve de piste (None hors épreuve), course vue par les bots, temps du champ
@@ -401,6 +406,7 @@ class ProfileBot(ConstantPowerBot):
         self.race_view: Any = None
         self.race_t = 0.0
         self._lane_home: float | None = None    # place d'avant la consigne (rendue sans consigne)
+        self._lane_auto: bool | None = None     # placement automatique d'avant une consigne `parked`
         self.set_scale(scale)
 
     def set_scale(self, scale: float) -> None:
@@ -449,15 +455,28 @@ class ProfileBot(ConstantPowerBot):
             frac = hint.power_cp if hint.power_cp is not None else 1.30   # sans pic : sprint à 1,3 × CP
             return frac * self.cp_w, hint.tactical or hint.peak
         if self.survival is not None:
-            d_m, danger, safe, sprint_from_m = self.survival
-            reserve = self.wbal_pct if wbal_pct is None else wbal_pct
-            if danger and d_m <= sprint_from_m and reserve > SURVIVAL_MIN_WBAL_PCT:
+            safe = self.survival[2]
+            if self._survival_sprint(self.wbal_pct if wbal_pct is None else wbal_pct):
                 return spec.survival * self.cp_w, True
             power, tactical = self._course_strategy(s, length_m, is_loop, wbal_pct)
             if safe:
                 return min(power, SURVIVAL_SAFE_CP * self.cp_w), False
             return power, tactical
         return self._course_strategy(s, length_m, is_loop, wbal_pct)
+
+    def _survival_sprint(self, reserve: float) -> bool:
+        """Lot DS3 : menacé, assez près de l'arche et avec de la réserve : sprint de survie."""
+        if self.survival is None:
+            return False
+        d_m, danger, _, sprint_from_m = self.survival
+        return danger and d_m <= sprint_from_m and reserve > SURVIVAL_MIN_WBAL_PCT
+
+    def mode_speaks(self) -> bool:
+        """Lot BR5 (R5 de la stratégie des bots) : vrai quand ce qui est propre au mode décide ce pas (voie d'esquive du Grand Prix, sprint de
+        survie ou économie du Dernier survivant) : les gestes de base de `bot_tactics` se taisent alors."""
+        if self.mode_hold:
+            return True
+        return self.survival is not None and (self.survival[2] or self._survival_sprint(self.wbal_pct))
 
     def _course_strategy(self, s: float, length_m: float, is_loop: bool,
                          wbal_pct: float | None = None) -> tuple[float, bool]:
@@ -515,13 +534,17 @@ class ProfileBot(ConstantPowerBot):
         loop = route.is_loop if route is not None else False
         self.cp_w = self.base_cp_w * self.tactics.cp_factor(self.t)   # lot Y10 : forme et fatigue
         power, tactical = self._strategy(self.physics.s, length, loop)
-        power, tactical = self.tactics.adjust(self, power, tactical, self.t, self.physics.s, length, loop)
+        if self.mode_speaks():   # lot BR5 : le mode d'abord, les gestes de base seulement quand il se tait
+            self.tactics.yield_to_mode()
+        else:
+            power, tactical = self.tactics.adjust(self, power, tactical, self.t, self.physics.s, length, loop)
         lane = None
         if self.tactics.on.racing:   # lot VD7 : coalitions, marquage, bluff, classement, fatigue visible
             power, tactical, lane = self.tactics.race_power(self, power, tactical, self.race_t, self.race_view)
         hint = self.hint
         if hint is not None or lane is not None or self._lane_home is not None:   # hors piste : rien à faire
-            self._apply_place(lane if lane is not None else (hint.lane_m if hint is not None else None))
+            self._apply_place(lane if lane is not None else (hint.lane_m if hint is not None else None),
+                              hint is not None and hint.parked)
             if hint is not None and hint.wheel is not None:   # roue imposée (derny) : jamais devant elle
                 if self.wheel is None or hint.wheel[0] < self.wheel[0]:
                     self.wheel = hint.wheel
@@ -545,9 +568,13 @@ class ProfileBot(ConstantPowerBot):
         super().step(dt, route)
         self.wbal = wbal_step(self.wbal, power, 0.0, dt, cp_w=self.cp_w, w_prime_j=self.w_prime_j)
 
-    def _apply_place(self, want: float | None) -> None:
+    def _apply_place(self, want: float | None, parked: bool = False) -> None:
         """Place voulue (`lane.home`) par la fatigue visible ou la consigne de l'épreuve ; celle d'avant rendue
-        sans consigne."""
+        sans consigne. `parked` : placement automatique coupé tant que dure la consigne (coureur sorti)."""
+        if parked and self._lane_auto is None:
+            self._lane_auto, self.lane.auto = self.lane.auto, False
+        elif not parked and self._lane_auto is not None:
+            self.lane.auto, self._lane_auto = self._lane_auto, None
         if want is not None:
             if self._lane_home is None:
                 self._lane_home = self.lane.home
@@ -555,10 +582,26 @@ class ProfileBot(ConstantPowerBot):
         elif self._lane_home is not None:
             self.lane.home, self._lane_home = self._lane_home, None
 
+    def move(self) -> str | None:
+        """Geste en cours, montré au cycliste par écrit et par un son (lot BA1, essai du 22 novembre : « rien
+        n'indique quand un bot utilise un boost ») : « attack » pendant une attaque (`bot_tactics`, lot Y10),
+        « respond » quand il suit un départ, « sprint » au pic de son sprint (lot T12) ; None sinon."""
+        tac = self.tactics
+        if tac.attack_until > self.t:
+            return "attack"
+        if tac.respond_to is not None and self.t < tac.respond_until:
+            return "respond"
+        if self.peak_w > 0 and self.power_w == self.peak_w:
+            return "sprint"
+        return None
+
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d.update({"profile": self.profile, "cp_w": round(self.cp_w, 1), "mass_kg": self.mass_kg,
                   "wbal_pct": round(self.wbal_pct, 1)})
+        move = self.move()
+        if move is not None:   # lot BA1 (révision 1.38) : absent sans geste en cours
+            d["move"] = move
         return d
 
 
@@ -999,7 +1042,7 @@ FULL_FRAME_BOTS = 5   # bots les plus proches du cycliste qui gardent tous leurs
 # Champs facultatifs retirés des autres bots : constants (`cp_w`, `mass_kg`, gardés par l'engine depuis la
 # dernière trame qui les portait) ou recalculables (`gap_s` : écart en mètres sur la vitesse) ; `wbal_pct`
 # n'est montré que dans l'encart du HUD, qui n'affiche que les voisins du cycliste.
-LIGHT_DROPPED = ("cp_w", "mass_kg", "wbal_pct", "gap_s")
+LIGHT_DROPPED = ("cp_w", "mass_kg", "wbal_pct", "gap_s", "move")   # `move` (lot BA1) : montré pour les voisins seuls
 # Champs constants des autres bots envoyés à tour de rôle (un bot par trame) et gardés par l'engine entre deux
 # envois : avec les cyclistes du décor (lot AS7, `riders`), la pire trame 1.6 dépassait 4 096 octets. Lot GP2 :
 # objet en réserve et effets du Grand Prix (`item`, `fx`) de même, l'engine gardant le dernier reçu.

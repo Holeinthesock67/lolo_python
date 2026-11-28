@@ -24,17 +24,20 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
 
 Étapes d'un scénario (liste `etapes`, jouées dans l'ordre ; `voies` sur une étape la réserve à ces voies) :
 - gestes : `appui` (événement ou liste : PLUS_SHORT, A_LONG, Y_SHORT…), `choisir` (identifiant d'un élément
-  de l'écran : focus dessus puis A maintenu ; à la souris, clic sur sa rangée), `aller` (focus seulement),
+  de l'écran, ou motif avec `*` : le premier élément actif qui y répond ; focus dessus puis A maintenu ; à la souris,
+  clic sur sa rangée), `aller` (focus seulement),
   `touche` (+ `maj`, `duree_ms`), `souris` (+ `element` ou `point`), `click` (+ `duree_s`) : gestes bruts ;
 - vérifications, attendues jusqu'à `delai` secondes (5 par défaut) : `ecran` (identifiant, ou liste des
   écrans permis ; + `monde` (menu du monde ouvert affiché ou non, ou son écran : globe, search, map, setup),
   `titre`, `groupe`,
   `contient` et `absent` : textes cherchés dans la ligne d'état, les éléments « libellé — détail », les pastilles
-  des appareils et la carte de détail ; `focus`, `elements`, `statut`, `edition`), `menu_cache`, `config` ({clé: valeur} de
+  des appareils et la carte de détail ; `focus`, `elements`, `statut`, `edition` ; `transitoire` : écran d'un instant,
+  passé si le menu est déjà sur l'écran de l'étape d'écran suivante), `menu_cache`, `config` ({clé: valeur} de
   config.toml, `null` : absente), `journal` (`core` ou `engine`) + `motif`, `fichier` (chemin ou motif
   glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente », et "≠départ" « présente et différente de la valeur du lancement »
   (qualité changée au menu quand `--qualite` impose celle du départ) ;
-- autres : `commande` (+ `args`), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
+- autres : `commande` (+ `args` ; `end_session` attend d'abord que la séance du dernier départ soit partie,
+  `delai` 120 s par défaut), `attendre` (secondes), `distance_km` (attend le cycliste à cette position de la
   route, `delai` 900 s par défaut), `capture` (nom), `relancer` (core et engine arrêtés proprement puis relancés sur le
   même HOME : persistance des réglages) ;
 - gabarit : `depart_monde_ouvert` ({`recherche` : texte tapé au clavier, `contient` : lieu attendu dans les résultats
@@ -53,6 +56,11 @@ depuis le lot GPL1, seule la boucle est un parcours du mode, la ligne étiqueté
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
+`seances_courbe` (dossier des journaux dans le HOME, ex. `OpenRide/Profils/cycliste-1/Activities/.journal` : séances
+fabriquées d'un cycliste fictif à FTP 250 W, `openride_core.tools.courbe_fictive`, écran « Ma puissance », lot PP3).
+`course_interrompue` ({`profil`, `mode` : `race`, `grandprix` ou `survivor`, `secondes`}, lot RC3) : course roulée en
+temps accéléré par le vrai core juste avant le lancement (`openride_core.tools.course_interrompue`), laissée sans fin
+comme après un arrêt brutal du PC : le menu propose « Reprendre la course ».
 `reseau` (vrai : le scénario a besoin d'Internet, recherche Nominatim et routes OpenStreetMap ; recette du PC,
 jouée seulement quand `--scenario` la nomme, jamais dans la liste par défaut ni en intégration continue, lot W17).
 `caches_reels` (vrai : le générateur du monde ouvert lit et complète les caches du vrai dossier personnel :
@@ -77,6 +85,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import fnmatch
 import html
 import json
 import os
@@ -168,6 +177,7 @@ from openride_core.launcher import ENGINE_DONE, ENGINE_SELF_KILLED, ENGINE_SHUTD
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 import pile_gdb  # noqa: E402
+import perf_probe  # noqa: E402
 import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
 
@@ -187,6 +197,7 @@ ENGINE_READY_ASK_S = 3.0   # délai de chaque demande d'état pendant cette atte
 ENGINE_SILENT_S = 60.0
 SILENCE_GAP_S = 1.0
 WAIT_SLICE_S = 0.5
+SESSION_START_S = 120.0   # `end_session` : attente de la séance partie (départ du dernier `start`, décor compris)
 COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 # Écart entre le relâchement d'un appui au Click et l'appui suivant : le core ignore un même événement
 # revenu dans les ClickPair.DEDUP_S (relais du boîtier « − », 5 à 40 ms plus tard) ; en dessous, deux
@@ -235,13 +246,24 @@ def config_matches(got: Any, want: Any, start: Any) -> bool:
         return got is not None and got != start
     return got == want
 
+
+def config_matches(got: Any, want: Any, start: Any) -> bool:
+    """Valeur lue dans config.toml pour une étape `config` : "*" présente, "≠départ" présente et différente de la
+    valeur écrite au lancement (`start`), sinon égale à `want`."""
+    if want == "*":
+        return got is not None
+    if want == "≠départ":
+        return got is not None and got != start
+    return got == want
+
 STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris", "element", "point", "click",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "distance_km", "capture", "relancer", "delai", "voies", "note",
-             "depart_monde_ouvert"}
+             "depart_monde_ouvert", "transitoire"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels", "etapes"}
+             "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels", "etapes",
+             "course_interrompue", "seances_courbe"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -312,6 +334,19 @@ def copy_render_caches(src_home: Path, dst_home: Path) -> int:
     return n
 
 
+def render_caches_empty(saved: Path | None) -> bool:
+    """Vrai si ce passage part sans cache de rendu (pas de `--caches-rendu`, ou dossier encore sans fichier) : il
+    compilera tout, comme un premier lancement. Même règle que `sim_bench.caches_empty` (lot BF1), lot BF2."""
+    if saved is None:
+        return True
+    return not any(p.is_file() for rel in RENDER_CACHES if (saved / rel).is_dir() for p in (saved / rel).rglob("*"))
+
+
+def probe_paths(cmd: list[str]) -> list[Path]:
+    """Fichiers de la sonde (`--perf-probe=CHEMIN`) passés à l'engine."""
+    return [Path(c.split("=", 1)[1]) for c in cmd if c.startswith("--perf-probe=")]
+
+
 def write_demo_copies(routes: Path, n: int) -> None:
     """`n` copies de la démo (« Copie 01 »…), parcours libres : liste des parcours aussi longue que celle du pack
     des cols, sans le compilateur (lot ML2)."""
@@ -373,9 +408,10 @@ def open_world_start(spec: dict[str, Any]) -> list[dict[str, Any]]:
         *spec.get("cap", []),
         {"capture": "cap"},
         {"touche": "Enter"},
-        {"monde": False, "delai": 300},
-        {"note": "Monde ouvert préchargé : route engagée, séance prête", "journal": "core", "motif": OPEN_WORLD_READY,
-         "delai": 600},
+        {"note": "Monde ouvert préchargé : route engagée, séance prête (attendu avant la fermeture du menu, qui en "
+                 "dépend : 300 s fixes ne suffisaient pas en montagne, Grenoble du 26/11)",
+         "journal": "core", "motif": OPEN_WORLD_READY, "delai": 900},
+        {"monde": False, "delai": 60},
         {"note": "Lot W18 : le monde prêt, l'engine envoie start de lui-même (départ au pédalage)",
          "journal": "core", "motif": "Commande start ", "delai": 60},
         {"attendre": 2},
@@ -555,6 +591,24 @@ class Run:
         self.shots.append(info)
         return info
 
+    def wait_session_started(self, timeout: float) -> None:
+        """Avant `end_session` : attend que la séance lancée par le dernier départ soit partie (RUNNING ou PAUSED, ou
+        déjà finie). Le core ignore `end_session` en READY et, pendant le départ au pédalage (lot O36), le prend pour
+        une annulation : retour à l'écran Prêt au lieu du bilan. Sur la CI, la préparation du décor peut tenir le
+        départ plus de 40 s (Grand Prix de `bots_elo`, trains #1050 et #1062) : une attente fixe ne suffit pas."""
+        assert self.core is not None
+        starts = self.core.matching(r"Commande (start|start_run|start_open_world) ")
+        if not starts:
+            return
+        t0 = starts[-1][0]
+        got = self.core.wait_for(r"Séance : \S+ -> (RUNNING|PAUSED|FINISHED|ERROR)\b", timeout, after=t0)
+        detail = got[1].group(0) if got else f"absente après {timeout:.0f} s"
+        if got is None:
+            depart = [line for _, line in list(self.core.lines) if "Départ" in line]
+            if depart:
+                detail += " ; " + depart[-1].split(" core ", 1)[-1]
+        self.check(got is not None, "séance partie avant end_session", detail)
+
     def check(self, ok: bool, label: str, measure: str) -> bool:
         self.report.check(ok, label, measure)
         if not ok and self.engine is not None and self.engine.p.poll() is None:
@@ -597,7 +651,12 @@ class Run:
             self._send({"type": "_test", "action": "key", "key": key, "shift": shift, "hold_ms": hold_ms})
         else:
             hold = 0.0
-            item = self.last.get("focus_id", "") if g["souris"] == "click" else ""
+            item = ""
+            if g["souris"] == "click":
+                item = self.settled_focus(5.0 * self.slowdown())
+                if not item:
+                    return self.check(False, "A_LONG à la souris : élément sous le focus",
+                                      f"aucun focus sur l'écran « {self.last.get('screen', '')} » (menu en cours de mise à jour)")
             self._send({"type": "_test", "action": "mouse", "kind": g["souris"], "item": item})
             if g["souris"] == "click":
                 got = self.wait_engine(r"Souris : clic sur|\[test\] mouse hidden", 10.0, t)
@@ -608,8 +667,39 @@ class Run:
         self.state()
         return ok
 
+    def settled_focus(self, delay: float) -> str:
+        """Élément sous le focus d'un menu posé (lot BM2). Un écran reconstruit après une réponse du core (écran Prêt
+        du vélodrome après le choix de l'épreuve) n'a un instant aucun focus : cliquer sur l'état lu à ce moment-là
+        visait le centre de l'écran (« clic sur «  » : sans réponse », #1093 et #953). On relit l'état jusqu'à ce que
+        le focus soit revenu, `delay` secondes au plus, silences de l'engine non comptés (wait_engine)."""
+        deadline = now() + delay
+        since = self.silent_s
+        st = self.last
+        while True:
+            if st.get("focus_id"):
+                return str(st["focus_id"])
+            if now() >= deadline + min(self.silent_s - since, ENGINE_SILENT_S):
+                return ""
+            time.sleep(0.15)
+            st = self.state()
+
+    def settled_items(self, item: str, delay: float) -> dict[str, Any]:
+        """État d'un menu posé qui montre `item` avec un focus (lot BM2) : une liste remplie par une réponse du core
+        (écran « Contenus » juste ouvert, #1108 : « choisir « content:starter » : focus «  » ») n'a d'abord ni
+        éléments ni focus. Relu jusqu'à `delay` secondes, silences de l'engine non comptés ; le dernier état sinon."""
+        deadline = now() + delay
+        since = self.silent_s
+        while True:
+            st = self.state()
+            ids = [it["id"] for it in st.get("items", []) if it["enabled"]]
+            if (item in ids and st.get("focus_id") in ids) or now() >= deadline + min(self.silent_s - since,
+                                                                                     ENGINE_SILENT_S):
+                return st
+            time.sleep(0.15)
+
     def move_focus(self, item: str) -> bool:
         """Focus sur l'élément `item` par appuis courts sur + ou − (le plus court chemin, la liste boucle)."""
+        self.settled_items(item, 5.0 * self.slowdown())
         for _ in range(40):
             st = self.state()
             if st.get("focus_id") == item:
@@ -626,6 +716,11 @@ class Run:
     def choose(self, item: str) -> bool:
         assert self.engine is not None
         st = self.state()
+        if "*" in item:   # motif (ex. « b:*_semaine ») : premier élément actif dont l'identifiant y répond
+            found = [it["id"] for it in st.get("items", []) if it["enabled"] and fnmatch.fnmatchcase(it["id"], item)]
+            if not found:
+                return False
+            item = found[0]
         if self.voie == "souris" and any(r["id"] == item for r in st.get("rows", [])):
             t = now()
             self._send({"type": "_test", "action": "mouse", "kind": "click", "item": item})
@@ -683,12 +778,20 @@ class Run:
                 bad.append(f"« {unwanted} » présent")
         return bad
 
-    def wait_screen(self, step: dict[str, Any]) -> None:
-        deadline = now() + float(step.get("delai", 5.0))
+    def wait_screen(self, step: dict[str, Any], suivant: dict[str, Any] | None = None) -> None:
+        """Attend l'écran de l'étape. Délai allongé sous Vulkan logiciel comme les autres étapes (`slowdown`, lot BM2 :
+        il ne l'était pas ici). Étape `transitoire` (écran qui ne dure qu'un instant, « Compilation de … ») : si le
+        menu est déjà sur l'écran de l'étape d'écran suivante `suivant`, l'étape est passée (#964 : runner muet 13 s,
+        compilation finie avant la première lecture)."""
+        deadline = now() + float(step.get("delai", 5.0)) * self.slowdown()
         since = self.silent_s
         while True:
             st = self.state()
             bad = self._screen_ok(st, step)
+            if bad and step.get("transitoire") and suivant is not None and not self._screen_ok(st, suivant):
+                self.check(True, f"écran {step.get('ecran', '')} (transitoire)",
+                           f"déjà passé : écran suivant « {st.get('screen', '')} » atteint" + self.silence(since))
+                return
             # Délai de l'étape, silences de l'engine non comptés (wait_engine).
             limit = deadline + min(self.silent_s - since, ENGINE_SILENT_S)
             if not bad or now() >= limit or self.engine.p.poll() is not None:
@@ -825,6 +928,9 @@ class Run:
                             encoding="utf-8")
         for rel, members in doc.get("archives", {}).items():
             write_archive(self.home / rel, members)
+        if doc.get("seances_courbe"):   # séances fabriquées d'un cycliste fictif, FTP 250 W (« Ma puissance », lot PP3)
+            from openride_core.tools.courbe_fictive import write_sessions
+            write_sessions(self.home / doc["seances_courbe"])
         if self.args.caches_rendu is not None:   # caches de rendu d'un passage précédent (lot ML2)
             copy_render_caches(self.args.caches_rendu, self.home)
         self.state_port, self.cmd_port = free_udp_ports(2)
@@ -861,6 +967,17 @@ class Run:
         if self.doc.get("compilateur") == "doublure":
             env["OPENRIDE_COMPILER"] = shlex.join([sys.executable, str(REPO / "core" / "tests" / "data" / "stub_compiler.py")])
         suffix = f"_{n}" if n else ""
+        course = self.doc.get("course_interrompue")
+        if course and not n:   # lot RC3 : journal d'une course interrompue, aux heures de ce lancement
+            done = subprocess.run([sys.executable, "-m", "openride_core.tools.course_interrompue", "--config",
+                                   str(self.config), "--profil", str(course.get("profil", "cycliste-a")),
+                                   "--mode", str(course.get("mode", "race")),
+                                   "--secondes", str(course.get("secondes", 90))],
+                                  env=env, capture_output=True, text=True, timeout=300)
+            (self.out / "course_interrompue.log").write_text(done.stdout + done.stderr, encoding="utf-8")
+            if not self.report.check(done.returncode == 0, "course interrompue écrite", done.stdout.strip()
+                                     or done.stderr.strip()[-300:]):
+                return False
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(self.config), "--trainer", "sim",
                 "--input", "sim", "--hr", "sim", "--sim-scenario", str(self.tmp / "scenario.json")]
         self.core = BenchProc("core", argv, env, self.out / f"core{suffix}.log")
@@ -880,6 +997,13 @@ class Run:
         cmd += sup.engine_cmd[sup.engine_cmd.index("--"):] + [f"--routes-dir={self.routes}", "--test-mode"]
         if a.sonde:   # sonde de performance de l'engine (lot X13) : moteur.csv, saccades.csv, taches.csv (lot ML2)
             cmd.append(f"--perf-probe={self.out / f'sonde{suffix}' / 'moteur.csv'}")
+        # Lot BF2 : à caches de rendu vides, le départ se juge à froid (perf_probe report lit la marque posée à côté
+        # de moteur.csv). Banc r1097 du 26/11 : passage « chaud » d'ea1_lac jugé à 150 ms sur des caches vides.
+        cold = render_caches_empty(self.args.caches_rendu)
+        self.report.check(None, "caches de rendu", "vides avant ce passage : départ jugé à froid (premier lancement)"
+                          if cold else "gardés d'un passage précédent : départ jugé à chaud")
+        for probe in probe_paths(cmd):
+            perf_probe.write_shaders_mark(probe.parent, "froid" if cold else "chaud")
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
@@ -936,7 +1060,7 @@ class Run:
 
     # --- déroulé ---------------------------------------------------------------------------
 
-    def step(self, step: dict[str, Any]) -> bool:
+    def step(self, step: dict[str, Any], suivant: dict[str, Any] | None = None) -> bool:
         """Joue une étape ; faux si le passage ne peut pas continuer (engine arrêté)."""
         assert self.engine is not None and self.core is not None
         delay = float(step.get("delai", 5.0)) * self.slowdown()
@@ -976,7 +1100,7 @@ class Run:
                                     "duration_s": float(step.get("duree_s", COURT_S))}) + "\n")
             time.sleep(float(step.get("duree_s", COURT_S)) + 0.5)
         elif "ecran" in step or "menu_cache" in step or "monde" in step:
-            self.wait_screen(step)
+            self.wait_screen(step, suivant)
         elif "config" in step:
             self.wait_config(step["config"], delay if "delai" in step else 3.0)
         elif "journal" in step:
@@ -1002,6 +1126,8 @@ class Run:
             self.wait_exit(int(step["sortie"]), delay if "delai" in step else 10.0)
             return False
         elif "commande" in step:
+            if step["commande"] == "end_session":
+                self.wait_session_started(delay if "delai" in step else SESSION_START_S * self.slowdown())
             self._send({"type": "_test", "action": "command", "name": step["commande"], "args": step.get("args", {})})
             time.sleep(1.0)
         elif "attendre" in step:
@@ -1024,10 +1150,13 @@ class Run:
         self.prepare()
         try:
             if self.start():
-                for i, step in enumerate(self.doc.get("etapes", [])):
+                etapes = self.doc.get("etapes", [])
+                for i, step in enumerate(etapes):
                     if self.voie not in step.get("voies", VOIES):
                         continue
-                    if not self.step(step):
+                    suivant = next((e for e in etapes[i + 1:] if "ecran" in e and self.voie in e.get("voies", VOIES)),
+                                   None)
+                    if not self.step(step, suivant):
                         break
                     if self.report.failed >= MAX_FAILURES:
                         self.report.check(False, f"passage interrompu après {MAX_FAILURES} échecs",

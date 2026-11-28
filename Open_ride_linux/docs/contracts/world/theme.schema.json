@@ -239,6 +239,12 @@
             "blend_sharpness": {
               "type": "number",
               "exclusiveMinimum": 0
+            },
+            "strata": {
+              "$ref": "#/$defs/strata"
+            },
+            "terraces": {
+              "$ref": "#/$defs/terraces"
             }
           }
         },
@@ -327,6 +333,9 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            "falls": {
+              "$ref": "#/$defs/falls"
             }
           }
         },
@@ -470,6 +479,45 @@
         },
         "fire": {
           "$ref": "#/$defs/fire"
+        },
+        "neon": {
+          "$ref": "#/$defs/neon"
+        }
+      }
+    },
+    "neon": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Ambiance néon du paysage (lot NV1, parcours « Avenue de la Lagune ») : couleurs des néons, dégradé du ciel de fin de journée, brume, densité des néons et du mobilier lumineux ; toutes les clés sont facultatives.",
+      "properties": {
+        "pink": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "cyan": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "violet": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "orange": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "sky_top": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "sky_mid": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "sky_horizon": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "fog": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "density": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
         }
       }
     },
@@ -497,6 +545,81 @@
           "type": "number",
           "minimum": 0,
           "maximum": 2
+        }
+      }
+    },
+    "strata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "colors"
+      ],
+      "description": "Strates colorées des parois (lot U25-p2, canyons) : bandes d'altitude qui teintent la couche steep.",
+      "properties": {
+        "colors": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/hexColor"
+          }
+        },
+        "band_m": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 200
+        },
+        "strength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "terraces": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Gradins inondés (lot U25-p2, rizières) sur la couche flat : eau de water.color, diguettes de la couche steep.",
+      "properties": {
+        "step_m": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 20
+        },
+        "max_slope_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "flooded": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "falls": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Cascades sur les parois (lot U25-p2, fjords) : écume qui coule sur la couche steep.",
+      "properties": {
+        "density": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "min_slope_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "width_m": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 50
+        },
+        "color": {
+          "$ref": "#/$defs/hexColor"
         }
       }
     }
@@ -794,7 +917,8 @@
           "fjord",
           "ile_volcanique",
           "rizieres",
-          "volcan_actif"
+          "volcan_actif",
+          "ville_neon"
         ]
       },
       "additionalProperties": {

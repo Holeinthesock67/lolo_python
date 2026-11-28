@@ -38,7 +38,6 @@ func _item(f, id: String) -> Dictionary:
 
 
 const SETTINGS := {"type": "settings", "v": 1, "items": [
-	{"key": "bots.level_pct", "label": "Niveau des bots", "type": "int", "value": 100, "min": 50, "max": 150, "step": 5, "unit": "%", "group": "ride", "applies": "next_session"},
 	{"key": "bots.objective", "label": "Objectif des bots", "type": "choice", "value": "tempo", "choices": ["recovery", "endurance", "tempo", "threshold", "max"], "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.opponents", "label": "Grand Prix : adversaires", "type": "int", "value": 4, "min": 2, "max": 11, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.laps", "label": "Grand Prix : tours du circuit", "type": "int", "value": 3, "min": 1, "max": 5, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
@@ -86,7 +85,7 @@ func _run() -> void:
 	act = f.handle("A_LONG")
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
 	_check(str(f.state()["title"]) == "Prêt : Grand Prix des objets — Grande boucle", "titre du mode (%s)" % f.state()["title"])
-	_check(_ids(f) == ["start", "change_route", "set:grandprix.opponents", "set:grandprix.laps", "set:bots.level_pct",
+	_check(_ids(f) == ["start", "change_route", "set:grandprix.opponents", "set:grandprix.laps",
 		"set:grandprix.chaos", "set:grandprix.box_every_m", "gp_items", "_gp_help"],
 		"Lancer, parcours, réglages avec les tours (plus de distance en ligne), Objets, aide (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "3 tours, 12,0 km" and _item(f, "start")["enabled"],
@@ -103,12 +102,23 @@ func _run() -> void:
 	_check(MenuFlow.bots_info_row({"power_w": null}).is_empty(), "sans watts (parcours pas chargé) : pas de watts")
 	_check(MenuFlow.duration_text(3900.0) == "1 h 05", "durée de plus d'une heure : 1 h 05")
 	_check(MenuFlow.bots_info_row({"power_w": 180, "duration_s": 600, "objective": "endurance", "elo": null})
-		== {"watts": "≈ 180 W", "cote": "", "duration": "≈ 10 min"}, "cote coupée : pas de cote")
+		== {"watts": "≈ 180 W", "cote": "", "duration": "≈ 10 min", "hold": "", "mine": ""}, "cote coupée : pas de cote")
+	# Lot PP6b (contrat 1.37) : durée tenable et temps estimé pour toi, en mots
+	var pp6b := {"power_w": 260, "duration_s": 1500, "hold_s": 720, "my_time_s": 1380, "elo": null}
+	_check(MenuFlow.bots_info_row(pp6b)["hold"] == "environ 12 min" and MenuFlow.bots_info_row(pp6b)["mine"] == "environ 23 min",
+		"PP6b : tu tiens environ 12 min, temps estimé environ 23 min (%s)" % str(MenuFlow.bots_info_row(pp6b)))
+	_check(MenuFlow.hold_text({"hold_s": 2000, "duration_s": 1500}) == "jusqu'au bout", "PP6b : au-delà de la course : jusqu'au bout")
+	_check(MenuFlow.hold_text({"hold_s": 40, "duration_s": 1500}) == "environ 40 s", "PP6b : moins d'une minute en secondes")
+	_check(MenuFlow.hold_text({"duration_s": 1500}) == "", "PP6b : core plus ancien, rien")
 	# Lot R1 : A sur la ligne change la dose (moyen → dur → facile → moyen), gardée dans `bots.objective`
 	f.menu.focus_item("intensity")
 	_check(str(f.state()["status"]).begins_with("Intensité du jour : A pour facile, moyen ou dur.")
 		and str(f.state()["status"]).ends_with("Course estimée à ≈ 9 min. Ta cote : 1540."),
 		"focus sur la ligne : aide en mots, durée de la course et cote (%s)" % f.state()["status"])
+	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 11, "mode": "grandprix", "objective": "tempo",
+		"ftp_pct": 86.6, "power_w": 217, "duration_s": 780, "elo": {"rating": 1500, "races": 0}, "hold_s": 7734, "my_time_s": 660})
+	_check(str(f.state()["status"]).ends_with("Course ≈ 13 min : allure tenue jusqu'au bout, toi à fond ≈ 11 min. Cote : 1500."),
+		"PP6b : ligne d'état courte avec durée tenable, temps à fond et cote (%s)" % f.state()["status"])
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_setting", "key": "bots.objective", "value": "max"}, "moyen → dur (%s)" % str(act))
 	_check(_item(f, "intensity")["detail"] == "" and _item(f, "intensity")["label"] == "Intensité : dur", "dur : anciens watts effacés jusqu'à la réponse")
@@ -199,7 +209,8 @@ func _run() -> void:
 	act = f.handle("A_LONG")
 	_check(act == {"action": "start", "args": {"mode": "grandprix"}}, "start avec mode « grandprix », sans bots")
 	f.on_error("bad_args", "Grand Prix : parcours trop court")
-	_check(str(f.state()["status"]).begins_with("Échec : Grand Prix"), "refus du core sur la ligne d'état")
+	_check(str(f.state()["status"]) == "× REFUSÉ · Départ impossible : le parcours est trop court pour cette course\nÀ faire : choisis un parcours plus long, ou baisse les adversaires ou l'écart"
+		and f.state()["status_error"], "refus du core expliqué : pourquoi et quoi faire (lot RT4, %s)" % str(f.state()["status"]))
 
 	# Parcours en ligne imposé à l'écran Prêt (le core n'en accepte pas) : Lancer grisé et conseil (lot GPL1)
 	f.menu.set_world("long", "Longue")

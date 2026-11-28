@@ -5,7 +5,9 @@ protège contre une panne d'écriture (disque plein, fichier fermé) :
 - une erreur d'écriture ne remonte jamais vers la boucle du core : elle est signalée une fois
   par `on_failure`, l'écriture sur disque s'arrête et la mémoire continue ;
 - `reopen()` ouvre un nouveau journal et y réécrit toute la séance depuis la mémoire ;
-- le FIT est produit depuis la mémoire, donc même si le journal est inutilisable.
+- le FIT est produit depuis la mémoire, donc même si le journal est inutilisable ;
+- en séance, le FIT s'écrit dans un fil à part (`FitExporter`, revue S1-02) : la boucle à 50 Hz ne
+  s'arrête plus 1 à 3 s à chaque fin de séance.
 """
 
 from __future__ import annotations
@@ -14,6 +16,9 @@ import ctypes
 import gc
 import logging
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import wait as futures_wait
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
@@ -215,8 +220,23 @@ class SessionRecorder:
     def events(self) -> list[dict]:
         return [ln for ln in self.lines if ln["kind"] == "event" and ln["event"] in TIMER_EVENTS]
 
-    def finish(self, save: bool, ts: float | None = None) -> tuple[Path | None, Summary, str | None]:
-        """Clôt la séance. Renvoie (chemin du FIT ou None, résumé, erreur éventuelle du FIT)."""
+    def finish(self, save: bool, ts: float | None = None,
+               private_start_m: float = 0.0) -> tuple[Path | None, Summary, str | None]:
+        """Clôt la séance et écrit le FIT tout de suite. Renvoie (chemin du FIT ou None, résumé, erreur
+        éventuelle du FIT). `private_start_m` : zone privée au départ du FIT (lot PZ1), 0 si coupée.
+        Hors de la boucle seulement (outils, tests, dernier recours) : la boucle passe par `close_session` et
+        `FitExporter` (revue S1-02)."""
+        job, summary, error = self.close_session(save, ts=ts, private_start_m=private_start_m)
+        if job is None:
+            return None, summary, error
+        path, error = job.run()
+        return path, summary, error
+
+    def close_session(self, save: bool, ts: float | None = None,
+              private_start_m: float = 0.0) -> tuple[FitJob | None, Summary, str | None]:
+        """Clôt la séance sans écrire le FIT : événement `stop`, journal fermé, résumé (quelques
+        millisecondes). Renvoie (export à faire ou None, résumé, raison de l'absence de FIT ou None).
+        Le chemin du FIT est fixé ici, avec le profil en cours (revue S1-02)."""
         self.event("stop", ts if ts is not None else time.time())
         if self._writer is not None:
             try:
@@ -232,12 +252,113 @@ class SessionRecorder:
             return None, summary, "séance sans relevé : aucun FIT produit"
         try:
             out = default_fit_path(records[0]["ts"], self.route_id)
-            if self.fit_dir is not None:
-                out = self.fit_dir / out.name
-            write_fit(records, events, out, lap_starts(self.lines))
-            return out, summary, None
-        except Exception as exc:   # le FIT ne doit jamais faire tomber le core
+        except Exception as exc:   # profil illisible : le FIT manque, le core reste debout
             log.error("Export FIT impossible : %s", exc)
             return None, summary, str(exc)
+        if self.fit_dir is not None:
+            out = self.fit_dir / out.name
+        return FitJob(records, events, out, lap_starts(self.lines), private_start_m), summary, None
+
+
+@dataclass
+class FitJob:
+    """Export FIT d'une séance close : données figées, sans lien avec l'enregistreur (revue S1-02).
+    `run` peut tourner dans un autre fil que la boucle."""
+    records: list[dict]
+    events: list[dict]
+    path: Path
+    laps: list[float] = field(default_factory=list)
+    private_start_m: float = 0.0
+
+    def run(self) -> tuple[Path | None, str | None]:
+        """Écrit le FIT (écriture atomique de `write_fit`). Renvoie (chemin ou None, erreur ou None) ;
+        ne lève jamais : le FIT ne doit pas faire tomber le core.
+
+        Ramasse-miettes automatique coupé le temps de l'export : `fit_tool` crée des centaines de milliers
+        d'objets, qui déclenchaient des collectes complètes de 100 à 200 ms, verrou de Python tenu, donc
+        boucle arrêtée d'autant (mesuré pour une heure : pas le plus long 0,23 s avec, 0,04 s sans ; export
+        deux fois plus court). Ces objets n'ont pas de cycles ; `release_heap` fait une collecte à la fin."""
+        was_enabled = gc.isenabled()
+        gc.disable()
+        try:
+            write_fit(self.records, self.events, self.path, self.laps, self.private_start_m)
+            return self.path, None
+        except Exception as exc:
+            log.error("Export FIT impossible : %s", exc)
+            return None, str(exc)
         finally:
+            if was_enabled:
+                gc.enable()
             release_heap()
+
+
+class FitExporter:
+    """Exports FIT hors de la boucle à 50 Hz (revue S1-02) : un fil à part, un export à la fois dans
+    l'ordre des séances. La boucle appelle `poll` à chaque pas : les fins d'export (`on_done`) y sont
+    traitées, dans le fil de la boucle, jamais dans celui de l'export. `wait` attend les exports en
+    cours avant l'arrêt du core.
+
+    Le fil garde le verrou de Python par tranches de `sys.getswitchinterval()` (5 ms) : la boucle
+    prend du retard de quelques millisecondes au plus pendant l'export, au lieu de s'arrêter 1 à 3 s.
+    """
+
+    def __init__(self) -> None:
+        self._pool: ThreadPoolExecutor | None = None
+        self._pending: list[tuple[Future, Callable[[Path | None, str | None], None] | None]] = []
+
+    @property
+    def busy(self) -> bool:
+        return bool(self._pending)
+
+    def submit(self, job: FitJob, on_done: Callable[[Path | None, str | None], None] | None = None) -> None:
+        if self._pool is None:
+            self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="fit-export")
+        t0 = time.monotonic()
+
+        def work() -> tuple[Path | None, str | None]:
+            out = job.run()
+            if out[0] is not None:
+                log.info("FIT écrit en %.1f s hors de la boucle : %s", time.monotonic() - t0, out[0])
+            return out
+
+        self._pending.append((self._pool.submit(work), on_done))
+
+    def poll(self) -> None:
+        """Fins d'export arrivées depuis le dernier appel, traitées dans le fil appelant."""
+        if not self._pending or not any(f.done() for f, _ in self._pending):
+            return
+        still: list[tuple[Future, Callable[[Path | None, str | None], None] | None]] = []
+        for fut, on_done in self._pending:
+            if not fut.done():
+                still.append((fut, on_done))
+                continue
+            try:
+                path, error = fut.result()
+            except Exception as exc:   # `FitJob.run` ne lève pas ; garde-fou
+                path, error = None, str(exc)
+            if on_done is not None:
+                try:
+                    on_done(path, error)
+                except Exception:
+                    log.exception("Fin d'export FIT mal traitée")
+        self._pending = still
+
+    def wait(self, timeout: float | None = None, process: bool = True) -> bool:
+        """Attend les exports en cours (au plus `timeout` secondes), puis traite leurs fins (`process` faux :
+        appel depuis un autre fil que la boucle, qui appellera `poll` elle-même). Vrai si tout est écrit."""
+        if self._pending:
+            log.info("Export FIT en cours : attente avant l'arrêt.")
+            futures_wait([f for f, _ in self._pending], timeout=timeout)
+        if not process:
+            return all(f.done() for f, _ in self._pending)
+        self.poll()
+        if self._pending:
+            log.error("Export FIT inachevé après %.0f s : le journal de la séance reste (openride-core recover).",
+                      timeout or 0.0)
+            return False
+        return True
+
+    def close(self) -> None:
+        if self._pool is not None:
+            self._pool.shutdown(wait=False)
+            self._pool = None

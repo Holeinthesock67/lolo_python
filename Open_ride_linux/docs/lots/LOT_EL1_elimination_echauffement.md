@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Retours de l'essai vélo du 21 novembre au vélodrome : élimination trop courte, pas d'écart aux bots, pas de victoire ; échauffement sur place en ERG avant toutes les courses | Python, GDScript | VD6, VD9, T16, O36 | Moyenne | En revue (captures à valider) |
+| Retours de l'essai vélo du 21 novembre au vélodrome : élimination trop courte, pas d'écart aux bots, pas de victoire ; échauffement sur place en ERG avant toutes les courses | Python, GDScript | VD6, VD9, T16, O36 | Moyenne | **Livré le 24 novembre** (PR #958) ; suite EL1b (PR #1043, 25 novembre) |
 
 ## 1. Objectif
 
@@ -18,6 +18,7 @@ Essai du 21 novembre (élimination au vélodrome) : « très bien, mais une séa
 | 3 | Épreuve finie : bandeau du milieu « VICTOIRE ! » (or, arpège `jingle_winner` et public) ou « ARRIVÉE · 3e sur 8 », 6 s, puis on continue à rouler (choix du propriétaire du 21 novembre, fil « retours », lot RT1 : retour au calme, bilan à la demande ; le bandeau permanent est celui de RT1). Cycliste éliminé : `jingle_elim`. |
 | 4 | Échauffement (choix du propriétaire : « sur place en ERG, avant le départ ») : une règle pour tous les modes de course (`warmup.RACE_MODES` : Dernier survivant, Grand Prix, épreuves de piste sauf la séance libre, `EventSpec.race`) ; étape `echauffement` du départ (`start_gate.py`) entre le trainer et le pédalage ; profil `warmup.profile` (montée 45→70 % FTP, palier 70 %, deux fois 20 s à 100 % / 40 s à 55 %) passé par `ErgController` ; Z court ou `skip_warmup` le passe, + et − règlent la cible ; Y annule et rend le trainer en SIM ; réglage `depart.echauffement_min` (10 min, 0 : aucun). Rien n'est compté ni enregistré pendant l'échauffement. |
 | 5 | Contrat IPC révision 1.33 (ajouts compatibles). |
+| 6 | Essai du 22 novembre : coureurs sortis (éliminé, déclassé, lâché, écarté) et tous les bots d'une épreuve finie rangés en haut de la piste (`bot_plan.OUT_HEIGHT_M`, 5,5 m, consigne `RaceHint.parked` : placement automatique coupé) ; un coureur rangé à 2 m ou plus de côté n'est ni suivi ni doublé (`draft.PARKED_APART_M`, règle commune). Élimination finie : bloc « CLASSEMENT · 1er sur 6 » au lieu de « Encore en course », liste « CLASSEMENT FINAL » numérotée, éliminés compris ; captures `velodrome/elim-ranges/`. |
 
 ## 3. Livraison
 

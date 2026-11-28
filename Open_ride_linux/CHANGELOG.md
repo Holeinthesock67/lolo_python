@@ -6,8 +6,111 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 
 ## Non publié
 
+> Passe de doc du 27 novembre (lots fusionnés du 22 au 27 novembre) : notes recopiées de `docs/changements/` (fichiers retirés) et lots fusionnés sans note détaillée, relevés d'après les PR fusionnées et leurs cahiers.
+
+### Ligue d'hiver (série CH, lots CH1 à CH7, BR4)
+- Nouveau : la **Ligue d'hiver** à l'accueil, une saison de 8 manches (une par semaine) contre les mêmes 11 rivaux, 6 meilleurs résultats comptés, une seule tentative par manche (lots CH1, CH2 : rivaux réglés pour environ 10 % de victoires par manche).
+- Chaque manche part dans son mode (Course, Dernier survivant, Grand Prix ou élimination) sur un parcours de son terrain, compte au bilan après l'arrivée (Y puis A maintenu) ; écran de la ligue avec le classement et écran Prêt de la manche (lots CH3a #989, CH3b #1034, CH3c #1020, CH4a #993, CH4c #1035, contrat IPC révision 1.30).
+- **Palmarès** des saisons closes : place, points, vainqueur, trophée (lot CH6, #1047, révision 1.40).
+- Rappel de la manche par notification de bureau le samedi à 18 h et le dimanche à midi si elle n'est pas courue (`scripts/install-rappel-ligue.sh`, lot CH7, #1046).
+- Rivaux reconnaissables : mêmes noms, équipes et caractères d'une course à l'autre, dans tous les modes (lot BR4, #986).
+
+### « Ma puissance » (série PP, lots PP1 à PP9, FO1, PP7v)
+- Courbe de puissance du profil (13 durées, 6 mois et 6 semaines, libre ou ERG) et FTP estimée proposée sans jamais l'écrire seule (PP1 #971, PP2 #973) ; écran « Ma puissance » dans le profil (PP3 #975).
+- Records de puissance au bilan et signal « FTP à revoir » (PP4 #976) ; « Se connaître » (PP5 #977) ; « Ma forme » : condition et fatigue en mots (FO1 #1002).
+- Bots calés sur la courbe du cycliste (PP6 #1021) ; défi « bats ton record » et fantôme du record (PP7 #978) ; trophées de puissance par palier en watts (PP7b #980) et leurs 11 visuels dans la Collection (PP7v #1099) ; le coach lit la courbe (PP8 #979) ; la courbe repart de la remise à zéro des statistiques (PP9 #1039).
+
+### Reprise, fin de séance et retours communs (lots RC1, RC3, FB1, RT1, RT2, RT4, EL1, CR1, RW)
+- Une course (Course, Grand Prix, Dernier survivant) est reprise entière après un plantage du core, et une séance ou une course coupée par un arrêt brutal se reprend depuis l'accueil moins de 2 h après (« Reprendre la course », lots RC1 et RC3, #1036).
+- Une erreur d'un mode de jeu termine la séance avec son bilan au lieu de la perdre (lot FB1, #1022).
+- Même fin dans tous les modes : l'arrivée ne coupe plus la séance, même résultat écrit en séance et en tête du bilan (lot RT2, #1000) ; retours et consignes communs (RT1, #959) ; chaque refus dit pourquoi et quoi faire (RT4, #990).
+- Élimination plus longue, écarts aux voisins, victoire marquée et échauffement sur place en ERG avant les courses (lot EL1, #958 ; EL1b, #1043 : éliminés rangés en haut de la piste).
+- Mode « Course » à l'accueil : le Grand Prix sans objet, sur tous les parcours libres (lot CR1, #939, révision 1.23) ; réserve des bots sur les listes des modes compétitifs (lot RW, #967).
+
+### Grand Prix des objets (lots GPO1, GPH1, GPL1)
+- Objets plus forts et plus longs, boîtes de famille par voie, gestes des bots visibles (lot GPO1, #957).
+- « Comment ça marche ? » sur l'écran Prêt et ligne d'aide des voies (lot GPH1, #952).
+- Le Grand Prix se court sur une boucle seulement ; Récif, Volcan et Grand Nord ajoutés au mode en restant libres (lot GPL1, #942).
+
+### Accueil, réglages et diagnostic (lots OS1, QG1, DG1, ET1, PZ1)
+- Objectif de la semaine à l'accueil (« Semaine : 1 séance sur 2 », lot OS1, #1038).
+- Réglages › Graphisme : la qualité graphique s'écrit basse, moyenne ou haute (au lieu de low, medium, high) et sa carte explique chaque niveau en mots (portée, végétation, brume, ombres ; basse si l'image saccade). Le fichier `config.toml` garde `low` / `medium` / `high` : réglages et profils existants inchangés (lot QG1, #1048).
+- **Réglages › Diagnostic** : un fichier `.zip` à joindre à un signalement, sans donnée privée, rien n'est envoyé ; aussi `openride-core diagnostic` (lot DG1, #1004, révision 1.37).
+- `openride-ble-diag spindown` : sonde d'étalonnage FTMS (lot ET1, #1009).
+- Zone privée au départ : aucune position à moins de 500 m du départ dans les FIT et le GPX du monde ouvert, réglage coupé par défaut (lot PZ1, #1015).
+
+### Rendu, paysages et parcours (lots EA5, NV1, PE1)
+- Les tunnels sont dessinés : la colline reste au-dessus, la route entre dans un tube éclairé (parois, voûte, trottoirs, têtes de portail, lampes tous les 12 m), sans herbe en travers de l'entrée ni ciel à l'intérieur ; parcours compilés et monde ouvert (lot EA5, #940).
+- Nouveau paysage « ville néon » du thème (ville de bord de mer au coucher du soleil et de nuit), préparé pour le futur parcours « Avenue de la Lagune ». Rien ne change encore à l'écran (lot NV1, #1085).
+- Core : règle de l'enchaînement de parcours en session libre (module `chain.py`) et un tour du FIT par parcours enchaîné ; rien ne change encore en jeu (lot PE1, #1016).
+
+### Monde ouvert (lots OW-RECH1, OW-CARTE1, RC22, RC24)
+- En tapant un nom (« sevrier »), la liste montrait parfois les lieux d'une saisie plus courte arrivés en dernier et Entrée partait du mauvais endroit : seule la réponse à la dernière recherche envoyée remplace la liste. Nominatim n'est plus interrogé à chaque lettre : une requête à la fois, et seulement pour la saisie la plus récente (lot OW-RECH1, #1072).
+- La carte du point de départ ne montrait que le curseur dans un lieu jamais roulé : les tuiles vectorielles absentes à moins de 3 km du lieu sont téléchargées à l'ouverture de la carte (réseau permis) et gardées pour le départ ; hors ligne, la carte lit celles déjà sur le PC, et dit en mots qu'elle reste sans route (lot OW-CARTE1, #1076).
+- Téléchargements sûrs : relief Copernicus coupé ou page d'erreur refusés et repris (plus de tuiles prises pour de la mer) ; réponses Overpass « runtime error » ou « timed out » plus mises en cache ; TileJSON invalide et tuile vectorielle coupée redemandés (lot RC22, #1061).
+- Contenus et packs : le ménage des thèmes ne retire plus que les packs installés par `theme-install` ; la génération des démonstrations ne coupe plus le réseau des autres fils du core ; une trace en erreur ne fait plus afficher « Installation impossible » ; une réinstallation forcée garde les fichiers ajoutés à la main (lot RC24, #1074).
+
+### Outils de test, CI et bancs du PC (lots AP1, BM1, CF1, DM1, BF1, IM0, REP1, OW-ZONES, RC17, RC20, RC21, X28b, X35b, EN1b)
+- `scripts/avant_poussee.py` : avant chaque poussée, en 1 à 3 minutes, les fautes qui faisaient le plus souvent rougir la CI (`.uid` oublié, numéro IPC ou WORLDGEN déjà pris, conflit avec main, lot en double, test qui écrit hors de son dossier temporaire) ; `--corriger` écrit les `.uid` manquants (AP1, #1088). `--avant-fusion` refuse de fusionner un train si main a changé un fichier qu'il touche aussi ou un fichier partagé (BM1, #1096).
+- `scripts/conflits_ouverts.py` : juste après une fusion dans main, liste en quelques secondes les PR ouvertes en conflit ou dont la révision IPC, `WORLDGEN_VERSION` ou `SCHEMA_VERSION` est désormais prise (CF1, #1103).
+- File des bancs du PC : délai d'une étape tiré des 5 derniers passages (au moins 1,5 fois le plus long), départ du monde ouvert attendu sur l'événement « Monde ouvert prêt » (DM1, #1095) ; cache du monde ouvert séparé par défaut, le vrai seulement avec `cache = "reel"` (RC17, #1042).
+- Bancs d'à-coups jugés à froid (départ à 1 s, premier lancement) et à chaud (150 ms), une image entre 100 et 200 ms tolérée (BF1, #1094) ; un banc sans mesure ne passe plus (RC20, #1041) ; vitesse imposée du banc simulé jugée hors descentes, abri et élan (X35b, #1090).
+- Banc multi-zones du monde ouvert sur 7 zones et 6 biomes, contrôle sol / route sur la balade seule (OW-ZONES, #1057 ; AP1) ; filet « à l'identique » des modes de jeu, rien ne change dans le jeu (IM0, #1092) ; répétition du samedi 28/11 au banc des menus (REP1, #1075) ; saison de l'essai d'endurance courue jusqu'au bout (EN1b, #1067) ; essai réseau dégradé stabilisé en CI (X28b, #1078).
+- Constats de confort de la revue de code vague 5 : `bump-version.sh`, audit des dépendances, isolation des tests, portail du PC, empreinte SHA-512 de Godot en CI, arrêt propre des bancs de l'engine, comparateurs (RC21, #1049).
+
+### Consignes du Cyber-Rogue (lot R28)
+- Moins de voile et de halo en medium et high : l'éclair d'une frappe n'assombrit plus tout l'écran (15 % au lieu de 45 %), et le halo des néons est plus court, sans bloom (retour du 23 novembre).
+- La consigne écrite est la vraie : la puissance qui bat l'ennemi à temps (au boss du seuil, 11,8 % de plus qu'avant), et l'adrénaline monte dès qu'on l'atteint (« affiche une vraie consigne », choix du propriétaire). La marge de 10 % ne sert plus qu'à rester dans la plage, et elle est écrite : « ✔ marge : remonte de 8 W ».
+- La puissance n'est plus écrite qu'une fois, en haut à gauche ; sous la plage : « ✔ dans la plage », « il manque 14 W » ou « 12 W de trop ».
+- L'adrénaline monte de 1 par seconde dans la plage, quelle que soit la cadence (plus de malus caché en ROC) : une frappe Z toutes les 50 s (choix du propriétaire, contrat IPC révision 1.39 provisoire).
+
+### Gestes des bots écrits et entendus (lot BA1)
+- Quand un bot proche attaque, suit une attaque ou lance son sprint, le bandeau l'écrit (« Grimpeur attaque, 40 m devant ») et un son court part : dans la Course, le Grand Prix, le Dernier survivant et la session libre avec un peloton.
+- Contrat IPC : champ facultatif `move` des bots (révision 1.38, numéro provisoire).
+
+### Copies automatiques du profil (lot SV1)
+- Chaque profil de joueur est copié chaque semaine (au lancement, si la dernière copie a 7 jours), avant chaque mise à jour (« Mettre à jour » refuse de continuer si la copie échoue) et avant une remise à zéro, dans `~/OpenRide/Sauvegardes/profils/<profil>/`.
+- Les fichiers qui n'ont pas changé ne sont pas recopiés (liens durs) : une saison de 8 semaines tient dans un seul dossier. Gardées : 8 copies de la semaine, 3 avant mise à jour, 3 avant remise à zéro, 3 avant restauration.
+- « Gérer : <profil en cours> › Restaurer une sauvegarde » : liste des copies en mots, confirmation aux boutons écrits (« Non, garder mon profil » par défaut), profil actuel copié avant ; en ligne de commande : `openride-core profil sauvegarde | sauvegardes | restaurer`.
+- Contrat IPC (révision 1.36) : `list_profile_backups`, `restore_profile_backup`, message `profile_backups`.
+### Un seul réglage de difficulté des bots (lot NI3)
+- La ligne « Intensité » des écrans Prêt (facile, moyen, dur, avec les watts des bots) est la seule à régler leur force ; la cote Elo fait le reste.
+- « Niveau des bots » est retiré des Réglages et des écrans Prêt du Dernier survivant, du Grand Prix et de la Course ; une valeur déjà choisie est mise en commentaire au lancement (niveau remis à 100 %).
+- « Objectif des bots » n’est plus dans Réglages › Séance : il se choisit sur la ligne « Intensité ». « Niveau automatique (Elo) » devient « Bots selon ta cote » (le libellé était coupé).
+- Les lignes « Bot 1 » à « Bot 4 » (19 choix) quittent l'écran Prêt et la pause ; « Peloton » et « Fantôme » restent.
+### Bluetooth et pilotes : constats de confort de la revue de code du 22 novembre (lot RC2, S6-05 à S6-13)
+- Après une reconnexion, le trainer n'est « connecté » qu'à sa première trame de mesures, et l'ancienne puissance n'est plus resservie (S6-05).
+- Une consigne de pente ou de puissance non finie (NaN) est ignorée au lieu de mettre le pilote en boucle de reconnexion (S6-06) ; une caractéristique de capacités ou de plage trop courte garde les valeurs par défaut (S6-07).
+- Trainer sans mode SIM : la pause et la fin ramènent la cible ERG au plus bas annoncé au lieu de la laisser appliquée (S6-08).
+- Click : trames de boutons tronquées ou incohérentes ignorées (S6-09) ; un même appui classé différemment par les deux boîtiers ne compte qu'une fois (S6-10).
+- Journal : adresses Bluetooth tronquées aux trois derniers octets, liste des appareils cardio à portée écrite une fois par lancement (S6-11).
+- `openride-ble-diag` : rapports dans `~/OpenRide/rapports/diag/` (droits du seul propriétaire), `scan` limité aux appareils reconnus sauf `--all` (S6-12) ; `--erg` et `--sim-grade` bornés, Reset tenté même si la pente 0 % échoue (S6-13).
+
+### Trainer et FIT : constats forts de la revue de code du 22 novembre (lot RC2)
+- Vent « ressenti par le trainer » (`[wind] feel = "ftms"`) : le vent n'est plus renvoyé au trainer en pause, au bilan, au menu, ni dans la séance suivante sans vent (vélodrome, Cyber-Rogue) ; remis à zéro aussi à l'arrêt (S2-02).
+- Pilotage « résistance calculée » : une consigne de niveau acceptée lève le bandeau « trainer occupé » et remet le compteur de refus à zéro ; trois pertes de contrôle espacées ne mettent plus la séance en erreur (S6-01).
+- Après un changement de profil, « Pilotage du trainer » et les réglages du trainer et des braquets du nouveau joueur prennent effet sans relancer (S1-05b).
+- Mesures invraisemblables ignorées, valeur précédente gardée, une ligne de journal par sorte toutes les 10 s au plus : puissance au-delà de 1,5 fois la plage annoncée (3 000 W au moins), cadence au-dessus de 250 tr/min, FC hors de 25 à 250 bpm, du trainer comme de la ceinture (S6-03).
+- Export FIT : une valeur hors des plages du format ne fait plus échouer tout le fichier (ni `recover`) : la mesure fautive est retirée de ce relevé, vitesse et distance bornées, le journal garde les valeurs brutes (S7-01).
+- Tours du FIT : la distance d'un tour part du dernier relevé du tour précédent (les tours s'additionnent à la séance) et le temps chronométré d'un tour ne compte plus ses pauses (S7-04).
+### Remettre à zéro les statistiques d'un profil (lot RZ1)
+- « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : niveau, expérience, pièces, défis, cartes, records, équipement acheté et cotes des bots repartent de zéro (avant une saison de la ligue, par exemple). Séances et FIT (historique du coach), cote Elo du cycliste, nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
+- Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant. Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut), exigée aussi par le core ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.
+- Contrat IPC révision 1.31 : `reset_profile_stats`, `undo_profile_reset`, `profiles.resets`.
+### Gels du monde ouvert : mesure des trames perdues (lot GL1)
+- Le journal dit maintenant, chaque minute, combien de trames de position le core a envoyées et combien le jeu en a reçues, avec les erreurs d'envoi ; un gel de plus de 2 s est noté avec la cause probable (`log_report --gigue`).
+### À-coups de main (lot AC4)
+- Plus d'image figée d'une demi-seconde à une seconde au chargement d'un parcours (départ du Cyber-Rogue, Grand Prix) : les cyclistes du décor se préparent sans bloquer l'affichage (lot AC4).
+### Photos automatiques de la séance
+- Une photo de l'écran à l'arrivée et à chaque record de montée ou de sprint, six au plus par séance, rangées dans `~/OpenRide/Captures/<date>_<heure>/` (JPEG, écrites hors de l'image) ; elles restent sur le PC. Le bilan dit combien de photos ont été prises et dans quel dossier. Réglages › Graphisme › « Photos automatiques » (oui par défaut). Jamais en Cyber-Rogue ni pendant les bancs.
+
 ### Moins de brouillard et de halo en medium et high (lot BH1)
 - En qualité medium et high, le voile bleu-gris au loin et le ciel laiteux sont allégés dans tous les modes (Grand Prix compris) : brume de près deux fois moins dense, halo lumineux plus discret (« encore un peu trop de brouillard/halo », 22 novembre). Le low ne change pas, le coût non plus.
+### Paysages, partie 2 : canyons, rizières, fjords (lot U25-p2)
+- Canyons : strates de grès rouge, orange, ocre et brun sur les parois ; brume chaude, rivières boueuses.
+- Rizières : gradins inondés qui reflètent le ciel, diguettes de terre, marches en eau ou en riz ; air chaud et humide.
+- Fjords : cascades d'écume qui coulent sur les parois raides ; eau verte et profonde, lumière froide.
+- Le ciel et la mer suivent le paysage de la tuile, avec un passage en douceur ; nouveaux membres facultatifs du thème `ground.strata`, `ground.terraces` et `water.falls`.
 
 ### Cyber-Rogue sans voile en high (lot R27)
 - En qualité high, le ciel et l'horizon du Cyber-Rogue ne sont plus voilés de gris (« une sorte de brouillard », 21 novembre) : la brume est linéaire dans les trois qualités, comme en low et en medium, et le halo lumineux du high reprend celui du medium.
@@ -52,6 +155,13 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - Après un demi-tour, le décor se charge dans le sens de la marche : portiques, herbe, détails du sol et gags du mode WTF (lot N22).
 - Voitures, camions, tracteurs et cyclistes du décor circulent aussi à rebours (lot N23) ; les montées du retour ont leurs panneaux d'approche, chiffres peints, spectateurs et parapentes (lot N24) ; les arches de bonus se comptent à rebours, une fois chacune par tour (lot N25).
 - Pendant un entraînement ERG ou un test de FTP, le bout d'un parcours en ligne fait demi-tour tout seul, sans arrêt (bandeau « Bout du parcours : demi-tour, l'entraînement continue ») ; une fois l'entraînement fini, le bout suivant termine la séance (lot N26).
+
+### Menus sans éléments inutiles (lot NI4)
+- « Session simulée » quitte l'accueil : elle se trouve en bas de Réglages › Appareils (« Revenir au matériel réel » en session simulée).
+- « Saisir du QWKcode (clavier) » est retiré de la liste des entraînements : « Créer un entraînement » couvre le besoin, et un fichier `.qwk` posé dans `~/OpenRide/Workouts/` est toujours lu.
+- « Décor vivant » est retiré de Réglages › Graphisme : le décor vivant est toujours actif, la Qualité graphique règle son coût ; un « non » choisi avant est remis par défaut au lancement (copie `config.toml.bak`).
+- Nouveau réglage « Son : oui / non » en tête de Réglages › Son : coupe tout le son d'un seul choix, les volumes sont gardés.
+- Cyber-Rogue : « Perfect Shifts » devient « Changements parfaits ».
 
 ### Réglages sans lignes inutiles (lot NI2)
 - Une seule place par réglage : les réglages du Dernier survivant, du Grand Prix, de la Course et de la séance conseillée ne se règlent plus que sur leur propre écran, plus dans Réglages › Séance.

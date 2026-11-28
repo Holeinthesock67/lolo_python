@@ -66,6 +66,7 @@ BIOME_STEP_M = 50.0
 MAX_BIOME_POINTS = 3
 SETTLE_S = 2.5
 PENDING_RETRIES = 12
+NO_REPLY_RETRIES = 8        # capture sans réponse redemandée (premier rendu figé par la compilation des shaders)
 
 
 class TourError(ValueError):
@@ -325,8 +326,11 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
             "--test-mode", f"--quality={args.quality}", "--camera=subjective"]
     if args.visual_grade is not None:
         cmd.append(f"--visual-grade={args.visual_grade}")   # relief affiché ; défaut de l'engine sinon (2,5)
+    import bancs_processus
+    home_godot, home_env = bancs_processus.home_temporaire()   # revue vague 5, O3-09 : pas le vrai profil
     with log_path.open("w") as fh:
-        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
+        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True,
+                                env={**os.environ, **home_env})
     done: list[dict[str, Any]] = []
     try:
         t0 = now()
@@ -361,14 +365,25 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
             time.sleep(SETTLE_S)
             info: dict[str, Any] | None = None
             png = out / f"{k + 1:02d}_{p['id']}.png"
-            for _ in range(PENDING_RETRIES):
+            silent = 0
+            pending = 0
+            while pending < PENDING_RETRIES:
                 mark = core.log.mark()
                 core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot", "path": str(png),
                                "tag": p["id"]})
                 hit = core.log.wait_for(r"^screenshot (\{.*\})$", 15.0, mark)
                 info = json.loads(hit[1].group(1)) if hit else None
-                if info is None or int(info.get("streaming_pending", 0)) == 0:
+                if info is None:
+                    # Premier passage d'une scène sous Vulkan logiciel, caches de shaders vides (HOME temporaire,
+                    # revue vague 5) : l'engine fige 10 à 40 s, les trames `state` remplissent sa file UDP et la
+                    # demande de capture s'y perd. Redemandée.
+                    silent += 1
+                    if silent > NO_REPLY_RETRIES:
+                        break
+                    continue
+                if int(info.get("streaming_pending", 0)) == 0:
                     break
+                pending += 1
                 time.sleep(1.0)
             ok = bool(info and info.get("ok")) and png.is_file()
             m = {} if info is None else {"triangles": int(info.get("triangles", 0)),
@@ -392,6 +407,7 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
                 os.killpg(proc.pid, 9)
             except ProcessLookupError:
                 pass
+        shutil.rmtree(home_godot, ignore_errors=True)
     return done
 
 
@@ -461,6 +477,8 @@ if __name__ == "__main__":
     sys.path.insert(0, str(ENGINE_DIR.parent / "scripts"))
     from isolation_tests import verrou_suite   # une seule suite de tests ou banc à la fois
 
+    import bancs_processus
+    bancs_processus.signaux_en_exception()   # SIGTERM, SIGHUP : nettoyage des `finally` (revue vague 5, O3-08)
     with verrou_suite("tour_visuel"):
         code = main()
     sys.exit(code)

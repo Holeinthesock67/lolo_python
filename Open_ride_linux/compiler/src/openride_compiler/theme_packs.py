@@ -38,6 +38,12 @@ from .theme import DEFAULT_THEME_DIR, check_theme
 MAX_THEME_UNCOMPRESSED_BYTES = 500 * 1024 * 1024  # 500 Mo
 DEFAULT_THEMES_DIR = Path.home() / "OpenRide" / "Themes"
 DEFAULT_CONFIG_PATH = Path.home() / "OpenRide" / "config.toml"
+# Marque posée par `install_theme` dans chaque pack qu'il installe (revue de code K4-01) : le ménage de la
+# bibliothèque ne retire que ces packs, jamais un thème fait à la main ni un dossier de travail.
+INSTALL_MARK = ".installe_par_openride"
+# Dossiers et fichiers du dossier personnel d'OpenRide : leur présence dit que `--themes-dir` ne vise pas
+# une bibliothèque de thèmes, et le ménage ne retire alors rien.
+NOT_A_LIBRARY = ("Cache", "Profils", "GPX", "Activities", "Routes", "Workouts", "Plans", "config.toml")
 USE_FILE = ".utilisation.json"           # écrit par openride_core.launcher.record_theme_use
 DEFAULT_LIBRARY_GB = 5.0
 LIBRARY_GB_RANGE = (1.0, 50.0)
@@ -276,21 +282,25 @@ def download_pack(url: str, dest_dir: Path, ssl_context: Any = None,
 
 def enforce_library_limit(themes_dir: Path, limit_bytes: int, keep: set[str]) -> list[str]:
     """Retire les packs utilisés le moins récemment tant que la bibliothèque dépasse `limit_bytes` ;
-    jamais ceux de `keep` (thème choisi, pack qu'on vient d'installer) ni le thème intégré. Renvoie les retirés."""
+    jamais ceux de `keep` (thème choisi, pack qu'on vient d'installer) ni le thème intégré. Renvoie les retirés.
+
+    Seul un pack installé par `install_theme` (marque `INSTALL_MARK` et `theme.json`) peut être retiré : un
+    thème fait à la main, un brouillon ou tout autre dossier compte dans la place prise mais reste en place.
+    Rien n'est retiré si le dossier n'est pas une bibliothèque de thèmes (`NOT_A_LIBRARY`)."""
     t_dir = Path(themes_dir)
-    if not t_dir.is_dir():
+    if not t_dir.is_dir() or any((t_dir / n).exists() for n in NOT_A_LIBRARY):
         return []
     uses = read_theme_use(t_dir)
     packs = []
     for d in t_dir.iterdir():
-        if d.is_dir() and not d.name.startswith(".") and d.name != "default":
+        if d.is_dir() and not d.is_symlink() and not d.name.startswith(".") and d.name != "default":
             packs.append((_last_used(d, uses), d.name, _dir_size_and_textures(d)[0], d))
     total = sum(p[2] for p in packs)
     removed: list[str] = []
     for _used, name, size, d in sorted(packs):
         if total <= limit_bytes:
             break
-        if name in keep:
+        if name in keep or not ((d / INSTALL_MARK).is_file() and (d / "theme.json").is_file()):
             continue
         shutil.rmtree(d, ignore_errors=True)
         total -= size
@@ -407,6 +417,11 @@ def install_theme(
             if staging_dir.exists():
                 shutil.rmtree(staging_dir, ignore_errors=True)
 
+    try:
+        (target_path / INSTALL_MARK).write_text("pack installé par openride-compiler theme-install\n",
+                                                encoding="utf-8")
+    except OSError:
+        pass                      # sans marque, le pack n'est simplement jamais retiré par le ménage
     messages = [w.message for w in warnings]
     keep = {theme_name, _read_current_config_theme(config_path)}
     for gone in enforce_library_limit(t_dir, library_limit_bytes(config_path), keep):

@@ -100,7 +100,7 @@ func _test_scenarios() -> void:
 		["PLUS_SHORT", "routes", "alpe", null],
 		["PLUS_SHORT", "routes", "vercors", null],
 	])
-	_scenario("accueil : boucle sur les dix entrées", _routes(ROUTES_4), [
+	_scenario("accueil : boucle sur les neuf entrées (session simulée rangée dans Appareils, lot NI4)", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
 		["PLUS_SHORT", "home", "world", null],
 		["PLUS_SHORT", "home", "ride", null],
@@ -113,7 +113,6 @@ func _test_scenarios() -> void:
 		["A_LONG", "home", "history", {"action": "item", "screen": "home", "id": "history"}],
 		["PLUS_SHORT", "home", "collection", null],
 		["A_LONG", "home", "collection", {"action": "item", "screen": "home", "id": "collection"}],
-		["PLUS_SHORT", "home", "sim", null],
 		["PLUS_SHORT", "home", "settings", null],
 		["Y_SHORT", "home", "settings", null],
 	])
@@ -156,23 +155,6 @@ func _test_scenarios() -> void:
 		["A_LONG", "ready", "workout", {"action": "select_workout", "workout_id": null}],
 		["Y_SHORT", "home", "erg", null],
 	])
-	_scenario("session simulée : confirmation puis relance", _routes(ROUTES_4), [
-		["MINUS_SHORT", "home", "quit", null],
-		["MINUS_SHORT", "home", "settings", null],
-		["MINUS_SHORT", "home", "sim", null],
-		["A_LONG", "confirm", "no", null],
-		["PLUS_SHORT", "confirm", "yes", null],
-		["A_LONG", "home", "sim", {"action": "relaunch_sim"}],
-	])
-	var in_sim := func(m): _routes(ROUTES_4).call(m); m.set_sim_session(true)
-	_scenario("en session simulée : revenir au matériel réel", in_sim, [
-		["MINUS_SHORT", "home", "quit", null],
-		["MINUS_SHORT", "home", "settings", null],
-		["MINUS_SHORT", "home", "sim", null],
-		["A_LONG", "confirm", "no", null],
-		["PLUS_SHORT", "confirm", "yes", null],
-		["A_LONG", "home", "sim", {"action": "relaunch"}],
-	])
 	_scenario("quitter : annulé puis confirmé", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
 		["A_LONG", "confirm", "no", null],
@@ -212,7 +194,7 @@ func _test_scenarios() -> void:
 	_scenario("pause sans demi-tour (monde ouvert, run, course) : pas d'entrée (lot N17)", paused_no_u_turn, [
 		["PLUS_SHORT", "pause", "end_save", null],
 		["PLUS_SHORT", "pause", "abandon", null],
-		["PLUS_SHORT", "pause", "bot1", null],   # après « Abandonner », les bots (lot N18), pas de demi-tour
+		["PLUS_SHORT", "pause", "ghost", null],   # après « Abandonner », les bots (lot N18 ; NI3 : fantôme, peloton), pas de demi-tour
 	])
 	_scenario("pause : reprendre, retour et terminer en enregistrant", paused, [
 		["A_LONG", "pause", "resume", {"action": "resume"}],
@@ -268,10 +250,10 @@ func _test_lists_and_events() -> void:
 	w.handle("PLUS_SHORT")
 	w.handle("PLUS_SHORT")
 	var ws: Dictionary = w.handle("A_LONG")
-	_check(ws["items"].size() == 5 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
+	_check(ws["items"].size() == 4 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
 		"aucun entraînement : « Sans entraînement (SIM) » reste choisissable")
-	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_qwk" and ws["items"][4]["id"] == "_help",
-		"sous-menu ERG (N16) : Créer, QWKcode et Aide en fin de liste, sans import (révision 1.15)")
+	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_help" and ws["items"].size() == 4,
+		"sous-menu ERG (N16) : Créer et Aide en fin de liste, sans import (révision 1.15) ni QWKcode (lot NI4)")
 	w.handle("PLUS_SHORT")
 	var wc: Dictionary = w.handle("A_LONG")
 	_check(wc["action"] == {"action": "item", "screen": "workouts", "id": "_create"} and wc["screen"] == "workouts",
@@ -329,13 +311,13 @@ func _test_prepare_start() -> void:
 func _test_modes() -> void:
 	var m = MenuModel.new()
 	var ids: Array = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "ride", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"],
+	_check(ids == ["world", "ride", "erg", "plan", "ftp", "history", "collection", "settings", "quit"],
 		"modes par défaut : ride et erg, puis plans et test de FTP (lot O12) (%s)" % str(ids))
 	m.set_modes(["erg", "cyber_rogue"])
 	ids = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
+	_check(ids == ["world", "erg", "plan", "ftp", "history", "collection", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
 	m.set_modes(null)
-	_check(m.state()["items"].size() == 10, "modes absents : retour aux modes par défaut")
+	_check(m.state()["items"].size() == 9, "modes absents : retour aux modes par défaut")
 
 
 ## Plan des boutons sans exception (spécification générale §7.1, 27 octobre).
@@ -365,15 +347,14 @@ func _test_button_plan() -> void:
 	_check(m.handle("Y_SHORT")["action"].get("action", "") == "resume", "Y sur l'écran de pause : reprendre")
 
 
-## Derniers choix du profil (lot O32) : bot et fantôme remis à chaque accueil, listes ouvertes sur le dernier choix.
+## Derniers choix du profil (lot O32) : peloton et fantôme remis à chaque accueil, listes ouvertes sur le dernier choix.
 func _test_last_choices() -> void:
 	var m = MenuModel.new()
 	m.set_items("routes", ROUTES_4)
 	m.set_items("workouts", WORKOUTS_2)
-	m.set_last_choices({"workout_id": "vo2", "bots": [{"kind": "profile", "profile": "rouleur", "level_pct": 100.0},
-		{"kind": "ghost"}]})
-	_check(m.bot_choices == [MenuModel.bot_index({"kind": "profile", "profile": "rouleur", "level_pct": 100})] and m.ghost,
-		"derniers choix : bot à profil (nombre du JSON en flottant) et fantôme repris")
+	m.set_last_choices({"workout_id": "vo2", "bots": [{"kind": "profile", "profile": "rouleur"},
+		{"kind": "profile", "profile": "climber", "level_pct": 100.0}, {"kind": "ghost"}]})
+	_check(m.peloton == 4 and m.ghost, "derniers choix : peloton et fantôme repris, ancien bot à niveau sauté (lot NI3)")
 	m.focus_item("erg")
 	_check(_focus_id(m.handle("A_LONG")) == "vo2", "Session ERG : la liste s'ouvre sur le dernier entraînement")
 	m.set_world("alpe", "Alpe d'Huez")
@@ -383,57 +364,50 @@ func _test_last_choices() -> void:
 	m.reset()
 	m.focus_item("ride")
 	m.handle("A_LONG")   # écran Prêt
-	m.focus_item("bot1")
-	m.handle("A_LONG")   # bot suivant
+	m.focus_item("peloton")
+	m.handle("A_LONG")   # peloton : 8
 	m.focus_item("ghost")
 	m.handle("A_LONG")   # fantôme : non
 	m.focus_item("start")
 	var act: Dictionary = m.handle("A_LONG")["action"]
-	var bots_after: Array[int] = m.bot_choices.duplicate()
 	m.reset()
-	_check(act.get("action", "") == "start" and m.bot_choices == bots_after and bots_after.size() == 1 and not m.ghost,
-		"nouvel accueil : le bot et le fantôme de la séance lancée restent choisis")
+	_check(act.get("action", "") == "start" and m.peloton == 8 and not m.ghost,
+		"nouvel accueil : le peloton et le fantôme de la séance lancée restent choisis")
 	m.set_last_choices({"bots": [{"kind": "constant", "power_w": 999}]})
-	_check(m.bot_choices.is_empty() and not m.ghost and m.last_workout == "", "bot inconnu et choix absents : valeurs par défaut")
+	_check(m.peloton == 0 and not m.ghost and m.last_workout == "", "bot inconnu et choix absents : valeurs par défaut")
 	m.set_last_choices(null)
-	_check(m.bot_choices.is_empty(), "aucun choix gardé (core sans last_choices)")
-	# Lot O35 : jusqu'à quatre bots repris dans l'ordre, un bot inconnu sauté, le cinquième ignoré.
-	var w := {"kind": "constant", "power_w": 200}
-	m.set_last_choices({"bots": [w, {"kind": "constant", "power_w": 999}, {"kind": "constant", "power_w": 300}, w, w, w]})
-	_check(m.bot_choices == [1, 3, 1, 1], "quatre bots repris au plus, bot inconnu sauté (%s)" % str(m.bot_choices))
+	_check(m.peloton == 0, "aucun choix gardé (core sans last_choices)")
 
 
 ## Lot N18 : lignes des bots de l'écran Prêt reprises sur l'écran de pause, `set_bots` envoyé à la reprise.
 func _test_pause_bots() -> void:
 	var m = MenuModel.new()
 	m.set_items("routes", ROUTES_4)
-	m.set_last_choices({"bots": [{"kind": "constant", "power_w": 200}]})
+	m.set_last_choices({"bots": [{"kind": "profile", "profile": "rouleur"}]})
 	m.open_pause()
 	var ids: Array = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["resume", "end_save", "abandon", "difficulty", "bot1", "bot2", "ghost", "peloton"],
-		"pause : bots de la séance, ligne vide, fantôme et peloton (%s)" % str(ids))
+	_check(ids == ["resume", "end_save", "abandon", "difficulty", "ghost", "peloton"],
+		"pause : fantôme et peloton, plus de lignes « Bot n » (lot NI3) (%s)" % str(ids))
 	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "rien changé : resume sans bots")
 	m.open_pause()
-	m.focus_item("bot1")
-	m.handle("A_LONG")   # 200 W → 250 W
-	m.focus_item("bot2")
-	m.handle("A_LONG")   # ligne vide → 200 W
+	m.focus_item("peloton")
+	m.handle("A_LONG")   # 4 → 8
 	m.focus_item("ghost")
 	m.handle("A_LONG")   # fantôme : oui
 	var labels: Array = m.state()["items"].map(func(it): return it["label"])
-	_check(labels.has("Bot 1 : 250 W") and labels.has("Bot 2 : 200 W") and labels.has("Bot 3 : aucun")
-		and labels.has("Fantôme de la dernière séance : oui"), "lignes modifiées en place (%s)" % str(labels))
+	_check(labels.has("Peloton : 8 bots") and labels.has("Fantôme de la dernière séance : oui"),
+		"lignes modifiées en place (%s)" % str(labels))
 	m.focus_item("resume")
 	var act: Dictionary = m.handle("A_LONG")["action"]
-	_check(act == {"action": "resume", "bots": [{"kind": "constant", "power_w": 250}, {"kind": "constant", "power_w": 200},
-		{"kind": "ghost"}]}, "reprise : liste des bots pour set_bots (%s)" % str(act))
-	_check(m.last_bots == m.bot_choices and m.last_ghost, "derniers choix mis à jour (repris au prochain accueil)")
+	_check(act.get("action", "") == "resume" and (act["bots"] as Array).size() == 9 and act["bots"][-1] == {"kind": "ghost"},
+		"reprise : liste des bots pour set_bots (%s)" % str(act))
+	_check(m.last_peloton == 8 and m.last_ghost, "derniers choix mis à jour (repris au prochain accueil)")
 	m.open_pause()
 	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "pause suivante : plus rien à envoyer")
 	m.mode = "survivor"
 	m.open_pause()
 	ids = m.state()["items"].map(func(it): return it["id"])
-	_check(not ids.has("bot1") and not ids.has("ghost"), "Dernier survivant : plateau du core, pas de lignes de bots")
+	_check(not ids.has("peloton") and not ids.has("ghost"), "Dernier survivant : plateau du core, pas de lignes de bots")
 	m.focus_item("resume")
 	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "Dernier survivant : resume seul")
 

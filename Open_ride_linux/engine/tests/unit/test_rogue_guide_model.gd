@@ -38,7 +38,10 @@ func _rogue(over: Dictionary = {}) -> Dictionary:
 
 func _run() -> void:
 	var g = GuideModel.new()
-	var st := {"route_length_m": 1120.0, "v": 8.0}
+	# Trame comme le vrai core l'envoie en mode Rogue : `route_length_m` nul ; la longueur de la salle vient du message
+	# `room` (revue de code E10-02 : les tests posaient 1120 m dans la trame, « N m restants » ne s'affichait jamais en jeu).
+	var st := {"route_length_m": null, "v": 8.0}
+	g.set_room(3, [], 1120.0)
 
 	# Échauffement : compte à rebours, étapes à venir, consigne de puissance, boutons sans Z.
 	var warm := _rogue({"phase": "WARMUP", "phase_left_s": 222.0, "room_index": 1, "target_pct": {"lo": 55, "hi": 65},
@@ -63,7 +66,7 @@ func _run() -> void:
 	# Salle : titre, distance restante, Firewall en secondes et ses couleurs.
 	o = g.compute(st, _rogue(), 92.0, [])
 	_check(o["title"] == "Salle 3/9 · Puncheur" and o["title_right"] == "620 m restants", "salle : titre et 620 m restants")
-	_check(o["fw"]["text"] == "12 s d'avance" and o["fw"]["level"] == "ok" and o["fw"]["sub"] == "Garde ≥ 95 % FTP · tu es à 92 %", "Firewall à 12 s : vert, écart en direct (R26)")
+	_check(o["fw"]["text"] == "12 s d'avance" and o["fw"]["level"] == "ok" and o["fw"]["sub"] == "Garde ≥ 95 % FTP · trop bas", "Firewall à 12 s : vert, écart sans répéter la puissance (R28)")
 	o = g.compute(st, _rogue({"firewall_gap_s": 7.0}), 92.0, [])
 	_check(o["fw"]["level"] == "warn" and o["fw"]["sub"].begins_with("Accélère"), "Firewall à 7 s : orange, accélère")
 	o = g.compute(st, _rogue({"firewall_gap_m": 0.0, "firewall_gap_s": 0.0}), 92.0, [])
@@ -73,7 +76,7 @@ func _run() -> void:
 	# Objets devant : la consigne du bas parle du plus proche, avec sa distance.
 	g.set_room(3, [{"kind": "strike_target", "s_m": 540.0, "len_m": 0.0, "param": null},
 		{"kind": "arch", "s_m": 700.0, "len_m": 0.0, "param": "down"},
-		{"kind": "tunnel", "s_m": 900.0, "len_m": 60.0, "param": 92.0}])
+		{"kind": "tunnel", "s_m": 900.0, "len_m": 60.0, "param": 92.0}], 1120.0)
 	o = g.compute(st, _rogue(), 92.0, [])
 	_check(o["hint"] == "Cible Z dans 40 m : appuie sur Z quand la roue passe sur l'anneau", "cible Z dans 40 m")
 	o = g.compute(st, _rogue({"s_room": 540.0, "adrenaline": 60.0}), 92.0, [])
@@ -95,7 +98,7 @@ func _run() -> void:
 	g.compute(st, _rogue({"shift_miss": {"reason": "wrong_way", "dt_s": 0.1}}), 92.0, ["shift_missed"])
 	_check(g.take_toasts()[0]["title"] == "Mauvais sens", "arche : mauvais sens")
 	g.compute(st, _rogue(), 92.0, ["perfect_shift"])
-	_check(g.take_toasts()[0]["title"] == "PERFECT SHIFT +10", "Perfect Shift réussi")
+	_check(g.take_toasts()[0]["title"] == "CHANGEMENT PARFAIT +10", "changement parfait réussi")
 	g.compute(st, _rogue(), 92.0, [])
 	_check(g.take_toasts().is_empty(), "sans événement : aucun retour")
 	for reason in ["adrenaline", "overheat", "no_target", "no_charge", "no_roc_charge", "no_surge", "no_hack", "cursed", "recovery", "gold"]:
@@ -184,10 +187,14 @@ func _run() -> void:
 
 ## Lot R26 : écart en direct à la consigne, plage jugée par le core, adrénaline à l'échauffement.
 func _check_r26() -> void:
-	_check(GuideModel.live_gap(80.0, 80, null, 250.0, true) == "tu es à 200 W ✔", "dans la plage : ✔")
-	_check(GuideModel.live_gap(70.0, 80, null, 250.0, false) == "tu es à 175 W (−25 W)", "sous la consigne : écart en watts")
-	_check(GuideModel.live_gap(78.0, 80, null, 250.0, true) == "tu es à 195 W ✔", "tolérance du core : encore dans la plage")
-	_check(GuideModel.live_gap(90.0, 70, 80, 250.0, false) == "tu es à 225 W (+25 W)", "au-dessus du plafond : écart positif")
+	_check(GuideModel.live_gap(80.0, 80, null, 250.0, true) == "✔ dans la plage", "dans la plage : ✔")
+	_check(GuideModel.live_gap(70.0, 80, null, 250.0, false) == "il manque 25 W", "sous la plage : watts qui manquent (R28)")
+	_check(GuideModel.live_gap(78.0, 80, null, 250.0, true) == "✔ marge : remonte de 5 W", "marge de sortie du core : encore dans la plage, dit en mots (R28)")
+	_check(GuideModel.live_gap(90.0, 70, 80, 250.0, false) == "25 W de trop", "au-dessus du plafond : watts de trop (R28)")
+	# lot R28 : écart compté sur les nombres écrits (205 W en bas de plage, 187 W en haut à gauche) ; bornes vers l'intérieur
+	_check(GuideModel.live_gap(74.8, 82, null, 250.0, false) == "il manque 18 W", "écart = borne écrite − puissance écrite (R28)")
+	_check(GuideModel.target_band(55, 65, 250.0) == "140–160 W", "bornes arrondies vers l'intérieur de la plage jugée (R28)")
+	_check(GuideModel.live_gap(83.0, 82, null, 250.0, false) == "presque dans la plage", "puissance écrite au bord, moyenne pas encore (R28)")
 	var g = GuideModel.new()
 	var rogue := {"phase": "WARMUP", "adrenaline": 30.0, "target_pct": {"lo": 55, "hi": 65}, "in_target": true,
 		"adrenaline_trend": {"rate_per_s": 0.5, "cause": "gain", "overheat_in_s": null}, "events": []}

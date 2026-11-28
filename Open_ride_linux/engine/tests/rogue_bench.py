@@ -52,7 +52,9 @@ sys.path.insert(0, str(ENGINE_DIR.parent / "core" / "src"))
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
 from visual_check import (COACH_MSG, GODOT_ISSUE, GODOT_TOLERATED, Capture, Report, free_udp_ports, mean_abs_diff,  # noqa: E402
                           read_png, write_html)
+import bancs_processus  # noqa: E402
 import perf_probe  # noqa: E402
+import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
 
 HOLD_S = 1.5                     # trame figée avant chaque capture : lissage de la position, ennemi, HUD
@@ -66,6 +68,7 @@ FRAME_HZ = 25.0                  # trames renvoyées pendant le gel
 ROOM_CAPTURE_M = 120.0           # capture d'une salle à 120 m de son début
 WARMUP_CAPTURE_S = 20.0
 CORRIDOR_CAPTURE_S = 3.0         # après l'offre de cartes
+RECOVERY_CAPTURE_S = 5.0         # après l'entrée en récupération (défaite par le Firewall)
 COOLDOWN_CAPTURE_S = 10.0
 # Lot R23 : retours des appuis et surchauffe, vue sur le vélo (trois flèches haut depuis la vue par défaut).
 SURCHAUFFE_CAPTURE_S = 3.0       # après le début de la surchauffe
@@ -78,7 +81,9 @@ NEON_MIN = 0.002                 # part minimale de pixels vifs et saturés pend
 # Échauffement, retour au calme et résultats : vide et grille seuls (rogue_scene.gd, RIBBON_PHASES), sans
 # ruban ni HUD classique (caché pendant la run depuis le lot R19) ; la grille seule fait environ 0,1 %.
 NEON_MIN_EMPTY = 0.0005
-RIBBON_PHASES = ("ROOM", "CORRIDOR", "BOSS", "RECOVERY")
+# Revue de code E10-05 : couloir et récupération passent à la bande plate (le core y envoie s_room et écart nuls).
+RIBBON_PHASES = ("ROOM", "BOSS")
+OFF_ROOM_PHASES = ("CORRIDOR", "RECOVERY")
 ROOM_DIFF_MIN = 1.0              # écart moyen (niveaux sur 255) entre deux salles de suite
 CONFIG = "rogue"
 
@@ -103,7 +108,7 @@ def moments(trace: list[tuple[float, dict]]) -> list[tuple[int, str]]:
     """(indice du message `state`, nom) des captures, dans l'ordre de la trace."""
     out: list[tuple[int, str]] = []
     seen: set[str] = set()
-    t_warmup = t_cool = loot_t = t_hot = None
+    t_warmup = t_cool = loot_t = t_hot = t_rec = None
     prev_shield = None
 
     def add(i: int, name: str) -> None:
@@ -161,6 +166,10 @@ def moments(trace: list[tuple[float, dict]]) -> list[tuple[int, str]]:
                 add(i, "echauffement")
         elif ph in FIGHT and float(rg.get("s_room") or 0.0) >= ROOM_CAPTURE_M:
             add(i, "boss" if ph == "BOSS" else f"salle_{rg.get('room_id')}_{rg.get('archetype')}")
+        elif ph == "RECOVERY":                   # revue E10-06 : panneau « Firewall arrêté », bande plate
+            t_rec = t if t_rec is None else t_rec
+            if t - t_rec >= RECOVERY_CAPTURE_S:
+                add(i, "recuperation")
         elif ph == "CORRIDOR" and loot_t is not None and t - loot_t >= CORRIDOR_CAPTURE_S:
             add(i, "couloir_cartes")
         elif ph == "COOLDOWN":
@@ -281,6 +290,9 @@ class Bench:
                        f"ruban {ri.get('ribbon')}, {ri.get('markers')} repère(s), Firewall {ri.get('firewall')}")
             if float(rg.get("enemy_hp", 1.0)) > 0.0:   # ennemi abattu : il s'efface (adrénaline gardée, lot R23)
                 self.check(name, "ennemi affiché", bool(ri.get("enemy")), f"archétype {ri.get('enemy_archetype') or '—'}")
+        if rg.get("phase") in OFF_ROOM_PHASES:
+            self.check(name, "ni ruban ni Firewall hors salle", not ri.get("ribbon") and not ri.get("firewall"),
+                       f"ruban {ri.get('ribbon')}, Firewall {ri.get('firewall')}")
         if frame.get("session_state") == "RUNNING":
             if ri.get("corridor"):   # l'écran du couloir occupe le centre : hologramme retiré
                 self.check(name, "hologramme retiré au couloir", not ri.get("holo"), ri.get("holo") or "retiré")
@@ -309,6 +321,9 @@ class Bench:
             self.check(name, "éclair de l'attaque réussie", bool(ri.get("flash")), ri.get("toast") or "—")
         if name == "invite_z":
             self.check(name, "invite de Z au centre", (ri.get("z_call") or "").startswith("Z :"), ri.get("z_call") or "—")
+        if name == "recuperation":
+            self.check(name, "récupération sans contact affiché", (ri.get("side") or "") == "Récupération" and not ri.get("hurt"),
+                       f"panneau « {ri.get('side') or '—'} », bords rouges {ri.get('hurt')}")
         if name == "degats_recus":
             self.check(name, "bords rouges des dégâts", bool(ri.get("hurt")), "")
         if name == "carte_declenchee":
@@ -364,8 +379,10 @@ def run(args, out: Path, report: Report) -> None:
         sampler = perf_probe.SystemSampler()
         sampler.start()
     print(f"== Run rejouée ×{args.speed:g} : {len(marks)} captures ==", flush=True)
+    home_godot, home_env = bancs_processus.home_temporaire()   # revue vague 5, O3-09 : pas le vrai profil
     with engine_log.open("w") as fh:
-        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
+        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True,
+                                env={**os.environ, **home_env})
     try:
         t0 = now()
         while now() - t0 < 30.0 and not core.messages("hello"):
@@ -384,6 +401,7 @@ def run(args, out: Path, report: Report) -> None:
                 os.killpg(proc.pid, 9)
             except ProcessLookupError:
                 pass
+        shutil.rmtree(home_godot, ignore_errors=True)
     if sampler is not None:
         rows = perf_probe.merge(perf_probe.read_engine_csv(out / "moteur.csv"), sampler.rows)
         summary = perf_probe.write_report(rows, out / "sonde", f"Sonde de performance : Cyber-Rogue {args.quality}",
@@ -408,6 +426,13 @@ def run(args, out: Path, report: Report) -> None:
         bench.check(b[0], "image différente de la salle précédente", d >= ROOM_DIFF_MIN, f"écart moyen {d:.1f} niveaux sur 255")
     resync = core.messages("cmd", name="rogue_resync")
     bench.check("run", "aucune demande rogue_resync", not resync, f"{len(resync)} demande(s)")
+    # Qualité réellement appliquée, comme sim_bench (lot X32) : le budget jugé est celui de la qualité demandée
+    # (revue de code vague 5, O3-12).
+    q_ok, q_msg = quality_guard.check(engine_log.read_text(errors="replace"), args.quality)
+    if q_ok is None:
+        report.notes.append(f"INFO qualité réellement appliquée : {q_msg}")
+    else:
+        bench.check("run", "qualité réellement appliquée", q_ok, q_msg)
     loads = classic_loads_during_run(engine_log.read_text(errors="replace"))
     bench.check("run", "monde classique gelé pendant la run (pause comprise)", loads is not None and not loads,
                 "départ ou sortie de la scène absent du journal" if loads is None
@@ -439,7 +464,7 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=5)
     ap.add_argument("--trace", help="trace d'une run du lot X40 (rogue_bout_en_bout --trace) au lieu d'en jouer une")
     ap.add_argument("--size", default="1280x720")
-    ap.add_argument("--quality", default="low")
+    ap.add_argument("--quality", default="low", choices=("low", "medium", "high"))
     ap.add_argument("--speed", type=float, default=20.0, help="accélération du rejeu (défaut ×20)")
     ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
     ap.add_argument("--probe", action="store_true",
@@ -465,4 +490,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    bancs_processus.signaux_en_exception()   # SIGTERM, SIGHUP : nettoyage des `finally` (revue vague 5, O3-08)
     sys.exit(main())

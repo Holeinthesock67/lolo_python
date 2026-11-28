@@ -126,6 +126,7 @@ PERF_LINES=/tmp/perf.txt engine/tests/run_engine_tests.sh && python3 engine/test
 | `test_ground_details.gd` | U8 | Détails de sol (`ground_details.gd`) : rien sans modèle de biome, budgets de `living(preset)` et décor vivant coupé, savane (herbes hautes, termitières), montagne (rochers), prairie (rien), aucun objet à moins de 3 m du bord sur un parcours de 5 km à épingle, coût par image, placement déterministe, teinte de la variante régionale, maillages (80 faces, normales sortantes) |
 | `test_biome_textures.gd` | U6 | Sols des biomes (`biome_textures.gd`) : couches de sol des 16 biomes sans doublon, biomes en usage (forçage, parts du manifeste), poids d'une tuile (ordre des parts, 3 biomes en `low`, tuile absente, forçage), matériau de tuile et ombre des nuages recopiée |
 | `test_texture_levels.gd` | P20 | Niveau des textures du décor (`texture_levels.gd`) : côtés et budgets par préréglage, estimation de la mémoire vidéo, niveau inférieur puis couleurs unies au-delà du budget, niveau imposé (`--texture-level`, réglage), niveaux d'un pack (`texture_levels`), repli d'un niveau absent sur le niveau inférieur puis la racine, textures 1.x réduites au niveau, validation de la clé dans `theme_loader.gd` |
+| `test_chemins_export.gd` | EX1 | Chemins compatibles avec l'export `.pck` (essai E2 du cadrage J9) : aucun `globalize_path` dans `scripts/`, `Image.load_from_file` réservé aux textures du thème (dossiers sans `.import`), images de la Collection et du globe en importeur `keep`, lecture réelle de ces images par `FileAccess` et du thème par défaut depuis `res://` sans erreur ni avertissement |
 | `test_vegetation_biomes.gd` | U7 | Espèces construites par code (`tree_species.gd`, moins de 300 triangles, dimensions) et végétation par biome (`tree_renderer.gd`, `vegetation_placer.assign_species`) : modèle inactif identique, tuile méditerranéenne à plus de 80 % d'espèces méditerranéennes, oasis, polaire sans arbre, limite des arbres, groupes par espèce, budget |
 | `test_fauna_biomes.gd` | U12, U17, U23 | Faune par biome (`fauna_placer.gd` BIOME_SPECIES et BIOME_GROUPS, `fauna_renderer.gd`) : prairie tempérée identique à P11, zèbres et girafes de la savane à plus de 150 m de la route, espèces de la montagne, de la toundra, de la jungle, du littoral et de la zone humide, dromadaires près de l'eau, aucun animal sur la chaussée, densités mélangées, mouettes sans croassement, budgets de `low`, branchement du modèle de biome dans `world_streamer.gd` (`--biome=savanna`, `auto`) ; U23 : éléphants et antilopes en savane, bœufs musqués et ours blancs au pôle (grands animaux à plus de 150 m), chèvres des volcans, singes de la jungle, toute espèce placée a son maillage |
 | `test_menu_model.gd` | K5 | Navigation des menus (`menu_model.gd`) : 12 scénarios d'événements du Click (focus, éléments désactivés, boucle, retour, confirmation, liste vide), événements inconnus, aucun nœud créé |
@@ -272,12 +273,13 @@ Avec `--test-mode`, l'engine écrit sur la sortie standard des lignes `[test] cl
 
 | Ligne | Moment |
 | --- | --- |
-| `hello_ack config={…}` | `hello_ack` reçu (configuration en JSON) |
+| `hello_ack config={…}` | `hello_ack` reçu (clés sûres de la configuration en JSON, `HELLO_LOG_KEYS` de `ipc_client.gd` : rien de personnel, revue E1-07) |
 | `state seq=N s=… session=…` | Trame `state` appliquée |
 | `state_late seq=N late=K` | Trame en retard ignorée (K : total) |
 | `cmd_sent name=… id=N` | Nouvelle commande |
 | `cmd_acked name=… id=N sends=K` | Commande acquittée après K envois |
-| `cmd_failed name=… id=N after_ms=… sends=K` | Commande abandonnée |
+| `cmd_failed name=… id=N after_ms=… sends=K cut=0\|1` | Commande abandonnée (`cut=1` : renvois coupés par un hello, pas de bandeau) |
+| `cmd_cut name=… id=N sends=K` | Un hello est parti depuis le premier envoi : plus de renvoi (le core remet `last_cmd_id` à 0 et rejouerait la copie, revue E1-02) |
 | `core_lost age_ms=…` / `core_returned` | Core injoignable depuis 1 s / trames reprises |
 | `shutdown` | Message `shutdown` reçu |
 | `banner text=…` | Texte du bandeau à chaque changement (lignes séparées par ` \| `, vide quand il disparaît) |
