@@ -9,7 +9,8 @@ Une seule règle, parcours compilés et monde ouvert :
 - **Niveau en un point** (`RiverLevels.at`) : MNT brut aux nœuds d'une grille de `RIVER_SAMPLE_M` alignée
   sur le repère, dans l'eau de la rivière (îles exceptées), à moins de `RIVER_LEVEL_RADIUS_M` du point ;
   plan ajusté à ces altitudes (la pente du cours ne biaise rien), puis quart le plus bas des écarts au plan
-  (`RIVER_LEVEL_QUANTILE`, écarte les nœuds de bord mêlés à la berge). Le MNT Copernicus aplanit les
+  (`RIVER_LEVEL_QUANTILE`, écarte les nœuds de bord mêlés à la berge), borné entre le plus bas et le plus
+  haut de ces nœuds (le plan n'est jamais prolongé au-delà, au bout d'un bras étroit sans nœud). Le MNT Copernicus aplanit les
   grandes rivières en marches qui descendent ; la fenêtre glissante les lisse en une pente. Moins de trois
   nœuds : MNT au point. C'est la règle des lacs (EA1, MNT dans l'eau, valeur basse) sur une fenêtre
   glissante au lieu du plan d'eau entier.
@@ -204,7 +205,9 @@ def clip_to_rect(outer: Sequence, holes: Sequence[Sequence], x0: float, z0: floa
         polys.append(o)
     elif chains:
         polys += _walk(chains, *rect)
-    elif rings_contain(np.array([x0]), np.array([z0]), [np.asarray(o)])[0]:
+    elif rings_contain(np.array([x0]), np.array([z0]), [np.asarray(o), *(np.asarray(h) for h in hs)])[0]:
+        # aucun anneau ne coupe le rectangle : tout eau, ou tout terre (hors du contour, ou sur une île qui
+        # le contient entier, K3-03)
         polys.append([(x0, z0), (x1, z0), (x1, z1), (x0, z1)])
     out = []
     for p in polys:
@@ -332,7 +335,10 @@ class RiverLevels:
                 # plan ajusté aux nœuds (la pente du cours ne biaise pas le quart bas), puis quart bas des écarts
                 a = np.column_stack((np.ones(len(idx)), self.nodes[idx, 0] - xs[i], self.nodes[idx, 1] - zs[i]))
                 coef = np.linalg.lstsq(a, ny, rcond=None)[0]
-                out[i] = float(coef[0] + np.quantile(ny - a @ coef, C.RIVER_LEVEL_QUANTILE))
+                y = float(coef[0] + np.quantile(ny - a @ coef, C.RIVER_LEVEL_QUANTILE))
+                # borné aux nœuds de la fenêtre (K3-02) : au bout d'un bras étroit sans nœud, le plan serait
+                # prolongé sans limite (eau des dizaines de mètres au-dessus du terrain, ou sol creusé dessous)
+                out[i] = min(max(y, float(ny.min())), float(ny.max()))
         miss = ~np.isfinite(out)
         if miss.any():
             out[miss] = np.asarray(self.height(xs[miss], zs[miss]), dtype=float)
