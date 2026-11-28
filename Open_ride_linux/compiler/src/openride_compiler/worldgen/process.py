@@ -48,8 +48,9 @@ from .. import __version__
 from .. import constants as C
 from .. import koppen
 from ..cache import Downloader, Log
-from ..elevation import (COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider,
-                         check_tile_list, check_tiff, copernicus_tile_name)
+from ..elevation import (COPERNICUS_BASE_URL, FABDEM_BASE_URL, IGN_WMS_URL, CopernicusGlo30Provider,
+                         ElevationProvider, FabdemProvider, IgnRgeAltiProvider, SyntheticProvider, check_tile_list,
+                         check_tiff, copernicus_tile_name, fabdem_tile_name, source_at)
 from ..errors import CompileError
 from ..pipeline import sample_positions
 from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts, turnaround_points,
@@ -370,6 +371,7 @@ class WorldSession:
     def _write_manifest(self) -> None:
         lat, lon = self.frame.to_latlon(np.array([self.e0]), np.array([-self.n0]))
         alt = float(np.nan_to_num(self.provider.elevations(lat, lon)[0]))
+        source = source_at(self.provider, float(lat[0]), float(lon[0]))   # source réelle au départ
         n = len(sample_positions(self.length_m))
         manifest = {
             "format": C.FORMAT_NAME, "format_version": C.FORMAT_VERSION, "name": "Monde ouvert",
@@ -379,10 +381,10 @@ class WorldSession:
                        "utm_zone": self.zone},
             "projection": "utm",
             "route": {"present": True, "version": C.ROUTE_VERSION, "file": "route/", "length_m": round(self.length_m, 3),
-                      "ds_m": C.DS_M, "n": n, "type": "open", "alt_source": getattr(self.provider, "name", "inconnu")},
+                      "ds_m": C.DS_M, "n": n, "type": "open", "alt_source": source},
             "layers": {
                 "terrain": {"present": True, "version": C.TERRAIN_VERSION,
-                            "sources": [getattr(self.provider, "name", "inconnu")],
+                            "sources": [source],
                             "near_cell_m": C.NEAR_CELL_M, "far_cell_m": C.FAR_CELL_M,
                             "road_half_width_m": C.ROAD_HALF_WIDTH_M},
                 "buildings": {"present": True, "version": C.BUILDINGS_VERSION},
@@ -419,7 +421,8 @@ class WorldSession:
     def _biome(self, key: SquareKey) -> None:
         """Tuile de biome du carré ou de la tuile lointaine (W17) ; une erreur laisse le biome par défaut."""
         try:
-            biome_tiles.generate(key, self.frame, self.provider, self.cache, self.landcover,
+            biome_tiles.generate(key, self.frame, self._far_provider() if isinstance(key, FarKey) else self.provider,
+                                 self.cache, self.landcover,
                                  db=None if isinstance(key, FarKey) else self.db,
                                  network=self.network and not self.opened, log=self.log)
             self.stats["biome_tiles"] += 1
@@ -872,11 +875,11 @@ class WorldSession:
             return True
         if self.far_wanted:
             fk = self.far_wanted.pop(0)
-            if not self.network and not relief_has(self.provider, *self._latlon_of_square(fk)):
+            if not self.network and not relief_has(self._far_provider(), *self._latlon_of_square(fk)):
                 return True
             had = self.cache.get(fk.cache_key) is not None
             try:
-                generate_far(fk, self.provider, self.cache, self.db, self._far_water_data(fk))
+                generate_far(fk, self._far_provider(), self.cache, self.db, self._far_water_data(fk))
             except CompileError as exc:
                 self.log(f"tuile lointaine {fk.ix}_{fk.i_n} non générée : {exc}")
                 return True
@@ -912,8 +915,18 @@ class WorldSession:
 
     # --- relief en avance -----------------------------------------------------------------------
 
+    def _tiled_provider(self) -> ElevationProvider:
+        """Source en tuiles d'un degré préchargée en avance : le repli de l'IGN (lot RL2), sinon la source."""
+        return self.provider.fallback if isinstance(self.provider, IgnRgeAltiProvider) else self.provider
+
+    def _far_provider(self) -> ElevationProvider:
+        """Relief des tuiles lointaines (maille de 50 m, jusqu'à 12 km) : sans l'IGN au pas de 5 m (26/11 : quelque 600
+        carrés de 1 km demandés au départ, banc multi-zones en DÉLAI en France), son repli FABDEM suffit."""
+        return self._tiled_provider()
+
     def _prefetch_relief(self) -> None:
-        if not self.network or not isinstance(self.provider, CopernicusGlo30Provider):
+        prov = self._tiled_provider()
+        if not self.network or not isinstance(prov, (CopernicusGlo30Provider, FabdemProvider)):
             return
         end = self.legs[-1].profile
         lat, lon = float(end.lat[-1]), float(end.lon[-1])
@@ -921,9 +934,14 @@ class WorldSession:
         dlon = dlat / max(0.1, math.cos(math.radians(lat)))
         for la in {math.floor(lat - dlat), math.floor(lat), math.floor(lat + dlat)}:
             for lo in {math.floor(lon - dlon), math.floor(lon), math.floor(lon + dlon)}:
-                name = copernicus_tile_name(la, lo)
-                if name in self.relief_jobs or self.provider.tile_path(la, lo).is_file():
-                    continue
+                if isinstance(prov, FabdemProvider):   # lot RL1 : sol nu, Copernicus en repli
+                    name = fabdem_tile_name(la, lo)
+                    if name in self.relief_jobs or prov.tile_ready(la, lo):
+                        continue
+                else:
+                    name = copernicus_tile_name(la, lo)
+                    if name in self.relief_jobs or prov.tile_path(la, lo).is_file():
+                        continue
                 th = threading.Thread(target=self._download_tile, args=(la, lo), daemon=True)
                 self.relief_jobs[name] = th
                 self.log(f"relief en avance : {name}")
@@ -969,8 +987,20 @@ class WorldSession:
                 self.landcover_jobs.discard((a, b))
 
     def _download_tile(self, la: int, lo: int) -> None:
-        prov = self.provider
+        prov = self._tiled_provider()
+        if isinstance(prov, FabdemProvider):
+            name = fabdem_tile_name(la, lo)
+            if prov.download_tile(la, lo):
+                self.stats["downloads"] += 1
+            elif not prov.absent_path(la, lo).is_file():
+                self.relief_jobs.pop(name, None)              # échec réseau : réessayé au prochain passage
+            if isinstance(prov.fallback, CopernicusGlo30Provider) and not prov.tile_path(la, lo).is_file():
+                self._download_copernicus(prov.fallback, la, lo, name)   # repli prêt lui aussi
+            return
         assert isinstance(prov, CopernicusGlo30Provider)
+        self._download_copernicus(prov, la, lo, copernicus_tile_name(la, lo))
+
+    def _download_copernicus(self, prov: CopernicusGlo30Provider, la: int, lo: int, job: str) -> None:
         name = copernicus_tile_name(la, lo)
         dl = Downloader(log=self.log)
         try:
@@ -981,7 +1011,7 @@ class WorldSession:
                 self.stats["downloads"] += 1
         except Exception as exc:  # noqa: BLE001 - réessayé au prochain passage
             self.log(f"relief {name} non téléchargé : {exc}")
-            self.relief_jobs.pop(name, None)
+            self.relief_jobs.pop(job, None)
 
     # --- cache et fermeture ---------------------------------------------------------------------
 
@@ -1095,6 +1125,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--synthetic-relief", metavar="LAT,LON", help="relief analytique (tests, sans réseau)")
     ap.add_argument("--tiles-url", metavar="URL", help="TileJSON d'un autre serveur de tuiles (tests, X28)")
     ap.add_argument("--dem-url", metavar="URL", help="autre serveur du relief Copernicus (tests, X28)")
+    ap.add_argument("--relief", choices=("ign", "fabdem", "copernicus"), default="ign",
+                    help="relief : IGN RGE ALTI en France puis FABDEM ailleurs (défaut, lot RL2), FABDEM au sol nu "
+                         "(lot RL1), ou Copernicus seul ; Copernicus reste le dernier repli")
+    ap.add_argument("--ign-url", metavar="URL", help="autre service WMS du RGE ALTI (tests, lot RL2)")
+    ap.add_argument("--fabdem-url", metavar="URL", help="autre serveur des archives FABDEM (tests, lot RL1)")
     ap.add_argument("--landcover-url", metavar="URL",
                     help="autre source de l'occupation du sol WorldCover, adresse ou dossier (tests, W17)")
     args = ap.parse_args(argv)
@@ -1114,9 +1149,17 @@ def main(argv: list[str] | None = None) -> int:
         send({"type": "error", "code": "world_unavailable", "message": str(exc)})
         return 2
     network = bool(cfg.get("network", True)) and not args.no_network
-    provider: ElevationProvider = (_synthetic(args.synthetic_relief) if args.synthetic_relief
-                                   else CopernicusGlo30Provider(offline=not network, log=log,
-                                                                base_url=args.dem_url or COPERNICUS_BASE_URL))
+    provider: ElevationProvider
+    if args.synthetic_relief:
+        provider = _synthetic(args.synthetic_relief)
+    else:
+        provider = CopernicusGlo30Provider(offline=not network, log=log, base_url=args.dem_url or COPERNICUS_BASE_URL)
+        if args.relief in ("fabdem", "ign"):   # lot RL1 : sol nu (sans toits ni arbres), Copernicus en repli
+            provider = FabdemProvider(offline=not network, log=log, fallback=provider,
+                                      base_url=args.fabdem_url or FABDEM_BASE_URL)
+        if args.relief == "ign":   # lot RL2 : relief au sol mesuré de l'IGN en France, FABDEM ailleurs
+            provider = IgnRgeAltiProvider(offline=not network, log=log, fallback=provider,
+                                          base_url=args.ign_url or IGN_WMS_URL)
     fake = FakeClock() if args.fake_clock else None
     landcover = None
     if not args.synthetic_relief:   # relief analytique (tests) : biomes du climat et du relief seulement

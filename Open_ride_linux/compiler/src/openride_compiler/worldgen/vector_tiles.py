@@ -802,7 +802,7 @@ def add_prefetch_arguments(p) -> None:
 
 def cmd_world_prefetch(args) -> int:
     """Préchargement autour des départs habituels, lancé en tâche de fond au démarrage d'OpenRide."""
-    from ..elevation import CopernicusGlo30Provider
+    from ..elevation import FabdemProvider
     from .store import read_open_world_config
 
     cfg = read_open_world_config(args.config)
@@ -812,7 +812,7 @@ def cmd_world_prefetch(args) -> int:
     cache = WorldCache.from_config(args.config)
     source = TileSource(cache)
     plan = prefetch_plan(past_starts(cache), float(cfg["prefetch_radius_km"]))
-    dem = CopernicusGlo30Provider()
+    dem = FabdemProvider()   # lot RL1 : relief au sol nu du monde ouvert, Copernicus en repli
 
     def dem_fetch(la: int, lo: int) -> None:
         dem.elevations([la + 0.5], [lo + 0.5])
