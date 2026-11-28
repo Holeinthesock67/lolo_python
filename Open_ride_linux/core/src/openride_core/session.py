@@ -376,6 +376,7 @@ class CoreSession:
         self.hr = build_hr(cfg, self.sim)
         self.journal_dir = journal_dir if journal_dir is not None else self.profile_ctx.journal_dir
         self._coach_lock: asyncio.Lock | None = None   # séance conseillée : un calcul à la fois (lot CO5)
+        self._league_io = threading.Lock()   # ligue.json : league_status (dans un fil) et league_new, un à la fois
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
@@ -3466,28 +3467,62 @@ class CoreSession:
         book = bot_elo.load(self._elo_path())
         return {r.key: book.bot_rating(r.key) for r in season.rivals}
 
+    def _league_status_message(self, cmd_id: int) -> dict[str, Any]:
+        """Réponse `league` à `league_status` : saison mise à jour au jour et palmarès (lecture des fichiers
+        du profil, simulation des semaines non courues). Un appel à la fois (`_league_io`), hors boucle."""
+        with self._league_io:
+            season = self._league_load()
+            return league.status(season, self._league_today(), cmd_id,   # palmarès : lot CH6
+                                 past=league.history(self._league_path(), season))
+
+    def _send_league_status(self, cmd_id: int) -> None:
+        """`league_status` calculé dans un fil (bandeau « Core non joignable » du 28 novembre : ~0,3 s avec un
+        vrai profil, dans la boucle à 50 Hz, à chaque copie de la commande) ; sur place hors boucle (essais)."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            self.server.send_raw(self._league_status_message(cmd_id))
+            return
+
+        async def send() -> None:
+            try:
+                msg = await asyncio.to_thread(self._league_status_message, cmd_id)
+            except Exception:
+                log.exception("Erreur pendant league_status (cmd_id=%d)", cmd_id)
+                return
+            self.server.send_raw(msg)
+
+        self._spawn(send())
+
     def _on_league_command(self, name: str, cmd_id: int) -> None:
         """`league_status` : état de la saison ; `league_new` : nouvelle saison (refusée si une saison court)."""
+        if name == "league_status":
+            self._send_league_status(cmd_id)
+            return
+        with self._league_io:
+            self._league_new(cmd_id)
+
+    def _league_new(self, cmd_id: int) -> None:
+        """`league_new` : nouvelle saison, refusée si une saison court ; réponse `league`."""
         season = self._league_load()
-        if name == "league_new":
-            if season is not None and not season.closed:
-                self.server.send_error("bad_args", "Ligue d'hiver : une saison est déjà en cours.")
-                return
-            roster = rivals.load(self._rivals_path())   # mêmes rivaux que les autres modes (lot R4)
-            previous = season
-            season = league.new_season(self._league_today(), previous=previous, roster=roster)
-            try:
-                if previous is not None:   # saison close gardée à part, classement et trophée compris (revue F1-07)
-                    league.save(league.archive_path(self._league_path(), previous.number), previous)
-                rivals.save(self._rivals_path(), roster)   # rivaux d'abord : jamais une saison sans ses rivaux
-                league.save(self._league_path(), season)
-            except OSError as exc:
-                self.server.send_error("bad_args", f"Ligue d'hiver : saison non enregistrée ({exc}).")
-                return
-            log.info("Ligue d'hiver : saison %d créée (du %s au %s).", season.number, season.start,
-                     season.end_day(self._league_today()))
-            if self._rec:
-                self._rec.game({"kind": "league_new", "ts": round(time.time(), 3), "number": season.number})
+        if season is not None and not season.closed:
+            self.server.send_error("bad_args", "Ligue d'hiver : une saison est déjà en cours.")
+            return
+        roster = rivals.load(self._rivals_path())   # mêmes rivaux que les autres modes (lot R4)
+        previous = season
+        season = league.new_season(self._league_today(), previous=previous, roster=roster)
+        try:
+            if previous is not None:   # saison close gardée à part, classement et trophée compris (revue F1-07)
+                league.save(league.archive_path(self._league_path(), previous.number), previous)
+            rivals.save(self._rivals_path(), roster)   # rivaux d'abord : jamais une saison sans ses rivaux
+            league.save(self._league_path(), season)
+        except OSError as exc:
+            self.server.send_error("bad_args", f"Ligue d'hiver : saison non enregistrée ({exc}).")
+            return
+        log.info("Ligue d'hiver : saison %d créée (du %s au %s).", season.number, season.start,
+                 season.end_day(self._league_today()))
+        if self._rec:
+            self._rec.game({"kind": "league_new", "ts": round(time.time(), 3), "number": season.number})
         self.server.send_raw(league.status(season, self._league_today(), cmd_id,   # palmarès : lot CH6
                                            past=league.history(self._league_path(), season)))
 
