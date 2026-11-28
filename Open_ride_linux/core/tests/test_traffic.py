@@ -442,3 +442,36 @@ def test_reverse_rider_passes_slow_tractor_on_the_left(tmp_path, monkeypatch):
             worst = min(worst, abs(-s._lane.m - v.lateral) - v.half_width - tr.RIDER_HALF_WIDTH_M)
     assert v.s - s.physics.s > 20.0          # doublé
     assert worst > 0.2
+
+
+# --- revue E6-01 : un véhicule retenu envoie sa vitesse réelle -----------------------------------
+
+def test_held_vehicle_sends_its_real_speed():
+    """Voiture engagée derrière un bot à 8,5 m/s, voie d'en face occupée : `_hold` la retient derrière le bot ; la liste
+    `vehicles` donne la vitesse tenue (8,5 m/s), pas sa vitesse de croisière (16,7 m/s), sinon l'engine l'extrapole
+    trop vite et la remet en place à chaque liste (va-et-vient, revue E6-01)."""
+    t = tr.Traffic(route=straight_route())
+    t._last_rider_s, t._next_slot = 5000.0, 10 ** 6       # aucune case tirée : seule la voiture posée roule
+    v = t.place_for_test(5000.0, "car_a", 1, 30.0, 60.0)
+    v.passed, v.committed = True, True
+    s, bot, held = 5000.0, 5100.0, 0
+    for _ in range(int(20.0 / DT)):
+        s0 = v.s
+        t.update(s, 6.0, DT, others=[tr.Other(s, draft.RIDER_LANE_M), tr.Other(bot, draft.BOT_LANE_M),
+                                     tr.Other(bot + 60.0, -1.2, dir=-1)])
+        sent = tr.state_list(t.vehicles)[0]["v"]
+        assert abs(sent - (v.s - s0) / DT) < 0.02           # toujours le déplacement du pas
+        if v.step_mps is not None:
+            held += 1
+            assert v.speed_mps > 16.0                        # sa vitesse de croisière reste pour la conduite
+        s += 6.0 * DT
+        bot += 8.5 * DT
+    assert held >= 500 and abs(tr.state_list(t.vehicles)[0]["v"] - 8.5) < 0.02
+
+
+def test_free_vehicle_sends_its_speed_unchanged():
+    t = tr.Traffic(route=straight_route())
+    t._last_rider_s, t._next_slot = 5000.0, 10 ** 6
+    v = t.place_for_test(5000.0, "truck", -1, 300.0, 50.0)
+    t.update(5000.0, 8.0, DT)
+    assert v.step_mps is None and tr.state_list(t.vehicles)[0]["v"] == round(v.speed_mps, 2)

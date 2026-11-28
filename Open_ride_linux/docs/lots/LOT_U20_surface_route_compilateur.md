@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Gravel : surface de la route d'après OSM, chemins de terre au monde ouvert (classe `g`) | Python | U1, W4, W6 | Moyenne | Oui, après U1, **version 3.0** (issue #350) |
+| Gravel : surface de la route d'après OSM, chemins de terre au monde ouvert (classe `g`) | Python | U1, W4, W6 | Moyenne | **Livré le 30 octobre** (PR #624, traces compilées), **version 3.0** |
 
 ## 1. Objectif
 
@@ -47,3 +47,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Physique (U21), rendu (U22), surface devinée par l'imagerie.
+
+## Livraison
+
+Fusionné dans `main` le 30 octobre 2026 (PR #624), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « Oui, après U1, **version 3.0** (issue #350) »).

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série NI (éléments inutiles) : la ligne « Intensité » des écrans Prêt seule règle la force des bots ; « Niveau des bots », « Objectif des bots » des Réglages et lignes « Bot 1 » à « Bot 4 » retirés | Python, GDScript | BOT-elo (#941), NI2 (#962), R1 (#982) | Moyenne | En revue (PR à valider : captures des menus) |
+| Série NI (éléments inutiles) : la ligne « Intensité » des écrans Prêt seule règle la force des bots ; « Niveau des bots », « Objectif des bots » des Réglages et lignes « Bot 1 » à « Bot 4 » retirés | Python, GDScript | BOT-elo (#941), NI2 (#962), R1 (#982) | Moyenne | **Livré le 25 novembre** (PR #988) |
 
 ## 1. Objectif
 

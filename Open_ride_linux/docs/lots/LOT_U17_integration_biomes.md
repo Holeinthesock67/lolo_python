@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Intégration des biomes dans la scène principale, budgets par préréglage | GDScript | U5 à U15, U19, U22 | Grande | Non : interne (rendu), **version 3.0** (issue #347) |
+| Intégration des biomes dans la scène principale, budgets par préréglage | GDScript | U5 à U15, U19, U22 | Grande | En partie : biomes branchés dans la scène le 28 octobre (PR #477), atmosphère du biome en roulant le 30 octobre (PR #598), **version 3.0** |
 
 ## 1. Objectif
 

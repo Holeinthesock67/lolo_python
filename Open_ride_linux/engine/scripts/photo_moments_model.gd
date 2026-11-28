@@ -6,8 +6,9 @@ extends RefCounted
 ## Modèle pur, sans aucun nœud : il décide quand prendre une photo et comment la nommer ; main.gd lit
 ## l'image et l'écrit dans un fil de travail. Aucun champ IPC nouveau : tout vient de ce que l'engine
 ## reçoit déjà, avec les mêmes règles que les jingles (event_sounds_model.gd) :
-## - arrivée : passage de `RUNNING` ou `PAUSED` à `FINISHED` ; la photo est l'image déjà rendue, celle du
-##   passage de la ligne, avant que le bilan ne la couvre ;
+## - arrivée : passage de `RUNNING` à `FINISHED` ; la photo est l'image déjà rendue, celle du passage de la
+##   ligne, avant que le bilan ne la couvre. Séance terminée ou abandonnée depuis la pause (`PAUSED` puis
+##   `FINISHED`) : aucune photo d'arrivée, l'image rendue serait celle du menu de pause (lot EC9, E12-02) ;
 ## - record : message `segment_result` de `kind` « climb » ou « sprint » avec `pr` vrai, photo prise
 ##   `RECORD_DELAY_S` plus tard (le résultat est alors affiché au HUD), seulement si la séance roule encore ;
 ## - jamais en Cyber-Rogue (`mode` ROGUE, sa propre scène) ; au plus `MAX_PHOTOS` par séance, la dernière place gardée pour l'arrivée ; nouvelle
@@ -39,7 +40,7 @@ func on_state(state: Dictionary, now_s: float) -> Array:
 	if session in ["READY", "RUNNING"] and _prev_session in ["", "IDLE", "FINISHED"]:
 		reset()
 	var rogue := str(state.get("mode", "")) == "ROGUE"
-	if enabled and not rogue and session == "FINISHED" and _prev_session in ["RUNNING", "PAUSED"]:
+	if enabled and not rogue and session == "FINISHED" and _prev_session == "RUNNING":
 		_pending.clear()
 		out.append({"kind": KIND_FINISH, "label": "arrivée"})
 	elif session == "RUNNING" and not rogue:
@@ -51,7 +52,7 @@ func on_state(state: Dictionary, now_s: float) -> Array:
 				keep.append(p)
 		_pending = keep
 	elif session != "PAUSED":
-		_pending.clear()
+		_pending.clear()   # FINISHED depuis la pause compris : record en attente oublié
 	_prev_session = session
 	return _limit(out)
 

@@ -1071,7 +1071,9 @@ def cmd_build_all(args: argparse.Namespace) -> int:
     error_count = 0
 
     for e in entries:
-        if e.status not in ("to_compile", "outdated") or e.gpx_path is None:
+        # « invalid » avec une trace : parcours abîmé (coupure pendant l'écriture, K4-08), recompilé
+        # depuis sa trace comme l'import du menu le fait.
+        if e.status not in ("to_compile", "outdated", "invalid") or e.gpx_path is None:
             skipped_count += 1
             continue
         if args.dry_run:

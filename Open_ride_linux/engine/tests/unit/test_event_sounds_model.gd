@@ -151,11 +151,21 @@ func _run() -> void:
 		for i in range(0, wav.data.size(), 2):
 			peak = maxi(peak, absi(wav.data.decode_s16(i)))
 		_check(peak > 20000 and peak < 32767, "%s : pic %d sans écrêtage" % [jingle, peak])
-	var ep: AudioStreamPlayer = sp.get_node("EventPlayer")
-	_check(ep.bus == &"Events" and ep.max_polyphony == 3, "lecteur des jingles sur le bus Events, 3 voix")
+	var eps: Array = [sp.get_node("EventPlayer"), sp.get_node("EventPlayer_1"), sp.get_node("EventPlayer_2")]
+	_check(eps.all(func(e): return e.bus == &"Events"), "trois lecteurs de jingles sur le bus Events")
 	sp.play_event("jingle_arch")
 	sp.play_event("inconnu")
 	_check(sp.events_played == ["jingle_arch"], "play_event : nom inconnu ignoré")
+	# E9-02 : réaffecter le flux d'un lecteur coupe ce qu'il joue ; deux jingles de suite vont sur deux lecteurs,
+	# et le volume plus bas d'un bot ne touche que le sien
+	sp.play_event("jingle_sprint", -9.0)
+	_check(eps[0].stream == sp.stream("jingle_arch") and eps[1].stream == sp.stream("jingle_sprint")
+		and is_equal_approx(eps[0].volume_db, SoundPlayer.EVENT_DB) and is_equal_approx(eps[1].volume_db, SoundPlayer.EVENT_DB - 9.0),
+		"deux jingles d'affilée : deux lecteurs, l'arche n'est pas coupée ni baissée par le son du bot")
+	sp.play_event("jingle_lap")
+	sp.play_event("jingle_finish")
+	_check(eps[2].stream == sp.stream("jingle_lap") and eps[0].stream == sp.stream("jingle_finish"),
+		"quatrième jingle : il prend le lecteur du plus ancien")
 	sp.free()
 
 	print("test_event_sounds_model : %d vérifications, %d échecs" % [_checked, _failures])

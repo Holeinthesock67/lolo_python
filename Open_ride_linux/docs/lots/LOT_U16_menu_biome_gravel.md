@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Choix du biome et option « gravel » dans les réglages du menu | Python + GDScript | U1, U2, O4 (U5) | Petite | Non : interne (menu), **version 3.0** (issue #346) |
+| Choix du biome et option « gravel » dans les réglages du menu | Python + GDScript | U1, U2, O4 (U5) | Petite | **Livré le 3 novembre** (PR #639), **version 3.0** |
 
 ## 1. Objectif
 
@@ -14,7 +14,7 @@
 ## 2. À lire
 
 1. `docs/3.0/PLAN_SERIE_U.md` §7, `docs/SPECIFICATION_GENERALE.md` §7.1 (boutons), `docs/lots/LOT_U1_contrat_biomes.md` §4.6, `docs/lots/LOT_O3_reglages_core.md`, `docs/lots/LOT_O4_menu_reglages.md`.
-2. Code : `core/src/openride_core/settings.py` (O3), `core/src/openride_core/ipc_server.py`, `engine/scripts/menu_model.gd`, `engine/scripts/settings_view.gd` (O4).
+2. Code : `core/src/openride_core/settings.py` (O3), `core/src/openride_core/ipc_server.py`, `engine/scripts/menu_model.gd`, `engine/scripts/settings_view_model.gd` (O4).
 
 ## 3. Prérequis
 
@@ -28,7 +28,7 @@ U1, U2 et O4 livrés ; U5 pour l'effet à l'écran.
 
 ## 5. Fichiers concernés
 
-- **Modifiés :** `core/src/openride_core/settings.py`, `core/src/openride_core/ipc_server.py` (`hello_ack.config`), `core/tests/test_ipc_settings.py`, `engine/scripts/menu_model.gd`, `engine/scripts/settings_view.gd`, `engine/scripts/catalog_model.gd`, `engine/tests/unit/test_menu_model.gd`, `README.md`, `docs/SUIVI_AVANCEMENT.md` (une ligne).
+- **Modifiés :** `core/src/openride_core/settings.py`, `core/src/openride_core/ipc_server.py` (`hello_ack.config`), `core/tests/test_settings.py`, `engine/scripts/menu_model.gd`, `engine/scripts/settings_view_model.gd`, `engine/scripts/catalog_model.gd`, `engine/tests/unit/test_menu_model.gd`, `README.md`, `docs/SUIVI_AVANCEMENT.md` (une ligne).
 - **Interdits :** compilateur, format `.world` et thème (faits par U1) ; seuls `ipc_v1.md`, `hello_ack.schema.json` et le SRS §11 changent (§6).
 
 ## 6. Modifications de contrat autorisées
@@ -47,3 +47,7 @@ La partie IPC et configuration du lot U1 (§4.6), reportée ici le 28 octobre 20
 ## 8. Hors périmètre
 
 Choix du biome tuile par tuile, éditeur de biomes.
+
+## Livraison
+
+Fusionné dans `main` le 3 novembre 2026 (PR #639), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « Non : interne (menu), **version 3.0** (issue #346) »).

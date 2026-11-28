@@ -80,7 +80,7 @@ func _test_strength_step_and_phase() -> void:
 		"0 -> 40 km/h : 90 %% atteint en %.2f s après la trame (≤ 1,2 s)" % (reached_at - 0.5))
 	_check(not overshoot, "0 -> 40 km/h : pas de dépassement de la cible")
 	_check(monotonic, "phase croissante sur toute la montée")
-	_check(max_jump <= WindModel.PHASE_RATE_MAX / 60.0 + 1e-6,
+	_check(max_jump <= WindModel.PHASE_RATE_MAX * (1.0 + WindModel.PHASE_GUST_GAIN) / 60.0 + 1e-6,
 		"phase continue : saut maximal %.4f s par image" % max_jump)
 
 
@@ -114,6 +114,57 @@ func _test_apparent() -> void:
 	_check(absf(a2.z - 20.0) < 1e-3, "vent de face de 10 m/s + 10 m/s de vitesse : 20 m/s apparents (%.2f)" % a2.z)
 
 
+# Revue E12-51 : la vitesse d'avance de la phase ne dépend que du vent du moment, jamais de la durée de la
+# séance. Même vent en rafales au bout de 12 s et 2 h plus tard : même avance par image, bornée.
+func _test_phase_rate_no_drift() -> void:
+	var m = WindModel.new()
+	var dt := 1.0 / 60.0
+	var max_rate := 0.0
+	var early := []
+	var late := []
+	var late_from := 720 + 180 * 2400      # 2 h plus tard, même instant du cycle de rafales de 3 s
+	var prev: float = m.evaluate(0.0)["phase"]
+	for i in range(1, late_from + 180):
+		var t := i * dt
+		if i % 30 == 0:
+			# Rafales qui vont et viennent toutes les 3 s, 20 à 40 km/h
+			var g := 0.5 + 0.5 * sin(TAU * (i % 180) / 180.0)
+			m.on_state(_wind(20.0 + 20.0 * g, 270.0, 0.0, g), t)
+		var ph: float = m.evaluate(t)["phase"]
+		var rate := (ph - prev) / dt
+		prev = ph
+		max_rate = maxf(max_rate, rate)
+		if i >= 720 and i < 900:
+			early.append(rate)
+		elif i >= late_from:
+			late.append(rate)
+	var bound := WindModel.PHASE_RATE_MAX * (1.0 + WindModel.PHASE_GUST_GAIN)
+	_check(max_rate <= bound + 1e-6, "phase : avance maximale %.3f s/s sur 2 h (≤ %.2f)" % [max_rate, bound])
+	var diff := 0.0
+	for i in range(mini(early.size(), late.size())):
+		diff = maxf(diff, absf(float(early[i]) - float(late[i])))
+	_check(early.size() > 100 and diff < 0.05,
+		"phase : même avance au bout de 12 s et 2 h plus tard (écart %.4f s/s)" % diff)
+	# La rafale accélère la phase elle-même
+	_check(WindModel.phase_rate(0.5, 1.0) > WindModel.phase_rate(0.5, 0.0), "rafale : la phase avance plus vite")
+
+
+# Revue E12-51 : les shaders ne multiplient la phase que par des constantes ; un facteur variable (force, rafale)
+# ferait dériver la vitesse apparente avec la durée de la séance.
+func _test_shaders_phase_constant_factor() -> void:
+	var re := RegEx.new()
+	re.compile("(wind_phase|\\bphase)\\s*\\*\\s*\\(?[^;]*\\b(wind_strength|wind_gust|strength|gust|freq)\\b")
+	for path in ["res://shaders/tree_sway.gdshader", "res://shaders/flag.gdshader",
+			"res://shaders/terrain_shade.gdshaderinc", "res://shaders/sky_clouds.gdshader"]:
+		var text := FileAccess.get_file_as_string(path)
+		var bad := []
+		for line in text.split("\n"):
+			var code := line.split("//")[0]
+			if ("phase" in code) and re.search(code) != null:
+				bad.append(code.strip_edges())
+		_check(text != "" and bad.is_empty(), "%s : phase × constante seulement %s" % [path.get_file(), bad])
+
+
 # Critère 9 : coût de evaluate
 func _test_cost() -> void:
 	var m = WindModel.new()
@@ -131,6 +182,8 @@ func _init() -> void:
 	_test_strength_step_and_phase()
 	_test_wire_timeout_and_theme()
 	_test_apparent()
+	_test_phase_rate_no_drift()
+	_test_shaders_phase_constant_factor()
 	_test_cost()
 	print("test_wind_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

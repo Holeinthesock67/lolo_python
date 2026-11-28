@@ -119,8 +119,13 @@ func _run() -> void:
 	sc._tick_hud(0.016)   # le test n'attend pas d'image : application directe
 	_check(sc.hud_view.visible, "reprise : le HUD revient")
 	host.on_loot({"cards": [{}, {}, {}], "doors": [{}, {}], "reroll_cost": 50, "gold": 10})
-	host.update({"mode": "ROGUE", "rogue": _rogue("CORRIDOR", 5, 120.0)}, main, classic, we, cam, "low", 102.5)
+	# Couloir tel que le vrai core l'envoie (revue E10-05) : salle finie gardée, position et écart nuls, sans ennemi.
+	var corr := _rogue("CORRIDOR", 5, 0.0, 0.0)
+	corr["archetype"] = null
+	host.update({"mode": "ROGUE", "s": 2000.0, "rogue": corr}, main, classic, we, cam, "low", 102.5)
 	_check(sc.hud_model.values()["corridor"]["cards"].size() == 3, "cartes du couloir relayées au modèle")
+	_check(not sc.ribbon.visible and not sc.firewall.visible, "couloir : ni ruban ni Firewall (bande plate, revue E10-05)")
+	_check(is_equal_approx(sc._s_target, 2000.0), "couloir : le vélo avance de la distance de la run, pas figé au début de la salle")
 	# Ennemi (R12) : le corps de l'archétype est construit au premier rendu (de retour en salle, hors couloir)
 	host.update({"mode": "ROGUE", "rogue": _rogue("ROOM", 5, 120.0, 80.0, windows)}, main, classic, we, cam, "low", 102.7)
 	await process_frame
