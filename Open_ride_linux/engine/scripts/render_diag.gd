@@ -30,6 +30,9 @@ extends RefCounted
 ##   tree_renderer.update_shadows et tree_sway.gdshader).
 ## Ciel (6 novembre, « Setup Sky » ≈ 0,8 ms par image) : ciel=automatic|quality|incremental|realtime
 ##   (Sky.process_mode, scène : incremental), ciel_radiance=32|64|128|256 (taille de la carte de rayonnement).
+## Style dessin animé (lot CS0, 26 novembre, toon_essai.gd) : contours (trait d'écran sur les ruptures de profondeur
+##   et de normale), contours_px=F (épaisseur, 1,25), contours_m=M (fondu, 350 m), paliers=N (image en N niveaux
+##   de luminosité, 5 au prototype).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
 
 static var _parsed := false

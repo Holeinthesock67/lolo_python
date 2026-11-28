@@ -460,3 +460,32 @@ def test_lot_ni2_one_place_per_setting_and_rule_for_useless_lines():
     # L'engine connaît le groupe `screen` (settings_view_model.gd)
     gd = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "settings_view_model.gd").read_text(encoding="utf-8")
     assert f'const SCREEN_GROUP := "{settings.SCREEN_GROUP}"' in gd
+
+
+def test_graphic_style_lot_cs1(tmp_path: Path):
+    """Lot CS1 : « Style graphique » (`render.style`) dans Graphisme, juste après la qualité, `realistic` par
+    défaut (image inchangée), appliqué tout de suite et écrit dans config.toml ; libellés français en mots."""
+    assert Config().render.style == "realistic"
+    items = {i["key"]: i for i in settings.current(Config())}
+    st = items["render.style"]
+    assert (st["label"], st["group"], st["type"], st["value"], st["applies"]) == (
+        "Style graphique", "graphics", "choice", "realistic", "now")
+    assert st["choices"] == ["realistic", "toon"]
+    assert "Réaliste" in st["help"] and "Dessin animé" in st["help"] and "Cyber-Rogue" in st["help"]
+    keys = [i["key"] for i in settings.current(Config())]
+    assert keys.index("render.style") == keys.index("render.quality") + 1
+    gd = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "settings_view_model.gd").read_text(encoding="utf-8")
+    block = gd.split('"render.style": {', 1)[1].split("}", 1)[0]
+    assert dict(re.findall(r'"([a-z]+)": "([^"]+)"', block)) == {"realistic": "réaliste", "toon": "dessin animé"}
+    style_gd = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "graphic_style.gd").read_text(encoding="utf-8")
+    assert 'const STYLES: Array[String] = [REALISTIC, TOON]' in style_gd
+    assert 'const REALISTIC := "realistic"' in style_gd and 'const TOON := "toon"' in style_gd
+    path = tmp_path / "config.toml"
+    path.write_text(START, encoding="utf-8")
+    s, _, errors = _session(tmp_path, path)
+    s._on_command("set_setting", {"key": "render.style", "value": "toon"}, 2)
+    assert not errors and s.cfg.render.style == "toon"
+    assert tomllib.loads(path.read_text(encoding="utf-8"))["render"]["style"] == "toon"
+    s._on_command("set_setting", {"key": "render.style", "value": "manga"}, 3)
+    assert errors[-1][0] == "setting_invalid" and s.cfg.render.style == "toon"
+

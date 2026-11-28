@@ -14,6 +14,8 @@ const EngineArgs := preload("res://scripts/engine_args.gd")
 const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
+const GraphicStyle := preload("res://scripts/graphic_style.gd")
+const ToonEssai := preload("res://scripts/toon_essai.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const HudView := preload("res://scripts/hud_view.gd")
@@ -176,6 +178,8 @@ var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD class
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
+## Style graphique (lot CS1, réglage `render.style`) : `realistic` tant que le core n'a rien envoyé.
+var _style_name: String = GraphicStyle.DEFAULT_STYLE
 var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lots Q2 et Y15)
 var _base_fov := 65.0                  # champ de vision de la scène, avant la respiration selon la pente (lot Y15)
 var _theme_name: String = "default"
@@ -367,6 +371,9 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+	_apply_style()
+	if ToonEssai.attach(camera) != null:   # essais de rendu du dessin animé (lot CS0), jamais sans OPENRIDE_RENDER_DIAG
+		print("Essai de rendu : dessin animé ", ToonEssai.wanted())
 	load_guard = LoadGuard.new(QualityPresets.image(_quality_name), bool(cfg["load_guard"]), _forward_plus())
 	if load_guard.enabled:   # temps GPU de la vue lu à chaque image
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
@@ -641,6 +648,12 @@ static func _quality_from_cli() -> bool:
 
 ## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, niveau des textures, thème et mode d'affichage
 ## appliqués tout de suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
+## Style graphique (lot CS1) par-dessus le préréglage : la saturation que RenderQuality vient de poser (essais
+## de rendu compris) est gardée en réaliste et remplacée en dessin animé. À rappeler après chaque apply_preset.
+func _apply_style() -> void:
+	GraphicStyle.apply(_style_name, world_env.environment, RenderQuality.look_saturation())
+
+
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	_run_menu_action(menu_flow.take_power_refresh())   # FTP acceptée dans « Ma puissance » : courbe redemandée (lot PP3)
@@ -648,10 +661,18 @@ func _on_settings(msg: Dictionary) -> void:
 	fps_counter.measure_kept = _probe.is_open() or load_guard.enabled
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
 	photo_moments.enabled = str(menu_flow.settings.item(PhotoMomentsModel.SETTING_KEY).get("value", "on")) != "off"
+	var style := str(menu_flow.settings.item(GraphicStyle.SETTING_KEY).get("value", _style_name))
+	var style_changed := style != _style_name and GraphicStyle.is_valid(style)
+	if style_changed:
+		_style_name = style
+		print("Style graphique : ", _style_name)
+		ipc.test_log("style applied=%s" % _style_name)
+		_apply_style()
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+		_apply_style()
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)

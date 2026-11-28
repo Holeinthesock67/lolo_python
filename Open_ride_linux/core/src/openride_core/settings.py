@@ -158,6 +158,10 @@ SETTINGS: tuple[Setting, ...] = (
             help="Haute : on voit à 8\u00a0km, toute la végétation, brume complète, ombres jusqu'à 600\u00a0m. "
                  "Moyenne : 5\u00a0km, 80\u00a0% de la végétation, brume légère, faite pour une GTX\u00a01060. "
                  "Basse : 3\u00a0km, 30\u00a0% de la végétation, sans brume ni halo : à choisir si l'image saccade."),
+    # Style graphique (lot CS1, décisions du propriétaire du 23 novembre : dessin animé complet, « vif », hors Cyber-Rogue)
+    Setting("render.style", "Style graphique", "graphics", applies="now",
+            help="Réaliste : l'image actuelle. Dessin animé : couleurs plus vives pour l'instant ; les aplats et "
+                 "les contours noirs arrivent avec les lots suivants. Ne change pas Cyber-Rogue."),
     # « Textures du décor » (lot P20) retiré du menu au lot NI2 (R5) : « auto » suit la Qualité graphique ;
     # une valeur choisie avant est remise à « auto » par `migration_reglages.py`.
     Setting("render.theme", "Thème", "graphics", applies="now"),

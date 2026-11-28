@@ -87,6 +87,18 @@ VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("lod_maillage_1", "lod_maillage=1.0", (), ("high",), "niveaux de détail des maillages comme en medium"),
     ("lod_maillage_2", "lod_maillage=2.0", (), ("medium",), "niveaux de détail des maillages comme en low"),
     ("tri_visible", "", ("--culling", "on"), QUALITIES, "tri de ce que la caméra ne voit pas (lot S1)"),
+    # Style dessin animé (lot CS0, 26 novembre, scripts/toon_essai.gd) : prototype du 23 novembre mesuré sur le PC.
+    # Les contours lisent la profondeur et les normales de l'écran : vides avec MSAA au cloud, d'où les deux mesures.
+    ("ombres_nettes", "filtre=hard", (), QUALITIES, "ombres à bord net (voulu en dessin animé)"),
+    ("cs_contours", "contours", (), QUALITIES, "AJOUT : contours d'écran, anticrénelage du préréglage"),
+    ("cs_contours_smaa", "contours,msaa=0,screen_aa=smaa", (), ("medium", "high"),
+     "AJOUT : contours d'écran, SMAA à la place du MSAA"),
+    ("cs_contours_epais", "contours,contours_px=2,msaa=0,screen_aa=smaa", (), QUALITIES,
+     "AJOUT : contours d'écran de 2 pixels, SMAA"),
+    ("cs_paliers", "contours,paliers=5,msaa=0,screen_aa=smaa", (), QUALITIES,
+     "AJOUT : contours et image en 5 paliers (aplats du prototype), SMAA"),
+    ("cs_complet", "contours,paliers=5,msaa=0,screen_aa=smaa,sans_ssao,filtre=hard,saturation=1.5", (), QUALITIES,
+     "dessin animé visé : contours, paliers, SMAA, sans occlusion ambiante, ombres nettes, couleurs « vif »"),
     # Ciel
     ("ciel_temps_reel", "ciel=realtime", (), QUALITIES, "COÛT : carte de rayonnement du ciel recalculée à chaque image"),
     ("ciel_128", "ciel_radiance=128", (), QUALITIES, "carte de rayonnement du ciel en 128 au lieu de 256"),

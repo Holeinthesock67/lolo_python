@@ -408,6 +408,7 @@ auto_photos = "on"  # photos automatiques à l'arrivée et aux records, ~/OpenRi
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 biome = "auto"           # biome du décor (lot U16, « Biome du décor ») : auto (biomes du parcours) ou un des seize biomes, forcé sur tout le parcours
 texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high ; retiré du menu au lot NI2 (auto suit la Qualité graphique), une valeur écrite avant est mise en commentaire au lancement (migration_reglages.py)
+style = "realistic"     # style graphique (lot CS1, « Style graphique ») : realistic (l'image du jeu telle quelle) ou toon (dessin animé : couleurs plus vives, puis aplats et contours aux lots CS2 à CS4 ; ne change pas Cyber-Rogue)
 day_night = "off"       # jour et nuit (lot P19, « Jour et nuit ») : off (soleil fixe), theme (heure du thème), real (heure du PC) ou accelerated (une journée en une heure)
 seasons = "off"         # saisons (lot P19, « Saisons ») : off (l'été), theme, date (selon la date et l'hémisphère), random (au hasard, lot U13b), spring, summer, autumn ou winter
 month = "pc"            # mois (lot U13b, « Mois ») : pc (date du PC) ou january à december (le 15 du mois)
