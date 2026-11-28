@@ -246,15 +246,15 @@
   "rogue_gagnee": {
    "bilan": {
     "n": 15,
-    "sha256": "1b0ff96c846674590f3cb06930624ea598529b5d06418795d483669b67242519"
+    "sha256": "713446516a27591cc2851695f8a86f969011318e7e4d8e2fe590c580ba08c9c0"
    },
    "journal": {
     "n": 1830,
-    "sha256": "4e09bc74cc7f428f31f2fb813bd23e39515a4db1ce07b0c985d8b7c79f5731fa"
+    "sha256": "f1f5dff6dbcbcc041eb036e5909423badfd7010de6c911d0c0697ada462d1956"
    },
    "messages": {
     "n": 2,
-    "sha256": "ba0bae8ac09b7e17a5255c89bb37fe263aee3b10e5ff43559e210e9515a91c73"
+    "sha256": "0de7daa8224117df046a2360c203302d121e7d14fc8adca585ee80b5ebc07154"
    },
    "trainer": {
     "n": 3611,
@@ -262,7 +262,7 @@
    },
    "trames": {
     "n": 360,
-    "sha256": "cd5b8ff67a217c5495fa28653424fbb06961be8934065f1ad116716ea81d3b64"
+    "sha256": "925215623a518017e57cd0339d8b6d90adbb732bb938732e1af7d57ae9fde013"
    }
   },
   "rogue_perdue": {
@@ -272,11 +272,11 @@
    },
    "journal": {
     "n": 1342,
-    "sha256": "b35ec4d77b942f94843f99a41532b2a56929f725a6df9b9147c2d771edc99506"
+    "sha256": "ea9d1443a0e9f7e2956939dc286db6267fe1575999f7aeae4528bb2a6961908a"
    },
    "messages": {
     "n": 2,
-    "sha256": "b4285d65e062ae19fef43d118ae7afa274c437809038d33704d31ee31b25c64b"
+    "sha256": "da3b5711e05a78d8485bcbcaf8d3075d3812f9097015104b123277e4b106b35d"
    },
    "trainer": {
     "n": 2640,
@@ -284,7 +284,7 @@
    },
    "trames": {
     "n": 263,
-    "sha256": "b9f48617c74a955419894dfd85eeaee6d5439fd3e9a880a5fa10f8d7c3633b17"
+    "sha256": "7f2f5e68634282e8521ba11d5b19bf744e3e66679e248751069ccf703789bbeb"
    }
   },
   "rogue_reprise": {
@@ -294,7 +294,7 @@
    },
    "journal": {
     "n": 613,
-    "sha256": "877804b1b22ed711b44a47394686baad7d3f8c0789cc4fef101751b68b5a14bf"
+    "sha256": "b1ca2a543ea09e25101bddfd9a55c097eb70b4c2466864104e23917c99ea44b3"
    },
    "messages": {
     "n": 2,

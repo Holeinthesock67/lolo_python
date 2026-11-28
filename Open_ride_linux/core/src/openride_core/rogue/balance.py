@@ -43,7 +43,7 @@ class RogueBalance:
     tunnel_period_s: float = 40.0   # Diesel : période des tunnels de cadence (s)
     tunnel_len_s: float = 20.0   # Diesel : durée d'un tunnel (s)
     tunnel_cadence_rpm: float = 90.0   # Diesel : cadence visée dans un tunnel (rpm)
-    tunnel_tolerance_rpm: float = 3.0   # Diesel : tolérance autour de la cadence visée (rpm)
+    tunnel_tolerance_rpm: float = 8.0   # Diesel : tolérance autour de la cadence visée (rpm) ; 3 avant les retours du 28/11 (trop étroit)
     rock_armor: float = 2.0   # Grimpeur : points d'armure d'un rocher
     pad_threshold_frac: float = 1.40   # Sprinteur : puissance minimale sur un pavé, en fraction de la FTP
     pad_min_gear: float = 10.0   # Sprinteur : vitesse minimale pour que le pavé compte
@@ -199,12 +199,17 @@ class RogueBalance:
             "threshold": {"lo": 2.0, "hi": 5.0, "fw": 0.88},
         },
         "boss": {
-            "endurance": {"p1_grade": 3.0, "p1_fw": 0.70, "p1_locks": 4,
+            # retours du 28/11 (« peu d'événements ») : 5 cibles en phase 1 au lieu de 4, une cible Z entre deux
+            # ondes de choc en phase 2 (`p2_strikes`) ; `p3_shock_period_s` : ondes de choc à parer en phase 3
+            # (0 : aucune, comme avant ; 20 ou 30 s rendent la run de référence « moyen » gagnante, à 1 % du boss)
+            "endurance": {"p1_grade": 3.0, "p1_fw": 0.70, "p1_locks": 5,
                           "p2_grades": (4.0, 0.0, 5.0), "p2_fw": (0.80, 0.60, 0.85), "p2_block_s": 40.0,
-                          "shock_period_s": 30.0, "p3_grade": 0.0, "p3_fw": 0.85},
-            "threshold": {"p1_grade": 5.0, "p1_fw": 0.90, "p1_locks": 4,
+                          "shock_period_s": 30.0, "p2_strikes": 1, "p3_grade": 0.0, "p3_fw": 0.85,
+                          "p3_shock_period_s": 0.0},
+            "threshold": {"p1_grade": 5.0, "p1_fw": 0.90, "p1_locks": 5,
                       "p2_grades": (8.0, 0.0, 10.0), "p2_fw": (1.00, 0.70, 1.05), "p2_block_s": 40.0,
-                      "shock_period_s": 30.0, "p3_grade": 0.0, "p3_fw": 1.20},
+                      "shock_period_s": 30.0, "p2_strikes": 1, "p3_grade": 0.0, "p3_fw": 1.20,
+                      "p3_shock_period_s": 0.0},
         },
     })
 

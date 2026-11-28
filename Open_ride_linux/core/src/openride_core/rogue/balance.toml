@@ -26,7 +26,7 @@ parry_lead_s = 2.0   # zone de parade : 2 s avant la bosse ou l'onde de choc
 tunnel_period_s = 40.0   # Diesel : période des tunnels de cadence (s)
 tunnel_len_s = 20.0   # Diesel : durée d'un tunnel (s)
 tunnel_cadence_rpm = 90.0   # Diesel : cadence visée dans un tunnel (rpm)
-tunnel_tolerance_rpm = 3.0   # Diesel : tolérance autour de la cadence visée (rpm)
+tunnel_tolerance_rpm = 8.0   # Diesel : tolérance autour de la cadence visée (rpm) ; 3 avant les retours du 28/11
 rock_armor = 2.0   # Grimpeur : points d'armure d'un rocher
 pad_threshold_frac = 1.4   # Sprinteur : puissance minimale sur un pavé, en fraction de la FTP
 pad_min_gear = 10.0   # Sprinteur : vitesse minimale pour que le pavé compte
@@ -218,21 +218,26 @@ fw = 0.88
 [room_profiles.boss.endurance]
 p1_grade = 3.0
 p1_fw = 0.7
-p1_locks = 4
+p1_locks = 5
 p2_grades = [4.0, 0.0, 5.0]
 p2_fw = [0.8, 0.6, 0.85]
 p2_block_s = 40.0
 shock_period_s = 30.0
+p2_strikes = 1   # cibles Z entre deux ondes de choc (retours du 28/11)
 p3_grade = 0.0
 p3_fw = 0.85
+p3_shock_period_s = 0.0   # phase 3 : ondes de choc à parer toutes les N s (0 : aucune ; essai possible à 20)
+
 
 [room_profiles.boss.threshold]
 p1_grade = 5.0
 p1_fw = 0.9
-p1_locks = 4
+p1_locks = 5
 p2_grades = [8.0, 0.0, 10.0]
 p2_fw = [1.0, 0.7, 1.05]
 p2_block_s = 40.0
 shock_period_s = 30.0
+p2_strikes = 1   # cibles Z entre deux ondes de choc (retours du 28/11)
 p3_grade = 0.0
 p3_fw = 1.2
+p3_shock_period_s = 0.0   # phase 3 : ondes de choc à parer toutes les N s (0 : aucune ; essai possible à 20)

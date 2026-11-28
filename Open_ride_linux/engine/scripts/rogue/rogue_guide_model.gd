@@ -31,7 +31,7 @@ const MARKER_TAGS := {"strike_target": "Z !", "purge": "DÉBLOQUER : Z", "rock":
 const LEGENDS := {
 	"strike_target": ["Nouveau : cible Z", "Appuie sur Z quand ta roue passe sur l'anneau rouge. Coûte 50 d'adrénaline et retire 6 % des PV de l'ennemi (Diesel : utilise tes charges de tunnel)."],
 	"arch": ["Nouveau : arche de changement parfait", "La flèche et le signe disent le sens. Passe une vitesse dans ce sens quand l'anneau touche l'arche (± 0,75 s). Réussi : +10 d'adrénaline."],
-	"tunnel": ["Nouveau : tunnel de cadence", "Tiens la cadence affichée (± 3 rpm) dans le tunnel vert : chaque 10 s donne une charge pour la prochaine cible Z."],
+	"tunnel": ["Nouveau : tunnel de cadence", "Tiens la cadence affichée (± 8 rpm) dans le tunnel vert : chaque 10 s donne une charge pour la prochaine cible Z."],
 	"pad": ["Nouveau : pavé de sprint", "En vitesse 10 ou plus, au-dessus de la puissance affichée, tes dégâts sont multipliés sur le pavé."],
 	"parry_zone": ["Nouveau : zone de parade", "Relance fort la puissance puis appuie sur Z dans la zone. Sinon, le coup te retire du bouclier."],
 	"purge": ["Nouveau : borne de déblocage", "Le Saboteur pirate tes vitesses : elles restent bloquées, ou une vitesse t'est imposée. Sur cette borne, appuie sur Z pour les débloquer."],

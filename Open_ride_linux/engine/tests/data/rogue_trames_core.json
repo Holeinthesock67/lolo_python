@@ -67,23 +67,23 @@
     "windows": [
      {
       "kind": "strike_target",
-      "s_end": 391.4,
-      "s_start": 385.4
+      "s_end": 369.8,
+      "s_start": 363.8
      },
      {
       "kind": "strike_target",
-      "s_end": 518.2,
-      "s_start": 512.2
+      "s_end": 476.1,
+      "s_start": 470.1
      },
      {
       "kind": "strike_target",
-      "s_end": 644.4,
-      "s_start": 638.4
+      "s_end": 581.3,
+      "s_start": 575.3
      },
      {
       "kind": "strike_target",
-      "s_end": 770.6,
-      "s_start": 764.6
+      "s_end": 686.5,
+      "s_start": 680.5
      }
     ],
     "z_action": null,
@@ -116,8 +116,8 @@
    "lon": null,
    "mode": "ROGUE",
    "pause_reason": null,
-   "power": 325.3,
-   "power_3s": 327.1,
+   "power": 336.3,
+   "power_3s": 334.7,
    "rogue": {
     "adrenaline": 100.0,
     "adrenaline_trend": {
@@ -135,7 +135,7 @@
     ],
     "firewall_gap_m": 0.0,
     "firewall_gap_s": null,
-    "gold": 64,
+    "gold": 78,
     "hack": null,
     "in_target": false,
     "loot_focus": null,
@@ -151,19 +151,19 @@
     "phase": "COOLDOWN",
     "phase_left_s": 300.0,
     "posture": "FLUIDE",
-    "power_judged_w": 326.1,
+    "power_judged_w": 330.1,
     "room_id": 6,
     "room_index": 5,
     "rooms_total": 2,
     "s_room": 0.0,
-    "shield": 73.0,
+    "shield": 93.0,
     "shield_max": 120.0,
     "shift_miss": null,
     "target_pct": {
      "hi": 50,
      "lo": 0
     },
-    "w_bal_j": 8424.3,
+    "w_bal_j": 7851.6,
     "w_prime_j": 20000.0,
     "windows": [],
     "z_action": null,
@@ -171,14 +171,14 @@
    },
    "route_id": null,
    "route_length_m": null,
-   "s": 9600.37,
+   "s": 9612.21,
    "seq": 1564,
    "session_state": "RUNNING",
    "summary": null,
    "t": 1504.0,
    "trainer_status": "MOCK",
    "type": "state",
-   "v": 11.309
+   "v": 11.33
   },
   "boss_end_prev": {
    "alt": null,
@@ -196,8 +196,8 @@
    "lon": null,
    "mode": "ROGUE",
    "pause_reason": null,
-   "power": 329.7,
-   "power_3s": 328.4,
+   "power": 339.3,
+   "power_3s": 332.6,
    "rogue": {
     "adrenaline": 100.0,
     "adrenaline_trend": {
@@ -208,12 +208,12 @@
     "archetype": "boss",
     "boss_phase": 3,
     "card_on": null,
-    "enemy_hp": 2.04,
-    "enemy_hp_max": 141.47,
+    "enemy_hp": 1.35,
+    "enemy_hp_max": 142.8,
     "events": [],
-    "firewall_gap_m": 208.3,
+    "firewall_gap_m": 207.8,
     "firewall_gap_s": 18.4,
-    "gold": 56,
+    "gold": 70,
     "hack": null,
     "in_target": true,
     "loot_focus": null,
@@ -229,19 +229,19 @@
     "phase": "BOSS",
     "phase_left_s": null,
     "posture": "FLUIDE",
-    "power_judged_w": 326.6,
+    "power_judged_w": 330.1,
     "room_id": 6,
     "room_index": 5,
     "rooms_total": 2,
-    "s_room": 1202.4,
-    "shield": 73.0,
+    "s_room": 1212.8,
+    "shield": 93.0,
     "shield_max": 120.0,
     "shift_miss": null,
     "target_pct": {
      "hi": null,
      "lo": 135
     },
-    "w_bal_j": 8499.6,
+    "w_bal_j": 7937.9,
     "w_prime_j": 20000.0,
     "windows": [],
     "z_action": null,
@@ -249,14 +249,14 @@
    },
    "route_id": null,
    "route_length_m": null,
-   "s": 9589.06,
+   "s": 9600.88,
    "seq": 1563,
    "session_state": "RUNNING",
    "summary": null,
    "t": 1503.0,
    "trainer_status": "MOCK",
    "type": "state",
-   "v": 11.315
+   "v": 11.326
   },
   "cooldown": {
    "alt": null,
@@ -274,8 +274,8 @@
    "lon": null,
    "mode": "ROGUE",
    "pause_reason": null,
-   "power": 120.6,
-   "power_3s": 119.6,
+   "power": 126.5,
+   "power_3s": 128.6,
    "rogue": {
     "adrenaline": 100.0,
     "adrenaline_trend": {
@@ -291,7 +291,7 @@
     "events": [],
     "firewall_gap_m": 0.0,
     "firewall_gap_s": null,
-    "gold": 64,
+    "gold": 78,
     "hack": null,
     "in_target": false,
     "loot_focus": null,
@@ -307,19 +307,19 @@
     "phase": "COOLDOWN",
     "phase_left_s": 295.0,
     "posture": "FLUIDE",
-    "power_judged_w": 198.2,
+    "power_judged_w": 206.4,
     "room_id": 6,
     "room_index": 5,
     "rooms_total": 2,
     "s_room": 0.0,
-    "shield": 73.0,
+    "shield": 93.0,
     "shield_max": 120.0,
     "shift_miss": null,
     "target_pct": {
      "hi": 50,
      "lo": 0
     },
-    "w_bal_j": 8866.2,
+    "w_bal_j": 8288.9,
     "w_prime_j": 20000.0,
     "windows": [],
     "z_action": null,
@@ -327,14 +327,14 @@
    },
    "route_id": null,
    "route_length_m": null,
-   "s": 9653.93,
+   "s": 9665.96,
    "seq": 1569,
    "session_state": "RUNNING",
    "summary": null,
    "t": 1509.0,
    "trainer_status": "MOCK",
    "type": "state",
-   "v": 10.353
+   "v": 10.406
   },
   "corridor": {
    "alt": null,
@@ -427,11 +427,11 @@
    "lon": null,
    "mode": "SIM",
    "pause_reason": null,
-   "power": 128.5,
-   "power_3s": 131.3,
+   "power": 128.7,
+   "power_3s": 126.8,
    "route_id": null,
    "route_length_m": null,
-   "s": 12029.35,
+   "s": 12042.93,
    "seq": 1866,
    "session_state": "FINISHED",
    "summary": {
@@ -449,7 +449,7 @@
       "cause": "boss_time",
       "enemy_pct": 1
      },
-     "gold": 64,
+     "gold": 78,
      "objective": "threshold",
      "perfect_shifts": 1,
      "result": "defeat",
@@ -464,7 +464,7 @@
    "t": 1806.0,
    "trainer_status": "MOCK",
    "type": "state",
-   "v": 7.952
+   "v": 7.884
   },
   "recovery": {
    "alt": null,
@@ -676,8 +676,8 @@
    "lon": null,
    "mode": "ROGUE",
    "pause_reason": null,
-   "power": 131.5,
-   "power_3s": 132.8,
+   "power": 125.1,
+   "power_3s": 125.8,
    "rogue": {
     "adrenaline": 100.0,
     "adrenaline_trend": {
@@ -693,7 +693,7 @@
     "events": [],
     "firewall_gap_m": 0.0,
     "firewall_gap_s": null,
-    "gold": 64,
+    "gold": 78,
     "hack": null,
     "in_target": false,
     "loot_focus": null,
@@ -703,16 +703,16 @@
     "phase": "RESULTS",
     "phase_left_s": null,
     "posture": "FLUIDE",
-    "power_judged_w": 130.9,
+    "power_judged_w": 126.6,
     "room_id": 6,
     "room_index": 5,
     "rooms_total": 2,
     "s_room": 0.0,
-    "shield": 73.0,
+    "shield": 93.0,
     "shield_max": 120.0,
     "shift_miss": null,
     "target_pct": null,
-    "w_bal_j": 18776.1,
+    "w_bal_j": 18713.0,
     "w_prime_j": 20000.0,
     "windows": [],
     "z_action": null,
@@ -720,14 +720,14 @@
    },
    "route_id": null,
    "route_length_m": null,
-   "s": 12013.45,
+   "s": 12027.16,
    "seq": 1864,
    "session_state": "RUNNING",
    "summary": null,
    "t": 1804.0,
    "trainer_status": "MOCK",
    "type": "state",
-   "v": 7.947
+   "v": 7.876
   },
   "room": {
    "alt": null,
@@ -991,7 +991,7 @@
   },
   "victory_boss_end": {
    "alt": null,
-   "cadence": 85.9,
+   "cadence": 91.0,
    "difficulty_pct": 50,
    "erg": null,
    "gear": 6,
@@ -1005,8 +1005,8 @@
    "lon": null,
    "mode": "ROGUE",
    "pause_reason": null,
-   "power": 204.4,
-   "power_3s": 201.6,
+   "power": 193.6,
+   "power_3s": 199.8,
    "rogue": {
     "adrenaline": 100.0,
     "adrenaline_trend": {
@@ -1024,7 +1024,7 @@
     ],
     "firewall_gap_m": 0.0,
     "firewall_gap_s": null,
-    "gold": 76,
+    "gold": 102,
     "hack": null,
     "in_target": false,
     "loot_focus": null,
@@ -1040,19 +1040,19 @@
     "phase": "COOLDOWN",
     "phase_left_s": 300.0,
     "posture": "FLUIDE",
-    "power_judged_w": 201.4,
+    "power_judged_w": 198.2,
     "room_id": 6,
     "room_index": 5,
     "rooms_total": 2,
     "s_room": 0.0,
-    "shield": 63.0,
+    "shield": 50.0,
     "shield_max": 100.0,
     "shift_miss": null,
     "target_pct": {
      "hi": 50,
      "lo": 0
     },
-    "w_bal_j": 4731.2,
+    "w_bal_j": 5578.0,
     "w_prime_j": 12000.0,
     "windows": [],
     "z_action": null,
@@ -1060,18 +1060,18 @@
    },
    "route_id": null,
    "route_length_m": null,
-   "s": 8216.48,
-   "seq": 1568,
+   "s": 8069.65,
+   "seq": 1555,
    "session_state": "RUNNING",
    "summary": null,
-   "t": 1508.0,
+   "t": 1495.0,
    "trainer_status": "MOCK",
    "type": "state",
-   "v": 9.395
+   "v": 9.354
   },
   "victory_boss_end_prev": {
    "alt": null,
-   "cadence": 85.0,
+   "cadence": 89.7,
    "difficulty_pct": 50,
    "erg": null,
    "gear": 6,
@@ -1085,8 +1085,8 @@
    "lon": null,
    "mode": "ROGUE",
    "pause_reason": null,
-   "power": 199.0,
-   "power_3s": 201.2,
+   "power": 196.5,
+   "power_3s": 203.2,
    "rogue": {
     "adrenaline": 100.0,
     "adrenaline_trend": {
@@ -1098,11 +1098,11 @@
     "boss_phase": 3,
     "card_on": null,
     "enemy_hp": 0.0,
-    "enemy_hp_max": 138.86,
+    "enemy_hp_max": 117.33,
     "events": [],
-    "firewall_gap_m": 186.7,
-    "firewall_gap_s": 19.9,
-    "gold": 56,
+    "firewall_gap_m": 183.0,
+    "firewall_gap_s": 19.6,
+    "gold": 82,
     "hack": null,
     "in_target": true,
     "loot_focus": null,
@@ -1110,7 +1110,7 @@
     "next": [
      {
       "archetype": null,
-      "in_s": 0.2,
+      "in_s": 0.1,
       "kind": "cooldown"
      }
     ],
@@ -1118,19 +1118,19 @@
     "phase": "BOSS",
     "phase_left_s": null,
     "posture": "FLUIDE",
-    "power_judged_w": 200.4,
+    "power_judged_w": 197.7,
     "room_id": 6,
     "room_index": 5,
     "rooms_total": 2,
-    "s_room": 977.2,
-    "shield": 63.0,
+    "s_room": 829.0,
+    "shield": 50.0,
     "shield_max": 100.0,
     "shift_miss": null,
     "target_pct": {
      "hi": null,
      "lo": 135
     },
-    "w_bal_j": 4785.6,
+    "w_bal_j": 5621.6,
     "w_prime_j": 12000.0,
     "windows": [],
     "z_action": null,
@@ -1138,18 +1138,18 @@
    },
    "route_id": null,
    "route_length_m": null,
-   "s": 8207.09,
-   "seq": 1567,
+   "s": 8060.3,
+   "seq": 1554,
    "session_state": "RUNNING",
    "summary": null,
-   "t": 1507.0,
+   "t": 1494.0,
    "trainer_status": "MOCK",
    "type": "state",
-   "v": 9.389
+   "v": 9.359
   },
   "victory_results": {
    "alt": null,
-   "cadence": 89.4,
+   "cadence": 89.5,
    "difficulty_pct": 50,
    "erg": null,
    "gear": 6,
@@ -1163,8 +1163,8 @@
    "lon": null,
    "mode": "ROGUE",
    "pause_reason": null,
-   "power": 77.3,
-   "power_3s": 74.5,
+   "power": 74.9,
+   "power_3s": 78.3,
    "rogue": {
     "adrenaline": 100.0,
     "adrenaline_trend": {
@@ -1180,7 +1180,7 @@
     "events": [],
     "firewall_gap_m": 0.0,
     "firewall_gap_s": null,
-    "gold": 76,
+    "gold": 102,
     "hack": null,
     "in_target": false,
     "loot_focus": null,
@@ -1190,16 +1190,16 @@
     "phase": "RESULTS",
     "phase_left_s": null,
     "posture": "FLUIDE",
-    "power_judged_w": 74.6,
+    "power_judged_w": 78.8,
     "room_id": 6,
     "room_index": 5,
     "rooms_total": 2,
     "s_room": 0.0,
-    "shield": 63.0,
+    "shield": 50.0,
     "shield_max": 100.0,
     "shift_miss": null,
     "target_pct": null,
-    "w_bal_j": 11232.8,
+    "w_bal_j": 11321.8,
     "w_prime_j": 12000.0,
     "windows": [],
     "z_action": null,
@@ -1207,14 +1207,14 @@
    },
    "route_id": null,
    "route_length_m": null,
-   "s": 10195.1,
-   "seq": 1868,
+   "s": 10047.47,
+   "seq": 1855,
    "session_state": "RUNNING",
    "summary": null,
-   "t": 1808.0,
+   "t": 1795.0,
    "trainer_status": "MOCK",
    "type": "state",
-   "v": 6.43
+   "v": 6.445
   },
   "warmup": {
    "alt": null,
@@ -3315,10 +3315,10 @@
   },
   {
    "archetype": "boss",
-   "length_m": 1210.0,
+   "length_m": 1220.0,
    "markers": [],
    "next": null,
-   "nominal_s": 123.0,
+   "nominal_s": 124.0,
    "part": 1,
    "parts": 1,
    "profile": [
@@ -3808,6 +3808,10 @@
     ],
     [
      1210,
+     0
+    ],
+    [
+     1220,
      0
     ]
    ],
