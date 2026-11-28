@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Gels du monde ouvert : l'engine et le core notent chaque minute les trames state reçues, sautées, en retard, la taille max et les erreurs d'envoi UDP ; un trou de plus de 2 s est noté avec ses seq | Python, GDScript | X17, X25 | Petite | En cours (codé le 22 novembre, banc PC à faire) |
+| Gels du monde ouvert : l'engine et le core notent chaque minute les trames state reçues, sautées, en retard, la taille max et les erreurs d'envoi UDP ; un trou de plus de 2 s est noté avec ses seq | Python, GDScript | X17, X25 | Petite | **Livré le 25 novembre** (PR #1006) ; banc PC à faire |
 
 Fil global « Supprimer les à-coups récurrents de main » (22/11), après l'essai vélo du 22/11.
 
@@ -42,3 +42,7 @@ Catégorie : logique
   `python -m openride_core.tools.log_report ~/run_trainer.log --gigue`. Attendu : les lignes `[ipc]` et
   `IPC émis` chaque minute ; si un trou apparaît, sa ligne dit si les trames sont perdues en route ou jamais
   envoyées. La correction viendra dans un lot suivant, selon ce résultat.
+
+## Livraison
+
+Fusionné dans `main` le 25 novembre 2026 (PR #1006), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En cours (codé le 22 novembre, banc PC à faire) »).

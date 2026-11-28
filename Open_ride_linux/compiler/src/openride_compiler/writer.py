@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
-import shutil
 import unicodedata
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +12,7 @@ from typing import Callable
 
 from . import __version__
 from . import constants as C
+from .atomic_dir import replace_dir, replace_file_text
 from .errors import CompileError
 from .pipeline import CompiledRoute
 from .route_stats import compute_stats
@@ -76,13 +75,8 @@ def _write_files(folder: Path, manifest: dict, route: dict,
 
 
 def replace_manifest(world: Path, manifest: dict) -> None:
-    """Réécrit `manifest.json` de façon atomique (fichier temporaire puis os.replace)."""
-    tmp = Path(world) / f".manifest.json.tmp-{os.getpid()}"
-    try:
-        tmp.write_text(manifest_text(manifest), encoding="utf-8")
-        os.replace(tmp, Path(world) / "manifest.json")
-    finally:
-        tmp.unlink(missing_ok=True)
+    """Réécrit `manifest.json` de façon atomique et durable (temporaire, fsync, os.replace)."""
+    replace_file_text(Path(world) / "manifest.json", manifest_text(manifest))
 
 
 def write_world(out_dir: Path, name: str, manifest: dict, route: dict, force: bool = False,
@@ -90,32 +84,20 @@ def write_world(out_dir: Path, name: str, manifest: dict, route: dict, force: bo
     """Écrit `<out_dir>/<name>.world` de façon atomique : dossier temporaire voisin puis renommage.
 
     Un dossier existant n'est remplacé qu'avec `force` ; sinon CompileError, sans rien toucher.
-    `extra(dossier)` écrit les autres couches (terrain) dans le dossier temporaire.
+    `extra(dossier)` écrit les autres couches (terrain) dans le dossier temporaire. Les fichiers
+    passent par fsync avant le renommage, et les temporaires laissés par une compilation tuée sont
+    effacés (`atomic_dir`, K4-07 et K4-08).
     """
     out_dir = Path(out_dir)
     final = out_dir / f"{name}.world"
     if final.exists() and not force:
         raise CompileError(f"{final} existe déjà (utiliser --force pour le remplacer)")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    tmp = out_dir / f".{name}.world.tmp-{os.getpid()}"
-    old = out_dir / f".{name}.world.old-{os.getpid()}"
-    shutil.rmtree(tmp, ignore_errors=True)
-    try:
+
+    def fill(tmp: Path) -> None:
         tmp.mkdir()
         _write_files(tmp, manifest, route, extra)
-        if final.exists():
-            final.rename(old)
-            try:
-                tmp.rename(final)
-            except BaseException:
-                old.rename(final)
-                raise
-            shutil.rmtree(old, ignore_errors=True)
-        else:
-            tmp.rename(final)
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-    return final
+
+    return replace_dir(final, fill)
 
 
 # --- couche biome (lot U2) ------------------------------------------------------------------
@@ -153,26 +135,8 @@ def write_biome(folder: Path, layer) -> None:
 
 
 def replace_biome_dir(world: Path, layer) -> None:
-    """Remplace `world/biome` de façon atomique : dossier temporaire voisin, puis renommage."""
-    world = Path(world)
-    final = world / "biome"
-    tmp = world / f".biome.tmp-{os.getpid()}"
-    old = world / f".biome.old-{os.getpid()}"
-    shutil.rmtree(tmp, ignore_errors=True)
-    try:
-        write_biome(tmp, layer)
-        if final.exists():
-            final.rename(old)
-            try:
-                tmp.rename(final)
-            except BaseException:
-                old.rename(final)
-                raise
-            shutil.rmtree(old, ignore_errors=True)
-        else:
-            tmp.rename(final)
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+    """Remplace `world/biome` de façon atomique et durable (`atomic_dir.replace_dir`)."""
+    replace_dir(Path(world) / "biome", lambda tmp: write_biome(tmp, layer))
 
 
 def shares_text(shares: dict[str, float]) -> str:

@@ -104,6 +104,10 @@ def _one(rule: dict, **over) -> dict:
     (_one({"kind": "seance"}, rarity="mythique"), "rarity"),
     (_one({"kind": "seance"}, title="T" * (TITLE_MAX + 1)), "title"),
     (_one({"kind": "seance"}, id="Majuscule"), "id"),
+    (_one({"kind": "puissance", "seconds": 300, "watts": 250}), "famille"),
+    (_one({"kind": "puissance", "seconds": 240, "watts": 250}, family="puissance"), "durées de la courbe"),
+    (_one({"kind": "puissance", "seconds": 300, "watts": 0}, family="puissance"), "watts"),
+    (_one({"kind": "puissance", "seconds": 300}, family="puissance"), "watts"),
     ({"cards": []}, "absente ou vide"),
 ])
 def test_catalogue_refuses(data, message, table):
@@ -359,3 +363,39 @@ def test_cli_json(tmp_path):
                           capture_output=True, text=True, check=True, env=env).stdout
     assert "Lève-tôt" in text and "(nouvelle)" in text and "À gagner" in text
     assert not (tmp_path / "OpenRide" / "collection_vue.json").exists(), "la commande n'écrit rien"
+
+
+# --- trophées de puissance (série PP, lot PP7b) : paliers en watts fixes, cycliste fictif ---------------
+
+def test_power_durations_match_the_curve():
+    from openride_core.collection import POWER_DURATIONS_S
+    from openride_core.tools.power_curve import DURATIONS_S
+    assert POWER_DURATIONS_S == DURATIONS_S
+
+
+def test_power_trophies(cards, table):
+    a = facts(ts(2029, 3, 1), name="a.jsonl")
+    b = facts(ts(2029, 3, 8), name="b.jsonl")
+    c = facts(ts(2029, 3, 15), name="c.jsonl")
+    powers = {"a.jsonl": {5: 640.0, 300: 249.6, 1200: 205.0},       # 249,6 W arrondis : 250 W tenus
+              "b.jsonl": {5: 812.0, 60: 340.0, 300: 268.0},
+              "c.jsonl": {5: 700.0, 60: 455.0}}
+    col = evaluate(progress(a, b, c), cards, table, tz=UTC, now=NOW, powers=powers)
+    won = {e.key: e.journal for e in col.earned if e.card.family == "puissance"}
+    assert won == {"watts_5s_600": "a.jsonl", "watts_5min_250": "a.jsonl", "watts_20min_200": "a.jsonl",
+                   "watts_5s_800": "b.jsonl", "watts_1min_350": "c.jsonl", "watts_1min_450": "c.jsonl"}
+    # Palier pas encore tenu : meilleur effort (arrondi) et palier, en watts.
+    assert col.progress["watts_5s_1000"] == (812.0, 1000.0)
+    assert col.progress["watts_5min_300"] == (268.0, 300.0)
+    assert col.progress["watts_20min_250"] == (205.0, 250.0)
+
+
+def test_power_trophies_need_counted_sessions(cards, table):
+    a = facts(ts(2029, 3, 1), name="a.jsonl")
+    # Sans courbe : aucune carte de puissance, avancement à zéro.
+    col = evaluate(progress(a), cards, table, tz=UTC, now=NOW)
+    assert not [e for e in col.earned if e.card.family == "puissance"]
+    assert col.progress["watts_5s_600"] == (0.0, 600.0)
+    # Un journal que la progression ne compte pas (simulé, trop court…) ne gagne rien.
+    col = evaluate(progress(a), cards, table, tz=UTC, now=NOW, powers={"autre.jsonl": {5: 1200.0}})
+    assert not [e for e in col.earned if e.card.family == "puissance"]

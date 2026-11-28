@@ -284,6 +284,41 @@
             "null"
           ],
           "description": "Entraînement que lance start avec plan_day : première séance du jour non faite, sinon première en retard ; null s'il n'y en a pas."
+        },
+        "curve": {
+          "type": "array",
+          "maxItems": 4,
+          "description": "Lot PP8b (révision prise à la fusion) : courbe de puissance avant et depuis le début du plan, aux durées de 5 s, 1 min, 5 min et 20 min où un effort existe depuis le début ; `before` : meilleur des 6 mois d'avant le début (null sans effort), `after` : meilleur depuis le début, en watts ; absent d'un core plus ancien.",
+          "items": {
+            "type": "object",
+            "required": [
+              "s",
+              "before",
+              "after"
+            ],
+            "properties": {
+              "s": {
+                "type": "integer",
+                "enum": [
+                  5,
+                  60,
+                  300,
+                  1200
+                ]
+              },
+              "before": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "after": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         }
       }
     },

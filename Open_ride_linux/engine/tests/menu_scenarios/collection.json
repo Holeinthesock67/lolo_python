@@ -1,12 +1,12 @@
 {
   "description": "Collection (série BC, lot BC5) : profil neuf, ligne « Collection » de l'accueil ; première ouverture (aucune carte gagnée), puis l'album par familles ; une carte agrandie (à gagner), retour à l'album puis à l'accueil.",
   "etapes": [
-    {"ecran": "home", "contient": ["Collection — 0 / 42 cartes"], "delai": 15},
+    {"ecran": "home", "contient": ["Collection — 0 / 53 cartes"], "delai": 15},
     {"choisir": "collection"},
     {"ecran": "collection_first", "elements": ["open"], "delai": 10},
     {"capture": "collection_premiere"},
     {"choisir": "open"},
-    {"ecran": "collection", "statut": "^0 / 42 cartes$", "elements": ["c:premiere_seance", "c:km_100", "c:halloween"]},
+    {"ecran": "collection", "statut": "^0 / 53 cartes$", "elements": ["c:premiere_seance", "c:km_100", "c:halloween"]},
     {"capture": "collection_album"},
     {"choisir": "c:km_100"},
     {"ecran": "collection_card", "titre": "Cent bornes", "contient": ["Pas encore gagnée"]},
