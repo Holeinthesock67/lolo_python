@@ -151,9 +151,13 @@ func _run() -> void:
 	# En tête et deuxième
 	var lead := GP.duplicate()
 	lead["place"] = 1
-	_check(m.place_view(lead, [])["gap"] == "2,1 s d'avance", "en tête : avance sur le deuxième")
+	_check(m.place_view(lead, [])["gap"] == "", "en tête : l'avance sur le 2e n'est que sur la bande (une fois, 28/11)")
 	lead["place"] = 2
-	_check(m.place_view(lead, [])["gap"] == "à 2,1 s du premier", "deuxième : écart au premier")
+	_check(m.place_view(lead, [])["gap"] == "", "deuxième : l'écart au premier n'est que sur la bande (une fois, 28/11)")
+	var front := GP.duplicate()
+	front["place"] = 1
+	var lead_rows: Array = m.strip_rows(front, BOTS, 1600.0, 10.0)
+	_check(lead_rows[0]["me"] and lead_rows[1]["gap"].begins_with("+"), "en tête : la bande garde l'écart du 2e (%s)" % str(lead_rows[1]))
 
 	# Valeurs absentes : rien ne plante, rien d'inventé
 	var bare = Model.new()

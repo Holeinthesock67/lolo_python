@@ -114,7 +114,9 @@ func fx_view(gp: Dictionary) -> Array:
 	return out
 
 
-## Place, tours et écart : {place, of, lap, gap} ; {} sans place.
+## Place, tours et écart : {place, of, lap, gap} ; {} sans place. `gap` : écart avec le coureur de devant, nommé,
+## à partir de la 3e place seulement ; en tête ou 2e, "" : la bande de course donne déjà l'écart entre les deux
+## premiers (retours du 28 novembre).
 func place_view(gp: Dictionary, strip: Array) -> Dictionary:
 	var place := int(_num(gp.get("place", null), 0.0))
 	var of := int(_num(gp.get("of", null), 0.0))
@@ -124,11 +126,8 @@ func place_view(gp: Dictionary, strip: Array) -> Dictionary:
 	var gap = gp.get("gap_s", null)
 	if _is_num(gap):
 		var g := absf(float(gap))
-		if place == 1:
-			gap_text = "%s s d'avance" % fr1(g)
-		elif place == 2:
-			gap_text = "à %s s du premier" % fr1(g)
-		else:
+		if place > 2:   # 1er et 2e : l'écart entre eux est déjà sur la bande de course (« +X s » du 2e), une fois
+			# suffit (retours du 28 novembre : écart au 2e affiché à gauche et à droite)
 			var ahead := ""
 			for r in strip:
 				if int(r["place"]) == place - 1:
