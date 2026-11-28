@@ -2,6 +2,8 @@ extends SceneTree
 
 ## Tests sans écran de `roadside_ground.gd` (13 novembre 2026, « les bornes kilométriques lévitent ») : profil de la
 ## chaussée et de ses talus, pied posé au plus bas des appuis, borne posée par roadside_props.gd sur un flanc.
+## Appuis lus chacun sur la coupe de la route qui passe par eux (23 novembre 2026, borne km_2000 à 1 cm en l'air au
+## relief ×2,5) : `foot_y_on_route`.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_roadside_ground.gd
 
 const RoadsideGround := preload("res://scripts/roadside_ground.gd")
@@ -59,6 +61,8 @@ func _run() -> void:
 	var y3 := RoadsideGround.foot_y(bank, xf, Vector3(0, 10, 0), Vector3.RIGHT, half)
 	_check(is_equal_approx(y3, bank.call(4.5, 0.0) - RoadsideGround.FOOT_SINK_M), "déblai : pied sur le terrain, au-dessus de la route")
 
+	_test_on_route(half)
+
 	# Appuis d'une borne construite : socle au sol ; panneau de col : poteaux seulement, pas la plaque en hauteur
 	var props = RoadsideProps.new()
 	root.add_child(props)
@@ -108,3 +112,44 @@ func _run() -> void:
 	await process_frame
 	print("test_roadside_ground : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+## Route droite vers le nord (−z), hauteur affichée 10 + g × s : relief ×2,5 d'une pente de 16 %.
+class SlopeRoute:
+	var g := 0.4
+	var length_m := 200.0
+
+	func is_loop() -> bool:
+		return false
+
+	func sample_point(t: float) -> Vector3:
+		return Vector3(0.0, 10.0 + g * t, -t)
+
+	func sample_heading_deg(_t: float) -> float:
+		return 0.0
+
+
+func _test_on_route(half: float) -> void:
+	var r := SlopeRoute.new()
+	var none := func(_x: float, _z: float) -> float: return -100.0    # terrain loin dessous : le talus porte
+	var xf := Transform3D(Basis(), Vector3(4.5, 0.0, -50.0))
+	var feet := PackedVector3Array([Vector3(-0.2, 0, -0.15), Vector3(0.2, 0, -0.15), Vector3(-0.2, 0, 0.15), Vector3(0.2, 0, 0.15)])
+	var y := RoadsideGround.foot_y_on_route(none, xf, r, 50.0, half, feet)
+	# appui aval (z = −49,85 : s = 49,85) le plus bas, sur le talus de sa propre coupe
+	var expect := RoadsideGround.road_surface_y(10.0 + r.g * 49.85, 4.7, half) - RoadsideGround.FOOT_SINK_M
+	_check(absf(y - expect) < 1e-4, "pente : pied sur le talus de la coupe de l'appui aval (%.3f, attendu %.3f)" % [y, expect])
+	var old := RoadsideGround.foot_y(none, xf, Vector3(0.0, 10.0 + r.g * 50.0, -50.0), Vector3.RIGHT, half, feet)
+	var worst := -INF
+	for f in feet:
+		var p := xf * f
+		var t := -p.z
+		var ground := RoadsideGround.road_surface_y(10.0 + r.g * t, absf(p.x), half)
+		worst = maxf(worst, y - ground)
+	_check(worst <= 0.0 and old - y > 0.05,
+		"aucun appui en l'air (le plus haut %+.3f m) ; la coupe de l'objet seule le posait %.2f m plus haut" % [worst, old - y])
+	var flat := SlopeRoute.new()
+	flat.g = 0.0
+	_check(is_equal_approx(RoadsideGround.foot_y_on_route(none, xf, flat, 50.0, half, feet),
+		RoadsideGround.foot_y(none, xf, Vector3(0.0, 10.0, -50.0), Vector3.RIGHT, half, feet)),
+		"route plate : même hauteur qu'avant")
+	_check(RoadsideGround.foot_y_on_route(Callable(), xf, r, 50.0, half, feet) == 0.0, "sans couche terrain : hauteur gardée")
