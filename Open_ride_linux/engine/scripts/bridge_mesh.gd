@@ -68,6 +68,59 @@ static func build(items: Array) -> Dictionary:
 	return out
 
 
+## Écart vertical admis entre la route et l'axe d'un tablier (m, hauteurs affichées) : la route sur ce pont, pas
+## une autre qui passe dessus ou dessous.
+const ON_DECK_Y_TOL_M := 1.5
+
+
+## Altitude de l'axe du tablier (`points`, altitude réelle) à l'aplomb de (x, z), si le point est sur un tablier :
+## à moins de `half_width_m` de l'axe du pont, entre ses deux bouts (projection sur un segment, ou près d'un sommet
+## intérieur dans un virage) ; NAN sinon. Le plus proche des tabliers qui conviennent.
+static func deck_axis_alt(items: Array, x: float, z: float) -> float:
+	var p := Vector2(x, z)
+	var best := INF
+	var alt := NAN
+	for item in items:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var pts := _points(item.get("points", []))
+		var hw := float(item.get("half_width_m", 3.0))
+		for i in range(pts.size() - 1):
+			var a := Vector2(pts[i].x, pts[i].z)
+			var b := Vector2(pts[i + 1].x, pts[i + 1].z)
+			var ab := b - a
+			var t := (p - a).dot(ab) / maxf(ab.length_squared(), 1e-9)
+			var inner_a := i > 0
+			var inner_b := i + 1 < pts.size() - 1
+			if (t < 0.0 and not inner_a) or (t > 1.0 and not inner_b):
+				continue
+			var tc := clampf(t, 0.0, 1.0)
+			var d := p.distance_to(a + ab * tc)
+			if d <= hw and d < best:
+				best = d
+				alt = lerpf(pts[i].y, pts[i + 1].y, tc)
+	return alt
+
+
+## Coupes d'un tronçon de route (tableaux de road_builder.gd, `per_section` sommets par coupe) posées sur un tablier
+## de `items` : 1 si l'axe de la coupe est sur un pont à moins de ON_DECK_Y_TOL_M de hauteur (`route` : relief
+## affiché, `display_y`), 0 sinon. Sur un pont, la route n'a pas de talus : le tablier et ses piles la portent.
+static func cuts_on_deck(road_arrays: Array, items: Array, route, per_section: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	if items.is_empty() or road_arrays.is_empty():
+		return out
+	var src: PackedVector3Array = road_arrays[Mesh.ARRAY_VERTEX]
+	var cuts := src.size() / per_section
+	out.resize(cuts)
+	for c in range(cuts):
+		var b := c * per_section
+		var axis: Vector3 = (src[b + 1] + src[b + per_section - 2]) * 0.5
+		var a := deck_axis_alt(items, axis.x, axis.z)
+		var y := a if is_nan(a) or route == null else float(route.display_y(a))
+		out[c] = 1 if not is_nan(y) and absf(y - axis.y) <= ON_DECK_Y_TOL_M else 0
+	return out
+
+
 static func _points(raw) -> PackedVector3Array:
 	var pts := PackedVector3Array()
 	if typeof(raw) != TYPE_ARRAY:

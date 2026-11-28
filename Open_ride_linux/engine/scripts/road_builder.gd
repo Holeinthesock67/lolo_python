@@ -299,8 +299,10 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 ## Talus des deux bords d'un tronçon, d'après ses tableaux (`build_chunk_arrays`) : pour chaque coupe, du bord
 ## extérieur du bas-côté jusqu'à SKIRT_DROP_M plus bas et SKIRT_OUT_M plus loin vers l'extérieur. Sommets dans le
 ## même ordre que les coupes : (haut gauche, bas gauche, haut droit, bas droit). Faces des deux côtés (matériau
-## sans tri des faces) : le sens des triangles n'a pas d'importance.
-static func build_skirt_arrays(road_arrays: Array) -> Array:
+## sans tri des faces) : le sens des triangles n'a pas d'importance. `on_deck` (facultatif, une valeur par coupe,
+## bridge_mesh.gd `cuts_on_deck`) : pas de talus entre deux coupes posées sur un pont (22 novembre 2026 : au relief
+## ×2,5, le talus pendait sous le tablier, au-dessus du ruisseau, et le contrôle de l'appui échouait).
+static func build_skirt_arrays(road_arrays: Array, on_deck := PackedByteArray()) -> Array:
 	var src: PackedVector3Array = road_arrays[Mesh.ARRAY_VERTEX]
 	var cuts := src.size() / VERTS_PER_SECTION
 	if cuts < 2:
@@ -319,7 +321,10 @@ static func build_skirt_arrays(road_arrays: Array) -> Array:
 			vertices.append_array(PackedVector3Array([top, bottom]))
 			normals.append_array(PackedVector3Array([n, n]))
 	var indices := PackedInt32Array()
+	var skip := on_deck.size() == cuts
 	for c in range(cuts - 1):
+		if skip and on_deck[c] != 0 and on_deck[c + 1] != 0:
+			continue
 		for side in range(2):
 			var t0 := c * 4 + side * 2
 			var t1 := t0 + 4
