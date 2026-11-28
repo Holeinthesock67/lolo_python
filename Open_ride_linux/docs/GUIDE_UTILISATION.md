@@ -82,7 +82,7 @@ En course, le bandeau du haut donne l'épreuve et la prochaine échéance (sprin
 
 ## 4 bis. Monde ouvert
 
-Le **Monde ouvert** de l'accueil crée la route en roulant, d'après les cartes OpenStreetMap et le relief Copernicus, sans trace à préparer. Il faut Internet la première fois dans une région ; ensuite, la région est en cache (`~/OpenRide/Cache/monde/`, 5 Go au plus) et rien n'est retéléchargé au même endroit.
+Le **Monde ouvert** de l'accueil crée la route en roulant, d'après les cartes OpenStreetMap et le relief au sol de l'IGN en France, FABDEM ailleurs (Copernicus sans les bâtiments ni les arbres ; Copernicus là où les deux manquent), sans trace à préparer. Il faut Internet la première fois dans une région ; ensuite, la région est en cache (`~/OpenRide/Cache/monde/`, 5 Go au plus) et rien n'est retéléchargé au même endroit.
 
 1. **Globe.** Faites-le tourner jusqu'à votre région (flèches, ou « + » et « − »), ou cherchez un lieu par son nom : au Click, Z ouvre une grille de lettres, la même que pour le nom d'un profil (+ et − changent de case, maintenus de ligne, Z écrit, Y efface, A maintenu montre les résultats, Z y revient à la grille) ; au clavier, tapez simplement le nom. La recherche porte sur la liste fournie avec OpenRide, puis OpenStreetMap si Internet répond. Les régions en cache sont surlignées. A maintenu épingle la région sous le centre : une région épinglée reste toujours dans le cache. A ouvre la carte autour du centre.
 2. **Carte.** Le curseur reste accroché à la route la plus proche ; A pose le départ.
@@ -263,4 +263,6 @@ Le pack « Cols célèbres » livré avec le jeu, le monde ouvert et les parcour
 
 - **OpenStreetMap** : données routières et cartographiques © contributeurs OpenStreetMap, disponibles sous la licence Open Database License (ODbL 1.0), <https://www.openstreetmap.org/copyright>. Les traces du pack sont une base de données dérivée, sous la même licence.
 - **Copernicus GLO-30** (relief) : © DLR e.V. 2010-2014 et © Airbus Defence and Space GmbH 2014-2018, fourni dans le cadre du programme Copernicus de l'Union européenne.
+- **FABDEM V1-2** (relief au sol nu du monde ouvert, sans bâtiments ni arbres) : Hawker L., Uhe P., Paulo L. et al. (2022), *A 30 m global map of elevation with forests and buildings removed*, Environmental Research Letters 17, 024016 ; université de Bristol, licence CC BY-NC-SA 4.0 (usage non commercial).
+- **IGN RGE ALTI** (relief du monde ouvert en France) : © IGN, Géoplateforme, licence ouverte Etalab 2.0.
 - **ESA WorldCover 2021** (couches de biome) : © ESA WorldCover project 2021, contenu sous licence CC BY 4.0.
