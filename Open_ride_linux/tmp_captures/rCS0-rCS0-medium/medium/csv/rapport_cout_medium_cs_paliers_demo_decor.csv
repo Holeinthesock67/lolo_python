@@ -1,0 +1,46 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+10.0;43;5;0;0;0;0;0;crow_caw=1
+16.0;43;5;0;0;0;0;0;crow_caw=1
+22.0;43;5;0;0;0;0;0;crow_caw=1
+28.0;43;5;0;0;0;0;0;crow_caw=1
+34.0;43;5;0;0;0;0;0;crow_caw=1
+40.0;43;5;0;0;0;0;0;crow_caw=1 voice_allez=1
+46.0;43;5;0;0;0;0;0;crow_caw=1 voice_allez=1
+46.6;43;5;0;0;0;0;0;crow_caw=1 voice_allez=1
+52.0;43;5;0;0;1;0;0;crow_caw=1 voice_allez=1
+58.0;43;5;0;1;1;0;0;crow_caw=1 voice_allez=1
+62.0;43;5;0;1;1;1;0;airliner_rumble=1 crow_caw=1 dog_bark=1 voice_allez=1
+64.0;43;5;0;1;1;1;0;airliner_rumble=1 crow_caw=1 dog_bark=1 voice_allez=1
+70.0;44;8;0;1;1;1;0;airliner_rumble=1 crow_caw=1 dog_bark=1 voice_allez=1
+74.4;44;8;0;1;1;1;0;airliner_rumble=1 crow_caw=1 dog_bark=1 voice_allez=1
+76.0;44;8;0;1;1;1;0;airliner_rumble=1 crow_caw=1 dog_bark=1 voice_allez=1
+77.0;44;8;0;1;1;1;0;airliner_rumble=1 crow_caw=1 dog_bark=1 voice_allez=1
+82.0;44;8;0;1;1;7;0;airliner_rumble=1 crow_caw=1 dog_bark=1 raptor_cry=1 voice_allez=1
+88.0;44;8;0;1;0;7;0;airliner_rumble=1 crow_caw=1 dog_bark=1 raptor_cry=1 voice_allez=1
+92.0;44;8;0;1;0;7;0;airliner_rumble=1 crow_caw=1 dog_bark=1 raptor_cry=1 voice_allez=1 voice_bonjour=1
+94.0;44;8;0;1;0;7;0;airliner_rumble=1 crow_caw=1 dog_bark=1 raptor_cry=1 voice_allez=1 voice_bonjour=1
+100.0;44;8;0;1;0;7;0;airliner_rumble=1 crow_caw=1 dog_bark=1 raptor_cry=1 voice_allez=1 voice_bonjour=1
+101.2;44;8;0;1;0;7;0;airliner_rumble=1 crow_caw=1 dog_bark=1 raptor_cry=1 voice_allez=1 voice_bonjour=1
+106.0;44;8;0;1;1;8;0;airliner_rumble=2 crow_caw=1 dog_bark=1 raptor_cry=1 voice_allez=1 voice_bonjour=1
+112.0;44;8;0;1;1;8;0;airliner_rumble=2 crow_caw=1 dog_bark=1 raptor_cry=1 voice_allez=1 voice_bonjour=1
+118.0;44;8;0;1;3;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+124.0;44;8;0;1;3;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+129.0;39;8;0;1;3;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+130.0;39;8;0;1;6;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+136.0;39;8;0;1;6;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+142.0;39;8;0;1;6;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+148.0;39;8;0;1;6;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+152.0;39;8;0;0;4;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+154.0;39;8;0;0;4;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+156.7;39;8;0;0;4;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+160.0;39;8;0;0;6;8;0;airliner_rumble=2 crow_caw=1 dog_bark=2 raptor_cry=1 voice_allez=1 voice_bonjour=1
+166.0;39;8;0;0;3;8;0;airliner_rumble=2 crow_caw=1 dog_bark=3 raptor_cry=1 voice_allez=1 voice_bonjour=1
+172.0;39;8;0;0;4;8;0;airliner_rumble=2 crow_caw=1 dog_bark=3 raptor_cry=1 voice_allez=1 voice_bonjour=1
+178.0;39;8;0;0;4;8;0;airliner_rumble=2 crow_caw=1 dog_bark=3 raptor_cry=1 voice_allez=1 voice_bonjour=1
+183.4;38;8;0;0;4;8;0;airliner_rumble=2 crow_caw=1 dog_bark=3 raptor_cry=1 voice_allez=1 voice_bonjour=1
+184.0;38;8;0;0;6;8;0;airliner_rumble=2 crow_caw=1 dog_bark=3 raptor_cry=1 voice_allez=1 voice_bonjour=1
+202.0;38;8;0;0;6;8;0;airliner_rumble=2 crow_caw=1 dog_bark=3 raptor_cry=1 voice_allez=1 voice_bonjour=1
+209.9;38;8;0;0;5;8;0;airliner_rumble=2 crow_caw=1 dog_bark=3 raptor_cry=1 voice_allez=1 voice_bonjour=1
+236.4;18;7;0;0;7;8;0;airliner_rumble=2 crow_caw=1 dog_bark=4 raptor_cry=1 voice_allez=1 voice_bonjour=1
+263.4;18;7;0;0;3;8;0;airliner_rumble=2 crow_caw=1 dog_bark=4 raptor_cry=1 voice_allez=1 voice_bonjour=1
+286.2;18;7;0;0;4;8;0;airliner_rumble=2 crow_caw=1 dog_bark=4 raptor_cry=2 voice_allez=1 voice_bonjour=2
