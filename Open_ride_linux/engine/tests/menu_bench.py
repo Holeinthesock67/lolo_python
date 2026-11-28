@@ -203,6 +203,12 @@ COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 # revenu dans les ClickPair.DEDUP_S (relais du boîtier « − », 5 à 40 ms plus tard) ; en dessous, deux
 # « + » enchaînés n'en font qu'un.
 CLICK_GAP_S = ClickPair.DEDUP_S + 0.1
+# Touche simulée (voie clavier) : un seul datagramme UDP vers le port des trames `state`. Pendant un blocage du fil
+# principal de l'engine (gels du monde ouvert, bancs rGL2 du 24/11 : « engine muet 14,5 s »), le tampon du noyau se
+# remplit de trames `state` et le datagramme de la touche peut être perdu. Un geste non reçu dit maintenant si
+# l'engine a accusé la touche (« [test] key done=<touche> ») : sans accusé, c'est le banc qui l'a perdue (lot GF8,
+# fil « Fiabiliser les outils de banc »). Pas de renvoi : au cloud (1 à 3 images/s), une touche tardive renvoyée
+# faisait un double appui (trains #1170 et #1172 du 27-28/11).
 
 # Un seul tableau bouton → geste : événement du Click -> (bouton du Click V2 simulé, durée en s),
 # (touche Godot, Maj, durée en ms), geste de souris (None : pas de geste, repli au clavier). « − » au Click : bouton
@@ -617,7 +623,7 @@ class Run:
 
     # --- gestes ----------------------------------------------------------------------------
 
-    def _received(self, ev: str, t: float, hold_s: float, menu_shown: bool) -> bool:
+    def _received(self, ev: str, t: float, hold_s: float, menu_shown: bool, voie: str = "") -> bool:
         """Attend la ligne de l'engine qui prouve que le geste est arrivé (bip, appui ambigu, souris)."""
         assert self.engine is not None
         if not menu_shown and ev == "Y_SHORT":
@@ -626,7 +632,16 @@ class Run:
         since = self.silent_s
         got = self.wait_engine(pattern, hold_s + 10.0, t)
         return got is not None or self.check(False, f"{ev} reçu par l'engine ({self.voie})",
-                                             f"aucune ligne « {pattern} »" + self.silence(since))
+                                             f"aucune ligne « {pattern} »" + self.silence(since)
+                                             + (self.key_note(ev, t) if (voie or self.voie) == "clavier" else ""))
+
+    def key_note(self, ev: str, t: float) -> str:
+        """Voie clavier : la touche a-t-elle été accusée par l'engine ? Sans accusé, le datagramme de la touche a été
+        perdu par le banc (outil, souvent pendant un blocage de l'engine), pas par le jeu (lot GF8)."""
+        key = GESTES[ev]["clavier"][0]
+        done = [x for x, _ in self.engine.matching(r"\[test\] key done=" + re.escape(key) + r" ") if x >= t]
+        return " ; touche accusée par l'engine, perdue après" if done else \
+            " ; touche jamais accusée par l'engine : perdue par le banc (outil), pas par le jeu"
 
     def gesture(self, ev: str) -> bool:
         """Joue l'événement `ev` par la voie du passage (repli au clavier sans geste de souris)."""
@@ -663,7 +678,7 @@ class Run:
                 self.state()
                 return (got is not None and "clic sur" in got[1].group(0)) or self.check(
                     False, f"A_LONG à la souris : clic sur « {item} »", got[1].group(0) if got else "sans réponse")
-        ok = self._received(ev, t, hold, menu_shown)
+        ok = self._received(ev, t, hold, menu_shown, voie)
         self.state()
         return ok
 
