@@ -39,6 +39,11 @@ func _init() -> void:
 	_check(cells[0] == "1.00" and cells[PerfProbe.COLUMNS.find("fps")] == "59.94" and cells[PerfProbe.COLUMNS.find("draw_calls")] == "120",
 		"nombres écrits (réels à 2 décimales)")
 	_check(cells[PerfProbe.COLUMNS.find("gpu_ms")] == "" and cells[cells.size() - 1] == "low", "colonne absente vide, préréglage en fin")
+	# Lot EC10 (revue E12-51) : phase, force et rafale du vent écrites chaque seconde (wind_phase_check.py)
+	var wl: String = PerfProbe.csv_line({"wind_phase": 1234.5, "wind_strength": 0.42, "wind_gust": 0.3, "preset": "low"})
+	var wind_cells := wl.split(";")
+	_check(wind_cells[PerfProbe.COLUMNS.find("wind_phase")] == "1234.50" and wind_cells[PerfProbe.COLUMNS.find("wind_strength")] == "0.42"
+		and wind_cells[PerfProbe.COLUMNS.find("wind_gust")] == "0.30", "colonnes du vent écrites (lot EC10)")
 
 	var rc: Dictionary = PerfProbe.render_counters()
 	var keys_ok := true

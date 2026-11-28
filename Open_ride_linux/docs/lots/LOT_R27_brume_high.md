@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Cyber-Rogue sans voile en high : une seule règle de brume (linéaire), glow du high ramené à celui du medium | GDScript | R17 | Petite | En revue, **version 2.0** |
+| Cyber-Rogue sans voile en high : une seule règle de brume (linéaire), glow du high ramené à celui du medium | GDScript | R17 | Petite | **Livré le 22 novembre** (PR #965) |
 
 ## Contexte
 
@@ -36,3 +36,7 @@ du medium réduit à peine le voile ; avec la brume linéaire en plus, il dispar
 
 Galerie low, medium et high sur la branche, planche validée par le propriétaire, passe PC (budgets GPU) et
 « go » de fusion.
+
+## Livraison
+
+Fusionné dans `main` le 22 novembre 2026 (PR #965), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En revue, **version 2.0** »).

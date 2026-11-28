@@ -212,9 +212,13 @@ FIRST_RUN_INFO = ("Bienvenue dans OpenRide. Au premier écran, « Rechercher et 
                   "parcours de démonstration s'installent pendant ce temps (Réglages › Contenus).")
 PORT_IN_USE_RE = re.compile(r"Impossible de démarrer l'IPC UDP.*(Address already in use|déjà utilisée|Errno 98)")
 TRAINER_REFUSED_RE = re.compile(r"Le trainer refuse le contrôle FTMS")
+ENGINE_PORT_BUSY_RE = re.compile(r"\[engine\] Port UDP (\d+) indisponible")   # ipc_client.gd, port d'état pris
 
 MSG_PORT_IN_USE = ("Le port IPC d'OpenRide est déjà utilisé : une autre fenêtre d'OpenRide est sans doute "
                    "ouverte. Fermez-la puis relancez OpenRide.")
+MSG_ENGINE_PORT_BUSY = ("Le port d'état d'OpenRide ({port}) est pris par un autre programme. "
+                        "Fermez ce programme, ou choisissez un autre port dans [ipc] de ~/OpenRide/config.toml, "
+                        "puis relancez OpenRide.")
 MSG_TRAINER_REFUSED = ("Le home trainer est réservé par une autre application. Fermez l'application Zwift "
                        "(ou autre) ou lancez OpenRide → Libérer le trainer, puis relancez OpenRide.")
 
@@ -330,6 +334,53 @@ def migrate_profiles(home: Path | None = None) -> str | None:
     return None
 
 
+def check_profiles(message: Callable[[str, bool], None], ask: Callable[[str], bool],
+                   base: Path | None = None) -> None:
+    """Profils abîmés, avant le core (revue S5-01 et S5-05) ; rien n'est jamais effacé.
+
+    - `profil.toml` illisible : question au joueur ; sur accord, l'ancien fichier est mis de côté et un fichier
+      lisible est écrit avec tout ce qui se lit encore (`profiles.set_aside_description`). Sur refus, le profil
+      reste tel quel : s'il est celui du lancement, le lanceur s'arrête avec un message (jamais l'autre joueur
+      à sa place, `profiles.default_id`).
+    - `profile.json` abîmé ou manquant à côté d'une copie : copie remise en place (`profile.repair`) et fenêtre
+      qui le dit. Un profil tenu par une autre séance n'est pas touché.
+    """
+    from . import profile as profile_mod
+    from . import profiles
+
+    for pid, reason in profiles.unreadable(base):
+        root = (base if base is not None else profiles.profiles_dir()) / pid
+        question = (f"Le profil « {pid} » ne peut pas être lu (réglages du joueur, profil.toml) :\n{reason}\n\n"
+                    "Le réparer ? L'ancien fichier est gardé à côté, rien n'est effacé : ce qui se lit encore "
+                    "(nom, FTP, poids…) est repris, le reste revient à sa valeur par défaut. Les séances, "
+                    "l'expérience et les records ne bougent pas. Une sauvegarde du profil peut aussi être "
+                    "restaurée ensuite depuis « Gérer : <profil> ».")
+        if not ask(question):
+            print(f"openride : profil {pid} illisible, laissé tel quel : {reason}", file=sys.stderr)
+            continue
+        try:
+            kept, lost = profiles.set_aside_description(root, pid)
+        except (OSError, profiles.ProfileContextError) as exc:
+            message(f"Profil « {pid} » non réparé : {exc}. Le fichier est laissé tel quel.", True)
+            continue
+        lost_text = (f" Remis par défaut : {', '.join(lost)}, à vérifier dans Réglages." if lost else "")
+        print(f"openride : profil {pid} réparé, ancien profil.toml gardé sous {kept.name}", flush=True)
+        message(f"Profil « {pid} » réparé : l'ancien fichier est gardé sous {kept.name}.{lost_text}", False)
+    for ctx in profiles.list_contexts(base):
+        lock = profiles.ProfileLock(ctx)
+        try:
+            lock.acquire()
+        except profiles.ProfileContextError:
+            continue   # séance en cours sur ce profil : elle a son propre profil en mémoire
+        try:
+            text = profile_mod.repair(ctx.profile_path).message(ctx.name or ctx.id or "")
+        finally:
+            lock.release()
+        if text:
+            print(f"openride : {text}", file=sys.stderr)
+            message(text, True)
+
+
 def migrate_settings(home: Path | None = None) -> list[str]:
     """Réglages retirés du menu remis par défaut dans les fichiers du joueur (lot NI2, `migration_reglages.py`) ;
     une ligne au journal par fichier changé ; une erreur d'écriture n'empêche pas de démarrer."""
@@ -392,6 +443,10 @@ class Supervisor:
     local_wind: Callable[[], str | None] | None = None
     local_wind_check_s: float = 60.0   # le réglage du menu est relu à ce rythme
     local_wind_retry_s: float = 15 * 60.0   # après un échec (hors ligne)
+    # Arguments de l'engine relus dans la configuration (revue S3-02) : appelé avant chaque nouvelle instance de
+    # l'engine (relance du menu, plantage), pour que les réglages changés depuis le lancement s'appliquent ;
+    # None : `engine_cmd` gardé tel quel.
+    engine_cmd_reader: Callable[[], list[str]] | None = None
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
@@ -537,6 +592,22 @@ class Supervisor:
             self.recover_cmd = with_profile(self.recover_cmd, wanted)
         self.journal_dir = ctx.journal_dir
         self._say(f"profil du menu repris à la relance : {wanted}.")
+
+    def _refresh_engine_cmd(self) -> None:
+        """Relit les arguments de l'engine avant une nouvelle instance (revue S3-02) : décor vivant, relief, qualité,
+        thème, caméra ou affichage changés au menu sont pris. Lecture impossible : anciens arguments gardés."""
+        if self.engine_cmd_reader is None:
+            return
+        try:
+            fresh = list(self.engine_cmd_reader())
+        except Exception as exc:   # configuration devenue invalide : l'engine repart comme avant
+            self._say_warning(f"réglages de l'affichage non relus ({exc}) : arguments du lancement gardés.")
+            return
+        if fresh == self.engine_cmd:
+            return
+        changed = [a for a in fresh if a not in self.engine_cmd]
+        self.engine_cmd = fresh
+        self._say("réglages de l'affichage repris à la relance : " + (" ".join(changed) or "ordre changé") + ".")
 
     def _engine_cmd(self) -> list[str]:
         return [*self.engine_cmd, SIM_ENGINE_ARG] if self.sim_mode else list(self.engine_cmd)
@@ -762,6 +833,7 @@ class Supervisor:
                             self._say(f"le core s'est arrêté à la relance (code {core.returncode}) ; voir {self.log_path}")
                             self._alert(f"OpenRide n'a pas pu redémarrer (le core s'est arrêté, code {core.returncode}).")
                             return self._finish(core, engine, 1)
+                        self._refresh_engine_cmd()
                         engine = self._start_engine()
                         self.relaunches += 1
                         continue
@@ -769,11 +841,13 @@ class Supervisor:
                     crashes = [t for t in crashes if now - t < self.restart_window_s] + [now]
                     if len(crashes) > self.max_restarts:
                         self._say(f"l'engine a planté {len(crashes)} fois en {self.restart_window_s:.0f} s : abandon.")
+                        self._alert(self._engine_crash_message(len(crashes), code))   # revue S3-04 : fenêtre
                         return self._finish(core, engine, 1)
                     self._say(f"l'engine a planté (code {code}) : relance {len(crashes)}/{self.max_restarts}, "
                              "la séance passe en pause si l'engine reste absent plus de 2 s.")
                     if self.restart_delay_s > 0:
                         time.sleep(self.restart_delay_s)
+                    self._refresh_engine_cmd()
                     engine = self._start_engine()
                     self.restarts += 1
         finally:
@@ -788,6 +862,17 @@ class Supervisor:
                     self._log = None
             for s, h in previous.items():
                 signal.signal(s, h)
+
+    def _engine_crash_message(self, n: int, code: int) -> str:
+        """Texte de la fenêtre après des plantages répétés de l'engine (revue S3-04), cause reconnue au journal."""
+        head = (f"L'affichage d'OpenRide (Godot) a planté {n} fois en {self.restart_window_s / 60:.0f} min "
+                f"(dernier code {code}) : arrêt.")
+        busy = ENGINE_PORT_BUSY_RE.search(self._log_text())
+        if busy:
+            return f"{head}\n\n{MSG_ENGINE_PORT_BUSY.format(port=busy.group(1))}"
+        return (f"{head}\n\nCauses fréquentes : pilote graphique en défaut ou mis à jour sans redémarrage, "
+                "ou réglage d'affichage trop lourd pour la carte. Redémarrez le PC puis relancez OpenRide ; "
+                "si le défaut revient, joignez le journal ci-dessous (ou un fichier de diagnostic).")
 
     def _core_survives_startup(self, core: subprocess.Popen) -> bool:
         deadline = self.clock() + self.startup_grace_s
@@ -994,11 +1079,8 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     if not (engine_dir / "project.godot").is_file():
         raise FileNotFoundError(f"projet Godot introuvable : {engine_dir} (définir OPENRIDE_ENGINE)")
 
-    core = [sys.executable, "-m", "openride_core"]
-    config_args = ["--config", str(config_path)] if config_path else []
-    return Supervisor(
-        core_cmd=[*core, "run", *clean_core_args],
-        engine_cmd=[
+    def engine_cmd_for(cfg) -> list[str]:
+        return [
             str(godot),
             "--path",
             str(engine_dir),
@@ -1017,7 +1099,26 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--load-guard={'on' if cfg.render.load_guard else 'off'}",
             f"--display={env.get('OPENRIDE_DISPLAY') or cfg.render.display}",
             *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
-        ],
+        ]
+
+    def engine_cmd_reader() -> list[str]:
+        # Profil choisi au menu depuis le lancement (comme le core relancé, lot MJ7) ; profil d'essai jamais suivi.
+        current = ctx
+        wanted = profiles.read_active()
+        if wanted is not None and wanted not in (ctx.id, profiles.TRIAL_ID):
+            try:
+                current = profiles.ProfileContext.for_id(wanted)
+            except profiles.ProfileContextError:
+                pass
+        profile_file = current.root / profiles.FILE_NAME if current.id is not None else None
+        return engine_cmd_for(config_mod.load(config_path, profile_file))   # ConfigError : gardé par le lanceur
+
+    core = [sys.executable, "-m", "openride_core"]
+    config_args = ["--config", str(config_path)] if config_path else []
+    return Supervisor(
+        core_cmd=[*core, "run", *clean_core_args],
+        engine_cmd=engine_cmd_for(cfg),
+        engine_cmd_reader=engine_cmd_reader,
         release_cmd=[*core, "release-trainer", *config_args],
         recover_cmd=[*core, "recover", *profile_args],
         journal_dir=ctx.journal_dir,
@@ -1092,6 +1193,7 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
             print(f"openride : {warning}", file=sys.stderr)
             message(warning, True)
         migrate_settings()
+    check_profiles(message, ask)
     for _ in range(config_repair.MAX_REPAIRS + 1):
         try:
             sup = build_supervisor(args)
@@ -1108,6 +1210,11 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
             except OSError as err:
                 return fail(f"configuration invalide : {exc} (réparation impossible : {err})")
         except ValueError as exc:
+            from .profiles import FILE_NAME, ProfileContextError
+
+            if isinstance(exc, ProfileContextError) and FILE_NAME in str(exc):
+                return fail(f"{exc}. Le profil n'est remplacé par aucun autre : relance OpenRide et accepte la "
+                            "réparation (l'ancien fichier est gardé), ou corrige ce fichier.")
             return fail(str(exc))
         except FileNotFoundError as exc:
             return fail(str(exc))

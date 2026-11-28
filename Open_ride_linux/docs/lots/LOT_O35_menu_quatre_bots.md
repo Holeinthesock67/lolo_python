@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Écran Prêt : « Bot 1 » à « Bot 4 » et fantôme, comme la limite du core (4 bots + 1 fantôme) ; noms distincts pour deux bots de même puissance | GDScript + Python | O7, T13, O32 | Petite | Demandé par le propriétaire le 31 octobre ; en PR |
+| Écran Prêt : « Bot 1 » à « Bot 4 » et fantôme, comme la limite du core (4 bots + 1 fantôme) ; noms distincts pour deux bots de même puissance | GDScript + Python | O7, T13, O32 | Petite | **Livré le 1er novembre** (PR #669) ; lignes Bot 1 à Bot 4 retirées le 25 novembre (NI3, PR #988) |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ Aucun changement : `start.bots` acceptait déjà 4 bots et un fantôme (contrat 
 
 Plus de 4 bots (peloton d'une douzaine) : nouvelle révision IPC (trame `state` au-delà de 4 096 octets
 ou bots allégés), HUD et banc PC low, medium et high, dans un lot séparé.
+
+## Livraison
+
+Fusionné dans `main` le 1er novembre 2026 (PR #669), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « Demandé par le propriétaire le 31 octobre ; en PR »).

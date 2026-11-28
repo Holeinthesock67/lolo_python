@@ -1,0 +1,60 @@
+# Train « séances » du 27/11 (revue de code vague 3 engine) : #1123 EC1, #1124 EC5, #1125 EC4, #1126 EC3, #1131 EC9,
+# assemblés sur la branche de #1125 (essai assemblé en local par `assemblage`, sans conflit). Banc des menus medium
+# avec captures (règle du user : menus et logique = medium seul). Le fil de fusion recopie les têtes avant le
+# lancement, ou remplace `branche` et `assemblage` par la branche du train une fois celle-ci poussée.
+#
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py verifier scripts/file_bancs/train_seances.toml
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/train_seances.toml
+#
+# Scénarios par lot (ce qu'il faut regarder sur la planche) :
+# - EC4 (#1125) : grand_prix, fin_seance_rejouer (fin de Grand Prix : plus de boîtes, objets ni effets figés derrière
+#   le bilan et les menus, E11-03) ; mode_wtf (fin de séance WTF, E11-06) ; velodrome, elimination (liste de piste,
+#   noms des bots, E11-01 et E11-05). Aucun écran ne change de forme.
+# - EC9 (#1131) : records_profil (nouveau, records lus dans le profil migré), records (ancien chemin sans profil) ;
+#   photo d'arrivée (E12-02) couverte par fin_seance_rejouer et le test unitaire.
+# - EC1 (#1123) : fin_seance_rejouer (« Menu principal » et « Rejouer » après chaque mode), cyber_rogue (attente
+#   « Composition de la run… », Prêt, abandon), liste_parcours (tri et étiquette, E2-03), pause, sessions.
+# - EC3 (#1126) : cyber_rogue, fin_seance_rejouer (retour au départ Cyber-Rogue, vies et pièces, E10-08), et l'étape
+#   « rogue » (rogue_bench.py medium : couloir et récupération sans ruban ni Firewall, planche à VALIDER par le user).
+# - EC5 (#1124) : quitter (code 0 et ligne ENGINE_DONE), derniers_choix et monde_ouvert (ligne « hello_ack reçu »
+#   sans lat ni lon), diagnostic (masque "lat":), connexion_auto (démarrage et hello).
+#
+# Contrôles À LA MAIN après le banc (aucun scénario ne les joue), sur le PC, ~5 min :
+# - EC1 E2-01 : une balade du monde ouvert finie, puis « Menu principal » : l'accueil montre « Parcours : <parcours
+#   d'avant> » sans bandeau d'erreur, et « Session libre › Démarrer » part.
+# - EC1 E2-02 : run Cyber-Rogue préparée, Y sur « Prêt », puis « Session libre › Démarrer » : la séance part avec un
+#   parcours (pente non nulle, arrivée).
+# - EC5 E1-03 : fermer la fenêtre (Alt+F4) pendant le chargement d'un parcours : le lanceur sort.
+# Non rejoués au banc, couverts par les tests unitaires ou la CI : EC1 E2-05 et E4-02, EC5 E1-02 (scénario IPC 9),
+# EC9 E12-02.
+# Réussite : verdict OK de l'étape « medium » (code 0) et pas d'erreur Godot ni du core ; planche montrée au user.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rSEANCES"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rSEANCES-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rSEANCES"
+pr = 1125
+branche = "claude/project-thread-phu2m3"
+assemblage = ["claude/project-thread-bgfnne", "claude/project-thread-revh8r", "claude/project-thread-hewc8x",
+              "claude/project-thread-2rk0ti"]   # #1123 EC1, #1124 EC5, #1126 EC3, #1131 EC9
+cache = "separe"
+risque = 1
+# Fumée (~5 min) : fin de Grand Prix et fin WTF au clavier, en low.
+fumee = "python engine/tests/menu_bench.py --native --scenario fin_seance_rejouer --scenario mode_wtf --voies clavier --qualite low --out {sortie}"
+fumee_delai_min = 12
+
+[[pr.etape]]
+id = "medium"
+commande = "python engine/tests/menu_bench.py --native --scenario grand_prix --scenario fin_seance_rejouer --scenario mode_wtf --scenario velodrome --scenario elimination --scenario records_profil --scenario records --scenario cyber_rogue --scenario liste_parcours --scenario pause --scenario sessions --scenario quitter --scenario derniers_choix --scenario monde_ouvert --scenario diagnostic --scenario connexion_auto --qualite medium --captures ecrans --out {sortie}"
+delai_min = 90
+
+[[pr.etape]]
+id = "rogue"                     # scène du Cyber-Rogue (EC3) : 183 vérifications, captures couloir, salle, boss, bilan
+commande = "python engine/tests/rogue_bench.py --godot ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --native --quality medium --out {sortie}"
+delai_min = 20

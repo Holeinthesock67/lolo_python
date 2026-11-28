@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Essai d'endurance : séance de 2 h puis saison de la ligue d'hiver (8 semaines simulées, horloge du core décalée) dans le même core et le même engine, mémoire, GPU, à-coups et fichiers jugés par des seuils chiffrés | Python (outil de test) | X13, X16, CH3 (#989) | Petite | En PR le 23 novembre 2026 ; essai sur le PC la nuit, via la file du PC (semaine du 30 novembre) |
+| Essai d'endurance : séance de 2 h puis saison de la ligue d'hiver (8 semaines simulées, horloge du core décalée) dans le même core et le même engine, mémoire, GPU, à-coups et fichiers jugés par des seuils chiffrés | Python (outil de test) | X13, X16, CH3 (#989) | Petite | **Livré le 24 novembre** (PR #1014) ; suite EN1b (PR #1067, 25 novembre) |
 
 Demande : audit de cohérence du 22 novembre (`statut/AUDIT_COHERENCE_QUALITE_2026-11-22.md`, lot majeur validé par
 le propriétaire). L'essai d'une heure du lot X16 n'a jamais été fait sur le PC ; avant la livraison (J9), un essai

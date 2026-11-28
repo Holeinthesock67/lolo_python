@@ -87,7 +87,7 @@ Couleur dominante selon la rareté (à ajouter après le bloc commun) :
 
 ## 4 bis. Trophées de puissance (série PP, lot PP7b, 21 novembre)
 
-Onze cartes de la famille « Puissance », paliers en watts fixes (5 s, 1 min, 5 min, 20 min). Même bloc de style ; aucun chiffre dans l'image, la valeur en watts est écrite par le jeu. Tant qu'un visuel manque, le jeu dessine un disque et un pictogramme.
+Onze cartes de la famille « Puissance », paliers en watts fixes (5 s, 1 min, 5 min, 20 min). Même bloc de style ; aucun chiffre dans l'image, la valeur en watts est écrite par le jeu. Tant qu'un visuel manque, le jeu dessine un disque et un pictogramme. Livrés le 26 novembre (lot PP7v) : dessinés en SVG au même gabarit (badge rond, contours épais, palette de la rareté), rendus en 1024 px puis réduits par `scripts/controle_visuels.py --normalize` ; une image Nano Banana du même nom peut les remplacer à tout moment.
 
 | Visuel | Rareté | Carte | Sujet (à coller après le bloc commun) |
 | --- | --- | --- | --- |

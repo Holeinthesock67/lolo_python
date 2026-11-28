@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Profils : copie complète de chaque profil de joueur chaque semaine, avant les mises à jour et avant la remise à zéro, rotation, « Restaurer une sauvegarde » dans « Gérer : <profil en cours> » (commandes `list_profile_backups`, `restore_profile_backup`, message `profile_backups`, révision 1.36) | Python + GDScript + Bash | RZ1 (#991) | Moyenne | En PR (23 novembre) |
+| Profils : copie complète de chaque profil de joueur chaque semaine, avant les mises à jour et avant la remise à zéro, rotation, « Restaurer une sauvegarde » dans « Gérer : <profil en cours> » (commandes `list_profile_backups`, `restore_profile_backup`, message `profile_backups`, révision 1.36) | Python + GDScript + Bash | RZ1 (#991) | Moyenne | **Livré le 25 novembre** (PR #1018) |
 
 ## 1. Objectif
 
@@ -42,3 +42,7 @@ Ajouts compatibles : commandes `list_profile_backups` et `restore_profile_backup
 Captures de « Gérer », de la liste des copies et de la confirmation, en low, medium et high, à valider par le
 propriétaire ; banc PC medium seul (PR de menus). Défauts à lui montrer : 8 copies hebdomadaires, restauration avec FTP et
 réglages de la copie.
+
+## Livraison
+
+Fusionné dans `main` le 25 novembre 2026 (PR #1018), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En PR (23 novembre) »).

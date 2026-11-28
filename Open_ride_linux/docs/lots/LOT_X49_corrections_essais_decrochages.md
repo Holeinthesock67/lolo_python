@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : corrections après les essais PC du 30 octobre : `decrochages` n'accuse le trainer que sur preuve (relâchements du cycliste à part), modèle simulé comparé seulement aux paliers établis, `trainer_steps --renvoi S` | Python | X43–X47 | Petite | Essais du 30 octobre ; en PR |
+| Série X (outils de test) : corrections après les essais PC du 30 octobre : `decrochages` n'accuse le trainer que sur preuve (relâchements du cycliste à part), modèle simulé comparé seulement aux paliers établis, `trainer_steps --renvoi S` | Python | X43–X47 | Petite | **Livré le 30 octobre** (PR #599, suite #602) |
 
 ## 1. Objectif
 
@@ -41,3 +41,7 @@ Les essais du 30 octobre sur le PC (file 7an) ont relevé trois défauts dans le
    - `--renvoi 0` veut dire jamais.
 2. `trainer_steps --trainer sim --scenario decrochage_trainer --mode relances --fast --renvoi 0` sort en code 0, avec une seule écriture SIM par palier.
 3. Sur le PC (via le fil de fusion), `decrochages` est relancé sur `~/OpenRide/mesures/2026-10-29/paliers/`. Les deux relâchements du 29 octobre ne sont plus « trainer ».
+
+## Livraison
+
+Fusionné dans `main` le 30 octobre 2026 (PR #599, suite PR #602), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « Essais du 30 octobre ; en PR »).

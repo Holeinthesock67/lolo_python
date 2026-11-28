@@ -42,7 +42,10 @@ func _rogue(over: Dictionary = {}) -> Dictionary:
 
 func _run() -> void:
 	var g = GuideModel.new()
-	var st := {"route_length_m": 1120.0, "v": 8.0}
+	# Trame comme le vrai core l'envoie en mode Rogue : `route_length_m` nul ; la longueur de la salle vient du message
+	# `room` (revue de code E10-02 : les tests posaient 1120 m dans la trame, « N m restants » ne s'affichait jamais en jeu).
+	var st := {"route_length_m": null, "v": 8.0}
+	g.set_room(3, [], 1120.0)
 
 	# Z accepté : un retour immédiat par action, et l'anneau or.
 	for action in ["strike", "charges", "rock", "rock_chip", "parry", "purge", "reroll"]:
@@ -68,7 +71,7 @@ func _run() -> void:
 
 	# Endurance : consigne en plage, alerte avant la surchauffe, bandeau pendant.
 	var o: Dictionary = g.compute(st, _rogue(), 72.0, [])
-	_check(o["fw"]["sub"] == "Garde 70–75 % FTP · tu es à 72 % ✔", "Firewall : garde 70–75 % FTP, dans la plage")
+	_check(o["fw"]["sub"] == "Garde 70–75 % FTP · ✔ dans la plage", "Firewall : garde 70–75 % FTP, dans la plage")
 	_check(o["adr_trend"] == "▲ +0,5/s", "tendance : ▲ +0,5/s")
 	o = g.compute(st, _rogue({"adrenaline_trend": {"rate_per_s": 0.5, "cause": "gain", "overheat_in_s": 2.4}}), 80.0, [])
 	_check(o["hint"] == "Trop fort : au-dessus de 75 % FTP, surchauffe dans 3 s" and o["tone"] == "warn", "alerte : surchauffe dans 3 s")
@@ -80,7 +83,7 @@ func _run() -> void:
 	_check(o["adr_trend"] == "▼ −2/s surchauffe", "tendance : ▼ −2/s surchauffe")
 	_check(o["keys"][0][2] == "off" and o["keys"][0][1] == "frapper (bloqué : surchauffe)", "surchauffe : Z grisé, bloqué")
 	o = g.compute(st, _rogue({"adrenaline_trend": {"rate_per_s": 0.0, "cause": "below", "overheat_in_s": null}}), 50.0, [])
-	_check(o["adr_trend"] == "= sous la cible" and o["hint"].begins_with("Tiens 70–75 % FTP"), "sous la cible : stable, consigne en plage")
+	_check(o["adr_trend"] == "= sous la cible" and o["hint"].begins_with("Monte dans la plage"), "sous la cible : stable, plage écrite une seule fois (R28)")
 	_check(GuideModel.target_band(95, null) == "≥ 95 % FTP" and GuideModel.target_band(70, 75) == "70–75 % FTP", "consigne : ouverte ou en plage")
 	_check(GuideModel.adrenaline_trend_text({"phase": "ROOM"}) == "", "sans le champ (core ancien) : pas de tendance")
 
@@ -156,7 +159,7 @@ func _run() -> void:
 	view2.pulse("hit")
 	_check(view2.hit_flash_s > 0.0 and view2.z_pulse.color == view2.UiTheme.GOLD, "attaque réussie : éclair et anneau or")
 	view2.apply(hm.values(), Vector3.ZERO, 0.1)
-	_check(view2.hit_flash.color.a > 0.0 and view2.hit_flash.color.a < 0.45, "l'éclair s'éteint en 0,25 s")
+	_check(view2.hit_flash.color.a > 0.0 and view2.hit_flash.color.a < view2.HIT_FLASH_ALPHA, "l'éclair s'éteint en 0,25 s")
 	view2.pulse("ok")
 	_check(view2.z_pulse.color == view2.UiTheme.GOLD, "relance ou déblocage : anneau or seul")
 	var hm2 = HudModel.new()
@@ -199,11 +202,11 @@ func _run() -> void:
 	var gw = GuideModel.new()
 	gw.ftp_w = 250.0
 	o = gw.compute(st, _rogue(), 72.0, [])
-	_check(o["fw"]["sub"] == "Garde 175–190 W · tu es à 180 W ✔", "Firewall : garde 175–190 W, écart en direct (R26)")
+	_check(o["fw"]["sub"] == "Garde 175–185 W · ✔ dans la plage", "Firewall : garde 175–185 W, dans la plage (R28, bornes vers l'intérieur)")
 	o = gw.compute(st, _rogue({"overheat": true, "adrenaline_trend": {"rate_per_s": -2.0, "cause": "overheat", "overheat_in_s": null}}), 85.0, [])
 	_check(o["hint"] == "SURCHAUFFE : descends sous 190 W · adrénaline −2/s, Z bloqué", "surchauffe en watts")
 	o = gw.compute(st, _rogue({"phase": "WARMUP", "target_pct": {"lo": 55, "hi": 65}, "phase_left_s": 200.0}), 58.0, [])
-	_check(o["consigne"]["big"] == "140–165 W" and o["consigne"]["sub"] == "Tu es à 145 W ✔", "échauffement : 140–165 W, tu es à 145 W")
+	_check(o["consigne"]["big"] == "140–160 W" and o["consigne"]["sub"] == "✔ dans la plage", "échauffement : 140–160 W, dans la plage (R28)")
 	gw.compute(st, _rogue({"z_reason": "cursed"}), 110.0, ["z_refused"])
 	_check(gw.take_toasts()[0]["sub"] == "Redescends sous 250 W pour frapper", "Maudit : sortie en watts")
 	_check(GuideModel.watts(72.0, 0.0) == "72 % FTP" and GuideModel.watts(72.0, 250.0) == "180 W", "watts, ou % sans FTP")
@@ -230,15 +233,17 @@ func _run() -> void:
 
 	# Essai du 15 novembre : fin de salle annoncée avec ce qu'il reste à l'ennemi ; au boss, la phase 3 seulement.
 	var hp := {"enemy_hp": 60.0, "enemy_hp_max": 100.0}
-	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0}))) == "Fin de salle dans 200 m : ennemi encore à 60 %",
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0})), 1120.0) == "Fin de salle dans 200 m : ennemi encore à 60 %",
 		"fin de salle dans 200 m, ennemi à 60 %")
-	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 500.0}))) == "", "loin de la fin : rien")
-	_check(GuideModel.room_end_text(st, _rogue({"s_room": 920.0, "enemy_hp": 0.0, "enemy_hp_max": 100.0})) == "", "ennemi à terre : rien")
-	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 2}))) == "",
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 500.0})), 1120.0) == "", "loin de la fin : rien")
+	_check(GuideModel.room_end_text(st, _rogue({"s_room": 920.0, "enemy_hp": 0.0, "enemy_hp_max": 100.0}), 1120.0) == "", "ennemi à terre : rien")
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 2})), 1120.0) == "",
 		"boss phase 2 : rien (seule la phase 3 décide)")
-	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 3}))) == "Fin du boss dans 200 m : boss encore à 60 %",
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 3})), 1120.0) == "Fin du boss dans 200 m : boss encore à 60 %",
 		"boss phase 3 : fin annoncée")
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0}))) == "", "longueur inconnue (trame du core seule) : rien")
 	var g_end = GuideModel.new()
+	g_end.set_room(3, [], 1120.0)
 	var out2: Dictionary = g_end.compute(st, _rogue(hp.merged({"s_room": 920.0, "adrenaline": 10.0})), 72.0, [])
 	_check(out2["hint"] == "Fin de salle dans 200 m : ennemi encore à 60 %" and out2["tone"] == "warn", "fin de salle au guide : %s" % out2["hint"])
 

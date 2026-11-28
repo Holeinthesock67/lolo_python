@@ -40,6 +40,11 @@ Idées du §8.2 du plan `docs/6.0/PLAN_SERIE_PP.md`, retenues par le propriétai
 
 Points 2 à 5 du §3, qui changent des écrans ou des modes : durée tenable sur la fiche de la course (« À ce niveau, tu tiens environ 12 min »), temps prévu pour toi sur la fiche d'un parcours, seuils des boîtes « ! ATTAQUE » du Grand Prix calés sur ton 15 s et ton 1 min, rythme de l'élimination au vélodrome. Tous lisent `bot_effort.hold_s` et `Effort.curve`, déjà livrés.
 
+**Livré le 26 novembre (PR PP6b, contrat 1.37)** : sur l'écran Prêt des modes à classement, la ligne d'état de « Intensité du jour » dit, en une ligne qui tient à l'écran, « Course ≈ 13 min : allure tenue environ 9 min (ou jusqu'au bout), toi à fond ≈ 11 min » (`bots_preview.hold_s`, puis `bots_preview.my_time_s` : la course à fond, `effort_target` à 100 % avec l'objectif `max` et ta courbe ; rien pour une épreuve à durée fixe). Le parcours est celui de l'écran Prêt : la fiche de la course et celle du parcours ne font qu'une ici.
+
+- Rythme de l'élimination au vélodrome : déjà couvert par PP6, l'effort des bots de l'épreuve (`track_effort`) lit `Effort.curve` sur la durée de la course ; rien de plus.
+- Seuils des boîtes « ! ATTAQUE » du Grand Prix : pas codé. Aujourd'hui le bot prend la voie « attaquer » quand il est à moins de 5 s du premier (`grandprix/brain.py`) ; caler ce seuil sur ton 15 s et ton 1 min demande une règle précise à valider par le propriétaire (proposition : seuil = secondes que tu reprends en 1 min à ton meilleur 1 min face à l'allure des bots).
+
 ## 5. Critères d'acceptation
 
 1. Tests du core : courbe personnelle utilisée, repli générique sans point, bornes ± 15 %, durée tenable, temps prévu.

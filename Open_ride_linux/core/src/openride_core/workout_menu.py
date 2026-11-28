@@ -22,7 +22,7 @@ import os
 import re
 import unicodedata
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .workout import WORKOUT_SUFFIXES, WorkoutError, parse_workout
 from .workout_formats import parse_qwk
@@ -49,6 +49,13 @@ MAX_IMPORT_CANDIDATES = 30
 # de 4 096 octets (contrat §2), avec son enveloppe JSON.
 MAX_QWK_TEXT_BYTES = 3000
 QWK_DEFAULT_STEM = "qwkcode"
+
+
+# Lot PP8b : base de l'effort d'un entraînement par intervalles : % de la FTP (défaut) ou % de ton meilleur 1 min
+# ou 5 min (courbe de puissance des 6 derniers mois, sinon courbe type) ; le `.zwo` reste écrit en % de la FTP.
+ON_REFS: dict[str, int | None] = {"ftp": None, "best_60": 60, "best_300": 300}
+ON_REF_WORDS = {"best_60": "ton 1 min", "best_300": "ton 5 min"}
+CURVE_ON_PCT = (50, 120)   # % du meilleur effort : un 1 min à 120 % de ton record n'est déjà plus tenable
 
 
 class WorkoutMenuError(Exception):
@@ -87,11 +94,39 @@ def interval_name(p: dict[str, int]) -> str:
     return f"Intervalles {p['reps']} × {_duration(p['on_s'])} à {p['on_pct']} %"
 
 
-def build_interval_zwo(p: dict[str, int]) -> str:
+def check_on_ref(args: dict) -> str:
+    """Base de l'effort (`on_ref`, lot PP8b) : `ftp` par défaut ; refus `bad_args` d'une base inconnue ou d'un
+    pourcentage hors de `CURVE_ON_PCT` pour une base de la courbe."""
+    ref = args.get("on_ref", "ftp")
+    if ref not in ON_REFS:
+        raise WorkoutMenuError("bad_args", "create_workout : « on_ref » vaut " + ", ".join(ON_REFS))
+    lo, hi = CURVE_ON_PCT
+    pct = args.get("on_pct")
+    if ref != "ftp" and (isinstance(pct, bool) or not isinstance(pct, int) or not lo <= pct <= hi):
+        raise WorkoutMenuError("bad_args", f"create_workout : « on_pct » de {lo} à {hi} % de {ON_REF_WORDS[ref]}")
+    return ref
+
+
+def curve_interval_params(p: dict[str, int], ref: str, best_w: float, ftp_w: float) -> tuple[dict[str, int], dict]:
+    """Paramètres en % de la FTP d'un effort calé sur ton meilleur effort (`best_w`, lot PP8b), et ce qui le
+    nomme : {target_w, ref_pct, ref}. Le % de la FTP reste dans les bornes de `INTERVAL_PARAMS`."""
+    target_w = best_w * p["on_pct"] / 100.0
+    lo, hi = INTERVAL_PARAMS["on_pct"]
+    q = dict(p, on_pct=min(max(int(round(100.0 * target_w / ftp_w)), lo), hi))
+    return q, {"target_w": int(round(ftp_w * q["on_pct"] / 100.0)), "ref_pct": p["on_pct"], "ref": ref}
+
+
+def curve_interval_name(q: dict[str, int], meta: dict) -> str:
+    """« Intervalles 6 × 1 min à 340 W (95 % de ton 1 min) »."""
+    return (f"Intervalles {q['reps']} × {_duration(q['on_s'])} à {meta['target_w']} W "
+            f"({meta['ref_pct']} % de {ON_REF_WORDS[meta['ref']]})")
+
+
+def build_interval_zwo(p: dict[str, int], name: str | None = None) -> str:
     lines = [
         "<workout_file>",
         "  <author>OpenRide</author>",
-        f"  <name>{interval_name(p)}</name>",
+        f"  <name>{name or interval_name(p)}</name>",
         "  <description>Créé dans le menu d'OpenRide.</description>",
         "  <sportType>bike</sportType>",
         "  <workout>",
@@ -117,12 +152,30 @@ def _write(path: Path, data: bytes) -> None:
         raise WorkoutMenuError("workout_write_failed", f"écriture impossible : {exc}") from exc
 
 
-def create_interval_workout(workouts_dir: Path, args: Any) -> dict[str, Any]:
-    """Écrit `<dossier>/intervalles_….zwo` ; renvoie {workout_id, name, created}.
+def create_interval_workout(workouts_dir: Path, args: Any,
+                            best_of: Callable[[int], tuple[float, float]] | None = None) -> dict[str, Any]:
+    """Écrit `<dossier>/intervalles_….zwo` ; renvoie {workout_id, name, created} (et `target_w`, lot PP8b).
 
     Mêmes réglages qu'un fichier existant : rien n'est écrit. Même nom mais réglages différents
     (récupération, échauffement…) : suffixe `_2`, `_3`…, comme à l'import (lot O20) ; aucun
-    entraînement n'est remplacé."""
+    entraînement n'est remplacé.
+
+    `on_ref` (lot PP8b) : `best_60` ou `best_300`, `on_pct` est un % de ton meilleur 1 min ou 5 min ;
+    `best_of(secondes)` rend (meilleur effort en W, FTP en W), lus par la séance sur la courbe du profil."""
+    if isinstance(args, dict) and args.get("on_ref", "ftp") != "ftp":
+        ref = check_on_ref(args)   # `on_pct` déjà borné à `CURVE_ON_PCT` ; les autres paramètres comme avant
+        p = dict(check_interval_params(dict(args, on_pct=100)), on_pct=int(args["on_pct"]))
+        if best_of is None:
+            raise WorkoutMenuError("bad_args", "create_workout : courbe de puissance indisponible")
+        best_w, ftp_w = best_of(int(ON_REFS[ref]))
+        q, meta = curve_interval_params(p, ref, best_w, ftp_w)
+        name = curve_interval_name(q, meta)
+        text = build_interval_zwo(q, name)
+        parse_workout(text, interval_id(q))
+        workout_id, created = _store(workouts_dir, interval_id(q), ".zwo", text.encode("utf-8"))
+        return {"workout_id": workout_id, "name": name, "created": created, "target_w": meta["target_w"]}
+    if isinstance(args, dict):
+        check_on_ref(args)
     p = check_interval_params(args)
     text = build_interval_zwo(p)
     parse_workout(text, interval_id(p))   # le fichier produit doit rester lisible par le core

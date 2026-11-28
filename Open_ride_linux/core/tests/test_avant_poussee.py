@@ -66,6 +66,7 @@ def test_versions_comparees_a_main_actuelle(tmp_path, monkeypatch):
     """Révision IPC montée par la branche, mais déjà prise sur main par une autre PR : échec, numéro proposé."""
     valeurs = {("base", "révision IPC"): "1.35", ("HEAD", "révision IPC"): "1.36", ("main", "révision IPC"): "1.36"}
     monkeypatch.setattr(ap, "version", lambda rev, nom: valeurs.get((rev, nom), "9"))
+    monkeypatch.setattr(ap, "montrer", lambda rev, chemin: None)          # branche d'avant le registre (CF2)
     b = ap.Bilan()
     ap.controle_versions("base", "main", b)
     assert b.echecs == 1 and "renuméroter en 1.37" in b.lignes[0][1]
@@ -74,6 +75,31 @@ def test_versions_comparees_a_main_actuelle(tmp_path, monkeypatch):
     ap.controle_versions("base", "main", b)
     assert b.echecs == 0 and b.lignes[0][0] == ap.OK
     assert ap.cle_version("1.10") > ap.cle_version("1.9") and ap.suivante("1.9") == "1.10"
+
+
+def test_registre_ipc_lot_cf2(monkeypatch):
+    """Avec le registre : la révision IPC n'est plus comparée à main, mais une branche de lot ne la numérote pas."""
+    fichiers = {"HEAD": {"core/src/openride_core/revisions_ipc/historique.txt": "1.36 | SV1 | x\n",
+                         "core/src/openride_core/ipc_server.py": "CONTRACT_REV = revisions_ipc.revision_courante()\n"},
+                "base": {"core/src/openride_core/revisions_ipc/historique.txt": "1.36 | SV1 | x\n"}}
+    monkeypatch.setattr(ap, "montrer", lambda rev, chemin: fichiers.get(rev, {}).get(chemin))
+    monkeypatch.setattr(ap, "version", lambda rev, nom: {"HEAD": "1.37", "main": "1.37"}.get(rev, "1.36")
+                        if nom == "révision IPC" else "9")
+    b = ap.Bilan()
+    ap.controle_versions("base", "main", b)
+    assert b.echecs == 0                                                    # deux révisions en attente : pas de faute
+    monkeypatch.setattr(ap, "git", lambda *a, **k: "Open_ride_linux/core/src/openride_core/revisions_ipc/historique.txt")
+    b = ap.Bilan()
+    ap.controle_registre_ipc("base", "claude/lot", b)
+    assert b.echecs == 1 and "seul le fil de fusion" in b.lignes[0][1]
+    b = ap.Bilan()
+    ap.controle_registre_ipc("base", "train/1126-2000", b)
+    assert b.echecs == 0
+    fichiers["HEAD"]["core/src/openride_core/ipc_server.py"] = 'CONTRACT_REV = "1.37"\n'
+    monkeypatch.setattr(ap, "git", lambda *a, **k: "")
+    b = ap.Bilan()
+    ap.controle_registre_ipc("base", "claude/lot", b)
+    assert b.echecs == 1 and "écrite à la main" in b.lignes[0][1]
 
 
 def test_tests_touches_par_la_branche():
@@ -93,3 +119,42 @@ def test_sur_le_depot_sans_reseau_ni_tests():
                         "--main", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=False)
     assert p.returncode in (0, 1), p.stdout + p.stderr
     assert "[OK] assemblage avec main : sans conflit" in p.stdout
+
+
+def _faux_git(sur_main: str):
+    def git(*args, **_kw):
+        assert args[:2] == ("diff", "--name-only")
+        return sur_main
+    return git
+
+
+def test_fraicheur_fichier_commun_avis_puis_echec_avant_fusion(monkeypatch):
+    """Lot BM1 : main a changé depuis la base un fichier que la branche touche aussi."""
+    monkeypatch.setattr(ap, "git", _faux_git("Open_ride_linux/engine/scripts/hud.gd\nJeux/autre.txt\n"))
+    b = ap.Bilan()
+    ap.controle_fraicheur("base", "main", ["engine/scripts/hud.gd", "docs/x.md"], avant_fusion=False, bilan=b)
+    assert b.echecs == 0 and b.lignes[0][0] == ap.AVIS and "engine/scripts/hud.gd" in b.lignes[0][1]
+    b = ap.Bilan()
+    ap.controle_fraicheur("base", "main", ["engine/scripts/hud.gd"], avant_fusion=True, bilan=b)
+    assert b.echecs == 1
+
+
+def test_fraicheur_fichier_partage_et_rien_en_commun(monkeypatch):
+    monkeypatch.setattr(ap, "git", _faux_git("Open_ride_linux/docs/contracts/ipc/state.schema.json\n"))
+    b = ap.Bilan()
+    ap.controle_fraicheur("base", "main", ["core/src/openride_core/league.py"], avant_fusion=True, bilan=b)
+    assert b.echecs == 1 and "fichiers partagés" in b.lignes[0][1]
+    monkeypatch.setattr(ap, "git", _faux_git("Open_ride_linux/core/src/openride_core/coach.py\n"))
+    b = ap.Bilan()
+    ap.controle_fraicheur("base", "main", ["core/src/openride_core/league.py"], avant_fusion=True, bilan=b)
+    assert b.echecs == 0 and "aucun en commun" in b.lignes[0][1]
+    monkeypatch.setattr(ap, "git", _faux_git(""))
+    b = ap.Bilan()
+    ap.controle_fraicheur("base", "main", ["a.py"], avant_fusion=True, bilan=b)
+    assert b.lignes == [(ap.OK, "fraîcheur : main n'a rien changé depuis la base de la branche")]
+
+
+def test_workflow_flancs_compare_a_la_base_de_la_pr():
+    texte = (ROOT.parent / ".github" / "workflows" / "openride.yml").read_text(encoding="utf-8")
+    assert "github.event.pull_request.base.sha" in texte
+    assert 'fetch -q --depth=1 origin "${{ github.base_ref }}"' not in texte

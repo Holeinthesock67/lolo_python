@@ -683,7 +683,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	if not paused:
 		_count_contacts(others)
 	traffic_view.set_lights(headlights)
-	traffic_view.update()
+	traffic_view.update(paused)
 	road_traffic.update(cam_pos, dt_s, paused)
 	road_traffic_view.set_lights(headlights)
 	road_traffic_view.update()
@@ -691,11 +691,11 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	t_sub = Time.get_ticks_usec()
 	# Ciel (P26), figé en pause
 	sky.update(cam_pos, dt_s, wind_eval, weather_eval, paused)
-	sky_view.update()
+	sky_view.update(paused)
 	# Bateaux (P29), figés en pause, feux avec les phares
 	boats.update(cam_pos, dt_s, wind_eval, weather_eval, paused)
 	boats_view.set_lights(headlights)
-	boats_view.update()
+	boats_view.update(paused)
 	wave2_us += Time.get_ticks_usec() - t_wave2
 	PerfProbe.mark_since("decor", "ciel_bateaux", t_sub)
 	t_sub = Time.get_ticks_usec()
@@ -705,7 +705,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		crowd.observe_bots(cam_s, bots, now_s)
 	var power := float(state["power"]) if typeof(state.get("power")) in [TYPE_INT, TYPE_FLOAT] else NAN
 	last_cheer = crowd.cheer(cam_s, now_s, power, ftp_w if ftp_w > 0.0 else NAN)
-	crowd_view.update(cam_pos, now_s, last_cheer)
+	crowd_view.update(cam_pos, now_s, 0.0 if paused else last_cheer)   # clameur muette en pause (E9-03)
 	PerfProbe.mark_since("decor", "spectateurs", t_sub)
 	t_sub = Time.get_ticks_usec()
 	last_event = passersby.update(rider_pos, cam_s, now_s, beep_active)
