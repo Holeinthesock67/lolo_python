@@ -29,6 +29,7 @@ def test_profile_lasts_the_minutes_and_ends_with_two_openers():
 
 def test_needed_for_races_only():
     assert all(W.needed(m, 10) for m in W.RACE_MODES)
+    assert W.needed("race", 10)                                  # Course en tours (retours du 28 novembre)
     assert not W.needed(None, 10) and not W.needed("wtf", 10) and not W.needed("rogue", 10)
     assert not W.needed("survivor", 0) and not W.needed("survivor", 2)
     assert not W.needed("track", 10, race=track_mod.EVENTS["free"].race)
@@ -130,3 +131,17 @@ def test_no_warmup_when_zero_and_pause_cancels_erg(tmp_path):
     assert s.driver.target_power_w is not None
     s._on_command("pause", {}, 4)
     assert s._start_gate is None and s.driver.target_power_w is None       # Y : retour à l'écran Prêt, trainer en SIM
+
+
+def test_race_mode_is_warmed_up_too_and_z_skips_it(tmp_path):
+    """Course (manche « Course en tours » de la ligue) : même échauffement que les autres courses (28 novembre)."""
+    s = _session(tmp_path)
+    s._on_command("start", {"mode": "race"}, 3)
+    _steps(s, 3.0)
+    assert not s.errors, s.errors
+    wait = s.state.start_wait
+    assert s.state.session_state == "READY" and wait["phase"] == "echauffement"
+    assert s.driver.target_power_w == wait["warmup"]["target_w"] > 0
+    s._handle_input(InputEvent.Z_SHORT)                                    # écourté par le cycliste
+    _steps(s, 2.0)
+    assert s.state.session_state == "RUNNING" and s.driver.target_power_w is None
