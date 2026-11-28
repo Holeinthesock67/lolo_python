@@ -280,7 +280,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 
 `type: "cmd"`, envoyé sur événement. L'UDP peut perdre ou dupliquer un datagramme, donc chaque commande porte un `cmd_id` entier croissant propre à l'engine.
 
-**Fiabilité.** L'engine renvoie la commande toutes les 200 ms jusqu'à voir son `cmd_id` dans le champ `last_cmd_id` du message `state` (abandon après 3 s avec un message d'erreur à l'écran). Le core ignore un `cmd_id` déjà traité : toutes les commandes sont donc idempotentes. Le compteur `cmd_id` est propre à une instance de l'engine : le core remet `last_cmd_id` à 0 à chaque `hello`, si bien qu'un engine relancé peut renuméroter ses commandes à partir de 1.
+**Fiabilité.** L'engine renvoie la commande toutes les 200 ms jusqu'à voir son `cmd_id` dans le champ `last_cmd_id` du message `state` (abandon après 3 s avec un message d'erreur à l'écran). Le core ignore un `cmd_id` déjà traité : toutes les commandes sont donc idempotentes. Le compteur `cmd_id` est propre à une instance de l'engine : le core remet `last_cmd_id` à 0 à chaque `hello`, si bien qu'un engine relancé peut renuméroter ses commandes à partir de 1. Précision du 28 novembre (lot CN1, sans changement de l'engine) : les requêtes, auxquelles le core répond à chaque copie reçue, ne sont recalculées qu'une fois par seconde au plus pour un même `cmd_id` ; une copie reçue moins d'une seconde après la copie traitée reçoit la réponse déjà partie ou en calcul (les copies empilées pendant un retard de la boucle relançaient chacune le calcul et saturaient le core).
 
 | `name` | `args` | Effet |
 | --- | --- | --- |

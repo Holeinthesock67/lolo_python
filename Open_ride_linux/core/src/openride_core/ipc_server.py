@@ -46,6 +46,13 @@ MAX_LIST_DATAGRAM_SIZE = 60000
 LIST_MESSAGE_TYPES = ("routes", "workouts", "route_imports", "plans", "settings", "garage", "room", "contents",
                       "places", "world_map", "world_regions", "history", "history_session", "coach", "collection")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
+# Copies d'une requête (bandeau « Core non joignable » du 28 novembre) : l'engine renvoie une commande toutes les
+# 200 ms tant que `last_cmd_id` ne l'accuse pas. Quand la boucle du core prend du retard, les copies s'empilent et
+# chacune relançait le calcul (ligue, conseil, collection, profils) : le core montait à 99 % de CPU, ne publiait
+# plus de trame `state`, l'engine passait « non joignable » et renvoyait encore. Une copie reçue moins de
+# QUERY_COPY_WINDOW_S après la copie traitée n'est pas recalculée : la réponse déjà partie (ou en calcul) y répond.
+# Au-delà, une réponse perdue est recalculée comme avant.
+QUERY_COPY_WINDOW_S = 1.0
 
 
 # Décimales gardées dans la trame state : 1 cm, 1 mm/s, 0,01 %, 0,1 W, 0,1 tr/min, 6 décimales de degré (11 cm).
@@ -179,6 +186,9 @@ class IpcServer:
         self.engine_version: str | None = None
         self.engine_rev: str | None = None
         self.last_cmd_id: int = 0
+        # Requêtes traitées récemment : (cmd_id, nom) -> instant du traitement (QUERY_COPY_WINDOW_S).
+        self._recent_queries: dict[tuple[int, str], float] = {}
+        self.query_copies_skipped: int = 0
         self.seq: int = 0
         # Datagrammes illisibles ou non conformes, ignorés (contrat §6).
         self.invalid_datagrams: int = 0
@@ -392,6 +402,7 @@ class IpcServer:
             # Le compteur cmd_id est propre à une instance de l'engine : un engine relancé
             # renumérote à partir de 1 (contrat §4).
             self.last_cmd_id = 0
+            self._recent_queries.clear()
             was_connected = self.engine_connected
             self.engine_connected = True
             rev = msg.get("rev")
@@ -428,6 +439,11 @@ class IpcServer:
                                 "list_collection", "league_status",   # league_status : lecture seule (revue F1-14)
                                 "list_power_curve")
             if cmd_id > self.last_cmd_id or is_query:
+                if is_query and self._query_copy_too_soon(cmd_id, name):
+                    self.query_copies_skipped += 1
+                    log.debug("Copie de la requête %s (id=%d) ignorée : déjà traitée il y a moins de %.1f s",
+                              name, cmd_id, QUERY_COPY_WINDOW_S)
+                    return
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)
                 if self.on_command:
@@ -444,6 +460,19 @@ class IpcServer:
             self.last_heartbeat_time = None
             if self.on_engine_lost:
                 self.on_engine_lost()
+
+    def _query_copy_too_soon(self, cmd_id: int, name: str) -> bool:
+        """Vrai pour une copie d'une requête traitée il y a moins de QUERY_COPY_WINDOW_S ; sinon note l'instant
+        du traitement qui va suivre. Les entrées plus vieilles que la fenêtre sont oubliées."""
+        now = time.monotonic()
+        recent = self._recent_queries
+        for key in [k for k, at in recent.items() if now - at >= QUERY_COPY_WINDOW_S]:
+            del recent[key]
+        key = (cmd_id, name)
+        if key in recent:
+            return True
+        recent[key] = now
+        return False
 
     def check_liveness(self) -> None:
         """À appeler périodiquement : détecte si le heartbeat a cessé depuis plus de 2 s."""
