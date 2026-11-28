@@ -74,6 +74,10 @@ et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. C
 vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque.
 
 Fermeture de Godot (lots X55, X58) : `--repeter N` joue chaque passage N fois (critère « 10 fermetures de suite ») ;
+Répétition d'un essai avec un vrai profil (28 novembre) : `--profils-source DOSSIER` copie un dossier `Profils`
+(sauvegarde du joueur) dans le HOME du banc, `--parcours ID,…` y copie des parcours compilés du jeu ; les sources ne
+sont que lues, le rapport montre de vraies données et reste sur le PC.
+
 `--fermeture-stricte` compte en échec un arrêt de Godot bloqué après sa ligne de fin (INFO sinon, comme le lanceur
 qui l'arrête après ENGINE_SHUTDOWN_S) ; `--gdb` lance Godot sous gdb (`pile_gdb.py`, sans sudo) et, s'il bloque,
 écrit la pile de ses fils dans `pile_gdb.txt` et son résumé au rapport ; `--engine-arg` ajoute un argument
@@ -931,6 +935,7 @@ class Run:
         if doc.get("seances_courbe"):   # séances fabriquées d'un cycliste fictif, FTP 250 W (« Ma puissance », lot PP3)
             from openride_core.tools.courbe_fictive import write_sessions
             write_sessions(self.home / doc["seances_courbe"])
+        copy_real_sources(self.args, self.home, self.routes)   # copie d'un vrai profil et de vrais parcours (répétition)
         if self.args.caches_rendu is not None:   # caches de rendu d'un passage précédent (lot ML2)
             copy_render_caches(self.args.caches_rendu, self.home)
         self.state_port, self.cmd_port = free_udp_ports(2)
@@ -1233,6 +1238,41 @@ def parse_partie(text: str | None) -> tuple[int, int] | None:
     return k, n
 
 
+def copy_real_sources(args: argparse.Namespace, home: Path, routes: Path) -> None:
+    """Répétition d'un essai (28 novembre) : COPIE des profils du joueur et de parcours compilés dans le HOME du banc.
+
+    `--profils-source DOSSIER` : un dossier `Profils` (ex. une sauvegarde `~/OpenRide/Profils.avant-maj-…`) copié
+    en entier dans `OpenRide/Profils` du HOME temporaire, à la place des profils du scénario ; le dossier source n'est
+    que lu. `--parcours ID,…` : parcours `<ID>.world` copiés depuis `--parcours-source` (défaut : les parcours du
+    jeu). Le rapport et les captures montrent alors de vraies données : `--out` doit rester sur le PC."""
+    src = getattr(args, "profils_source", None)
+    if src is not None:
+        dest = home / "OpenRide" / "Profils"
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(src, dest, symlinks=True,
+                        ignore=shutil.ignore_patterns(".verrou", ".cache"))   # verrou d'une séance, caches recalculés
+    for rid in getattr(args, "parcours", None) or []:
+        world = args.parcours_source / f"{rid}.world"
+        if not world.is_dir():
+            raise FileNotFoundError(f"parcours introuvable : {world}")
+        shutil.copytree(world, routes / f"{rid}.world", dirs_exist_ok=True)
+        for extra in args.parcours_source.glob(f"{rid}.*.toml"):   # fiche et segments du parcours
+            shutil.copy2(extra, routes / extra.name)
+
+
+def check_real_sources(args: argparse.Namespace) -> str | None:
+    """Refus avant tout passage : source absente, ou source dans le HOME qu'un banc ne doit jamais écrire."""
+    src = getattr(args, "profils_source", None)
+    if src is not None and not (src / ".migration").is_file() and not any(src.glob("*/profil.toml")):
+        return f"--profils-source : {src} n'est pas un dossier Profils (aucun */profil.toml)"
+    if getattr(args, "parcours", None):
+        missing = [r for r in args.parcours if not (args.parcours_source / f"{r}.world").is_dir()]
+        if missing:
+            return f"--parcours : introuvables dans {args.parcours_source} : {', '.join(missing)}"
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
@@ -1262,7 +1302,17 @@ def main(argv: list[str] | None = None) -> int:
                          "démarrage à chaud comme le jeu (défaut : HOME neuf, démarrage à froid)")
     ap.add_argument("--sonde", action="store_true",
                     help="sonde de performance de l'engine : sonde/moteur.csv et saccades.csv de chaque passage (lot ML2)")
+    ap.add_argument("--profils-source", type=Path, metavar="DOSSIER",
+                    help="COPIE de ce dossier Profils dans le HOME du banc (répétition d'un essai avec un vrai profil, "
+                         "jamais écrit) ; rapport et captures à garder sur le PC")
+    ap.add_argument("--parcours", type=lambda v: [x for x in v.split(",") if x], metavar="ID,…",
+                    help="parcours compilés copiés dans le HOME du banc depuis --parcours-source")
+    ap.add_argument("--parcours-source", type=Path, default=REAL_HOME / ".local" / "share" / "openride" / "routes",
+                    metavar="DOSSIER", help="dossier des parcours de --parcours (défaut : ceux du jeu, seulement lus)")
     args = ap.parse_args(argv)
+    if (refus := check_real_sources(args)) is not None:
+        print(refus)
+        return 2
     known = scenarios()
     if args.list:
         for name, path in known.items():
