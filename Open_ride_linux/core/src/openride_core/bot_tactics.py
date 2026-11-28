@@ -56,6 +56,23 @@ RESPONSE_STOP_RESERVE_PCT = 20.0
 RESPONSE_WHEEL_M = 1.0         # en chasse, une roue à moins de 1 m devant : on la suit, le placement fait doubler
 RESPONSE_START_S = 30.0        # aucun départ jugé dans les 30 premières secondes (mise en route)
 RESPONSE_COOLDOWN_S = 30.0     # un même départ n'est jugé qu'une fois en 30 s
+# lot AG1 (essai du 28/11, manche 1 de la ligue : « les bots semblent peu agressifs, les barres sont bien bleues ») :
+# en Course, un bot distancé par le premier de la course chasse en puisant dans sa réserve au lieu de rouler
+# sous sa CP (où la réserve ne bouge pas) ; la réponse aux départs ne voyait que les coureurs de son groupe.
+CHASE_MIN_RESERVE_PCT = 50.0   # chasse lancée au-dessus de 50 % de réserve...
+CHASE_STOP_RESERVE_PCT = 15.0  # ... arrêtée sous 15 % (il récupère, puis repart au-dessus de 50 %)
+CHASE_MAX_S = 60.0             # le premier à plus de 60 s : pas de chasse lancée...
+CHASE_GIVE_UP_S = 90.0         # ... et une chasse abandonnée au-delà de 90 s
+CHASE_FACTOR = (1.06, 1.15)    # 1,06 × CP juste sorti du groupe, 1,15 × CP à partir de...
+CHASE_FULL_GAP_S = 20.0        # ... 20 s de retard
+CRITICAL_MIN_RESERVE_PCT = 30.0   # moment critique (montée, écart qui se creuse) : chasse dès 30 %, à fond
+CRITICAL_WINDOW_S = 30.0       # écart qui se creuse : 3 s de plus...
+CRITICAL_GAIN_S = 3.0          # ... en 30 s
+CLIMB_CHASE_BONUS = 0.05       # en montée, la chasse monte de 0,05 × CP (le temps se gagne là où on va lentement)
+FINAL_ALL_IN_M = 5000.0        # tout pour le tout sur les 5 derniers km...
+FINAL_LAP_MAX_M = 10000.0      # ... ou sur le dernier tour s'il fait moins de 10 km
+FINAL_ATTACK_M = 1500.0        # dans le groupe du premier : attaque aux 1 500 derniers mètres
+ALL_IN_MAX_CP = 1.30           # tout pour le tout : au plus 1,30 × CP
 DURABILITY_START_S = 3600.0    # fatigue de longue durée au-delà de 60 min de séance
 DURABILITY_FLOOR = 0.70        # jamais moins de 70 % de la CP (séance de plusieurs heures)
 FORM_RANGE = (0.97, 1.03)      # jour avec, jour sans : facteur de forme sur la CP
@@ -78,6 +95,7 @@ class Behaviours:
     bluff: bool = False
     standings: bool = False
     fatigue: bool = False          # fatigue visible : réserve vide, il se relève et monte en haut
+    chase: bool = False            # lot AG1 : chasse sur le premier de la course (Course seule)
 
     @property
     def racing(self) -> bool:
@@ -111,6 +129,8 @@ MODE_TACTICS: dict[str, Behaviours] = {
     # (`mode_speaks` du bot), ces gestes se taisent (`Tactics.yield_to_mode`).
     "grandprix": Behaviours(responses=True),                 # répondre aux attaques ; pas de relais organisés
     "survivor": Behaviours(attacks=True, responses=True),    # attaquer avant l'arche, répondre aux attaques
+    # lot AG1 : la Course (et les manches « Course » de la ligue) : le mode classique plus la chasse
+    "race": Behaviours(relays=True, attacks=True, responses=True, durability=True, form=True, chase=True),
 }
 
 # Ligne de la table propre à un mode de jeu de la séance (`Session._new_race`) ; les autres modes : None.
@@ -401,6 +421,13 @@ class Tactics:
         self.respond_to: str | None = None
         self.respond_until = -1.0
         self.responses = 0                 # départs suivis depuis le départ
+        self.chasing = False               # lot AG1 : chasse en cours sur le premier de la course
+        self.chase_factor = 0.0            # part de la CP visée pendant la chasse
+        self.chases = 0                    # chasses lancées depuis le départ
+        self.all_in = False                # tout pour le tout du final (lot AG1)
+        self.all_ins = 0
+        self.chase_attack = False          # dans le groupe du premier au final : il quitte la roue
+        self._lead_gaps: list[tuple[float, float]] = []   # (temps du champ, retard sur le premier)
         self._gaps: dict[str, list[float]] = {}   # écarts (s) relevés des coureurs devant, dernier en fin
         self._judged: dict[str, float] = {}       # dernier départ jugé de chaque coureur (temps du champ)
         self.race = RaceIntent()                  # lot VD7 : intention de course (`race_update`)
@@ -486,6 +513,10 @@ class Tactics:
         if not (on.attacks or on.responses or on.relays):
             return power_w, tactical
         reserve = bot.wbal_pct if reserve_pct is None else reserve_pct
+        if self.chasing and (self.all_in or reserve > CHASE_STOP_RESERVE_PCT):   # lot AG1
+            power_w = max(power_w, self.chase_factor * bot.cp_w)
+            if self.chase_attack:   # attaque du final dans le groupe du premier : il quitte la roue
+                tactical = True
         pos, lap = s, 0
         if is_loop and length_m > 0:
             lap, pos = int(s // length_m), s % length_m
@@ -513,6 +544,7 @@ class Tactics:
         réponse en cours s'arrêtent, le geste de base ne reprend que quand le mode n'a plus rien à dire."""
         self.attack_until = -1.0
         self.respond_to = None
+        self.chasing = self.all_in = self.chase_attack = False
 
     # --- comportements de course (lot VD7) ----------------------------------------------------------------
 
@@ -618,11 +650,13 @@ def groups(runners: list[tuple[float, float, str, Any]]) -> list[list[tuple[floa
 
 def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | None, dt: float,
                  grade_at: Callable[[float], float] | None = None, length_m: float | None = None,
-                 is_loop: bool = False, unseen: frozenset[str] = frozenset()) -> None:
+                 is_loop: bool = False, unseen: frozenset[str] = frozenset(),
+                 finish_s: float | None = None) -> None:
     """Groupes, relais et réponses aux départs (§4), relus toutes les `TICK_S` secondes sur les positions
     du pas précédent ; appelé par la séance avant le pas des bots. `rider` : (s, v) du cycliste, None sans
     lui ; `grade_at(s)` : pente (%) à la position s. `unseen` : coureurs dont personne ne suit le départ
-    (le cycliste pendant l'Échappée, lot TT4) : leur écart n'est pas relevé."""
+    (le cycliste pendant l'Échappée, lot TT4) : leur écart n'est pas relevé. `finish_s` : abscisse de l'arrivée
+    de la course (lot AG1, tout pour le tout du final), None sans arrivée."""
     field.t += dt
     field._acc += dt
     if field._acc + 1e-9 < TICK_S:
@@ -662,6 +696,72 @@ def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | Non
                 if target is None or (target[0] - pos[id(b)] - BIKE_LENGTH_M) / max(v, 1.0) <= RESPONSE_CAUGHT_S:
                     tac.respond_to = None
         _relays(field, grp, t, grade_at)
+    _chase(runners, t, unseen, grade_at, finish_s, length_m if is_loop else None)
+
+
+def _chase(runners: list[tuple[float, float, str, Any]], t: float, unseen: frozenset[str],
+           grade_at: Callable[[float], float] | None = None, finish_s: float | None = None,
+           lap_m: float | None = None) -> None:
+    """Lot AG1 : chaque bot à profil distancé par le premier de la course (le cycliste compris, sauf s'il n'est
+    pas vu) le chasse entre 1,06 et 1,15 × CP selon son retard, tant que sa réserve le permet. Les autres de son
+    groupe restent dans sa roue (lot AS1) : le groupe chasse ensemble, relais compris.
+
+    Moments critiques (demande du 28/11) : en montée (+0,05 × CP) et quand l'écart se creuse (3 s de plus en
+    30 s), la chasse part dès 30 % de réserve et à fond. Final (`finish_s` : abscisse de l'arrivée ; 5 derniers
+    km, ou dernier tour s'il fait moins de 10 km) : tout pour le tout, puissance dosée pour finir la réserve
+    vide à l'arrivée (CP + réserve / temps restant, 1,30 × CP au plus), sans abandon ; dans le groupe du premier,
+    il attaque (quitte la roue) aux 1 500 derniers mètres."""
+    lead = next((r for r in runners if r[2] not in unseen), None)
+    for s_b, v, _, b in runners:
+        tac = getattr(b, "tactics", None) if b is not None else None
+        if tac is None or not tac.on.chase:
+            continue
+        speaks = getattr(b, "mode_speaks", None)
+        leading = lead is None or lead[3] is b
+        gap = 0.0 if leading else (lead[0] - s_b) / max(v, 1.0)
+        hist = tac._lead_gaps
+        hist.append((t, gap))
+        while hist and hist[0][0] < t - CRITICAL_WINDOW_S - 1e-9:
+            del hist[0]
+        widening = (not leading and hist[0][0] <= t - CRITICAL_WINDOW_S + TICK_S
+                    and gap - hist[0][1] >= CRITICAL_GAIN_S)
+        climbing = grade_at is not None and grade_at(b.s) >= FLAT_MAX_GRADE_PCT
+        reserve = b.wbal_pct
+        to_finish = finish_s - b.s if finish_s is not None else None
+        final_m = FINAL_ALL_IN_M
+        if lap_m is not None and 0.0 < lap_m <= FINAL_LAP_MAX_M:
+            final_m = max(final_m, lap_m)
+        final = to_finish is not None and 0.0 < to_finish <= final_m and not leading
+        tac.chase_attack = False
+        if t < RESPONSE_START_S or (speaks is not None and speaks()):
+            tac.chasing = tac.all_in = False
+            continue
+        if final:
+            in_group = gap <= GROUP_GAP_S
+            if in_group and to_finish > FINAL_ATTACK_M:
+                tac.chasing = tac.all_in = False   # dans la roue du premier jusqu'aux 1 500 derniers mètres
+                continue
+            if not tac.all_in:
+                tac.all_in = True
+                tac.all_ins += 1
+            tac.chasing = True
+            tac.chase_attack = in_group
+            t_left = to_finish / max(v, 1.0)
+            surplus = b.wbal.w_bal_j / max(b.cp_w * t_left, 1e-9)
+            tac.chase_factor = min(1.0 + surplus, ALL_IN_MAX_CP)
+            continue
+        tac.all_in = False
+        critical = climbing or widening
+        start_pct = CRITICAL_MIN_RESERVE_PCT if critical else CHASE_MIN_RESERVE_PCT
+        if gap <= GROUP_GAP_S or gap > CHASE_GIVE_UP_S or reserve <= CHASE_STOP_RESERVE_PCT:
+            tac.chasing = False
+        elif not tac.chasing and gap <= CHASE_MAX_S and reserve >= start_pct:
+            tac.chasing = True
+            tac.chases += 1
+        if tac.chasing:
+            k = 1.0 if critical else min(1.0, (gap - GROUP_GAP_S) / (CHASE_FULL_GAP_S - GROUP_GAP_S))
+            tac.chase_factor = (CHASE_FACTOR[0] + k * (CHASE_FACTOR[1] - CHASE_FACTOR[0])
+                                + (CLIMB_CHASE_BONUS if climbing else 0.0))
 
 
 def _eligible(b: Any) -> bool:

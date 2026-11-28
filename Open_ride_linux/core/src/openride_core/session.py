@@ -366,6 +366,7 @@ class CoreSession:
         # (fixée par les essais : `bots_race`), groupes et relais relus par `bot_tactics.update_field`
         self.bot_tactics_mode = "classic"
         self.bot_tactics_seed: int | None = None
+        self._tactics_now = self.bot_tactics_mode   # ligne de la course en cours (lot AG1), posée par `_new_race`
         self._race_seed = 0   # graine de la séance en cours, tirée par `_new_race`
         # Lot RC1 : départ de la course (abscisse du cycliste) et prochain instantané `race_snapshot` (temps de séance)
         self._race_origin_m = 0.0
@@ -1729,7 +1730,7 @@ class CoreSession:
                            self.cfg.bots.level_pct, self._segments, self.cfg.bike.mass_kg,
                            bot_params=PhysicsParams.from_config(self.cfg),
                            effort=self._bot_effort_now or self._bot_effort(None))
-            mode = self.bot_tactics_mode if self.race is not None else "none"
+            mode = self._tactics_now if self.race is not None else "none"   # lot AG1 : ligne du mode en cours
             seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
             bot_tactics.start_race(profiled, seed, mode)
         if self.race is not None:
@@ -3837,6 +3838,11 @@ class CoreSession:
         self._league_start_line()
         log.info("Épreuve de piste : %s, %s.", event, ", ".join(f"{k} = {v}" for k, v in settings.items()) or "réglages par défaut")
 
+    def _race_finish_s(self) -> float | None:
+        """Abscisse de l'arrivée de la course en cours (Course et Grand Prix), None sans arrivée (lot AG1)."""
+        gp = self.grandprix
+        return gp.origin_m + gp.length_m if gp is not None else None
+
     def _mode_tactics(self, game_mode: str | None) -> str | None:
         """Ligne de `bot_tactics.MODE_TACTICS` imposée par le mode de jeu : épreuve de piste (lot VD7), gestes de
         base du Grand Prix et du Dernier survivant (lot BR5) ; None : celle du mode classique (ou « none »)."""
@@ -3844,6 +3850,8 @@ class CoreSession:
             return self._track_tactics()
         if game_mode in bot_tactics.GAME_MODES and self.wtf is None:
             return game_mode
+        if game_mode == "race" and self.wtf is None:   # lot AG1 : Course = mode classique plus la chasse
+            return "race"
         return None
 
     def _track_tactics(self) -> str:
@@ -4302,6 +4310,7 @@ class CoreSession:
         seed = self._race_seed
         mode = tactics if tactics is not None else (self.bot_tactics_mode if classic else "none")
         bot_tactics.start_race(self.bots, seed, mode)
+        self._tactics_now = mode
         self._field = bot_tactics.Field()
         if any(getattr(b, "tactics", None) is not None for b in self.bots):
             log.info("Tactique des bots : %s, graine %d.", mode, seed)
@@ -4759,7 +4768,8 @@ class CoreSession:
         # à rebours (lot N17), le cycliste n'est dans aucun groupe : les bots courent entre eux
         bot_tactics.update_field(self._field, self._racing_bots(), (self.physics.s, self.physics.v) if d > 0 else None, dt,
                                  (lambda s: route.sample(s).grade_pct) if route else None,
-                                 route.length_m if route else None, bool(route and route.is_loop), unseen)
+                                 route.length_m if route else None, bool(route and route.is_loop), unseen,
+                                 self._race_finish_s())
         for bot in self.bots:
             if bot.id in self._survivor_out:
                 self._step_retired_bot(bot, dt)
