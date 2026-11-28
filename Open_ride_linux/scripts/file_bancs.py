@@ -98,6 +98,9 @@ PR) : une étape de branche en ÉCHEC est rejouée sur main (précédée de la f
 part), une fois par commit de main et par commande. Main passe : ÉCHEC confirmé ; main échoue aussi : ÉCHEC AUSSI SUR
 MAIN, défaut de l'outil ou de main, non bloquant pour la PR (code 0 si rien d'autre). `[file] temoin_main = false`
 le coupe.
+Auto-contrôle de l'outil (garde-fou 3) : avant la file, un banc simulé court sur main (scénario demo, vitesse imposée
+40 km/h, 150 s, low), une fois par commit de main : en défaut, rien n'est lancé (code 4, « OUTIL DE BANC EN DÉFAUT »
+en tête de etat.md). `[file] autocontrole = false` le coupe, une chaîne le remplace (`{native}` : « --native » au PC).
 Reprise : `lancer` rejoue tout ce qui n'est pas OK, CONTACTS ou À-COUPS sur la tête actuelle ; `relancer` rejoue seulement
 les étapes en échec (les OK d'une tête précédente restent acquises et sont marquées « sur tête X »).
 Délais mesurés (lot DM1, 26 novembre ; 7 h 30 de PC perdues les 25 et 26/11 sur des délais fixes trop courts) :
@@ -108,7 +111,8 @@ le double du délai précédent après un DÉLAI sans durée connue, plafonné �
 une sous-commande dont le délai interne (`--delai-s N`, `timeout N`) n'est pas sous celui de l'étape.
 Pause : un fichier `PAUSE` dans le dossier de sortie arrête la file avant l'étape suivante (« PC libre ») ;
 Ctrl-C ou SIGTERM arrête l'étape en cours sans verdict. Code de sortie : 0 si rien n'est en ÉCHEC, DÉLAI ni
-ENVIRONNEMENT, 1 sinon, 2 si l'appel ou la file est invalide, 3 si la file est en pause. Bibliothèque standard seulement.
+ENVIRONNEMENT, 1 sinon, 2 si l'appel ou la file est invalide, 3 si la file est en pause, 4 si l'auto-contrôle de
+l'outil est en défaut. Bibliothèque standard seulement.
 """
 
 from __future__ import annotations
@@ -139,6 +143,14 @@ ACQUIS = (OK, CONTACTS, ACOUPS)                       # verdicts qui ne se rejou
 # Témoin sur main (garde-fou 2, 27 novembre) : étape de branche en ÉCHEC rejouée sur main ; main en échec aussi =
 # défaut de l'outil ou de main, pas de la PR : non bloquant pour elle (rejoué à la reprise, jamais acquis).
 ECHEC_MAIN = "ÉCHEC AUSSI SUR MAIN"
+# Auto-contrôle de l'outil (garde-fou 3, 27 novembre) : banc simulé court sur main avant la file, une fois par commit de
+# main. Scénario demo exprès (appuis du Click) : la vitesse imposée doit tenir à braquet neutre (GF1b), sur la pente
+# du parcours, sur le parcours demandé (GF4). En défaut : la file ne lance rien (code 4).
+AUTOCONTROLE = "autocontrole"
+AUTOCONTROLE_CMD = ("python engine/tests/sim_bench.py {native}--muet --quality low --scenario demo --world demo "
+                    "--speed-kmh 40 --duration 150 --out {sortie}")
+AUTOCONTROLE_DELAI_MIN = 12
+CODE_OUTIL_EN_DEFAUT = 4
 EN_ECHEC = (ECHEC, DELAI, ENV, REFUSE)
 FUMEE = "fumee"
 CACHES = ("reel", "separe")
@@ -243,6 +255,7 @@ class File:
     apres_etape: str | None = None             # après chaque étape (poussage anonymisé des résultats)
     attente_s: float = 60.0
     temoin_main: bool = True                   # étape de branche en ÉCHEC rejouée sur main (garde-fou 2)
+    autocontrole: str = ""                     # commande de l'auto-contrôle de l'outil (garde-fou 3), vide : coupé
 
     def par_risque(self) -> list[PR]:
         return sorted(self.prs, key=lambda p: (p.risque, p.rang))
@@ -354,8 +367,12 @@ def lire_file(chemin: Path) -> File:
     temoin = tete.get("temoin_main", True)
     if not isinstance(temoin, bool):
         raise FileInvalide("[file] temoin_main vaut true ou false")
+    auto = tete.get("autocontrole", True)
+    if not isinstance(auto, (bool, str)):
+        raise FileInvalide("[file] autocontrole vaut true, false ou une commande")
+    auto = (AUTOCONTROLE_CMD if auto is True else "") if isinstance(auto, bool) else auto
     return File(depot, sortie, prs, tete.get("avant_etape"), tete.get("apres_etape"), float(tete.get("attente_s", 60)),
-                temoin)
+                temoin, auto)
 
 
 # --- état ----------------------------------------------------------------------------------------
@@ -956,7 +973,28 @@ class Runner:
         v = self.etat.get(pr, fum)
         return v is not None and v["verdict"] in ACQUIS
 
+    def autocontrole(self) -> str | None:
+        """Garde-fou 3 : l'outil de banc mesure-t-il bien ce qu'on lui demande ? Banc court sur main, une fois par
+        commit de main (verdict repris ensuite). Rend le verdict, ou None si la file s'est mise en pause."""
+        cmd = self.f.autocontrole.replace("{native}", "--native " if self.lieu == "pc" else "")
+        e = Etape(AUTOCONTROLE, cmd, AUTOCONTROLE_DELAI_MIN, "main", self.lieu)
+        pr = PR(AUTOCONTROLE, "main")
+        if self.a_jouer(pr, e, "lancer"):
+            self.log("Auto-contrôle de l'outil de banc sur main (garde-fou 3)")
+            if self.executer(pr, e) is None:
+                return None
+        return (self.etat.get(pr, e) or {}).get("verdict", ENV)
+
     def lancer(self, mode: str = "lancer", seulement: set[str] | None = None, fumees_seules: bool = False) -> int:
+        if self.f.autocontrole:
+            verdict = self.autocontrole()
+            if verdict is None:
+                return 3
+            if verdict not in ACQUIS:
+                self.log(f"OUTIL DE BANC EN DÉFAUT : auto-contrôle {verdict} sur main ; file non lancée (code "
+                         f"{CODE_OUTIL_EN_DEFAUT}). Corriger l'outil, ou `[file] autocontrole = false` en connaissance de cause.")
+                ecrire_tableau(self.f, self.etat, self.tetes)
+                return CODE_OUTIL_EN_DEFAUT
         prs = [p for p in toutes(self.f, self.etat) if not seulement or p.id in seulement or p.paquet in seulement]
         code = self.jouer_liste(prs, mode, fumees_seules)
         if code is not None:
@@ -1126,6 +1164,14 @@ def ecrire_tableau(f: File, etat: Etat, tetes: dict[str, str] | None = None) -> 
                 details.append(f"- {pr.id}/{e.id} : {v['verdict']}, {v['detail']}")
     for x in defauts_assemblage(f, etat):
         details.append(f"- {x} : DÉFAUT D'ASSEMBLAGE, en échec en paquet mais passée par chaque PR seule (compté en échec)")
+    auto = etat.data["main"].get(Etape(AUTOCONTROLE, f.autocontrole.replace("{native}", "--native ")).empreinte) \
+        or etat.data["main"].get(Etape(AUTOCONTROLE, f.autocontrole.replace("{native}", "")).empreinte)
+    if f.autocontrole:
+        tete = f" sur main {str(auto.get('tete') or '?')[:8]}" if auto else ""
+        txt = (f"Auto-contrôle de l'outil{tete} : {auto['verdict'] if auto else A_FAIRE}"
+               + (f", {auto['detail']}" if auto and auto.get("detail") else "")
+               + (" : OUTIL DE BANC EN DÉFAUT, file non lancée" if auto and auto["verdict"] not in ACQUIS else "")
+               + "\n\n" + txt)
     md = f"# File des bancs : {f.sortie.name}\n\n{txt}" + ("\n" + "\n".join(details) + "\n" if details else "")
     f.sortie.mkdir(parents=True, exist_ok=True)
     (f.sortie / "etat.md").write_text(md, encoding="utf-8")
