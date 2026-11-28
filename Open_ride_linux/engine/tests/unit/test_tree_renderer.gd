@@ -146,6 +146,41 @@ func _test_tree_generation_and_determinism() -> void:
 	renderer.queue_free()
 
 
+## Revue E7-05 : aucun arbre dans un plan d'eau OSM (lac, mer), mais des arbres sur son île (trou de l'anneau).
+func _test_water() -> void:
+	var theme := {"vegetation": {"max_density_per_ha": 400.0}}
+	var heights := TerrainTiles.flat_heights(1000.0)
+	var r = TreeRenderer.new()
+	var lake := Rect2(100.0, 100.0, 400.0, 400.0)
+	var island := Rect2(250.0, 250.0, 100.0, 100.0)
+	var water := {"id": "lac", "kind": "lake", "level_y": 1000.0,
+		"outer": [[lake.position.x, lake.position.y], [lake.end.x, lake.position.y], [lake.end.x, lake.end.y], [lake.position.x, lake.end.y]],
+		"holes": [[[island.position.x, island.position.y], [island.end.x, island.position.y], [island.end.x, island.end.y], [island.position.x, island.end.y]]]}
+	var dry: Dictionary = r.prepare_tile(0, 0, heights, null, theme, 1.0)
+	var wet: Dictionary = r.prepare_tile(0, 0, heights, null, theme, 1.0, [], [], [water])
+	var count := func(data: Dictionary, area: Rect2, hole: Rect2) -> int:
+		var n := 0
+		for cell in data["cells"]:
+			for t in (cell as PackedVector4Array):
+				var p := Vector2(t.x, t.z)
+				if area.has_point(p) and not hole.has_point(p):
+					n += 1
+		return n
+	var in_dry: int = count.call(dry, lake, island)
+	var in_wet: int = count.call(wet, lake, island)
+	var isle_dry: int = count.call(dry, island, Rect2())
+	var isle_wet: int = count.call(wet, island, Rect2())
+	var shore_dry: int = count.call(dry, Rect2(600.0, 0.0, 400.0, 1000.0), Rect2())
+	var shore_wet: int = count.call(wet, Rect2(600.0, 0.0, 400.0, 1000.0), Rect2())
+	_check(in_dry > 100 and in_wet == 0, "lac : %d arbres sans la couche d'eau, %d avec" % [in_dry, in_wet])
+	_check(isle_wet > 0 and isle_wet == isle_dry, "île du lac : %d arbres gardés sur %d" % [isle_wet, isle_dry])
+	_check(shore_wet == shore_dry, "hors du lac : arbres inchangés (%d)" % shore_wet)
+	var kept := TreeRenderer.exclude_water(PackedVector4Array([Vector4(150, 0, 150, 1), Vector4(300, 0, 300, 1), Vector4(700, 0, 150, 1)]), [water])
+	_check(kept.size() == 2 and kept[0].x == 300.0 and kept[1].x == 700.0, "exclude_water : eau retirée, île et rive gardées")
+	_check(TreeRenderer.exclude_water(kept, [{"id": "rien"}, "x"]).size() == 2, "exclude_water : aires mal formées ignorées")
+	r.free()
+
+
 func _test_budget_enforcement() -> void:
 	var renderer = TreeRenderer.new()
 	root.add_child(renderer)
@@ -166,6 +201,34 @@ func _test_budget_enforcement() -> void:
 	var count_after := renderer.get_active_tree_count()
 	_check(count_after <= 500 and count_after < count_before,
 		"budget respecté après enforce_budget (%d -> %d <= 500)" % [count_before, count_after])
+
+	# Revue E7-03 : les cases mises de côté reviennent quand le cycliste s'en approche (avant : perdues tant que
+	# la tuile restait chargée, clairière carrée de 250 m)
+	var budget := int((count_before / 2) / 100) * 100
+	renderer._budget = budget
+	renderer.enforce_budget(Vector3(500.0, 1000.0, 125.0))   # bout nord de la tuile (0, 0)
+	var far_cell: Dictionary = renderer._tiles[Vector2i(0, 1)][3 * TreeRenderer.CELLS_PER_TILE + 1]   # z 1 750 à 2 000 m
+	var parked_far: bool = far_cell.get("parked", false)
+	var hidden_ok := true
+	for part in far_cell["parts"]:
+		hidden_ok = hidden_ok and not (part["lod0"] as MultiMeshInstance3D).visible
+	_check(parked_far and hidden_ok and renderer.get_parked_tree_count() > 0 and renderer.get_active_tree_count() <= budget,
+		"budget %d : case lointaine de côté et cachée (%d affichés, %d de côté)" % [budget, renderer.get_active_tree_count(), renderer.get_parked_tree_count()])
+	renderer.enforce_budget(Vector3(500.0, 1000.0, 1875.0))   # le cycliste arrive au bout de la tuile (0, 1)
+	var back_ok := not bool(far_cell.get("parked", false))
+	for part in far_cell["parts"]:
+		back_ok = back_ok and (part["lod0"] as MultiMeshInstance3D).visible
+	var near_start: Dictionary = renderer._tiles[Vector2i(0, 0)][1]
+	_check(back_ok and bool(near_start.get("parked", false)) and renderer.get_active_tree_count() <= budget
+		and renderer.get_active_tree_count() + renderer.get_parked_tree_count() == count_before,
+		"budget : la case revient à l'approche, celle du départ passe de côté (%d affichés, %d de côté, %d en tout)" % [
+			renderer.get_active_tree_count(), renderer.get_parked_tree_count(), count_before])
+	var unchanged := renderer.get_active_tree_count()
+	renderer.enforce_budget(Vector3(500.0, 1000.0, 1880.0))   # 5 m plus loin : rien n'est revu
+	_check(renderer.get_active_tree_count() == unchanged, "budget : revu tous les %.0f m seulement" % TreeRenderer.BUDGET_STEP_M)
+	renderer.remove_tile(Vector2i(0, 0))
+	renderer.remove_tile(Vector2i(0, 1))
+	_check(renderer.get_active_tree_count() == 0 and renderer.get_parked_tree_count() == 0, "budget : tuiles retirées, comptes à zéro")
 
 	renderer.queue_free()
 
@@ -293,6 +356,7 @@ func _init() -> void:
 	_test_budget_enforcement()
 	_test_shadow_limit()
 	_test_add_tile_main_thread()
+	_test_water()
 	print("test_tree_renderer : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
