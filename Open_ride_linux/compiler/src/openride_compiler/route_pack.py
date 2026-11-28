@@ -2,7 +2,8 @@
 
 Un pack contient des traces (GPX, FIT, TCX et exports Garmin compressés, mêmes extensions que
 `track_formats.TRACK_SUFFIXES`), leurs fiches `<trace>.toml` facultatives et un `pack.toml`
-facultatif (`name`, `description`, `license`, `credits`). Tout est contrôlé avant la moindre
+facultatif (`name`, `description`, `license`, `credits` ; `layers` : couches compilées pour toutes ses traces,
+`route` comprise, au lieu des couches par défaut, lot AN1 : eau et maisons d'un tour de lac). Tout est contrôlé avant la moindre
 écriture (même forme que les packs de thèmes du lot N10) : chemins sûrs, pas de lien
 symbolique, taille maximale, fiches valides, aucun autre fichier. Le pack est copié dans
 `<gpx_dir>/<pack>/`, que le catalogue lit ; `build-all` compile ensuite ses traces.
@@ -19,6 +20,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from . import constants as C
 from .errors import CompileError
 from .route_stats import LibraryError, load_library, sidecar_path
 from .track_formats import track_stem
@@ -30,15 +32,29 @@ PACK_FILE = "pack.toml"
 PACK_KEYS = {"name": 80, "description": 500, "license": 120, "credits": 200}
 
 
-def _check_pack_meta(path: Path) -> dict[str, str]:
+def _check_layers(value: Any) -> tuple[str, ...]:
+    """Couches `layers` d'un pack.toml : noms de `C.WORLD_LAYERS`, `route` comprise, sans doublon."""
+    if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
+        raise CompileError(f"{PACK_FILE} : layers : liste de noms de couches attendue")
+    layers = tuple(dict.fromkeys(v.strip() for v in value))
+    unknown = [la for la in layers if la not in C.WORLD_LAYERS]
+    if unknown or "route" not in layers:
+        raise CompileError(f"{PACK_FILE} : layers : couches possibles {', '.join(C.WORLD_LAYERS)} (route obligatoire) ; "
+                           f"reçu {', '.join(layers)}")
+    return layers
+
+
+def _check_pack_meta(path: Path) -> dict[str, Any]:
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise CompileError(f"{PACK_FILE} invalide : {exc}") from exc
-    unknown = sorted(set(data) - set(PACK_KEYS))
+    unknown = sorted(set(data) - set(PACK_KEYS) - {"layers"})
     if unknown:
         raise CompileError(f"{PACK_FILE} : clé(s) inconnue(s) : {', '.join(unknown)}")
-    out = {}
+    out: dict[str, Any] = {}
+    if "layers" in data:
+        out["layers"] = _check_layers(data["layers"])
     for key, limit in PACK_KEYS.items():
         if key in data:
             value = data[key]
@@ -46,6 +62,15 @@ def _check_pack_meta(path: Path) -> dict[str, str]:
                 raise CompileError(f"{PACK_FILE} : {key} : texte non vide de {limit} caractères au plus attendu")
             out[key] = value.strip()
     return out
+
+
+def pack_layers(track: Path) -> tuple[str, ...] | None:
+    """Couches demandées par le pack d'une trace (`layers` du pack.toml de son dossier), None sans pack ni clé.
+    Un pack.toml invalide est refusé : il l'aurait été à l'installation."""
+    meta = Path(track).parent / PACK_FILE
+    if not meta.is_file():
+        return None
+    return _check_pack_meta(meta).get("layers")
 
 
 def _extract_zip(zip_path: Path, target: Path) -> None:
