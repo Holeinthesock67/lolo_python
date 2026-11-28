@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Une étape du banc CD1 (#1179) sur UN parcours de référence, jouée telle quelle sur la branche et sur main :
 #   bash cd1_etape.sh ID SORTIE
-# ID : alpe-d-huez, tour-du-lac-d-annecy, demo-biomes-paysages, ballon-d-alsace ou « circuit » (circuit.txt).
+# ID : alpe-d-huez, tour-du-lac-d-annecy, demo-biomes-paysages, ballon-d-alsace.
 # 1. Captures en medium aux points tirés du parcours (tour_visuel.py --auto : départ, arrivée, plat, montées à 5 et
 #    10 %, village le plus dense, forêt et eau les plus proches, frontières de biome) : mêmes points sur main et sur la
 #    branche, planche.html à valider par le propriétaire.
@@ -12,7 +12,6 @@ ID="$1"
 OUT="$2"
 MONDES="${CD1_MONDES:-$HOME/mesures-2026-11-01-auto/mondes-cd1}"
 GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.7.2-stable_linux.x86_64}"
-[ "$ID" = "circuit" ] && ID=$(tr -d '[:space:]' < "$MONDES/circuit.txt" 2>/dev/null)
 W="$MONDES/$ID.world"
 if [ -z "$ID" ] || [ ! -d "$W" ]; then
   echo "ENVIRONNEMENT : monde absent ($W) ; lancer d'abord la fumée (cd1_mondes.sh)"
