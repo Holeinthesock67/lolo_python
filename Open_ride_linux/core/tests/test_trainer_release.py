@@ -5,6 +5,7 @@ import asyncio
 import os
 import signal
 import struct
+import pytest
 
 from openride_core import __main__ as cli
 from openride_core import ftms, ftms_driver

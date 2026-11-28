@@ -45,7 +45,6 @@ def test_deterministic():
 def test_nominal_time_of_rider_on_target(a, v, o):
     """Cycliste simulé (physique complète) qui tient la cible : temps d'arrivée = `nominal_s` à 2 %."""
     room = make(a, v, o)
-    grade = {s: g for s, g in room.profile}
     body = RiderPhysics(RIDER.params, 0.0, steady_speed(room.target_frac[0].frac * RIDER.ftp_w,
                                                          room.profile[0][1], RIDER.params))
     t = 0.0
@@ -115,7 +114,6 @@ def test_markers_inside_and_arches_before_breaks(a, v, o):
 @pytest.mark.parametrize("a,v,o", [c for c in CASES if c[0] in ("diesel", "puncheur", "grimpeur", "saboteur", "boss")])
 def test_markers_do_not_overlap(a, v, o):
     room = make(a, v, o, seed=2, nominal=400.0)
-    times = dict(zip((p[0] for p in room.profile), room.time_s))
     import bisect
     xs = [p[0] for p in room.profile]
 

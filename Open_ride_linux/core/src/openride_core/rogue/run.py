@@ -19,7 +19,7 @@ from .combat import DONE, RECOVERY, CombatInputs, combat_start, combat_step, in_
 from .firewall import Firewall
 from .posture import ARRET, PostureState, posture_step
 from .rooms import Room, RoomRider, generate_room
-from .wbal import WbalState, wbal_initial, wbal_step
+from .wbal import wbal_initial, wbal_step
 
 WARMUP, ROOM, CORRIDOR, BOSS = "WARMUP", "ROOM", "CORRIDOR", "BOSS"
 COOLDOWN, RESULTS = "COOLDOWN", "RESULTS"

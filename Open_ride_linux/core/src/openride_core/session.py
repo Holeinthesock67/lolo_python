@@ -4003,7 +4003,6 @@ class CoreSession:
         course sans objet ni boîte. `restore` : instantané de la course reprise après un plantage (lot RC1) : même
         longueur, même départ, mêmes objets, sans ligne au journal."""
         gc = self.cfg.grandprix
-        fmt = self.cfg.race if mode == "race" else gc
         table = self._grandprix_table()
         if restore is not None:
             length, lap, origin = float(restore["length_m"]), restore["lap_m"], float(restore["origin_m"])

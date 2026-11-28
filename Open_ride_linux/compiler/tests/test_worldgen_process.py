@@ -77,7 +77,7 @@ def line_db(path: Path) -> Path:
     """Une seule route est-ouest coupée tous les kilomètres (classes alternées) : pas d'autre branche."""
     w = OsmDbWriter(path, "test", "test/ligne")
     for k in range(-10, 10):
-        e0, e1 = E_REF + 1000 * k, E_REF + 1000 * (k + 1)
+        e0, _e1 = E_REF + 1000 * k, E_REF + 1000 * (k + 1)
         nodes = [10_000 + 10 * k + d for d in range(11)]
         nodes[-1] = 10_000 + 10 * (k + 1)
         w.add_road(500 + k, {"highway": "tertiary" if k % 2 else "residential"}, nodes,

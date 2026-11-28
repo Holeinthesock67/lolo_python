@@ -13,7 +13,6 @@ import logging
 import time
 from pathlib import Path
 from typing import Any
-from xml.sax.saxutils import quoteattr
 
 from . import profiles
 from .config import GPX_DIR, OpenWorldConfig

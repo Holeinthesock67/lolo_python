@@ -190,7 +190,7 @@ def fight_engine(first="grimpeur", objective="threshold", deck=(), relics=(), se
     e.deck, e.relics = tuple(deck), tuple(relics)
     inp = RunInputs(power_w=150, cadence_rpm=85, gear=6, ftp_w=250)
     for _ in range(round(1.2 / DT)):
-        out = e.step(DT, inp)
+        e.step(DT, inp)
     assert e.phase == "ROOM"
     return e
 

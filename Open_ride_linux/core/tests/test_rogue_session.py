@@ -234,7 +234,6 @@ def test_lost_click_stops_the_firewall_in_the_mode_step():
             mode.step(0.5, 0.0, 85.0, body, lost, T0_WALL)
             if mode.engine.firewall is not None:
                 break
-        gap0 = None
         while mode.engine.phase not in ("ROOM",) and mode.engine.t_total < 1500:
             mode.step(0.5, 0.6 * FTP, 85.0, body, lost, T0_WALL)
         for _ in range(30):

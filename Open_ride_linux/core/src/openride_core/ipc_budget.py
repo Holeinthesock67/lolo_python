@@ -24,7 +24,6 @@ import copy
 import json
 from typing import Any, Callable
 
-from . import road_cyclists
 
 MAX_DATAGRAM_SIZE = 1400          # cible de toutes les révisions, et limite jusqu'à la 1.2
 TRACK_FRAME_MAX = 900             # objet `track` de `state` (révision 1.7, lot VD6 ; 1.33 : voisins `ahead` et `behind`) : majorant de `worst_track`
@@ -147,7 +146,7 @@ def fit_state(msg: dict[str, Any], limit: int = MAX_DATAGRAM_SIZE) -> tuple[dict
 # v à 3, pentes à 2, puissances et cadence à 1, lat et lon à 6, alt à 2, longueur de la route à 1.
 def _worst_1_0() -> dict[str, Any]:
     return {
-        "type": "state", "v": 1, "seq": 2_147_483_647, "t": 86_399.99,
+        "type": "state", "seq": 2_147_483_647, "t": 86_399.99,
         "session_state": "PAUSED", "pause_reason": "trainer_lost",
         "trainer_status": "RECONNECTING", "input_status": "CONNECTED", "mode": "ERG",
         "route_id": ("col-" * 16)[:MAX_TEXT["route_id"]], "route_length_m": 199_999.9,

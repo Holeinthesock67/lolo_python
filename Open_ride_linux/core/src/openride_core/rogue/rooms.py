@@ -338,7 +338,7 @@ def generate_room(archetype: str, variant: str, objective: str, nominal_s: float
     time_s = tuple(round(t, 3) for t in sample_t)
 
     # tronçons de puissance en distance
-    plan, t0 = [], 0.0
+    plan, _t0 = [], 0.0
     for leg, st in zip(legs, starts):
         s0, s1 = s_of_t(st), s_of_t(st + leg.dur)
         if plan and abs(plan[-1].frac - leg.fw) < 1e-9:

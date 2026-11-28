@@ -42,7 +42,7 @@ from ..journal import read_journal
 from ..zwift_click import InputEvent
 from .fit_check import FitCheckError, check as fit_lines, decode
 from .rogue_bout_en_bout import Report, RunError, bot_step, format_text, new_session, to_json
-from .rogue_sim import DT, IF_RANGE, PROFILES, Bot, normalized_power
+from .rogue_sim import IF_RANGE, PROFILES, Bot, normalized_power
 
 ESSAIS = ("calendrier", "abandon", "click", "plantage")
 CALENDAR_RUNS = (("endurance", 30), ("threshold", 45), ("vo2max", 45))   # fiche R14, essais 2 à 4

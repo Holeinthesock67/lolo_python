@@ -87,7 +87,7 @@ def test_legacy_grade_rate_fallback_and_warning(caplog: pytest.LogCaptureFixture
 def test_startup_log_records_ramp_rates(tmp_path: Path, monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
     """Une ligne du journal au démarrage donne les deux vitesses."""
     with caplog.at_level(logging.INFO):
-        s = make_session(tmp_path, monkeypatch, port=5862)
+        make_session(tmp_path, monkeypatch, port=5862)
         assert any(
             "Rampe de pente du trainer : +4.0 %/s (montée), -8.0 %/s (descente)" in r.message
             for r in caplog.records

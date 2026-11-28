@@ -13,5 +13,6 @@ osmium==4.3.2
 pip-audit==2.10.1
 pyproj==3.7.2
 pytest==9.1.1
+ruff==0.16.9
 rasterio==1.4.4
 scipy==1.17.1

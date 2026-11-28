@@ -288,7 +288,6 @@ def test_target_judged_on_displayed_power_not_raw_spikes():
     from openride_core.rogue.combat import win_target
     tgt_w = win_target(room, 5.0, B) * 250   # lot R28 : la consigne écrite, celle qui gagne
     # puissance brute qui oscille de ± 60 W autour de la consigne, moyenne affichée à la consigne
-    gained = 0.0
     for k in range(round(10.0 / DT)):
         raw = tgt_w + (60.0 if k % 2 else -60.0)
         st, _ = combat_step(st, CombatInputs(**_base(s_m=5.0 + 0.01 * k, power_w=raw, power_avg_w=tgt_w + 1.0)), room, B, DT)

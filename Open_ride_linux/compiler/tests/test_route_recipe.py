@@ -55,7 +55,7 @@ def fetcher(response: dict, seen: list[str] | None = None):
 def recipe(tmp_path: Path, name: str = "col_test", length: float = 2000.0, gain: float = 100.0,
            end_north: float = 2000.0, **extra) -> Path:
     s, e = at(0), at(end_north)
-    lines = [f'name = "Col de test"', 'region = "Massif d\'essai"', 'country = "France"',
+    lines = ['name = "Col de test"', 'region = "Massif d\'essai"', 'country = "France"',
              f"waypoints = [[{s[0]:.4f}, {s[1]:.4f}], [{e[0]:.4f}, {e[1]:.4f}]]",
              f"ref_length_m = {length}", f"ref_gain_m = {gain}", 'tags = ["col"]']
     lines += [f"{k} = {json.dumps(v)}" for k, v in extra.items()]
