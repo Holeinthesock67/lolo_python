@@ -80,6 +80,21 @@ def test_search_merges_sources_and_validates_contract():
     assert [i["source"] for i in msg["items"]][0] == "base"
 
 
+def test_long_nominatim_names_fit_the_schema():
+    """Revue vague 3, E3-03 : le nom complet de Nominatim était coupé à 120 caractères, le schéma en dit 80."""
+    long_name = "Sevrier, Annecy, Haute-Savoie, Auvergne-Rhône-Alpes, France métropolitaine, 74320, France, " * 2
+
+    class LongNet(Net):
+        def fetch(self, url, headers, timeout):
+            return json.dumps([{"display_name": long_name, "type": "village", "lat": "45.86", "lon": "6.14"}]).encode()
+
+    wm, _ = menu(LongNet())
+    (msg,) = wm.search(7, "zzqx")
+    validator("places").validate(msg)
+    (item,) = [i for i in msg["items"] if i["source"] == "nominatim"]
+    assert len(item["name"]) == 80 and item["name"].endswith("…") and item["name"].startswith("Sevrier, Annecy")
+
+
 def test_offline_never_asks_nominatim():
     wm, net = menu(network=False)
     for text in ("ventoux", "paris", "inconnu"):
@@ -95,6 +110,48 @@ def test_nominatim_at_most_one_request_per_second_with_project_user_agent():
     assert all(b - a >= 1.0 - 1e-9 for a, b in zip(net.times, net.times[1:]))
     assert net.urls[0][1]["User-Agent"] == USER_AGENT and "OpenRide" in USER_AGENT
     assert "nominatim.openstreetmap.org" in net.urls[0][0]
+
+
+def test_only_the_latest_search_asks_nominatim():
+    """Bancs du 25 novembre : une recherche par lettre tapée, réponses dans le désordre (« sevrie » affiché après
+    « sevrier ») ; une saisie déjà dépassée garde ses sources locales mais ne demande rien à Nominatim."""
+    wm, net = menu()
+    old = wm.new_search()
+    latest = wm.new_search()
+    (stale,) = wm.search(7, "sevrie", old)
+    assert net.urls == [] and all(i["source"] != "nominatim" for i in stale["items"])
+    (msg,) = wm.search(8, "sevrier", latest)
+    assert len(net.urls) == 1 and "q=sevrier" in net.urls[0][0]
+    assert msg["request_cmd_id"] == 8 and any(i["source"] == "nominatim" for i in msg["items"])
+
+
+def test_typing_in_threads_asks_nominatim_for_the_last_letters_only():
+    """Six recherches dans six fils (comme `asyncio.to_thread`) : Nominatim une requête à la fois, la dernière saisie
+    toujours servie, les saisies dépassées pendant l'attente abandonnées."""
+    import threading
+    import time as _time
+
+    asked = []
+    gate = threading.Event()
+
+    def fetch(url, headers, timeout):
+        asked.append(url)
+        gate.wait(2.0)        # première requête lente : les autres lettres arrivent pendant ce temps
+        return b"[]"
+
+    wm = WorldMenu(True, None, query_cmd=[sys.executable, str(STUB)], fetch=fetch, sleep=lambda s: None)
+    threads = []
+    for text in ("se", "sev", "sevr", "sevri", "sevrie", "sevrier"):
+        ticket = wm.new_search()
+        th = threading.Thread(target=wm.search, args=(1, text, ticket))
+        th.start()
+        threads.append(th)
+        _time.sleep(0.05)
+    gate.set()
+    for th in threads:
+        th.join(10)
+    assert asked and "q=sevrier" in asked[-1]
+    assert len(asked) <= 2, asked
 
 
 def test_empty_query_asks_nothing():

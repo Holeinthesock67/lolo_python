@@ -32,6 +32,7 @@ RANGES = {
     "lon": (-180.0, 180.0),
     "grade_pct": (-C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT),
 }
+BANK_MAX_DEG = 50.0   # colonne facultative `bank_deg` (format 1.7), même borne que `openride_core.route`
 
 
 def _load(path: Path, problems: list[str]) -> dict | None:
@@ -101,6 +102,15 @@ def _check_route(r: dict, mroute: dict, problems: list[str]) -> None:
             problems.append(f"route : « surface » doit avoir {n} valeurs")
         elif any(v not in C.SURFACES for v in surface):
             problems.append(f"route : « surface » hors de {', '.join(C.SURFACES)}")
+
+    bank = r.get("bank_deg")   # facultative, depuis 1.7 (lot VD1) ; mêmes contrôles que le core (K4-09)
+    if bank is not None:
+        if not isinstance(bank, list) or len(bank) != n:
+            problems.append(f"route : « bank_deg » doit avoir {n} valeurs")
+        elif any(not _is_number(v) for v in bank):
+            problems.append("route : « bank_deg » contient des valeurs non numériques")
+        elif any(not -BANK_MAX_DEG <= v <= BANK_MAX_DEG for v in bank):
+            problems.append(f"route : « bank_deg » hors de ± {BANK_MAX_DEG:.0f}°")
 
     cols: dict[str, list] = {}
     for key in C.ROUTE_FIELDS + ("alt_raw_m",):
@@ -622,10 +632,22 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
 
 def _check_bridges(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
     """Couche bridges (format 1.9, §8 septies, lot EA4) : ponts par tronçon, axe sur la route du parcours."""
-    b_layer = layers.get("bridges") if isinstance(layers, dict) else None
+    _check_structures(world, layers, route, problems, "bridges", "bridge", "pont")
+
+
+def _check_tunnels(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
+    """Couche tunnels (format 1.11, §8 octies, lot EA5) : tunnels par tronçon, axe sur la route du parcours."""
+    _check_structures(world, layers, route, problems, "tunnels", "tunnel", "tunnel")
+
+
+def _check_structures(world: Path, layers: dict, route: dict | None, problems: list[str], layer: str, kind: str,
+                      noun: str) -> None:
+    """Ouvrages d'une couche (ponts ou tunnels, même forme) : fichiers par tronçon, id, kind, demi-largeur, axe
+    [x, z, y] sur la route du parcours ; piles [x, z, y_tablier, y_pied] pour les ponts ; compte du manifeste."""
+    b_layer = layers.get(layer) if isinstance(layers, dict) else None
     if not isinstance(b_layer, dict) or not b_layer.get("present"):
         return
-    folder = world / "bridges"
+    folder = world / layer
     count = 0
     for chunk_file in sorted(folder.glob("chunk_*.json")) if folder.is_dir() else []:
         if not CHUNK_RE.fullmatch(chunk_file.name):
@@ -634,38 +656,41 @@ def _check_bridges(world: Path, layers: dict, route: dict | None, problems: list
         if data is None:
             continue
         if not str(data.get("version", "")).startswith("1."):
-            problems.append(f"bridges/{chunk_file.name} : version inattendue {data.get('version')!r}")
-        items = data.get("bridges")
+            problems.append(f"{layer}/{chunk_file.name} : version inattendue {data.get('version')!r}")
+        items = data.get(layer)
         if not isinstance(items, list):
-            problems.append(f"bridges/{chunk_file.name} : « bridges » n'est pas une liste")
+            problems.append(f"{layer}/{chunk_file.name} : « {layer} » n'est pas une liste")
             continue
         for item in items:
-            label = f"bridges/{chunk_file.name} ({item.get('id', '?') if isinstance(item, dict) else '?'})"
+            label = f"{layer}/{chunk_file.name} ({item.get('id', '?') if isinstance(item, dict) else '?'})"
             if not isinstance(item, dict):
-                problems.append(f"{label} : pont non objet")
+                problems.append(f"{label} : {noun} non objet")
                 continue
             count += 1
             if not isinstance(item.get("id"), str) or not item.get("id"):
                 problems.append(f"{label} : id invalide")
-            if item.get("kind") != "bridge":
+            if item.get("kind") != kind:
                 problems.append(f"{label} : kind inconnu {item.get('kind')!r}")
             if not (_is_number(item.get("half_width_m")) and float(item["half_width_m"]) > 0):
                 problems.append(f"{label} : half_width_m invalide")
-            pts, piers = item.get("points"), item.get("piers")
+            pts = item.get("points")
             if not (isinstance(pts, list) and len(pts) >= 2
                     and all(isinstance(p, list) and len(p) == 3 and all(_is_number(v) for v in p) for p in pts)):
                 problems.append(f"{label} : axe [x, z, y] invalide")
                 continue
-            if not (isinstance(piers, list)
-                    and all(isinstance(p, list) and len(p) == 4 and all(_is_number(v) for v in p) for p in piers)):
-                problems.append(f"{label} : piles [x, z, y_tablier, y_pied] invalides")
+            if kind == "bridge":
+                piers = item.get("piers")
+                if not (isinstance(piers, list)
+                        and all(isinstance(p, list) and len(p) == 4 and all(_is_number(v) for v in p) for p in piers)):
+                    problems.append(f"{label} : piles [x, z, y_tablier, y_pied] invalides")
             if route is not None:
                 axis = RouteAxis(route["x"], route["z"], route["alt_m"])
                 gap, _ = axis.nearest(np.array([p[0] for p in pts], float), np.array([p[1] for p in pts], float), 50.0)
                 if not np.all(np.isfinite(gap) & (gap < 1.0)):
-                    problems.append(f"{label} : axe du tablier hors de la route du parcours")
+                    problems.append(f"{label} : axe {'du tablier' if kind == 'bridge' else 'du tube'} hors de la "
+                                    "route du parcours")
     if isinstance(b_layer.get("count"), int) and b_layer["count"] != count:
-        problems.append(f"bridges : {count} pont(s) dans les fichiers, {b_layer['count']} au manifeste")
+        problems.append(f"{layer} : {count} {noun}(s) dans les fichiers, {b_layer['count']} au manifeste")
 
 
 def _check_roads(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
@@ -809,6 +834,7 @@ def verify_world(world: Path) -> list[str]:
     _check_coast(world, layers, route, problems)
     _check_roads(world, layers, route, problems)
     _check_bridges(world, layers, route, problems)
+    _check_tunnels(world, layers, route, problems)
     _check_segments(world, layers, route, problems)
     return problems
 

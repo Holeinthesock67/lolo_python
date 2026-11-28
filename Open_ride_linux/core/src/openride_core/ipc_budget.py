@@ -192,7 +192,7 @@ def _extras_1_4(d: dict[str, Any]) -> None:
     # (T-Q2) ; la pire trame garde quand même `erg` et `powerup` ensemble.
     for bot in d["bots"]:
         bot.update({"profile": "sprinter", "cp_w": 1234.5, "mass_kg": 123.4, "wbal_pct": 100.0,
-                    "jersey": "sprint", "gap_s": -3599.99})
+                    "jersey": "sprint", "gap_s": -3599.99, "move": "respond"})   # move : lot BA1 (1.38)
     d["segment"] = {"id": _ID, "kind": "climb", "category": "HC", "d_to_start_m": 199_999.9,
                     "elapsed_s": 3599.99, "gap_to_pr_s": -3599.99}
     d["powerup"] = {"held": "power", "active": "light", "remaining_s": 120.0}
@@ -308,6 +308,12 @@ def _extras_1_13(d: dict[str, Any]) -> None:
                         "refused": {"kind": "draft_plus", "reason": "near_finish"}}
 
 
+def _extras_1_41(d: dict[str, Any]) -> None:
+    # Temps gagné par le bonus fini (lot TT-BONUS), affiché 6 s, en même temps qu'un refus au plus lourd.
+    if "powerup" in d:
+        d["powerup"]["gain"] = {"kind": "draft_plus", "gain_s": -999.9}
+
+
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
 REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.1": _extras_1_1,
@@ -319,6 +325,7 @@ REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.7": _extras_1_7,
     "1.9": _extras_1_9,
     "1.13": _extras_1_13,
+    "1.41": _extras_1_41,
 }
 
 

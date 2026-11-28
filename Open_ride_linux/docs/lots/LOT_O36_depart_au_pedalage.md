@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Départ au pédalage : la séance attend le décor du départ, le trainer et quelques secondes de pédalage avant de lancer chrono, distance, ERG et bots ; réglable dans « Réglages › Séance » | Python + GDScript | N6, O3 | Petite | Demande du propriétaire du 31 octobre ; en PR |
+| Départ au pédalage : la séance attend le décor du départ, le trainer et quelques secondes de pédalage avant de lancer chrono, distance, ERG et bots ; réglable dans « Réglages › Séance » | Python + GDScript | N6, O3 | Petite | **Livré le 2 novembre** (PR #674) |
 
 ## 1. Objectif
 
@@ -36,3 +36,7 @@ Constat sur les journaux du PC du 30 octobre (recette 1.0, lancement `--autostar
 ## 5. Recette (PC, via le fil de fusion)
 
 En low, medium et high : lancer une séance depuis le menu sur un parcours avec terrain, ne pas pédaler pendant 20 s (écran « Start your engines », feux rouges, chrono à 0), captures de l'écran en low, medium et high à faire valider, puis pédaler : départ 3 s après. Annuler une fois avec Y. Relever dans le journal les lignes « Départ : étape … » et l'instant « Décor du départ prêt » de l'engine.
+
+## Livraison
+
+Fusionné dans `main` le 2 novembre 2026 (PR #674), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « Demande du propriétaire du 31 octobre ; en PR »).

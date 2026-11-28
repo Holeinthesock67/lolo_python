@@ -434,6 +434,8 @@ static func _validate_v2(data: Dictionary, errors: PackedStringArray) -> void:
 							_validate_biome(la["biomes"][b], label + ".biomes." + str(b), errors)
 					if la.has("fire"):
 						_validate_fire(la["fire"], label + ".fire", errors)
+					if la.has("neon"):
+						_validate_neon(la["neon"], label + ".neon", errors)
 	if data.has("surfaces"):
 		if typeof(data["surfaces"]) != TYPE_DICTIONARY:
 			errors.append("surfaces : doit être un objet")
@@ -671,6 +673,26 @@ static func _validate_fire(fire: Variant, label: String, errors: PackedStringArr
 				errors.append(label + "." + str(k) + " : couleur #RRGGBB invalide")
 		elif k == "density":
 			if not (typeof(fire[k]) in [TYPE_INT, TYPE_FLOAT]) or float(fire[k]) < 0.0 or float(fire[k]) > 2.0:
+				errors.append(label + ".density : nombre de 0 à 2 attendu")
+		else:
+			errors.append(label + " : clé inconnue " + str(k))
+
+
+## Section `neon` d'un paysage (lot NV1, ville néon) : couleurs #RRGGBB et densité de 0 à 2, toutes
+## facultatives ; clé inconnue refusée.
+const NEON_COLORS := ["pink", "cyan", "violet", "orange", "sky_top", "sky_mid", "sky_horizon", "fog"]
+
+
+static func _validate_neon(neon: Variant, label: String, errors: PackedStringArray) -> void:
+	if typeof(neon) != TYPE_DICTIONARY:
+		errors.append(label + " : doit être un objet")
+		return
+	for k in neon.keys():
+		if k in NEON_COLORS:
+			if not _is_hex_color(neon[k]):
+				errors.append(label + "." + str(k) + " : couleur #RRGGBB invalide")
+		elif k == "density":
+			if not (typeof(neon[k]) in [TYPE_INT, TYPE_FLOAT]) or float(neon[k]) < 0.0 or float(neon[k]) > 2.0:
 				errors.append(label + ".density : nombre de 0 à 2 attendu")
 		else:
 			errors.append(label + " : clé inconnue " + str(k))

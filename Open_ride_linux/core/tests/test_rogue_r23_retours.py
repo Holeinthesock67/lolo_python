@@ -178,7 +178,9 @@ def test_adrenaline_trend_gain_below_stopped():
 def test_endurance_overheat_countdown_then_melt_and_target_range():
     e = fight_engine(first="diesel", objective="endurance")
     out = step_in_room(e, 5.0, power=150.0)
-    assert out.rogue["target_pct"]["hi"] == round(overheat_limit(out.rogue["target_pct"]["lo"] / 100, B) * 100)
+    from openride_core.rogue.combat import judged_band_pct, win_target
+    tgt = win_target(e.room, 5.0, B)   # lot R28 : consigne qui gagne ; plafond = seuil de surchauffe + tolérance
+    assert out.rogue["target_pct"] == judged_band_pct(tgt, overheat_limit(tgt, B), 250.0, B)
     assert out.rogue["target_pct"]["lo"] <= out.rogue["target_pct"]["hi"]
     hot = 250.0 * (out.rogue["target_pct"]["hi"] / 100 + 0.1)
     out = step_in_room(e, 6.0, power=hot, n=round(2.0 / DT))
@@ -283,13 +285,13 @@ def test_heal_announced_when_spinning_light():
 def test_target_judged_on_displayed_power_not_raw_spikes():
     room = generate_room("diesel", "", "threshold", 240.0, RIDER, 1)
     st = combat_start(room, 1)
-    from openride_core.rogue.combat import target_at
-    tgt_w = target_at(room, 5.0) * 250
+    from openride_core.rogue.combat import win_target
+    tgt_w = win_target(room, 5.0, B) * 250   # lot R28 : la consigne écrite, celle qui gagne
     # puissance brute qui oscille de ± 60 W autour de la consigne, moyenne affichée à la consigne
     for k in range(round(10.0 / DT)):
         raw = tgt_w + (60.0 if k % 2 else -60.0)
-        st, _ = combat_step(st, CombatInputs(**_base(s_m=5.0 + 0.01 * k, power_w=raw, power_avg_w=tgt_w - 3.0)), room, B, DT)
-    assert st.adrenaline == pytest.approx(10.0 * B.adrenaline_per_s, abs=0.1)   # 5 W de marge : tout compte
+        st, _ = combat_step(st, CombatInputs(**_base(s_m=5.0 + 0.01 * k, power_w=raw, power_avg_w=tgt_w + 1.0)), room, B, DT)
+    assert st.adrenaline == pytest.approx(10.0 * B.adrenaline_per_s, abs=0.1)   # moyenne à la consigne : tout compte
 
 
 def test_overheat_ignores_raw_spikes_under_the_ceiling():

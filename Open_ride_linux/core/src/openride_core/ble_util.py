@@ -101,8 +101,17 @@ async def find_device(name: str, address: str | None, timeout: float,
         return None
     known = await known_bluez_address(name, exclude)
     if known:
-        log.info("%s non annoncé : connexion directe à l'appareil connu de BlueZ (%s)", name, known)
+        log.info("%s non annoncé : connexion directe à l'appareil connu de BlueZ (%s)", name, short_address(known))
     return known
+
+
+def short_address(address: Any) -> str:
+    """Adresse Bluetooth pour le journal : les trois derniers octets seulement (revue S6-11). Les
+    journaux de `~/OpenRide/Logs/` se collent dans les conversations ; trois octets suffisent à
+    distinguer les deux boîtiers du Click et la ceinture."""
+    text = str(address or "?")
+    parts = text.split(":")
+    return "…:" + ":".join(parts[-3:]) if len(parts) == 6 else text
 
 
 def backoff_delays(first: float = 1.0, factor: float = 2.0, maximum: float = 10.0) -> Iterator[float]:

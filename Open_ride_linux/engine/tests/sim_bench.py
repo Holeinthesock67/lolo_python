@@ -2,7 +2,7 @@
 """Banc d'essai simulé : vrai core sur Bluetooth simulé, vrai engine, captures et rapport.
 
 Usage :
-    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|demo_long|circuit|village|osm|ouvert|DOSSIER.world]
+    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|demo_long|circuit|village|osm|pont|tunnel|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side] [--camera-height M]
                  [--culling on|off] [--forest on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--at-m M1,M2…] [--out DOSSIER] [--list]
@@ -108,6 +108,13 @@ SPEED_TOLERANCE = 0.10  # vitesse imposée : médiane à ± 10 %
 LATENCY_MIN_PRESSES = 10   # lot X7 : appuis du Click appariés de bout en bout
 LATENCY_P95_MS = 150.0     # notification → image affichée, p95 (strict en fenêtre réelle)
 SPEED_WARMUP_S = 20.0   # départ arrêté : hors médiane de la vitesse
+# Vitesse imposée sur un parcours vallonné (monde ouvert, ± 13 %) : le cycliste simulé ne freine pas. En descente
+# et à l'abri d'un cycliste du décor il va plus vite que la vitesse imposée, puis il garde cet élan longtemps
+# (constante de temps de l'ordre de 25 s sur le plat). Ces échantillons-là ne disent rien de la vitesse tenue.
+SPEED_DESCENT_PCT = 0.0     # pente envoyée sous ce seuil : descente, hors médiane
+SPEED_DRAFT_MAX = 0.02      # abri au-delà : hors médiane
+SPEED_COAST_S = 15.0        # élan gardé après une descente ou un abri : hors médiane
+SPEED_MIN_SAMPLES = 30      # en dessous : médiane sur tout le parcours, avec la mention
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 # Changement d'état de la séance au journal du core (« Séance : RUNNING -> FINISHED ») : l'état lu est le
 # NOUVEL état, après la flèche, jamais le premier mot de la ligne.
@@ -152,11 +159,17 @@ SHADER_CACHE_DIR = Path.home() / ".cache" / "openride-bench" / "shaders"
 
 def link_shader_caches(home: Path, mode: str, root: Path) -> list[Path]:
     """Mode « chaud » : liens du HOME temporaire `home` vers les caches gardés dans `root` (créés au besoin) ;
-    « froid » : rien (caches vides). Renvoie les liens posés."""
-    if mode != "chaud":
+    « froid » : rien (caches vides). Renvoie les liens posés. Lot BF1, pour savoir quelle étape coûte à froid :
+    « froid-pilote » garde seulement le cache de Godot (shaders déjà traduits en SPIR-V, celui qu'un export pourrait
+    livrer) et vide ceux du pilote et des pipelines Vulkan ; « froid-godot » fait l'inverse."""
+    if mode == "froid":
         return []
+    keep = {"chaud": None, "froid-pilote": {"godot_shader_cache"},
+            "froid-godot": {"godot_vulkan", "nvidia", "mesa", "mesa_db"}}[mode]
     out = []
     for rel, name in SHADER_CACHE_LINKS:
+        if keep is not None and name not in keep:
+            continue
         target = root / name
         target.mkdir(parents=True, exist_ok=True)
         link = home / rel
@@ -164,6 +177,15 @@ def link_shader_caches(home: Path, mode: str, root: Path) -> list[Path]:
         link.symlink_to(target, target_is_directory=True)
         out.append(link)
     return out
+
+
+def caches_empty(mode: str, root: Path) -> bool:
+    """Vrai si les caches que le mode `mode` garde (tous en « chaud ») n'ont encore aucun fichier : ce passage
+    compilera tout, comme un premier lancement (lot BF1)."""
+    keep = {"chaud": None, "froid-pilote": {"godot_shader_cache"},
+            "froid-godot": {"godot_vulkan", "nvidia", "mesa", "mesa_db"}}.get(mode, set())
+    names = [name for _, name in SHADER_CACHE_LINKS if keep is None or name in keep]
+    return not any(p.is_file() for name in names if (root / name).is_dir() for p in (root / name).rglob("*"))
 
 
 class BenchProc(Proc):
@@ -309,8 +331,9 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
                         "--name", CIRCUIT_NAME, "--title", "Circuit des Prés"], check=True, stdout=subprocess.DEVNULL)
         shutil.copytree(work / f"{CIRCUIT_NAME}.world", routes / f"{CIRCUIT_NAME}.world", dirs_exist_ok=True)
         return CIRCUIT_NAME
-    if kind in ("village", "osm", "pont"):
-        script = {"village": "make_sim_world.py", "osm": "make_osm_world.py", "pont": "make_bridge_world.py"}[kind]
+    if kind in ("village", "osm", "pont", "tunnel"):
+        script = {"village": "make_sim_world.py", "osm": "make_osm_world.py", "pont": "make_bridge_world.py",
+                  "tunnel": "make_tunnel_world.py"}[kind]
         problem = compiler_problem(world_layers(kind))
         if problem:
             print(f"ÉCHEC monde {kind} : {problem}", file=sys.stderr)
@@ -323,18 +346,19 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, circuit, village, osm, pont, ouvert ou dossier .world)")
+        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, circuit, village, osm, pont, tunnel, ouvert ou dossier .world)")
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
 
 def world_layers(kind: str) -> tuple[str, ...]:
-    """Couches que le script du monde `village`, `osm` ou `pont` (lot EA4) demande au compilateur."""
+    """Couches que le script du monde `village`, `osm`, `pont` (lot EA4) ou `tunnel` (lot EA5) demande au compilateur."""
     import make_bridge_world
     import make_osm_world
     import make_sim_world
+    import make_tunnel_world
     return ("route", "terrain") + {"village": make_sim_world.LAYERS, "osm": make_osm_world.LAYERS,
-                                   "pont": make_bridge_world.LAYERS}[kind]
+                                   "pont": make_bridge_world.LAYERS, "tunnel": make_tunnel_world.LAYERS}[kind]
 
 
 def missing_layers(wanted: tuple[str, ...], known: tuple[str, ...]) -> list[str]:
@@ -439,6 +463,12 @@ class Bench:
         home = tmp / "home"
         home.mkdir()
         self.home = home
+        # Lot BF1 (banc PC du 26/11) : un passage « chaud » sur des caches encore vides (premier passage d'une PR,
+        # cache séparé par PR) est un premier lancement : jugé à froid, et dit au journal.
+        self.shaders_judged = a.shaders
+        if a.shaders != "froid" and caches_empty(a.shaders, a.shader_cache_dir):
+            self.shaders_judged = "froid"
+            r.check(None, "caches de shaders", f"vides avant ce passage « {a.shaders} » : premier lancement, jugé à froid")
         link_shader_caches(home, a.shaders, a.shader_cache_dir)
         for name, table in (("powerups.toml", self.powerups), ("grandprix.toml", self.grandprix)):
             if table is not None:
@@ -735,7 +765,8 @@ class Bench:
         if self.sampler is not None:
             rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
             self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}",
-                                                         real_window=a.native, engine_dir=self.out)
+                                                         real_window=a.native, engine_dir=self.out,
+                                                         shaders=getattr(self, "shaders_judged", a.shaders))   # lot BF1
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
             if self.endurance:
@@ -967,19 +998,38 @@ def shot_timing(s: dict[str, Any]) -> str:
 
 def speed_check(recs: list[dict[str, Any]], target_kmh: float, tolerance: float = SPEED_TOLERANCE,
                 warmup_s: float = SPEED_WARMUP_S) -> tuple[bool, str]:
-    """Vitesse médiane du journal (m/s, 1 Hz) après la mise en vitesse, comparée à la vitesse imposée."""
+    """Vitesse médiane du journal (m/s, 1 Hz) après la mise en vitesse, comparée à la vitesse imposée.
+
+    Seuls comptent les échantillons où la vitesse imposée se tient : ni descente, ni abri, ni élan d'une
+    descente ou d'un abri des `SPEED_COAST_S` dernières secondes (le cycliste simulé ne freine pas)."""
     ts = [x["ts"] for x in recs if isinstance(x.get("ts"), (int, float))]
     if not ts:
         return False, "aucun échantillon de vitesse au journal"
     t0 = min(ts)
-    v = sorted(float(x["speed"]) * 3.6 for x in recs if isinstance(x.get("speed"), (int, float))
-               and isinstance(x.get("ts"), (int, float)) and x["ts"] - t0 >= warmup_s)
-    if not v:
+    rows = sorted((x for x in recs if isinstance(x.get("speed"), (int, float))
+                   and isinstance(x.get("ts"), (int, float)) and x["ts"] - t0 >= warmup_s), key=lambda x: x["ts"])
+    if not rows:
         return False, f"aucun échantillon de vitesse après {warmup_s:.0f} s"
+    held, last_free = [], -math.inf
+    for x in rows:
+        grade = x.get("grade_sent", x.get("grade"))
+        draft = x.get("draft")
+        free = (isinstance(grade, (int, float)) and grade < SPEED_DESCENT_PCT) or \
+            (isinstance(draft, (int, float)) and draft > SPEED_DRAFT_MAX)
+        if free:
+            last_free = x["ts"]
+        elif x["ts"] - last_free > SPEED_COAST_S:
+            held.append(float(x["speed"]) * 3.6)
+    every = sorted(float(x["speed"]) * 3.6 for x in rows)
+    if len(held) >= SPEED_MIN_SAMPLES:
+        v, note = sorted(held), (f" ; hors descentes, abri et élan : {len(held)}/{len(every)} s retenues"
+                                 if len(held) < len(every) else "")
+    else:
+        v, note = every, f" ; pas assez de plat ni de montée tenus ({len(held)} s) : tout le parcours compté"
     med = v[len(v) // 2]
     ok = abs(med - target_kmh) <= tolerance * target_kmh
     return ok, (f"médiane {med:.1f} km/h sur {len(v)} s (attendu {target_kmh:.1f} ± {tolerance * target_kmh:.1f}), "
-                f"de {v[0]:.1f} à {v[-1]:.1f} km/h")
+                f"de {v[0]:.1f} à {v[-1]:.1f} km/h{note}")
 
 
 # --- rapport HTML ------------------------------------------------------------------------------
@@ -1181,7 +1231,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
         "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), circuit (Circuit des Prés, boucle de 3 km du Grand Prix, lot GPL1), village (bâtiments, montée et descente), osm, pont (ponts dessinés, lot EA4), ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
+    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), circuit (Circuit des Prés, boucle de 3 km du Grand Prix, lot GPL1), village (bâtiments, montée et descente), osm, pont (ponts dessinés, lot EA4), tunnel (tunnel sous une crête, lot EA5), ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
                     "l'emporte sur le monde du scénario")
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")
@@ -1230,9 +1280,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))
     ap.add_argument("--keep", action="store_true", help="garder le HOME temporaire")
-    ap.add_argument("--shaders", default="chaud", choices=("chaud", "froid"),
+    ap.add_argument("--shaders", default="chaud", choices=("chaud", "froid", "froid-pilote", "froid-godot"),
                     help="caches de shaders : chaud (défaut, gardés d'un passage à l'autre comme au quotidien) ou "
-                         "froid (vides, premier lancement après une installation) (lot PI1)")
+                         "froid (vides, premier lancement après une installation) (lot PI1) ; froid-pilote : seul "
+                         "le cache de Godot gardé, froid-godot : seuls ceux du pilote et de Vulkan (lot BF1)")
     ap.add_argument("--shader-cache-dir", type=Path, default=SHADER_CACHE_DIR,
                     help="dossier des caches de shaders gardés en mode chaud (défaut ~/.cache/openride-bench/shaders)")
     ap.add_argument("--list", action="store_true", help="énumérer les scénarios et quitter")

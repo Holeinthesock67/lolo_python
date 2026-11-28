@@ -34,7 +34,7 @@ global uniform float season_grass_dry;
 
 uniform float sway_amplitude_m = 0.45;   // déplacement de la cime par vent de 60 km/h, en mètres
 uniform float sway_height_m = 5.4;       // hauteur du modèle (cime)
-uniform float sway_frequency_hz = 0.35;  // oscillation par vent calme ; × 1,6 en pleine rafale
+uniform float sway_frequency_hz = 0.35;  // oscillation (Hz de phase) ; la rafale accélère la phase elle-même
 uniform float roughness_value = 0.85;
 // Vent propre au matériau (touffes d'herbe : vent apparent) quand use_local_wind est vrai.
 uniform bool use_local_wind = false;
@@ -100,8 +100,9 @@ void vertex() {
 			VERTEX = vec3(0.0);
 		}
 	}
-	float freq = sway_frequency_hz * (1.0 + 0.6 * wind_gust);
-	float swing = 0.55 + 0.45 * sin(wind_phase * freq * 6.2831853 + offset);
+	// Fréquence constante : la rafale accélère déjà wind_phase (wind_model.gd, revue E12-51). Ne jamais
+	// multiplier wind_phase par un facteur variable : la vitesse apparente dériverait avec la durée de la séance.
+	float swing = 0.55 + 0.45 * sin(wind_phase * sway_frequency_hz * 6.2831853 + offset);
 	float amp = sway_amplitude_m * strength * (1.0 + 0.8 * wind_gust) * h * h * swing;
 	vec3 local_disp = inverse(mat3(MODEL_MATRIX)) * (dir * amp);
 	VERTEX += vec3(local_disp.x, 0.0, local_disp.z);

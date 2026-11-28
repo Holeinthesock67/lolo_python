@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 import tomllib
 from dataclasses import asdict, dataclass, field, replace
@@ -74,6 +75,8 @@ CHOSEN_NEEDS = (*NEEDS, "recovery", "ftp_test")   # « Choisir un autre besoin �
 RACE_KINDS = ("course", "championnat")           # « Ma prochaine course » (plan §3, S6)
 MATCH_TOLERANCE_S = 60.0
 FACTS_VERSION = 3   # version des faits du cache `coach.json` (2 : course disputée, lot CO6 ; 3 : revue RC13)
+
+log = logging.getLogger(__name__)
 
 
 class CoachError(ValueError):
@@ -292,6 +295,69 @@ def build_signals(facts: Iterable[SessionFacts], ftp_w: float, today: date, tabl
     }
 
 
+# --- courbe de forme (lot FO1, pur) ----------------------------------------------------------------
+
+def fitness_series(facts: Iterable[SessionFacts], today: date, table: dict[str, Any]) -> dict[str, Any] | None:
+    """Courbe de forme de « Ma puissance » (lot FO1) : condition (CTL) et fatigue (ATL) jour par jour, mêmes
+    constantes et même amorce que `build_signals`, un point tous les `step_days` jours sur les `days` derniers
+    jours (le dernier point est `today`). Points de charge (TSS) seulement : aucune puissance ni FTP. None
+    sans aucune séance sur la fenêtre d'amorce."""
+    win, cfg = table["window"], table.get("fitness") or {}
+    days, step = max(int(cfg.get("days", 84)), 7), max(int(cfg.get("step_days", 2)), 1)
+    span = max(int(win["history_days"]), days)
+    start = today - timedelta(days=span - 1)
+    by_day: dict[date, float] = {}
+    sessions: dict[date, int] = {}
+    for f in facts:
+        if start <= f.day <= today:
+            by_day[f.day] = by_day.get(f.day, 0.0) + f.tss
+            sessions[f.day] = sessions.get(f.day, 0) + 1
+    if not by_day:
+        return None
+    ctl_k, atl_k = int(win["ctl_days"]), int(win["atl_days"])
+    ctl = atl = 0.0
+    ctls: list[float] = []
+    atls: list[float] = []
+    for i in range(span):
+        tss = by_day.get(start + timedelta(days=i), 0.0)
+        ctl += (tss - ctl) / ctl_k
+        atl += (tss - atl) / atl_k
+        ctls.append(ctl)
+        atls.append(atl)
+    idx = list(range(span - 1, span - days - 1, -step))[::-1]
+    first = today - timedelta(days=days - 1)
+    weeks = [sum(n for d, n in sessions.items() if d >= first and (d - first).days // 7 == w)
+             for w in range(-(-days // 7))]
+    form = ctl - atl
+    label = next((lab for lab in cfg.get("labels", []) if form >= float(lab["min"])), None)
+    trend_pts = float(cfg.get("trend_min_pts", 2))
+    delta = ctl - ctls[-8] if span >= 8 else 0.0
+    trend = "up" if delta >= trend_pts else ("down" if delta <= -trend_pts else "flat")
+    weeks_up = 0   # semaines de suite où la condition a monté
+    for w in range(1, days // 7 + 1):
+        if span - 1 - 7 * w < 0 or ctls[span - 1 - 7 * (w - 1)] - ctls[span - 1 - 7 * w] <= 0:
+            break
+        weeks_up = w
+    return {"days": days, "step_days": step, "ctl": [round(ctls[i]) for i in idx], "atl": [round(atls[i]) for i in idx],
+            "weeks": weeks, "ctl_now": round(ctl, 1), "atl_now": round(atl, 1), "form": round(form, 1),
+            "trend": trend, "weeks_up": weeks_up,
+            "label": label["key"] if label else None, "label_text": label["text"] if label else None}
+
+
+# --- objectif de la semaine (lot OS1, pur) --------------------------------------------------------
+
+def week_goal(facts: Iterable[SessionFacts], today: date, target: int, table: dict[str, Any]) -> dict[str, Any] | None:
+    """Objectif de la semaine de l'accueil (lot OS1) : séances comptées de la semaine ISO de `today` (lundi à
+    dimanche, heure locale) d'au moins `[week] min_session_s`, contre `target` séances ; None si `target` vaut 0
+    (« aucun » : pas de ligne). `days_left` compte aujourd'hui."""
+    if target <= 0:
+        return None
+    monday = today - timedelta(days=today.weekday())
+    min_s = float((table.get("week") or {}).get("min_session_s", 1200))
+    done = sum(1 for f in facts if monday <= f.day <= today and f.duration_s >= min_s)
+    return {"target": int(target), "done": done, "days_left": 7 - today.weekday(), "reached": done >= target}
+
+
 # --- règles (pur) ---------------------------------------------------------------------------------
 
 @dataclass
@@ -412,7 +478,13 @@ def recommend(signals: dict[str, Any], inputs: Inputs, today: date, table: dict[
 
     # R4 : FTP trop ancienne pour des zones justes.
     age = signals["ftp_age_days"]
-    if (age is None or age > rules["r4_ftp_age_days"]) and form > rules["r4_min_form"]:
+    curve = signals.get("curve") or {}
+    review = curve.get("review")
+    if review and form > rules["r4_min_form"]:   # lot PP8 : la FTP estimée s'écarte de plus de 5 %
+        return advice("ftp_test", "R4", f"Ta FTP estimée ({review['estimate_w']} W) s'écarte de plus de 5 % de ta "
+                      f"FTP réglée ({review['ftp_set_w']} W) : un test de rampe la confirmera.", dur["ftp_test"])
+    confirmed = curve.get("confirmed", False)   # estimation Fiable à moins de 5 % : pas de test à date fixe
+    if (age is None or age > rules["r4_ftp_age_days"]) and form > rules["r4_min_form"] and not confirmed:
         since = (f"Ta FTP date du test du {signals['ftp_test_date'].strftime('%d/%m')}"
                  if signals["ftp_test_date"] else "Aucun test de FTP dans tes séances")
         return advice("ftp_test", "R4", f"{since} : un test recalera tes zones.", dur["ftp_test"])
@@ -533,11 +605,30 @@ def race_weak(signals: dict[str, Any], table: dict[str, Any]) -> tuple[str, str]
     return cause, f"{CAUSE_TEXT[cause]} {counts[cause]} fois sur tes {len(races)} dernières courses"
 
 
+# Durées du point faible de la courbe (lot PP5) -> clés de la table `[profile]`.
+CURVE_KEYS = {5: "5s", 60: "1min", 300: "5min", 1200: "20min"}
+
+
+def curve_signals(profile: dict[str, Any] | None, estimate: dict[str, Any] | None) -> dict[str, Any]:
+    """Signal « courbe » du coach (lot PP8) depuis « Se connaître » (PP5) et la FTP estimée (PP2) :
+    point faible (`weak_s`), `review` ({estimate_w, ftp_set_w} si l'écart dépasse 5 %), `confirmed` (estimation
+    Fiable à moins de 5 % : le test de FTP n'est plus proposé à date fixe)."""
+    out: dict[str, Any] = {"weak_s": (profile or {}).get("weak"), "review": None, "confirmed": False}
+    if estimate and estimate.get("estimate"):
+        if estimate.get("review"):
+            out["review"] = {"estimate_w": estimate["estimate"]["ftp_w"], "ftp_set_w": estimate["ftp_set_w"]}
+        elif estimate.get("confidence") == "Fiable":
+            out["confirmed"] = True
+    return out
+
+
 def profile_weak(signals: dict[str, Any], table: dict[str, Any]) -> str | None:
     """Besoin du point faible du profil de puissance (plus bas rapport réel / attendu)."""
     profile = signals.get("profile")
-    if not profile:
-        return None
+    if not profile:   # lot PP8 : sans test récent, le point faible de « Se connaître » (PP5)
+        weak = (signals.get("curve") or {}).get("weak_s")
+        key = CURVE_KEYS.get(weak) if weak is not None else None
+        return table["profile"]["need"].get(key) if key else None
     ref, need = table["profile"]["reference"], table["profile"]["need"]
     key = min(profile, key=lambda k: profile[k] / ref[k])
     return need[key]
@@ -545,7 +636,7 @@ def profile_weak(signals: dict[str, Any], table: dict[str, Any]) -> str | None:
 
 def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inputs,
            table: dict[str, Any] | None = None, library: Iterable[WorkoutNeed] | None = None,
-           candidates: list[Any] | None = None) -> dict[str, Any]:
+           candidates: list[Any] | None = None, curve: dict[str, Any] | None = None) -> dict[str, Any]:
     """Conseil complet (sortie `--json`) à partir des faits des séances, de la bibliothèque et des
     parcours du catalogue (`coach_game.Candidate`, séance de jeu du lot CO9 ; aucune sans eux)."""
     from . import coach_game
@@ -554,6 +645,7 @@ def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inp
     facts = list(facts)
     library = list(library or [])
     sig = build_signals(facts, ftp_w, today, table)
+    sig["curve"] = curve   # lot PP8 : courbe de puissance (point faible, signal FTP), None sans elle
     yesterday = [r for r in sig["races"] if r["date"] == today - timedelta(days=1)]
     if yesterday and not inputs.raced_yesterday:
         inputs = replace(inputs, raced_yesterday=True, yesterday_tss=sum(r["tss"] for r in yesterday))
@@ -581,7 +673,7 @@ def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inp
             "days_since_hard": sig["days_since_hard"], "hard_last_7d": sig["hard_last_7d"],
             "ftp_w": round(ftp_w, 1), "ftp_test_date": iso(sig["ftp_test_date"]),
             "ftp_age_days": sig["ftp_age_days"], "profile": sig["profile"],
-            "profile_weak": profile_weak(sig, table),
+            "profile_weak": profile_weak(sig, table), "curve": sig.get("curve"),
             "races": [{"date": r["date"].isoformat(), "kind": r["kind"], "place": r["place"], "cause": r["cause"]}
                       for r in sig["races"][:int(table["races"]["window_count"])]],
             "last_by_need": {n: iso(d) for n, d in sig["last_by_need"].items()},
@@ -900,10 +992,11 @@ def format_text(r: dict[str, Any]) -> str:
 def advice_today(today: date, ftp_w: float, objective: str, minutes: int, directory: Path | None = None,
                  workouts_dir: Path | None = None, watch: dict[str, Any] | None = None,
                  next_race: tuple[date, str] | None = None, chosen_need: str | None = None,
-                 table: dict[str, Any] | None = None, routes_root: Path | None = None) -> dict[str, Any]:
+                 table: dict[str, Any] | None = None, routes_root: Path | None = None,
+                 week_target: int = 0) -> dict[str, Any]:
     """Conseil du jour du profil en cours, lu sur le disque : même calcul pour `openride-core coach` et
     pour la commande IPC `get_coach` (lot CO3). Sans `watch` ni `next_race`, les saisies du jour de
-    `conseil.json` sont reprises."""
+    `conseil.json` sont reprises. `week_target` : objectif de la semaine en séances (lot OS1, 0 : aucun)."""
     from . import coach_game
     from . import config as config_mod
 
@@ -921,7 +1014,30 @@ def advice_today(today: date, ftp_w: float, objective: str, minutes: int, direct
         candidates = coach_game.load_candidates(routes_root)
     except Exception:   # catalogue illisible : le conseil reste, sans séance de jeu
         candidates = []
-    return advise(facts, ftp_w, today, inputs, table, library, candidates)
+    result = advise(facts, ftp_w, today, inputs, table, library, candidates, curve_of_profile(directory, ftp_w))
+    result["week_goal"] = week_goal(facts, today, week_target, table)   # lot OS1
+    return result
+
+
+def curve_of_profile(directory: Path | None, ftp_w: float) -> dict[str, Any] | None:
+    """Signal « courbe » du profil en cours (lot PP8), depuis le cache commun du lot PP1 ; None si illisible."""
+    import time
+
+    from . import profiles
+    from .tools import ftp_estimate, power_curve as pc, power_profile
+
+    try:
+        ctx = profiles.current()
+        now = time.time()
+        act = Path(directory) if directory is not None else ctx.activities_dir
+        kept = pc.kept_sessions(pc.session_entries(act, ctx.mmp_cache), ctx.counted_sources)
+        m6 = pc.window_curve(kept, pc.WINDOWS["months6"], now)
+        w6 = pc.window_curve(kept, pc.WINDOWS["weeks6"], now)
+        return curve_signals(power_profile.profile_from_windows(m6, w6, now),
+                             ftp_estimate.estimate_from_sessions(kept, ftp_w, now))
+    except Exception:
+        log.exception("Courbe de puissance illisible pour le coach : conseil sans elle")
+        return None
 
 
 def run(args: argparse.Namespace) -> int:
@@ -956,7 +1072,7 @@ def run(args: argparse.Namespace) -> int:
             if race:
                 save_next_race(parsed)
         result = advice_today(today, ftp, objective, minutes, args.directory, args.workouts, watch, race,
-                              args.besoin, table, args.routes)
+                              args.besoin, table, args.routes, cfg.coach.seances_semaine)
     except (CoachError, config_mod.ConfigError, ValueError) as exc:
         print(f"openride-core coach : {exc}", file=sys.stderr)
         return 1
