@@ -25,8 +25,9 @@ qui manque à un village.
 
 Garde-fou : les maisons sont regroupées en villages (moins de VILLAGE_LINK_M entre deux maisons voisines, au
 moins VILLAGE_MIN maisons) ; un village dont plus de VILLAGE_ALERT_SHARE des maisons sont retirées est signalé
-dans le rapport (la route est à revoir plutôt que de livrer un village vide). Rien n'est remis : c'est une
-alerte, pas une correction.
+dans le rapport (la route est à revoir plutôt que de livrer un village vide). Plafond (1er tour de correction,
+28/11) : dans un village, les retraits pour le socle s'arrêtent à SOCLE_VILLAGE_CAP des maisons, les plus hauts
+socles d'abord ; les autres restent telles quelles et sont comptées à part.
 """
 from __future__ import annotations
 
@@ -58,6 +59,8 @@ ROAD_AXIS_CLEAR_M = 1.5
 VILLAGE_LINK_M = 60.0
 VILLAGE_MIN = 8
 VILLAGE_ALERT_SHARE = 0.30
+# Part au plus des maisons d'un village retirées (toutes raisons) avant de garder les socles trop hauts
+SOCLE_VILLAGE_CAP = 0.25
 # Pas des points lus le long des façades (osm_streamer.gd GROUND_SAMPLE_M)
 GROUND_SAMPLE_M = 4.0
 
@@ -328,6 +331,9 @@ class Decision:
     kept: list[dict[str, Any]]
     action: str            # "garde", "rectangle", "paliers", "retire"
     reason: str | None = None
+    socle_m: float = 0.0   # socle visible (m affichés) ; retrait pour socle : la maison telle qu'elle resterait
+    fallback: list[dict[str, Any]] = field(default_factory=list)
+    fallback_action: str = "garde"
 
 
 def _socle_ok(drop_m: float, k: float) -> bool:
@@ -379,10 +385,10 @@ def decide(b: dict[str, Any], height: HeightFn, water: WaterIndex, k: float = DI
         b, outer, action = nb, ring, "rectangle"
         drop = footprint_drop(outer, height, float(b["base_y"]))
 
-    # 3. Socle visible trop haut
+    # 3. Socle visible trop haut (le plafond par village peut la garder : `simplify_buildings`)
     if not _socle_ok(drop, k):
-        return Decision([], "retire", REASON_SOCLE)
-    return Decision([b], action)
+        return Decision([], "retire", REASON_SOCLE, socle_m=drop * k, fallback=[b], fallback_action=action)
+    return Decision([b], action, socle_m=drop * k)
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -429,6 +435,8 @@ class SimplifyReport:
     split_pieces: int = 0
     removed: dict[str, int] = field(default_factory=lambda: {r: 0 for r in REASONS})
     road_removed: int = 0
+    socle_capped: int = 0
+    socle_percentiles: dict[str, float] = field(default_factory=dict)
     villages: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -448,6 +456,7 @@ class SimplifyReport:
                 "remplissage_retire": FILL_DROP, "marge_eau_m": WATER_MARGIN_M,
                 "axe_chaussee_m": ROAD_AXIS_CLEAR_M, "village_lien_m": VILLAGE_LINK_M,
                 "village_min": VILLAGE_MIN, "village_alerte_part": VILLAGE_ALERT_SHARE,
+                "plafond_socle_village": SOCLE_VILLAGE_CAP,
             },
             "maisons": self.houses,
             "gardees_telles_quelles": self.kept,
@@ -457,6 +466,8 @@ class SimplifyReport:
             "retirees": dict(self.removed),
             "retirees_total": self.removed_total,
             "retirees_par_la_chaussee_engine": self.road_removed,
+            "socle_trop_haut_gardees_plafond": self.socle_capped,
+            "socle_affiche_villages_m": dict(self.socle_percentiles),
             "villages": self.villages,
             "villages_en_alerte": len(self.alerts),
         }
@@ -467,7 +478,8 @@ class SimplifyReport:
             f"paliers {self.split} ({self.split_pieces} morceaux), retirées {self.removed_total} "
             f"(socle {self.removed[REASON_SOCLE]}, long {self.removed[REASON_LONG]}, "
             f"forme {self.removed[REASON_SHAPE]}, eau {self.removed[REASON_WATER]}), "
-            f"sur la chaussée (engine) {self.road_removed}"
+            f"sur la chaussée (engine) {self.road_removed} ; socle trop haut gardées (plafond des villages) "
+            f"{self.socle_capped} ; socle affiché dans les villages {self.socle_percentiles}"
         )]
         for v in self.alerts:
             out.append(f"  ALERTE village {v['id']} ({v['x']:.0f}, {v['z']:.0f}) : {v['retirees']}/{v['maisons']} "
@@ -480,48 +492,80 @@ def simplify_buildings(res: OsmLayersResult, route: dict[str, Any], height: Heig
     """Applique les règles MP1 à `res.buildings_chunks` (en place) et rend le rapport.
 
     `height` : terrain réel ; `chunk_of` : tronçon d'un centre de bâtiment (les paliers d'un long bâtiment
-    peuvent changer de tronçon). Les compteurs du manifeste suivent (`buildings_count`)."""
+    peuvent changer de tronçon). Les compteurs du manifeste suivent (`buildings_count`).
+
+    Plafond par village (1er tour de correction, recompilation du 28/11 : la règle du socle seule retirait 53 à
+    99 % des maisons des villages d'Alpe d'Huez, du Ballon d'Alsace et de Bédoin) : dans un village, les retraits
+    pour le socle se font par socle décroissant et s'arrêtent quand le village a perdu SOCLE_VILLAGE_CAP de ses
+    maisons (toutes raisons comprises) ; les autres maisons au socle trop haut restent, comptées à part. Hors
+    village (hameaux, maisons isolées), la règle s'applique sans plafond."""
     water = WaterIndex.from_chunks(res.water_chunks)
     road = RoadAxisIndex(route)
     rep = SimplifyReport()
     new_chunks: dict[int, list[dict[str, Any]]] = {}
-    centres: list[tuple[float, float]] = []
-    fates: list[str] = []   # "garde", "retire", "route"
+    items: list[tuple[int, Decision]] = []
 
     for k_chunk in sorted(res.buildings_chunks):
         for b in res.buildings_chunks[k_chunk]:
             if not is_house(b):
                 new_chunks.setdefault(k_chunk, []).append(b)
                 continue
-            rep.houses += 1
-            centres.append(ring_centroid(b["outer"]) if len(b.get("outer") or []) >= 3 else (0.0, 0.0))
-            d = decide(b, height, water, k)
-            if d.action == "retire":
-                rep.removed[d.reason or REASON_SOCLE] += 1
-                fates.append("retire")
-                continue
-            if d.action == "rectangle":
-                rep.rectangles += 1
-            elif d.action == "paliers":
-                rep.split += 1
-                rep.split_pieces += len(d.kept)
-            else:
-                rep.kept += 1
-            on_road = False
-            for nb in d.kept:
-                if road.on_road(nb["outer"]):
-                    on_road = True
-                cx, cz = ring_centroid(nb["outer"])
-                kk = chunk_of(cx, cz) if d.action == "paliers" else k_chunk
-                new_chunks.setdefault(k_chunk if kk is None else kk, []).append(nb)
-            if on_road:
-                rep.road_removed += 1
-            fates.append("route" if on_road else "garde")
+            items.append((k_chunk, decide(b, height, water, k)))
+    centres = []
+    for _, d in items:
+        ring = (d.kept or d.fallback or [{}])[0].get("outer") or []
+        centres.append(ring_centroid(ring) if len(ring) >= 3 else (0.0, 0.0))
+    rep.houses = len(items)
 
     groups = _villages(centres)
     by_group: dict[int, list[int]] = {}
     for i, g in enumerate(groups):
         by_group.setdefault(g, []).append(i)
+    in_village = [len(by_group[groups[i]]) >= VILLAGE_MIN for i in range(len(items))]
+
+    # Plafond des retraits pour le socle, village par village
+    for members in by_group.values():
+        if len(members) < VILLAGE_MIN:
+            continue
+        budget = math.floor(SOCLE_VILLAGE_CAP * len(members))
+        budget -= sum(1 for i in members if items[i][1].action == "retire" and items[i][1].reason != REASON_SOCLE)
+        socle = sorted((i for i in members if items[i][1].reason == REASON_SOCLE),
+                       key=lambda i: -items[i][1].socle_m)
+        for rank, i in enumerate(socle):
+            if rank >= max(0, budget):
+                d = items[i][1]
+                items[i] = (items[i][0], Decision(d.fallback, d.fallback_action, None, d.socle_m))
+                rep.socle_capped += 1
+
+    fates: list[str] = []   # "garde", "retire", "route"
+    socles: list[float] = []
+    for (k_chunk, d), village in zip(items, in_village):
+        if village:
+            socles.append(d.socle_m)
+        if d.action == "retire":
+            rep.removed[d.reason or REASON_SOCLE] += 1
+            fates.append("retire")
+            continue
+        if d.action == "rectangle":
+            rep.rectangles += 1
+        elif d.action == "paliers":
+            rep.split += 1
+            rep.split_pieces += len(d.kept)
+        else:
+            rep.kept += 1
+        on_road = False
+        for nb in d.kept:
+            if road.on_road(nb["outer"]):
+                on_road = True
+            cx, cz = ring_centroid(nb["outer"])
+            kk = chunk_of(cx, cz) if d.action == "paliers" else k_chunk
+            new_chunks.setdefault(k_chunk if kk is None else kk, []).append(nb)
+        if on_road:
+            rep.road_removed += 1
+        fates.append("route" if on_road else "garde")
+    if socles:
+        rep.socle_percentiles = {f"p{q}": round(float(np.percentile(socles, q)), 2) for q in (25, 50, 75, 90)}
+
     vid = 0
     for g in sorted(by_group, key=lambda g: min(by_group[g])):
         members = by_group[g]

@@ -166,15 +166,36 @@ def test_simplify_buildings_counts_and_report(tmp_path):
     assert data["lot"] == "MP1" and data["maisons"] == 10 and data["villages_en_alerte"] == 0
 
 
-def test_village_guard_flags_emptied_village():
-    # Village de 10 maisons sur pente forte : toutes retirées → alerte (> 30 %)
-    houses = [_house(f"h{i}", _rect(i * 15, 0, i * 15 + 10, 8), base_y=i * 15 * 0.15) for i in range(10)]
+def test_village_cap_keeps_most_high_socles():
+    # Village de 10 maisons sur pente forte : seules les 2 aux socles les plus hauts (25 %) sont retirées
+    houses = [_house(f"h{i}", _rect(i * 15, 0, i * 15 + 10 + i, 8), base_y=i * 15 * 0.15) for i in range(10)]
     res = _res({0: houses})
     rep = BS.simplify_buildings(res, FAR_ROUTE, slope(0.15), lambda x, z: 0)
-    assert rep.removed[BS.REASON_SOCLE] == 10
+    assert rep.removed[BS.REASON_SOCLE] == 2 and rep.socle_capped == 8
+    assert res.buildings_count == 8
+    kept = {b["id"] for b in res.buildings_chunks[0]}
+    assert "h9" not in kept and "h8" not in kept   # les plus larges, donc les plus hauts socles
+    assert not rep.alerts
+    assert rep.socle_percentiles["p50"] > BS.SOCLE_MAX_M
+
+
+def test_village_guard_flags_emptied_village():
+    # Village de 10 maisons au bord d'un lac : retirées (eau, sans plafond) → alerte (> 30 %)
+    houses = [_house(f"h{i}", _rect(i * 15, 0, i * 15 + 10, 8)) for i in range(10)]
+    lake = {0: {"lines": [], "areas": [{"id": "l", "kind": "lake", "level_y": 0.0,
+                                         "outer": _rect(-20, 9, 200, 100), "holes": []}]}}
+    res = _res({0: houses}, lake)
+    rep = BS.simplify_buildings(res, FAR_ROUTE, flat, lambda x, z: 0)
+    assert rep.removed[BS.REASON_WATER] == 10
     assert res.buildings_count == 0 and res.buildings_chunks == {}
     assert len(rep.alerts) == 1 and rep.alerts[0]["part"] == 1.0
     assert any("ALERTE" in ln for ln in rep.lines())
+
+
+def test_isolated_houses_have_no_cap():
+    houses = [_house(f"h{i}", _rect(i * 200, 0, i * 200 + 10, 8), base_y=i * 200 * 0.15) for i in range(3)]
+    rep = BS.simplify_buildings(_res({0: houses}), FAR_ROUTE, slope(0.15), lambda x, z: 0)
+    assert rep.removed[BS.REASON_SOCLE] == 3 and rep.socle_capped == 0
 
 
 def test_small_hamlet_is_not_a_village():

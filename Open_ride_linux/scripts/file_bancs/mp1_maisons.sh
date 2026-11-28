@@ -45,7 +45,8 @@ B.simplify_for_compile = lambda *a, **k: B.SimplifyReport(); sys.exit(cli.main(s
 }
 
 captures() {
-  ls "$BASE"/routes-apres/*.world >/dev/null 2>&1 || compiler || return 1
+  # Mondes refaits si leur rapport date d'avant le plafond des villages (1er tour de correction, 28/11)
+  grep -q plafond_socle_village "$BASE"/routes-apres/*.world/buildings/rapport_maisons.json 2>/dev/null || compiler || return 1
   local rc=0
   for w in "$BASE"/routes-apres/*.world; do
     local name; name=$(basename "$w" .world)

@@ -30,4 +30,4 @@ delai_min = 20
 [[pr.etape]]
 id = "captures"
 commande = "bash scripts/file_bancs/mp1_maisons.sh captures {sortie}"
-delai_min = 70
+delai_min = 90
