@@ -1,0 +1,661 @@
+{
+ "description": "Répétition de l'essai guidé du dimanche 29/11 (programme du propriétaire, 28/11) : à jouer avec --profils-source (COPIE du vrai profil, jamais le vrai) et --parcours demo-corniche. Voie clavier (recherche du monde ouvert tapée au clavier ; mêmes gestes A, Y, Z que le Click). 1) Profil : renommer puis remettre le nom, vider le profil d'essai, Historique, sans « Core non joignable » (#1173). 2) Garage, Collection, Ligue. 3) Course en 2 tours de la Corniche : échauffement automatique (#1178) passé par Z court, arrivée, fin par Y puis A maintenu deux fois de suite (second appui du Click, #1181) : le bilan reste. 4) Cyber-Rogue 30 min jusqu'au retour au calme, écourté de la même façon : bilan gardé. 5) Relief exagéré à 150 %, relance, monde ouvert à Annecy puis à l'Alpe d'Huez (réseau, cache séparé du banc). Rapport et captures montrent de vraies données : --out sur le PC seulement.",
+ "voies": [
+  "clavier"
+ ],
+ "reseau": true,
+ "config": {
+  "profils.dernier": "principal",
+  "race.laps": 2
+ },
+ "etapes": [
+  {
+   "note": "1. PROFIL : un seul profil joueur, l'accueil s'ouvre sur lui",
+   "ecran": "home",
+   "elements": [
+    "profile",
+    "history",
+    "garage",
+    "league",
+    "race",
+    "rogue",
+    "open_world"
+   ],
+   "absent": [
+    "non joignable",
+    "sans réponse"
+   ],
+   "delai": 40
+  },
+  {
+   "capture": "e1_accueil"
+  },
+  {
+   "choisir": "profile"
+  },
+  {
+   "ecran": "profiles",
+   "delai": 10
+  },
+  {
+   "choisir": "manage"
+  },
+  {
+   "ecran": "profile_manage_list",
+   "absent": [
+    "non joignable"
+   ],
+   "delai": 10
+  },
+  {
+   "choisir": "p:principal"
+  },
+  {
+   "ecran": "profile_manage",
+   "elements": [
+    "rename"
+   ],
+   "delai": 10
+  },
+  {
+   "choisir": "rename"
+  },
+  {
+   "ecran": "profile_name",
+   "delai": 10
+  },
+  {
+   "note": "un « 2 » ajouté au nom",
+   "touche": "2"
+  },
+  {
+   "touche": "Enter"
+  },
+  {
+   "ecran": "profiles",
+   "contient": [
+    "2"
+   ],
+   "absent": [
+    "non joignable",
+    "sans réponse"
+   ],
+   "delai": 10
+  },
+  {
+   "attendre": 5
+  },
+  {
+   "ecran": "profiles",
+   "absent": [
+    "non joignable",
+    "sans réponse"
+   ]
+  },
+  {
+   "capture": "e1_renomme"
+  },
+  {
+   "choisir": "manage"
+  },
+  {
+   "choisir": "p:principal"
+  },
+  {
+   "choisir": "rename"
+  },
+  {
+   "ecran": "profile_name",
+   "delai": 10
+  },
+  {
+   "note": "le nom d'origine remis : le « 2 » effacé",
+   "touche": "Backspace"
+  },
+  {
+   "touche": "Enter"
+  },
+  {
+   "ecran": "profiles",
+   "absent": [
+    "non joignable",
+    "sans réponse"
+   ],
+   "delai": 10
+  },
+  {
+   "choisir": "manage"
+  },
+  {
+   "ecran": "profile_manage_list",
+   "elements": [
+    "clear_trial"
+   ],
+   "delai": 10
+  },
+  {
+   "choisir": "clear_trial"
+  },
+  {
+   "ecran": "confirm",
+   "focus": "no"
+  },
+  {
+   "choisir": "yes"
+  },
+  {
+   "ecran": "profile_manage_list",
+   "contient": [
+    "Profil d'essai vidé"
+   ],
+   "absent": [
+    "non joignable",
+    "sans réponse"
+   ],
+   "delai": 15
+  },
+  {
+   "attendre": 5
+  },
+  {
+   "ecran": "profile_manage_list",
+   "absent": [
+    "non joignable",
+    "sans réponse"
+   ]
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "profiles",
+   "delai": 10
+  },
+  {
+   "choisir": "p:principal"
+  },
+  {
+   "ecran": "home",
+   "absent": [
+    "non joignable",
+    "sans réponse"
+   ],
+   "delai": 15
+  },
+  {
+   "choisir": "history"
+  },
+  {
+   "note": "Historique : la liste arrive, pas « Chargement… » qui reste",
+   "ecran": "history",
+   "titre": "Historique",
+   "absent": [
+    "Chargement"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "e1_historique"
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "home",
+   "delai": 10
+  },
+  {
+   "note": "2. MENUS : Garage, Collection, Ligue",
+   "choisir": "garage"
+  },
+  {
+   "ecran": "garage",
+   "elements": [
+    "bike",
+    "outfit",
+    "avatar"
+   ],
+   "delai": 10
+  },
+  {
+   "choisir": "bike"
+  },
+  {
+   "ecran": "garage_bike",
+   "absent": [
+    "Catalogue en cours de chargement"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "e2_garage"
+  },
+  {
+   "appui": [
+    "Y_SHORT",
+    "Y_SHORT"
+   ]
+  },
+  {
+   "ecran": "home",
+   "delai": 10
+  },
+  {
+   "choisir": "collection"
+  },
+  {
+   "ecran": [
+    "collection_first",
+    "collection"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "e2_collection"
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "home",
+   "delai": 10
+  },
+  {
+   "choisir": "league"
+  },
+  {
+   "ecran": "league",
+   "contient": [
+    "Manche 1 faite"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "e2_ligue"
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "home",
+   "delai": 10
+  },
+  {
+   "note": "3. COURSE EN TOURS sur la Corniche (2 × 2,5 km)",
+   "choisir": "world"
+  },
+  {
+   "ecran": "routes",
+   "elements": [
+    "demo-corniche"
+   ],
+   "delai": 10
+  },
+  {
+   "choisir": "demo-corniche"
+  },
+  {
+   "ecran": "home",
+   "delai": 10
+  },
+  {
+   "choisir": "race"
+  },
+  {
+   "ecran": "ready",
+   "titre": "Prêt : Course — Boucle de la Corniche",
+   "elements": [
+    "start"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "e3_pret"
+  },
+  {
+   "choisir": "start"
+  },
+  {
+   "note": "#1178 : échauffement automatique avant la Course aussi",
+   "journal": "core",
+   "motif": "-> echauffement",
+   "delai": 60
+  },
+  {
+   "attendre": 45
+  },
+  {
+   "capture": "e3_echauffement"
+  },
+  {
+   "note": "écourté par Z court, comme sur le vélo",
+   "appui": "Z_SHORT"
+  },
+  {
+   "journal": "core",
+   "motif": "Échauffement passé",
+   "delai": 15
+  },
+  {
+   "journal": "core",
+   "motif": "-> RUNNING",
+   "delai": 60
+  },
+  {
+   "menu_cache": true
+  },
+  {
+   "attendre": 60
+  },
+  {
+   "capture": "e3_course_1"
+  },
+  {
+   "attendre": 90
+  },
+  {
+   "capture": "e3_course_2"
+  },
+  {
+   "journal": "core",
+   "motif": "Arrivée \\(",
+   "delai": 900
+  },
+  {
+   "attendre": 3
+  },
+  {
+   "capture": "e3_arrivee"
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "pause",
+   "focus": "end_save",
+   "delai": 10
+  },
+  {
+   "note": "#1181 : A maintenu, puis le second A maintenu que le Click renvoie parfois : le bilan doit rester",
+   "appui": [
+    "A_LONG",
+    "A_LONG"
+   ]
+  },
+  {
+   "ecran": "summary",
+   "delai": 20
+  },
+  {
+   "attendre": 3
+  },
+  {
+   "ecran": "summary"
+  },
+  {
+   "capture": "e3_bilan"
+  },
+  {
+   "choisir": "new_session"
+  },
+  {
+   "ecran": "home",
+   "absent": [
+    "non joignable",
+    "sans réponse"
+   ],
+   "delai": 15
+  },
+  {
+   "note": "4. CYBER-ROGUE, 30 min, jusqu'au retour au calme",
+   "choisir": "rogue"
+  },
+  {
+   "ecran": "rogue_start",
+   "elements": [
+    "launch"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "e4_depart"
+  },
+  {
+   "choisir": "launch"
+  },
+  {
+   "ecran": "ready",
+   "titre": "Prêt : Cyber-Rogue",
+   "elements": [
+    "start"
+   ],
+   "delai": 20
+  },
+  {
+   "choisir": "start"
+  },
+  {
+   "journal": "core",
+   "motif": "-> RUNNING",
+   "delai": 30
+  },
+  {
+   "menu_cache": true
+  },
+  {
+   "attendre": 240
+  },
+  {
+   "capture": "e4_run_4min"
+  },
+  {
+   "note": "#1182 : salle des tunnels (Diesel) si la run en a une",
+   "journal": "core",
+   "motif": "[Tt]unnel",
+   "delai": 1500
+  },
+  {
+   "capture": "e4_tunnels"
+  },
+  {
+   "journal": "core",
+   "motif": "BOSS",
+   "delai": 1800
+  },
+  {
+   "attendre": 60
+  },
+  {
+   "capture": "e4_boss"
+  },
+  {
+   "journal": "core",
+   "motif": "COOLDOWN",
+   "delai": 1200
+  },
+  {
+   "attendre": 20
+  },
+  {
+   "capture": "e4_retour_au_calme"
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "pause",
+   "delai": 10
+  },
+  {
+   "aller": "end_save"
+  },
+  {
+   "appui": [
+    "A_LONG",
+    "A_LONG"
+   ]
+  },
+  {
+   "ecran": "summary",
+   "delai": 20
+  },
+  {
+   "attendre": 3
+  },
+  {
+   "ecran": "summary"
+  },
+  {
+   "capture": "e4_bilan"
+  },
+  {
+   "choisir": "new_session"
+  },
+  {
+   "ecran": "home",
+   "delai": 15
+  },
+  {
+   "choisir": "history"
+  },
+  {
+   "ecran": "history",
+   "absent": [
+    "Chargement"
+   ],
+   "delai": 10
+  },
+  {
+   "capture": "e4_historique"
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "home",
+   "delai": 10
+  },
+  {
+   "note": "5. RELIEF À 150 % puis relance",
+   "choisir": "settings"
+  },
+  {
+   "choisir": "group:graphics"
+  },
+  {
+   "ecran": "settings_group",
+   "groupe": "graphics",
+   "delai": 10
+  },
+  {
+   "choisir": "set:render.visual_grade_scale"
+  },
+  {
+   "appui": [
+    "MINUS_SHORT",
+    "MINUS_SHORT",
+    "MINUS_SHORT",
+    "MINUS_SHORT",
+    "A_LONG"
+   ]
+  },
+  {
+   "ecran": "settings_group",
+   "edition": false,
+   "contient": [
+    "Relief exagéré — 150 %"
+   ]
+  },
+  {
+   "config": {
+    "render.visual_grade_scale": 1.5
+   }
+  },
+  {
+   "capture": "e5_relief"
+  },
+  {
+   "relancer": true
+  },
+  {
+   "ecran": "home",
+   "delai": 40
+  },
+  {
+   "config": {
+    "render.visual_grade_scale": 1.5
+   }
+  },
+  {
+   "note": "monde ouvert : Annecy",
+   "depart_monde_ouvert": {
+    "recherche": "annecy",
+    "contient": "Annecy"
+   }
+  },
+  {
+   "attendre": 120
+  },
+  {
+   "capture": "e5_annecy_2min"
+  },
+  {
+   "attendre": 120
+  },
+  {
+   "capture": "e5_annecy_4min"
+  },
+  {
+   "commande": "end_session",
+   "args": {
+    "save": false
+   }
+  },
+  {
+   "ecran": [
+    "summary",
+    "home"
+   ],
+   "delai": 20
+  },
+  {
+   "appui": "Y_SHORT"
+  },
+  {
+   "ecran": "home",
+   "delai": 15
+  },
+  {
+   "note": "monde ouvert : Alpe d'Huez",
+   "depart_monde_ouvert": {
+    "recherche": "alpe d'huez",
+    "contient": "Alpe d'Huez"
+   }
+  },
+  {
+   "attendre": 120
+  },
+  {
+   "capture": "e5_alpe_2min"
+  },
+  {
+   "attendre": 120
+  },
+  {
+   "capture": "e5_alpe_4min"
+  },
+  {
+   "commande": "end_session",
+   "args": {
+    "save": false
+   }
+  },
+  {
+   "ecran": [
+    "summary",
+    "home"
+   ],
+   "delai": 20
+  }
+ ]
+}
