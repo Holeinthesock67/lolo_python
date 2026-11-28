@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Réécrit le 28 octobre après la consigne « résolution native » : SMAA en `low` et garde-fou qui coupe les effets les plus chers quand le GPU sature, sans baisser la résolution | GDScript | Y2, X13 ; Y13 étape 1 | Petite | Oui (forme gardée par le propriétaire le 28 octobre) ; issue #362. Étape 1 (SMAA en `low`) et étape 2 (garde-fou de charge, `load_guard.gd`) en PR le 30 octobre |
+| Réécrit le 28 octobre après la consigne « résolution native » : SMAA en `low` et garde-fou qui coupe les effets les plus chers quand le GPU sature, sans baisser la résolution | GDScript | Y2, X13 ; Y13 étape 1 | Petite | **Livré le 30 octobre** (étape 1 SMAA en `low`, PR #608 ; étape 2 garde-fou de charge, PR #612) |
 
 ## 1. Objectif
 
@@ -99,3 +99,7 @@ Le propriétaire a donné son accord le 30 octobre, après la migration Y2 vers 
 
   Il n'y a eu ni oscillation ni saccade à moins de 2 s d'un changement.
 - Reste : la séance sur le PC du §7, en medium sur un parcours chargé, pour vérifier qu'aucune saccade n'est visible à un changement. Le changement de MSAA et le glow passent par les « ubershaders » de Godot 4.4 et suivants, ce qui devrait éviter toute saccade de compilation, mais cela reste à confirmer.
+
+## Livraison
+
+Fusionné dans `main` le 30 octobre 2026 (PR #608 et #612), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « Oui (forme gardée par le propriétaire le 28 octobre) ; issue #362. Étape 1 (SMAA en `low`) et étape 2 (garde-fou de charge, `load_guard.gd`) en PR le 30 octobre »).

@@ -201,6 +201,11 @@ func on_state(state: Dictionary, rider_pos: Vector3, now_s: float) -> void:
 		v_kmh = maxf(0.0, float(state["speed_kmh"]))
 	elif _is_number(state.get("v", null)):
 		v_kmh = maxf(0.0, float(state["v"]) * 3.6)
+	# Hors séance (bilan après « Terminer », menus, départ) : le core garde la dernière vitesse dans la trame
+	# jusqu'au parcours suivant ; le vélo est arrêté pour le son, vent et roues s'éteignent en fondu (E9-01).
+	var session := str(state.get("session_state", ""))
+	if session != "" and session != "RUNNING" and session != "PAUSED":
+		v_kmh = 0.0
 	_speed_kmh = v_kmh
 
 	var w_raw = state.get("wind", null)

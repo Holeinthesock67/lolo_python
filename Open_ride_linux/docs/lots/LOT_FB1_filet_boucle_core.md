@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 2.x série FB : erreur d'un mode de jeu attrapée dans la boucle à 50 Hz, séance enregistrée avec son bilan | Python | N8 | Petite | **En revue** (22 novembre) |
+| 2.x série FB : erreur d'un mode de jeu attrapée dans la boucle à 50 Hz, séance enregistrée avec son bilan | Python | N8 | Petite | **Livré le 25 novembre** (PR #1022) |
 
 ## 1. Objectif
 
@@ -48,3 +48,7 @@ avant elle.
 gardé, `mode_error` au bilan et au journal, journal terminé par `stop`, un seul message, nouvelle séance possible), à la
 trame, erreur du trainer non attrapée, fin de séance qui échoue (`ERROR`, modes vidés), erreur répétée hors séance
 (remonte après 5 s), journal impossible à ouvrir au départ (pause, puis reprise une fois le dossier rendu). Core pur : CI et cloud, pas de banc PC.
+
+## Livraison
+
+Fusionné dans `main` le 25 novembre 2026 (PR #1022), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « **En revue** (22 novembre) »).

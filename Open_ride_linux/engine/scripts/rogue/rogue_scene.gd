@@ -23,8 +23,11 @@ const RIBBON_SHADER := preload("res://scripts/rogue/ribbon.gdshader")
 const MarkerGuides := preload("res://scripts/rogue/marker_guides.gd")
 const SideDecor := preload("res://scripts/rogue/rogue_side_decor.gd")
 
-## Phases où le ruban est affiché (hors échauffement, retour au calme et bilan : vide et grille).
-const RIBBON_PHASES := ["ROOM", "CORRIDOR", "BOSS", "RECOVERY"]
+## Phases où le ruban est affiché : en salle seulement. Ailleurs (échauffement, couloir, récupération, retour au
+## calme, bilan), bande plate et grille, le vélo avance de la distance de la run. Revue de code E10-05 : le vrai core
+## envoie `s_room = 0` et un écart au Firewall nul en couloir et en récupération (la salle est finie ou perdue) ; la
+## scène y revenait au début de la salle finie, figée, le mur du Firewall posé sur le vélo.
+const RIBBON_PHASES := ["ROOM", "BOSS"]
 ## Vues de la caméra (lot R22, choix du propriétaire du 12 novembre : 3 vues sur les flèches haut et bas) :
 ## [recul, hauteur, visée devant] en mètres. 0 : derrière (vue d'origine), 1 : haute, 2 : proche.
 ## Vues : [recul derrière le vélo, hauteur des yeux, point visé devant] (m). Lot R23 : 4e vue « sur le vélo », les
@@ -157,6 +160,7 @@ func set_style(new_preset: String, new_adapted: bool) -> void:
 	_ribbon_mat.set_shader_parameter("intensity", Palette.INTENSITY.get(preset, 1.6))
 	_ribbon_mat.set_shader_parameter("ahead_m", RibbonColors.AHEAD_M)
 	_ribbon_mat.set_shader_parameter("far_dim", RibbonColors.FAR_DIM)
+	_ribbon_mat.set_shader_parameter("surface_share", RibbonColors.SURFACE_SHARE)
 	if shown_room_id >= 0 and store != null and store.has_room(shown_room_id):
 		_build_room(shown_room_id)
 
@@ -184,7 +188,7 @@ func _build_room(room_id: int) -> void:
 		# Lot R22 : étiquette, zone où Z est accepté, portique et anneau d'approche des arches.
 		var guides: Dictionary = MarkerGuides.decorate(node, kind, mk.get("param", null), float(mk["len_m"]), preset, adapted)
 		markers.append({"node": node, "kind": kind, "s": float(mk["s_m"]), "len": float(mk["len_m"]), "guides": guides})
-	hud_model.guide.set_room(room_id, r["markers"])
+	hud_model.guide.set_room(room_id, r["markers"], length_m)
 
 
 ## Préchauffage (lot Y20), pendant l'écran d'attente du départ : un bout de ruban plat et un repère de chaque
@@ -249,6 +253,11 @@ func on_state(rogue: Dictionary, now_s: float, run_s: float = 0.0) -> void:
 			resync_requested = true
 			resync_wanted.emit()
 	ribbon.visible = ribbon_visible and shown_room_id == rid and store != null and store.has_room(rid)
+	# Revue E10-01 : offre de cartes ou de relique ouverte (`loot_stage`) sans message `loot` reçu (core ou engine
+	# relancé) : on la redemande, comme une salle inconnue.
+	if rogue.get("loot_stage", null) != null and hud_model.missing_loot() and store != null and store.resync_due(now_s):
+		resync_requested = true
+		resync_wanted.emit()
 	markers_root.visible = ribbon.visible
 	firewall.visible = ribbon.visible
 	_s_target = float(rogue.get("s_room", 0.0)) if ribbon.visible else maxf(run_s, 0.0)
@@ -274,10 +283,12 @@ func on_hud(state: Dictionary, now_s: float) -> void:
 	hud_view.show_events(events)
 	hud_view.push_feedback(hud_model.guide.take_toasts(), hud_model.guide.take_legend())
 	hud_view.pulse(str(hud_model.values().get("z_pulse", "")))
+	# Revue E10-03 : pendant RESULTS le core n'a pas encore de bilan (`summary` nul) ; vide, le modèle sonore
+	# décide d'après la fin du boss qu'il a vue. Avant, « victory » par défaut : jingle de victoire à chaque run perdue.
 	var summary = state.get("summary", null)
-	var result := "victory"
+	var result := ""
 	if typeof(summary) == TYPE_DICTIONARY and typeof(summary.get("rogue", null)) == TYPE_DICTIONARY:
-		result = str(summary["rogue"].get("result", result))
+		result = str(summary["rogue"].get("result", ""))
 	audio.on_state(state.get("rogue", null), int(state.get("gear", 1)), int(state.get("seq", -1)), now_s, result)
 	_enemy_rogue = state.get("rogue", null)
 	_enemy_seq = int(state.get("seq", -1))
@@ -359,7 +370,9 @@ func _tick_enemy(delta: float) -> void:
 	for imp in enemy_model.take_impacts():
 		enemy_view.impact(bool(imp["crit"]), float(imp["flash_s"]))
 	var pose: Dictionary = enemy_model.pose()
-	if ribbon.visible and bool(pose.get("visible", false)):
+	# Revue E10-09 : l'extinction ou la fuite de fin de salle se jouent dans la trame qui porte déjà le couloir
+	# (bande plate) : l'ennemi est posé devant le vélo, ruban ou non.
+	if bool(pose.get("visible", false)):
 		var s_e := _s_disp + float(pose["distance_m"])
 		enemy_view.position = Vector3(0.0, ribbon_y(s_e) + 1.4, -s_e)
 	enemy_view.apply(pose, delta)
@@ -370,7 +383,8 @@ func _tick_hud(delta: float) -> void:
 	camera_fx.update(delta, float(v.get("power_pct", 0.0)), _hud_events)
 	_hud_events = []
 	hud_view.apply(v, bike.position, delta)
-	corridor_view.apply(v.get("corridor", {}))
+	# Revue E10-07 : en pause, l'écran des cartes et des portes se retire comme le HUD (il recouvrait le menu de pause).
+	corridor_view.apply({} if bool(v.get("paused", false)) else v.get("corridor", {}))
 
 
 func _place_camera() -> void:
@@ -390,7 +404,7 @@ func _place_camera() -> void:
 ## Firewall, ennemi, écran de couloir, hologramme du HUD et bandeau « Salle manquée ».
 func test_info() -> Dictionary:
 	return {"room_shown": shown_room_id, "ribbon": ribbon.visible, "markers": markers.size() if ribbon.visible else 0,
-		"firewall": firewall.visible, "enemy": enemy_view.visible and ribbon.visible,
+		"firewall": firewall.visible, "enemy": enemy_view.visible,
 		"enemy_archetype": str(enemy_view.archetype) if enemy_view.visible else "",
 		"corridor": corridor_view.visible, "hud": hud_view.visible,
 		"holo": hud_view.holo.text if hud_view.visible and hud_view.holo.visible else "",

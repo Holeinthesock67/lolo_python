@@ -11,6 +11,9 @@ const Palette := preload("res://scripts/rogue/neon_palette.gd")
 const AHEAD_M := 200.0
 ## Part de l'éclat gardée au-delà de AHEAD_M.
 const FAR_DIM := 0.35
+## Part de l'éclat sur toute la surface du ruban, le reste sur les arêtes (lot R30 : 0,25 avant, la route jaune
+## éblouissait ; essai du 22 novembre).
+const SURFACE_SHARE := 0.12
 
 
 static func token_for(grade_pct: float) -> String:

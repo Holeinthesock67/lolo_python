@@ -272,6 +272,9 @@ class Vehicle:
     committed: bool = False
     slow: bool = False
     hold_s: float | None = None
+    # Revue E6-01 : vitesse réellement tenue au dernier pas quand `_hold` l'a retenu (derrière un bot, un cycliste du
+    # décor), None sinon ; c'est elle que `state_list` envoie, pour que l'engine n'extrapole pas à la vitesse de croisière
+    step_mps: float | None = None
 
     @property
     def half_width(self) -> float:
@@ -470,6 +473,7 @@ class Traffic:
             self._bench_pass(rider_s, rider_v, dt_s)
         for v in self.vehicles:
             rel = v.s - rider_s
+            s_before = v.s
             if v.dir == -1:
                 spd = v.cruise_mps
                 for o in self.vehicles:
@@ -483,7 +487,8 @@ class Traffic:
                 self._move_slow(v, dt_s)
             else:
                 self._move_overtaker(v, rel, rider_v, dt_s)
-            self._hold(v)
+            held = self._hold(v)
+            v.step_mps = max(0.0, (v.s - s_before) * v.dir / dt_s) if held and dt_s > 0.0 else None
         self.vehicles = [v for v in self.vehicles
                          if -REMOVE_BEHIND_M <= v.s - rider_s <= REMOVE_AHEAD_M and 0.0 <= v.s <= self.route.length_m]
 
@@ -593,12 +598,15 @@ class Traffic:
         return True
 
     @staticmethod
-    def _hold(v: Vehicle) -> None:
+    def _hold(v: Vehicle) -> bool:
+        """Borne `v.s` derrière (en face : devant) celui qu'il attend ; vrai si le véhicule a été retenu."""
         if v.hold_s is None:
-            return
+            return False
         limit = v.hold_s - v.dir * (v.length * 0.5 + CYCLIST_HALF_LENGTH_M + HOLD_GAP_M)
         if (v.s - limit) * v.dir > 0.0:
             v.s = limit
+            return True
+        return False
 
     def _clear_to_pass(self, v: Vehicle, rel: float, rider_v: float, pass_mps: float) -> bool:
         t_pass = (pass_zone(v.kind, pass_mps - rider_v)[1] - rel) / max(pass_mps - rider_v, 0.5)
@@ -661,9 +669,10 @@ class Traffic:
 
 
 def state_list(vehicles: Iterable[Vehicle]) -> list[dict]:
-    """Liste `vehicles` de `state` (au centimètre) : {id, kind, color, s, dir, v, lane_m}."""
+    """Liste `vehicles` de `state` (au centimètre) : {id, kind, color, s, dir, v, lane_m} ; `v` est la vitesse
+    réellement tenue au dernier pas (revue E6-01 : celle d'un véhicule retenu, pas sa vitesse de croisière)."""
     return [{"id": v.id, "kind": v.kind, "color": v.color, "s": round(v.s, 2), "dir": v.dir,
-             "v": round(v.speed_mps, 2), "lane_m": round(v.lateral, 2)} for v in vehicles]
+             "v": round(v.speed_mps if v.step_mps is None else v.step_mps, 2), "lane_m": round(v.lateral, 2)} for v in vehicles]
 
 
 # --- abri et aspiration ---------------------------------------------------------------------------

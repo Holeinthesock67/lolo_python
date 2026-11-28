@@ -86,6 +86,8 @@ signal profile_backups_received(msg: Dictionary)
 signal interrupted_received(msg: Dictionary)
 ## Contenus installables (lot O25, contrat 1.5) : réponse à list_contents et install_content (un seul datagramme).
 signal contents_received(msg: Dictionary)
+## Fichier de diagnostic (lot DG1, contrat 1.37) : réponse à create_diagnostic.
+signal diagnostic_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -131,7 +133,7 @@ var _peer := PacketPeerUDP.new()
 ## _poll_incoming lit tout à l'image suivante et garde la trame la plus récente (seq).
 const STATE_RECV_BUFFER := 1 << 20
 var _cmd_id_counter := 0
-## Commandes en attente d'accusé : {cmd_id, name, args, first_us, last_us, sends}.
+## Commandes en attente d'accusé : {cmd_id, name, args, first_us, last_us, sends, hello_gen, cut}.
 var _pending: Array[Dictionary] = []
 ## Relance des listes v1.1 (contrat §4) : une seconde sans réponse complète, 3 fois au plus.
 const LIST_RETRY_S := 1.0
@@ -152,6 +154,12 @@ var _hello_acked := false
 var _hello_lock := Mutex.new()
 var _hello_wanted := false
 var _hello_now := false
+## Nombre de hello envoyés par le fil d'horloge (sous _hello_lock). Le core remet son last_cmd_id à 0 à chaque
+## hello (contrat §4) : une copie d'une commande envoyée avant un hello serait exécutée une seconde fois si le core
+## avait déjà traité la première (core gelé plus d'une seconde, revue E1-02). Une commande n'est donc renvoyée
+## que tant qu'aucun hello n'est parti depuis son premier envoi ; envois et hello passent sous le même verrou, pour
+## que l'ordre reçu par le core soit celui vu ici.
+var _hello_gen := 0
 var _last_state_us := 0
 ## Écarts entre trames state reçues (lot X17) : histogramme fixe, une ligne [gigue] par minute.
 ## La lecture se fait à chaque image : l'écart mesuré comprend la cadence de l'affichage.
@@ -173,6 +181,9 @@ var _core_reachable := true
 var _hb_thread: Thread
 var _hb_stop := false
 var _bound := false
+## Port des trames pris (contrat §2) : l'engine doit s'arrêter avec le code 1. quit_handled : main.gd s'en charge.
+var bind_failed := false
+var quit_handled := false
 
 
 func _ready() -> void:
@@ -185,7 +196,10 @@ func _ready() -> void:
 		# Contrat §2 : port occupé, arrêt avec un message explicite.
 		printerr("Port UDP %d indisponible (code %d) : un autre engine tourne-t-il déjà ? "
 				% [state_port, err] + "Choisir un autre port avec -- --ipc-state-port=N.")
-		get_tree().quit(1)
+		# Revue E1-03 : main.gd ferme par sa séquence propre (_quit, tâches de fond attendues) en lisant
+		# bind_failed dans son _ready ; repli pour un IpcClient seul (tests) : arrêt direct en fin d'image.
+		bind_failed = true
+		_quit_if_unhandled.call_deferred()
 		return
 	_bound = true
 	print("IpcClient attaché sur ", SERVER_HOST, ":", state_port, ", commandes vers le port ", cmd_port)
@@ -196,6 +210,11 @@ func _ready() -> void:
 	# Socket propre à ce fil.
 	_hb_thread = Thread.new()
 	_hb_thread.start(_clock_loop)
+
+
+func _quit_if_unhandled() -> void:
+	if not quit_handled:
+		get_tree().quit(1)
 
 
 func _clock_loop() -> void:
@@ -222,6 +241,7 @@ func _clock_loop() -> void:
 			next_hello = now
 		if _hello_wanted and now >= next_hello:
 			sock.put_packet(_hello_payload())
+			_hello_gen += 1
 			next_hello = now + HELLO_PERIOD_MS
 		_hello_lock.unlock()
 		OS.delay_msec(CLOCK_TICK_MS)
@@ -322,8 +342,9 @@ func _poll_incoming() -> void:
 					# Même version majeure : compatible, les champs inconnus sont ignorés (contrat §8).
 					print("Révisions du contrat différentes : core %s, engine %s"
 						% [core_rev if core_rev != "" else "avant 1.3", CONTRACT_REV])
-				print("hello_ack reçu : core ", core_version, ", configuration ", core_config)
-				test_log("hello_ack config=%s" % JSON.stringify(core_config))
+				# Revue E1-07 : pas la configuration entière (dernier départ du monde ouvert, FTP, profil, dossiers).
+				print("hello_ack reçu : core ", core_version, ", configuration ", hello_config_log(core_config))
+				test_log("hello_ack config=%s" % JSON.stringify(hello_config_public(core_config)))
 				hello_ack_received.emit(json_obj)
 			"error":
 				_on_error(str(json_obj.get("code", "")), str(json_obj.get("message", "")))
@@ -389,6 +410,8 @@ func _poll_incoming() -> void:
 				interrupted_received.emit(json_obj)
 			"contents":
 				contents_received.emit(json_obj)
+			"diagnostic":
+				diagnostic_received.emit(json_obj)
 			"xp_result":
 				xp_result_received.emit(json_obj)
 			"room":
@@ -859,11 +882,39 @@ func send_command(cmd_name: String, args: Dictionary = {}) -> int:
 	_cmd_id_counter += 1
 	var now := Time.get_ticks_usec()
 	var cmd := {"cmd_id": _cmd_id_counter, "name": cmd_name, "args": args,
-			"first_us": now, "last_us": now, "sends": 1}
+			"first_us": now, "last_us": now, "sends": 1, "cut": false}
 	_pending.append(cmd)
+	_hello_lock.lock()
+	cmd["hello_gen"] = _hello_gen
 	_send_cmd(cmd)
+	_hello_lock.unlock()
 	test_log("cmd_sent name=%s id=%d" % [cmd_name, _cmd_id_counter])
 	return _cmd_id_counter
+
+
+## Clés de hello_ack.config écrites telles quelles au journal (revue E1-07) : rien de personnel. Les autres
+## (last_choices et sa position du monde ouvert, ftp_w, profile, open_world_dir…) ne sont nommées que par leur clé.
+const HELLO_LOG_KEYS: Array[String] = ["gears_total", "theme", "chart", "difficulty_pct", "modes",
+		"free_route_tag"]
+
+
+static func hello_config_public(cfg: Dictionary) -> Dictionary:
+	var out := {}
+	for key in HELLO_LOG_KEYS:
+		if cfg.has(key):
+			out[key] = cfg[key]
+	return out
+
+
+## Ligne du journal pour hello_ack.config : clés sûres avec leur valeur, autres clés nommées seulement.
+static func hello_config_log(cfg: Dictionary) -> String:
+	var others: Array[String] = []
+	for key in cfg.keys():
+		if not str(key) in HELLO_LOG_KEYS:
+			others.append(str(key))
+	others.sort()
+	return "%s ; autres clés : %s" % [JSON.stringify(hello_config_public(cfg)),
+			", ".join(others) if not others.is_empty() else "aucune"]
 
 
 func _send_cmd(cmd: Dictionary) -> void:
@@ -889,20 +940,35 @@ func _ack_pending(last_cmd_id: int) -> void:
 
 func _resend_pending(now: int) -> void:
 	var kept: Array[Dictionary] = []
+	var failed: Array[String] = []
+	_hello_lock.lock()   # aucun hello entre le test de _hello_gen et le renvoi (revue E1-02)
 	for cmd in _pending:
+		if not cmd["cut"] and int(cmd["hello_gen"]) != _hello_gen:
+			# Un hello est parti depuis le premier envoi : plus aucune copie (le core la rejouerait), la commande
+			# reste en attente de son accusé jusqu'au délai habituel.
+			cmd["cut"] = true
+			print("Commande « %s » (id %d) plus renvoyée : hello envoyé au core depuis" % [cmd["name"], cmd["cmd_id"]])
+			test_log("cmd_cut name=%s id=%d sends=%d" % [cmd["name"], cmd["cmd_id"], cmd["sends"]])
 		if now - int(cmd["first_us"]) >= CMD_TIMEOUT_US:
 			# Un appui abandonné n'est pas rejoué : la commande est simplement oubliée.
-			print("Commande « %s » (id %d) abandonnée : aucun accusé du core en 3 s" % [cmd["name"], cmd["cmd_id"]])
-			test_log("cmd_failed name=%s id=%d after_ms=%d sends=%d"
-					% [cmd["name"], cmd["cmd_id"], (now - int(cmd["first_us"])) / 1000, cmd["sends"]])
-			command_failed.emit(cmd["name"])
+			print("Commande « %s » (id %d) abandonnée : aucun accusé du core en 3 s%s" % [cmd["name"], cmd["cmd_id"],
+					" (coupée par un hello : peut-être exécutée)" if cmd["cut"] else ""])
+			test_log("cmd_failed name=%s id=%d after_ms=%d sends=%d cut=%d"
+					% [cmd["name"], cmd["cmd_id"], (now - int(cmd["first_us"])) / 1000, cmd["sends"], int(cmd["cut"])])
+			# Coupée par un hello : le core était injoignable (son bandeau est déjà là) et l'a peut-être exécutée ;
+			# pas de second bandeau « sans réponse ».
+			if not cmd["cut"]:
+				failed.append(str(cmd["name"]))
 			continue
-		if now - int(cmd["last_us"]) >= CMD_RESEND_US:
+		if not cmd["cut"] and now - int(cmd["last_us"]) >= CMD_RESEND_US:
 			cmd["last_us"] = now
 			cmd["sends"] = int(cmd["sends"]) + 1
 			_send_cmd(cmd)
 		kept.append(cmd)
+	_hello_lock.unlock()
 	_pending = kept
+	for cmd_name in failed:
+		command_failed.emit(cmd_name)
 
 
 func _exit_tree() -> void:

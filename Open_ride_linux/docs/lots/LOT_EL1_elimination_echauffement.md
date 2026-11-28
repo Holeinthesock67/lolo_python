@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Retours de l'essai vélo du 21 novembre au vélodrome : élimination trop courte, pas d'écart aux bots, pas de victoire ; échauffement sur place en ERG avant toutes les courses | Python, GDScript | VD6, VD9, T16, O36 | Moyenne | En revue (captures à valider) |
+| Retours de l'essai vélo du 21 novembre au vélodrome : élimination trop courte, pas d'écart aux bots, pas de victoire ; échauffement sur place en ERG avant toutes les courses | Python, GDScript | VD6, VD9, T16, O36 | Moyenne | **Livré le 24 novembre** (PR #958) ; suite EL1b (PR #1043, 25 novembre) |
 
 ## 1. Objectif
 

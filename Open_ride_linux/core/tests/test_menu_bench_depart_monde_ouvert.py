@@ -92,10 +92,11 @@ def test_template_keeps_its_lanes(tmp_path) -> None:
     assert [s for s in steps["etapes"] if "touche" in s and s["touche"] != "Enter"][0]["voies"] == []   # lettres : clavier
 
 
-def test_menu_close_waits_as_long_as_the_ready_line(tmp_path) -> None:
-    """Le menu se ferme au passage LOADING -> READY, quand le core écrit « Monde ouvert prêt » : même attente
-    (26 novembre, Grenoble en cache séparé à froid : menu encore affiché à 300 s, monde prêt peu après)."""
+def test_menu_ferme_attendu_apres_le_monde_pret(tmp_path) -> None:
+    """26/11, Grenoble : la fermeture du menu dépend du préchargement ; elle s'attend après « Monde ouvert prêt »
+    (événement, délai large), jamais sur une durée fixe avant lui."""
     steps = mb.load_scenario(_write(tmp_path, [{"depart_monde_ouvert": {"recherche": "grenoble"}}]))["etapes"]
-    close = next(s for s in steps if s.get("monde") is False)
-    ready = next(s for s in steps if s.get("motif") == "Monde ouvert prêt")
-    assert close["delai"] == ready["delai"] == mb.OPEN_WORLD_PREP_S >= 600
+    pret = next(i for i, s in enumerate(steps) if s.get("motif") == "Monde ouvert prêt")
+    ferme = next(i for i, s in enumerate(steps) if s.get("monde") is False)
+    assert pret < ferme
+    assert steps[pret]["delai"] >= 900 and steps[ferme]["delai"] <= 120

@@ -31,7 +31,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
   écrans permis ; + `monde` (menu du monde ouvert affiché ou non, ou son écran : globe, search, map, setup),
   `titre`, `groupe`,
   `contient` et `absent` : textes cherchés dans la ligne d'état, les éléments « libellé — détail », les pastilles
-  des appareils et la carte de détail ; `focus`, `elements`, `statut`, `edition`), `menu_cache`, `config` ({clé: valeur} de
+  des appareils et la carte de détail ; `focus`, `elements`, `statut`, `edition` ; `transitoire` : écran d'un instant,
+  passé si le menu est déjà sur l'écran de l'étape d'écran suivante), `menu_cache`, `config` ({clé: valeur} de
   config.toml, `null` : absente), `journal` (`core` ou `engine`) + `motif`, `fichier` (chemin ou motif
   glob dans le HOME, ex. OpenRide/Activities/*.fit) + `existe`, `sortie` (code de sortie de l'engine) ; dans `config`, la valeur "*" veut dire « présente », et "≠départ" « présente et différente de la valeur du lancement »
   (qualité changée au menu quand `--qualite` impose celle du départ) ;
@@ -176,6 +177,7 @@ from openride_core.launcher import ENGINE_DONE, ENGINE_SELF_KILLED, ENGINE_SHUTD
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 import pile_gdb  # noqa: E402
+import perf_probe  # noqa: E402
 import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
 
@@ -258,7 +260,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "distance_km", "capture", "relancer", "delai", "voies", "note",
-             "depart_monde_ouvert"}
+             "depart_monde_ouvert", "transitoire"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
              "compilateur", "velodrome", "grand_prix_parcours", "parcours_copies", "reseau", "caches_reels", "etapes",
              "course_interrompue", "seances_courbe"}
@@ -332,6 +334,19 @@ def copy_render_caches(src_home: Path, dst_home: Path) -> int:
     return n
 
 
+def render_caches_empty(saved: Path | None) -> bool:
+    """Vrai si ce passage part sans cache de rendu (pas de `--caches-rendu`, ou dossier encore sans fichier) : il
+    compilera tout, comme un premier lancement. Même règle que `sim_bench.caches_empty` (lot BF1), lot BF2."""
+    if saved is None:
+        return True
+    return not any(p.is_file() for rel in RENDER_CACHES if (saved / rel).is_dir() for p in (saved / rel).rglob("*"))
+
+
+def probe_paths(cmd: list[str]) -> list[Path]:
+    """Fichiers de la sonde (`--perf-probe=CHEMIN`) passés à l'engine."""
+    return [Path(c.split("=", 1)[1]) for c in cmd if c.startswith("--perf-probe=")]
+
+
 def write_demo_copies(routes: Path, n: int) -> None:
     """`n` copies de la démo (« Copie 01 »…), parcours libres : liste des parcours aussi longue que celle du pack
     des cols, sans le compilateur (lot ML2)."""
@@ -368,8 +383,6 @@ class ScenarioError(Exception):
 
 
 OPEN_WORLD_READY = "Monde ouvert prêt"
-# Préparation du monde ouvert après « Démarrer » (menu fermé, « Monde ouvert prêt ») : une seule attente pour les deux.
-OPEN_WORLD_PREP_S = 600
 START_KEYS = {"recherche", "contient", "cap"}
 
 
@@ -395,12 +408,10 @@ def open_world_start(spec: dict[str, Any]) -> list[dict[str, Any]]:
         *spec.get("cap", []),
         {"capture": "cap"},
         {"touche": "Enter"},
-        {"note": "Le menu se ferme quand le core passe LOADING -> READY, au moment même où il écrit « Monde ouvert "
-                 "prêt » : même attente (au premier départ d'une zone, en cache séparé et à froid, la préparation "
-                 "peut passer 5 min : Grenoble, 26 novembre)",
-         "monde": False, "delai": OPEN_WORLD_PREP_S},
-        {"note": "Monde ouvert préchargé : route engagée, séance prête", "journal": "core", "motif": OPEN_WORLD_READY,
-         "delai": OPEN_WORLD_PREP_S},
+        {"note": "Monde ouvert préchargé : route engagée, séance prête (attendu avant la fermeture du menu, qui en "
+                 "dépend : 300 s fixes ne suffisaient pas en montagne, Grenoble du 26/11)",
+         "journal": "core", "motif": OPEN_WORLD_READY, "delai": 900},
+        {"monde": False, "delai": 60},
         {"note": "Lot W18 : le monde prêt, l'engine envoie start de lui-même (départ au pédalage)",
          "journal": "core", "motif": "Commande start ", "delai": 60},
         {"attendre": 2},
@@ -640,7 +651,12 @@ class Run:
             self._send({"type": "_test", "action": "key", "key": key, "shift": shift, "hold_ms": hold_ms})
         else:
             hold = 0.0
-            item = self.last.get("focus_id", "") if g["souris"] == "click" else ""
+            item = ""
+            if g["souris"] == "click":
+                item = self.settled_focus(5.0 * self.slowdown())
+                if not item:
+                    return self.check(False, "A_LONG à la souris : élément sous le focus",
+                                      f"aucun focus sur l'écran « {self.last.get('screen', '')} » (menu en cours de mise à jour)")
             self._send({"type": "_test", "action": "mouse", "kind": g["souris"], "item": item})
             if g["souris"] == "click":
                 got = self.wait_engine(r"Souris : clic sur|\[test\] mouse hidden", 10.0, t)
@@ -651,8 +667,39 @@ class Run:
         self.state()
         return ok
 
+    def settled_focus(self, delay: float) -> str:
+        """Élément sous le focus d'un menu posé (lot BM2). Un écran reconstruit après une réponse du core (écran Prêt
+        du vélodrome après le choix de l'épreuve) n'a un instant aucun focus : cliquer sur l'état lu à ce moment-là
+        visait le centre de l'écran (« clic sur «  » : sans réponse », #1093 et #953). On relit l'état jusqu'à ce que
+        le focus soit revenu, `delay` secondes au plus, silences de l'engine non comptés (wait_engine)."""
+        deadline = now() + delay
+        since = self.silent_s
+        st = self.last
+        while True:
+            if st.get("focus_id"):
+                return str(st["focus_id"])
+            if now() >= deadline + min(self.silent_s - since, ENGINE_SILENT_S):
+                return ""
+            time.sleep(0.15)
+            st = self.state()
+
+    def settled_items(self, item: str, delay: float) -> dict[str, Any]:
+        """État d'un menu posé qui montre `item` avec un focus (lot BM2) : une liste remplie par une réponse du core
+        (écran « Contenus » juste ouvert, #1108 : « choisir « content:starter » : focus «  » ») n'a d'abord ni
+        éléments ni focus. Relu jusqu'à `delay` secondes, silences de l'engine non comptés ; le dernier état sinon."""
+        deadline = now() + delay
+        since = self.silent_s
+        while True:
+            st = self.state()
+            ids = [it["id"] for it in st.get("items", []) if it["enabled"]]
+            if (item in ids and st.get("focus_id") in ids) or now() >= deadline + min(self.silent_s - since,
+                                                                                     ENGINE_SILENT_S):
+                return st
+            time.sleep(0.15)
+
     def move_focus(self, item: str) -> bool:
         """Focus sur l'élément `item` par appuis courts sur + ou − (le plus court chemin, la liste boucle)."""
+        self.settled_items(item, 5.0 * self.slowdown())
         for _ in range(40):
             st = self.state()
             if st.get("focus_id") == item:
@@ -731,12 +778,20 @@ class Run:
                 bad.append(f"« {unwanted} » présent")
         return bad
 
-    def wait_screen(self, step: dict[str, Any]) -> None:
-        deadline = now() + float(step.get("delai", 5.0))
+    def wait_screen(self, step: dict[str, Any], suivant: dict[str, Any] | None = None) -> None:
+        """Attend l'écran de l'étape. Délai allongé sous Vulkan logiciel comme les autres étapes (`slowdown`, lot BM2 :
+        il ne l'était pas ici). Étape `transitoire` (écran qui ne dure qu'un instant, « Compilation de … ») : si le
+        menu est déjà sur l'écran de l'étape d'écran suivante `suivant`, l'étape est passée (#964 : runner muet 13 s,
+        compilation finie avant la première lecture)."""
+        deadline = now() + float(step.get("delai", 5.0)) * self.slowdown()
         since = self.silent_s
         while True:
             st = self.state()
             bad = self._screen_ok(st, step)
+            if bad and step.get("transitoire") and suivant is not None and not self._screen_ok(st, suivant):
+                self.check(True, f"écran {step.get('ecran', '')} (transitoire)",
+                           f"déjà passé : écran suivant « {st.get('screen', '')} » atteint" + self.silence(since))
+                return
             # Délai de l'étape, silences de l'engine non comptés (wait_engine).
             limit = deadline + min(self.silent_s - since, ENGINE_SILENT_S)
             if not bad or now() >= limit or self.engine.p.poll() is not None:
@@ -942,6 +997,13 @@ class Run:
         cmd += sup.engine_cmd[sup.engine_cmd.index("--"):] + [f"--routes-dir={self.routes}", "--test-mode"]
         if a.sonde:   # sonde de performance de l'engine (lot X13) : moteur.csv, saccades.csv, taches.csv (lot ML2)
             cmd.append(f"--perf-probe={self.out / f'sonde{suffix}' / 'moteur.csv'}")
+        # Lot BF2 : à caches de rendu vides, le départ se juge à froid (perf_probe report lit la marque posée à côté
+        # de moteur.csv). Banc r1097 du 26/11 : passage « chaud » d'ea1_lac jugé à 150 ms sur des caches vides.
+        cold = render_caches_empty(self.args.caches_rendu)
+        self.report.check(None, "caches de rendu", "vides avant ce passage : départ jugé à froid (premier lancement)"
+                          if cold else "gardés d'un passage précédent : départ jugé à chaud")
+        for probe in probe_paths(cmd):
+            perf_probe.write_shaders_mark(probe.parent, "froid" if cold else "chaud")
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
@@ -998,7 +1060,7 @@ class Run:
 
     # --- déroulé ---------------------------------------------------------------------------
 
-    def step(self, step: dict[str, Any]) -> bool:
+    def step(self, step: dict[str, Any], suivant: dict[str, Any] | None = None) -> bool:
         """Joue une étape ; faux si le passage ne peut pas continuer (engine arrêté)."""
         assert self.engine is not None and self.core is not None
         delay = float(step.get("delai", 5.0)) * self.slowdown()
@@ -1038,7 +1100,7 @@ class Run:
                                     "duration_s": float(step.get("duree_s", COURT_S))}) + "\n")
             time.sleep(float(step.get("duree_s", COURT_S)) + 0.5)
         elif "ecran" in step or "menu_cache" in step or "monde" in step:
-            self.wait_screen(step)
+            self.wait_screen(step, suivant)
         elif "config" in step:
             self.wait_config(step["config"], delay if "delai" in step else 3.0)
         elif "journal" in step:
@@ -1088,10 +1150,13 @@ class Run:
         self.prepare()
         try:
             if self.start():
-                for i, step in enumerate(self.doc.get("etapes", [])):
+                etapes = self.doc.get("etapes", [])
+                for i, step in enumerate(etapes):
                     if self.voie not in step.get("voies", VOIES):
                         continue
-                    if not self.step(step):
+                    suivant = next((e for e in etapes[i + 1:] if "ecran" in e and self.voie in e.get("voies", VOIES)),
+                                   None)
+                    if not self.step(step, suivant):
                         break
                     if self.report.failed >= MAX_FAILURES:
                         self.report.check(False, f"passage interrompu après {MAX_FAILURES} échecs",

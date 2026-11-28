@@ -17,7 +17,8 @@ void vertex() {
 	VERTEX.y -= droop * VERTEX.x * 0.9;
 	VERTEX.x *= mix(0.25, 1.0, lift);
 	float amp = (0.06 + 0.12 * gust) * u * (0.3 + lift);
-	VERTEX.z += sin(VERTEX.x * 4.0 - phase * (3.0 + 6.0 * strength)) * amp;
+	// Multiplicateur constant : le vent fort accélère déjà la phase (wind_model.gd, revue E12-51).
+	VERTEX.z += sin(VERTEX.x * 4.0 - phase * 4.0) * amp;
 }
 
 void fragment() {
