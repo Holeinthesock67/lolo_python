@@ -93,6 +93,10 @@ Depuis le 22 novembre 2026, les PR n'écrivent plus ici : chaque lot laisse ses 
 - Mesures invraisemblables ignorées, valeur précédente gardée, une ligne de journal par sorte toutes les 10 s au plus : puissance au-delà de 1,5 fois la plage annoncée (3 000 W au moins), cadence au-dessus de 250 tr/min, FC hors de 25 à 250 bpm, du trainer comme de la ceinture (S6-03).
 - Export FIT : une valeur hors des plages du format ne fait plus échouer tout le fichier (ni `recover`) : la mesure fautive est retirée de ce relevé, vitesse et distance bornées, le journal garde les valeurs brutes (S7-01).
 - Tours du FIT : la distance d'un tour part du dernier relevé du tour précédent (les tours s'additionnent à la séance) et le temps chronométré d'un tour ne compte plus ses pauses (S7-04).
+
+### Démonstrations en ligne d'au moins 40 km (lot DL1)
+- Le Col du lacet monte sur 40 km (environ 950 m), le Tour des nouveaux paysages, la Route des Érables et la Route des Trois Forêts font 42 km, la Route du Sud 48 km : chaque paysage s'étend sur 6 à 8 km. Les boucles ne changent pas.
+- Les bancs gardent les versions courtes d'avant (variante `--recette`).
 ### Remettre à zéro les statistiques d'un profil (lot RZ1)
 - « Gérer : <profil en cours> › Remettre à zéro mes statistiques » : niveau, expérience, pièces, défis, cartes, records, équipement acheté et cotes des bots repartent de zéro (avant une saison de la ligue, par exemple). Séances et FIT (historique du coach), cote Elo du cycliste, nom, FTP, poids, FC max, réglages, derniers choix et plan gardés.
 - Rien n'est effacé : sauvegarde datée faite avant, dans `~/OpenRide/Profils/.remises_a_zero/` ; « Annuler la remise à zéro » remet les statistiques d'avant. Confirmation aux boutons écrits (« Non, garder mes statistiques » par défaut), exigée aussi par le core ; en ligne de commande : `openride-core profil remise-a-zero | remises | annuler-remise`.

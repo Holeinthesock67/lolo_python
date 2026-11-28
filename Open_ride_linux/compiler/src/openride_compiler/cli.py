@@ -814,7 +814,7 @@ DEFAULT_PACK_WORK_DIR = Path.home() / ".cache" / "openride" / "route_packs"
 # Parcours de démonstration du core (`openride_core.demo_world`), repris ici pour que le repli
 # fonctionne sans le core ; `test_catalog_parity.py` vérifie que les deux valeurs restent égales.
 DEMO_NAME = "demo"
-DEMO_LENGTH_M = 5000.0
+DEMO_LENGTH_M = 40000.0   # Col du lacet du jeu (lot DL1), copie de `openride_core.demo_world`
 
 
 @dataclass(frozen=True)

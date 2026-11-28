@@ -119,7 +119,7 @@ def test_near_mesh_stays_under_road_where_grade_changes():
     """7 novembre 2026 : au km 1,74 de la démonstration, la pente passe de 1 % à 3,5 % ; les triangles de 10 m,
     dont les sommets sont 5 cm sous la route, passaient jusqu'à 1 cm au-dessus et le sol recouvrait la chaussée.
     Après `clear_road`, tout point de la chaussée est au moins à 5 cm au-dessus du maillage proche."""
-    from openride_core.demo_world import DEMO_LENGTH_M
+    from openride_core.demo_world import DEMO_RECETTE_LENGTH_M as DEMO_LENGTH_M   # 5 km (lot DL1)
     from openride_core.synthetic_terrain import build_tiles, road_samples
 
     route = build_route(DEMO_LENGTH_M)
@@ -142,7 +142,7 @@ def test_clear_road_lowers_only_what_is_needed():
     """Sur la démonstration, le garde-fou ne touche que les sommets des triangles qui dépassent (environ 1 200 sur
     plus de 130 000 depuis le 21/11 : chaussée de l'engine et bas-côtés, qui s'écarte des segments droits dans les
     lacets), de 60 cm au plus."""
-    from openride_core.demo_world import DEMO_LENGTH_M
+    from openride_core.demo_world import DEMO_RECETTE_LENGTH_M as DEMO_LENGTH_M   # 5 km (lot DL1)
     from openride_core.synthetic_terrain import clear_road
 
     route = build_route(DEMO_LENGTH_M)

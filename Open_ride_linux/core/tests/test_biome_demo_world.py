@@ -193,11 +193,64 @@ def test_game_set_has_library_fiche(demo_set: Path, mbw) -> None:
 def test_place_names_per_block(mbw) -> None:
     alpin = mbw.Plan(("alpine",) * 3, False, False)
     assert [alpin.place("col", i) for i in range(3)] == [
-        "Belvédère des Marmottes", "Belvédère du Glacier", "Col des Edelweiss"]   # le sommet au dernier bloc
+        "Belvédère du Glacier", "Belvédère des Marmottes", "Col des Edelweiss"]   # le sommet au dernier bloc
     assert [alpin.place("port", i) for i in range(2)] == ["Port-Lanterne", "Anse aux Mouettes"]
     tour = mbw.Plan(mbw.TOUR, False, False)
     assert tour.place("col", len(mbw.TOUR) - 1) == "Col des Edelweiss"
     assert mbw.Plan(mbw.TOUR, False, False, recette=True).place("col", 5) == "Col Fictif"
+
+
+def test_summit_name_only_at_the_end(mbw) -> None:
+    """Lot DL1 : sur une route ouverte de vingt et un blocs `japan`, le nom du sommet n'est porté que par le dernier
+    bloc ; les autres reprennent les noms suivants dans l'ordre ; un lieu ordinaire reprend sa liste au début."""
+    plan = mbw.Plan(mbw.tour_blocks("japan")[0], False, False)
+    n = len(plan.biomes)
+    views = [plan.place("japon_vue", i) for i in range(n)]
+    assert views[-1] == "Col des Cèdres" and views.count("Col des Cèdres") == 1
+    assert views[:3] == list(mbw.PLACE_NAMES["japon_vue"][1:4])
+    villages = mbw.PLACE_NAMES["japon"]
+    assert [plan.place("japon", i) for i in range(n)] == [villages[i % len(villages)] for i in range(n)]
+    tour = mbw.Plan(mbw.tour_blocks("paysages")[0], False, False)
+    assert [tour.place("plateau", i) for i in range(len(tour.biomes) - 3, len(tour.biomes))] == [
+        "Belvédère des Vigognes", "Belvédère de l'Altiplano", "Col des Lamas"]
+
+
+def test_game_lines_at_least_40_km(mbw) -> None:
+    """Lot DL1 : chaque route ouverte du jeu de base fait au moins 40 km, ses blocs de 2 km répétés à la suite dans
+    l'ordre ; sa variante de recette (bancs) garde ses blocs d'avant, comme les boucles et les parcours de recette
+    seuls ; le Col du lacet fait 40 km dans le jeu, 5 km en recette."""
+    from openride_core import demo_world
+
+    assert demo_world.DEMO_LENGTH_M >= mbw.LINE_MIN_M and demo_world.DEMO_RECETTE_LENGTH_M == 5000.0
+    lines = [which for _n, _t, which, *_, base in mbw.DEMO_SET if base and which not in mbw.LOOPS]
+    assert sorted(lines) == ["forets", "japan", "paysages", "sud"]
+    for which in lines:
+        biomes, variants = mbw.tour_blocks(which)
+        short, short_variants = mbw.tour_blocks(which, recette=True)
+        k = mbw.line_repeat(which, len(short))
+        assert mbw.LINE_MIN_M <= len(biomes) * mbw.BLOCK_M < mbw.LINE_MIN_M + len(short) * mbw.BLOCK_M
+        assert biomes == tuple(b for b in short for _ in range(k))
+        assert variants == (None if short_variants is None else tuple(v for v in short_variants for _ in range(k)))
+    assert {w: len(mbw.tour_blocks(w)[0]) for w in lines} == {"paysages": 21, "japan": 21, "sud": 24,
+                                                          "forets": 21}
+    assert {w: len(mbw.tour_blocks(w, recette=True)[0]) for w in lines} == {"paysages": 7, "japan": 3, "sud": 6,
+                                                                        "forets": 3}
+    for which in ("tour", "coast", "alpine", "nord", "circuit", "recif", "volcan"):
+        assert mbw.tour_blocks(which) == mbw.tour_blocks(which, recette=True), which
+    assert mbw.library_of("demo-biomes-sud")["description"].startswith("48 km ")
+    assert mbw.library_of("demo-biomes-sud", recette=True)["description"].startswith("12 km ")
+
+
+def test_recette_variant_stays_short(recette_set: Path, mbw) -> None:
+    """Lot DL1 : la variante de recette des bancs garde les longueurs d'avant (14, 6 et 12 km) et sa fiche le dit ;
+    elle n'est pas périmée pour les contenus de départ, et le Col du lacet de recette (5 km) n'est pas réécrit."""
+    from openride_core import demo_world
+
+    for name, km in (("demo-biomes-paysages", 14.0), ("demo-japon", 6.0), ("demo-biomes-sud", 12.0)):
+        world = recette_set / f"{name}.world"
+        assert _json(world / "route.json")["length_m"] == pytest.approx(km * 1000.0, rel=0.02), name
+        assert _json(world / "manifest.json")["library"] == mbw.library_of(name, recette=True)
+        assert not demo_world.biome_demo_outdated(world), name
 
 
 def test_recette_variant_keeps_technical_names(tmp_path: Path) -> None:
@@ -264,11 +317,11 @@ def test_unknown_biome_refused(tmp_path: Path, mbw) -> None:
 def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert main(["demo-biomes", "--out", str(tmp_path)]) == 0
     out = capsys.readouterr().out
-    assert "demo-biomes-paysages (Tour des nouveaux paysages) : 14.2 km" in out and "demo-biomes-gravel" not in out
+    assert "demo-biomes-paysages (Tour des nouveaux paysages) : 42.5 km" in out and "demo-biomes-gravel" not in out
     assert "demo-circuit (Circuit des Prés) : " in out and "demo-recif (Récif des tortues) : " in out
     assert "demo-volcan (Volcan en flammes) : 8.0 km" in out and "demo-biomes-tour" not in out
-    assert "demo-japon (Route des Érables) : 6.1 km" in out
-    assert "demo-biomes-sud (Route du Sud) : 12.1 km" in out
+    assert "demo-japon (Route des Érables) : 42.5 km" in out
+    assert "demo-biomes-sud (Route du Sud) : 48.5 km" in out
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
     assert "demo-corniche (Boucle de la Corniche) : 2.5 km" in out and "demo-vignes (Route des Vignes) : 5.0 km" in out
     assert "demo-biomes-forets (Route des Trois Forêts) : " in out
@@ -371,7 +424,7 @@ def test_circuit_grand_prix_in_laps(demo_set: Path, tmp_path: Path, monkeypatch:
 
 
 def test_paysages_tour(demo_set: Path, mbw) -> None:
-    """Lot DB1 : sept blocs de 2 km, un par biome ou paysage de la 6.0, un septième chacun ; chaque tuile proche
+    """Lot DB1 : sept biomes ou paysages de la 6.0 (trois blocs de 2 km chacun depuis le lot DL1), un septième chacun ; chaque tuile proche
     porte la variante (sol, toits, paysage du lot U25) de son bloc ; mer le long du fjord ; montée au sommet des
     hauts plateaux ; aucun paysage posé sur le biome du bloc voisin."""
     from openride_compiler.regional import LANDSCAPES
@@ -389,8 +442,9 @@ def test_paysages_tour(demo_set: Path, mbw) -> None:
     for f in (world / "biome" / "near").glob("tile_*.json"):
         tile = _json(f)
         iz = int(f.stem.split("_")[2])
-        block = min(max(-iz - 1, 0) // 2, len(mbw.PAYSAGES) - 1)    # tuile de 1 km vers le nord : bloc de 2 km
-        assert tile["variant"] == mbw.paysages_variants()[block], f.name
+        variants = mbw.paysages_variants()
+        block = min(max(-iz - 1, 0) // 2, len(variants) - 1)    # tuile de 1 km vers le nord : bloc de 2 km
+        assert tile["variant"] == variants[block], f.name
         if tile["variant"] and tile["variant"]["landscape"]:
             seen.add(tile["variant"]["landscape"])
     assert seen == landscapes
@@ -403,10 +457,10 @@ def test_paysages_tour(demo_set: Path, mbw) -> None:
                 assert mbw.PAYSAGES[j][0] not in bases, (landscape, mbw.PAYSAGES[j][0])
     assert manifest["layers"]["coast"]["present"]
     route = _json(world / "route.json")
-    assert route["length_m"] == pytest.approx(7 * mbw.BLOCK_M, rel=0.02)
+    assert route["length_m"] == pytest.approx(21 * mbw.BLOCK_M, rel=0.02)   # trois blocs par paysage (lot DL1)
     assert max(route["grade_pct"]) <= 8.0 and min(route["grade_pct"]) >= -4.0
     top = max(range(route["n"]), key=lambda i: route["alt_m"][i])
-    assert top * route["ds_m"] > 6 * mbw.BLOCK_M and route["alt_m"][top] - route["alt_m"][0] >= 200.0
+    assert top * route["ds_m"] > 18 * mbw.BLOCK_M and route["alt_m"][top] - route["alt_m"][0] >= 600.0
     pois = "".join(f.read_text(encoding="utf-8") for f in (world / "poi").glob("*.json"))
     assert "Col des Lamas" in pois and "Belvédère du Canyon Rouge" in pois
     info = _json(demo_set / "demo-biomes-paysages.json")
@@ -466,8 +520,8 @@ def test_decor_cyclists_never_touch(demo_set: Path, recette_set: Path) -> None:
 
 
 def test_japon_demo(demo_set: Path, mbw) -> None:
-    """Lot DJ1 : la route des Érables, 6 km dans le seul biome `japan` (trois blocs), sol et toits d'une vraie
-    route japonaise sur chaque tuile, montée douce (1 à 5 %, 150 à 260 m) jusqu'au « Col des Cèdres », villages et
+    """Lot DJ1 : la route des Érables, 42 km dans le seul biome `japan` (vingt et un blocs, lot DL1), sol et toits d'une
+    vraie route japonaise sur chaque tuile, montée douce (1 à 5 %, 1 200 à 1 600 m) jusqu'au « Col des Cèdres », villages et
     belvédères nommés, aucune mer ; installée sur un jeu neuf comme les autres démonstrations du jeu de base."""
     from openride_compiler.regional import variant_for
 
@@ -481,10 +535,10 @@ def test_japon_demo(demo_set: Path, mbw) -> None:
     tiles = [_json(f) for level in ("near", "far") for f in (world / "biome" / level).glob("tile_*.json")]
     assert tiles and all(t["variant"] == mbw.BIOME_VARIANTS["japan"] for t in tiles)
     route = _json(world / "route.json")
-    assert route["length_m"] == pytest.approx(3 * mbw.BLOCK_M, rel=0.02)
+    assert route["length_m"] == pytest.approx(21 * mbw.BLOCK_M, rel=0.02)
     assert 0.5 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 5.5
     alt = route["alt_m"]
-    assert 150.0 <= alt[-1] - alt[0] <= 260.0 and max(alt) == pytest.approx(alt[-1], abs=2.0)
+    assert 1200.0 <= alt[-1] - alt[0] <= 1600.0 and max(alt) == pytest.approx(alt[-1], abs=2.0)
     pois = "".join(f.read_text(encoding="utf-8") for f in (world / "poi").glob("*.json"))
     for name in (*mbw.PLACE_NAMES["japon"], *mbw.PLACE_NAMES["japon_vue"]):
         assert name in pois, name
@@ -557,20 +611,21 @@ def test_every_biome_has_a_game_demo(mbw) -> None:
 
 
 def test_sud_route(demo_set: Path, mbw) -> None:
-    """Route du Sud (lot DB3) : six blocs de 2 km sur la route ouverte, des oliviers au delta, parts égales, pente de
+    """Route du Sud (lot DB3) : six biomes de 8 km (quatre blocs de 2 km chacun, lot DL1) sur la route ouverte, des
+    oliviers au delta, parts égales, pente de
     −5 à +6 %, sommet avant la descente de la jungle, mares du delta à l'arrivée, aucune variante régionale."""
     import numpy as np
 
     world = demo_set / "demo-biomes-sud.world"
     route = _json(world / "route.json")
-    assert route["type"] == "open" and route["length_m"] == pytest.approx(12000.0, abs=200.0)
+    assert route["type"] == "open" and route["length_m"] == pytest.approx(48000.0, abs=800.0)
     shares = _json(world / "manifest.json")["layers"]["biome"]["shares"]
     assert list(shares) == [b for b, *_ in mbw.SUD]
     assert all(v == pytest.approx(100.0 / 6, abs=0.6) for v in shares.values()), shares
     assert -5.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 6.0
     alt = np.array(route["alt_m"])
     top = int(np.argmax(alt)) * route["ds_m"]
-    assert 6000.0 <= top <= 8500.0, top                       # fin de la savane, avant la jungle
+    assert 24000.0 <= top <= 34000.0, top                     # fin de la savane, avant la jungle
     assert _json(demo_set / "demo-biomes-sud.json")["generated"]["water_areas"] >= 5   # oasis et mares du delta
     for f in (world / "biome" / "near").glob("*.json"):
         assert _json(f)["variant"] is None, f.name
