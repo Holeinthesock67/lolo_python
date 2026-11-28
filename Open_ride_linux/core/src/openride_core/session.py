@@ -761,7 +761,8 @@ class CoreSession:
         scene = self.server.engine_connected and (expected is None or self._scene_route == expected)
         was = gate.phase
         opened = gate.update(dt, scene_ready=scene, trainer_connected=bool(m.connected),
-                             cadence_rpm=m.cadence_rpm, power_w=m.power_w)
+                             cadence_rpm=m.cadence_rpm, power_w=m.power_w,
+                             engine_connected=bool(self.server.engine_connected))
         if gate.phase != was:
             log.info("Départ : étape %s -> %s%s (%.1f s)", was, gate.phase,
                      " (décor non signalé par l'engine)" if gate.decor_timeout and was == "decor" else "",

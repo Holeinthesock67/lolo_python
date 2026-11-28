@@ -186,3 +186,25 @@ def test_cold_start_judged_at_one_second_and_loading_reported():
     assert froid["chargement à froid"][0] is None and "11800 ms" in froid["chargement à froid"][1]
     r[25]["frame_max_ms"] = 6500.0   # pile c57b9746 en medium : toujours un échec à froid
     assert by_label(pp.hitch_checks(r, shaders="froid"))["départ"][0] is False
+
+
+def test_graphics_preparation_frames_are_loading_not_the_start():
+    """Banc j26r2 de #1097 (low) : la pire image du départ (2821 ms, « shaders doublure 26 », 0 m) était une image
+    de la préparation des graphismes, sous sa barre, parcours pas encore chargé ; elle est relevée à part (INFO),
+    le départ et le régime établi restent jugés sur les autres images."""
+    r = rows()
+    r[25]["frame_max_ms"], r[45]["frame_max_ms"] = 2821.0, 1700.0   # préparation, avant et après warmup_s
+    r[50]["frame_max_ms"] = 120.0                                     # départ, après la préparation, encore à 0 m
+    sac = [{"t_s": 25.1, "frame_ms": 2821.0, "distance_m": 0.0, "cause": "shaders",
+            "steps": "fenetre  1.2 | shaders doublure 26 0.0 | préparation graphismes 0.0"},
+           {"t_s": 45.2, "frame_ms": 1700.0, "distance_m": 0.0, "cause": "shaders",
+            "steps": "shaders doublure 47 0.0 | préparation graphismes 0.0"},
+           {"t_s": 50.1, "frame_ms": 120.0, "distance_m": 0.0, "cause": "shaders", "steps": "route road:0 0.9"}]
+    checks = by_label(pp.hitch_checks(r, sac, shaders="froid"))
+    assert checks["préparation des graphismes"][0] is None and "2821 ms sur 2 seconde(s)" in checks[
+        "préparation des graphismes"][1]
+    assert checks["départ"] == (True, "pire image 120 ms de 20 à 30 s et avant le premier mètre "
+                                      "(au plus 1000 ms, shaders froids)")
+    assert checks["pire image"] == (True, "18 ms (au plus 100 ms)")
+    sac[0]["steps"] = "fenetre  1.2 | shaders doublure 26 0.0"   # sans la marque : jugée avec le départ
+    assert by_label(pp.hitch_checks(r, sac, shaders="froid"))["départ"][0] is False

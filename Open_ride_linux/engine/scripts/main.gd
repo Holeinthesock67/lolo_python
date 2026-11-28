@@ -88,6 +88,9 @@ const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
+const ShaderWarm := preload("res://scripts/shader_warm.gd")
+const GraphicsCatalog := preload("res://scripts/graphics_catalog.gd")
+const GraphicsPrep := preload("res://scripts/graphics_prep.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const OW_PREFIX := "ow:"
@@ -119,6 +122,8 @@ var route
 var routes_dir: String = ""
 var follow = CameraFollowScript.new()
 var session_state: String = ""
+## Préparation des graphismes en cours (lot PG1, graphics_prep.gd) : la scène du parcours attend sa fin.
+var _graphics_prep = null
 var _first_state_logged := false
 var _route_id_requested = null
 ## Profil d'altitude du dernier parcours chargé, pour la carte de détail des menus : {id, profile}.
@@ -355,11 +360,30 @@ func _ready() -> void:
 		streamer.add_child(horizon)
 		streamer.horizon_view = horizon
 		horizon.setup(world_env.environment, sun)
+	if streamer.shader_warm == null and bool(cfg.get("shader_warm", true)):
+		var warm = ShaderWarm.new()   # premier affichage à froid (lot AC6) : une doublure de shader par image
+		warm.name = "ShaderWarm"
+		warm.active = session_state != "RUNNING"   # séance déjà partie (reprise, tour visuel) : rien de retenu
+		streamer.add_child(warm)
+		streamer.shader_warm = warm
+		var catalog = GraphicsCatalog.new()   # lot PG1 : recette de chaque objet vu, pour la préparation suivante
+		if str(cfg.get("graphics_catalog_dir", "")) != "":
+			catalog.dir = str(cfg["graphics_catalog_dir"])
+		catalog.load_index()
+		warm.catalog = catalog
+		if bool(cfg.get("graphics_prep", true)) and GraphicsPrep.needed():
+			var prep = GraphicsPrep.new()   # premier lancement (lot PG1) : tout le catalogue, une doublure par image
+			prep.name = "GraphicsPrep"
+			prep.warm = warm
+			add_child(prep)
+			prep.start(GraphicsCatalog.list_paths())   # chargées une par image (banc r1097)
+			_graphics_prep = prep
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
 		streamer.add_child(osm_st)
 		streamer.osm_streamer = osm_st
+		osm_st.shader_warm = streamer.shader_warm   # lot AC6 : tronçons OSM comme les tuiles
 	if sound_player == null:
 		sound_player = SoundPlayer.new()
 		sound_player.name = "SoundPlayer"
@@ -1601,6 +1625,8 @@ func _warmup_steps() -> Array:
 func _poll_route_job() -> void:
 	if _route_job.is_empty() or not BgTasks.done(_route_job["task"]):
 		return
+	if _graphics_prep != null and _graphics_prep.running:
+		return   # lot PG1 : décor construit après la préparation, ses shaders déjà passés
 	var job := _route_job
 	_route_job = {}
 	BgTasks.wait(job["task"])
@@ -2369,6 +2395,8 @@ func _on_state_received(state: Dictionary) -> void:
 	var previous_session_state := session_state
 	if new_session_state != session_state:
 		session_state = new_session_state
+		if streamer.shader_warm != null:   # lot AC6 : rien de caché en séance (une tuile retardée se verrait)
+			streamer.shader_warm.set_active(session_state != "RUNNING")
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
 		if session_state == "RUNNING" and HudViewModel.is_ftp_warmup(state.get("erg", null)):
 			banner.show_message("controls", HudViewModel.ftp_warmup_text(), CONTROLS_HINT_S)

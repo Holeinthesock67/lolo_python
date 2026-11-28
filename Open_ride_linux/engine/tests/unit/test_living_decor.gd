@@ -20,6 +20,7 @@ const HudView := preload("res://scripts/hud_view.gd")
 const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const ShaderWarm := preload("res://scripts/shader_warm.gd")
 
 const WORLD := "user://test_living_decor.world"
 const LENGTH_M := 5000.0
@@ -122,6 +123,7 @@ static func _make_world() -> Dictionary:
 ## Faux world_streamer.gd : seulement ce que living_decor.gd appelle.
 class FakeWorld extends Node3D:
 	var osm_streamer = null
+	var shader_warm = null   # lot AC6 (banc w24 du 26/11) : doublures du décor prêt
 	var biome_model = null
 	var road_markings := false
 	var marks: Dictionary = {}
@@ -185,6 +187,32 @@ func _decor(preset: String, enabled: bool, theme: Dictionary, env: Environment) 
 	osm.flush()
 	dec.flush()
 	return [dec, osm, ws, lw, route]
+
+
+## Décor branché sur shader_warm.gd (lot AC6) : [décor, shader_warm, osm, monde, monde vivant].
+func _decor_warm(theme: Dictionary, env: Environment) -> Array:
+	var osm = OsmStreamer.new()
+	root.add_child(osm)
+	var ws := FakeWorld.new()
+	ws.osm_streamer = osm
+	root.add_child(ws)
+	var warm = ShaderWarm.new()
+	ws.add_child(warm)
+	ws.shader_warm = warm
+	var lw = LivingWorld.new()
+	root.add_child(lw)
+	var dec = LivingDecor.new()
+	root.add_child(dec)
+	dec.living_world = lw
+	dec.configure("high", true, theme, env, null, ws)
+	var route = RouteData.new()
+	route.load_route_dict(_route_dict)
+	osm.set_world(route, WORLD)
+	dec.set_route(route, WORLD, 6.0)
+	osm.update_window(0.0, LENGTH_M)
+	osm.flush()
+	dec.flush()
+	return [dec, warm, osm, ws, lw]
 
 
 func _run() -> void:
@@ -465,6 +493,26 @@ func _run() -> void:
 		and dec.traffic.vehicles.any(func(v): return v.has("témoin")) and dec.cyclists.groups.any(func(g): return g.has("témoin")),
 		"monde ouvert : véhicules et cyclistes gardés sur la route prolongée")
 	_check(dec.crowd.spectators.any(func(sp): return float(sp["s"]) > 3000.0), "monde ouvert : spectateurs du sommet de la route prolongée")
+
+	# Lot AC6 (banc w24 du 26/11) : décor prêt à froid, ses vues restent cachées le temps des doublures de leurs shaders.
+	var wparts := _decor_warm(theme, env)
+	var wdec = wparts[0]
+	var warm = wparts[1]
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	_check(wdec.prepared and wdec.is_warming() and not wdec.traffic_view.visible and not wdec.crowd_view.visible
+		and wdec.fauna.visible and warm.pending() > 0, "décor prêt à froid : vues nouvelles cachées, doublures en attente")
+	var wf := 0
+	while warm.pending() > 0 and wf < 500:
+		warm.step(cam)
+		wf += 1
+	wdec._warm_check()
+	_check(not wdec.is_warming() and wdec.traffic_view.visible and wdec.crowd_view.visible,
+		"doublures passées (%d images) : vues de nouveau visibles" % wf)
+	for nd in wparts:
+		if nd is Node:
+			(nd as Node).queue_free()
+	cam.queue_free()
 
 	for nd in [dec, dv, hud, off, mid]:
 		nd.queue_free()

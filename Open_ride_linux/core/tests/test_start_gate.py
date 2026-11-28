@@ -69,6 +69,24 @@ def test_scene_timeout_for_an_engine_that_never_says_ready():
     assert _run(g, 1.2, **{**RIDING, "scene_ready": False}) and g.decor_timeout
 
 
+def test_scene_waits_longer_once_an_engine_is_connected():
+    """Banc j26r2 de #1097 : la préparation des graphismes du premier lancement dure une minute ou plus ; à 60 s la
+    séance partait sans décor et la préparation était coupée. Un engine relié pendant l'attente (même s'il manque
+    ensuite un battement, image de plusieurs secondes) porte l'attente à ATTENTE_ENGINE_S."""
+    from openride_core.start_gate import ATTENTE_ENGINE_S
+
+    g = StartGate(duree_s=1, attente_decor_s=60)
+    _run(g, 1.0, **{**RIDING, "scene_ready": False}, engine_connected=True)
+    assert not _run(g, 120.0, **{**RIDING, "scene_ready": False}) and g.phase == "decor" and not g.decor_timeout
+    assert g.decor_limit_s == ATTENTE_ENGINE_S
+    assert _run(g, 1.1, **RIDING) and not g.decor_timeout   # décor prêt : départ au pédalage
+    g = StartGate(duree_s=1, attente_decor_s=60)
+    _run(g, 1.0, **{**RIDING, "scene_ready": False}, engine_connected=True)
+    assert _run(g, ATTENTE_ENGINE_S, **{**RIDING, "scene_ready": False}) and g.decor_timeout   # au plus 300 s
+    g = StartGate(duree_s=1, attente_decor_s=0)   # départ sans décor voulu : inchangé
+    assert _run(g, 1.1, **{**RIDING, "scene_ready": False}, engine_connected=True) and g.decor_timeout
+
+
 def test_trainer_lost_restarts_the_count():
     g = StartGate(duree_s=3)
     _run(g, 2.0, **RIDING)
