@@ -589,7 +589,7 @@ class ProfileBot(ConstantPowerBot):
         tac = self.tactics
         if tac.attack_until > self.t:
             return "attack"
-        if tac.respond_to is not None and self.t < tac.respond_until:
+        if (tac.respond_to is not None and self.t < tac.respond_until) or tac.chasing:   # chasse (lot AG1) : « suit »
             return "respond"
         if self.peak_w > 0 and self.power_w == self.peak_w:
             return "sprint"
