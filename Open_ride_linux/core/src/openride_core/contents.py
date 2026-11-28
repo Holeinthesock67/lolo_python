@@ -6,14 +6,14 @@ message `contents` (`list_contents`), installé par `install_content`, toujours 
 - `starter` (« Contenus de départ ») : les entraînements livrés (`core/workouts/`), les deux plans de
   départ (`core/plans/`), les parcours de démonstration des biomes et le circuit (`openride-core
   demo-biomes`, lots U19 et O38) et la piste du vélodrome (`openride-core velodromes`, lot VD10, écrite par le
-  core sans compilateur), et le pack « Cols célèbres » livré dans le paquet du jeu (lot PK1,
-  `pack_bundle.py`). Installé seul au premier lancement (`run --first-run`), puis proposé dans
-  le menu pour une installation existante. Rien n'est téléchargé.
+  core sans compilateur), et les packs de parcours livrés dans le paquet du jeu (lot PK1 « Cols célèbres »,
+  lot AN1 « Tours célèbres », `pack_bundle.py`). Installé seul au premier lancement (`run --first-run`), puis
+  proposé dans le menu pour une installation existante. Rien n'est téléchargé.
 
-- `routes:cols_celebres` (pack « Cols célèbres », lot O29) : installé depuis le paquet du jeu quand il y
-  est (lot PK1, sans réseau) ; sinon construit depuis OpenStreetMap par le compilateur
-  (`route-pack-build cols_celebres --install`), puis compilé (`build-all`) ; télécharge. Ses crédits
-  (OpenStreetMap ODbL, Copernicus) sont dans le détail de sa ligne.
+- `routes:<pack>` des packs de base (`BASE_PACKS` : `routes:cols_celebres`, lot O29 ; `routes:tours_celebres`,
+  lot AN1) : installé depuis le paquet du jeu quand il y est (lot PK1, sans réseau) ; sinon construit depuis
+  OpenStreetMap par le compilateur (`route-pack-build <pack> --install`), puis compilé (`build-all`, avec les
+  couches du pack) ; télécharge. Ses crédits (OpenStreetMap ODbL, Copernicus) sont dans le détail de sa ligne.
 - `archive:N` (lot O29) : archives `.zip` trouvées dans Téléchargements, sur le Bureau ou dans
   `~/OpenRide/Import` : pack de thème ou de biomes (`theme.json`, `theme-install`) ou pack de parcours
   (`pack.toml`, `route-pack-install` puis `build-all`). Rien n'est téléchargé.
@@ -46,8 +46,42 @@ from typing import Any, Callable
 from . import pack_bundle
 
 STARTER_ID = "starter"
-COLS_ID = "routes:cols_celebres"
 COLS_PACK = "cols_celebres"
+
+
+@dataclass(frozen=True)
+class PackWords:
+    """Mots d'un pack de base au menu : compte (« 21 cols célèbres »), détail de sa ligne et compte rendu."""
+    one: str            # « col célèbre »
+    many: str           # « cols célèbres »
+    what_one: str       # « montée célèbre »
+    what_many: str      # « montées célèbres »
+    examples: str       # « Alpe d'Huez, Ventoux, Teide… »
+    shipped: str        # « livrées avec le jeu »
+
+
+# Packs de parcours de base (recettes de `openride_compiler/route_packs/`, paquet du jeu) : un par ligne du menu.
+BASE_PACKS = {
+    "cols_celebres": PackWords("col célèbre", "cols célèbres", "montée célèbre", "montées célèbres",
+                               "Alpe d'Huez, Ventoux, Teide…", "livrées avec le jeu"),
+    "tours_celebres": PackWords("tour célèbre", "tours célèbres", "boucle célèbre", "boucles célèbres",
+                                "lac d'Annecy", "livrées avec le jeu"),
+}
+
+
+def pack_content_id(pack: str) -> str:
+    return f"routes:{pack}"
+
+
+def _words(pack: str) -> PackWords:
+    return BASE_PACKS.get(pack) or PackWords("parcours", "parcours", "parcours", "parcours", pack, "livrés avec le jeu")
+
+
+def _count(n: int, one: str, many: str) -> str:
+    return f"{n} {one if n == 1 else many}"
+
+
+COLS_ID = pack_content_id(COLS_PACK)
 STATES = ("missing", "partial", "installed", "installing")
 MAX_ITEMS = 32
 MAX_ARCHIVES = 12
@@ -101,14 +135,14 @@ def _demo_names() -> list[str]:
 
 
 def starter_parts(dirs: ContentDirs) -> dict[str, tuple[int, int]]:
-    """Par partie (`workouts`, `plans`, `routes`, `velodromes`, `cols` si le paquet porte le pack) :
+    """Par partie (`workouts`, `plans`, `routes`, `velodromes`, `pack:<id>` pour chaque pack du paquet) :
     (présents, livrés)."""
     workouts = _builtin_workouts()
     plans = _builtin_plans()
     demos = _demo_names()
-    bundle = pack_bundle.load()
-    cols = {"cols": (pack_bundle.installed_count(bundle, dirs.routes), len(bundle.routes))} if bundle else {}
-    return {**cols, 
+    packs = {f"pack:{b.id}": (pack_bundle.installed_count(b, dirs.routes), len(b.routes))
+             for b in pack_bundle.load_all()}
+    return {**packs, 
         "workouts": (sum((dirs.workouts / p.name).exists() for p in workouts), len(workouts)),
         "plans": (sum((dirs.plans / p.name).exists() for p in plans), len(plans)),
         "routes": (sum(_demo_current(dirs.routes / f"{n}.world") for n in demos), len(demos)),
@@ -142,11 +176,14 @@ def _state_of(parts: dict[str, tuple[int, int]]) -> str:
 def starter_detail(parts: dict[str, tuple[int, int]]) -> str:
     w, p, r = parts["workouts"][1], parts["plans"][1], parts["routes"][1]
     v = parts["velodromes"][1]
-    c = parts.get("cols", (0, 0))[1]
     text = f"{w} entraînements, {p} plans de départ"
     text += f", {r} parcours de démonstration" if r else ""
     text += f", {v} piste de vélodrome" if v == 1 else f", {v} pistes de vélodrome" if v else ""
-    return text + (f", {c} cols célèbres" if c else "")
+    for key, (_have, n) in sorted(parts.items()):
+        if key.startswith("pack:") and n:
+            words = _words(key.split(":", 1)[1])
+            text += ", " + _count(n, words.one, words.many)
+    return text
 
 
 def install_starter(dirs: ContentDirs, progress: Callable[[int], None] = lambda pct: None) -> str:
@@ -163,25 +200,32 @@ def install_starter(dirs: ContentDirs, progress: Callable[[int], None] = lambda 
     routes, note = install_biome_demos(dirs.routes)
     progress(90)
     routes += install_velodromes(dirs.routes)
-    cols, cols_note = install_bundled_cols(dirs, lambda pct: progress(90 + pct // 10))
-    progress(100)
     parts = [f"{len(copied)} entraînement(s)", f"{len(new_plans)} plan(s)", f"{len(routes)} parcours"]
-    parts += [f"{len(cols)} col(s) célèbre(s)"] if cols else []
+    notes = [note] if note else []
+    bundles = pack_bundle.load_all()
+    for i, bundle in enumerate(bundles):
+        done, pack_note = install_bundled_pack(
+            bundle, dirs, lambda pct, i=i: progress(90 + (10 * i + pct // 10) // max(1, len(bundles))))
+        if done:
+            words = _words(bundle.id)
+            parts.append(f"{len(done)} {words.one.replace(' ', '(s) ')}(s)")   # « 2 col(s) célèbre(s) »
+        if pack_note:
+            notes.append(pack_note)
+    progress(100)
     text = "Ajouté : " + ", ".join(parts) + "."
-    notes = " ".join(n for n in (note, cols_note) if n)
-    return text + (f" {notes}" if notes else "")
+    return text + (f" {' '.join(notes)}" if notes else "")
 
 
-def install_bundled_cols(dirs: ContentDirs, progress: Callable[[int], None] = lambda pct: None) -> tuple[list[str], str]:
-    """Pack « Cols célèbres » du paquet (lot PK1) : copie ce qui manque, sans réseau ni écrasement.
-    Renvoie les cols copiés et une remarque ("" si tout va bien ou s'il n'y a pas de pack dans le paquet)."""
-    bundle = pack_bundle.load()
-    if bundle is None or dirs.gpx is None:
+def install_bundled_pack(bundle: pack_bundle.BundledPack, dirs: ContentDirs,
+                         progress: Callable[[int], None] = lambda pct: None) -> tuple[list[str], str]:
+    """Un pack du paquet (lots PK1 et AN1) : copie ce qui manque, sans réseau ni écrasement.
+    Renvoie les parcours copiés et une remarque ("" si tout va bien)."""
+    if dirs.gpx is None:
         return [], ""
     try:
         _, copied = pack_bundle.install(bundle, dirs.gpx, dirs.routes, progress)
     except (pack_bundle.BundleError, OSError) as exc:
-        return [], f"Cols célèbres impossibles : {exc}."
+        return [], f"{bundle.name} impossibles : {exc}."
     return copied, ""
 
 
@@ -280,10 +324,34 @@ def _credits_detail(credits: str) -> str:
     return f" Crédits : {credits}."
 
 
+def _bundle(pack: str) -> pack_bundle.BundledPack | None:
+    return pack_bundle.load(pack_bundle.pack_dir(pack=pack))
+
+
+def _recipe_packs() -> list[str]:
+    """Packs de recettes livrés avec le compilateur (`route_packs/<pack>/pack.toml`)."""
+    pkg = _compiler_package()
+    base = pkg / "route_packs" if pkg else None
+    if base is None or not base.is_dir():
+        return []
+    return sorted(d.name for d in base.iterdir() if (d / "pack.toml").is_file())
+
+
+def base_packs() -> list[str]:
+    """Packs de base proposés au menu : ceux du paquet et ceux du compilateur, par identifiant."""
+    return sorted({b.id for b in pack_bundle.load_all()} | set(_recipe_packs()))
+
+
 def cols_item(dirs: ContentDirs) -> dict[str, Any] | None:
-    """Pack « Cols célèbres » (lot O16) : livré dans le paquet (lot PK1, sans réseau) ou à construire ;
-    None sans dossier des traces, ou sans paquet ni compilateur."""
-    bundle = pack_bundle.load()
+    """Pack « Cols célèbres » (lot O16) ; voir `pack_item`."""
+    return pack_item(dirs, COLS_PACK)
+
+
+def pack_item(dirs: ContentDirs, pack: str) -> dict[str, Any] | None:
+    """Pack de base (lot O16 pour les cols, AN1 pour les tours) : livré dans le paquet (lot PK1, sans réseau) ou
+    à construire ; None sans dossier des traces, ou sans paquet ni compilateur."""
+    words = _words(pack)
+    bundle = _bundle(pack)
     if bundle is not None and dirs.gpx is not None:
         have = pack_bundle.installed_count(bundle, dirs.routes)
         total = len(bundle.routes)
@@ -291,25 +359,25 @@ def cols_item(dirs: ContentDirs) -> dict[str, Any] | None:
         target = _installed_pack(dirs.gpx, bundle.name)
         size = (_dir_bytes(target) if target else 0) + sum(
             _dir_bytes(dirs.routes / f"{r.id}.world") for r in bundle.routes if (dirs.routes / f"{r.id}.world").is_dir())
-        return {"id": COLS_ID, "kind": "route_pack", "label": f"Pack « {bundle.name} »",
-                "detail": f"{total} montées célèbres (Alpe d'Huez, Ventoux, Teide…), livrées avec le jeu."
+        return {"id": pack_content_id(pack), "kind": "route_pack", "label": f"Pack « {bundle.name} »",
+                "detail": f"{_count(total, words.what_one, words.what_many)} ({words.examples}), {words.shipped}."
                           + _credits_detail(bundle.credits),
                 "state": state, "network": False, "size_mb": _mb(size) if size else _mb(bundle.total_bytes),
                 "progress_pct": None, "pack_name": bundle.name}
     pkg = _compiler_package()
     if pkg is None or dirs.gpx is None:
         return None
-    recipes_dir = pkg / "route_packs" / COLS_PACK
+    recipes_dir = pkg / "route_packs" / pack
     recipes = [p for p in recipes_dir.glob("*.toml") if p.name != "pack.toml"]
     if not recipes:
         return None
-    name = _pack_name(recipes_dir / "pack.toml") or "Cols célèbres"
+    name = _pack_name(recipes_dir / "pack.toml") or pack
     target = _installed_pack(dirs.gpx, name)
     have = sum(1 for p in target.glob("*.gpx")) if target else 0
     state = "installed" if have >= len(recipes) else ("partial" if have else "missing")
-    return {"id": COLS_ID, "kind": "route_pack", "label": f"Pack « {name} »",
-            "detail": f"{len(recipes)} montées célèbres (Alpe d'Huez, Ventoux, Teide…) construites depuis "
-                      "OpenStreetMap." + _credits_detail(pack_bundle.DEFAULT_CREDITS),
+    return {"id": pack_content_id(pack), "kind": "route_pack", "label": f"Pack « {name} »",
+            "detail": f"{_count(len(recipes), words.what_one, words.what_many)} ({words.examples}) "
+                      f"construite{'s' if len(recipes) > 1 else ''} depuis OpenStreetMap." + _credits_detail(pack_bundle.DEFAULT_CREDITS),
             "state": state, "network": True,
             "size_mb": _mb(_dir_bytes(target)) if target else None, "progress_pct": None,
             "pack_name": name}   # retiré du message : sert à ne pas lister le pack une seconde fois
@@ -385,14 +453,14 @@ def archive_item(index: int, a: dict[str, Any], dirs: ContentDirs) -> dict[str, 
             "network": False, "size_mb": _mb(a["size"]), "progress_pct": None}
 
 
-def route_pack_items(dirs: ContentDirs, skip: str = "") -> list[dict[str, Any]]:
-    """Packs de parcours installés dans le dossier des traces (`pack.toml`), sauf celui nommé `skip`."""
+def route_pack_items(dirs: ContentDirs, skip: tuple[str, ...] = ()) -> list[dict[str, Any]]:
+    """Packs de parcours installés dans le dossier des traces (`pack.toml`), sauf ceux nommés dans `skip`."""
     if dirs.gpx is None or not dirs.gpx.is_dir():
         return []
     out = []
     for d in sorted(p for p in dirs.gpx.iterdir() if p.is_dir() and not p.name.startswith(".")):
         name = _pack_name(d / "pack.toml")
-        if not name or name == skip:
+        if not name or name in skip:
             continue
         tracks = sum(1 for f in d.iterdir() if f.is_file() and f.suffix.lower() == ".gpx")
         out.append({"id": f"routes:{d.name}", "kind": "route_pack", "label": f"Pack de parcours « {name} »",
@@ -477,18 +545,23 @@ def _compile_routes(dirs: ContentDirs) -> str:
 
 
 def install_cols(dirs: ContentDirs, progress: Callable[[int], None]) -> str:
-    """Installe le pack des cols depuis le paquet (lot PK1, sans réseau) ; sinon le construit (réseau),
+    return install_base_pack(dirs, COLS_PACK, progress)
+
+
+def install_base_pack(dirs: ContentDirs, pack: str, progress: Callable[[int], None]) -> str:
+    """Installe un pack de base depuis le paquet (lot PK1, sans réseau) ; sinon le construit (réseau),
     l'installe dans les traces puis le compile."""
-    bundle = pack_bundle.load()
+    unit = _words(pack).one.split(" ")[0]          # « col », « tour »
+    bundle = _bundle(pack)
     if bundle is not None and dirs.gpx is not None:
         try:
             pack_bundle.install(bundle, dirs.gpx, dirs.routes, progress)
         except pack_bundle.BundleError as exc:
             raise ContentError(str(exc)) from exc
         have = pack_bundle.installed_count(bundle, dirs.routes)
-        return f"Pack installé : {have} col(s) sur {len(bundle.routes)}."
+        return f"Pack installé : {have} {unit}(s) sur {len(bundle.routes)}."
     pkg = _compiler_package()
-    total = max(1, len([p for p in (pkg / "route_packs" / COLS_PACK).glob("*.toml") if p.name != "pack.toml"])
+    total = max(1, len([p for p in (pkg / "route_packs" / pack).glob("*.toml") if p.name != "pack.toml"])
                 if pkg else 1)
     seen = [0]
 
@@ -497,12 +570,12 @@ def install_cols(dirs: ContentDirs, progress: Callable[[int], None]) -> str:
             seen[0] += 1
             progress(int(80 * seen[0] / total))
 
-    out = _run_compiler(["route-pack-build", COLS_PACK, "--install", "--gpx-dir", str(dirs.gpx)], line)
+    out = _run_compiler(["route-pack-build", pack, "--install", "--gpx-dir", str(dirs.gpx)], line)
     refused = sum(1 for ln in out.splitlines() if ln.strip().startswith("refusé"))
     progress(80)
     note = _compile_routes(dirs)
     done = total - refused
-    return f"Pack installé : {done} col(s) sur {total}" + (f", {refused} refusé(s)." if refused else ".") + note
+    return f"Pack installé : {done} {unit}(s) sur {total}" + (f", {refused} refusé(s)." if refused else ".") + note
 
 
 def install_archive(a: dict[str, Any], dirs: ContentDirs, progress: Callable[[int], None]) -> str:
@@ -556,15 +629,14 @@ class ContentService:
         out = [{"id": STARTER_ID, "kind": "starter", "label": "Contenus de départ",
                 "detail": starter_detail(parts), "state": _state_of(parts), "network": False,
                 "size_mb": None, "progress_pct": None}]
-        cols = cols_item(self.dirs)
-        if cols:
-            out.append({k: v for k, v in cols.items() if k != "pack_name"})
+        packs = [it for it in (pack_item(self.dirs, p) for p in base_packs()) if it]
+        out += [{k: v for k, v in it.items() if k != "pack_name"} for it in packs]
         if self.dirs.home is not None and not self.busy:   # liste figée pendant une installation
             self._archives = find_archives(self.dirs.home)
         # Archive déjà installée : la ligne du thème ou du pack installé la remplace.
         out += [it for it in (archive_item(i, a, self.dirs) for i, a in enumerate(self._archives))
                 if it["state"] != "installed"]
-        out += route_pack_items(self.dirs, skip=cols["pack_name"] if cols else "")
+        out += route_pack_items(self.dirs, skip=tuple(it["pack_name"] for it in packs))
         out += theme_items(self.dirs)
         out = out[:MAX_ITEMS]
         if self.busy:
@@ -579,6 +651,13 @@ class ContentService:
                 "busy": self.job.id if self.busy else None, "message": self.last_message,
                 **disk_info(self.dirs)}
 
+    def _base_pack(self, content_id: str) -> str | None:
+        """Pack de base nommé par l'identifiant d'une ligne (`routes:<pack>`), s'il est proposé."""
+        for pack in base_packs():
+            if content_id == pack_content_id(pack) and pack_item(self.dirs, pack) is not None:
+                return pack
+        return None
+
     def _archive(self, content_id: str) -> dict[str, Any] | None:
         try:
             return self._archives[int(content_id.split(":", 1)[1])]
@@ -587,7 +666,7 @@ class ContentService:
 
     def start(self, content_id: str) -> ContentJob:
         """Réserve l'installation ; ContentError si l'élément est inconnu ou si une autre tourne."""
-        known = content_id == STARTER_ID or (content_id == COLS_ID and cols_item(self.dirs) is not None) \
+        known = content_id == STARTER_ID or self._base_pack(content_id) is not None \
             or (content_id.startswith("archive:") and self._archive(content_id) is not None)
         if not known:
             raise ContentError(f"contenu inconnu : {content_id}")
@@ -602,8 +681,8 @@ class ContentService:
         try:
             if job.id == STARTER_ID:
                 job.message = install_starter(self.dirs, job.set_progress)
-            elif job.id == COLS_ID:
-                job.message = install_cols(self.dirs, job.set_progress)
+            elif (pack := self._base_pack(job.id)) is not None:
+                job.message = install_base_pack(self.dirs, pack, job.set_progress)
             else:
                 job.message = install_archive(self._archive(job.id), self.dirs, job.set_progress)
         except (ContentError, OSError, ValueError, subprocess.SubprocessError) as exc:

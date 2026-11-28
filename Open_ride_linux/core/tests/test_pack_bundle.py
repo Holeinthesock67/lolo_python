@@ -18,12 +18,12 @@ def _sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def make_bundle(root, cols=COLS):
-    """Paquet `root/packs/cols_celebres` : traces, fiches, pack.toml et vrais .world compilés de ces traces."""
-    pdir = root / "packs" / "cols_celebres"
-    gpx = pdir / "gpx" / "cols_celebres"
+def make_bundle(root, cols=COLS, pack="cols_celebres", name="Cols célèbres"):
+    """Paquet `root/packs/<pack>` : traces, fiches, pack.toml et vrais .world compilés de ces traces."""
+    pdir = root / "packs" / pack
+    gpx = pdir / "gpx" / pack
     gpx.mkdir(parents=True)
-    (gpx / "pack.toml").write_text('name = "Cols célèbres"\nlicense = "ODbL 1.0 (données OpenStreetMap)"\n',
+    (gpx / "pack.toml").write_text(f'name = "{name}"\nlicense = "ODbL 1.0 (données OpenStreetMap)"\n',
                                    encoding="utf-8")
     for i, c in enumerate(cols):
         (gpx / f"{c}.gpx").write_text(f"<gpx>{c}</gpx>", encoding="utf-8")
@@ -32,7 +32,7 @@ def make_bundle(root, cols=COLS):
         man = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
         man["source"] = {"gpx": f"{c}.gpx", "gpx_sha256": _sha(gpx / f"{c}.gpx")}
         (world / "manifest.json").write_text(json.dumps(man), encoding="utf-8")
-    pack_bundle.write_manifest(pdir, {"col-a": 42.0})
+    pack_bundle.write_manifest(pdir, {cols[0]: 42.0})
     return pdir
 
 
@@ -133,7 +133,9 @@ def test_starter_installs_the_bundled_pack_without_network(bundle, tmp_path, mon
     items = {it["id"]: it for it in msg["items"]}
     assert items[STARTER_ID]["state"] == "installed" and items[COLS_ID]["state"] == "installed"
     assert items[COLS_ID]["size_mb"] is not None
-    assert not any(it["id"].startswith("routes:") and it["id"] != COLS_ID for it in msg["items"])
+    # seules les lignes des packs de base (le compilateur propose aussi « Tours célèbres » à construire)
+    base = {contents.pack_content_id(p) for p in contents.base_packs()}
+    assert not any(it["id"].startswith("routes:") and it["id"] not in base for it in msg["items"])
 
 
 def test_cols_line_installs_from_the_bundle(bundle, tmp_path, monkeypatch):
@@ -164,7 +166,7 @@ def test_cli_info_and_verify(bundle, capsys):
     assert pack_bundle.main(["verify", str(bundle)]) == 0
     assert pack_bundle.main(["info", str(bundle)]) == 0
     out = capsys.readouterr().out
-    assert "col-a" in out and "construit en 42.0 s" in out and "Total : 2 col(s)" in out
+    assert "col-a" in out and "construit en 42.0 s" in out and "Total : 2 parcours" in out
 
 
 FAKE_COMPILER = '''
@@ -212,11 +214,43 @@ def test_build_script_with_a_fake_compiler(tmp_path):
     proc = subprocess.run(["bash", str(project / "scripts" / "build_pack_base.sh"), str(out)], env=env,
                           capture_output=True, text=True, timeout=120)
     assert proc.returncode == 1, proc.stdout + proc.stderr   # ticlio refusé
-    assert "REFUSÉ : ticlio" in proc.stdout and "1 col(s) refusé(s) : ticlio" in proc.stdout
+    assert "REFUSÉ : ticlio" in proc.stdout and "1 parcours refusé(s) : ticlio" in proc.stdout
     pack = pack_bundle.load(out / "packs" / "cols_celebres")
     assert pack is not None and pack.folder == "cols-celebres"
     assert [r.id for r in pack.routes] == ["alpe-d-huez", "teide-vilaflor"]
     assert pack_bundle.verify(pack) == []
     assert all("build_s" in r for r in pack.manifest["routes"])
-    assert "Total : 2 col(s)" in proc.stdout
+    assert "Total : 2 parcours" in proc.stdout
+    assert "tours_celebres : aucun parcours demandé, pack sauté" in proc.stdout
     assert not any(p.name.startswith("openride-pack-base") for p in tmp_path.iterdir())   # travail effacé
+
+
+def test_two_bundled_packs_are_installed_by_the_starter(bundle, tmp_path, monkeypatch):
+    """Lot AN1 : « Tours célèbres » livré à côté des cols, une ligne chacun, tous deux installés au premier lancement."""
+    make_bundle(tmp_path / "paquet", ("tour-du-lac-d-annecy",), pack="tours_celebres", name="Tours célèbres")
+    assert [p.id for p in pack_bundle.load_all()] == ["cols_celebres", "tours_celebres"]
+    svc = _service(tmp_path, monkeypatch)
+    items = {it["id"]: it for it in svc.items()}
+    assert "2 cols célèbres, 1 tour célèbre" in items[STARTER_ID]["detail"], items[STARTER_ID]["detail"]
+    tours = items["routes:tours_celebres"]
+    assert tours["network"] is False and tours["label"] == "Pack « Tours célèbres »"
+    assert tours["detail"].startswith("1 boucle célèbre (lac d'Annecy), livrées avec le jeu.") and "ODbL" in tours["detail"]
+    job = svc.start(STARTER_ID)
+    svc.run(job)
+    assert "2 col(s) célèbre(s)" in job.message and "1 tour(s) célèbre(s)" in job.message, job.message
+    assert (tmp_path / "routes" / "tour-du-lac-d-annecy.world" / "manifest.json").is_file()
+    msg = svc.message(4)
+    assert_valid(msg)
+    states = {it["id"]: it["state"] for it in msg["items"]}
+    assert states["routes:tours_celebres"] == "installed" and states[COLS_ID] == "installed"
+
+
+def test_tours_line_installs_from_the_bundle(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENRIDE_PAQUET", str(tmp_path / "paquet"))
+    make_bundle(tmp_path / "paquet", ("tour-du-lac-d-annecy",), pack="tours_celebres", name="Tours célèbres")
+    svc = _service(tmp_path, monkeypatch)
+    job = svc.start("routes:tours_celebres")
+    svc.run(job)
+    assert not job.failed and job.message == "Pack installé : 1 tour(s) sur 1."
+    with pytest.raises(contents.ContentError, match="inconnu"):
+        svc.start("routes:pack_qui_n_existe_pas")
