@@ -65,6 +65,10 @@ const KEY_MAX := (1 << 42) - 1
 const WARM_FRAMES := 3
 const WARM_DIST_M := 2.0
 const WARM_SCALE := 0.001
+## Vraies personnes retenues jusqu'au préchauffage de leurs MultiMesh (banc rJ25J du 25/11) : le plan attend la fin de
+## l'arrivée du décor du départ, et la foule ne doit pas y faire son premier dessin, tous ses MultiMesh d'un coup.
+## Au plus HOLD_MAX_MS (plan abandonné, par exemple), puis la foule s'affiche quoi qu'il arrive.
+const HOLD_MAX_MS := 30000
 
 var _mmi: Array[MultiMeshInstance3D] = []
 var _sel: Array = []                         # indices de spectateurs gardés, par MultiMesh
@@ -78,6 +82,8 @@ var _serial := -1                # sélection de passersby_model.gd déjà écri
 var _chunks: Array = []          # données d'instance préparées par spectateur (_build_chunks)
 var _warm_left := 0              # images de préchauffage restantes
 var _warm_cam: Node3D = null
+var _warm_only := -1             # préchauffage d'un seul MultiMesh (lot AC5), -1 : tous
+var _hold_until_ms := 0          # vraies personnes cachées jusqu'à cette heure (Time.get_ticks_msec) ou au dernier warm_up
 
 
 func _init(p_mode: String = "spectators") -> void:
@@ -312,22 +318,41 @@ func _build_chunks() -> void:
 ## Préchauffage au chargement (comme les cyclistes du décor, lot AS7) : chaque MultiMesh montre une
 ## personne minuscule devant `camera` pendant WARM_FRAMES images, pour que son premier dessin se fasse au
 ## chargement et non en roulant. Retourne le nombre de MultiMesh préchauffés.
-func warm_up(camera: Node3D) -> int:
+## `only` (lot AC5) : ce MultiMesh seul, les autres cachés ; -1 : tous dans la même image.
+func warm_up(camera: Node3D, only: int = -1) -> int:
 	if camera == null or budget <= 0:
 		return 0
 	var t0 := Time.get_ticks_usec()
 	_warm_cam = camera
 	_warm_left = WARM_FRAMES
+	_warm_only = only if only >= 0 and only < _mmi.size() else -1
+	if _warm_only < 0 or _warm_only == _mmi.size() - 1:
+		_hold_until_ms = 0   # dernier MultiMesh préchauffé : les vraies personnes s'affichent après ses images
 	_place_warm()
 	PerfProbe.mark_since("spectateurs" if mode == "spectators" else "passants", "préchauffage", t0)
-	return _mmi.size()
+	return _mmi.size() if _warm_only < 0 else 1
+
+
+## Étapes du plan de préchauffage unique (warmup_plan.gd, lot AC5) : un MultiMesh par image. Tous ensemble, les
+## spectateurs compilaient 11 pipelines dans une seule image de 133 ms (banc PC de la PR #981, medium).
+## Les étapes suivantes reprennent le préchauffage là où il en est : le premier dessin de chaque MultiMesh tombe
+## dans sa propre image.
+func warm_steps(camera: Node3D) -> Array:
+	var steps: Array = []
+	if camera == null or budget <= 0:
+		return steps
+	var label := "spectateurs" if mode == "spectators" else "passants"
+	_hold_until_ms = Time.get_ticks_msec() + HOLD_MAX_MS
+	for m in range(_mmi.size()):
+		steps.append(["%s %d" % [label, m], warm_up.bind(camera, m)])
+	return steps
 
 
 func _place_warm() -> void:
 	var on := _warm_left > 0 and is_instance_valid(_warm_cam) and _warm_cam.is_inside_tree() and is_inside_tree()
 	for m in range(_mmi.size()):
 		var mm: MultiMesh = _mmi[m].multimesh
-		if on:
+		if on and (_warm_only < 0 or m == _warm_only):
 			var at := Vector3((m - _mmi.size() * 0.5) * 0.002, 0.0, -WARM_DIST_M)
 			var xf: Transform3D = _warm_cam.global_transform * Transform3D(Basis().scaled(Vector3.ONE * WARM_SCALE), at)
 			mm.set_instance_transform(0, global_transform.affine_inverse() * xf)
@@ -339,11 +364,28 @@ func _place_warm() -> void:
 		_last_select = Vector3(INF, INF, INF)
 		_serial = -1
 		_warm_cam = null
+		_warm_only = -1
 
 
-## Une image de préchauffage de moins ; vrai tant que le préchauffage occupe les MultiMesh.
+## Vraies personnes encore retenues (HOLD_MAX_MS) : tous les MultiMesh vides, sélection refaite ensuite.
+func is_holding() -> bool:
+	if _hold_until_ms <= 0:
+		return false
+	if Time.get_ticks_msec() >= _hold_until_ms:
+		_hold_until_ms = 0
+		return false
+	return true
+
+
+## Une image de préchauffage de moins ; vrai tant que le préchauffage (ou l'attente de son plan) occupe les MultiMesh.
 func _warm_step() -> bool:
 	if _warm_left <= 0:
+		if is_holding():
+			for mmi in _mmi:
+				mmi.multimesh.visible_instance_count = 0
+			_last_select = Vector3(INF, INF, INF)
+			_serial = -1
+			return true
 		return false
 	_warm_left -= 1
 	_place_warm()
