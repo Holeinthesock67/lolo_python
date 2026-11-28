@@ -8,8 +8,11 @@ extends RefCounted
 ## (boucle, croisement, aller-retour), il peut tomber sur une AUTRE portion de la route. Cette grille range
 ## chaque segment de l'axe dans toutes les cases que touche son rectangle : `distance(x, z)` est exacte
 ## jusqu'à `cell_m` quel que soit le pas de la route, et `is_clear(x, z, d)` dit si le point est à plus de
-## `d` mètres de l'axe partout. Utilisée par grass_tufts.gd et ground_details.gd à la génération, et par le
-## contrôle des parcours de démonstration (tests/test_herbe_route.gd).
+## `d` mètres de l'axe partout, amorces du départ et de l'arrivée comprises (road_builder.gd). Utilisée par
+## grass_tufts.gd et ground_details.gd à la génération, et par le contrôle des parcours de démonstration
+## (tests/test_herbe_route.gd).
+
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 
 const DEFAULT_CELL_M := 25.0
 ## Pas des points de l'axe : celui des coupes du ruban (road_builder.gd SECTION_STEP_M). L'axe est la route telle que
@@ -30,9 +33,21 @@ func _init(route_data = null, p_cell_m: float = DEFAULT_CELL_M) -> void:
 	route = route_data
 	if route == null or route.n < 2:
 		return
-	var steps := maxi(int(ceil(route.length_m / AXIS_STEP_M)), 1)
+	# Amorces de chaussée avant le départ et après l'arrivée (road_builder.gd `lead_segments`) : dessinées comme la
+	# route, donc tenues dégagées elles aussi (26/11, bancs d'Almería et de Funchal : 308 et 2 252 touffes d'herbe,
+	# rochers compris, sur l'amorce d'arrivée ou de départ d'une balade du monde ouvert).
+	var leads: bool = route.has_method("sample") and route.has_method("sample_point")
+	var s_from := -RoadBuilder.LEAD_IN_M if leads and RoadBuilder.has_lead_in(route) else 0.0
+	var s_to: float = route.length_m + (RoadBuilder.LEAD_OUT_M if leads and RoadBuilder.has_lead_out(route) else 0.0)
+	var steps := maxi(int(ceil((s_to - s_from) / AXIS_STEP_M)), 1)
 	for k in range(steps + 1):
-		var p: Vector4 = route.sample_xyzh(minf(k * AXIS_STEP_M, route.length_m))
+		var s_k := minf(s_from + k * AXIS_STEP_M, s_to)
+		var p: Vector4
+		if s_k >= 0.0 and s_k <= route.length_m:
+			p = route.sample_xyzh(s_k)
+		else:
+			var a: Dictionary = RoadBuilder.axis_sample(route, s_k)
+			p = Vector4(float(a["x"]), float(a["y"]), float(a["z"]), 0.0)
 		_ax.append(p.x)
 		_az.append(p.z)
 	for i in range(_ax.size() - 1):

@@ -9,13 +9,14 @@ const Palette := preload("res://scripts/rogue/neon_palette.gd")
 ## Glow par niveau (niveaux allumés sur 7), intensité, bloom, fin de la brume, part des particules, aberration.
 ## Une seule règle de brume pour les trois préréglages (lot R27) : linéaire, du joueur à `fog_end_m`. La brume
 ## exponentielle du high grisait tout le ciel (voile signalé en run le 21/11) ; le glow du high reprend celui
-## du medium pour la même raison (halo de la route jaune sur tout l'écran).
+## du medium pour la même raison (halo de la route jaune sur tout l'écran). Lot R28 (retour du 23/11 : « encore un
+## peu trop de brouillard/halo en medium et high ») : 4 niveaux, intensité 0,8, sans bloom.
 const PRESETS := {
 	"low": {"glow_levels": 3, "glow_intensity": 0.8, "glow_bloom": 0.05,
 		"fog_end_m": 400.0, "particles_share": 0.25, "chromatic": false, "sun": false},
-	"medium": {"glow_levels": 5, "glow_intensity": 1.0, "glow_bloom": 0.10,
+	"medium": {"glow_levels": 4, "glow_intensity": 0.8, "glow_bloom": 0.0,
 		"fog_end_m": 600.0, "particles_share": 0.60, "chromatic": false, "sun": true},
-	"high": {"glow_levels": 5, "glow_intensity": 1.0, "glow_bloom": 0.10,
+	"high": {"glow_levels": 4, "glow_intensity": 0.8, "glow_bloom": 0.0,
 		"fog_end_m": 900.0, "particles_share": 1.0, "chromatic": true, "sun": true},
 }
 const GLOW_LEVEL_COUNT := 7

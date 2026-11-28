@@ -90,6 +90,22 @@
           "minimum": 0
         }
       }
+    },
+    "hold_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Révision 1.37 (lot PP6b) : durée en secondes que le cycliste tient à l'allure des bots (`ftp_pct`), lue sur sa courbe de puissance (courbe type sans séance), bornée de 5 s à 3 h ; null sans parcours chargé ; absent d'un core plus ancien."
+    },
+    "my_time_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Révision 1.37 (lot PP6b) : temps estimé du cycliste à fond sur cette course (cycliste de référence à la puissance de sa courbe pour cette durée) ; null sans parcours chargé ou pour une épreuve à durée fixe ; absent d'un core plus ancien."
     }
   }
 }

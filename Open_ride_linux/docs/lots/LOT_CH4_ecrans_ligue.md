@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : ligne de l'accueil, écran de la ligue avec le classement, écran Prêt d'une manche, encart du bilan (CH4a) | GDScript | CH3 (contrat 1.30) | Moyenne | En PR le 22 novembre 2026 ; podium, trophée et saison suivante au lot CH4b |
+| Série CH : ligne de l'accueil, écran de la ligue avec le classement, écran Prêt d'une manche, encart du bilan (CH4a) | GDScript | CH3 (contrat 1.30) | Moyenne | **Livré le 23 novembre** (PR #993) ; partie CH4a ; podium, trophée et saison suivante au lot CH4b |
 
 Plan : `docs/6.0/PLAN_SERIE_CH.md` §3.5. Maquettes CH0 validées le 21 novembre 2026 :
 `/mnt/project-files/menus/ch0-ligue-hiver/` (01 accueil, 02 écran de la ligue, 03 bilan).
@@ -40,3 +40,7 @@ Plan : `docs/6.0/PLAN_SERIE_CH.md` §3.5. Maquettes CH0 validées le 21 novembre
 
 - Podium, trophée et « Commencer la saison suivante » à la fin d'une saison : CH4b. Classique : CH5.
 - Manches des autres modes (Dernier survivant, Grand Prix, élimination) : CH3b, avant leur semaine.
+
+## Livraison
+
+Fusionné dans `main` le 23 novembre 2026 (PR #993), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En PR le 22 novembre 2026 ; podium, trophée et saison suivante au lot CH4b »).

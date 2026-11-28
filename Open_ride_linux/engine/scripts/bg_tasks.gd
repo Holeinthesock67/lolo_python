@@ -28,6 +28,8 @@ extends RefCounted
 ## file du registre l'abandonne au lieu de la lancer.
 ## Pas de class_name : charger par preload("res://scripts/bg_tasks.gd").
 
+const StallWatch := preload("res://scripts/stall_watch.gd")
+
 static var _mutex := Mutex.new()
 # identifiant du registre → {"desc", "action", "low": basse priorité, "gid": identifiant Godot (-1 : encore dans _fifo)}
 static var _tasks := {}
@@ -121,8 +123,13 @@ static func wait(id: int) -> Error:
 			return OK
 		_dispatch(id)
 	var gid: int = _tasks[id]["gid"]
+	var desc := str(_tasks[id]["desc"])
 	_mutex.unlock()
+	# Lot GL2 : un gel du fil principal pendant cette attente nomme la tâche attendue (stall_watch.gd).
+	var before := StallWatch.step("attente de la tâche « %s »" % desc)
 	var err := WorkerThreadPool.wait_for_task_completion(gid)
+	if before != "":
+		StallWatch.step(before)
 	if err != ERR_BUSY:
 		_mutex.lock()
 		_tasks.erase(id)

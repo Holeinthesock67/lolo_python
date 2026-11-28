@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Qualité d'image par préréglage à résolution native : rendu des tons et étalonnage, anticrénelage, SSAO/SSIL, glow, ombres, filtrage ; puis densités et brume (demande du 27 octobre) | GDScript | Y1 | Moyenne | Interne ; étape 1 en prototype, mesure sur le PC et accord du propriétaire avant les étapes suivantes |
+| Qualité d'image par préréglage à résolution native : rendu des tons et étalonnage, anticrénelage, SSAO/SSIL, glow, ombres, filtrage ; puis densités et brume (demande du 27 octobre) | GDScript | Y1 | Moyenne | **Livré le 30 octobre** (étapes 1 à 4 : PR #446, #484, #491, #559) |
 
 ## 1. Objectif
 
@@ -202,3 +202,7 @@ Réalisée pendant la recette visuelle d'Y2, qui renvoie ici. Rien de cette éta
 ## 10. Modifications de contrat autorisées
 
 Aucune : ni IPC, ni format `.world`, ni thème, ni configuration (`[render] quality` reste le seul choix du joueur).
+
+## Livraison
+
+Fusionné dans `main` le 30 octobre 2026 (étapes 1 à 4 : PR #446, #484, #491, #559), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « Interne ; étape 1 en prototype, mesure sur le PC et accord du propriétaire avant les étapes suivantes »).

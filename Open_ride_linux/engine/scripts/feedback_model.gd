@@ -111,7 +111,8 @@ func push_all(moments: Array, now_s: float) -> Array:
 func on_state(state: Dictionary, now_s: float, goal := "") -> Array:
 	var out := []
 	var session := str(state.get("session_state", ""))
-	if session in ["IDLE", "READY", "FINISHED"] and _prev_session in ["RUNNING", "PAUSED"]:
+	# ERROR aussi (revue de code E4-02) : une séance arrêtée par une erreur gardait sa consigne de fin à la suivante
+	if session in ["IDLE", "READY", "FINISHED", "ERROR"] and _prev_session in ["RUNNING", "PAUSED"]:
 		_done = {}
 		_result = {}
 		_toast = {}

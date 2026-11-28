@@ -7,7 +7,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from openride_core import fit_export, profile, rivals, settings
+from openride_core import bot_effort, fit_export, profile, rivals, settings
 from openride_core.bots import ProfileBot
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
@@ -230,6 +230,10 @@ def test_bots_preview_in_watts(env):
     validator("bots_preview").validate(msg)
     assert msg["request_cmd_id"] == 5 and msg["objective"] == "tempo"
     assert msg["power_w"] > 0 and msg["duration_s"] > 0 and msg["elo"] == {"rating": 1500, "races": 0}
+    # Lot PP6b : à l'allure Tempo des bots (sous la FTP), la courbe type tient plus que la course ; à fond, le
+    # cycliste finit plus vite que l'estimation des bots
+    assert abs(msg["hold_s"] - bot_effort.hold_s(msg["ftp_pct"])) < 0.01 * msg["hold_s"]   # pct arrondi au dixième
+    assert 0 < msg["my_time_s"] < msg["duration_s"]
     s._on_command("bots_preview", {"mode": "survivor", "objective": "endurance"}, 6)
     low = [m for m in sent if m.get("type") == "bots_preview"][-1]
     assert low["objective"] == "endurance" and low["power_w"] < msg["power_w"]

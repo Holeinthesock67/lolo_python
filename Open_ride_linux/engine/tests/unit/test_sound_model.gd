@@ -343,6 +343,31 @@ func _test_wheel() -> void:
 	_check(sm.evaluate(120.0)["wheel"]["kind"] == "none", "type de roue inconnu : aucun son")
 
 
+# E9-01 : hors séance (bilan après « Terminer », menus, départ), le core garde la dernière vitesse dans la
+# trame ; vent, roue libre, roues et gravier doivent s'éteindre quand même. Sans `session_state` (vieux
+# tests, rejeu), rien ne change.
+func _test_out_of_session() -> void:
+	for ended in ["FINISHED", "IDLE", "READY"]:
+		var sm = SoundModel.new()
+		sm.set_wheel_kind("hum")
+		sm.set_surface("gravel")
+		sm.on_state(_state(40.0, 0.0), Vector3.ZERO, 0.0)
+		var e_run: Dictionary = sm.evaluate(2.0)
+		var loud_before: bool = e_run["wind"]["volume_db"] > -80.0 and e_run["freewheel"]["playing"] and e_run["wheel"]["volume_db"] > -80.0
+		var st := _state(40.0, 0.0)
+		st["session_state"] = ended
+		var e_end: Dictionary = {}
+		for i in range(20):   # 10 s de trames figées à 40 km/h
+			sm.on_state(st, Vector3.ZERO, 2.0 + 0.5 * float(i + 1))
+			e_end = sm.evaluate(2.0 + 0.5 * float(i + 1))
+		_check(loud_before and e_end["wind"]["volume_db"] <= -80.0 and not e_end["freewheel"]["playing"]
+			and e_end["wheel"]["volume_db"] <= -80.0 and e_end["gravel"]["volume_db"] <= -80.0,
+			"%s, dernière vitesse 40 km/h gardée : vent, roue libre, roues et gravier éteints en 10 s" % ended)
+	var sm2 = SoundModel.new()
+	sm2.on_state({"v": 40.0 / 3.6, "power": 150.0}, Vector3.ZERO, 0.0)
+	_check(sm2.evaluate(0.0)["wind"]["volume_db"] > -80.0, "trame sans session_state : vent selon la vitesse, comme avant")
+
+
 func _init() -> void:
 	_test_wheel()
 	_test_wind()
@@ -353,5 +378,6 @@ func _init() -> void:
 	_test_air_speed_wind()
 	_test_draft_shelter()
 	_test_cadence_freewheel_and_clac()
+	_test_out_of_session()
 	print("test_sound_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
