@@ -1,0 +1,42 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+11.2;1;7;0;0;0;1;0;
+26.2;1;7;0;0;0;1;0;
+41.2;1;7;0;0;1;1;0;voice_bonjour=1
+56.2;1;7;0;0;2;4;0;voice_bonjour=1
+71.2;1;7;0;0;4;4;0;airliner_rumble=1 voice_bonjour=1
+86.2;1;7;0;0;3;4;0;airliner_rumble=1 voice_bonjour=1
+101.2;1;0;0;0;2;4;0;airliner_rumble=2 voice_bonjour=1
+116.2;1;0;0;0;3;4;0;airliner_rumble=2 voice_bonjour=1
+131.2;1;0;0;0;2;4;0;airliner_rumble=2 voice_bonjour=1
+146.2;1;0;0;0;3;4;0;airliner_rumble=2 voice_bonjour=1
+161.2;1;0;0;0;3;4;0;airliner_rumble=2 voice_bonjour=1
+176.2;1;0;0;0;4;4;0;airliner_rumble=2 voice_bonjour=1
+191.2;1;0;0;0;4;4;0;airliner_rumble=2 voice_bonjour=1
+206.2;1;0;0;0;3;4;0;airliner_rumble=2 voice_bonjour=1
+221.2;1;0;0;0;4;4;0;airliner_rumble=2 voice_bonjour=1
+236.2;1;3;0;0;4;4;0;airliner_rumble=2 voice_bonjour=1
+251.2;1;3;0;0;4;4;0;airliner_rumble=2 voice_bonjour=1
+266.2;1;3;0;0;4;4;0;airliner_rumble=2 voice_bonjour=1
+281.2;1;3;0;0;4;4;0;airliner_rumble=2 voice_bonjour=1
+296.2;8;3;0;0;4;4;0;airliner_rumble=2 raptor_cry=1 voice_bonjour=1
+311.2;8;3;0;0;4;4;0;airliner_rumble=2 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+326.2;8;3;0;0;4;4;0;airliner_rumble=2 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+341.2;8;3;0;0;4;4;0;airliner_rumble=2 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+356.2;8;3;0;0;4;4;0;airliner_rumble=2 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+371.2;8;13;0;0;4;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+386.2;7;13;0;0;3;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+401.2;7;13;0;0;4;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+416.2;7;13;0;0;4;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+431.2;7;13;0;0;4;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+446.2;7;20;0;0;4;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 voice_bonjour=1
+461.2;7;20;0;0;4;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+476.2;7;20;0;0;4;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+491.2;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+506.2;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+521.2;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+536.2;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+551.2;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+566.2;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+581.2;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=1
+596.2;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=2
+601.3;7;20;0;0;4;4;0;airliner_rumble=2 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=1 voice_bonjour=2
