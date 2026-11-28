@@ -116,6 +116,23 @@ func _test_texts() -> void:
 	vm1.on_state({"power_3s": 200, "t": 12.0}, 5.0)
 	var e1: Dictionary = vm1.evaluate(5.25)
 	_check(absf(e1["age_s"] - 0.25) < 1e-9 and e1["power_w"] == 200.0, "champs bruts et âge de la trame")
+	# Puissance affichée lissée (retours du 28 novembre, comme en Cyber-Rogue) : moyenne de `power_3s` sur
+	# POWER_DISPLAY_S secondes ; un pic d'une seconde ne fait plus sauter le chiffre
+	var sm = HudViewModel.new()
+	for i in range(30):   # 1 s à 30 Hz à 200 W
+		sm.on_state({"power_3s": 200.0}, i / 30.0)
+	sm.on_state({"power_3s": 500.0}, 1.0)
+	var spike := sm.shown_power_w()
+	_check(spike > 200.0 and spike < 220.0, "lissage : un pic à 500 W bouge peu le chiffre (%.1f)" % spike)
+	_check(HudViewModel.session_lines({"power_3s": 500.0}, {"visible": false}, 250.0, 0.0, NAN, spike)["power_val"]
+		== "%d" % int(round(spike)), "lissage : le grand chiffre suit la puissance lissée")
+	for i in range(1, int(HudViewModel.POWER_DISPLAY_S) * 30 + 31):
+		sm.on_state({"power_3s": 300.0}, 1.0 + i / 30.0)
+	_check(absf(sm.shown_power_w() - 300.0) < 0.01, "lissage : effort tenu, la fenêtre l'atteint (%.1f)" % sm.shown_power_w())
+	sm.on_state({"power_3s": NAN}, 20.0)
+	_check(is_nan(sm.shown_power_w()), "lissage : mesure perdue, « — » sans garder l'ancienne moyenne")
+	sm.on_state({"power_3s": 150.0}, 0.5)
+	_check(sm.shown_power_w() == 150.0, "lissage : horloge qui recule, la fenêtre repart de zéro")
 
 
 func _test_distance_on_loop() -> void:
