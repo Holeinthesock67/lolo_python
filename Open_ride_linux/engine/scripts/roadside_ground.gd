@@ -88,6 +88,32 @@ static func foot_y(ground_at: Callable, xf: Transform3D, axis: Vector3, right: V
 	return y - FOOT_SINK_M
 
 
+## Comme `foot_y`, mais chaque appui est lu sur la coupe de la route qui passe par lui (abscisse s + son écart le
+## long du cap), et non sur la coupe de l'objet (`s`) : la route monte ou descend entre deux appuis espacés le long
+## du cap (une borne de 30 cm de profondeur sur une pente de 10 % : 3 cm, 7,5 cm au relief ×2,5), et le talus avec
+## elle (23 novembre 2026 : borne km_2000 à 1 cm en l'air au relief ×2,5, banc de la pile monde ouvert ; le contrôle
+## test_herbe_route.gd lit déjà la coupe qui passe par l'appui). Sans `ground_at` : hauteur de `xf` inchangée.
+static func foot_y_on_route(ground_at: Callable, xf: Transform3D, route, s: float, half_m: float,
+		feet: PackedVector3Array = PackedVector3Array([Vector3.ZERO])) -> float:
+	if not ground_at.is_valid():
+		return xf.origin.y
+	var a0: Vector3 = route.sample_point(s)
+	var h0 := deg_to_rad(route.sample_heading_deg(s))
+	var fwd0 := Vector2(sin(h0), -cos(h0))
+	var y := INF
+	for f in feet:
+		var p := xf * f
+		var t := s + Vector2(p.x - a0.x, p.z - a0.z).dot(fwd0)
+		if not route.is_loop():
+			t = clampf(t, 0.0, route.length_m)
+		var a: Vector3 = route.sample_point(t)
+		var h := deg_to_rad(route.sample_heading_deg(t))
+		y = minf(y, visible_ground_y(ground_at, p, a, Vector3(cos(h), 0.0, sin(h)), half_m))
+	if is_inf(y):
+		return xf.origin.y
+	return y - FOOT_SINK_M
+
+
 ## Point `pos` (un seul appui) posé sur le sol visible, même règle.
 static func on_ground(ground_at: Callable, pos: Vector3, axis: Vector3, right: Vector3, half_m: float) -> Vector3:
 	return Vector3(pos.x, foot_y(ground_at, Transform3D(Basis(), pos), axis, right, half_m), pos.z)

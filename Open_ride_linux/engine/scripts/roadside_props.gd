@@ -690,8 +690,8 @@ func add_chunk(route, k: int, chunk_items: Array) -> void:
 		var face := -fwd * float(side if side != 0 else 1)
 		var xf := Transform3D(Basis(Vector3.UP, atan2(face.x, face.z)), pos)
 		# Pied sur le sol visible, au plus bas des appuis (roadside_ground.gd, 13/11 : bornes qui lévitaient)
-		xf.origin.y = RoadsideGround.foot_y(ground_at, xf, RoadsideModel.prop_position(route, s, road_width_m, 0),
-			Vector3(cos(h), 0.0, sin(h)), road_width_m * 0.5, feet(prop))
+		# Chaque appui sur la coupe de la route qui passe par lui (23 novembre 2026 : pente entre deux appuis)
+		xf.origin.y = RoadsideGround.foot_y_on_route(ground_at, xf, route, s, road_width_m * 0.5, feet(prop))
 		prop.transform = xf
 		add_child(prop)
 		nodes.append(prop)
