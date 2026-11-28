@@ -652,9 +652,10 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 	var own := _base_lateral(g, members[0])
 	var cur := _group_lateral(g)
 	var near_groups := []                   # ceux qui le gênent : sur sa place ou sur sa position en travers
+	# Lot DL2 (circuit de 15 km, comme road_cyclists.py) : un groupe gêne par chacun de ses membres, pas seulement
+	# par sa tête
 	for h in alongside:
-		var h_lat := _group_lateral(h)
-		if absf(h_lat - own) < MIN_CENTRE_M or absf(h_lat - cur) < MIN_CENTRE_M:
+		if _closest_lateral(h, own) < MIN_CENTRE_M or _closest_lateral(h, cur) < MIN_CENTRE_M:
 			near_groups.append(h)
 	if not near_groups.is_empty():
 		# Bots à moins de BOT_LOOK_M : on ne double pas sur leur ligne, ni en la traversant (file longue)
@@ -679,7 +680,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		for h in near_groups:
 			slowest = minf(slowest, _speed_of(g, h))   # lot AS10 : devant lui, à la vitesse où il roule
 			# encore derrière lui, un de ses membres sur sa ligne (la queue se décale après la tête)
-			if (float(g["s"]) - float(h["s"])) * dir < 0.0 and _closest_lateral(g, _group_lateral(h)) < MIN_CENTRE_M - 0.05:
+			if (float(g["s"]) - float(h["s"])) * dir < 0.0 and _closest_members(g, h) < MIN_CENTRE_M - 0.05:
 				blocking = true
 		# Pour passer, il faudrait traverser la place d'un autre (un bot entre lui et l'axe) : il ne se décale pas
 		# et, derrière, il attend
@@ -1122,6 +1123,14 @@ func _closest_lateral(g: Dictionary, lat: float) -> float:
 
 
 ## Écart à l'axe d'un groupe : celui de son premier membre.
+## Plus petit écart en travers entre un membre de `g` et un membre de `h` (lot DL2).
+func _closest_members(g: Dictionary, h: Dictionary) -> float:
+	var best := INF
+	for o in h["members"]:
+		best = minf(best, _closest_lateral(g, float(o["lateral"])))
+	return best
+
+
 func _group_lateral(g: Dictionary) -> float:
 	return float((g["members"] as Array)[0]["lateral"])
 
