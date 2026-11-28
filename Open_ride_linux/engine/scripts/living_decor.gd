@@ -85,6 +85,10 @@ var season_falling_leaves := 0.0   # densité des feuilles qui tombent de la sai
 var sound_player = null
 var world_streamer = null
 var osm_streamer = null
+## Premier dessin à froid (lot AC6, banc w24 du 26/11) : vues qui commencent à dessiner quand le décor devient prêt,
+## cachées jusqu'au passage des doublures de leurs shaders (shader_warm.gd `warm`, une par image) ; clés attendues.
+var _warm_keys: Array = []
+var _warm_hidden: Array = []   # [vue, visibilité d'avant]
 var environment: Environment = null
 var living_world = null             # living_world.gd (P16) : pluie dans l'ambiance
 
@@ -466,6 +470,51 @@ func _poll_job(wait: bool = false) -> void:
 	for k in _loaded_chunks:
 		props.add_chunk(_route, k, RoadsideModel.for_chunk(roadside_items, k))
 	prepared = true
+	_warm_first_draw()
+
+
+## Décor prêt : les vues qui vont dessiner pour la première fois (cyclistes, circulation, routes voisines, ciel,
+## bateaux, objets du bord de route, luminaires, spectateurs, passants) restent cachées le temps que shader_warm.gd
+## dessine une doublure de chacun de leurs shaders nouveaux, une par image ; sans lui (ou en séance), rien ne change.
+func _warm_first_draw() -> void:
+	var warm = world_streamer.get("shader_warm") if world_streamer != null else null
+	if warm == null:
+		return
+	var views: Array = [traffic_view, road_traffic_view, cyclists_view, sky_view, boats_view, props, street_lights,
+		crowd_view, passersby_view]
+	var nodes: Array = []
+	for v in views:
+		if v != null:
+			nodes.append_array((v as Node).find_children("*", "GeometryInstance3D", true, false))
+	var keys: Array = warm.warm(nodes)
+	if keys.is_empty():
+		return
+	_warm_keys = keys
+	if _warm_hidden.is_empty():
+		for v in views:
+			if v != null:
+				_warm_hidden.append([v, (v as Node3D).visible])
+				(v as Node3D).visible = false
+	preload("res://scripts/perf_probe.gd").mark("shaders", "décor %d" % keys.size(), 0.0)   # preload direct, sans constante
+
+
+## Doublures du décor passées : les vues reprennent leur visibilité d'avant.
+func _warm_check() -> void:
+	if _warm_hidden.is_empty():
+		return
+	var warm = world_streamer.get("shader_warm") if world_streamer != null else null
+	if warm != null and not warm.keys_done(_warm_keys):
+		return
+	for pair in _warm_hidden:
+		if is_instance_valid(pair[0]):
+			(pair[0] as Node3D).visible = bool(pair[1])
+	_warm_hidden.clear()
+	_warm_keys = []
+
+
+## Décor en attente de ses doublures (tests).
+func is_warming() -> bool:
+	return not _warm_hidden.is_empty()
 
 
 ## Route prolongée prête (extend_route) : véhicules et cyclistes gardés sur la nouvelle route, éoliennes,
@@ -567,6 +616,7 @@ func _valley_alt_at(s: float) -> float:
 func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: float, alt_m: float,
 		paused: bool, wind_eval: Dictionary, state: Dictionary = {}, beep_active: bool = false) -> void:
 	_poll_job()
+	_warm_check()
 	if not enabled or _route == null:
 		return
 	_cam_s = cam_s

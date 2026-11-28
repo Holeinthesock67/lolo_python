@@ -744,6 +744,10 @@ func _poll_jobs(wait: bool) -> void:
 			_ready_chunks.append(job["result"])
 
 
+## Premier affichage à froid (lot AC6, shader_warm.gd, posé par main.gd) : null, affichage direct.
+var shader_warm = null
+
+
 func integrate(max_new: int) -> int:
 	_poll_jobs(false)
 	var created := 0
@@ -782,6 +786,8 @@ func integrate(max_new: int) -> int:
 
 		_chunk_instances[k] = nodes
 		TunnelCut.set_chunk(k, item.get("tunnel_cut", PackedFloat32Array()))
+		if shader_warm != null:   # lot AC6 : tronçon hors de la scène le temps des doublures de ses shaders
+			shader_warm.hold(nodes)
 		if not (item.get("shores", []) as Array).is_empty():
 			_shores_by_chunk[k] = item["shores"]
 		var sea: Dictionary = item.get("sea", {})

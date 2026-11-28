@@ -590,6 +590,21 @@ func _free_cell(cell_info: Dictionary) -> void:
 				mmi.free()
 
 
+## MultiMeshInstance3D d'une tuile (modèles proche et lointain de chaque espèce de chaque case) : préchauffage
+## des shaders au premier affichage (lot AC6, shader_warm.gd).
+func tile_nodes(tile_key: Vector2i) -> Array:
+	var out: Array = []
+	if not _tiles.has(tile_key):
+		return out
+	var tile_cells: Dictionary = _tiles[tile_key]
+	for cell_idx in tile_cells:
+		for part in tile_cells[cell_idx]["parts"]:
+			for key in ["lod0", "lod1"]:
+				if part[key] != null:
+					out.append(part[key])
+	return out
+
+
 func remove_tile(tile_key: Vector2i) -> void:
 	if not _tiles.has(tile_key):
 		return
