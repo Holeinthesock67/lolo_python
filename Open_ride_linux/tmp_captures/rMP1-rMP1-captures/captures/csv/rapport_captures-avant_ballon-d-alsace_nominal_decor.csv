@@ -1,0 +1,9 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+12.1;37;11;0;12;0;4;0;
+27.1;37;11;0;4;0;4;0;
+42.1;37;11;0;4;1;4;0;raptor_cry=1 voice_bonjour=1
+57.1;37;11;0;6;2;4;0;raptor_cry=1 voice_bonjour=1
+72.1;37;11;0;10;3;5;0;airliner_rumble=1 raptor_cry=2 voice_bonjour=2
+87.1;37;12;0;11;2;5;0;airliner_rumble=1 crow_caw=1 raptor_cry=2 voice_bonjour=2
+102.1;37;12;0;12;3;5;0;airliner_rumble=1 crow_caw=1 raptor_cry=2 voice_allez=1 voice_bonjour=2
+107.0;37;12;0;11;3;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=1 voice_bonjour=2
