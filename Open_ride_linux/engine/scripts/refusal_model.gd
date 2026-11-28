@@ -11,7 +11,7 @@ extends RefCounted
 ##   (`launch_text`). Auparavant : « Échec : <texte du core> » sur quelques écrans seulement, et rien du tout
 ##   pour un entraînement ou un plan refusés en séance libre ;
 ## - appui sans effet en séance (Z court en Grand Prix sans objet, pendant le tirage, en piste ou au Dernier
-##   survivant, sans bonus en réserve) : `press(event, state)` rend un moment de la famille « refus » de
+##   survivant, sans bonus en réserve ; jamais en Course, qui n'a ni boîte ni objet) : `press(event, state)` rend un moment de la famille « refus » de
 ##   feedback_model.gd (bandeau « × REFUSÉ », couleur grise, son `fb_refus`, titre et quoi faire) ;
 ## - bonus refusé par le core (`powerup.refused`, contrat 1.13) : `on_state(state)` rend le même moment, une
 ##   fois par refus, avec la raison du core et quoi faire ;
@@ -116,6 +116,8 @@ static func press(event: String, state: Dictionary, rogue_active := false, menu_
 		return {}   # Z court : bloc suivant de l'entraînement
 	var gp = state.get("gp", null)
 	if gp is Dictionary:
+		if str(gp.get("mode", "grandprix")) != "grandprix":
+			return {}   # Course (`gp.mode` = "race") : ni boîte ni objet, rien à expliquer (retours du 28 novembre)
 		var roll = gp.get("roll_s", 0.0)
 		if (roll is float or roll is int) and float(roll) > 0.0:
 			return _moment("Z refusé : tirage en cours", "Attends la fin du tirage, puis Z lance ton objet")

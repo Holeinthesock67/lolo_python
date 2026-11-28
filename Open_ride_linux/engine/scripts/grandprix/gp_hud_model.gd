@@ -389,10 +389,12 @@ static func signed_s(t: float) -> String:
 
 
 ## Consigne de la zone commune (lot RT1, feedback_model.gd) : {k, action, detail, chips} ; {} sans objet `gp`.
-## Sans objet : passer dans une boîte « + BONUS » (le mot écrit sur les boîtes) ; objet en réserve : Z pour le lancer.
+## Sans objet : passer dans une boîte « + BONUS » (le mot écrit sur les boîtes), seulement quand une boîte libre est
+## en vue devant sur ta voie (PICK_VIEW_M) ; objet en réserve : Z pour le lancer. Course (`gp.mode` = "race") : ni
+## boîte ni objet, aucune consigne (retours du 28 novembre : le conseil restait affiché en permanence).
 func consigne(state) -> Dictionary:
 	var gp = state.get("gp", null) if state is Dictionary else null
-	if not gp is Dictionary:
+	if not gp is Dictionary or str(gp.get("mode", "grandprix")) != "grandprix":
 		return {}
 	var lap = gp.get("lap", null)
 	var goal := "finir 1er" + ((" en %d tours" % int(_num(lap[1], 1.0))) if lap is Array and lap.size() >= 2 else "")
@@ -401,6 +403,8 @@ func consigne(state) -> Dictionary:
 			"Objectif : %s · Pourquoi : un objet te fait gagner du temps" % goal, "chips": []}
 	var held = gp.get("held", null)
 	if held == null or not Items.known(str(held)):
+		if _box_ahead(gp, int(_num(gp.get("lane", null), 1.0)), _num(state.get("s", null), NAN)) != "free":
+			return {}   # pas de boîte à prendre en vue : rien à conseiller
 		return {"k": "À FAIRE", "action": "Passe dans une boîte « + BONUS » pour prendre un objet",
 			"detail": "Objectif : %s · Pourquoi : un objet te fait gagner du temps" % goal, "chips": ["A ← → voie"]}
 	return {"k": "À FAIRE", "action": "Lance ton objet : %s" % Items.label(str(held)),
