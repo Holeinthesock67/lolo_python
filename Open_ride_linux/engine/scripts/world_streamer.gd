@@ -196,6 +196,7 @@ func _exit_tree() -> void:
 ## Nouveau parcours (ou parcours rechargé) : tout est vidé puis reconstruit au fil des images.
 func set_world(new_route, new_world_dir: String) -> void:
 	clear()
+	var t0 := Time.get_ticks_usec()
 	route = new_route
 	world_dir = new_world_dir
 	_apply_relief_to_material()
@@ -212,14 +213,22 @@ func set_world(new_route, new_world_dir: String) -> void:
 		if _near_index.is_empty() and _far_index.is_empty():
 			push_warning("Couche terrain déclarée mais aucune tuile trouvée : sol plat")
 			has_terrain = false
+	# Sous-étapes notées dans la sonde (lot AC5) : une image lente du chargement nomme la partie du monde en cause.
+	PerfProbe.mark_since("streamer", "index", t0)
+	t0 = Time.get_ticks_usec()
 	if not has_terrain and not RoadBuilder.is_track(route):   # piste (lot VD5) : sol de la salle (velodrome_hall.gd)
 		_make_ground()
 	_set_biome_model()
+	PerfProbe.mark_since("streamer", "biome", t0)
+	t0 = Time.get_ticks_usec()
 	if osm_streamer != null:
 		osm_streamer.set_world(route, world_dir)
+	PerfProbe.mark_since("streamer", "osm", t0)
+	t0 = Time.get_ticks_usec()
 	if horizon_view != null and has_terrain:
 		_set_horizon_colors()
 		horizon_view.set_world(route, world_dir)
+	PerfProbe.mark_since("streamer", "horizon", t0)
 
 
 ## Relief d'horizon (lot JP4) : couleurs du sol du biome du départ (ou du thème 1.x), neige à la limite du thème.
@@ -558,13 +567,17 @@ func _free_flat_tile(t: Vector2i) -> void:
 
 ## Retire tout : objets de scène, travaux en cours (attendus puis ignorés), sol plat.
 func clear() -> void:
+	var t0 := Time.get_ticks_usec()
 	_generation += 1
 	_wait_all_jobs()
 	_jobs.clear()
+	PerfProbe.mark_since("streamer", "attente fils", t0)
+	t0 = Time.get_ticks_usec()
 	_ready.clear()
 	_wanted.clear()
 	_stale_near.clear()
 	_live_tiles = false
+	var freed := _instances.size()
 	for key in _instances.keys():
 		_free_instance(key)
 	for key in _previews.keys():
@@ -585,6 +598,7 @@ func clear() -> void:
 	_near_index = {}
 	_far_index = {}
 	route = null
+	PerfProbe.mark_since("streamer", "vidage %d" % freed, t0)
 
 
 # --- fenêtre -----------------------------------------------------------------------------

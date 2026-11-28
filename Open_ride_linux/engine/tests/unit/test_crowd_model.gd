@@ -157,6 +157,26 @@ func _run() -> void:
 	_check(r.visible_count() == r._mmi.size(), "préchauffage en cours : une personne par MultiMesh, rien d'autre")
 	r.update(route.sample_point(9900.0), 0.0, 0.0)
 	_check(r.visible_count() == r.budget, "après le préchauffage, la sélection reprend (%d)" % r.visible_count())
+	# Lot AC5 : étapes du plan unique, un MultiMesh par image (11 pipelines dans une image de 133 ms avant).
+	var wsteps: Array = r.warm_steps(cam)
+	_check(wsteps.size() == r._mmi.size(), "préchauffage par étapes : une étape par MultiMesh (%d)" % wsteps.size())
+	# Banc rJ25J du 25/11 : avant les étapes (le plan attend le décor du départ), les vraies personnes sont retenues.
+	r.update(route.sample_point(9900.0), 0.0, 0.0)
+	_check(r.is_holding() and r.visible_count() == 0, "étapes pas encore jouées : aucune vraie personne dessinée")
+	var one_each := true
+	for m in range(wsteps.size()):
+		(wsteps[m][1] as Callable).call()
+		for k in range(r._mmi.size()):
+			one_each = one_each and r._mmi[k].multimesh.visible_instance_count == (1 if k == m else 0)
+	_check(one_each, "chaque étape ne montre que son MultiMesh devant la caméra")
+	_check(not r.is_holding(), "dernière étape jouée : plus de retenue")
+	for k in range(CrowdRenderer.WARM_FRAMES):
+		r.update(route.sample_point(9900.0), 0.0, 0.0)
+	_check(r.visible_count() == r.budget, "après les étapes, la sélection reprend (%d)" % r.visible_count())
+	r.warm_steps(cam)
+	r._hold_until_ms = Time.get_ticks_msec() - 1   # plan abandonné : HOLD_MAX_MS écoulé
+	r.update(route.sample_point(9900.0), 0.0, 0.0)
+	_check(not r.is_holding() and r.visible_count() == r.budget, "retenue bornée : la foule revient sans les étapes")
 	cam.queue_free()
 	r.set_preset("high", false)
 	r.update(route.sample_point(9950.0), 0.1, 0.0)
