@@ -35,6 +35,7 @@ FINAL = {   # identifiant de fichier → nom au menu
     "demo-biomes-sud": "Route du Sud",
     "demo-biomes-nord": "Route du Grand Nord",
     "demo-biomes-forets": "Route des Trois Forêts",
+    "demo-lagune": "Avenue de la Lagune",
     "demo-corniche": "Boucle de la Corniche",
     "demo-vignes": "Route des Vignes",
     "velodrome-250": "Vélodrome 250 m",
@@ -92,8 +93,11 @@ def test_menu_scenario_follows_the_list() -> None:
     listing = next(s for s in steps if s.get("titre") == "Parcours")
     free = [n for n in FINAL if n not in MODE_ROUTES]
     assert listing["elements"] == free
-    # carte de détail du premier parcours de la liste (tri par nom) : sa fiche (lot NT1)
-    assert listing["contient"] == [FINAL[n] for n in free] + [demo_world.DEMO_LIBRARY["description"]]
+    # carte de détail du premier parcours de la liste (tri par nom) : sa fiche (lot NT1) ; l'Avenue de la Lagune
+    # depuis le lot NV6
+    first = min(free, key=lambda n: FINAL[n])
+    fiche = demo_world.DEMO_LIBRARY if first == demo_world.DEMO_NAME else demo_biomes.library_of(first)
+    assert first == "demo-lagune" and listing["contient"] == [FINAL[n] for n in free] + [fiche["description"]]
     absent = set(listing["absent"])
     assert {"Fictif", "Fictive", "demo-biomes"} <= absent
     assert {FINAL[n] for n in MODE_ROUTES} | set(MODE_ROUTES) <= absent

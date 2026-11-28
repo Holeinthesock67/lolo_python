@@ -469,7 +469,7 @@ func any_fire() -> Dictionary:
 ## NEON_DEFAULTS, {} si le paysage n'en a pas. Même règle que le feu : une tuile dont le paysage a une section
 ## `neon` est en ville néon (ciel, lumière, néons et mobilier lumineux des lots NV2 à NV5).
 const NEON_DEFAULTS := {"pink": "#ff2a9e", "cyan": "#1ad9ff", "violet": "#8c40ff", "orange": "#ff8c1f",
-	"sky_top": "#0b0833", "sky_mid": "#80198a", "sky_horizon": "#ff7a38", "fog": "#f25a8c", "density": 1.0}
+	"sky_top": "#38307b", "sky_mid": "#bb59bf", "sky_horizon": "#ffa170", "fog": "#f25a8c", "density": 1.0}
 
 
 func neon_of(landscape: String) -> Dictionary:
@@ -498,6 +498,15 @@ func neon_at(x: float, z: float) -> Dictionary:
 	if typeof(v) != TYPE_DICTIONARY or typeof(v.get("landscape", null)) != TYPE_STRING:
 		return {}
 	return neon_of(v["landscape"])
+
+
+## Premier paysage du thème qui a une ambiance néon (ordre de BiomeIds.LANDSCAPES) : sa section, ou {}.
+func any_neon() -> Dictionary:
+	for l in BiomeIds.LANDSCAPES:
+		var n := neon_of(l)
+		if not n.is_empty():
+			return n
+	return {}
 
 
 ## Entrées `variants` du thème pour le couple {ground, roofs} d'une tuile ({} si aucune).

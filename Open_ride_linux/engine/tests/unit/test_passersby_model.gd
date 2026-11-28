@@ -68,6 +68,22 @@ func _run() -> void:
 	var other = PasserbyModel.new()
 	other.configure(route, buildings, {}, 6)
 	_check(str(other.people) != str(pm.people), "autre graine, autre placement")
+	# Ville néon (lot NV5) : trottoirs animés entre 3 000 et 3 500 m (route vers −z ou +x : test sur les deux axes)
+	var city = PasserbyModel.new()
+	var c0: Vector3 = route.sample_point(3000.0)
+	var c1: Vector3 = route.sample_point(3500.0)
+	city.city_at = func(x: float, z: float) -> Dictionary:
+		var p := Vector3(x, 0.0, z)
+		var a := Vector3(c0.x, 0.0, c0.z)
+		var b := Vector3(c1.x, 0.0, c1.z)
+		return {"density": 1.0} if (p - a).dot(b - a) >= 0.0 and (p - b).dot(a - b) >= 0.0 else {}
+	city.configure(route, buildings, {}, 5)
+	var in_city: Array = city.people.filter(func(p): return float(p["s"]) >= 3000.0 and float(p["s"]) < 3500.0)
+	_check(in_city.size() >= 35 and in_city.size() <= 60, "ville néon de 500 m : %d personnes (35 à 60)" % in_city.size())
+	_check(in_city.all(func(p): return float(p["edge_m"]) >= 2.7 and float(p["edge_m"]) <= 5.6 and str(p["role"]) != "gardener" and str(p["role"]) != "farmer"),
+		"ville néon : sur le trottoir derrière les voitures garées, sans jardinier ni paysan")
+	var same_village: Array = city.people.filter(func(p): return float(p["s"]) >= 1000.0 and float(p["s"]) < 1500.0)
+	_check(str(same_village) == str(in_village), "hors de la ville néon : placement inchangé")
 
 	# Écart au bord et segments de marche, à tout instant
 	var too_close := 0

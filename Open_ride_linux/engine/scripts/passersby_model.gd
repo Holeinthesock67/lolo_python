@@ -31,6 +31,11 @@ const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 const CELL_M := 100.0
 const VILLAGE_M := 60.0
 const VILLAGE_PER_CELL := Vector2i(2, 6)
+## Ville néon (lot NV5, `city_at`) : trottoirs animés, 8 à 12 personnes par case, sur le trottoir derrière les
+## voitures garées de neon_street.gd (CITY_EDGE_M du bord de la chaussée), sans jardinier.
+const CITY_PER_CELL := Vector2i(8, 12)
+const CITY_EDGE_M := Vector2(2.7, 5.6)
+const ROLES_CITY := [["walker", 0.5], ["dog_walker", 0.1], ["sitter", 0.15], ["kid", 0.1], ["jogger", 0.15]]
 const COUNTRY_GAP_M := Vector2(300.0, 800.0)
 const EDGE_M := Vector2(1.0, 6.0)
 const DEFAULT_ROAD_WIDTH_M := 6.0
@@ -133,6 +138,12 @@ static func crowd_zones(climbs: Array, crowd_all_climbs: bool = false) -> Array:
 
 ## `ground_at` : sol affiché (x, z) -> y (RoadsideGround.ground_fn), chemins posés sur le sol visible ; vide :
 ## hauteur de la route.
+## `city_at(x, z)` -> Dictionary non vide en ville néon (biome_model.gd `neon_at`), posé avant `configure` ; vide :
+## aucune case de ville.
+var city_at := Callable()
+var _city := false
+
+
 func configure(route, buildings: Array = [], water: Dictionary = {}, seed: int = 0,
 		road_width_m: float = DEFAULT_ROAD_WIDTH_M, exclude: Array = [], ground_at: Callable = Callable()) -> void:
 	people.clear()
@@ -156,10 +167,13 @@ func configure(route, buildings: Array = [], water: Dictionary = {}, seed: int =
 		var mid: Dictionary = route.sample((c0 + c1) * 0.5)
 		var village := _near_building(grid, Vector3(mid["x"], 0.0, mid["z"]))
 		var spots: Array = []
+		_city = city_at.is_valid() and not (city_at.call(float(mid["x"]), float(mid["z"])) as Dictionary).is_empty()
+		village = village or _city
 		if village:
 			var hc := VegetationPlacer.hash3(seed ^ 0x7A55, k, 1)
-			var n := VILLAGE_PER_CELL.x + int(_u(hc) * float(VILLAGE_PER_CELL.y - VILLAGE_PER_CELL.x + 1))
-			for j in range(mini(n, VILLAGE_PER_CELL.y)):
+			var per: Vector2i = CITY_PER_CELL if _city else VILLAGE_PER_CELL
+			var n := per.x + int(_u(hc) * float(per.y - per.x + 1))
+			for j in range(mini(n, per.y)):
 				spots.append(c0 + (j + _u(VegetationPlacer._mix(hc + 31 * (j + 1)))) * (c1 - c0) / float(n))
 			next_country = c1 + COUNTRY_GAP_M.x
 		else:
@@ -173,6 +187,7 @@ func configure(route, buildings: Array = [], water: Dictionary = {}, seed: int =
 			var p := _make_person(route, float(s), village, half, water, ground_at)
 			if not p.is_empty():
 				people.append(p)
+	_city = false
 	people.sort_custom(func(a, b): return a["s"] < b["s"])
 
 
@@ -186,9 +201,11 @@ static func _excluded(s: float, exclude: Array) -> bool:
 func _make_person(route, s: float, village: bool, half: float, water: Dictionary,
 		ground_at: Callable = Callable()) -> Dictionary:
 	var h := VegetationPlacer.hash3(_seed ^ 0x9A55, int(round(s * 10.0)), 2)
-	var role := _pick(ROLES_VILLAGE if village else ROLES_COUNTRY, _u(h))
+	var role := _pick(ROLES_CITY if _city else (ROLES_VILLAGE if village else ROLES_COUNTRY), _u(h))
 	var edge := lerpf(EDGE_M.x, EDGE_M.y, _u(VegetationPlacer._mix(h + 1)))
-	if role == "farmer" or role == "gardener":
+	if _city:
+		edge = lerpf(CITY_EDGE_M.x, CITY_EDGE_M.y, _u(VegetationPlacer._mix(h + 1)))
+	elif role == "farmer" or role == "gardener":
 		edge = lerpf(3.5, EDGE_M.y, _u(VegetationPlacer._mix(h + 1)))
 	var first_side := -1 if _u(VegetationPlacer._mix(h + 2)) < 0.5 else 1
 	var moving := SPEED_MPS.has(role)

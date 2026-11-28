@@ -445,11 +445,14 @@ func _set_box(g: int, box: AABB) -> void:
 
 
 ## Sorte de la touffe (STYLE_OF_BIOME, 0 : herbe d'avant) ou −1 : place laissée vide (sorte clairsemée, ou paysage
-## en feu : rien ne pousse sur la lave et les scories, biome_model.gd `fire_at`, lot DB2).
+## en feu : rien ne pousse sur la lave et les scories, biome_model.gd `fire_at`, lot DB2 ; ville néon : rien sur le
+## dallage, `neon_at`, lot NV6).
 func style_draw(k: int, slot: int, origin: Vector3) -> int:
 	if biome_model == null or not biome_model.active():
 		return 0
 	if not biome_model.fire_at(origin.x, origin.z).is_empty():
+		return -1
+	if not biome_model.neon_at(origin.x, origin.z).is_empty():   # lot NV6 : dallage de la ville néon, sans herbe
 		return -1
 	var w: Dictionary = biome_model.weights_at(origin.x, origin.z)
 	var h := VegetationPlacer.hash3(tuft_seed ^ 0x5D17, k, slot)

@@ -1405,6 +1405,8 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 	_step_cycle(now_s)
 	if living_world != null and living_world.volcano != null:
 		atmosphere_view.set_fire(living_world.volcano.fire_level, living_world.volcano.glow_color)
+	if living_world != null and living_world.neon != null and (living_world.neon.active() or atmosphere_view.neon_level > 0.0):
+		atmosphere_view.set_neon(living_world.neon.neon_level, living_world.neon.night, living_world.neon.palette)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 	if moon_view != null:
 		moon_view.update(camera.global_position, atmosphere_view.cycle)
@@ -2270,8 +2272,12 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	if living_decor != null:
 		living_decor.set_sun_elevation(float(light["sun_elevation_deg"]) if lit else NAN)
 	var glow := NightLights.level(light)
-	if glow != NightLights.current or lit != NightLights.enabled:
-		NightLights.apply(glow, lit)
+	# Ville néon (lot NV3) : fenêtres, vitrines et luminaires allumés dès le coucher du soleil du paysage
+	var neon_k: float = living_world.neon.neon_level if living_world != null and living_world.neon != null else 0.0
+	var lights_on := lit or neon_k > 0.0
+	glow = maxf(glow, neon_k)
+	if glow != NightLights.current or lights_on != NightLights.enabled:
+		NightLights.apply(glow, lights_on)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
 	# Pas de neige dans un paysage en feu (DB2, volcano_fx.gd `melt_snow`) : la limite ne descend plus l'hiver

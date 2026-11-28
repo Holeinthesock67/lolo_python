@@ -24,6 +24,13 @@ render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_sc
 // Faux relief (0 en `low` : motifs dessinés en couleur seulement)
 uniform float relief = 1.0;
 global uniform float night_glow;
+// Ville néon (lot NV3) : 0 hors du paysage (rien de plus à calculer, image inchangée), sinon ambiance × densité
+// du thème (neon_fx.gd) ; tubes de néon en haut de chaque étage, sous l'égout et aux angles, des deux couleurs.
+global uniform float neon_glow;
+global uniform vec4 neon_color_a : source_color;
+global uniform vec4 neon_color_b : source_color;
+const float NEON_TUBE_M = 0.09;         // demi-épaisseur d'un tube
+const float NEON_E = 5.0;
 
 const float LIT_SHARE = 0.4;            // part des fenêtres éclairées la nuit
 const float SHOP_LIT_SHARE = 0.75;      // vitrines
@@ -758,6 +765,23 @@ void fragment() {
 	if (night_glow > 0.0 && glow > 0.0) {
 		vec3 light_col = glow >= SIGN_GLOW ? lineaire(mix(col, vec3(1.0), 0.25)) * 1.4 : lineaire(WINDOW_WARM) * glow;
 		EMISSION = light_col * (night_glow * WINDOW_GLOW_E);
+	}
+	if (neon_glow > 0.0 && !is_roof && uv.y > PLINTH_H && eave > FLOOR_H) {
+		// Tubes : un par étage (en haut de l'étage), un sous l'égout, un à chaque angle du mur. Couleur tirée de la
+		// graine du bâtiment, alternée d'un étage à l'autre. Plus fin qu'un pixel : fondu vers sa lueur moyenne.
+		float fl = floor(uv.y / FLOOR_H);
+		float d_floor = abs(uv.y - (fl + 1.0) * FLOOR_H + 0.14);
+		float d_eave = abs(uv.y - eave + 0.14);
+		float d_edge = min(uv.x, seg - uv.x) - 0.12;
+		float dh = uv.y < eave - 0.3 ? min(d_floor, d_eave) : d_eave;
+		float tube = max(smoothstep(NEON_TUBE_M, NEON_TUBE_M * 0.4, dh), smoothstep(NEON_TUBE_M, NEON_TUBE_M * 0.4, abs(d_edge)) * step(uv.y, eave));
+		float vis = sd_visible(uv, NEON_TUBE_M * 2.0);
+		float halo = max(smoothstep(0.55, 0.0, dh), smoothstep(0.55, 0.0, abs(d_edge)) * step(uv.y, eave)) * 0.12;
+		float pick = step(0.5, fract(seed * 7.31 + fl * 0.5 + step(abs(d_edge), dh) * 0.5));
+		vec3 neon = mix(neon_color_a.rgb, neon_color_b.rgb, pick);
+		float amount = mix(0.3 * step(dh, NEON_TUBE_M * 3.0), tube, vis) + halo;
+		EMISSION += neon * (amount * neon_glow * NEON_E);
+		ALBEDO = mix(ALBEDO, neon, tube * vis);
 	}
 	// Hors de toute branche : les dérivées d'écran de sd_bump sont fausses dans un flot non uniforme
 	// (points clairs au bord des fenêtres)
