@@ -21,7 +21,10 @@ import json
 from pathlib import Path
 
 # Commandes du menu qui préparent une séance ; aucune autre ne se joue au lancement.
-COMMANDS = ("select_route", "select_workout", "start_run", "set_wtf_rule", "set_mode_option", "start")
+COMMANDS = ("select_route", "select_workout", "start_run", "set_wtf_rule", "set_mode_option", "start_open_world",
+            "start")
+# `start_open_world` (essai du 21/11, la mer) : le monde se prépare en LOADING ; les commandes suivantes
+# (dont `start`) se jouent quand il est prêt (`CoreSession._open_world_tick`).
 
 
 class SeanceError(ValueError):
