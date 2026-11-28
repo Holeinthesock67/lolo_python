@@ -261,6 +261,31 @@ def test_warm_run_on_empty_caches_is_judged_cold(tmp_path: Path):
     assert not sb.caches_empty("chaud", root) and not sb.caches_empty("froid-godot", root)
 
 
+# --- provenance en tête du rapport (garde-fou 4, 27 novembre) ------------------------------------
+
+def test_provenance_names_world_route_and_heads():
+    p = sb.provenance("/x/demo-biomes-paysages.world", "demo-biomes-paysages")
+    assert p["parcours"] == "demo-biomes-paysages" and len(p["tete"]) == 8 and p["main"]
+    text = sb.provenance_text(p)
+    assert "monde /x/demo-biomes-paysages.world → parcours demo-biomes-paysages" in text and p["tete"] in text
+    assert "monde demo ;" in sb.provenance_text({**p, "monde": "demo", "parcours": "demo"})
+    p["charge"] = [("demo-biomes-paysages", 14200.0)]
+    assert "demo-biomes-paysages (14.2 km)" in sb.provenance_html(p)
+    assert sb.provenance_html(None) == ""
+
+
+def test_route_loaded_line_of_the_core_is_read():
+    line = "2026-11-27 15:03:41,123 INFO openride_core.session: Parcours « demo » chargé : 5000 m, type open"
+    assert sb.ROUTE_LOADED.findall(line) == [("demo", "5000")]
+
+
+def test_index_shows_where_each_bench_ran(tmp_path):
+    r = sb.Report()
+    r.check(None, "banc joué sur", "monde demo ; tête abcd1234 (br), partie de main 12345678")
+    sb.write_index(tmp_path, [("nominal", r)])
+    assert "tête abcd1234" in (tmp_path / "index.html").read_text(encoding="utf-8")
+
+
 # --- vitesse imposée sur la pente du parcours (27 novembre, banc rDPS1) ---------------------------
 
 def test_speed_bench_keeps_neutral_gear_by_dropping_click_presses(tmp_path):
