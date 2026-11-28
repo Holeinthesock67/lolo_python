@@ -7,8 +7,10 @@ extends RefCounted
 ## Le lot E3 n'a plus qu'à dessiner ce que ce modèle renvoie.
 ## Pas de class_name : charger par preload("res://scripts/hud_view_model.gd").
 ##
-## Lissage : la puissance affichée est `power_3s` (moyenne sur 3 s calculée par le core) ; les autres
-## valeurs sont affichées telles que reçues, le core les envoyant déjà filtrées à 30 Hz.
+## Lissage : la puissance affichée est la moyenne sur POWER_DISPLAY_S secondes de `power_3s` (moyenne sur 3 s
+## calculée par le core), soit environ 8 s en tout, comme la puissance jugée et affichée en Cyber-Rogue (8 s,
+## lot R26) : retours du 28 novembre, le chiffre en haut à gauche sautait trop. Les autres valeurs sont affichées
+## telles que reçues, le core les envoyant déjà filtrées à 30 Hz.
 ## Valeur absente, nulle ou non finie (NaN, infini) : « — ». Valeur négative là où elle n'a pas de sens
 ## (vitesse, cadence, puissance) : 0. Valeur hors des bornes plausibles ci-dessous : « — ».
 
@@ -16,6 +18,9 @@ const ErgView := preload("res://scripts/erg_view.gd")
 const RiddenDistance := preload("res://scripts/ridden_distance.gd")
 
 const NO_VALUE := "—"
+
+## Fenêtre du lissage d'affichage de la puissance (s), sur `power_3s` : ~8 s en tout, comme en Cyber-Rogue.
+const POWER_DISPLAY_S := 5.0
 
 # Bornes plausibles de l'affichage (au-delà : « — »).
 const MAX_POWER_W := 5000.0
@@ -43,6 +48,7 @@ const CLIMB_MAX_DIP_M := 50.0
 var _has_state: bool = false
 var _state_time_s: float = 0.0
 var _raw: Dictionary = {}
+var _power_samples: Array = []   # [[now_s, power_3s nettoyée (NAN possible)], …] des POWER_DISPLAY_S dernières s
 # Distance parcourue (ridden_distance.gd) : `s` cumulé du core, tours d'une boucle ramenée sur le tour compris,
 # et toujours croissante après un demi-tour (lot N17), où `s` décroît.
 var _ridden = RiddenDistance.new()
@@ -193,7 +199,32 @@ func reset() -> void:
 	_has_state = false
 	_state_time_s = 0.0
 	_raw = {}
+	_power_samples.clear()
 	_ridden.reset()
+
+
+## Puissance affichée : moyenne des valeurs reçues dans les POWER_DISPLAY_S dernières secondes. Valeur du moment
+## absente ou aberrante : NAN (« — »), sans garder l'ancienne moyenne. Même instant que la trame précédente :
+## remplace sa valeur ; horloge qui recule (nouvelle séance, essais) : la fenêtre repart de zéro.
+func _smoothed_power(p: float, now_s: float) -> float:
+	if not _power_samples.is_empty():
+		var last_t: float = _power_samples[-1][0]
+		if now_s < last_t:
+			_power_samples.clear()
+		elif now_s == last_t:
+			_power_samples.pop_back()
+	_power_samples.append([now_s, p])
+	while _power_samples.size() > 1 and float(_power_samples[0][0]) < now_s - POWER_DISPLAY_S:
+		_power_samples.pop_front()
+	if is_nan(p):
+		return NAN
+	var total := 0.0
+	var n := 0
+	for e in _power_samples:
+		if not is_nan(float(e[1])):
+			total += float(e[1])
+			n += 1
+	return total / float(n)
 
 
 ## Enregistre une trame `state` (contrat IPC §3) reçue à l'instant `now_s`.
@@ -208,7 +239,7 @@ func on_state(state: Dictionary, now_s: float) -> void:
 	if hr == 0.0:
 		hr = NAN
 	_raw = {
-		"power_w": _clean(state.get("power_3s", state.get("power", null)), MAX_POWER_W),
+		"power_w": _smoothed_power(_clean(state.get("power_3s", state.get("power", null)), MAX_POWER_W), now_s),
 		"speed_kmh": _clean(float(state.get("v", NAN)) * 3.6 if _finite(state.get("v", null)) else NAN, MAX_SPEED_KMH),
 		"cadence_rpm": _clean(state.get("cadence", null), MAX_CADENCE_RPM),
 		"hr_bpm": hr,
@@ -271,6 +302,11 @@ static func end_u_turn_text(prev_dir: int, state: Dictionary) -> String:
 ## Distance parcourue de la dernière trame (m, NAN avant la première) : croissante après un demi-tour.
 func ridden_m() -> float:
 	return _ridden.distance_m
+
+
+## Puissance affichée (lissée sur POWER_DISPLAY_S, retours du 28 novembre) d'après la dernière trame ; NAN sans.
+func shown_power_w() -> float:
+	return float(_raw.get("power_w", NAN))
 
 
 ## Altitude et pente à une position déjà ramenée par wrap_s : même interpolation linéaire que
@@ -465,9 +501,10 @@ func _climb(route, here: float, start: float, end: float, min_length_m: float, m
 ## pente envoyée (le trainer est en mode puissance). La fréquence cardiaque absente s'affiche « — ».
 ## `ftp_w` et `hr_max_bpm` (config de hello_ack) donnent les zones de la puissance affichée et de la
 ## fréquence cardiaque (`power_zone`, `hr_zone`, -1 sans référence ni mesure). `ridden_m` : distance parcourue
-## (ridden_m(), croissante après un demi-tour, lot N17) ; NAN : la position `s` de la trame.
+## (ridden_m(), croissante après un demi-tour, lot N17) ; NAN : la position `s` de la trame. `shown_power` :
+## puissance lissée pour l'affichage (shown_power_w(), ~8 s) du grand chiffre et de sa zone ; null : `power_3s`.
 static func session_lines(state: Dictionary, erg_view: Dictionary, ftp_w := 0.0, hr_max_bpm := 0.0,
-		ridden_m := NAN) -> Dictionary:
+		ridden_m := NAN, shown_power: Variant = null) -> Dictionary:
 	var p := _clean(state.get("power", null), MAX_POWER_W)
 	var p3s := _clean(state.get("power_3s", state.get("power", null)), MAX_POWER_W)
 	var v := _clean(float(state.get("v", NAN)) * 3.6 if _finite(state.get("v", null)) else NAN, MAX_SPEED_KMH)
@@ -505,11 +542,12 @@ static func session_lines(state: Dictionary, erg_view: Dictionary, ftp_w := 0.0,
 	out["elapsed"] = format_hms(t)
 
 	# Champs individuels pour l'affichage moderne du HUD (hud_view.gd)
-	out["power_val"] = "%d" % int(round(p3s)) if not is_nan(p3s) else NO_VALUE
+	var big := p3s if not (shown_power is float or shown_power is int) else float(shown_power)
+	out["power_val"] = "%d" % int(round(big)) if not is_nan(big) else NO_VALUE
 	out["speed_val"] = "%.1f" % v if not is_nan(v) else NO_VALUE
 	out["cadence_val"] = "%d" % int(round(cad)) if not is_nan(cad) else NO_VALUE
 	out["hr_val"] = "%d" % int(round(hr)) if not is_nan(hr) and hr > 0.0 else NO_VALUE
-	out["power_zone"] = power_zone(p3s, ftp_w)
+	out["power_zone"] = power_zone(big, ftp_w)
 	out["hr_zone"] = hr_zone(hr, hr_max_bpm)
 	out["grade_val"] = format_grade(grade)
 	out["grade_class"] = grade_class(grade) if not is_nan(grade) else "flat"
