@@ -83,9 +83,16 @@ func _test_full_session() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "PAUSED"})
 	f.handle("PLUS_SHORT")
+	var clock := [100000]   # horloge des essais (ms) : garde du bilan (retours du 28 novembre)
+	f.now_ms = func() -> int: return clock[0]
 	_check(f.handle("A_LONG") == {"action": "end_session", "save": true}, "Terminer et enregistrer")
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 300.0, "distance_m": 2500.0}})
 	_check(f.state()["screen"] == "summary" and f.summary.get("distance_m") == 2500.0, "bilan affiché en FINISHED")
+	clock[0] += 800   # second A maintenu du Click, 0,8 s après (journal du 28/11, run Cyber-Rogue)
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "summary", "bilan : A maintenu qui déborde de la fin ignoré")
+	_check(f.handle("Y_SHORT").is_empty() and f.state()["screen"] == "summary", "bilan : Y aussitôt après la fin ignoré")
+	f.handle("PLUS_SHORT")   # naviguer reste permis
+	clock[0] += 1300
 	f.menu.focus_item("details")
 	_check(f.handle("A_LONG").is_empty() and f.show_details, "Voir le bilan détaillé")
 	f.menu.focus_item("new_session")

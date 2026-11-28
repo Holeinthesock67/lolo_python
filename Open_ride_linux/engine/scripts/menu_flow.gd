@@ -1316,8 +1316,24 @@ func list_failed(list_name: String) -> void:
 
 
 ## Événement du Click ou du clavier (PLUS_SHORT…) ; renvoie l'action à exécuter ({} sinon).
+## Bilan protégé (retours du 28 novembre, Cyber-Rogue) : « Terminer et enregistrer » validé par A maintenu, le
+## Click renvoie parfois un second A maintenu 0,8 s plus tard (bouton encore tenu, ou appui répété faute de
+## réponse visible) ; il tombait sur le bilan à peine ouvert et validait « Menu principal » : bilan jamais vu,
+## séance pourtant enregistrée. Les appuis de validation arrivés moins de SUMMARY_GUARD_S après cette commande
+## sont ignorés sur le bilan. `now_ms` : horloge en millisecondes (remplaçable par les essais).
+const SUMMARY_GUARD_S := 1.5   # le second appui est arrivé 0,79 s après la commande (journal du 28/11)
+const SUMMARY_GUARD_EVENTS := ["A_LONG", "A_SHORT", "Y_SHORT", "Y_LONG", "Z_SHORT", "Z_LONG"]
+var now_ms: Callable = func() -> int: return Time.get_ticks_msec()
+var _end_sent_ms := -1
+
+
 func handle(event: String) -> Dictionary:
+	if menu.current_screen() == SUMMARY and event in SUMMARY_GUARD_EVENTS and _end_sent_ms >= 0 \
+			and int(now_ms.call()) - _end_sent_ms < int(SUMMARY_GUARD_S * 1000.0):
+		return {}   # appui de la fin de séance qui déborde sur le bilan
 	var act := _handle_event(event)
+	if act.get("action", "") == "end_session":   # enregistrée : le bilan suit ; abandon : l'accueil, sans garde
+		_end_sent_ms = int(now_ms.call()) if bool(act.get("save", true)) else -1
 	if menu.routes_mode != _routes_mode_shown and not routes_raw.is_empty():
 		set_routes(routes_raw)   # liste d'un mode, ou liste générale (lot GP13)
 	var pick := menu.take_pending_route()
