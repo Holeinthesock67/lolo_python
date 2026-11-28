@@ -5,7 +5,6 @@ import json
 
 import numpy as np
 import pytest
-
 from openride_compiler import building_simplify as BS
 from openride_compiler.osm_layers import OsmLayersResult, signed_area
 

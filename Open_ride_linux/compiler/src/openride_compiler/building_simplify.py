@@ -31,8 +31,9 @@ alerte, pas une correction.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -243,7 +244,7 @@ class WaterIndex:
     lines: list[tuple[np.ndarray, float, tuple[float, float, float, float]]] = field(default_factory=list)
 
     @classmethod
-    def from_chunks(cls, water_chunks: dict[int, dict[str, list[dict[str, Any]]]]) -> "WaterIndex":
+    def from_chunks(cls, water_chunks: dict[int, dict[str, list[dict[str, Any]]]]) -> WaterIndex:
         idx = cls()
         for ch in water_chunks.values():
             for a in ch.get("areas", []):
@@ -267,8 +268,7 @@ class WaterIndex:
                 continue
             if any(point_in_ring(float(x), float(z), outer) for x, z in zip(xs, zs)):
                 return True
-            sel = [i for i in range(len(outer))]
-            for i in sel:
+            for i in range(len(outer)):
                 a, b = outer[i], outer[(i + 1) % len(outer)]
                 if float(_seg_dist(xs, zs, float(a[0]), float(a[1]), float(b[0]), float(b[1])).min()) \
                         < WATER_MARGIN_M:
@@ -462,13 +462,13 @@ class SimplifyReport:
         }
 
     def lines(self) -> list[str]:
-        out = [
+        out = [(
             f"maisons (MP1) : {self.houses} ; gardées {self.kept}, rectangles {self.rectangles}, "
             f"paliers {self.split} ({self.split_pieces} morceaux), retirées {self.removed_total} "
             f"(socle {self.removed[REASON_SOCLE]}, long {self.removed[REASON_LONG]}, "
             f"forme {self.removed[REASON_SHAPE]}, eau {self.removed[REASON_WATER]}), "
             f"sur la chaussée (engine) {self.road_removed}"
-        ]
+        )]
         for v in self.alerts:
             out.append(f"  ALERTE village {v['id']} ({v['x']:.0f}, {v['z']:.0f}) : {v['retirees']}/{v['maisons']} "
                        f"maisons retirées ({v['part']:.0%}) : revoir les points de passage de la route")
