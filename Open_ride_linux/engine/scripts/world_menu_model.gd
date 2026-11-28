@@ -66,7 +66,9 @@ var map_lon := 0.0
 var roads: Array = []
 var cursor := Vector2.ZERO
 var map_ready := false
-var _map_request := 0
+## Identifiant de commande de la dernière carte demandée (posé par main.gd) ; -1 : inconnu. Une réponse
+## `world_map` d'une autre demande (carte quittée par Y pendant le chargement, revue vague 3, E3-02) est jetée.
+var map_request := -1
 ## Cap et navigation.
 var heading_deg := 0.0
 var nav := "ride"
@@ -335,6 +337,7 @@ func _open_map(lat: float, lon: float) -> Dictionary:
 	roads = []
 	cursor = Vector2.ZERO
 	map_ready = false
+	map_request = -1
 	return {"action": "world_map", "lat": lat, "lon": lon, "radius_m": MAP_RADIUS_M}
 
 
@@ -364,13 +367,30 @@ func on_places(items: Array, request_cmd_id: int = -1) -> void:
 	place_index = 0
 
 
-## Routes reçues (message `world_map` complet, parties déjà réunies).
-func on_map(msg: Dictionary) -> void:
+## Routes reçues (message `world_map` complet, parties déjà réunies). Revue vague 3, E3-02 : seule la
+## réponse à la carte affichée est prise. Les cartes de deux lieux demandées l'une après l'autre partent
+## dans deux fils du core ; la plus lente (tuiles à télécharger) pouvait arriver la dernière et dessiner les
+## routes du premier lieu sous le second, puis faire partir la balade de leur décalage (jusqu'à 8 km).
+## Contrôle par `request_cmd_id` (comme la recherche), et par le centre renvoyé (`lat`, `lon`) quand
+## l'identifiant manque.
+func on_map(msg: Dictionary, request_cmd_id: int = -1) -> void:
 	if state != MAP:
+		return
+	if request_cmd_id >= 0 and map_request >= 0 and request_cmd_id != map_request:
+		return
+	if not _same_centre(msg.get("lat"), msg.get("lon")):
 		return
 	roads = msg.get("roads", [])
 	map_ready = true
 	cursor = snap_to_road(Vector2.ZERO)
+
+
+## Centre de la réponse égal à celui de la carte demandée, à 1e-3 degré près (une centaine de mètres) ;
+## vrai si la réponse ne le donne pas (core d'avant la révision 1.5, essais).
+func _same_centre(lat: Variant, lon: Variant) -> bool:
+	if not (lat is float or lat is int) or not (lon is float or lon is int):
+		return true
+	return absf(float(lat) - map_lat) <= 1e-3 and absf(_wrap_lon(float(lon) - map_lon)) <= 1e-3
 
 
 func on_regions(items: Array) -> void:
