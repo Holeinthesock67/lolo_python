@@ -33,6 +33,7 @@ const AvatarModel := preload("res://scripts/avatar_model.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const DrawnBudget := preload("res://scripts/drawn_budget.gd")
 
 const MAX_CYCLISTS := 16
 const SPARE_PER_VARIANT := 3
@@ -356,16 +357,9 @@ func _distance(pos: Vector3, s: float, cam_s: float) -> float:
 
 ## Lot AS11 : cyclistes dessinés. Le core fait rouler tous les cyclistes du décor (`core_full`) ; le préréglage ne
 ## règle plus que le nombre dessiné (`budget` du modèle) : les plus proches de la caméra, dans l'ordre du modèle.
+## Revue E6-03 : ceux à moins de DrawnBudget.ALWAYS_DRAWN_M de la caméra sont toujours dessinés (drawn_budget.gd).
 static func drawn_riders(m, cam_s: float) -> Array:
-	var all: Array = m.riders()
-	if m.get("core_full") != true or all.size() <= int(m.budget) or is_nan(cam_s):
-		return all
-	var by_dist := all.duplicate()
-	by_dist.sort_custom(func(a, b): return absf(float(a["s"]) - cam_s) < absf(float(b["s"]) - cam_s))
-	var keep := {}
-	for r in by_dist.slice(0, int(m.budget)):
-		keep[r["id"]] = true
-	return all.filter(func(r): return keep.has(r["id"]))
+	return DrawnBudget.keep(m.riders(), m.get("core_full") == true, int(m.budget), cam_s)
 
 
 func update(dt_s: float, paused: bool = false, cam_s: float = NAN) -> void:

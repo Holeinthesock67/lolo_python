@@ -92,6 +92,12 @@ cache (`SCHEMA_VERSION`) ou le code de génération (`compiler/src/openride_comp
 (ENVIRONNEMENT) sans être lancée.
 Reprise : `lancer` rejoue tout ce qui n'est pas OK, CONTACTS ou À-COUPS sur la tête actuelle ; `relancer` rejoue seulement
 les étapes en échec (les OK d'une tête précédente restent acquises et sont marquées « sur tête X »).
+Délais mesurés (lot DM1, 26 novembre ; 7 h 30 de PC perdues les 25 et 26/11 sur des délais fixes trop courts) :
+`delai_min` est un plancher. Chaque étape finie note sa durée dans `~/.local/state/openride/durees_bancs.json`
+(`OPENRIDE_DUREES_BANCS`), sous la signature de sa commande (script, scénario, qualité, tour, monde : la même
+mesure d'une file à l'autre). Le délai joué est au moins 1,5 × la plus longue des 5 dernières durées finies, et
+le double du délai précédent après un DÉLAI sans durée connue, plafonné à 4 × `delai_min`. `verifier` signale aussi
+une sous-commande dont le délai interne (`--delai-s N`, `timeout N`) n'est pas sous celui de l'étape.
 Pause : un fichier `PAUSE` dans le dossier de sortie arrête la file avant l'étape suivante (« PC libre ») ;
 Ctrl-C ou SIGTERM arrête l'étape en cours sans verdict. Code de sortie : 0 si rien n'est en ÉCHEC, DÉLAI ni
 ENVIRONNEMENT, 1 sinon, 2 si l'appel ou la file est invalide, 3 si la file est en pause. Bibliothèque standard seulement.
@@ -360,6 +366,69 @@ class Etat:
         tmp = self.chemin.with_suffix(".tmp")
         tmp.write_text(json.dumps(self.data, ensure_ascii=False, indent=1), encoding="utf-8")
         os.replace(tmp, self.chemin)
+
+
+# --- délais mesurés (lot DM1) --------------------------------------------------------------------
+
+DUREES_DEFAUT = Path.home() / ".local/state/openride/durees_bancs.json"
+DUREES_GARDEES = 5          # durées finies gardées par signature
+MARGE_DUREE = 1.5           # délai joué ≥ 1,5 × la plus longue durée récente
+PLAFOND_DELAI = 4.0         # jamais plus de 4 × delai_min
+SIGNE_RE = re.compile(r"(?:^|[\s/])([\w-]+\.(?:py|sh))\b|--(scenario|qualite|tour|world|seance)[ =]([\w.-]+)")
+DELAI_INTERNE_RE = re.compile(r"--delai-s[ =](\d+)|\btimeout\s+(\d+)")
+
+
+def signature(commande: str) -> str:
+    """Ce qui mesure la même chose d'une file à l'autre : scripts, scénario, qualité, tour, monde, séance ;
+    les dossiers de sortie et les têtes n'y entrent pas. Commande sans rien de tout cela : son empreinte."""
+    morceaux = []
+    for m in SIGNE_RE.finditer(commande):
+        morceaux.append(m.group(1) if m.group(1) else f"{m.group(2)}={m.group(3)}")
+    return " ".join(dict.fromkeys(morceaux)) or "commande:" + hashlib.sha1(commande.encode()).hexdigest()[:10]
+
+
+def delais_internes(commande: str) -> list[int]:
+    """Délais en secondes des sous-commandes (`--delai-s N`, `timeout N`)."""
+    return [int(a or b) for a, b in DELAI_INTERNE_RE.findall(commande)]
+
+
+class Durees:
+    """Durées des étapes finies, communes à toutes les files du PC : {signature: {"durees": [s…], "delai_s": s,
+    "verdict": dernier verdict}}."""
+
+    def __init__(self, chemin: Path | None = None) -> None:
+        self.chemin = chemin or Path(os.environ.get("OPENRIDE_DUREES_BANCS", DUREES_DEFAUT)).expanduser()
+        self.data: dict[str, dict[str, Any]] = {}
+        if self.chemin.is_file():
+            with contextlib.suppress(ValueError, OSError):
+                self.data = json.loads(self.chemin.read_text(encoding="utf-8"))
+
+    def delai_min(self, e: Etape) -> tuple[float, str]:
+        """(délai joué en minutes, raison écrite si ce n'est pas `delai_min`)."""
+        d = self.data.get(signature(e.commande), {})
+        plafond = e.delai_min * PLAFOND_DELAI
+        durees = [float(x) for x in d.get("durees", [])]
+        if durees:
+            mesure = MARGE_DUREE * max(durees) / 60
+            if mesure > e.delai_min:
+                joue = min(mesure, plafond)
+                return joue, f"{MARGE_DUREE:g} × la plus longue durée récente ({max(durees) / 60:.0f} min)"
+        elif d.get("verdict") == DELAI:
+            joue = min(max(2 * float(d.get("delai_s", 0)) / 60, e.delai_min), plafond)
+            if joue > e.delai_min:
+                return joue, f"dernier passage arrêté à {float(d['delai_s']) / 60:.0f} min sans durée connue"
+        return e.delai_min, ""
+
+    def noter(self, e: Etape, verdict: str, duree_s: float, delai_s: float) -> None:
+        d = self.data.setdefault(signature(e.commande), {"durees": []})
+        if verdict != DELAI:
+            d["durees"] = ([*d.get("durees", []), round(duree_s)])[-DUREES_GARDEES:]
+        d["verdict"], d["delai_s"] = verdict, round(delai_s)
+        with contextlib.suppress(OSError):
+            self.chemin.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.chemin.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self.data, ensure_ascii=False, indent=1), encoding="utf-8")
+            os.replace(tmp, self.chemin)
 
 
 # --- verdict d'une étape -------------------------------------------------------------------------
@@ -687,6 +756,7 @@ class Runner:
     def __init__(self, f: File, reseau: bool = True, log=print, lieu: str = "pc") -> None:
         self.f, self.reseau, self.log, self.lieu = f, reseau, log, lieu
         self.etat = Etat(f.sortie / "etat.json")
+        self.durees = Durees()
         self.tetes: dict[str, str] = {}
         self.verifies: dict[str, str] = {}         # paquet → têtes déjà vérifiées
 
@@ -740,7 +810,8 @@ class Runner:
         """Attend que `avant_etape` rende 0 (fenêtre de pause du user, Godot du user fermé…) ; faux si PAUSE."""
         attente = False
         while self.f.avant_etape and self.lieu == "pc":
-            env = {**os.environ, "FILE_PR": pr.id, "FILE_ETAPE": e.id, "FILE_DUREE_MIN": f"{e.delai_min:.0f}"}
+            env = {**os.environ, "FILE_PR": pr.id, "FILE_ETAPE": e.id,
+                   "FILE_DUREE_MIN": f"{self.durees.delai_min(e)[0]:.0f}"}
             p = subprocess.run(self.f.avant_etape, shell=True, env=env, capture_output=True, text=True, check=False)
             if p.returncode == 0:
                 break
@@ -820,16 +891,20 @@ class Runner:
         env = environnement_etape(self.f.depot, projet)
         if pr.cache == "separe" and e.sur == "branche":
             env["OPENRIDE_BANC_CACHES"] = str(cache_separe(self.f, pr, self.log))
+        delai, raison = self.durees.delai_min(e)
         self.log(f"→ {pr.id}/{e.id} sur {'main' if e.sur == 'main' else pr.branche} {sha[:8]} "
-                 f"(délai {e.delai_min:.0f} min)")
+                 f"(délai {delai:.0f} min{f' : {raison}' if raison else ''})")
         t0 = time.monotonic()
-        code, texte = jouer(cmd, projet if projet.is_dir() else wt, env, dossier / "journal.txt", e.delai_min * 60)
+        code, texte = jouer(cmd, projet if projet.is_dir() else wt, env, dossier / "journal.txt", delai * 60)
         if code is None:
-            verdict, detail = DELAI, f"arrêtée après {e.delai_min:.0f} min"
+            verdict, detail = DELAI, f"arrêtée après {delai:.0f} min"
         else:
             verdict, detail = classer(code, texte, e.lieu)
+        duree = time.monotonic() - t0
+        if verdict not in (ENV, BLOQUE, REFUSE):
+            self.durees.noter(e, verdict, duree, delai * 60)
         resultat = {"verdict": verdict, "detail": detail, "tete": sha, "empreinte": e.empreinte,
-                    "duree_s": round(time.monotonic() - t0), "code": code, "dossier": str(dossier),
+                    "duree_s": round(duree), "delai_s": round(delai * 60), "code": code, "dossier": str(dossier),
                     "fin": datetime.now().isoformat(timespec="seconds")}
         self.etat.put(pr, e, resultat)
         self.log(f"  {verdict} {detail}".rstrip())
@@ -1105,6 +1180,14 @@ def verifier(f: File, reseau: bool) -> int:
             continue
         etapes = ", ".join(f"{e.id}{' (cloud)' if e.lieu == 'cloud' else ''}" for e in pr.etapes)
         print(f"{nom_pr(pr)} : {pr.categorie}, têtes {sha[:8] if '+' not in sha else '+'.join(x[:8] for x in sha.split('+'))} ; {etapes}")
+        for e in pr.etapes:
+            delai, raison = r.durees.delai_min(e)
+            if raison:
+                print(f"  avis : {e.id} : délai porté de {e.delai_min:.0f} à {delai:.0f} min ({raison})")
+            trop = [s for s in delais_internes(e.commande) if s >= e.delai_min * 60]
+            if trop:
+                print(f"  avis : {e.id} : sous-commande avec un délai de {max(trop) / 60:.0f} min, pas sous celui de "
+                      f"l'étape ({e.delai_min:.0f} min) : l'étape s'arrêtera avant elle")
         if pr.est_paquet:
             refus, avis = verifier_paquet(f.depot, pr, sha.split("+"), r.tete("main"))
             for a in avis:

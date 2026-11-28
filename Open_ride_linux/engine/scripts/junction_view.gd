@@ -18,6 +18,8 @@ var title_label: Label
 var cells_row: HBoxContainer
 var attribution_label: Label
 var _signature := ""
+## Instant (s) du premier pas roulé dans le monde ouvert ; négatif tant que la séance n'est pas partie.
+var _ride_start_s := -1.0
 
 
 func _init() -> void:
@@ -65,10 +67,12 @@ func _init() -> void:
 
 
 ## Met l'affichage à jour. `open_world` : champ de la trame (null hors monde ouvert) ; `center_bottom` :
-## bas du panneau central du HUD ; `viewport` : taille de la fenêtre.
-func update_display(open_world: Variant, viewport: Vector2, center_bottom: float) -> void:
+## bas du panneau central du HUD ; `viewport` : taille de la fenêtre ; `running` : séance partie (RUNNING) ;
+## `now_s` : horloge en secondes (négatif : horloge de Godot, les tests passent la leur).
+func update_display(open_world: Variant, viewport: Vector2, center_bottom: float, running := true,
+		now_s := -1.0) -> void:
 	var in_open_world := typeof(open_world) == TYPE_DICTIONARY
-	attribution_label.visible = in_open_world
+	_update_attribution(in_open_world, running, now_s if now_s >= 0.0 else Time.get_ticks_msec() / 1000.0)
 	vm.update(open_world.get("next") if in_open_world else null)
 	var v := vm.view()
 	panel.visible = bool(v["visible"])
@@ -89,6 +93,20 @@ func update_display(open_world: Variant, viewport: Vector2, center_bottom: float
 		child.free()
 	for cell in v["branches"]:
 		cells_row.add_child(_make_cell(cell))
+
+
+## Attribution au départ seulement : pleine avant le départ et pendant les premières secondes, puis fondu et
+## masquée jusqu'à la séance suivante (sortie du monde ouvert).
+func _update_attribution(in_open_world: bool, running: bool, now_s: float) -> void:
+	if not in_open_world:
+		_ride_start_s = -1.0
+		attribution_label.visible = false
+		return
+	if running and _ride_start_s < 0.0:
+		_ride_start_s = now_s
+	var alpha := JunctionViewModel.attribution_alpha(now_s - _ride_start_s if _ride_start_s >= 0.0 else -1.0)
+	attribution_label.visible = alpha > 0.0
+	attribution_label.modulate.a = alpha
 
 
 func _make_cell(cell: Dictionary) -> Control:

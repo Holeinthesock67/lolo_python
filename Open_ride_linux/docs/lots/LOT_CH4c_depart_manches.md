@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : l'écran de la ligue lance chaque manche dans son mode, sur un parcours qui va à son terrain | GDScript | CH4a (#993), CH3b (core) | Petite | En revue |
+| Série CH : l'écran de la ligue lance chaque manche dans son mode, sur un parcours qui va à son terrain | GDScript | CH4a (#993), CH3b (core) | Petite | **Livré le 24 novembre** (PR #1035) |
 
 Échéance : avant le dimanche 6 décembre au soir, c'est-à-dire la fin de la semaine 2 (Dernier survivant).
 
@@ -38,3 +38,7 @@
   Prix, élimination, arrivée en côte), avec le parcours et le `start` attendus pour chacune, plus les refus écrits.
 - Menus seuls : banc medium et captures de l'écran Prêt d'une manche au vélodrome, de nuit avant le 28/11 ou après.
 - Le core doit avoir CH3b. Sans lui, il refuse ces manches avec un message écrit (« n'est pas encore jouable »).
+
+## Livraison
+
+Fusionné dans `main` le 24 novembre 2026 (PR #1035), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En revue »).

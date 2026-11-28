@@ -20,14 +20,14 @@ les applique (un seul système, plan GP §5).
 Les valeurs se modifient dans `~/OpenRide/powerups.toml` (facultatif), une section par bonus :
 
     [feather]              # Plume : masse totale × factor ([lightweight], nom de la 2.0, accepté)
-    factor = 0.90
-    duration_s = 20
+    factor = 0.80
+    duration_s = 30
     [aero]                 # Casque aéro : CdA × factor
-    factor = 0.75
-    duration_s = 15
+    factor = 0.60
+    duration_s = 30
     [power]                # Puissance prise en compte par la physique × factor
-    factor = 1.10
-    duration_s = 15
+    factor = 1.20
+    duration_s = 30
     [anvil]                # Enclume : masse × factor, en descente seulement
     factor = 1.6
     duration_s = 15
@@ -46,7 +46,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from .config import OPENRIDE_HOME
-from .physics import PhysicsParams
+from .physics import PhysicsParams, RiderPhysics
 
 POWERUPS_FILE = OPENRIDE_HOME / "powerups.toml"
 
@@ -94,6 +94,10 @@ ROLLER_BLEND_M = 20.0          # Rouleau : transitions de 20 m, comme le fondu d
 NEAR_FINISH_M = 400.0          # Échappée : refusée à moins de 400 m de l'arrivée ou de la fin d'un sprint
 DRAFT_PLUS_CAP = 0.55          # Aspiration + : plafond du cœur de groupe de la série AS (AS4)
 DRAFT_PLUS_REACH_M = 25.0      # Aspiration + : portée de l'abri (15 m sans bonus)
+GAIN_EFFECTS = ("mass", "cda", "power")   # temps gagné affiché à la fin du bonus (lot TT-BONUS)
+GAIN_TAIL_S = 60.0              # élan gardé après la fin : les deux coureurs suivis encore 60 s, comme le banc
+GAIN_TAIL_DT = 0.2
+GAIN_SHOW_S = 6.0               # « Casque aéro : +4 s » affiché 6 s (champ `powerup.gain`, révision IPC du lot)
 REFUSED_SHOW_S = 2.0            # raison du refus affichée 2 s (contrat 1.13, `powerup.refused`)
 
 MODES = ("off", "classiques", "tactiques")      # réglage `powerups.mode` (contrat 1.13)
@@ -194,12 +198,16 @@ class PowerUpTable:
         return tuple(k for k, s in self.specs.items() if set_name in s.sets)
 
 
+# Lot TT-BONUS (essai vélo du 22/11 : « bonus trop courts et trop faibles », gain de 0,2 à 1,2 s, sous le bruit
+# du trainer) : Plume masse × 0,9 pendant 20 s → × 0,8 pendant 30 s, Casque aéro CdA × 0,75 pendant 15 s → × 0,6
+# pendant 30 s, Puissance × 1,10 pendant 15 s → × 1,20 pendant 30 s ; 4 à 5 s gagnées chacun sur son terrain
+# (aéro : plat ; Puissance et Plume : montée), comme un objet du Grand Prix. Rapport `docs/4.0/RAPPORT_TT_BONUS.md`.
 # L'ordre des lignes est celui du tirage : Plume, Casque, Puissance d'abord, comme la 2.0
 # (`lightweight`, `aero`, `power`), pour que le jeu `classiques` tire les mêmes bonus.
 DEFAULT_TABLE = PowerUpTable(specs={
-    "feather": PowerUpSpec("feather", "mass", 0.90, 20.0, "Plume", factor_bounds=(0.5, 1.0)),
-    "aero": PowerUpSpec("aero", "cda", 0.75, 15.0, "Casque aéro", factor_bounds=(0.5, 1.0)),
-    "power": PowerUpSpec("power", "power", 1.10, 15.0, "Puissance", factor_bounds=(1.0, 1.5)),
+    "feather": PowerUpSpec("feather", "mass", 0.80, 30.0, "Plume", factor_bounds=(0.5, 1.0)),
+    "aero": PowerUpSpec("aero", "cda", 0.60, 30.0, "Casque aéro", factor_bounds=(0.5, 1.0)),
+    "power": PowerUpSpec("power", "power", 1.20, 30.0, "Puissance", factor_bounds=(1.0, 1.5)),
     "anvil": PowerUpSpec("anvil", "mass", 1.6, 15.0, "Enclume", sets=("tactiques",), factor_bounds=(1.0, 2.5),
                          draw_if=("descent_ahead",), refuse_unless=(("descending", "no_descent"),),
                          hold_above_grade_pct=DESCENT_HOLD_PCT),
@@ -350,6 +358,48 @@ class DraftBoost:
 
 
 @dataclass(frozen=True)
+class BonusGain:
+    """Temps gagné (positif) ou perdu par un bonus, mesuré sur la séance contre un coureur sans bonus."""
+    kind: str
+    gain_s: float
+    t: float
+
+
+class _Shadow:
+    """Coureur sans bonus parti du même point, à la même vitesse, au début du bonus (lot TT-BONUS) : même
+    puissance mesurée, même pente, même abri et même vent que le cycliste, effet du bonus retiré."""
+
+    def __init__(self, use_n: int, spec: PowerUpSpec, params: PhysicsParams, distance: float, v: float) -> None:
+        self.use_n, self.kind, self.spec = use_n, spec.kind, spec
+        self.rider = RiderPhysics(params, distance, v)
+        self.last: tuple | None = None   # (params, puissance, pente, altitude, abri) du dernier pas
+
+    def unbonused(self, p: PhysicsParams, power_used_w: float, applied: bool) -> tuple[PhysicsParams, float]:
+        """Paramètres et puissance du pas du cycliste, effet du bonus retiré (rien s'il est suspendu)."""
+        if not applied:
+            return p, power_used_w
+        e, f = self.spec.effect, self.spec.factor
+        if e == "mass":
+            return replace(p, mass_kg=p.mass_kg / f), power_used_w
+        if e == "cda":
+            return replace(p, cda_m2=p.cda_m2 / f), power_used_w
+        return p, power_used_w / f   # effet `power` : facteur borné à [1, 1,5]
+
+
+def _tail_gain(a_v: float, b_v: float, last: tuple) -> tuple[float, float]:
+    """Distance (m) que l'élan du cycliste lui fait encore gagner sur l'ombre pendant `GAIN_TAIL_S`, et
+    vitesse de l'ombre à la fin (celle qui convertit l'avance en secondes)."""
+    p, power, grade, alt, draft = last
+    a, b = RiderPhysics(p, 0.0, a_v), RiderPhysics(p, 0.0, b_v)
+    t = 0.0
+    while t < GAIN_TAIL_S - 1e-9:
+        a.step(power, grade, alt, GAIN_TAIL_DT, alpha_draft=draft)
+        b.step(power, grade, alt, GAIN_TAIL_DT, alpha_draft=draft)
+        t += GAIN_TAIL_DT
+    return a.distance - b.distance, b.v
+
+
+@dataclass(frozen=True)
 class Refusal:
     kind: str
     reason: str
@@ -373,12 +423,16 @@ class PowerUps:
     uses: list[PowerUpUse] = field(default_factory=list)
     refusals: list[Refusal] = field(default_factory=list)
     roll_w: float = 0.0                    # part du Rouleau appliquée (0 à 1, fondu de 20 m)
+    gain: BonusGain | None = None          # dernier temps gagné, affiché `GAIN_SHOW_S` (lot TT-BONUS)
+    gain_left_s: float = 0.0
+    gains: list[BonusGain] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.set_name not in SETS:
             raise ValueError(f"jeu de bonus inconnu : {self.set_name}")
         self._rng = random.Random(self.seed)
         self._kinds = self.table.kinds(self.set_name)
+        self._shadow: _Shadow | None = None
 
     # --- obtention et activation ---------------------------------------------------------
 
@@ -428,6 +482,10 @@ class PowerUps:
             up = ctx.ds_m / ROLLER_BLEND_M
             self.roll_w = min(1.0, self.roll_w + up) if spec is not None and spec.effect == "crr" \
                 else max(0.0, self.roll_w - up)
+        if self.gain is not None:
+            self.gain_left_s -= dt
+            if self.gain_left_s <= 1e-9:
+                self.gain, self.gain_left_s = None, 0.0
         if self.refused is not None:
             self.refused_left_s -= dt
             if self.refused_left_s <= 1e-9:
@@ -440,11 +498,47 @@ class PowerUps:
         elif ctx is not None:
             self.held = self._held(self.table.specs[self.active], ctx)
 
+    def track_gain(self, t: float, p: PhysicsParams, power_used_w: float, grade_pct: float,
+                   alt_m: float, dt: float, alpha_draft: float, before: tuple[float, float],
+                   after: tuple[float, float]) -> BonusGain | None:
+        """Temps gagné par un bonus de masse, de CdA ou de puissance (lot TT-BONUS), suivi pendant le pas
+        de la séance, juste après celui du cycliste (`p`, `power_used_w` : paramètres et puissance de son pas,
+        bonus compris ; `before`, `after` : sa distance et sa vitesse avant et après le pas).
+
+        Une ombre sans bonus part avec lui au début du bonus et roule avec la même puissance mesurée, la
+        même pente, le même abri et le même vent. À la fin du bonus, l'avance prise, plus ce que l'élan
+        rapporte encore pendant `GAIN_TAIL_S`, est convertie en secondes. Rend le gain une fois, à la fin ;
+        aucune entrée-sortie, environ 600 pas de physique une fois par bonus."""
+        spec = self.table.specs[self.active] if self.active is not None else None
+        sh = self._shadow
+        if sh is not None and (spec is None or sh.use_n != len(self.uses)):   # bonus fini (ou déjà un autre)
+            self._shadow = None
+            if sh.last is None:
+                return None
+            d0, v0 = before
+            extra, v_ref = _tail_gain(v0, sh.rider.v, sh.last)
+            ahead = (d0 - sh.rider.distance) + extra
+            g = BonusGain(sh.kind, round(ahead / max(v_ref, 1.0), 1), t)
+            self.gain, self.gain_left_s = g, GAIN_SHOW_S
+            self.gains.append(g)
+            return g
+        if spec is None or spec.effect not in GAIN_EFFECTS:
+            return None
+        if sh is None:
+            sh = self._shadow = _Shadow(len(self.uses), spec, p, *before)
+        q, power = sh.unbonused(p, power_used_w, self._effect() is not None)
+        sh.rider.p = q
+        sh.rider.step(power, grade_pct, alt_m, dt, alpha_draft=alpha_draft)
+        sh.last = (q, power, grade_pct, alt_m, alpha_draft)
+        return None
+
     def set_erg(self, on: bool) -> None:
         """ERG : bonus actif arrêté, obtention et activation refusées ; la réserve est gardée."""
         self.erg = bool(on)
         if self.erg and self.active is not None:
             self.active, self.remaining_s, self.held = None, 0.0, False
+        if self.erg:
+            self._shadow = None   # bonus coupé par l'ERG : aucun gain annoncé
 
     # --- effets --------------------------------------------------------------------------
 
@@ -512,4 +606,6 @@ class PowerUps:
                      "remaining_s": round(self.remaining_s, 1) if self.active else 0.0}
         if self.refused is not None:
             out["refused"] = {"kind": self.refused.kind, "reason": self.refused.reason}
+        if self.gain is not None:   # champ `gain` (révision IPC du lot TT-BONUS)
+            out["gain"] = {"kind": self.gain.kind, "gain_s": self.gain.gain_s}
         return out

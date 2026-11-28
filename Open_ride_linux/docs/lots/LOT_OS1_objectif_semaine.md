@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Objectif de la semaine : ligne « Semaine : 1 séance sur 2 » de l'accueil sous la ligue, réglage en séances | Python + GDScript | CO3, CH4a | Petite | PR ouverte le 23 novembre, captures à valider par le propriétaire |
+| Objectif de la semaine : ligne « Semaine : 1 séance sur 2 » de l'accueil sous la ligue, réglage en séances | Python + GDScript | CO3, CH4a | Petite | **Livré le 25 novembre** (PR #1038) |
 
 ## 1. Objectif
 

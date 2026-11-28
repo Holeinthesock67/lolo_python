@@ -10,6 +10,8 @@ const SCREEN := "league"
 const SCREENS := [SCREEN]
 const RUN_ID := "league_run"
 const NEW_ID := "league_new"
+const PALMARES_ID := "league_palmares"   # lot CH6 : saisons closes, fiche à droite au focus
+const MONTHS := ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
 ## Comment la manche s'enregistre (fin de séance commune RT2 : après l'arrivée on roule encore, « A maintenu =
 ## bilan ») : écrit sur la fiche de la ligue et sur la ligne « Démarrer ».
 const RECORD_HINT := "La manche compte au bilan : après l'arrivée, Y puis A maintenu."
@@ -18,6 +20,8 @@ const STYLES := {"climber": "grimpeur", "rouleur": "rouleur", "sprinter": "sprin
 ## Saison du dernier message `league` (null : pas de saison) ; `loaded` : un message est arrivé (sinon, core sans
 ## ligue : la ligne de l'accueil n'apparaît pas).
 var season = null
+## Palmarès (`history` du message `league`, révision 1.40, lot CH6) : saisons closes, la plus récente d'abord.
+var history: Array = []
 var loaded := false
 var message := ""
 ## Jour de la semaine (0 dimanche … 6 samedi, comme Time) ; -1 : celui du système (tests : jour imposé).
@@ -27,6 +31,7 @@ var weekday := -1
 func on_league(msg: Dictionary) -> void:
 	loaded = true
 	season = msg.get("season") if msg.get("season") is Dictionary else null
+	history = (msg.get("history") as Array).duplicate() if msg.get("history") is Array else []
 	message = ""
 
 
@@ -46,6 +51,14 @@ func _round() -> Dictionary:
 ## Éléments de l'écran de la ligue : courir la manche de la semaine (grisée et expliquée sinon), ou commencer une
 ## saison quand il n'y en a pas (ou qu'elle est finie).
 func items() -> Array:
+	var out := _run_items()
+	if not history.is_empty():   # lot CH6 : palmarès dès qu'une saison est close
+		out.append(_item(PALMARES_ID, "Palmarès", true,
+			"%d saison%s close%s" % [history.size(), "s" if history.size() > 1 else "", "s" if history.size() > 1 else ""]))
+	return out
+
+
+func _run_items() -> Array:
 	if season == null or season.get("closed") != null:
 		var n := 1 if season == null else int(season.get("number", 0)) + 1
 		return [_item(NEW_ID, "Commencer la saison %d" % n, true, "8 semaines, une manche par semaine")]
@@ -101,7 +114,9 @@ static func table_rows(rows: Array, ftp_w: float, weeks := 8) -> Array:
 
 
 ## Fiche de droite de l'écran de la ligue (maquette 02) : classement général et lignes d'explication.
-func sheet(ftp_w: float) -> Dictionary:
+func sheet(ftp_w: float, focused := "") -> Dictionary:
+	if focused == PALMARES_ID:
+		return palmares_sheet()
 	if season == null:
 		return {"title": "Ligue d'hiver", "name": "Une saison de 8 semaines",
 			"lines": ["Une manche par semaine, contre les mêmes 11 rivaux.",
@@ -123,6 +138,38 @@ func sheet(ftp_w: float) -> Dictionary:
 	return {"title": "Classement général · %d manche%s courue%s par toi" % [done, "s" if done > 1 else "", "s" if done > 1 else ""],
 		"name": str(season.get("home_line", "")),
 		"table": table_rows(season.get("standings", []), ftp_w, int(season.get("weeks", 8))), "lines": lines}
+
+
+## Fiche du palmarès (lot CH6) : une ligne écrite par saison close, la plus récente d'abord.
+func palmares_sheet() -> Dictionary:
+	var lines: Array = []
+	for h in history:
+		if h is Dictionary:
+			lines.append(palmares_line(h))
+	return {"title": "Palmarès", "name": "Tes saisons de la ligue d'hiver", "lines": lines}
+
+
+## Ligne d'une saison : « Saison 1 (23 nov. – 17 janv.) : 3e sur 12, 142 pts · Trophée de bronze · vainqueur
+## Alain Asphalte, 188 pts » ; « tu as gagné la saison » quand le vainqueur est le cycliste.
+static func palmares_line(h: Dictionary) -> String:
+	var parts: Array = ["%s sur %d, %s" % [ordinal(int(h.get("place", 0))), int(h.get("of", 12)), _points(h.get("points", 0))]]
+	if h.get("trophy") != null:
+		parts.append(str(h["trophy"]))
+	if bool(h.get("winner_me", false)):
+		parts.append("tu as gagné la saison")
+	else:
+		parts.append("vainqueur %s, %s" % [str(h.get("winner", "")), _points(h.get("winner_points", 0))])
+	if str(h.get("closed", "")) == "pause":
+		parts.append("close après une longue pause")
+	return "Saison %d (%s – %s) : %s" % [int(h.get("number", 0)), _short_date(str(h.get("start", ""))),
+		_short_date(str(h.get("end", ""))), " · ".join(parts)]
+
+
+static func _short_date(iso: String) -> String:
+	var p := iso.split("-")
+	if p.size() != 3:
+		return iso
+	return "%d %s %s" % [int(p[2]), MONTHS[clampi(int(p[1]) - 1, 0, 11)], p[0]]
 
 
 ## Mode de course de la manche de la semaine (`start.mode`, lot CH4c) : race, survivor, grandprix ou track.

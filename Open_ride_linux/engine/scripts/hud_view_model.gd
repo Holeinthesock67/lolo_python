@@ -46,6 +46,12 @@ var _raw: Dictionary = {}
 # Distance parcourue (ridden_distance.gd) : `s` cumulé du core, tours d'une boucle ramenée sur le tour compris,
 # et toujours croissante après un demi-tour (lot N17), où `s` décroît.
 var _ridden = RiddenDistance.new()
+## Cache de next_climb_cached (lot EC7) : clé du parcours, réponse avancée, position de cette réponse.
+var _climb_key: Array = []
+var _climb_res: Dictionary = {}
+var _climb_s := 0.0
+## Recherches complètes faites par next_climb_cached (essais : le cache évite d'en faire une par trame).
+var climb_scans := 0
 
 
 static func _finite(value: Variant) -> bool:
@@ -328,14 +334,19 @@ func profile(route, s: float, behind_m := 500.0, ahead_m := 4500.0, columns := 1
 ## Prochaine montée devant `s` : au moins `min_length_m` de long et `min_grade_pct` de pente moyenne.
 ## Une montée commence quand la pente sur CLIMB_STEP_M atteint CLIMB_START_PCT et finit au premier replat
 ## (ou descente) de plus de CLIMB_MAX_DIP_M. Si `s` est dans une montée, renvoie ce qu'il en reste
-## (start_m = 0, in_progress = vrai). Recherche jusqu'à la fin (parcours ouvert) ou sur un tour (boucle).
+## (start_m = 0, in_progress = vrai). Recherche jusqu'à la fin (parcours ouvert) ou sur un tour (boucle : la
+## montée commence dans le tour qui vient et elle est mesurée jusqu'au bout, même au tour suivant).
 ## Renvoie {start_m, length_m, avg_grade_pct, gain_m, in_progress} ou {} s'il n'y en a pas.
 ## `dir` = -1 à rebours (lot N17) : recherche vers le départ du parcours.
 func next_climb(route, s: float, min_length_m := 300.0, min_grade_pct := 3.0, dir := 1) -> Dictionary:
 	if route == null or route.n < 2 or not is_finite(s):
 		return {}
 	var here: float = route.wrap_s(s)
-	var horizon: float = route.length_m if route.is_loop() else (route.length_m - here if dir > 0 else here)
+	var loop: bool = route.is_loop()
+	# Boucle : une montée doit commencer dans le tour qui vient, mais elle est mesurée en entier même si elle
+	# passe au tour suivant (lot EC7) ; sans cela, une montée coupée au bout du tour paraissait ou disparaissait
+	# selon la position, et « aucune montée » n'était plus une réponse stable.
+	var horizon: float = route.length_m * 2.0 if loop else (route.length_m - here if dir > 0 else here)
 	var steps := int(floor(horizon / CLIMB_STEP_M))
 	var start := -1.0
 	var last_up := -1.0     # fin du dernier pas montant de la montée en cours
@@ -343,7 +354,7 @@ func next_climb(route, s: float, min_length_m := 300.0, min_grade_pct := 3.0, di
 	for k in range(steps + 1):
 		d = minf(k * CLIMB_STEP_M, horizon)
 		var d2 := minf(d + CLIMB_STEP_M, horizon)
-		var ended := k == steps or d2 <= d
+		var ended: bool = k == steps or d2 <= d or (loop and start < 0.0 and d >= route.length_m)
 		var up := false
 		if not ended:
 			var a0: float = _alt_grade(route, route.wrap_s(here + dir * d))[0]
@@ -362,6 +373,76 @@ func next_climb(route, s: float, min_length_m := 300.0, min_grade_pct := 3.0, di
 		if ended:
 			break
 	return {}
+
+
+## Prochaine montée pour le HUD, à chaque trame (lot EC7, revue vague 3 E4-01) : même réponse que
+## next_climb(), sans refaire la recherche sur tout l'horizon (jusqu'à 2 000 pas pour 20 km, dans le fil
+## principal) à chaque trame. La réponse est gardée et avancée de la distance parcourue : montée à venir,
+## « dans » diminue ; montée en cours, il en reste moins (pente moyenne recalculée sur deux points). La
+## recherche complète n'est refaite que si le parcours change (autre objet, `revision`, longueur, nombre de
+## points), si le sens ou les seuils changent, si la position recule, quand la montée annoncée commence, ou
+## quand le reste de la montée en cours passe sous les seuils. Aucune montée devant : rien à refaire tant
+## qu'on avance (l'horizon ne fait que raccourcir sur un parcours ouvert ; boucle : il n'y en a nulle part).
+func next_climb_cached(route, s: float, min_length_m := 300.0, min_grade_pct := 3.0, dir := 1) -> Dictionary:
+	if route == null or route.n < 2 or not is_finite(s):
+		_climb_key = []
+		return {}
+	var here: float = route.wrap_s(s)
+	var key := [route.get_instance_id(), route.get("revision"), route.n, route.length_m, route.type, dir,
+		min_length_m, min_grade_pct]
+	if key == _climb_key:
+		var moved := _climb_moved(route, here, dir)
+		if moved >= 0.0:
+			var shifted = _climb_shift(route, here, moved, min_length_m, min_grade_pct, dir)
+			if shifted != null:
+				_climb_res = shifted
+				_climb_s = here
+				return _climb_res.duplicate()
+	climb_scans += 1
+	_climb_key = key
+	_climb_res = next_climb(route, here, min_length_m, min_grade_pct, dir)
+	_climb_s = here
+	return _climb_res.duplicate()
+
+
+## Distance parcourue dans le sens `dir` depuis la dernière réponse gardée ; −1 si la position a reculé.
+## Boucle : un pas de plus d'un demi-tour est compté comme un recul.
+func _climb_moved(route, here: float, dir: int) -> float:
+	var d: float = (here - _climb_s) * dir
+	if route.is_loop() and route.length_m > 0.0:
+		d = fposmod(d, route.length_m)
+		return d if d <= route.length_m * 0.5 else -1.0
+	return d if d >= -1e-6 else -1.0
+
+
+## Réponse gardée avancée de `moved` m ; null s'il faut refaire la recherche complète.
+func _climb_shift(route, here: float, moved: float, min_length_m: float, min_grade_pct: float, dir: int):
+	if _climb_res.is_empty():
+		return {}
+	if not _climb_res.get("in_progress", false):
+		var start: float = float(_climb_res["start_m"]) - moved
+		if start <= 0.0:
+			return null   # la montée annoncée commence : recherche depuis ici (montée en cours)
+		var out := _climb_res.duplicate()
+		out["start_m"] = start
+		return out
+	var rest: float = float(_climb_res["length_m"]) - moved
+	var res := {} if rest < min_length_m else _climb(route, here, 0.0, rest, min_length_m, min_grade_pct, dir)
+	if not res.is_empty():
+		return res
+	# Le reste de la montée en cours ne compte plus : montée suivante cherchée depuis la fin de celle-ci (une
+	# recherche, pas une par trame : depuis `here`, la grille de 10 m retrouve la fin de montée à quelques
+	# mètres près et la recherche serait refaite à chaque trame jusqu'à ce qu'elle disparaisse).
+	climb_scans += 1
+	if rest <= 0.0:
+		return null
+	var end_s: float = route.wrap_s(here + dir * rest)
+	var after := next_climb(route, end_s, min_length_m, min_grade_pct, dir)
+	if after.is_empty():
+		return {}
+	after["start_m"] = float(after["start_m"]) + rest
+	after["in_progress"] = false
+	return after
 
 
 func _climb(route, here: float, start: float, end: float, min_length_m: float, min_grade_pct: float,

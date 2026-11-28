@@ -27,7 +27,15 @@ const ROAD_COLORS := {"p": UiTheme.ROAD_P, "s": UiTheme.ROAD_S, "t": UiTheme.PAL
 	"m": UiTheme.ROAD_M, "c": UiTheme.ROAD_C, "k": UiTheme.ROAD_K}
 ## Rotation de la sphère qui amène la longitude 0 face à la caméra (réglée sur le rendu, tests/render).
 const TEXTURE_LON_OFFSET_DEG := 180.0
+## Lignes de résultats écrites (revue vague 3, E3-01 : le core en rend jusqu'à 50) : la fenêtre suit le
+## choix, et « n / total » dit qu'il y en a d'autres. Pendant la saisie à la grille (6 lignes de plus), moins
+## de lignes, pour que l'explication reste au-dessus du bandeau des boutons.
 const MAX_RESULTS := 8
+const MAX_RESULTS_TYPING := 3
+## Nom d'un résultat sur une ligne du libellé de 440 px (revue vague 3, E3-03 : les noms complets
+## d'OpenStreetMap, jusqu'à 80 caractères, prenaient 3 ou 4 lignes et la liste passait sous le bandeau) :
+## au-delà de RESULT_NAME_MAX caractères, jusqu'à la deuxième virgule, puis `fit_line` coupe à la largeur.
+const RESULT_NAME_MAX := 30
 ## Explication de chaque état, sous ses lignes (lot O22). Textes alignés sur docs/GUIDE_UTILISATION.md
 ## §4 bis et sur le plan W (cache, épinglage, Nominatim, carrefours).
 const STATE_HELP := {
@@ -280,10 +288,16 @@ func _body_text() -> String:
 			var lines := ["Recherche : " + vm.query + "_"]
 			if vm.typing:
 				lines.append_array(grid_lines())
-			for i in range(mini(vm.places.size(), MAX_RESULTS)):
+			var window := results_window()
+			for i in range(window.x, window.y):
 				var p: Dictionary = vm.places[i]
 				var mark := "▶" if i == vm.place_index and not vm.typing else "  "
-				lines.append("%s %s%s" % [mark, p.get("name", "?"), "  (en cache)" if p.get("cached", false) else ""])
+				lines.append(fit_line(mark + " ", short_name(str(p.get("name", "?"))), "  (en cache)" if p.get("cached", false) else ""))
+			if window.y - window.x < vm.places.size():
+				if vm.typing:
+					lines.append("  %d lieux en tout (A maintenu : liste)" % vm.places.size())
+				else:
+					lines.append("  %d / %d" % [vm.place_index + 1, vm.places.size()])
 			if vm.places.is_empty() and vm.query.length() >= 2:
 				lines.append("  aucun résultat")
 			return "\n".join(lines)
@@ -302,6 +316,46 @@ func _body_text() -> String:
 		Model.LOADING:
 			return vm.loading_text()
 	return ""
+
+
+## Résultats écrits : [premier, après le dernier[. La liste a la main : fenêtre de MAX_RESULTS lignes qui
+## suit le choix (comme les listes longues de menu_view.gd) ; en saisie : les premiers seulement.
+func results_window() -> Vector2i:
+	var n: int = vm.places.size()
+	var shown := mini(n, MAX_RESULTS_TYPING if vm.typing else MAX_RESULTS)
+	var first := 0
+	if not vm.typing and n > shown:
+		first = clampi(vm.place_index - shown / 2, 0, n - shown)
+	return Vector2i(first, first + shown)
+
+
+## Nom court d'un résultat : jusqu'à la deuxième virgule (« Sevrier, Annecy » pour le nom complet
+## d'OpenStreetMap), puis coupé par « … » au-delà de RESULT_NAME_MAX caractères.
+static func short_name(name: String) -> String:
+	var out := name.strip_edges()
+	if out.length() > RESULT_NAME_MAX:
+		var parts := out.split(",")
+		if parts.size() > 2:
+			out = (parts[0] + "," + parts[1]).strip_edges()
+	if out.length() > RESULT_NAME_MAX:
+		out = out.left(RESULT_NAME_MAX - 1).strip_edges() + "…"
+	return out
+
+
+## Ligne « repère nom suffixe » tenue dans la largeur du libellé (police du thème, taille 24) : le nom est
+## raccourci par « … » tant que la ligne dépasse, sans quoi elle passerait sur deux lignes.
+func fit_line(prefix: String, name: String, suffix: String) -> String:
+	var font: Font = body_label.get_theme_font("font")
+	var size: int = body_label.get_theme_font_size("font_size")
+	var width: float = body_label.custom_minimum_size.x - 8.0
+	var line := prefix + name + suffix
+	if font == null:
+		return line
+	var cut := name
+	while cut.length() > 1 and font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width:
+		cut = cut.left(cut.length() - 1).strip_edges()
+		line = prefix + cut + "…" + suffix
+	return line
 
 
 ## Grille de saisie au Click (lot O31), une ligne par rangée de la grille, case en focus entre crochets.

@@ -25,6 +25,11 @@ Idées du §8.4 du plan `docs/6.0/PLAN_SERIE_PP.md`, retenues par le propriétai
 - **Intervalles calés sur la courbe** : un 30/30 ou un 1 min réglé sur ton meilleur 1 min (ou 5 min) plutôt que sur un pourcentage de FTP, pour les efforts courts ; option des entraînements créés au menu (`workout_menu.py`), cible écrite en watts.
 - **Courbe avant et après un plan** : à la fin d'un plan de plusieurs semaines (`plans.py`), bilan des 13 durées avant et après, au menu.
 
+**Livré le 26 novembre (PR PP8b, révision IPC prise à la fusion)** :
+
+- Intervalles : ligne « Base de l'effort » (FTP, ton 1 min, ton 5 min) de « Créer un entraînement » ; sur la courbe, « Puissance de l'effort » va de 50 à 120 % de ton meilleur effort des 6 derniers mois (courbe type × FTP sans effort de cette durée, toutes les séances comptées comme le coach). Le core convertit en % de la FTP dans le `.zwo` et écrit les watts dans le nom (« Intervalles 6 × 1 min à 342 W (95 % de ton 1 min) ») ; la récupération reste en % de la FTP. Contrat : `create_workout.on_ref`, `workout_saved.target_w`.
+- Courbe du plan : fiche « Plan en cours », « Ta courbe, avant → depuis le début du plan » (« après le plan » une fois fini), aux quatre durées de « Se connaître » (5 s, 1 min, 5 min, 20 min) plutôt qu'aux 13, pour tenir dans la fiche ; avant = meilleur des 6 mois d'avant le début, après = meilleur depuis le début. Contrat : `plans.active.curve`.
+
 ## 4. Critères d'acceptation
 
 1. `core/tests/test_coach_courbe.py` : point faible de la courbe sans test récent, départage R7 ; R4 proposé quand l'estimation s'écarte, retenu quand elle confirme la FTP malgré un test ancien, règle d'âge sans estimation.

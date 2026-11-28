@@ -34,6 +34,11 @@
     "created": {
       "type": "boolean",
       "description": "Faux si un fichier identique était déjà là (rien n'a été écrit)."
+    },
+    "target_w": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Lot PP8b (révision prise à la fusion) : puissance de l'effort en watts pour un entraînement calé sur ton meilleur 1 min ou 5 min (`create_workout.on_ref`) ; absent sinon."
     }
   }
 }
