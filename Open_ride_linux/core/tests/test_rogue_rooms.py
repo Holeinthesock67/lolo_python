@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from dataclasses import replace
 from functools import lru_cache
 
 from openride_core.physics import PhysicsParams, RiderPhysics
@@ -137,8 +138,23 @@ def test_marker_kinds_per_archetype():
     assert {"rock", "strike_target", "arch"} <= kinds("grimpeur", "", "threshold")
     assert {"pad"} <= kinds("sprinteur", "", "vo2max")
     assert {"purge"} <= kinds("saboteur", "", "threshold")
-    assert sum(1 for m in make("boss", "phase1", "threshold", nominal=210).markers if m.kind == "strike_target") == 4
-    assert {"shockwave", "parry_zone"} <= kinds("boss", "phase2", "threshold")
+    assert sum(1 for m in make("boss", "phase1", "threshold", nominal=210).markers if m.kind == "strike_target") == 5
+    assert {"shockwave", "parry_zone", "strike_target"} <= kinds("boss", "phase2", "threshold")
+
+
+def test_boss_has_events_in_every_phase():
+    """Retours du 28/11 : salle du boss « avec peu d'événements » ; tunnels trop étroits ; phase 3 réglable."""
+    for obj in ("endurance", "threshold"):
+        p2 = make("boss", "phase2", obj, nominal=240.0).markers
+        shocks = sum(1 for m in p2 if m.kind == "shockwave")
+        strikes = sum(1 for m in p2 if m.kind == "strike_target")
+        assert shocks >= 5 and strikes >= shocks - 1          # une cible Z entre deux ondes de choc
+        assert not any(m.kind == "shockwave" for m in make("boss", "phase3", obj, nominal=120.0).markers)
+    over = replace(B, room_profiles={**B.room_profiles, "boss": {o: {**v, "p3_shock_period_s": 20.0}
+                                                                  for o, v in B.room_profiles["boss"].items()}})
+    p3 = generate_room("boss", "phase3", "threshold", 120.0, RIDER, 1, over).markers
+    assert sum(1 for m in p3 if m.kind == "shockwave") >= 4 and sum(1 for m in p3 if m.kind == "parry_zone") >= 4
+    assert B.tunnel_tolerance_rpm == 8.0
 
 
 def test_boss_phases_structure():

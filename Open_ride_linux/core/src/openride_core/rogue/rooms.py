@@ -403,11 +403,23 @@ def _markers(archetype, variant, legs, starts, T, p, b, s_of_t, rng) -> list:
                 tt = trans + combat * (k + 1) / (p["p1_locks"] + 1)
                 add("strike_target", tt, tt, 1)
         elif variant == "phase2" and combat > 0:
-            tt = trans + p["shock_period_s"]
+            period = p["shock_period_s"]
+            strikes = int(p.get("p2_strikes", 0))   # retours du 28/11 : cibles Z entre deux ondes de choc
+            tt = trans + period
             while tt <= T:
                 add("parry_zone", tt - b.parry_lead_s, tt)
                 add("shockwave", tt, tt, None)
-                tt += p["shock_period_s"]
+                for k in range(strikes):
+                    ts = tt + period * (k + 1) / (strikes + 1)
+                    if ts <= T:
+                        add("strike_target", ts, ts, 1)
+                tt += period
+        elif variant == "phase3" and combat > 0 and float(p.get("p3_shock_period_s", 0.0)) > 0.0:
+            tt = trans + float(p["p3_shock_period_s"])   # retours du 28/11 : la phase 3 n'avait aucun événement
+            while tt <= T:
+                add("parry_zone", tt - b.parry_lead_s, tt)
+                add("shockwave", tt, tt, None)
+                tt += float(p["p3_shock_period_s"])
     out.sort(key=lambda m: (m.s_m, m.kind))
     return out
 
