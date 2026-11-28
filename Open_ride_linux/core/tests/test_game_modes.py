@@ -45,3 +45,45 @@ def test_fields_cleared_outside_session():
     assert all(getattr(state, k) is None for k in ("segment", "powerup", "jerseys", "bot_ahead", "bot_behind",
                                                     "wtf", "survivor", "gp", "track"))
     assert state.rogue is sentinel   # le Cyber-Rogue garde sa dernière trame (comme avant le lot IM1)
+
+
+# --- lot IM2 : fin de séance et classement ---------------------------------------------------------------------
+
+
+def test_road_modes_and_summary_keys():
+    assert [m.id for m in registry.ROAD_MODES] == ["classic", "wtf", "survivor", "grandprix", "track"]
+    keys = [m.summary_key for m in registry.ROAD_MODES]
+    assert keys == ["segments", "wtf", "survivor", "gp", "track"] and len(set(keys)) == len(keys)
+
+
+def test_elo_modes_cover_ranked_modes():
+    # mêmes modes qu'avant IM2 dans `_elo_order` (cote Elo et ligue d'hiver)
+    owners = {mode: m.id for m in registry.MODES for mode in m.elo_modes}
+    assert owners == {"grandprix": "grandprix", "race": "grandprix", "survivor": "survivor", "track": "track"}
+
+
+def test_ranking_none_until_the_end():
+    from openride_core import bot_elo
+    gp = registry.BY_ID["grandprix"]
+    racer = SimpleNamespace(id=bot_elo.ME, finished=None)
+    other = SimpleNamespace(id="bot1", finished=12.0)
+    obj = SimpleNamespace(racers={bot_elo.ME: racer, "bot1": other}, order=lambda: [other, racer])
+    assert gp.ranking(obj) is None
+    racer.finished = 13.0
+    assert gp.ranking(obj) == [["bot1"], [bot_elo.ME]]
+
+    sv = registry.BY_ID["survivor"]
+    me = SimpleNamespace(id=bot_elo.ME, place=None)
+    b1, b2 = SimpleNamespace(id="bot1", place=None), SimpleNamespace(id="bot2", place=3)
+    obj = SimpleNamespace(racers={bot_elo.ME: me, "bot1": b1, "bot2": b2})
+    assert sv.ranking(obj) is None
+    me.place = 2
+    assert sv.ranking(obj) == bot_elo.order_from_places([(bot_elo.ME, 2), ("bot1", None), ("bot2", 3)],
+                                                        unplaced_first=True)
+
+    tr = registry.BY_ID["track"]
+    ev = SimpleNamespace(finished=False, full_ranking=lambda: ["bot1", bot_elo.ME])
+    assert tr.ranking(ev) is None
+    ev.finished = True
+    assert tr.ranking(ev) == [["bot1"], [bot_elo.ME]]
+    assert registry.BY_ID["classic"].ranking(object()) is None
