@@ -141,6 +141,20 @@ func _init() -> void:
 	call_deferred("_run")
 
 
+## Lecteurs 3D qui jouent sous ces nœuds (E9-03).
+static func _playing_count(roots: Array) -> int:
+	var n := 0
+	var todo: Array = roots.duplicate()
+	while not todo.is_empty():
+		var node = todo.pop_back()
+		if node == null:
+			continue
+		if node is AudioStreamPlayer3D and (node as AudioStreamPlayer3D).playing:
+			n += 1
+		todo.append_array(node.get_children())
+	return n
+
+
 static func _count_nodes(nodes: Array) -> int:
 	var n := 0
 	for nd in nodes:
@@ -328,6 +342,11 @@ func _run() -> void:
 	for i in range(20):
 		dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
 		now += 0.05
+	# E9-03 : en pause, véhicules, aéronefs, bateaux et clameur se taisent comme le vent et l'ambiance
+	# (le pilote audio muet des tests ne joue rien : on vérifie que la pause atteint les vues)
+	var sounding_paused := _playing_count([dec.traffic_view, dec.sky_view, dec.boats_view, dec.crowd_view])
+	_check(dec.traffic_view.muted and dec.sky_view.muted and dec.boats_view.muted and sounding_paused == 0,
+		"pause : véhicules, aéronefs et bateaux muets (%d lecteurs actifs)" % sounding_paused)
 	var after: Array = []
 	for v in dec.traffic.vehicles:
 		after.append(float(v["s"]))

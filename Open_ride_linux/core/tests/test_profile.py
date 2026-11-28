@@ -49,7 +49,8 @@ def test_truncated_file_uses_backup(tmp_path):
     q = load_profile(path)
     assert q.purchased == {"wheels_light"}
     kept = list(tmp_path.glob("profile.json.corrompu-*"))
-    assert len(kept) == 1 and not path.exists()
+    assert len(kept) == 1 and path.exists()   # revue S5-01 : la copie est remise en place
+    assert load_profile(path).purchased == {"wheels_light"}   # second lancement : toujours la copie
 
 
 def test_broken_file_without_backup_gives_defaults(tmp_path):

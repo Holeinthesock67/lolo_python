@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série NI (éléments inutiles) : « Session simulée » sortie de l'accueil (Réglages › Appareils), « Saisir du QWKcode » et « Décor vivant » retirés, « Perfect Shifts » renommé, réglage « Son : oui / non » | Python, GDScript | NI2 (#962) | Petite | En revue (PR à valider : captures des menus) |
+| Série NI (éléments inutiles) : « Session simulée » sortie de l'accueil (Réglages › Appareils), « Saisir du QWKcode » et « Décor vivant » retirés, « Perfect Shifts » renommé, réglage « Son : oui / non » | Python, GDScript | NI2 (#962) | Petite | **Livré le 25 novembre** (PR #974) |
 
 ## 1. Objectif
 
@@ -47,3 +47,7 @@ python3 engine/tests/menu_bench.py --scenario ni4_menus --scenario reglages --sc
 ```
 
 Captures à valider : `ni4_accueil`, `ni4_liste_erg`, `ni4_graphisme`, `ni4_son_oui`, `ni4_son_non`, `ni4_appareils`.
+
+## Livraison
+
+Fusionné dans `main` le 25 novembre 2026 (PR #974), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « En revue (PR à valider : captures des menus) »).

@@ -42,7 +42,7 @@ def test_one_table_no_branch_per_bonus():
     s = DEFAULT_TABLE.specs
     assert list(s)[:4] == ["feather", "aero", "power", "anvil"]   # puis les lots TT3 à TT5
     assert [(k, v.effect, v.factor, v.duration_s) for k, v in s.items()][:4] == [
-        ("feather", "mass", 0.90, 20.0), ("aero", "cda", 0.75, 15.0), ("power", "power", 1.10, 15.0),
+        ("feather", "mass", 0.80, 30.0), ("aero", "cda", 0.60, 30.0), ("power", "power", 1.20, 30.0),   # TT-BONUS
         ("anvil", "mass", 1.6, 15.0)]
     assert DEFAULT_TABLE.kinds("classiques") == ("feather", "aero", "power")
     assert DEFAULT_TABLE.kinds("tactiques")[:4] == ("feather", "aero", "power", "anvil")
@@ -129,13 +129,13 @@ def test_sim_feel_uses_base_mass_for_mass_bonuses():
     pu.reserve = "feather"
     assert pu.activate(0.0)
     p = pu.params(PLAN)
-    assert p.mass_kg == pytest.approx(75.6) and pu.feel_params(p, PLAN).mass_kg == 84.0
+    assert p.mass_kg == pytest.approx(67.2) and pu.feel_params(p, PLAN).mass_kg == 84.0
     off_base = grade_offset_pct(10.0, 3.0, 0.3, 200.0, PLAN, 10.0)
     assert grade_offset_pct(10.0, 3.0, 0.3, 200.0, pu.feel_params(p, PLAN), 10.0) == off_base
     pu = PowerUps()
     pu.reserve = "aero"
     assert pu.activate(0.0)
-    assert pu.feel_params(pu.params(PLAN), PLAN).cda_m2 == pytest.approx(0.24)   # le CdA se sent
+    assert pu.feel_params(pu.params(PLAN), PLAN).cda_m2 == pytest.approx(0.192)   # le CdA se sent
 
 
 # --- gains dans le terrain idéal (plan §2, test sur physics.py) ------------------------------
@@ -159,17 +159,23 @@ def gain_s(kind: str, grade: float, power_w: float = 250.0, horizon_s: float = 6
 
 
 @pytest.mark.parametrize("kind, grade, plan_s", [
-    ("feather", 8.0, 2.0), ("anvil", -6.0, 2.3), ("anvil", -3.0, 1.5), ("aero", 0.0, 1.3), ("power", 8.0, 1.4)])
+    ("feather", 8.0, 6.55), ("anvil", -6.0, 2.3), ("anvil", -3.0, 1.5), ("aero", 0.0, 4.3), ("power", 8.0, 5.55)])
 def test_gain_in_ideal_terrain_matches_plan(kind, grade, plan_s):
-    """Chiffres du plan §2 à 0,15 s près. Plume et Enclume à −6 % sont dans la cible de 1,5 à 2,5 s ;
-    Casque (1,24 s), Puissance (1,40 s) et Enclume à −3 % (1,46 s) restent un peu en dessous, comme le
-    plan l'annonçait : l'équilibrage est le travail du lot TT8."""
+    """Chiffres du plan §2 à 0,15 s près pour l'Enclume (cible de 1,5 à 2,5 s). Plume, Casque et Puissance :
+    valeurs du lot TT-BONUS (× 0,8, × 0,6 et × 1,20 pendant 30 s), 4 à 7 s à 250 W sur leur terrain."""
     assert gain_s(kind, grade) == pytest.approx(plan_s, abs=0.15)
 
 
-@pytest.mark.parametrize("kind, grade", [("feather", 8.0), ("anvil", -6.0)])
+@pytest.mark.parametrize("kind, grade", [("anvil", -6.0)])
 def test_gain_within_target(kind, grade):
     assert 1.5 <= gain_s(kind, grade) <= 2.5
+
+
+@pytest.mark.parametrize("kind, grade, doc_s", [("aero", 0.0, 4.0), ("feather", 3.0, 4.9), ("power", 3.0, 4.7)])
+def test_strong_bonuses_felt_above_trainer_noise(kind, grade, doc_s):
+    """Lot TT-BONUS (essai vélo du 22/11) : à 140 W, sur le terrain où chaque bonus a du sens, 4 à 5 s gagnées,
+    loin des 0,7 s par minute du bruit du trainer (fiche de cohérence du 22/11, §3 bis)."""
+    assert gain_s(kind, grade, power_w=140.0) == pytest.approx(doc_s, abs=0.2)
 
 
 # --- séance : non-régression et refus ---------------------------------------------------------
@@ -217,8 +223,10 @@ def _trace(tmp: Path, monkeypatch: pytest.MonkeyPatch, mode: str, toml: str = ""
             if s.race:
                 s._fill_race_frame()
                 pu = s.state.to_dict().get("powerup")
-                if pu:   # nom de la 2.0 lu comme celui du contrat 1.13 (référence calculée sur `main`)
-                    pu = {k: {"light": "feather"}.get(v, v) if isinstance(v, str) else v for k, v in pu.items()}
+                if pu:   # nom de la 2.0 lu comme celui du contrat 1.13 (référence calculée sur `main`) ;
+                    # temps gagné (`gain`, révision 1.41, lot TT-BONUS) : affichage seul, hors empreinte
+                    pu = {k: {"light": "feather"}.get(v, v) if isinstance(v, str) else v for k, v in pu.items()
+                          if k != "gain"}
             h.update(json.dumps([round(s.physics.s, 6), round(s.physics.v, 6), round(s._grade_sent, 4), pu]).encode())
     return h.hexdigest(), round(s.physics.s, 6)
 
@@ -234,6 +242,9 @@ def _trace(tmp: Path, monkeypatch: pytest.MonkeyPatch, mode: str, toml: str = ""
 # Revue RC12 (23 novembre) : recalées pour les deux modes à la fois (C5-02 : un véhicule ne sort plus de la route, il
 # reste à 3,75 m de l'axe au plus, carrosserie comprise ; aspiration un peu différente, 0,05 m de plus en 10 min) ;
 # avant : 5e46be3e…, 4126.102643 et 821abd10…, 4140.2793.
+# Valeurs de la 2.0, avant le lot TT-BONUS (et la Plume de 20 s du plan TT §2).
+VALUES_2_0 = ("[lightweight]\nfactor = 0.9\nduration_s = 15\n[aero]\nfactor = 0.75\nduration_s = 15\n"
+              "[power]\nfactor = 1.1\nduration_s = 15\n")
 GOLDEN_OFF = ("9f5fe252e1d8a47c6f1ff9159238304977582a15a9fcd826681cdf8e5499376e", 4126.151729)
 GOLDEN_ON = ("12a7e27f9041c4186291e21cad681da23089427ec6326394279b173375531979", 4140.325492)
 
@@ -243,10 +254,11 @@ def test_off_session_identical_to_2_0(tmp_path, monkeypatch):
 
 
 def test_classiques_session_identical_to_2_0_with_15_s_feather(tmp_path, monkeypatch):
-    """Seules différences voulues avec la 2.0 : la Plume dure 20 s (plan §2, ramenée ici à 15 s), son nom
-    au contrat est `feather` (la référence remplace `light`), et le supplément de pente SIM d'un bonus de
-    masse est calculé à la masse de base (sans vent ni abri ici, il n'y en a pas)."""
-    assert _trace(tmp_path, monkeypatch, "classiques", "[lightweight]\nduration_s = 15\n") == GOLDEN_ON
+    """Seules différences voulues avec la 2.0 : les valeurs du lot TT-BONUS (ramenées ici à celles de la 2.0 par
+    le fichier), le nom `feather` au contrat (la référence remplace `light`), le temps gagné `gain` (hors
+    empreinte), et le supplément de pente SIM d'un bonus de masse calculé à la masse de base (sans vent ni abri
+    ici, il n'y en a pas)."""
+    assert _trace(tmp_path, monkeypatch, "classiques", VALUES_2_0) == GOLDEN_ON
 
 
 def test_classic_race_frame_shows_refusal_and_journal_line():

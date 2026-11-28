@@ -3,8 +3,11 @@ extends RefCounted
 ## Écran « Records » du parcours choisi (lot T10, série T), sans nœud. Pas de class_name : charger par
 ## preload("res://scripts/records_view_model.gd").
 ##
-## L'engine lit lui-même `~/OpenRide/records.json` (forme versionnée du lot T5), en lecture seule : le
-## core reste le seul à l'écrire. Fichier absent : aucun temps ; illisible ou d'une version inconnue :
+## L'engine lit lui-même le fichier des records (forme versionnée du lot T5), en lecture seule : le core
+## reste le seul à l'écrire. Depuis les profils (série MJ), c'est `~/OpenRide/Profils/<id>/records.json` du
+## profil en cours (`hello_ack.config.profile.id`), là où le core écrit (`profiles.py`, `records_path`) ;
+## l'ancien `~/OpenRide/records.json` (supprimé par la migration) ne sert qu'au core sans profils (lot EC9,
+## constat E12-01 de la revue de code 3). Fichier absent : aucun temps ; illisible ou d'une version inconnue :
 ## « Aucun record lisible ». Forme :
 ##     {"version": 1, "routes": {"<route_id>": {"<segment_id>": {"no_bonus": [...], "bonus": [...]}}}}
 ## chaque temps étant {time_s, date, avg_power_w, avg_wkg}.
@@ -33,8 +36,18 @@ var segments: Array = []
 var profiles: Dictionary = {}
 
 
-static func default_path() -> String:
-	return OS.get_environment("HOME").path_join("OpenRide/records.json")
+## Fichier des records du profil `profile_id` (`~/OpenRide/Profils/<id>/records.json`) ; sans profil (core
+## d'avant les profils) : l'ancien `~/OpenRide/records.json`. Un identifiant qui sortirait du dossier des
+## profils (« / », « .. ») retombe sur l'ancien chemin : le core n'en publie pas (`profiles.check_id`).
+static func default_path(profile_id: String = "") -> String:
+	var base := OS.get_environment("HOME").path_join("OpenRide")
+	if profile_id == "" or profile_id.contains("/") or profile_id.contains("\\") or profile_id in [".", ".."]:
+		return base.path_join("records.json")
+	return base.path_join("Profils").path_join(profile_id).path_join("records.json")
+
+
+## Fichier lu par le dernier `load_file` (détail de « Aucun record lisible »).
+var path_read := ""
 
 
 func set_segments(p_segments: Array, p_profiles: Dictionary = {}) -> void:
@@ -45,6 +58,7 @@ func set_segments(p_segments: Array, p_profiles: Dictionary = {}) -> void:
 ## Relit le fichier (à chaque ouverture de l'écran : les records d'une séance qui vient de finir y sont).
 func load_file(path: String = "") -> bool:
 	var p := path if not path.is_empty() else default_path()
+	path_read = p
 	if not FileAccess.file_exists(p):
 		routes = {}
 		load_error = ""
@@ -102,7 +116,7 @@ func _name(segment_id: String) -> String:
 
 func segment_items(route_id: String) -> Array:
 	if load_error != "":
-		return [{"id": "none", "label": UNREADABLE, "enabled": false, "detail": "~/OpenRide/records.json"}]
+		return [{"id": "none", "label": UNREADABLE, "enabled": false, "detail": short_path(path_read)}]
 	if segments.is_empty():
 		return [{"id": "none", "label": "Ce parcours n'a ni sprint ni montée", "enabled": false}]
 	var out: Array = []
@@ -124,6 +138,17 @@ func segment_items(route_id: String) -> Array:
 		out.append({"id": "seg:" + sid, "label": label, "detail": detail,
 			"enabled": not (plain.is_empty() and bonus.is_empty())})
 	return out
+
+
+## Chemin affiché : le dossier personnel écrit « ~ » (« ~/OpenRide/Profils/principal/records.json ») ; vide :
+## l'ancien nom.
+static func short_path(path: String) -> String:
+	if path == "":
+		return "~/OpenRide/records.json"
+	var home := OS.get_environment("HOME")
+	if home != "" and path.begins_with(home + "/"):
+		return "~" + path.substr(home.length())
+	return path
 
 
 ## « 2026-10-27 18:05 » (format du core) affiché « 27/10/2026 18:05 » ; autre forme : telle quelle.

@@ -1,0 +1,30 @@
+{
+  "description": "Lot EC7 (#1130, revue vague 3 E4-01) : séance libre sur la Route du Sud (montée vers la steppe puis descente jusqu'au delta, sans montée devant après le sommet), balade du cycliste simulé jusqu'à 9 km, captures à 3, 6 et 9 km (ligne « Prochaine montée » ou « Montée en cours » du bandeau). Banc du PC seulement (hors de menu_scenarios/ : jamais dans la liste par défaut ni en intégration continue), joué avec la sonde --perf-probe sur la branche et sur main.",
+  "voies": ["clavier"],
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "settings"},
+    {"ecran": "settings", "titre": "Réglages"},
+    {"choisir": "contents"},
+    {"ecran": "contents", "titre": "Contenus", "delai": 10},
+    {"choisir": "content:starter"},
+    {"ecran": "contents", "contient": ["Contenus de départ — installé"], "delai": 30},
+    {"appui": "Y_SHORT"},
+    {"ecran": "settings", "focus": "contents"},
+    {"appui": "Y_SHORT"},
+    {"choisir": "world"},
+    {"ecran": "routes", "delai": 10},
+    {"choisir": "demo-biomes-sud"},
+    {"ecran": "home", "contient": ["Parcours : Route du Sud"]},
+    {"choisir": "ride"},
+    {"ecran": "ready", "titre": "Prêt : session libre — Route du Sud", "focus": "start"},
+    {"choisir": "start"},
+    {"journal": "core", "motif": "-> RUNNING", "delai": 60},
+    {"note": "Montée vers le sommet : prochaine montée annoncée ou montée en cours", "distance_km": 3, "delai": 900},
+    {"capture": "km_3"},
+    {"distance_km": 6, "delai": 900},
+    {"capture": "km_6"},
+    {"note": "Après le sommet : plus de montée devant, le cas le plus coûteux avant EC7", "distance_km": 9, "delai": 900},
+    {"capture": "km_9"}
+  ]
+}
