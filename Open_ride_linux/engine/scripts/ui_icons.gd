@@ -15,6 +15,7 @@ const ITEM_ICONS := {
 	"rogue": "rider", "rogue_change": "gear", "objective": "flag", "duration": "calendar",
 	"chassis": "bike", "launch": "play", "history": "list", "collection": "trophy", "coach": "flag", "league": "calendar", "week": "check",
 	"garage": "bike", "bike": "bike", "outfit": "rider", "avatar": "rider", "save": "check", "cancel": "cross",
+	"minimap_zoom": "globe",   # ligne « Zoom de la carte » de la pause en monde ouvert (lot W24)
 }
 ## Bonus du HUD (lot TT6, maquettes validées le 8 novembre) : forme de chaque valeur de `powerup.held` et
 ## `powerup.active` (contrat 1.13) ; la Puissance reprend l'éclair, une valeur inconnue l'icône neutre.
