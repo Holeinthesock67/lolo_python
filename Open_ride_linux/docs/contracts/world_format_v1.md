@@ -161,6 +161,8 @@ Ajouts compatibles de la version 1.1, dans `layers.terrain` :
 
 Facultative. Un fichier `buildings/chunk_<k>.json` par tronçon de 1 km, avec la liste des bâtiments d'OpenStreetMap situés à moins de 400 m de la route.
 
+Depuis le lot MP1 (28 novembre 2026), les maisons et dépendances qui paraîtraient étranges sur une pente sont retirées ou ramenées à des rectangles à la compilation (`building_simplify.py`) ; le rapport des exclusions est écrit dans `buildings/rapport_maisons.json`, fichier facultatif sans schéma, ignoré par l'engine et par `verify`.
+
 ```json
 {
   "version": "1.0",
@@ -575,6 +577,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.10 | 21 novembre 2026 | Sans changement du format (garde-fou d'altitude du monde ouvert, `worldgen/altitude_guard.py`) : dans un monde vivant (§13), `alt_m` de la route engagée a une pente d'au plus ± 15 % (`grade_pct` aussi ; ± 25 % pour les parcours compilés) et un changement de pente d'au plus 4 % d'un pas de 10 m au suivant (aussi aux nœuds entre deux arêtes en ligne droite, pente du relief au nœud) ; trous et pics du relief réparés avant le lissage ; `WORLDGEN_VERSION` 9, carrés du cache refaits |
 | 1.11 | 20 novembre 2026 | Ajout compatible (lot EA5, série EA) : couche facultative `tunnels/` des tunnels dessinés (§8 octies), entrée `layers.tunnels` du manifeste et schéma `tunnels.schema.json` ; avec elle, profil de la route en ligne droite dans le tunnel, colline gardée au-dessus (ni fondu ni garde-fou de la chaussée) ; monde vivant : `tunnels/tile_<ix>_<iz>.json` (§13), `WORLDGEN_VERSION` 10. Un `.world` 1.10 reste valide |
 | 1.11 | 27 novembre 2026 | Sans changement du format (revue de code K4-09) : correction du §10, « Validation » : `verify` ne contrôlait pas de « sommes de contrôle SHA-256 optionnelles du manifeste », aucun champ de ce genre n'existe (seul `source.gpx_sha256` identifie la trace) ; `verify` contrôle maintenant la colonne `bank_deg` comme le core (longueur, valeurs numériques de − 50 à 50) |
+| 1.11 | 28 novembre 2026 | Sans changement du format (lot MP1, maisons des villages en pente) : le compilateur retire ou simplifie les maisons et dépendances qui paraîtraient étranges sur une pente (socle visible, bord de l'eau, forme en L, longue rangée coupée en paliers) ; fichier facultatif `buildings/rapport_maisons.json` (rapport des exclusions par village, lu par personne d'autre que le propriétaire, ignoré par l'engine et par `verify`) |
 | 1.10 | 26 novembre 2026 | Ajout compatible (lot NV1, parcours de démonstration « Avenue de la Lagune ») : paysage `ville_neon` dans l'énumération `variant.landscape` (§8 quater) et dans `landscapes` du thème (§9) ; membre facultatif `neon` d'un paysage du thème (§9) ; entrée `landscapes.ville_neon` du thème par défaut (biome de base `coast`). Aucune zone réelle de la table des variantes ne le pose : seul le parcours de démonstration l'écrira. `format_version` inchangé. Un lecteur plus ancien refuse cet identifiant comme tout identifiant inconnu |
 
 ## 13. Monde vivant (monde ouvert, série W)
