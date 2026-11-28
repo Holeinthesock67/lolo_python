@@ -15,6 +15,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
 const SeasonModel := preload("res://scripts/season_model.gd")
+const LoopRoute := preload("res://tests/loop_route.gd")
 
 var _failures := 0
 var _checked := 0
@@ -31,6 +32,7 @@ func _init() -> void:
 	_test_budgets(theme)
 	_test_grass_and_sky(theme)
 	_test_no_snow(theme)
+	_test_loop(theme)
 	print("test_volcano_fx : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -150,6 +152,53 @@ func _test_placement(theme: Dictionary) -> void:
 	fx.fire_level = 0.0
 	fx.update(Vector3(0.0, 501.0, -200.0), 200.0, 0.0)
 	_check(fx.fire_level == 1.0, "scène figée (pas nul) : lueur tout de suite")
+	fx.queue_free()
+
+
+## Revue E8-02 : sur une boucle, la lave vue devant la ligne est la même après la ligne et d'un tour à l'autre ;
+## rien ne part au-delà du tour dans le dernier tronçon (10 m sur 3 010 m).
+func _window_feats(fx) -> Array:
+	var out := []
+	for g in range(fx._slot_chunk.size()):
+		out.append("%d=%s" % [posmod(fx._slot_chunk[g], fx._loop.count()), str(fx._chunk_feats[g])])
+	out.sort()
+	return out
+
+
+func _test_loop(theme: Dictionary) -> void:
+	var route = LoopRoute.circle(301)   # 3 010 m, rayon 479 m : 31 tronçons de 100 m, le dernier de 10 m
+	var fx = VolcanoFx.new()
+	root.add_child(fx)
+	fx.configure({"embers": 0, "plumes": 0, "fountains": 0, "lights": 0}, route, _model(theme, "volcan_actif"))
+	var lap: float = route.length_m
+	var cam := Vector3(0.0, 501.0, 0.0)
+	for i in range(40):
+		fx.update(cam, lap - 50.0, 0.0)
+	var before: Array = Array(fx._slot_chunk)
+	var feats_before := _window_feats(fx)
+	fx.update(cam, 50.0, 0.0)   # 100 m plus loin, après la ligne
+	var after: Array = Array(fx._slot_chunk)
+	var common := 0
+	for k in after:
+		if k in before:
+			common += 1
+	_check(common >= after.size() - 2, "boucle : la ligne (et le dernier tronçon de 10 m) garde %d tronçons de lave sur %d" % [common, after.size()])
+	var s := 150.0
+	while s < lap - 50.0:
+		for i in range(4):
+			fx.update(cam, s, 0.0)
+		s += 50.0
+	for i in range(40):
+		fx.update(cam, lap - 50.0, 0.0)
+	_check(_window_feats(fx) == feats_before and feats_before.size() > 0, "boucle : même lave au même endroit au tour suivant")
+	var last: int = fx._loop.count() - 1
+	_check(str(fx.features_of_chunk(last + 1)) == str(fx.features_of_chunk(0)) and str(fx.features_of_chunk(-1)) == str(fx.features_of_chunk(last)),
+		"boucle : tronçons ramenés au tour")
+	var beyond := 0
+	for f in fx.features_of_chunk(last):
+		if str(f["kind"]) != "flow":
+			beyond += 1   # mares et évents ancrés après 3 000 m : au plus dans les 10 m du tour
+	_check(beyond <= 2, "boucle : dernier tronçon de 10 m, %d mares ou évents" % beyond)
 	fx.queue_free()
 
 
