@@ -1,7 +1,8 @@
 """Échauffement commun avant une course (demande du propriétaire du 21 novembre), module pur.
 
-Une seule règle pour tous les modes de course (Dernier survivant, Grand Prix des objets, épreuves de piste
-hors séance libre ; table `RACE_MODES`, et `track.EVENTS[…].race` pour la piste) : après le décor et le
+Une seule règle pour tous les modes de course (Course, Dernier survivant, Grand Prix des objets, épreuves de
+piste hors séance libre ; table `RACE_MODES`, et `track.EVENTS[…].race` pour la piste ; la Course, mode des
+manches « Course en tours » de la ligue, ajoutée après les retours du 28 novembre) : après le décor et le
 trainer prêts, la séance reste en `READY`, coureurs alignés au départ, et le trainer passe en ERG sur un
 profil d'échauffement en watts directs ; à la fin (ou sur Z court, ou la commande `skip_warmup`), le départ
 au pédalage habituel s'ouvre. Rien ne compte pendant l'échauffement : ni chrono, ni distance, ni bots.
@@ -16,7 +17,7 @@ from __future__ import annotations
 
 from .workout import Block, ErgController, Workout
 
-RACE_MODES = ("survivor", "grandprix", "track")   # modes de jeu précédés de l'échauffement
+RACE_MODES = ("race", "survivor", "grandprix", "track")   # modes de course (classement) précédés de l'échauffement
 OPENERS = 2                                      # accélérations à la fin
 OPENER_ON_S, OPENER_OFF_S = 20.0, 40.0
 OPENER_ON_FRAC, OPENER_OFF_FRAC = 1.00, 0.55
