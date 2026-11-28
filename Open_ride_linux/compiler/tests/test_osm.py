@@ -48,6 +48,14 @@ def fake_overpass(monkeypatch):
     return fake
 
 
+@pytest.fixture(autouse=True)
+def keep_all_houses(monkeypatch):
+    """Les essais de la couche OSM gardent toutes les maisons du plan à 5 % (règles MP1 testées à part,
+    tests/test_building_simplify.py) : socle sans limite."""
+    from openride_compiler import building_simplify
+    monkeypatch.setattr(building_simplify, "SOCLE_MAX_M", float("inf"))
+
+
 # Critères 2, 3, 4 : construction des couches buildings et vegetation, multipolygone, hauteurs, base_y ----
 
 
@@ -72,6 +80,8 @@ def test_build_buildings_and_vegetation_layers(fake_overpass, make_gpx, tmp_path
     assert b_man["version"] == "1.0"
     assert b_man["count"] == 3
     assert b_man["ignored_count"] == 1
+    houses = json.loads((world / "buildings" / "rapport_maisons.json").read_text(encoding="utf-8"))
+    assert houses["lot"] == "MP1" and houses["retirees_total"] == 0   # rapport des exclusions (lot MP1)
     assert b_man["osm_date"] == "2026-03-15T10:00:00Z"
 
     # 3 zones de végétation (r2001 dans chunk 0 ; w2002 et w2003 dans chunk 1)

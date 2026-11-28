@@ -1,0 +1,33 @@
+# File du lot MP1 (PR #1183, maisons des villages en pente) : captures avant/après et rapport des exclusions.
+# Créneau du 28/11, 15h-16h15. Pas de banc de perf (le lot retire des objets) : compilation puis captures medium.
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/mp1_maisons.toml
+# Parcours : Alpe d'Huez et Ballon d'Alsace (pack des cols installé), Annecy si une trace existe, sinon Ventoux
+# (Bédoin). Mondes dans un chemin fixe : ~/mesures-mp1/routes-avant et ~/mesures-mp1/routes-apres.
+# « Avant » = même branche, règles MP1 coupées. Cache SÉPARÉ : aucun monde ouvert lu ni écrit.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rMP1"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rMP1-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rMP1"
+pr = 1183
+branche = "claude/project-thread-qcx35b"
+cache = "separe"
+risque = 1                               # jamais tourné
+fumee = "python3 -m pytest -q -p no:cacheprovider compiler/tests/test_building_simplify.py"
+fumee_delai_min = 3
+
+[[pr.etape]]
+id = "compilation"
+commande = "bash scripts/file_bancs/mp1_maisons.sh compiler {sortie}"
+delai_min = 20
+
+[[pr.etape]]
+id = "captures"
+commande = "bash scripts/file_bancs/mp1_maisons.sh captures {sortie}"
+delai_min = 90

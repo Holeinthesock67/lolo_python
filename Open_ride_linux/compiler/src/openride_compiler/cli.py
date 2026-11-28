@@ -44,6 +44,7 @@ from .osm import OverpassClient
 from .coast import build_coast, coast_manifest, write_coast_dir
 from .surface import apply_surface, fetch_ways, surface_summary
 from . import bridges as BR
+from . import building_simplify as BS
 from . import tunnels as TU
 from .osm_layers import (
     add_sea_areas,
@@ -368,6 +369,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         manifest["layers"]["biome"] = biome_manifest(biome_layer)
 
     osm_res = None
+    houses_report = None
     coast_res = None
     bridge_chunks = None
     tunnel_chunks = None
@@ -382,6 +384,8 @@ def cmd_build(args: argparse.Namespace) -> int:
             if "coast" in args.layers:
                 manifest["layers"]["coast"] = coast_manifest(coast_res)
         if "buildings" in args.layers:
+            houses_report = BS.simplify_for_compile(osm_res, compiled.route, frame, near_tiles, provider)
+            print("\n".join(houses_report.lines()), file=sys.stderr)
             manifest["layers"]["buildings"] = buildings_manifest(osm_res)
         if "vegetation" in args.layers:
             manifest["layers"]["vegetation"] = vegetation_manifest(osm_res)
@@ -417,6 +421,8 @@ def cmd_build(args: argparse.Namespace) -> int:
         if osm_res is not None:
             if "buildings" in args.layers:
                 write_buildings_dir(folder / "buildings", osm_res.buildings_chunks)
+                if houses_report is not None:
+                    BS.write_report(folder / "buildings", houses_report)
             if "vegetation" in args.layers:
                 write_vegetation_dir(folder / "vegetation", osm_res.vegetation_chunks)
             if "poi" in args.layers:
@@ -607,7 +613,14 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         coast_res = _coast(route, frame, osm_client, near_tiles, provider)
         add_sea_areas(osm_res, coast_res.sea_chunks)
     if args.layer == "buildings":
-        replace_layer_dir(world, "buildings", write_buildings_dir, osm_res.buildings_chunks)
+        houses_report = BS.simplify_for_compile(osm_res, route, frame, near_tiles, provider)
+        print("\n".join(houses_report.lines()), file=sys.stderr)
+
+        def write_with_report(folder: Path, chunks) -> None:
+            write_buildings_dir(folder, chunks)
+            BS.write_report(folder, houses_report)
+
+        replace_layer_dir(world, "buildings", write_with_report, osm_res.buildings_chunks)
         manifest.setdefault("layers", {})["buildings"] = buildings_manifest(osm_res)
         count = osm_res.buildings_count
     elif args.layer == "vegetation":
