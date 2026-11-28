@@ -263,8 +263,12 @@ def plan_day_entry(active: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def build_plans_message(request_cmd_id: int, ftp_w: float, plans_dir: Path | None = None,
                         workouts_dir: Path | None = None, state_path: Path | None = None,
-                        activities_dir: Path | None = None, on: Any = None) -> dict[str, Any]:
-    """Message `plans` : plans du dossier (50 au plus) et suivi du plan actif (lot O12)."""
+                        activities_dir: Path | None = None, on: Any = None, curve_cache_path: Path | None = None,
+                        sources: Any = None) -> dict[str, Any]:
+    """Message `plans` : plans du dossier (50 au plus) et suivi du plan actif (lot O12).
+
+    Lot PP8b : avec `curve_cache_path` et `sources`, `active.curve` compare ta courbe avant et depuis le début du
+    plan (`power_curve.plan_curve_change`) ; une courbe illisible laisse le suivi sans elle."""
     from . import plans
 
     infos = plans.list_plans(plans_dir, workouts_dir)
@@ -290,8 +294,38 @@ def build_plans_message(request_cmd_id: int, ftp_w: float, plans_dir: Path | Non
             }
             day = plan_day_entry(active)
             active["plan_day"] = day["workout"] if day else None
+            if curve_cache_path is not None and sources is not None:
+                active["curve"] = _plan_curve(activities_dir, curve_cache_path, sources, st.start)
     return {"type": "plans", "v": 1, "request_cmd_id": request_cmd_id, "items": items,
             "truncated": len(infos) > MAX_PLANS, "active": active}
+
+
+def _plan_curve(activities_dir: Path | None, cache_path: Path, sources: Any, start: Any) -> list[dict[str, Any]]:
+    """`active.curve` du message `plans` (lot PP8b) : [{s, before, after}] des durées de 5 s, 1 min, 5 min et 20 min
+    où tu as un effort depuis le début du plan ; [] si rien n'est lisible."""
+    from datetime import datetime
+
+    from . import profiles
+    from .tools import power_curve
+
+    try:
+        act = Path(activities_dir) if activities_dir is not None else profiles.current().activities_dir
+        kept = power_curve.kept_sessions(power_curve.session_entries(act, Path(cache_path)), tuple(sources))
+        start_ts = datetime.combine(start, datetime.min.time()).timestamp()
+        return power_curve.plan_curve_change(kept, start_ts)
+    except Exception:
+        log.exception("Courbe avant et après le plan illisible")
+        return []
+
+
+def best_effort_w(activities_dir: Path, cache_path: Path, sources: Any, seconds: int, now: float) -> float | None:
+    """Meilleur effort de `seconds` s sur les 6 mois avant `now`, en W, de toutes les séances comptées (lot PP8b,
+    entraînement calé sur la courbe) ; None sans effort de cette durée."""
+    from .tools import power_curve
+
+    kept = power_curve.kept_sessions(power_curve.session_entries(Path(activities_dir), Path(cache_path)),
+                                     tuple(sources))
+    return power_curve.best_watts(kept, seconds, start=now - power_curve.WINDOWS["months6"] * 86400.0)
 
 
 MAX_SUMMARY_BLOCKS = 24

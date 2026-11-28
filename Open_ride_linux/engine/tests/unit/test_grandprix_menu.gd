@@ -102,12 +102,23 @@ func _run() -> void:
 	_check(MenuFlow.bots_info_row({"power_w": null}).is_empty(), "sans watts (parcours pas chargé) : pas de watts")
 	_check(MenuFlow.duration_text(3900.0) == "1 h 05", "durée de plus d'une heure : 1 h 05")
 	_check(MenuFlow.bots_info_row({"power_w": 180, "duration_s": 600, "objective": "endurance", "elo": null})
-		== {"watts": "≈ 180 W", "cote": "", "duration": "≈ 10 min"}, "cote coupée : pas de cote")
+		== {"watts": "≈ 180 W", "cote": "", "duration": "≈ 10 min", "hold": "", "mine": ""}, "cote coupée : pas de cote")
+	# Lot PP6b (contrat 1.37) : durée tenable et temps estimé pour toi, en mots
+	var pp6b := {"power_w": 260, "duration_s": 1500, "hold_s": 720, "my_time_s": 1380, "elo": null}
+	_check(MenuFlow.bots_info_row(pp6b)["hold"] == "environ 12 min" and MenuFlow.bots_info_row(pp6b)["mine"] == "environ 23 min",
+		"PP6b : tu tiens environ 12 min, temps estimé environ 23 min (%s)" % str(MenuFlow.bots_info_row(pp6b)))
+	_check(MenuFlow.hold_text({"hold_s": 2000, "duration_s": 1500}) == "jusqu'au bout", "PP6b : au-delà de la course : jusqu'au bout")
+	_check(MenuFlow.hold_text({"hold_s": 40, "duration_s": 1500}) == "environ 40 s", "PP6b : moins d'une minute en secondes")
+	_check(MenuFlow.hold_text({"duration_s": 1500}) == "", "PP6b : core plus ancien, rien")
 	# Lot R1 : A sur la ligne change la dose (moyen → dur → facile → moyen), gardée dans `bots.objective`
 	f.menu.focus_item("intensity")
 	_check(str(f.state()["status"]).begins_with("Intensité du jour : A pour facile, moyen ou dur.")
 		and str(f.state()["status"]).ends_with("Course estimée à ≈ 9 min. Ta cote : 1540."),
 		"focus sur la ligne : aide en mots, durée de la course et cote (%s)" % f.state()["status"])
+	f.on_bots_preview({"type": "bots_preview", "v": 1, "request_cmd_id": 11, "mode": "grandprix", "objective": "tempo",
+		"ftp_pct": 86.6, "power_w": 217, "duration_s": 780, "elo": {"rating": 1500, "races": 0}, "hold_s": 7734, "my_time_s": 660})
+	_check(str(f.state()["status"]).ends_with("Course ≈ 13 min : allure tenue jusqu'au bout, toi à fond ≈ 11 min. Cote : 1500."),
+		"PP6b : ligne d'état courte avec durée tenable, temps à fond et cote (%s)" % f.state()["status"])
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_setting", "key": "bots.objective", "value": "max"}, "moyen → dur (%s)" % str(act))
 	_check(_item(f, "intensity")["detail"] == "" and _item(f, "intensity")["label"] == "Intensité : dur", "dur : anciens watts effacés jusqu'à la réponse")

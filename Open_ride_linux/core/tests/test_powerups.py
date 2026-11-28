@@ -17,8 +17,8 @@ BASE = PhysicsParams(mass_kg=80.0, cda_m2=0.32)
 
 def test_default_values_match_plan():
     s = DEFAULT_TABLE.specs
-    assert (s["feather"].factor, s["aero"].factor, s["power"].factor) == (0.90, 0.75, 1.10)
-    assert (s["feather"].duration_s, s["aero"].duration_s, s["power"].duration_s) == (20.0, 15.0, 15.0)   # Plume 20 s (TT)
+    assert (s["feather"].factor, s["aero"].factor, s["power"].factor) == (0.80, 0.60, 1.20)   # lot TT-BONUS
+    assert (s["feather"].duration_s, s["aero"].duration_s, s["power"].duration_s) == (30.0, 30.0, 30.0)   # 30 s (lot TT-BONUS)
     assert DEFAULT_TABLE.arch_every_m == 5000.0 and DEFAULT_TABLE.per_segment
 
 
@@ -39,19 +39,19 @@ def test_activate_duration_and_expiry():
     pu = PowerUps(seed=1)
     assert not pu.activate(0.0)                 # rien en réserve
     pu.award("segment")
-    pu.reserve = kind = "aero"                  # 15 s (la Plume dure 20 s)
+    pu.reserve = kind = "aero"                  # 30 s (lot TT-BONUS)
     assert pu.activate(10.0)
-    assert pu.active == kind and pu.reserve is None and pu.remaining_s == 15.0
+    assert pu.active == kind and pu.reserve is None and pu.remaining_s == 30.0
     pu.award("arch")
     assert not pu.activate(11.0)                # un bonus déjà actif : la réserve attend
-    for _ in range(int(14.98 / 0.02)):
+    for _ in range(int(29.98 / 0.02)):
         pu.step(0.02)
     assert pu.active == kind
     pu.step(0.04)
     assert pu.active is None and pu.remaining_s == 0.0
-    assert pu.activate(30.0)                    # la réserve gardée s'active ensuite
+    assert pu.activate(45.0)                    # la réserve gardée s'active ensuite
     assert [u.kind for u in pu.uses][0] == kind
-    assert pu.uses[0].to_dict() == {"kind": kind, "t_start": 10.0, "duration_s": 15.0}
+    assert pu.uses[0].to_dict() == {"kind": kind, "t_start": 10.0, "duration_s": 30.0}
 
 
 def force(pu: PowerUps, kind: str) -> None:
@@ -63,14 +63,14 @@ def test_effects_on_params_and_power():
     pu = PowerUps()
     assert pu.params(BASE) is BASE and pu.power(250.0) == 250.0
     force(pu, "feather")
-    assert pu.params(BASE).mass_kg == pytest.approx(72.0)
+    assert pu.params(BASE).mass_kg == pytest.approx(64.0)
     assert pu.params(BASE).cda_m2 == BASE.cda_m2
     pu = PowerUps()
     force(pu, "aero")
-    assert pu.params(BASE).cda_m2 == pytest.approx(0.24)
+    assert pu.params(BASE).cda_m2 == pytest.approx(0.192)
     pu = PowerUps()
     force(pu, "power")
-    assert pu.power(250.0) == pytest.approx(275.0)
+    assert pu.power(250.0) == pytest.approx(300.0)
     assert pu.params(BASE) is BASE
 
 
@@ -95,7 +95,7 @@ def test_physics_with_bonus_only_changes_virtual_speed():
     force(pu, "power")
     a, b = RiderPhysics(BASE), RiderPhysics(BASE)
     measured = 220.0
-    for _ in range(int(15 / 0.02)):
+    for _ in range(int(30 / 0.02)):
         a.step(measured, 0.0, 0.0, 0.02)
         b.step(pu.power(measured), 0.0, 0.0, 0.02)
         pu.step(0.02)
@@ -122,7 +122,7 @@ def test_state_dict():
     assert pu.state_dict() == {"reserve": None, "active": None, "remaining_s": 0.0}
     force(pu, "aero")
     pu.step(2.04)
-    assert pu.state_dict() == {"reserve": None, "active": "aero", "remaining_s": 13.0}
+    assert pu.state_dict() == {"reserve": None, "active": "aero", "remaining_s": 28.0}
 
 
 def test_arches_open_and_loop():
@@ -145,8 +145,8 @@ def test_load_table_file(tmp_path: Path):
     f.write_text("[aero]\nfactor = 0.8\n[obtain]\narch_every_m = 0\nper_segment = false\n",
                  encoding="utf-8")
     t = load_table(f)
-    assert t.specs["aero"].factor == 0.8 and t.specs["aero"].duration_s == 15.0
-    assert t.specs["power"].factor == 1.10
+    assert t.specs["aero"].factor == 0.8 and t.specs["aero"].duration_s == 30.0
+    assert t.specs["power"].factor == 1.20
     assert t.arch_every_m == 0.0 and not t.per_segment
     pu = PowerUps(table=t)
     assert pu.award("segment") is None and pu.award("arch") is not None

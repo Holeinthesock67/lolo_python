@@ -1,0 +1,29 @@
+{
+  "description": "Vent sur une longue séance (lot EC10, revue E12-51) : 15 min de boucles du village simulé en SIM à 220 W, vent en rafales de 25 km/h (± 60 %), sonde de performance avec la phase du vent chaque seconde et une capture par minute. Attendu : arbres, herbe, drapeaux et nuages au même rythme au début et à la fin ; `wind_phase_check.py` vérifie que la phase avance à la vitesse du vent du moment, sans dérive avec la durée.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 220,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "bench": {
+    "world": "village",
+    "duration_s": 900,
+    "every_s": 60,
+    "config": {
+      "wind": {"mode": "gusty", "speed_kmh": 25, "from_deg": 270, "gust_pct": 60}
+    }
+  }
+}

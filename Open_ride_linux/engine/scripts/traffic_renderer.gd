@@ -126,7 +126,13 @@ static func drawn_vehicles(m, rider_s: float) -> Array:
 	return DrawnBudget.keep(m.vehicles, m.get("core_full") == true, int(m.budget), rider_s)
 
 
-func update() -> void:
+## Vrai tant que la séance est en pause : lecteurs arrêtés (E9-03).
+var muted := false
+
+
+## `paused` vrai (pause de la séance) : véhicules figés et muets, leurs boucles reprennent à la reprise (E9-03).
+func update(paused: bool = false) -> void:
+	muted = paused
 	var vs: Array = drawn_vehicles(model, float(model.get("_last_rider_s"))) if model != null else []
 	for j in range(MAX_VEHICLES):
 		var slot: Dictionary = _slots[j]
@@ -153,5 +159,8 @@ func update() -> void:
 		var nodes: Array[MeshInstance3D] = slot["wheels"]
 		for i in range(ws.size()):
 			nodes[i].rotation.x = wrapf(nodes[i].rotation.x - turn * WHEEL_SPIN_RADIUS_M / float(ws[i]["radius"]), -PI, PI)
-		if is_inside_tree() and audio.stream != null and not audio.playing:
+		if paused:
+			if audio.playing:
+				audio.stop()
+		elif is_inside_tree() and audio.stream != null and not audio.playing:
 			audio.play()
