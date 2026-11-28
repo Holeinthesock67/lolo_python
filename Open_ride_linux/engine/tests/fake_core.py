@@ -108,6 +108,10 @@ class FakeCore:
     # Comportement réglable par les scénarios.
     streaming: bool = False
     silent: bool = False          # core muet : n'émet plus rien du tout
+    # Core gelé (boucle bloquée, revue E1-02) : n'émet plus de state et ne lit plus ses messages, qui attendent
+    # dans la file du socket et sont traités dans l'ordre au dégel, comme le vrai core.
+    frozen: bool = False
+    executed: list[tuple[int, str]] = field(default_factory=list)   # commandes exécutées (cmd_id > last_cmd_id)
     auto_hello_ack: bool = False
     chart: str | None = None      # hello_ack.config.chart (lot O14) ; None : champ absent
     progression: dict[str, Any] | None = None   # hello_ack.config.progression (série V, lot V6) ; None : absent
@@ -183,7 +187,7 @@ class FakeCore:
         period = 1.0 / STATE_HZ
         nxt = now()
         while not self._stop:
-            if self.streaming and not self.silent:
+            if self.streaming and not self.silent and not self.frozen:
                 with self.lock:
                     self.send_state()
             nxt += period
@@ -193,6 +197,9 @@ class FakeCore:
 
     def _rx_loop(self) -> None:
         while not self._stop:
+            if self.frozen:
+                time.sleep(0.01)
+                continue
             try:
                 data, _ = self.rx.recvfrom(2048)
             except socket.timeout:
@@ -221,6 +228,7 @@ class FakeCore:
             self._cmd_counts[cmd_id] = count
             if cmd_id > self.last_cmd_id and self.accept_cmd(msg, count):
                 self.last_cmd_id = cmd_id
+                self.executed.append((cmd_id, name))
 
             if name in ("list_garage", "equip", "buy", "set_avatar") and self.garage is not None:
                 self._garage_command(name, msg.get("args") or {}, cmd_id)
@@ -544,6 +552,35 @@ def scenario_shutdown(core: FakeCore) -> str:
     return f"{len(hellos)} hello en 2,6 s, heartbeats continus, nouveau core accepté (seq repart à 1)"
 
 
+def scenario_frozen_core(core: FakeCore) -> str:
+    """9. Commande pendant un gel du core : exécutée une seule fois malgré les hello (revue E1-02)."""
+    mark = core.log.mark()
+    with core.lock:
+        core.frozen = True
+    t0 = now()
+    check(core.log.wait_for(r"^core_lost", 2.0, mark) is not None, "core gelé non vu comme injoignable")
+    time.sleep(0.2)
+    core.test_command("pause")   # touche pressée pendant le bandeau « Core non joignable »
+    hit = core.log.wait_for(r"^cmd_sent name=pause id=(\d+)", 1.0, mark)
+    check(hit is not None, "commande « pause » non envoyée par l'engine")
+    pause_id = int(hit[1].group(1))
+    time.sleep(1.8)   # au moins un hello part après la commande
+    with core.lock:
+        core.frozen = False
+    check(core.log.wait_for(r"^core_returned", 3.0, mark) is not None, "reprise des trames non vue par l'engine")
+    time.sleep(3.0)   # délai d'abandon de la commande passé
+    with core.lock:
+        runs = [i for i, n in core.executed if i == pause_id and n == "pause"]
+        hellos = [r for r in core.received if r.t >= t0 and r.msg.get("type") == "hello"]
+    check(len(hellos) >= 2, f"{len(hellos)} hello pendant le gel")
+    check(len(runs) == 1, f"« pause » (id {pause_id}) exécutée {len(runs)} fois par le core")
+    cut = core.log.wait_for(rf"^cmd_cut name=pause id={pause_id}\b", 0.1, mark)
+    check(cut is not None, "renvois de « pause » non coupés par le hello")
+    banner = core.log.wait_for(r"^banner text=.*pause.*sans réponse", 0.1, mark)
+    check(banner is None, "bandeau « sans réponse » pour une commande coupée par un hello")
+    return f"{len(hellos)} hello pendant le gel, « pause » exécutée une fois, renvois coupés, pas de bandeau"
+
+
 def scenario_heartbeat(core: FakeCore) -> str:
     """8. Heartbeats à 2 Hz ± 20 % pendant 10 s."""
     t0 = now()
@@ -564,9 +601,10 @@ SCENARIOS: dict[int, tuple[str, Callable[[FakeCore], str]]] = {
     6: ("trames en désordre", scenario_out_of_order),
     7: ("trame error", scenario_error),
     8: ("heartbeats à 2 Hz", scenario_heartbeat),
+    9: ("commande pendant un gel du core", scenario_frozen_core),
 }
 # Ordre d'exécution : le scénario 1 exige un engine qui vient de démarrer.
-RUN_ORDER = [1, 2, 3, 6, 7, 4, 5, 8]
+RUN_ORDER = [1, 2, 3, 6, 7, 4, 9, 5, 8]
 
 REFERENCE_ERG_BLOCKS: list[tuple[str, float, int, int | None]] = [
     ("warmup", 600.0, 125, 238),
@@ -850,6 +888,7 @@ def main() -> int:
             detail, ok = str(exc), False
             # Remet un état sain pour les scénarios suivants.
             core.silent, core.streaming, core.auto_hello_ack = False, True, True
+            core.frozen = False
             core.accept_cmd = lambda msg, count: True
         results.append((num, ok, detail))
         print(f"[{'OK' if ok else 'ÉCHEC'}] scénario {num} – {title} : {detail}", flush=True)

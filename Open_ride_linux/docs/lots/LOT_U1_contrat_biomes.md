@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Contrat : couche `biome`, variante régionale, mer et couche `coast`, colonne `surface` (gravel), thème 2.0 en pack de biomes, `[render] biome`, `[gravel]`, IPC 1.6 provisoire | Markdown + JSON | U0, P1, P20, W1 | Petite | Non : interne (décision du propriétaire), **version 3.0** (issue #331) ; partie format livrée le 28 octobre (`.world` 1.6, thème 2.0), partie IPC et configuration reportée à U16 |
+| Contrat : couche `biome`, variante régionale, mer et couche `coast`, colonne `surface` (gravel), thème 2.0 en pack de biomes, `[render] biome`, `[gravel]`, IPC 1.6 provisoire | Markdown + JSON | U0, P1, P20, W1 | Petite | **Livré le 3 novembre** (partie format le 28 octobre, PR #463 ; menu et configuration par U16, PR #639), **version 3.0** |
 
 ## 1. Objectif
 
