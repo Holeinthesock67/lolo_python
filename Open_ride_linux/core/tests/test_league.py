@@ -367,3 +367,60 @@ def test_from_dict_wrong_types_refused(broken):
     data["results"] = broken
     with pytest.raises(LeagueError):
         league.Season.from_dict(data)
+
+
+# --- palmarès (lot CH6) ---------------------------------------------------------------------------
+
+
+def _closed(number: int, me_place: int) -> league.Season:
+    s = league.new_season(MON, seed=number)
+    s.number = number
+    for i in range(league.WEEKS):
+        s.record(i, _places(s, me_place), _week(i))
+    s.advance(_week(8))
+    assert s.closed == "fin"
+    return s
+
+
+def test_history_rows_from_archives_and_closed_current(tmp_path):
+    path = tmp_path / league.FILE_NAME
+    assert league.history(path) == []
+    first = _closed(1, 1)
+    league.save(league.archive_path(path, 1), first)
+    second = _closed(2, 3)
+    league.save(league.archive_path(path, 2), second)
+    third = _closed(3, 12)
+    rows = league.history(path, third)   # saison de ligue.json close, pas encore archivée
+    assert [r["number"] for r in rows] == [3, 2, 1]
+    assert rows[2]["place"] == 1 and rows[2]["winner_me"] and rows[2]["trophy"] == "Trophée d'or"
+    assert rows[1]["place"] == 3 and rows[1]["trophy"] == "Trophée de bronze" and not rows[1]["winner_me"]
+    assert rows[0]["place"] == 12 and rows[0]["trophy"] == "Trophée de régularité"   # 8 manches courues
+    assert rows[0]["end"] == "2027-01-17" and rows[0]["winner_points"] >= rows[0]["points"]
+    running = league.new_season(MON, seed=9)
+    assert [r["number"] for r in league.history(path, running)] == [2, 1]   # saison en cours : pas au palmarès
+
+
+def test_history_skips_unreadable_and_caps(tmp_path):
+    path = tmp_path / league.FILE_NAME
+    bad = league.archive_path(path, 4)
+    bad.write_text("{abîmé", encoding="utf-8")
+    for n in range(1, 4):
+        league.save(league.archive_path(path, n + 10), _closed(n + 10, 2))
+    rows = league.history(path)
+    assert [r["number"] for r in rows] == [13, 12, 11] and bad.is_file()   # jamais déplacé
+    for n in range(20, 30):
+        league.save(league.archive_path(path, n), _closed(n, 5))
+    assert len(league.history(path)) == league.HISTORY_MAX
+
+
+def test_status_with_history_fits_the_datagram(tmp_path):
+    from openride_core.ipc_budget import encode
+
+    path = tmp_path / league.FILE_NAME
+    for n in range(1, 12):
+        league.save(league.archive_path(path, n), _closed(n, 4))
+    s = league.new_season(MON, seed=1)
+    msg = league.status(s, _week(0), 3, past=league.history(path, s))
+    assert len(msg["history"]) == league.HISTORY_MAX
+    assert len(encode(msg)) <= 4096, len(encode(msg))
+    assert "history" not in league.status(s, _week(0), 3)

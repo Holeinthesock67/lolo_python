@@ -85,6 +85,24 @@ Couleur dominante selon la rareté (à ajouter après le bloc commun) :
 | `bougie_1` | épique | Première année | `Subject: a birthday cupcake with one candle shaped like a bicycle, festive sparkles.` |
 | `bougie_2` ★ | légendaire | Deux ans de route | `Subject: a birthday cake with two bicycle-shaped candles, magical sparkles, a road ribbon around the cake.` |
 
+## 4 bis. Trophées de puissance (série PP, lot PP7b, 21 novembre)
+
+Onze cartes de la famille « Puissance », paliers en watts fixes (5 s, 1 min, 5 min, 20 min). Même bloc de style ; aucun chiffre dans l'image, la valeur en watts est écrite par le jeu. Tant qu'un visuel manque, le jeu dessine un disque et un pictogramme. Livrés le 26 novembre (lot PP7v) : dessinés en SVG au même gabarit (badge rond, contours épais, palette de la rareté), rendus en 1024 px puis réduits par `scripts/controle_visuels.py --normalize` ; une image Nano Banana du même nom peut les remplacer à tout moment.
+
+| Visuel | Rareté | Carte | Sujet (à coller après le bloc commun) |
+| --- | --- | --- | --- |
+| `eclair_600` | commune | Étincelle | `Subject: a small bright spark jumping from a bicycle chainring, sprint motion lines.` |
+| `eclair_800` | rare | Coup de tonnerre | `Subject: a thunderbolt striking a bicycle wheel, sparks flying, storm clouds.` |
+| `eclair_1000` | épique | Mille watts | `Subject: a huge glowing lightning bolt shaped like a sprinter's bicycle, electric aura.` |
+| `flamme_350` | commune | Minute brûlante | `Subject: a bicycle pedal wrapped in small orange flames, a stopwatch hand in the background.` |
+| `flamme_450` | rare | Minute de feu | `Subject: a blazing fireball rolling like a bicycle wheel on a road, heat waves.` |
+| `moteur_250` | commune | Cinq minutes d'acier | `Subject: a sturdy steel bicycle crankset styled like a small engine gear, a short climb behind.` |
+| `moteur_300` | rare | Moteur à 300 | `Subject: a polished bicycle crankset turning like a powerful engine, steam puffs, a steep climb behind.` |
+| `moteur_350` | épique | Cinq minutes en or | `Subject: a golden bicycle crankset glowing like a racing engine, laurel wreath around it.` |
+| `rouleur_200` | commune | Vingt minutes au train | `Subject: a cyclist in aero position on a long flat road, steady motion lines, no face details.` |
+| `rouleur_250` | rare | Rouleur de fond | `Subject: a cyclist riding through a long valley road at dusk, a long road ribbon behind, no face details.` |
+| `rouleur_300` | épique | Locomotive | `Subject: a cyclist shaped like a steam locomotive pulling a line of tiny bikes, golden steam.` |
+
 ## 5. Contrôle avant de livrer
 
 - Pas de texte, de chiffre, de logo, de drapeau ni de visage réel.

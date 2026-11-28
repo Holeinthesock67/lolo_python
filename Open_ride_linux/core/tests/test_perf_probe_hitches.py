@@ -129,7 +129,10 @@ def test_slow_seconds_before_the_first_metre_or_of_a_capture_are_not_steady():
     checks = by_label(pp.hitch_checks(r, sac))
     assert checks["pire image"] == (True, "18 ms (au plus 100 ms)")
     assert checks["départ"] == (True, "pire image 135 ms de 20 à 30 s et avant le premier mètre (au plus 150 ms)")
-    sac[0]["distance_m"] = 12.0   # en roulant : à-coup du régime établi
+    sac[0]["distance_m"] = 12.0   # en roulant : à-coup du régime établi, une seule image tolérée (lot BF1)
+    assert by_label(pp.hitch_checks(r, sac))["pire image"] == (
+        True, "135 ms (au plus 100 ms ; 1 image(s) jusqu'à 200 ms tolérée(s))")
+    r[60]["frame_max_ms"] = 120.0   # une deuxième : échec
     assert by_label(pp.hitch_checks(r, sac))["pire image"] == (False, "135 ms (au plus 100 ms)")
 
 
@@ -157,3 +160,29 @@ def test_report_lists_hitches_with_budgets(tmp_path):
     text = (tmp_path / "out" / "sonde.txt").read_text(encoding="utf-8")
     assert "À-coups" in text and "tous les 40." in text
     assert pp._budget_verdict(summary, True) == 1
+
+
+def test_one_slow_image_tolerated_but_not_two_nor_above_200_ms():
+    """Lot BF1 (bancs w24 du 26/11) : une seule image de 101 à 139 ms en 18 min faisait échouer la pile."""
+    r = rows()
+    r[100]["frame_max_ms"] = 139.0
+    assert by_label(pp.hitch_checks(r))["pire image"][0] is True
+    r[100]["frame_max_ms"] = 230.0
+    assert by_label(pp.hitch_checks(r))["pire image"] == (False, "230 ms (au plus 100 ms)")
+    r[100]["frame_max_ms"], r[120]["frame_max_ms"] = 139.0, 101.0
+    assert by_label(pp.hitch_checks(r))["pire image"][0] is False
+
+
+def test_cold_start_judged_at_one_second_and_loading_reported():
+    """Lot BF1 : --shaders froid, la GTX 1060 compile jusqu'à 0,7 s par pipeline ; départ jugé à 1 s (écran animé),
+    chargement indicatif. À chaud, 150 ms reste le seuil (manches de la ligue)."""
+    r = rows()
+    r[5]["frame_max_ms"] = 11800.0   # chargement (avant warmup_s général)
+    r[25]["frame_max_ms"] = 700.0    # départ
+    chaud = by_label(pp.hitch_checks(r))
+    froid = by_label(pp.hitch_checks(r, shaders="froid"))
+    assert chaud["départ"][0] is False and "chargement à froid" not in chaud
+    assert froid["départ"] == (True, "pire image 700 ms de 20 à 30 s (au plus 1000 ms, shaders froids)")
+    assert froid["chargement à froid"][0] is None and "11800 ms" in froid["chargement à froid"][1]
+    r[25]["frame_max_ms"] = 6500.0   # pile c57b9746 en medium : toujours un échec à froid
+    assert by_label(pp.hitch_checks(r, shaders="froid"))["départ"][0] is False

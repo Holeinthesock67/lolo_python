@@ -231,12 +231,32 @@ static func plan_sheet(plan: Dictionary, active) -> Dictionary:
 	return {"title": "Plan", "name": str(plan.get("name", plan.get("id", ""))), "tiles": tiles, "lines": lines}
 
 
-## Fiche du plan en cours : semaine, part faite, séances faites.
+## Fiche du plan en cours : semaine, part faite, séances faites ; courbe avant et depuis le début du plan (lot PP8b).
 static func active_plan_sheet(active: Dictionary) -> Dictionary:
 	var week := "%s / %d" % [str(active["week"]) if active.get("week", null) != null else "–", int(active.get("weeks", 0))]
-	return {"title": "Plan en cours", "name": str(active.get("name", "")), "lines": [active_progress(active)],
+	return {"title": "Plan en cours", "name": str(active.get("name", "")), "lines": [active_progress(active)] + plan_curve_lines(active),
 		"tiles": [_tile("Semaine", week, ""), _tile("Fait", str(int(round(float(active.get("done_pct", 0.0))))), "%"),
 			_tile("Séances", "%d / %d" % [int(active.get("done", 0)), int(active.get("total", 0))], "")]}
+
+
+## Lot PP8b (`plans.active.curve`) : ta courbe avant le plan et depuis son début, deux durées par ligne
+## (« 5 s : 820 → 850 W · 1 min : 400 → 412 W ») ; une durée sans effort avant le plan : « 5 min : 300 W (nouveau) ».
+## Titre « Avant → depuis le plan » (« Avant → après le plan » une fois fini) ; [] sans courbe (core plus ancien).
+static func plan_curve_lines(active: Dictionary) -> Array:
+	var curve = active.get("curve", [])
+	if not curve is Array or (curve as Array).is_empty():
+		return []
+	var bits: Array = []
+	for c in curve:
+		var label := "%d s" % int(c["s"]) if int(c["s"]) < 60 else "%d min" % (int(c["s"]) / 60)
+		if c.get("before", null) == null:
+			bits.append("%s : %d W (nouveau)" % [label, int(c["after"])])
+		else:
+			bits.append("%s : %d → %d W" % [label, int(c["before"]), int(c["after"])])
+	var out: Array = ["Ta courbe, avant → " + ("après le plan" if active.get("finished", false) else "depuis le début du plan")]
+	for i in range(0, bits.size(), 2):
+		out.append(" · ".join(bits.slice(i, i + 2)))
+	return out
 
 
 static func active_progress(active: Dictionary) -> String:

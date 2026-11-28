@@ -55,18 +55,41 @@ const BOX_COLOR := {"help": Items.SPARK, "any": Color(1.0, 1.0, 1.0), "attack": 
 ## pas) : un symbole et un mot court, la couleur ne fait que renforcer. Mêmes mots dans l'aide du mode.
 ## Deux lignes : le symbole, gros et lisible de loin, puis le mot (voies de 0,77 m : un mot par boîte, sans chevauchement).
 const BOX_SIGN := {"help": ["+", "BONUS"], "any": ["?", "SURPRISE"], "attack": ["!", "ATTAQUE"]}
-const HIT_REPEAT_S := 3.5                      # le core répète `gp_hit` 3 fois à 1 s : doublons ignorés
+## Le core envoie chaque `gp_hit` et `gp_event` 3 fois à 1 s d'intervalle en temps de séance, sans identifiant
+## (revue E11-04) : une clé compte ses copies (3 au plus), chacune à moins de HIT_GAP_S de la précédente, sur une
+## horloge arrêtée pendant la pause ; au-delà, c'est un nouvel événement (deux charges du même objet à 1 s d'écart,
+## répétitions qui reprennent après une pause).
+const HIT_COPIES := 3
+const HIT_GAP_S := 1.8
 const MAX_WORDS := 6
 
 var _slots := {}                               # sorte -> [id ou -1 par place]
 var _words: Array = []                         # [{text, target, until, born, color}]
-var _seen_hits := {}                           # clé du message -> instant de la première réception
+var _seen_hits := {}                           # clé du message -> [copies reçues, instant de la dernière]
+var _pause_total := 0.0                        # durée cumulée des pauses (horloge de `_fresh`)
+var _pause_from := -1.0                        # début de la pause en cours, −1 hors pause
 
 
 func reset() -> void:
 	_slots.clear()
 	_words.clear()
 	_seen_hits.clear()
+	_pause_total = 0.0
+	_pause_from = -1.0
+
+
+## Séance en pause ou non (main.gd, à chaque trame de la séance) : l'horloge des répétitions s'arrête en pause,
+## comme celle du core.
+func set_paused(paused: bool, now_s: float) -> void:
+	if paused and _pause_from < 0.0:
+		_pause_from = now_s
+	elif not paused and _pause_from >= 0.0:
+		_pause_total += maxf(now_s - _pause_from, 0.0)
+		_pause_from = -1.0
+
+
+func _run_s(now_s: float) -> float:
+	return now_s - _pause_total - (maxf(now_s - _pause_from, 0.0) if _pause_from >= 0.0 else 0.0)
 
 
 static func lane_lateral(lane: int) -> float:
@@ -228,12 +251,15 @@ static func box_sign(lane: int) -> Array:
 
 
 func _fresh(key: String, now_s: float) -> bool:
+	var t := _run_s(now_s)
 	for k in _seen_hits.keys():
-		if now_s - float(_seen_hits[k]) > HIT_REPEAT_S:
+		if t - float(_seen_hits[k][1]) > HIT_GAP_S:
 			_seen_hits.erase(k)
-	if _seen_hits.has(key):
+	var seen = _seen_hits.get(key, null)
+	if seen is Array and int(seen[0]) < HIT_COPIES:
+		_seen_hits[key] = [int(seen[0]) + 1, t]
 		return false
-	_seen_hits[key] = now_s
+	_seen_hits[key] = [1, t]
 	return true
 
 

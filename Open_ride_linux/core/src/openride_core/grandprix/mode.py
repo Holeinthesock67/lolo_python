@@ -519,7 +519,8 @@ class GrandPrixMode:
             target = self.racers[b.target]
             self._hit(target, spec, spec.hit_fx, b.by, now)
             for o in self._racing():
-                if o is not target and abs(o.s - target.s) <= spec.splash_m:
+                # revue de code C4-07, décision du propriétaire du 27/11 : l'averse n'éclabousse jamais son lanceur
+                if o is not target and o.id != b.by and abs(o.s - target.s) <= spec.splash_m:
                     self._hit(o, spec, spec.splash_fx, b.by, now)
 
     def _step_touch(self, now: float) -> None:

@@ -93,6 +93,15 @@ func _run() -> void:
 	off.on_segment_result({"kind": "climb", "pr": true, "name": "Col"}, 0.0)
 	_check(off.on_state(_st("RUNNING"), 5.0).is_empty() and off.on_state(_st("FINISHED"), 6.0).is_empty(),
 		"réglage coupé : aucune photo")
+	# Fin depuis la pause (« Terminer et enregistrer », « Abandonner ») : l'image rendue est le menu de pause,
+	# pas d'arrivée (lot EC9, E12-02) ; record en attente oublié aussi.
+	var paused = Model.new()
+	paused.on_state(_st("RUNNING"), 0.0)
+	paused.on_segment_result({"kind": "climb", "pr": true, "name": "Col"}, 0.0)
+	paused.on_state(_st("PAUSED"), 0.5)
+	_check(paused.on_state(_st("FINISHED"), 3.0).is_empty() and paused.on_state(_st("FINISHED"), 4.0).is_empty(),
+		"fin depuis la pause : ni photo d'arrivée ni record en attente")
+	_check(Model.photo_lines(paused.photos, paused.folder) == [], "fin depuis la pause : le bilan n'annonce aucune arrivée")
 	_check(Model.slugify("L'Alpe d'Huez — 21 virages !") == "l-alpe-d-huez-21-virages", "nom de fichier sans accent ni signe")
 	var main_code := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_check(main_code.contains("for req in photo_moments.on_state(state,") and main_code.contains("photo_moments.on_segment_result(msg,"),

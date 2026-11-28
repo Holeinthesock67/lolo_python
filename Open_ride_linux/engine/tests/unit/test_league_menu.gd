@@ -68,6 +68,7 @@ func _init() -> void:
 	_test_other_modes()
 	_test_card()
 	_test_summary()
+	_test_palmares()
 	print("test_league_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -258,3 +259,36 @@ func _test_summary() -> void:
 	var ml: Array = s.mode_lines({"league": lg})
 	_check(ml.size() >= 5 and ml[0]["label"] == "Ligue d'hiver", "bilan : lignes du mode")
 	_check(League.summary_lines({}).is_empty(), "séance hors ligue : rien")
+
+
+## Lot CH6 : palmarès des saisons closes (`history`), ligne « Palmarès » et fiche écrite au focus.
+func _test_palmares() -> void:
+	var m = League.new()
+	m.on_league(_msg())
+	_check(not "league_palmares" in m.items().map(func(it): return str(it["id"])), "sans saison close : pas de palmarès")
+	var msg := _msg(false, true, "fin")
+	msg["history"] = [
+		{"number": 2, "start": "2027-01-18", "end": "2027-03-14", "closed": "fin", "place": 1, "of": 12, "points": 150.0,
+			"winner": "Toi", "winner_points": 150.0, "winner_me": true, "trophy": "Trophée d'or"},
+		{"number": 1, "start": "2026-11-23", "end": "2027-01-17", "closed": "fin", "place": 3, "of": 12, "points": 142.0,
+			"winner": "Fabien Lacroix", "winner_points": 188.5, "winner_me": false, "trophy": "Trophée de bronze"}]
+	m.on_league(msg)
+	var ids: Array = m.items().map(func(it): return str(it["id"]))
+	_check(ids == [League.NEW_ID, League.PALMARES_ID] and m.items()[1]["detail"] == "2 saisons closes",
+		"saison close : « Commencer la saison » puis « Palmarès » (%s)" % str(ids))
+	var sh: Dictionary = m.sheet(250.0, League.PALMARES_ID)
+	_check(sh["title"] == "Palmarès" and sh["lines"].size() == 2
+		and sh["lines"][1] == "Saison 1 (23 nov. 2026 – 17 janv. 2027) : 3e sur 12, 142 pts · Trophée de bronze · vainqueur Fabien Lacroix, 188,5 pts",
+		"fiche : saison 1 écrite (%s)" % str(sh["lines"]))
+	_check("tu as gagné la saison" in sh["lines"][0] and sh["lines"][0].begins_with("Saison 2 (18 janv. 2027"),
+		"fiche : victoire écrite en mots")
+	_check(m.sheet(250.0, League.NEW_ID).get("title", "") != "Palmarès", "autre ligne : fiche de la ligue")
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	f.on_league(msg)
+	f.menu.focus_item("league")
+	f.handle("A_LONG")
+	f.menu.focus_item(League.PALMARES_ID)
+	_check(str(f.card(f.state()).get("title", "")) == "Palmarès", "écran de la ligue : fiche du palmarès au focus")
+

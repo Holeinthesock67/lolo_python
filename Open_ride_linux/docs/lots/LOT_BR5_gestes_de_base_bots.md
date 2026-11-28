@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Bots : réponse aux attaques au Grand Prix, attaque avant l'arche et réponse au Dernier survivant, derrière ce qui est propre au mode | Python | Y10, DS3, GP3 | Petite | **Livré le 21 novembre** (PR à fusionner) |
+| Bots : réponse aux attaques au Grand Prix, attaque avant l'arche et réponse au Dernier survivant, derrière ce qui est propre au mode | Python | Y10, DS3, GP3 | Petite | **Livré le 24 novembre** (PR #969) |
 
 Recommandation R5 de la note « Stratégie des bots et de l'IA d'OpenRide » (accord du propriétaire du 21 novembre 2026 : « Ok r1 et r5 »). Ce n'est pas une refonte : on coche dans la table existante (`bot_tactics.MODE_TACTICS`, lot Y10) les gestes utiles aux deux modes qui étaient à « none ».
 

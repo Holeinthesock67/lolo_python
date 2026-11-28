@@ -163,14 +163,25 @@ def corridor_s(x, z, alt, heading_deg, s=None, open_spans: Iterable = (), ground
 
 FOOT_COVER_M = SKIRT_OUT_M + 0.5   # pied de talus à moins de ceci de la chaussée d'une autre partie de la route
 SAME_PART_M = 25.0                 # même partie de la route : abscisses à moins de ceci
+COVER_MARGIN_M = 0.5               # pied gardé sur une autre chaussée si sa borne est au moins ceci sous la sienne
+RESCUE_CLEAR_M = 15.0              # … et sous celle de toute chaussée à moins de ceci (une maille et demie),
+RESCUE_SLOPE = 0.3                 # pente du sol admise entre les deux (30 % : rue en travers à un carrefour)
 
 
-def drop_covered_feet(upper, lower, upper_key=None, lower_key=None):
+def drop_covered_feet(upper, lower, upper_key=None, lower_key=None, keep_compatible: bool = True):
     """Pieds de talus retirés là où ils tombent sur une autre chaussée, ou tout près (la même route qui repasse, une
     boucle de demi-tour, une autre route au carrefour, dans le coin entre deux routes) : le talus y rejoint cette
     chaussée, il n'a pas d'appui à demander, et sa borne contredirait celle de la chaussée voisine (sol au plus 5 cm
     sous la route). `upper_key` / `lower_key` : abscisse de chaque point le long de sa route (une route différente :
-    décalée de 1e7 m) ; sans elles, seuls les pieds sur une chaussée (à moins de `ACROSS_STEP_M`) sont retirés."""
+    décalée de 1e7 m) ; sans elles, seuls les pieds sur une chaussée (à moins de `ACROSS_STEP_M`) sont retirés.
+
+    `keep_compatible` (26/11, bancs d'Almería et de Funchal : route à 10 m au-dessus du sol là où la balade repasse
+    trois ou quatre fois au même endroit, à quelques mètres de côté) : un pied n'est retiré que si sa borne contredit
+    une chaussée à moins de `RESCUE_CLEAR_M` (sol au moins `fl` contre sol au plus `ul` : `fl` > `ul` −
+    `COVER_MARGIN_M`, route qui passe au-dessus d'une autre ou en dessous, dans la même maille). La même route qui
+    repasse à la même hauteur garde ses pieds : avant, chaque passage couvrait les pieds des autres, et plus aucun
+    ne demandait d'appui. `False` : règle d'avant (carrés du cache du
+    monde ouvert, `squares.py`, jusqu'à la prochaine version du générateur)."""
     from scipy.spatial import cKDTree
     ux, uz = (np.asarray(a, float) for a in upper[:2])
     fx, fz, fl = (np.asarray(a, float) for a in lower[:3])
@@ -190,8 +201,8 @@ def drop_covered_feet(upper, lower, upper_key=None, lower_key=None):
         pos = np.arange(len(uk)) - start[np.cumsum(first) - 1]
         edge = np.flatnonzero(first | last)
         sub = np.flatnonzero(first | last | (pos % 2 == 0))
-    pts = np.c_[ux, uz] if sub is None else np.c_[ux[sub], uz[sub]]
-    tree = cKDTree(pts, balanced_tree=False, compact_nodes=False)     # construction plus rapide
+    idx = np.arange(len(ux)) if sub is None else sub
+    tree = cKDTree(np.c_[ux[idx], uz[idx]], balanced_tree=False, compact_nodes=False)     # construction plus rapide
     keep = ~np.isfinite(tree.query(np.c_[fx, fz], distance_upper_bound=ACROSS_STEP_M * 1.5, workers=-1)[0])
     if edge is not None:
         cand = np.flatnonzero(keep)
@@ -202,6 +213,24 @@ def drop_covered_feet(upper, lower, upper_key=None, lower_key=None):
                 cKDTree(np.c_[ux[edge], uz[edge]]), FOOT_COVER_M, output_type="ndarray")
             fi, uj = cand[pairs["i"]], edge[pairs["j"]]
             keep[fi[np.abs(uk[uj] - fk[fi]) > SAME_PART_M]] = False
+    if keep_compatible and edge is not None:
+        # Pied retiré ci-dessus mais gardé si aucune chaussée d'une autre partie de la route à moins de
+        # RESCUE_CLEAR_M (une maille et demie) ne le contredit : borne du pied au moins COVER_MARGIN_M sous la leur,
+        # à RESCUE_SLOPE près par mètre d'écart. Sa propre partie ne compte pas (sa pente est celle de la règle d'un
+        # passage seul).
+        lost = np.flatnonzero(~keep)
+        if len(lost):
+            ul = np.asarray(upper[2], float)
+            pairs = cKDTree(np.c_[fx[lost], fz[lost]]).sparse_distance_matrix(
+                tree, RESCUE_CLEAR_M, output_type="ndarray")
+            fi, uj = lost[pairs["i"]], idx[pairs["j"]]
+            other = np.abs(uk[uj] - fk[fi]) > SAME_PART_M
+            fi, uj, dd = fi[other], uj[other], pairs["v"][other]
+            worst = np.full(len(fx), -np.inf)
+            np.maximum.at(worst, fi, fl[fi] - ul[uj] - RESCUE_SLOPE * dd)
+            # une autre partie au moins (un pied retiré sur sa propre chaussée, virage serré, le reste)
+            back = lost[np.isfinite(worst[lost]) & (worst[lost] <= -COVER_MARGIN_M)]
+            keep[back] = True
     return fx[keep], fz[keep], fl[keep]
 
 

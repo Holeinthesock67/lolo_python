@@ -68,6 +68,7 @@ const MenuModel := preload("res://scripts/menu_model.gd")
 const KeyMap := preload("res://scripts/key_map.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const StallWatch := preload("res://scripts/stall_watch.gd")
 const LoadGuard := preload("res://scripts/load_guard.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
@@ -82,6 +83,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const BotMovesModel := preload("res://scripts/bot_moves_model.gd")
 const PhotoMomentsModel := preload("res://scripts/photo_moments_model.gd")
 const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
@@ -202,6 +204,8 @@ var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
 ## Sonde de performance (lot X13), active avec --perf-probe=FICHIER.csv.
 var _probe = PerfProbe.new()
+var _stall_watch = StallWatch.new()   # gels du fil principal nommés dans le journal (lot GL2)
+var _perf_prev_us := 0                # image précédente, temps réel de [perf-rendu] (lot GL2)
 ## Départ au pédalage (lot O36) : décor du départ prêt, commande `scene_ready`, bandeau de l'attente.
 var _start_wait = StartWaitModel.new()
 const ROGUE_SCENE_ID := "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
@@ -293,6 +297,7 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+var bot_moves = BotMovesModel.new()   # lot BA1 : gestes des bots voisins, en mots et en son
 ## Photos automatiques à l'arrivée et aux records (photo_moments_model.gd, réglage `render.auto_photos`).
 var photo_moments = PhotoMomentsModel.new()
 var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
@@ -302,6 +307,13 @@ var rogue_host = RogueHost.new()
 
 
 func _ready() -> void:
+	# Revue E1-03 : la fermeture de la fenêtre (Alt+F4, bouton du gestionnaire de fenêtres) passe par _quit, comme
+	# le menu : tâches de fond attendues, ligne ENGINE_DONE pour le lanceur, puis OS.kill (lot X58).
+	get_tree().set_auto_accept_quit(false)
+	if ipc.bind_failed:
+		ipc.quit_handled = true
+		_quit(1)   # port des trames pris (contrat §2) : même séquence d'arrêt
+		return
 	var cfg := EngineArgs.current()
 	routes_dir = cfg["routes_dir"]
 	if cfg.get("sim_session", false):
@@ -318,6 +330,10 @@ func _ready() -> void:
 	_base_fov = camera.fov
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
+	# Lot GL2 : un fil surveille le battement de chaque image ; le rendu nomme ses deux moments.
+	RenderingServer.frame_pre_draw.connect(func(): StallWatch.step("rendu de l'image"))
+	RenderingServer.frame_post_draw.connect(func(): StallWatch.step("après le rendu"))
+	_stall_watch.start()
 	_living_enabled = bool(cfg.get("living", true))
 	streamer.culling = bool(cfg.get("culling", false))
 	_cfg_crowd_all_climbs = bool(cfg.get("crowd_all_climbs", false))
@@ -434,6 +450,9 @@ func _ready() -> void:
 		_refresh_menu())
 	ipc.contents_received.connect(func(msg: Dictionary) -> void:
 		_run_menu_action(menu_flow.on_contents(msg))
+		_refresh_menu())
+	ipc.diagnostic_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_diagnostic(msg)
 		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
@@ -586,6 +605,9 @@ func _ready() -> void:
 	ipc.history_session_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_history_session(msg)
 		_refresh_menu())
+	ipc.power_curve_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_power_curve(msg)
+		_refresh_menu())
 	ipc.collection_received.connect(func(msg: Dictionary) -> void:
 		_run_menu_action(menu_flow.on_collection(msg)))
 	ipc.league_received.connect(func(msg: Dictionary) -> void:   # ligue d'hiver (lot CH4a)
@@ -634,6 +656,7 @@ func _apply_style() -> void:
 
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
+	_run_menu_action(menu_flow.take_power_refresh())   # FTP acceptée dans « Ma puissance » : courbe redemandée (lot PP3)
 	AudioMix.apply_settings(menu_flow.settings.items)
 	fps_counter.measure_kept = _probe.is_open() or load_guard.enabled
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
@@ -884,6 +907,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_plans()
 		"list_history":
 			ipc.list_history()
+		"list_power_curve":
+			ipc.list_power_curve()
 		"coach_command":   # séance conseillée (lot CO5) : get_coach et saisies du conseil, réponse `coach`
 			ipc.coach_command(str(act["name"]), act.get("args", {}))
 		"sequence":   # plusieurs actions d'un même choix, dans l'ordre (course conseillée, réglage du conseil)
@@ -955,6 +980,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("list_contents", {})
 		"install_content":
 			ipc.send_command("install_content", {"id": str(act["id"])})
+		"create_diagnostic":   # fichier de diagnostic (lot DG1, contrat 1.37) : carte graphique en plus
+			ipc.send_command("create_diagnostic", {"dest": str(act["dest"]),
+				"engine_version": str(act.get("engine_version", "")),
+				"gpu": RenderingServer.get_video_adapter_name()})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
 		"list_profile_backups":   # copies du profil en cours (lot SV1)
@@ -997,7 +1026,7 @@ func _run_world_action(act: Dictionary) -> void:
 		"world_search":
 			world_menu_view.vm.search_request = ipc.send_command("world_search", {"query": act["query"]})
 		"world_map":
-			ipc.send_command("world_map", {"lat": act["lat"], "lon": act["lon"], "radius_m": act["radius_m"]})
+			world_menu_view.vm.map_request = ipc.send_command("world_map", {"lat": act["lat"], "lon": act["lon"], "radius_m": act["radius_m"]})
 		"world_pin":
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
@@ -1013,7 +1042,7 @@ func _on_world_menu_received(kind: String, msg: Dictionary) -> void:
 		"places":
 			vm.on_places(msg.get("items", []), int(msg.get("request_cmd_id", -1)))
 		"world_map":
-			vm.on_map(msg)
+			vm.on_map(msg, int(msg.get("request_cmd_id", -1)))
 		"world_regions":
 			vm.on_regions(msg.get("items", []))
 	world_menu_view.update_display()
@@ -1213,6 +1242,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
+	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
+		print("Fenêtre fermée par le bureau : fermeture comme depuis le menu.")
+		_quit(0)
 	elif what == NOTIFICATION_PREDELETE:
 		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : elle donne le code de sortie.
 		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
@@ -1225,18 +1257,32 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	StallWatch.beat("début d'image : menus")
+	_process_frame(delta)
+	# Lot GL2 : après le script principal, Godot passe aux autres nœuds (tuiles, OSM, sons…), puis au rendu.
+	StallWatch.step("autres nœuds de la scène (tuiles, OSM, sons…)")
+
+
+func _process_frame(delta: float) -> void:
 	_flush_menu()
 	var menu_shown: bool = menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible)
 	var mouse := DisplayMode.mouse_mode(menu_shown)
 	if Input.mouse_mode != mouse:
 		Input.mouse_mode = mouse
+	StallWatch.step("parcours chargé en tâche de fond")
 	_poll_route_job()
+	StallWatch.step("préchauffage")
 	if _warmup.step() != "" and _warmup.pending() == 0:
 		print("Préchauffage fini (ms) : %s (à %d ms)" % [_warmup.summary(), Time.get_ticks_msec()])
+	StallWatch.step("monde ouvert : révision de la route")
 	_poll_live_world()
+	StallWatch.step("mesures de l'image")
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
+	if living_world != null:
+		_probe.wind = living_world.last_wind
 	_probe.frame(delta, streamer)
+	StallWatch.step("caméra, avatar et scène")
 	_step_start_wait(delta)
 	_step_load_guard(delta)
 	var now := Time.get_ticks_usec()
@@ -1319,6 +1365,7 @@ func _process(delta: float) -> void:
 			float(pose["roll"]))).scaled(Vector3.ONE * wtf_scene.rider_scale()), pos))
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
+		StallWatch.step("fenêtre des tuiles et tronçons")
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		PerfProbe.mark_since("fenetre", "", t_step)
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
@@ -1327,14 +1374,17 @@ func _process(delta: float) -> void:
 		# Bots extrapolés au même instant `now` que le cycliste : lus plus tard dans l'image (après la fenêtre de
 		# tuiles, 3 à 25 ms), ils avançaient de v × ce délai, et un bot à 1,78 m derrière le cycliste dans le core
 		# s'affichait à moins de 1,7 m (contacts du banc course_bots, 6 novembre).
+		StallWatch.step("bots")
 		if bots_model.count() > 0:
 			t_step = Time.get_ticks_usec()
 			_show_bots(s_route, float(follow.last_frame["v"]), now)
 			_bots_frame = Engine.get_process_frames()
 			PerfProbe.mark_since("bots", "", t_step)
+		StallWatch.step("décor vivant")
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
 		t_step = Time.get_ticks_usec()
+		StallWatch.step("arches et portiques")
 		segment_markers.update(s_route, _last_state.has("powerup"))
 		PerfProbe.mark_since("arches", "", t_step)
 
@@ -1405,8 +1455,11 @@ func _menu_camera(delta: float) -> bool:
 
 ## Mesure des images par seconde et statistiques toutes les 30 s (Lot E3 §4.6)
 func _record_frame_perf(delta: float) -> void:
-	_frame_times.append(delta * 1000.0)
 	var now := Time.get_ticks_usec()
+	# Lot GL2 : temps réel de l'image, pas seulement le `delta` de Godot, borné à 133-150 ms quand il prend du
+	# retard (un gel de 9 s de l'essai du 22/11 restait « max 146,8 ms »).
+	_frame_times.append(PerfProbe.frame_time_ms(delta, _perf_prev_us, now))
+	_perf_prev_us = now
 	if _last_perf_log_us == 0:
 		_last_perf_log_us = now
 		return
@@ -1456,12 +1509,17 @@ func _poll_live_world() -> void:
 	var upd: Dictionary = live_world.poll()
 	if upd.has("route"):
 		route = upd["route"]
+		StallWatch.step("monde ouvert : nouvelle route dans les tuiles et l'OSM")
 		streamer.swap_route(route, int(upd["from_part"]))
+		StallWatch.step("monde ouvert : nouvelle route dans le monde vivant")
 		if living_world != null:
 			living_world.set_route(route, float(streamer.get("_road_width_m")))
+		StallWatch.step("monde ouvert : décor du bord de route prolongé")
 		if living_decor != null:   # bornes, panneaux, spectateurs, véhicules… sur toute la route connue
 			living_decor.extend_route(route)
+		StallWatch.step("monde ouvert : portiques et segments")
 		_refresh_live_markers(float(int(upd["from_part"])) * 1000.0)
+		StallWatch.step("monde ouvert : révision de la route")
 		ipc.test_log("world_revision rev=%d length_m=%.1f from_part=%d" % [upd["revision"], route.length_m, upd["from_part"]])
 	elif upd.has("segments"):
 		_refresh_live_markers()
@@ -1628,7 +1686,7 @@ func _poll_route_job() -> void:
 		seg_profiles[str(seg["id"])] = hud.vm.profile(route, float(seg["s_start"]), 0.0,
 			float(seg["s_end"]) - float(seg["s_start"]), SEGMENT_PROFILE_COLUMNS)
 	menu_flow.records.set_segments(route.segments, seg_profiles)
-	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
+	# Fichier des records de remplacement (tests visuels) ; vide : celui du profil en cours (lot EC9).
 	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
 	_load_phase(phases, "segments")
@@ -2283,6 +2341,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
+	menu_flow.on_command_failed(cmd_name)
 	if cmd_name in IpcClientScript.LIST_COMMANDS:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
@@ -2418,7 +2477,7 @@ func _on_state_received(state: Dictionary) -> void:
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
-			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
+			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y, running)
 	# Bots placés depuis la trame seulement quand l'image ne l'a pas fait (menu, pause, bots retirés) : en séance,
 	# _process les place avec le s lissé de la caméra. Deux placements par image, l'un avec le s brut, faisaient
 	# avancer les bots par à-coups (rejeu du 2 novembre, lot AS2).
@@ -2454,6 +2513,11 @@ func _on_state_received(state: Dictionary) -> void:
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
 		_play_event(jingle)
+	var move: Dictionary = bot_moves.on_state(state, float(Time.get_ticks_msec()) / 1000.0)
+	if not move.is_empty():   # lot BA1 : « Grimpeur attaque, 40 m devant » et un son court
+		banner.show_message("bot_move", str(move["text"]), BotMovesModel.SHOW_S)
+		_play_event(str(move["jingle"]))
+		ipc.test_log("bot_move " + str(move["text"]))
 	for req in photo_moments.on_state(state, float(Time.get_ticks_msec()) / 1000.0):
 		_take_photo(req)
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
@@ -2549,6 +2613,7 @@ func _update_grandprix(state: Dictionary, in_session: bool) -> void:
 			gp_scene.reset()
 		return
 	var t_step := Time.get_ticks_usec()
+	gp_scene.set_paused(str(state.get("session_state", "")) == "PAUSED", Time.get_ticks_msec() / 1000.0)   # E11-04
 	for snd in gp_sounds.on_state(gp):   # roulette, lancer, sonnette, klaxon (lot GP7)
 		_play_event(snd)
 		gp_sounds.me_played(Time.get_ticks_msec() / 1000.0)
@@ -2722,6 +2787,7 @@ func _quit_step(what: String) -> void:
 
 func _exit_tree() -> void:
 	_quit_step("nœuds de la scène sortis (décor, monde et IPC compris)")
+	_stall_watch.stop()
 	if not _route_job.is_empty():
 		BgTasks.wait(_route_job["task"])
 	_probe.close()

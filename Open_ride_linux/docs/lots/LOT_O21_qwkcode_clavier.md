@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| QWKcode de GoldenCheetah tapé au clavier dans Session ERG (commande `create_workout_qwk`, fichier `.qwk` écrit par le core) | Python + GDScript | O20 (livré) | Petite | Choix « Les deux » du propriétaire du 30 octobre ; en PR |
+| QWKcode de GoldenCheetah tapé au clavier dans Session ERG (commande `create_workout_qwk`, fichier `.qwk` écrit par le core) | Python + GDScript | O20 (livré) | Petite | **Livré le 1er novembre** (PR #670) ; saisie du QWKcode retirée du menu le 25 novembre (NI4, PR #974) |
 
 ## 1. Objectif
 
@@ -39,4 +39,8 @@ Révision 1.5, ajout compatible : commande `create_workout_qwk` `{ "text": chaî
 - Tests :
   - `core/tests/test_workout_menu.py` ;
   - `engine/tests/unit/test_menu_flow.gd` (`_test_qwk_entry`), `test_menu_model.gd` ;
-  - banc des menus `engine/tests/menu_scenarios/erg_qwkcode.json` (voie clavier : texte tapé, fichier écrit, ligne d'état).
+  - banc des menus erg_qwkcode (retiré le 25 novembre avec la saisie du QWKcode, lot NI4 ; voie clavier : texte tapé, fichier écrit, ligne d'état).
+
+## Livraison
+
+Fusionné dans `main` le 1er novembre 2026 (PR #670), relevé par la passe de doc du 27 novembre 2026 (statut précédent : « Choix « Les deux » du propriétaire du 30 octobre ; en PR »).

@@ -31,6 +31,9 @@ var n: int = 0
 var length_m: float = 0.0
 var type: String = "open"
 var load_error: String = ""
+## Compteur de chargements de colonnes (lot EC7) : change à chaque load_route_dict (donc à chaque révision
+## de la route du monde ouvert, replace_parts), pour qu'un cache sur la route sache qu'elle a changé sur place.
+var revision := 0
 ## Vrai : un refus de chargement n'écrit pas dans le journal d'erreurs de Godot (essais de refus).
 var quiet_errors := false
 
@@ -209,6 +212,7 @@ func _column(data: Dictionary, key: String) -> PackedFloat64Array:
 
 ## Charge le contenu d'un `route.json` déjà lu. Renvoie vrai si tout est valide.
 func load_route_dict(data: Dictionary) -> bool:
+	revision += 1
 	version = str(data.get("version", "1.0"))
 	ds_m = float(data.get("ds_m", 0.0))
 	n = int(data.get("n", 0))

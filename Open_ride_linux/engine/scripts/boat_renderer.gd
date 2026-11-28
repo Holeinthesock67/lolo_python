@@ -124,7 +124,13 @@ func visible_count(kind: String = "") -> int:
 	return n
 
 
-func update() -> void:
+## Vrai tant que la séance est en pause : lecteurs arrêtés (E9-03).
+var muted := false
+
+
+## `paused` vrai (pause de la séance) : bateaux figés et muets, la corne du ferry ne sonne pas (E9-03).
+func update(paused: bool = false) -> void:
+	muted = paused
 	var used := {}
 	for kind in BoatModel.MAX_AT_ONCE:
 		used[kind] = 0
@@ -163,7 +169,10 @@ func update() -> void:
 		w.visible = trail > 1.0
 		w.scale = Vector3(BoatMesh.SIZE[kind].y, 1.0, maxf(trail, 1.0))
 		var audio = slot["audio"]
-		if audio != null and audio.stream != null and is_inside_tree():
+		if audio != null and paused:
+			if audio.playing:
+				audio.stop()
+		elif audio != null and audio.stream != null and is_inside_tree():
 			# Péniche : diesel en boucle ; ferry : corne une fois par passage
 			if kind == "ferry":
 				if fresh:

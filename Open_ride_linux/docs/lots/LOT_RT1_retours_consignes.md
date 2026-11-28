@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Chaque moment se voit, s'entend et se lit, de la même façon dans tous les modes : bandeau du moment, résultat, zone de consigne unique, fin de course explicite | GDScript | EL1, DS6, VD9, GP8 | Moyenne | En revue (captures à valider) |
+| Chaque moment se voit, s'entend et se lit, de la même façon dans tous les modes : bandeau du moment, résultat, zone de consigne unique, fin de course explicite | GDScript | EL1, DS6, VD9, GP8 | Moyenne | **Livré le 24 novembre** (PR #959) |
 
 ## 1. Objectif
 
