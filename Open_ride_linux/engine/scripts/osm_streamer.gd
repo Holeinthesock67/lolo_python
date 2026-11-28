@@ -89,6 +89,30 @@ var boats_enabled := false             # Lot P29 : chemins des bateaux des plans
 var biome_model = null
 var water_shimmer := false
 
+## Préchauffage (lot AC2, fil « à-coups de main » du 21/11) : chaque sorte de nœud de tronçon, avec son matériau,
+## son format de sommets (attributs de `_arrays_from_mesh_dict` du constructeur de la sorte) et ses ombres, est
+## dessinée une fois au chargement. Sans lui, la première rivière, le premier pont ou la première plage d'un
+## parcours compilaient leur shader en roulant (banc rNUIT20, DB1 low : 1 610 ms au premier ruisseau, à 1,9 km).
+## Formats : bâtiments sommets, normales, couleurs, UV, UV2 (building_mesh.gd) ; eau (lignes et aires) normales et
+## UV (water_mesh.gd) ; mer couleurs (sea_mesh.gd build_sea et horizon) ; écume et plages couleurs et UV ; ponts
+## couleurs (bridge_mesh.gd). test_osm_warm.gd vérifie ces formats sur les vrais constructeurs.
+const WARM_FORMATS := {
+	"buildings": ["normals", "colors", "uvs", "uvs2"],
+	"water_lines": ["normals", "uvs"],
+	"water_areas": ["normals", "uvs"],
+	"sea": ["normals", "colors"],
+	"sea_foam": ["normals", "colors", "uvs"],
+	"beach": ["normals", "colors", "uvs"],
+	"bridges": ["normals", "colors"],
+	"tunnels": ["normals", "colors"],        # lot EA5 : tube, portails et murs (tunnel_mesh.gd « shell »)
+	"tunnel_lamps": ["normals", "colors"],   # lot EA5 : lampes (tunnel_mesh.gd « lamps »)
+}
+const WARM_FRAMES := 5
+const WARM_DIST_M := 2.0
+const WARM_SIZE_M := 0.002
+var _warm: Node3D = null
+var _warm_left: Dictionary = {}   # sorte -> images de préchauffage restantes
+
 
 func _init() -> void:
 	_init_materials()
@@ -107,6 +131,104 @@ func _init_materials() -> void:
 	_bridge_material = BridgeMesh.make_material()
 	_tunnel_material = TunnelMesh.make_material()
 	_tunnel_lamp_material = TunnelMesh.make_lamp_material()
+
+
+## Triangle minuscule au format de sommets de `kind` (WARM_FORMATS), tableaux prêts pour add_surface_from_arrays.
+static func warm_arrays(kind: String) -> Array:
+	var d := {"vertices": PackedVector3Array([Vector3.ZERO, Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0)]),
+		"indices": PackedInt32Array([0, 1, 2])}
+	for key in WARM_FORMATS.get(kind, []):
+		match key:
+			"normals":
+				d[key] = PackedVector3Array([Vector3.BACK, Vector3.BACK, Vector3.BACK])
+			"colors":
+				d[key] = PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE])
+			_:
+				d[key] = PackedVector2Array([Vector2.ZERO, Vector2.RIGHT, Vector2.UP])
+	return _arrays_from_mesh_dict(d)
+
+
+## Étapes du plan de préchauffage unique (main.gd, warmup_plan.gd) : une sorte de nœud de tronçon par image.
+## Toutes les sortes dans la même image compilaient 29 pipelines d'un coup (banc rJ25J du 25/11, monde ouvert
+## medium, shaders froids : image de 6,2 s sur la GTX 1060) ; une par image, chaque compilation tombe seule.
+func warm_steps(camera: Node3D) -> Array:
+	var steps: Array = []
+	if camera == null:
+		return steps
+	for kind in WARM_FORMATS:
+		steps.append(["osm %s" % kind, warm_up.bind(camera, str(kind))])
+	return steps
+
+
+## Préchauffage : un triangle minuscule de la sorte `only` (toutes si vide) à WARM_DIST_M devant `camera`, avec
+## le matériau et les ombres des vrais nœuds (integrate), retiré après WARM_FRAMES images. Une sorte déjà posée par
+## une étape précédente reste jusqu'à la fin de ses propres images. Toutes les sortes (`only` vide) : le
+## préchauffage précédent est retiré d'abord. Sans caméra : rien. Retourne le nombre de sortes posées.
+func warm_up(camera: Node3D, only: String = "") -> int:
+	if only.is_empty() or (_warm != null and _warm.get_parent() != camera):
+		_drop_warm()
+	if camera == null:
+		return 0
+	if _warm == null:
+		_warm = Node3D.new()
+		_warm.name = "OsmWarm"
+		_warm.position = Vector3(0.0, 0.0, -WARM_DIST_M)
+		_warm.scale = Vector3.ONE * WARM_SIZE_M
+		camera.add_child(_warm)
+	var kinds: Array = WARM_FORMATS.keys() if only.is_empty() else ([only] if WARM_FORMATS.has(only) else [])
+	for kind in kinds:
+		var old: Node = _warm.get_node_or_null("warm_" + str(kind))
+		if old != null:
+			_warm.remove_child(old)
+			old.queue_free()
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, warm_arrays(str(kind)))
+		var mi := MeshInstance3D.new()
+		mi.name = "warm_" + str(kind)
+		mi.mesh = mesh
+		mi.material_override = _material_for(str(kind))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if _casts_shadow(str(kind)) \
+			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_warm.add_child(mi)
+		_warm_left[str(kind)] = WARM_FRAMES
+	if _warm_left.is_empty():
+		_drop_warm()
+	return kinds.size()
+
+
+## Triangles du préchauffage encore en scène (tests).
+func is_warming() -> bool:
+	return _warm != null
+
+
+## Une image de préchauffage de moins pour chaque sorte posée ; une sorte arrivée au bout est retirée, et le
+## nœud du préchauffage quand il n'en reste aucune.
+func _warm_tick() -> void:
+	if _warm == null:
+		return
+	for kind in _warm_left.keys():
+		_warm_left[kind] = int(_warm_left[kind]) - 1
+		if int(_warm_left[kind]) <= 0:
+			_warm_left.erase(kind)
+			var mi: Node = _warm.get_node_or_null("warm_" + str(kind))
+			if mi != null:
+				_warm.remove_child(mi)
+				mi.queue_free()
+	if _warm_left.is_empty():
+		_drop_warm()
+
+
+func _drop_warm() -> void:
+	if _warm != null:
+		_warm.queue_free()
+		_warm = null
+	_warm_left.clear()
+
+
+## Nœuds de tronçon qui portent une ombre (integrate) : bâtiments, ponts (lot EA4 : tablier) et tunnels (lot EA5 :
+## tube dans l'ombre).
+static func _casts_shadow(kind: String) -> bool:
+	return kind == "buildings" or kind == "bridges" or kind == "tunnels"
 
 
 ## Matériau d'un nœud de tronçon selon sa sorte (meshes_data.kind).
@@ -745,6 +867,7 @@ func _poll_jobs(wait: bool) -> void:
 
 
 func integrate(max_new: int) -> int:
+	_warm_tick()
 	_poll_jobs(false)
 	var created := 0
 	while created < max_new and not _ready_chunks.is_empty():
@@ -768,13 +891,12 @@ func integrate(max_new: int) -> int:
 			mi.mesh = mesh
 
 			mi.material_override = _material_for(kind)
+			# Ombres des bâtiments, des ponts (lot EA4 : tablier sur l'eau et le fond de vallée) et des tunnels
+			# (lot EA5) ; même règle pour le préchauffage (warm_up).
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if _casts_shadow(kind) \
+				else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			if kind == "buildings":
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.visibility_range_end = vis_end
-			elif kind == "bridges" or kind == "tunnels":   # lot EA4 : ombre du tablier ; EA5 : tube dans l'ombre
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-			else:
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 			add_child(mi)
 			nodes.append(mi)

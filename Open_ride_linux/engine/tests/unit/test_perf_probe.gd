@@ -141,6 +141,14 @@ func _init() -> void:
 	_check(PerfProbe.saccade_cause([], 140.0, 0, 60.0)["cause"] == "scripts"
 		and PerfProbe.saccade_cause([], 140.0, 0, 10.0)["cause"] == "inconnue",
 		"scripts non notés (process_ms au moins le quart) : scripts ; sinon inconnue (rendu)")
+	# Lot AC1 (à-coups de main, 21/11) : l'image qui suit une capture du banc est comptée avec la capture, sauf
+	# si une étape à elle ou des shaders compilés l'expliquent.
+	_check(PerfProbe.saccade_cause([], 70.0, 0, 290.0, true)["cause"] == "capture"
+		and PerfProbe.saccade_cause([["arbres", "1", 50.0]], 70.0, 0, 0.0, true)["cause"] == "arbres"
+		and PerfProbe.saccade_cause([], 70.0, 2, 0.0, true)["cause"] == "shaders",
+		"image après une capture : capture ; étape longue et shaders d'abord")
+	_check(PerfProbe.has_capture_step([["osm", "4", 1.0], ["capture", "", 277.0]])
+		and not PerfProbe.has_capture_step([["osm", "4", 1.0]]), "étape capture repérée dans une image")
 	# Temps d'image : Godot borne delta à 8 pas de physique (133 ms) ; le temps réel donne la vraie durée.
 	_check(is_equal_approx(PerfProbe.frame_time_ms(0.1333, 1_000_000, 1_420_000), 420.0),
 		"blocage de 420 ms, delta borné à 133 ms : 420 ms")
@@ -182,6 +190,29 @@ func _init() -> void:
 	_check(tasks.size() == 2 and tasks[1].ends_with(";arbres;1:2;7.25"), "tâche de fond écrite à la seconde (%s)" % tasks[-1])
 	_check(FileAccess.get_file_as_string(dir.path_join("demarrage.txt")).begins_with("Démarrage : première image jouable à "),
 		"demarrage.txt écrit")
+	# Lot AC1 : capture, image lente juste après (héritait des ~290 ms de la capture : « scripts »), puis une
+	# image lente sans étape plus loin, qui garde sa cause.
+	probe = PerfProbe.new()
+	_check(probe.open(csv, null, "low"), "sonde rouverte pour les captures")
+	probe.route_ready()
+	probe.distance_m = 98.0
+	probe.mark_capture(277.0)
+	probe._frame_x15(299.0, 144.0, 0, 30.0)   # image de la capture
+	probe._frame_x15(72.0, 72.0, 0, 295.0)    # image suivante : TIME_PROCESS encore celui de la capture
+	probe._frame_x15(16.0, 16.0, 0, 20.0)     # image normale : seconde lecture de l'image suivante
+	probe._frame_x15(60.0, 60.0, 0, 5.0)      # image lente sans capture avant elle
+	probe._frame_x15(16.0, 16.0, 0, 5.0)
+	probe.close()
+	var sac_ac := FileAccess.get_file_as_string(dir.path_join("saccades.csv")).strip_edges().split("\n")
+	var causes_ac := PackedStringArray()
+	var proc_ac := PackedStringArray()
+	for i in range(1, sac_ac.size()):
+		causes_ac.append(sac_ac[i].split(";")[4])
+		proc_ac.append(sac_ac[i].split(";")[8])
+	_check(causes_ac == PackedStringArray(["capture", "capture", "inconnue"]),
+		"capture, image suivante comptée avec elle, image lente plus loin gardée (%s)" % ",".join(causes_ac))
+	_check(proc_ac.size() == 3 and proc_ac[1] == "20.0",
+		"image après la capture : process_ms de sa propre lecture, pas celui de la capture (%s)" % ",".join(proc_ac))
 	for f in ["saccades.csv", "taches.csv", "demarrage.txt"]:
 		DirAccess.remove_absolute(dir.path_join(f))
 	DirAccess.remove_absolute(csv)
