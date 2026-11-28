@@ -256,10 +256,28 @@ def session_entries(directory: Path, cache_path: Path) -> list[tuple[Path, dict]
     return out
 
 
-def kept_sessions(found: list[tuple[Path, dict]], sources: Iterable[str]) -> list[tuple[Path, dict]]:
-    """Séances comptées : source du profil, jamais un rejeu ; FIT écarté quand son journal est là."""
+def session_powers(directory: Path, cache_path: Path) -> dict[str, dict[int, float]]:
+    """Meilleurs efforts de chaque journal du dossier, nom du journal -> {durée en s: watts}, libres ou
+    ERG (le meilleur des deux), pour les trophées de puissance de la collection (lot PP7b). Le tri des
+    séances comptées est celui de la progression (`collection.evaluate` ne lit que ses séances)."""
+    out: dict[str, dict[int, float]] = {}
+    for p, e in session_entries(directory, cache_path):
+        if p.suffix == ".jsonl" and e.get("all"):
+            out[p.name] = {int(d): float(w) for d, w in e["all"].items()}
+    return out
+
+
+def kept_sessions(found: list[tuple[Path, dict]], sources: Iterable[str],
+                  since: float | None = None) -> list[tuple[Path, dict]]:
+    """Séances comptées : source du profil, jamais un rejeu ; FIT écarté quand son journal est là.
+
+    `since` (remise à zéro des statistiques, lot RZ1, `ProfileContext.stats_since`) : les séances commencées avant
+    sont écartées. Passé seulement à ce que le user voit comme ses statistiques (courbe, records du bilan, profil,
+    défi) ; le coach, la FTP estimée et la courbe des bots lisent toutes les séances (« garder coach, FIT et Elo »)."""
     sources = set(sources)
     ok = [(p, e) for p, e in found if e.get("start_ts") is not None and not e.get("error")]
+    if since is not None:
+        ok = [(p, e) for p, e in ok if e["start_ts"] >= since]
     journals = [e["start_ts"] for _, e in ok if e["fmt"] == "jsonl"]
     replays = [e["start_ts"] for _, e in ok if e["fmt"] == "jsonl" and e.get("source") == "replay"]
     kept = []
@@ -320,15 +338,49 @@ def window_curve(kept: list[tuple[Path, dict]], days: int, now: float) -> dict[s
     return {"days": days, "sessions": len(inside), "points": points}
 
 
+PLAN_DURATIONS_S = (5, 60, 300, 1200)   # courbe avant et après un plan (lot PP8b) : les quatre durées de PP5
+
+
+def best_watts(kept: list[tuple[Path, dict]], seconds: int, start: float | None = None,
+               end: float | None = None) -> float | None:
+    """Meilleur effort de `seconds` s (libre ou ERG, le meilleur des deux) des séances commencées dans
+    [`start`, `end`[ ; None sans effort de cette durée."""
+    best = None
+    for _, e in kept:
+        ts = e["start_ts"]
+        if (start is not None and ts < start) or (end is not None and ts >= end):
+            continue
+        w = e["all"].get(str(seconds))
+        if w is not None and (best is None or w > best):
+            best = w
+    return best
+
+
+def plan_curve_change(kept: list[tuple[Path, dict]], start_ts: float,
+                      durations: Iterable[int] = PLAN_DURATIONS_S) -> list[dict[str, Any]]:
+    """Courbe avant et après un plan (lot PP8b) : par durée, meilleur effort des 6 mois d'avant le début du plan
+    (`before`) et depuis son début (`after`), en watts arrondis ; durées sans effort après le début écartées."""
+    out = []
+    for d in durations:
+        after = best_watts(kept, d, start=start_ts)
+        if after is None:
+            continue
+        before = best_watts(kept, d, start=start_ts - WINDOWS["months6"] * 86400.0, end=start_ts)
+        out.append({"s": d, "before": round(before) if before is not None else None, "after": round(after)})
+    return out
+
+
 def compute(directory: Path | None = None, sources: Iterable[str] | None = None, cache_path: Path | None = None,
-            now: float | None = None) -> dict[str, Any]:
-    """Courbe du profil en cours (ou du dossier `directory`) pour les deux fenêtres."""
+            now: float | None = None, since: float | None = None) -> dict[str, Any]:
+    """Courbe du profil en cours (ou du dossier `directory`) pour les deux fenêtres, depuis la remise à zéro des
+    statistiques du profil (`since`, défaut : `ctx.stats_since`)."""
     ctx = profiles.current()
     act_dir = Path(directory) if directory is not None else ctx.activities_dir
     cpath = Path(cache_path) if cache_path is not None else ctx.mmp_cache
     srcs = tuple(sources) if sources is not None else tuple(ctx.counted_sources)
     now = time.time() if now is None else now
-    kept = kept_sessions(session_entries(act_dir, cpath), srcs)
+    since = getattr(ctx, "stats_since", None) if since is None else since
+    kept = kept_sessions(session_entries(act_dir, cpath), srcs, since)
     return {"profile_id": ctx.id, "directory": str(act_dir), "sources": list(srcs), "durations": list(DURATIONS_S),
             "windows": {name: window_curve(kept, days, now) for name, days in WINDOWS.items()},
             "warning": WARNING}

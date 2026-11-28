@@ -188,6 +188,7 @@ var _bonus_icons := {"held": ["", UiTheme.TEXT, false], "active": ["", BONUS_COL
 ## Pastille et jauge d'abri en violet pendant l'Aspiration + (lot TT6).
 var _draft_boost := false
 var _bonus_tint: Color           # teinte d'origine de la ligne du haut, rendue après un refus
+var _bonus_active_tint: Color    # teinte d'origine de la ligne du bonus actif, rendue après le temps gagné (TT-BONUS)
 
 # Données du profil d'altitude en cache
 var _last_profile_s := -99999.0
@@ -565,6 +566,7 @@ func _build_segment_blocks() -> void:
 	bonus_detail.modulate = UiTheme.WARN
 	bonus_active = _block_label(panel_bonus, "BonusActive", Vector2(10.0 + BONUS_ACTIVE_ICON + BONUS_ICON_GAP, 36.0), 22)
 	bonus_active.size.x = 280.0 - BONUS_ACTIVE_ICON - BONUS_ICON_GAP
+	_bonus_active_tint = bonus_active.modulate
 	bonus_held_icon = _bonus_icon("BonusHeldIcon", BONUS_HELD_ICON, "held")
 	bonus_active_icon = _bonus_icon("BonusActiveIcon", BONUS_ACTIVE_ICON, "active")
 	bonus_bar = Control.new()
@@ -641,10 +643,15 @@ func update_segment(view: Dictionary) -> void:
 			UiTheme.WARN if refused != "" else UiTheme.TEXT, refused != "")
 		bonus_detail.text = str(pu.get("refused_detail", "")) if refused != "" else ""
 		bonus_detail.visible = bonus_detail.text != ""
-		bonus_active.text = active
-		bonus_active.visible = active != ""
-		_set_bonus_icon("active", bonus_active_icon, UiIcons.powerup_shape(str(pu.get("active_kind", ""))) if active != "" else "",
-			BONUS_COLOR, false)
+		# Lot TT-BONUS : après le bonus, le temps gagné (6 s) prend sa ligne, en mots et en couleur.
+		var gain := str(pu.get("gain_text", "")) if active == "" else ""
+		bonus_active.text = active if active != "" else gain
+		bonus_active.visible = bonus_active.text != ""
+		var gain_tint: Color = SEGMENT_TONES.get(str(pu.get("gain_tone", "")), SEGMENT_TONES[""])
+		bonus_active.modulate = gain_tint if gain != "" else _bonus_active_tint
+		var line_kind := str(pu.get("active_kind", "")) if active != "" else str(pu.get("gain_kind", ""))
+		_set_bonus_icon("active", bonus_active_icon, UiIcons.powerup_shape(line_kind) if bonus_active.visible else "",
+			gain_tint if gain != "" else BONUS_COLOR, false)
 		var fraction := float(pu.get("fraction", 0.0)) if active != "" else 0.0
 		bonus_bar.visible = active != ""
 		if absf(fraction - _bonus_fraction) > 0.005:
@@ -855,7 +862,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:
-		var climb: Dictionary = vm.next_climb(route, s, 300.0, 3.0, dir)
+		var climb: Dictionary = vm.next_climb_cached(route, s, 300.0, 3.0, dir)   # pas de recherche complète par trame (EC7)
 		if climb.is_empty():
 			climb_label.text = ""
 		elif climb.get("in_progress", false):

@@ -1,0 +1,41 @@
+# File du lot R30 (#1133, route du Cyber-Rogue moins éblouissante) : banc visuel du Cyber-Rogue (rogue_galerie :
+# une run jouée par le vrai core, rejouée dans la vraie scène, 14 captures aux moments clés), sur l'écran réel,
+# sonde de performance et budgets GPU (8 / 13 / 16 ms), trois qualités (règle du user), high d'abord (risque : éclat).
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/r30_route_rogue.toml
+# Après une correction de #1133 : python3 scripts/file_bancs.py relancer scripts/file_bancs/r30_route_rogue.toml --pr rR30
+# Captures à comparer à la planche choisie par le user (variante B) : rogue-r30/PLANCHE_R30_variantes_route.png.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rR30"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rR30-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rR30"
+pr = 1133
+branche = "claude/project-thread-siecmy-r30"
+# tete : à remplir par le fil de fusion au lancement (la tête de la branche contient ce fichier)
+risque = 2                       # shader du ruban : un facteur, coût inchangé
+# Fumée (~5 min) : import Godot, tests du ruban et de la charte néon.
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_ribbon_colors bash engine/tests/run_engine_tests.sh && \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_neon_palette bash engine/tests/run_engine_tests.sh"""
+fumee_delai_min = 10
+
+[[pr.etape]]
+id = "high"                      # risque d'abord : l'éclat se voit le plus en high
+commande = "python engine/tests/rogue_galerie.py --godot ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --qualites high --native --probe --speed 4 --out {sortie}"
+delai_min = 30
+
+[[pr.etape]]
+id = "medium"
+commande = "python engine/tests/rogue_galerie.py --godot ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --qualites medium --native --probe --speed 4 --out {sortie}"
+delai_min = 30
+
+[[pr.etape]]
+id = "low"
+commande = "python engine/tests/rogue_galerie.py --godot ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --qualites low --native --probe --speed 4 --out {sortie}"
+delai_min = 30

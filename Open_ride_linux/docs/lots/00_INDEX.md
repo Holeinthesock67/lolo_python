@@ -281,7 +281,7 @@ Un nouveau lot reçoit son issue au moment où son cahier est ajouté à `docs/l
 | R (bots) | Effort, intensité, réserve et gestes des bots | RW réserve des bots (#967), R5 gestes de base (#969), R4 rivaux reconnaissables (#986) | — | Effort en watts et cote Elo (#941, IPC 1.22), R1 intensité du jour (#982) | R2 (plafond des jours faciles), R3 (fondu dans RT3) |
 | R (Cyber-Rogue) | Suite du mode Cyber-Rogue | R27 sans voile en high (#965) | — | R24 (#933), R25 (#956), R26 (#960, IPC 1.28) | — |
 | Modes | Course classique, Grand Prix, élimination | GPL1 (#942, écrit 1.24), GPO1 (#957, écrit 1.25), EL1 (#958, écrit 1.26), GPH1 (#952), fin de séance commune (#944) | — | Mode « Course » CR1 (#939, IPC 1.23) | — |
-| PP | Courbe de puissance par profil | Pile PP1 (#971) → PP2 (#973) → PP3 (#975, IPC 1.29) → PP4 (#976) → PP5 (#977) → PP7 (#978) → PP8 (#979) → PP7b (#980) | PP6 | — | — |
+| PP | Courbe de puissance par profil | Pile PP1 (#971) → PP2 (#973) → PP3 (#975, IPC 1.35) → PP4 (#976) → PP5 (#977) → PP7 (#978) → PP8 (#979) → PP7b (#980) | PP6 | — | — |
 | CH | Ligue d'hiver (mode championnat), plan [PLAN_SERIE_CH.md](../6.0/PLAN_SERIE_CH.md) | Pile CH1 (#972) → CH2 (#987) → CH3a (#989, IPC 1.30) | CH4 (écrans), CH5 | CH0, cahier (#968) | — |
 | RZ | Remise à zéro des statistiques d'un profil | RZ1 (#991, IPC 1.31) | — | — | — |
 | AC | À-coups de l'image | AC1 et AC2 (#953), AC3b (#964), AC4 (#981), AC5 (#985) | — | — | — |

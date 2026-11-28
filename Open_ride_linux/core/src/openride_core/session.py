@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import functools
 import json
 import logging
 import math
@@ -53,12 +54,15 @@ from .open_world_segments import LiveSegments, OwIndex
 from .physics import PhysicsParams, RiderPhysics, draft_saving_w, equilibrium_speed, resistive_force
 from . import surface_physics, velodrome
 from . import powerups as powerups_mod, profiles
+from . import profile_backups
 from .powerups import PowerUpError, load_table
 from .records import DATE_FORMAT as RECORDS_DATE_FORMAT, RecordBook, RecordsError
-from .recorder import SessionRecorder
+from .recorder import FitExporter, SessionRecorder
 from . import __version__, race_resume
 from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
+from .game_modes import registry as game_modes
+from .game_modes.base import ModeContext
 
 ROGUE_SCENE_ID = "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 from .demo_world import ensure_demo_world
@@ -100,6 +104,9 @@ STATS_PERIOD_S = 60.0
 START_CANCEL_COMMANDS = ("pause", "end_session", "select_workout", "start_run", "start_open_world",
                          "select_profile")
 SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
+# Attente du FIT en cours à l'arrêt (revue S1-02), sous les 10 s que le lanceur laisse au core (`stop_timeout_s`) ;
+# l'export d'une séance de 3 h prenait 7,1 s dans le cloud (revue).
+FIT_SHUTDOWN_WAIT_S = 8.0
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 # Biais ERG par appui de + ou − (§7.1) : petit pas ± 2 %, grand pas ± 10 % (cinq pas de BIAS_STEP_PCT).
 # Commandes de l'import d'entraînements (lot N16), retirées en révision 1.15 : refusées par `workout_invalid`.
@@ -120,7 +127,8 @@ COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_ad
                   "clear_watch_advice")   # séance conseillée (lot CO3), réponse `coach`
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
                     "clear_trial_profile", "restore_profile",   # lots MJ7 et O33
-                    "reset_profile_stats", "undo_profile_reset")   # lot RZ1 (révision 1.31)
+                    "reset_profile_stats", "undo_profile_reset",   # lot RZ1 (révision 1.31)
+                    "list_profile_backups", "restore_profile_backup")   # lot SV1 (copies du profil)
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
@@ -413,8 +421,12 @@ class CoreSession:
         self.grandprix_path: Path = grandprix_path or gp_items.GRANDPRIX_FILE   # objets et valeurs (lot GP2)
         self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
+        self._mode_ctx = ModeContext(self)   # vue de la séance lue par les adaptateurs de mode (lot IM1)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
         self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
+        # Courbe du cycliste en % de sa FTP (lot PP6), calculée hors de la boucle au lancement, au changement de
+        # profil et après chaque séance ; None : courbe type des bots.
+        self._rider_curve: tuple[tuple[float, float], ...] | None = None
         self._elo_race: tuple[str, dict[str, str]] | None = None   # (mode, id du bot -> identité Elo), lot BOT-elo
         self._league_run: dict[str, Any] | None = None   # manche de la ligue d'hiver en cours (lot CH3)
         self._league_seen: date | None = None   # dernier jour vu par la saison (horloge qui recule, CH3)
@@ -445,6 +457,10 @@ class CoreSession:
                  cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
+        # Revue S1-02 : FIT écrit dans un fil à part pendant `run` (la boucle à 50 Hz) ; hors de `run` (tests,
+        # appels directs), écrit tout de suite par `_finish` comme avant.
+        self.fit_exports = FitExporter()
+        self.fit_in_background = False
 
         self._t_session = 0.0
         self._grade_sent = 0.0
@@ -554,7 +570,14 @@ class CoreSession:
         self._grade_sent = 0.0
         if self.rogue is not None:
             self.rogue.grade_sent = 0.0
+        self._send_wind(0.0)   # vent FTMS remis à zéro en pause, au bilan et au menu (revue S2-02)
         self.driver.set_sim_grade(0.0)
+
+    def _send_wind(self, wind_mps: float) -> None:
+        """Champ vent de la commande 0x11 (`[wind] feel = "ftms"`) ; sans effet pour un pilote sans vent."""
+        setter = getattr(self.driver, "set_wind", None)
+        if setter:
+            setter(wind_mps)
 
     def _on_command(self, name: str, args: dict, cmd_id: int) -> None:
         log.info("Commande %s %s (id=%d)", name, args, cmd_id)
@@ -855,6 +878,8 @@ class CoreSession:
             self._recover_session(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_history", "history_session"):
             self._spawn(self._send_history(name, args if isinstance(args, dict) else {}, cmd_id))
+        elif name == "list_power_curve":
+            self._spawn(self._send_power_curve(cmd_id))
         elif name in COACH_COMMANDS:
             self._spawn(self._send_coach(name, args if isinstance(args, dict) else {}, cmd_id))
         elif name in CONTENT_COMMANDS:
@@ -865,6 +890,63 @@ class CoreSession:
             self._handle_collection_seen(args, cmd_id)
         elif name in ("league_status", "league_new"):   # révision 1.30 (lot CH3) : ligue d'hiver
             self._on_league_command(name, cmd_id)
+        elif name == "create_diagnostic":
+            self._on_create_diagnostic(args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- fichier de diagnostic (lot DG1, contrat IPC révision 1.37) ----------------------------
+
+    def _on_create_diagnostic(self, args: dict, cmd_id: int) -> None:
+        """`create_diagnostic` : archive masquée écrite dans le dossier choisi, réponse `diagnostic`.
+        Accepté à tout moment (lecture seule, écrite hors de la boucle) ; rien n'est envoyé."""
+        from . import diagnostic
+
+        dest = str(args.get("dest") or "openride")
+        if dest not in diagnostic.DESTS:
+            self.server.send_error("bad_args", f"Diagnostic : destination inconnue « {dest} ».")
+            return
+        try:
+            entries = [(c.id or "", c.name) for c in profiles.list_contexts(self.profiles_base)]
+        except (profiles.ProfileContextError, OSError):
+            entries = []
+        if self.profile_ctx.id:
+            entries.append((self.profile_ctx.id, self.profile_ctx.name))
+        kwargs = dict(home=self.import_home, devices=self._build_devices(), profile_entries=entries,
+                      engine_version=str(args.get("engine_version") or "")[:40],
+                      gpu=str(args.get("gpu") or "")[:80], session_state=self.state.session_state,
+                      extra={"trainer_puissance_w": list(getattr(self.driver, "power_range", ()) or ())})
+
+        def done(res: dict | None, reason: str = "") -> None:
+            msg = {"type": "diagnostic", "v": 1, "request_cmd_id": cmd_id, "ok": res is not None, "dest": dest}
+            if res is not None:
+                msg.update(path=res["path"], size_kb=res["size_kb"], masked=res["masked"])
+                log.info("Diagnostic écrit : %s (%d ko, %d valeurs masquées).", res["path"], res["size_kb"],
+                         res["masked"])
+            else:
+                msg["reason"] = reason[:200]
+                log.warning("Diagnostic refusé : %s", reason)
+            self.server.send_raw(msg)
+
+        def run() -> None:
+            try:
+                done(diagnostic.write(self.cfg, dest, **kwargs))
+            except diagnostic.DiagnosticError as exc:
+                done(None, str(exc))
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : sur place
+            run()
+            return
+
+        async def bg() -> None:
+            try:
+                res = await asyncio.to_thread(diagnostic.write, self.cfg, dest, **kwargs)
+            except diagnostic.DiagnosticError as exc:
+                done(None, str(exc))
+            else:
+                done(res)
+
+        self._spawn(bg())
 
     # --- contenus installables depuis le menu (lot O25, contrat IPC révision 1.5) ---------------
 
@@ -970,6 +1052,9 @@ class CoreSession:
         if name == "list_profiles":
             self._send_profiles(cmd_id)
             return
+        if name == "list_profile_backups":   # lot SV1 : lecture seule, aussi pendant une séance
+            self._send_backups(cmd_id)
+            return
         if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
             self.server.send_error("busy", "Profils modifiables seulement hors séance (terminer d'abord).")
             return
@@ -1006,6 +1091,8 @@ class CoreSession:
                 self._send_profiles(cmd_id)
             elif name in ("reset_profile_stats", "undo_profile_reset"):
                 self._reset_stats(name, args, cmd_id)
+            elif name == "restore_profile_backup":
+                self._restore_backup(args, cmd_id)
             else:
                 self._clear_trial(cmd_id)
         except profiles.ProfileNameError as exc:
@@ -1028,6 +1115,8 @@ class CoreSession:
             self.server.send_error("bad_args", f"{name} : confirmation absente (\"confirmed\": true)")
             return
         if name == "reset_profile_stats":
+            if ctx.id is not None and not ctx.is_trial and ctx.root.is_dir():
+                profile_backups.create(ctx, "remise-a-zero", self.profiles_base)   # lot SV1 : copie complète avant
             dest, moved = profiles.reset_stats(ctx, self.profiles_base)
             log.info("Statistiques du profil %s remises à zéro : %s mis de côté dans %s.", ctx.id,
                      ", ".join(moved), dest)
@@ -1039,6 +1128,42 @@ class CoreSession:
         ctx = profiles.ProfileContext.for_id(ctx.id, self.profiles_base)   # nouvelle date de départ des statistiques
         self._select_profile(ctx, cmd_id, reload=True)
         self._send_profiles(cmd_id)
+
+    def _backups_message(self, cmd_id: int) -> dict:
+        rows = profile_backups.entries(self.profile_ctx, self.profiles_base)[:profile_backups.SHOWN]
+        return {"type": "profile_backups", "v": 1, "request_cmd_id": cmd_id, "profile": self.profile_ctx.id,
+                "items": rows}
+
+    def _send_backups(self, cmd_id: int) -> None:
+        """Message `profile_backups` (lot SV1) : copies du profil en cours, lues dans un fil (disque)."""
+        async def send() -> None:
+            self.server.send_raw(await asyncio.to_thread(self._backups_message, cmd_id))
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (tests synchrones)
+            self.server.send_raw(self._backups_message(cmd_id))
+            return
+        self._spawn(send())
+
+    def _restore_backup(self, args: dict, cmd_id: int) -> None:
+        """`restore_profile_backup {id}` (lot SV1) : profil en cours seulement (son verrou est tenu par cette
+        séance), hors séance ; état actuel copié avant, puis profil rechargé comme après une remise à zéro."""
+        key = (cmd_id, "restore_profile_backup", args.get("id"))
+        if self._last_reset_cmd == key:   # copie d'une commande déjà traitée : pas de seconde restauration
+            self._send_backups(cmd_id)
+            return
+        if args.get("confirmed") is not True:   # confirmation exigée par le core aussi (comme RZ1)
+            self.server.send_error("bad_args", "restore_profile_backup : confirmation absente (\"confirmed\": true)")
+            return
+        ctx = self.profile_ctx
+        saved = profile_backups.restore(ctx, args.get("id"), self.profiles_base)
+        log.info("Profil %s restauré depuis la copie %s (état d'avant : %s).", ctx.id, args.get("id"), saved)
+        self._last_reset_cmd = key
+        ctx = profiles.ProfileContext.for_id(ctx.id, self.profiles_base)   # description et dates de la copie
+        self._select_profile(ctx, cmd_id, reload=True)
+        self._send_profiles(cmd_id)
+        self._send_backups(cmd_id)
 
     def _clear_trial(self, cmd_id: int) -> None:
         """`clear_trial_profile` (lot O33) : vide le profil d'essai comme `openride-core profil essai --vider` ;
@@ -1054,6 +1179,21 @@ class CoreSession:
                 removed = profiles.clear(trial)
         log.info("Profil d'essai vidé : %s.", ", ".join(removed) or "déjà vide")
         self._send_profiles(cmd_id)
+
+    def _rebind_trainer_cfg(self, old_trainer: Any, cfg: Any) -> None:
+        """Redonne au pilote et aux braquets la configuration du nouveau profil (revue S1-05b) :
+        sans cela, « Pilotage du trainer » et les réglages `[trainer]` gardaient l'ancien objet
+        jusqu'au relancement. Le pilote du Bluetooth simulé garde son nom d'appareil."""
+        drv_cfg = getattr(self.driver, "cfg", None)
+        if drv_cfg is old_trainer:
+            self.driver.cfg = cfg.trainer
+        elif isinstance(drv_cfg, type(cfg.trainer)):
+            self.driver.cfg = replace(cfg.trainer, device_name=drv_cfg.device_name)
+        k = self.gearing.k
+        self.gearing = Gearing(cfg.gearing, cfg.trainer)
+        self.gearing.k = min(max(k, 1), self.gearing.n_gears)
+        self.state.gears_total = self.gearing.n_gears
+        self.server.hello_config["gears_total"] = self.gearing.n_gears
 
     def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int, reload: bool = False) -> None:
         """Change de profil sans relancer : configuration effective, progression, records, plan et
@@ -1083,6 +1223,7 @@ class CoreSession:
         self.profile_lock = lock
         self.profile_ctx = ctx
         old_hr = (self.cfg.drivers.hr, self.cfg.drivers.hr_address)
+        self._rebind_trainer_cfg(self.cfg.trainer, cfg)
         self.cfg = cfg
         self.journal_dir = ctx.journal_dir
         self.records_path = ctx.records_path
@@ -1093,6 +1234,7 @@ class CoreSession:
         self.physics.p = self._base_params
         self._build_wind()
         self.gearing.k = min(max(cfg.gearing.start_gear, 1), self.gearing.n_gears)
+        self.state.gear = self.gearing.k
         self.difficulty_pct = float(cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
         if (cfg.drivers.hr, cfg.drivers.hr_address) != old_hr:
@@ -1101,6 +1243,7 @@ class CoreSession:
                                         chart=cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
         self._publish_progression()
         self.w_prime_estimate_j = None
+        self._rider_curve = None
         self._publish_rogue()
         self._note_profile()
         log.info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root, " — PROFIL D'ESSAI" if ctx.is_trial else "")
@@ -1109,6 +1252,7 @@ class CoreSession:
         try:
             asyncio.get_running_loop()
             self._spawn(self._publish_w_prime_estimate())   # W' du nouveau profil, au hello_ack suivant
+            self._spawn(self._refresh_rider_curve())       # courbe du nouveau profil pour les bots (lot PP6)
         except RuntimeError:
             pass
 
@@ -1328,6 +1472,7 @@ class CoreSession:
         except RuntimeError:   # hors boucle (essais) : bilan envoyé une fois
             msg = self._build_xp_result(journal, records)
             self.server.send_raw(msg)
+            self._send_progression_after_session()
             return
         self._spawn(self._send_xp_result(journal, records))
 
@@ -1339,16 +1484,33 @@ class CoreSession:
         self._publish_rogue()   # châssis débloqués, vies et dernière run pour la prochaine connexion de l'engine
         return msg
 
+    def _send_progression_after_session(self) -> None:
+        """Message `progression` (sans demande, `request_cmd_id` 0) après le bilan d'une séance (revue de code
+        E10-08) : pièces gagnées et vies du Cyber-Rogue consommées. Sans lui, l'engine gardait jusqu'au
+        lancement suivant le solde et la réserve de vies d'avant la run (« Vies : 3 / 3 · Réserve pleine »),
+        et la vie perdue ne pouvait pas être rachetée. Même message qu'après un achat au Garage."""
+        try:
+            if self.progress_svc.progression_dict() is not None:
+                self.server.send_raw(self.progress_svc.progression_message(0))
+        except Exception:
+            log.exception("Progression après la séance non envoyée")
+
     async def _send_xp_result(self, journal: str, records: list[dict] | None) -> None:
         """`xp_result` à la fin de la séance, répété chaque seconde tant qu'elle reste `FINISHED`."""
         try:
             msg = await asyncio.to_thread(self._build_xp_result, journal, records)
+            prog_sent = False
             for i in range(XP_RESULT_REPEATS):
                 if self.state.session_state != "FINISHED":
                     break
                 self.server.send_raw(msg)
+                if not prog_sent:
+                    prog_sent = True
+                    self._send_progression_after_session()
                 if i < XP_RESULT_REPEATS - 1:
                     await asyncio.sleep(XP_RESULT_PERIOD_S)
+            if not prog_sent:                  # séance déjà quittée : les vies et pièces à jour partent quand même
+                self._send_progression_after_session()
         except Exception:
             log.exception("Bilan d'expérience impossible (%s)", journal)
 
@@ -1399,6 +1561,25 @@ class CoreSession:
     def _estimate_w_prime(self) -> float | None:
         """W' estimé depuis les séances passées (FIT et journaux), `None` si l'historique ne suffit pas (lot R16)."""
         return estimate_w_prime(self.journal_dir, self.cfg.rider.ftp_w, self.mmp_cache_path)
+
+    def _compute_rider_curve(self) -> tuple[tuple[float, float], ...] | None:
+        from .ipc_lists import rider_curve
+
+        ctx = self.profile_ctx
+        return rider_curve(self.journal_dir.parent, self._curve_cache(ctx), ctx.counted_sources,
+                           float(self.cfg.rider.ftp_w))
+
+    async def _refresh_rider_curve(self) -> None:
+        """Courbe du cycliste pour l'effort des bots (série PP, lot PP6), hors de la boucle à 50 Hz ; une courbe
+        illisible laisse la courbe type."""
+        try:
+            curve = await asyncio.to_thread(self._compute_rider_curve)
+        except Exception:
+            log.exception("Courbe du cycliste illisible : les bots gardent la courbe type")
+            curve = None
+        self._rider_curve = curve
+        if curve:
+            log.info("Courbe du cycliste pour les bots : %s.", ", ".join(f"{d:.0f} s {p:.0f} %" for d, p in curve))
 
     async def _publish_w_prime_estimate(self) -> None:
         """Calcul hors de la boucle à 50 Hz ; publié dans `hello_ack` dès qu'il est prêt."""
@@ -1561,7 +1742,8 @@ class CoreSession:
         if eff is None or not targets:
             return
         ftp = self.cfg.rider.ftp_w
-        log.info("Effort des bots (%s) : %s.", eff.objective, ", ".join(
+        log.info("Effort des bots (%s, %s) : %s.", eff.objective,
+                 "courbe du cycliste" if eff.curve else "courbe type", ", ".join(
             f"{pct:.0f} % de la FTP ({ftp * pct / 100.0:.0f} W) sur ≈ {dur / 60.0:.0f} min" for pct, dur in targets))
 
     def _journal_bots(self, reason: str) -> None:
@@ -1570,8 +1752,12 @@ class CoreSession:
             return
         from .bots import bot_line
 
-        self._rec.bots({"ts": round(time.time(), 3), "t": round(self._t_session, 2), "reason": reason,
-                        "bots": [bot_line(b) for b in self.bots]})
+        line = {"ts": round(time.time(), 3), "t": round(self._t_session, 2), "reason": reason,
+                "bots": [bot_line(b) for b in self.bots]}
+        eff = self._bot_effort_now
+        if reason == "start" and eff is not None and eff.curve:
+            line["curve"] = [[d, p] for d, p in eff.curve]   # courbe du cycliste visée (lot PP6), pour rejouer
+        self._rec.bots(line)
         log.info("Bots (%s) : %s.", reason, ", ".join(b.name for b in self.bots) or "aucun")
 
     def _bot_cda_bases(self) -> dict[int, float]:
@@ -1626,8 +1812,10 @@ class CoreSession:
         from .ipc_lists import build_plans_message
 
         try:
+            ctx = self.profile_ctx
             msg = await asyncio.to_thread(build_plans_message, cmd_id, self.cfg.rider.ftp_w, self.plans_dir,
-                                          self.workouts_dir, self.plan_state_path, self.activities_dir)
+                                          self.workouts_dir, self.plan_state_path, self.activities_dir, None,
+                                          self._curve_cache(ctx), ctx.counted_sources)
             if created:
                 msg["created"] = created
         except Exception:
@@ -1674,6 +1862,38 @@ class CoreSession:
             return
         self.server.send_raw(msg)
 
+    async def _send_power_curve(self, cmd_id: int) -> None:
+        """« Ma puissance » (série PP, lot PP3) : `list_power_curve` -> `power_curve`, calculé hors de la boucle à
+        50 Hz (cache des séances du profil). Refusé pendant une séance : rien ne s'affiche pendant qu'on roule."""
+        from . import profiles
+        from .ipc_lists import build_power_curve_message
+
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "« Ma puissance » s'ouvre au menu, pas pendant une séance.")
+            return
+        ctx = profiles.current()
+        activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
+        cache = self._curve_cache(ctx)
+        routes_root, gpx_dir = self.routes_root, self.gpx_dir or GPX_DIR
+
+        def build() -> dict:
+            from .catalog import list_routes
+
+            try:   # lot PP7 : parcours proposé pour le défi ; un catalogue illisible n'empêche pas la courbe
+                routes = list_routes(routes_root, gpx_dir)
+            except Exception:
+                log.exception("Catalogue des parcours illisible pour le défi de « Ma puissance »")
+                routes = []
+            return build_power_curve_message(cmd_id, self.cfg.rider.ftp_w, activities, cache, ctx.counted_sources,
+                                             ctx.id, routes=routes, since=getattr(ctx, "stats_since", None))
+
+        try:
+            msg = await asyncio.to_thread(build)
+        except Exception:
+            log.exception("Erreur lors du calcul de la courbe de puissance (cmd_id=%d)", cmd_id)
+            return
+        self.server.send_raw(msg)
+
     async def _send_coach(self, name: str, args: dict, cmd_id: int) -> None:
         """Séance conseillée (lot CO3) : la saisie éventuelle (prochaine course, suggestion de la montre)
         est écrite dans `conseil.json` du profil en cours, puis le conseil du jour part en message `coach`,
@@ -1714,7 +1934,8 @@ class CoreSession:
         try:
             advice = await asyncio.to_thread(coach.advice_today, today, float(self.cfg.rider.ftp_w), c.objectif,
                                              c.temps_disponible_min, self.journal_dir.parent, self.workouts_dir,
-                                             None, None, chosen, table, self.routes_root)
+                                             None, None, chosen, table, self.routes_root,
+                                             c.seances_semaine)
         except Exception:
             log.exception("Erreur lors du calcul du conseil (cmd_id=%d)", cmd_id)
             return
@@ -1780,6 +2001,47 @@ class CoreSession:
         except Exception:
             log.exception("Erreur lors du calcul de summary.collection")
 
+    def _after_session_power(self, journal_path: Path) -> None:
+        """Records de puissance et signal « FTP à revoir » au bilan (série PP, lot PP4) : `summary.power_records`
+        et `summary.ftp_review`, calculés hors de la boucle à 50 Hz, absents si rien à dire."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : calcul direct
+            self._attach_power_report(self._power_report(journal_path))
+            return
+        self._spawn(self._attach_summary_power(journal_path))
+
+    def _curve_cache(self, ctx: Any) -> Path:
+        """Cache de la courbe de puissance (série PP) : celui donné à la séance, sinon celui du profil quand la
+        séance écrit dans les journaux du profil, sinon un cache à côté des activités de la séance (dossier
+        donné à la séance : jamais le cache du profil pour d'autres séances)."""
+        from .ipc_lists import curve_cache
+
+        return curve_cache(ctx, self.journal_dir, self.mmp_cache_path)
+
+    def _power_report(self, journal_path: Path) -> dict | None:
+        from .ipc_lists import compute_summary_power
+
+        ctx = self.profile_ctx
+        return compute_summary_power(journal_path, float(self.cfg.rider.ftp_w), self.journal_dir.parent,
+                                     self._curve_cache(ctx), ctx.counted_sources,
+                                     since=getattr(ctx, "stats_since", None))   # remise à zéro (lot RZ1)
+
+    def _attach_power_report(self, report: dict | None) -> None:
+        if report is None or self.state.summary is None:
+            return
+        if report["records"]:
+            self.state.summary["power_records"] = report["records"]
+        if report["ftp_review"] is not None:
+            self.state.summary["ftp_review"] = report["ftp_review"]
+
+    async def _attach_summary_power(self, journal_path: Path) -> None:
+        try:
+            self._attach_power_report(await asyncio.to_thread(self._power_report, journal_path))
+        except Exception:
+            log.exception("Erreur lors du calcul des records de puissance du bilan")
+        await self._refresh_rider_curve()   # la séance finie compte pour la course suivante (lot PP6)
+
     def _setting_file(self, key: str) -> Path:
         """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),
         `config.toml` pour un réglage de la machine (lot MJ4)."""
@@ -1810,12 +2072,27 @@ class CoreSession:
             return
         self._spawn(self._workout_menu(name, args, cmd_id))
 
+    def _best_effort(self, seconds: int) -> tuple[float, float]:
+        """(meilleur effort de `seconds` s sur les 6 derniers mois en W, FTP en W) pour un entraînement calé sur la
+        courbe (lot PP8b) : toutes les séances comptées du profil, comme le coach (une remise à zéro des
+        statistiques ne change pas ce que tu tiens) ; sans effort de cette durée, la courbe type × la FTP."""
+        from .ipc_lists import best_effort_w
+
+        ctx = self.profile_ctx
+        ftp = float(self.cfg.rider.ftp_w)
+        best = best_effort_w(self.journal_dir.parent, self._curve_cache(ctx), ctx.counted_sources, seconds,
+                             time.time())
+        if best is None:
+            best = ftp * bot_effort.curve_pct(seconds) / 100.0
+        return float(best), ftp
+
     async def _workout_menu(self, name: str, args: dict, cmd_id: int) -> None:
         from . import workout_menu
 
         try:
             if name == "create_workout":
-                res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args)
+                res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args,
+                                              self._best_effort)
             else:
                 res = await asyncio.to_thread(workout_menu.create_qwk_workout, self.workouts_dir, args)
             log.info("Entraînement créé : %s (%s)", res["workout_id"], "nouveau" if res["created"] else "déjà présent")
@@ -2171,7 +2448,8 @@ class CoreSession:
         wm.network = self.cfg.open_world.network   # réglage Avancé (lot O27) pris sans relancer
         try:
             if name == "world_search":
-                msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"))
+                # Numéro pris ici, dans l'ordre des commandes : seule la dernière saisie interroge Nominatim.
+                msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"), wm.new_search())
             elif name == "world_map":
                 msgs = await asyncio.to_thread(wm.world_map, cmd_id, args)
             else:
@@ -2690,6 +2968,15 @@ class CoreSession:
                 self._rec.device(dev, "up" if up else "down", now)
         self._device_up = states
 
+    def _fit_done(self, summary: dict | None, path: Path | None, error: str | None) -> None:
+        """Fin d'un export FIT fait hors de la boucle (revue S1-02), dans le fil de la boucle : en cas d'échec,
+        le bilan ne cite plus de fichier et l'engine reçoit la même erreur qu'avant."""
+        if error is None:
+            return
+        if isinstance(summary, dict):
+            summary["fit_path"] = None
+        self.server.send_error("recording_failed", f"FIT non produit : {error}")
+
     def _on_recording_failure(self, exc: Exception) -> None:
         """Panne d'écriture du journal : erreur à l'écran et pause (contrat IPC §6)."""
         self.server.send_error("recording_failed", f"Écriture du journal impossible : {exc}")
@@ -2699,7 +2986,9 @@ class CoreSession:
     def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
         journal: str | None = None
+        journal_path: Path | None = None
         records_done: list[dict] | None = []
+        fit_job = fit_path = None
         race, self.race = self.race, None
         wtf, self.wtf = self.wtf, None
         self.state.wtf = None
@@ -2749,6 +3038,7 @@ class CoreSession:
         if self._rec:
             rec, self._rec = self._rec, None
             journal = rec.path.name if rec.path is not None else None
+            journal_path = rec.path
             ftp_result = self._write_ftp_test(rec)
             if ftp_result is not None:
                 self._ftp_result = ftp_result
@@ -2757,7 +3047,12 @@ class CoreSession:
                 rogue_summary = self.rogue.summary()
                 rec.game(self.rogue.run_line(time.time()))
                 self.progress_svc.use_lives(self.rogue.engine.lives_used)   # vies rattrapant une défaite (R9)
-            fit_path, s, fit_error = rec.finish(save, ts=ts, private_start_m=privacy_zone.radius_m(self.cfg))
+            fit_job, s, fit_error = rec.close_session(save, ts=ts, private_start_m=privacy_zone.radius_m(self.cfg))
+            fit_path = None
+            if fit_job is not None and not self.fit_in_background:
+                fit_path, fit_error = fit_job.run()
+            elif fit_job is not None:   # revue S1-02 : écrit dans un fil à part, le bilan annonce le chemin prévu
+                fit_path = fit_job.path
             records, events = rec.records, rec.events
             records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
             if fit_error and save:
@@ -2796,6 +3091,8 @@ class CoreSession:
                                        "previous_ftp_w": ftp_result.previous_ftp_w,
                                        "warnings": list(ftp_result.warnings), "reliable": ftp_result.reliable}
         self.state.summary = summary
+        if fit_job is not None and fit_path is not None and self.fit_in_background:
+            self.fit_exports.submit(fit_job, lambda path, error, bilan=summary: self._fit_done(bilan, path, error))
         ow = self.openworld
         if ow is not None and save and ow.route is not None and ow.route.ready:
             try:   # lot W14 : la route parcourue devient un parcours de la bibliothèque
@@ -2817,6 +3114,8 @@ class CoreSession:
         if journal is not None and final_state == "FINISHED":
             self._after_session(journal, records_done)
             self._after_session_collection()
+            if journal_path is not None:
+                self._after_session_power(journal_path)
 
     # --- mode « What the fuck » (série WTF, lot WTF2) -----------------------------------
 
@@ -2868,20 +3167,12 @@ class CoreSession:
         return True
 
     def _fill_rogue_frame(self) -> None:
-        """Objet `rogue` de la trame : état du dernier pas et événements de tous les pas depuis la trame
-        précédente (lot R23 : la boucle tourne à 50 Hz, la trame part à 30 Hz)."""
-        if self.rogue is None:
-            return
-        frame = self.rogue.take_frame()
-        if frame is not None:
-            self.state.rogue = frame
+        """Partie `rogue` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["rogue"].fill_frame(self._mode_ctx)
 
     def _fill_wtf_frame(self) -> None:
-        st = self.state
-        if self.wtf is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.wtf = None
-            return
-        st.wtf = self.wtf.frame(self._t_session, self.physics.s)
+        """Partie `wtf` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["wtf"].fill_frame(self._mode_ctx)
 
     # --- mode « Dernier survivant » (série DS, lot DS2) ------------------------------------
 
@@ -3092,7 +3383,8 @@ class CoreSession:
     def _send_bots_preview(self, args: dict, cmd_id: int) -> None:
         """Réponse `bots_preview` (révision 1.22) : effort que viseront les bots de la course `mode` sur le parcours
         choisi, avec les réglages en cours (`objective` et `track` facultatifs), cote Elo comprise : objectif,
-        % de la FTP, watts, durée estimée ; `power_w` null sans parcours chargé."""
+        % de la FTP, watts, durée estimée ; `power_w` null sans parcours chargé. Lot PP6b : `hold_s` (durée tenable
+        à cette allure d'après la courbe du cycliste) et `my_time_s` (son temps à fond sur la course)."""
         from .bots import RefRider, RouteProfile, effort_target
 
         mode = args.get("mode", "ride")
@@ -3123,7 +3415,7 @@ class CoreSession:
             elo = {"rating": int(round(book.rating)), "races": book.races}
         msg: dict[str, Any] = {"type": "bots_preview", "v": 1, "request_cmd_id": cmd_id, "mode": mode,
                                "objective": effort.objective, "ftp_pct": None, "power_w": None,
-                               "duration_s": None, "elo": elo}
+                               "duration_s": None, "elo": elo, "hold_s": None, "my_time_s": None}
         route = self.route
         if route is not None and getattr(route, "length_m", None):
             if self._preview_prof is None or self._preview_prof[0] != id(route):
@@ -3132,6 +3424,13 @@ class CoreSession:
             pct, dur = effort_target(self._preview_prof[1], RefRider(ftp, self._base_params), level, effort)
             msg.update({"ftp_pct": round(pct, 1), "power_w": int(round(ftp * pct / 100.0)),
                         "duration_s": int(round(dur))})
+            # Lot PP6b : durée que tu tiens à l'allure des bots, et ton temps à fond sur cette course, lus sur ta
+            # courbe (`Effort.curve`, courbe type sans séance) ; une épreuve à durée fixe n'a pas de temps prévu.
+            msg["hold_s"] = int(round(bot_effort.hold_s(pct, effort.curve)))
+            if not effort.duration_s:
+                mine = replace(effort, objective="max")
+                msg["my_time_s"] = int(round(effort_target(self._preview_prof[1], RefRider(ftp, self._base_params),
+                                                           100.0, mine)[1]))
         self.server.send_raw(msg)
 
     # --- ligue d'hiver (série CH, lot CH3, révision 1.30) ---------------------------------------
@@ -3179,7 +3478,7 @@ class CoreSession:
             season = league.new_season(self._league_today(), previous=previous, roster=roster)
             try:
                 if previous is not None:   # saison close gardée à part, classement et trophée compris (revue F1-07)
-                    league.save(self._league_path().with_name(f"ligue_saison_{previous.number}.json"), previous)
+                    league.save(league.archive_path(self._league_path(), previous.number), previous)
                 rivals.save(self._rivals_path(), roster)   # rivaux d'abord : jamais une saison sans ses rivaux
                 league.save(self._league_path(), season)
             except OSError as exc:
@@ -3189,7 +3488,8 @@ class CoreSession:
                      season.end_day(self._league_today()))
             if self._rec:
                 self._rec.game({"kind": "league_new", "ts": round(time.time(), 3), "number": season.number})
-        self.server.send_raw(league.status(season, self._league_today(), cmd_id))
+        self.server.send_raw(league.status(season, self._league_today(), cmd_id,   # palmarès : lot CH6
+                                           past=league.history(self._league_path(), season)))
 
     def _league_field(self, args: dict, mode: str | None) -> list[Any] | None:
         """Plateau de la manche de la semaine : les 11 rivaux dans l'ordre de la saison, niveau = « Niveau des
@@ -3591,24 +3891,12 @@ class CoreSession:
         return added.rank
 
     def _fill_track_frame(self) -> None:
-        st = self.state
-        if self.track_event is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.track = None
-            return
-        st.track = self.track_event.frame()
+        """Partie `track` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["track"].fill_frame(self._mode_ctx)
 
     def _fill_survivor_frame(self) -> None:
-        st = self.state
-        if self.survivor is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.survivor = None
-            return
-        st.survivor = self.survivor.frame()
-        ahead = st.survivor.get("ahead")
-        if ahead is not None:
-            ahead["catch_w"] = self._survivor_catch_w(ahead["id"])
-        if st.bots:
-            st.bots = [{**b, "out": self.survivor.racers[b["id"]].out_arch}
-                       if b["id"] in self._survivor_out else b for b in st.bots]
+        """Partie `survivor` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["survivor"].fill_frame(self._mode_ctx)
 
     # --- mode « Grand Prix des objets » (série GP, lot GP2) --------------------------------
 
@@ -3819,14 +4107,8 @@ class CoreSession:
                 self._rec.game({**line, "ts": round(time.time(), 3)})
 
     def _fill_grandprix_frame(self) -> None:
-        st = self.state
-        gp = self.grandprix
-        if gp is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.gp = None
-            return
-        st.gp = gp.frame(GP_ME)
-        if st.bots:   # objet en réserve et effets en cours de chaque bot
-            st.bots = [{**b, **gp.bot_frame(b["id"])} if b["id"] in gp.racers else b for b in st.bots]
+        """Partie `grandprix` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["grandprix"].fill_frame(self._mode_ctx)
 
     # --- options des modes (lot GP2 : commandes génériques, celles du Mode WTF en alias) -------
 
@@ -3915,14 +4197,15 @@ class CoreSession:
         if game_mode == "track" and track_choice is not None:
             event, settings = track_choice
             lap = self._track.length_m if self._track is not None else track_mod.LAP_M
-            return bot_effort.track_effort(event, settings, lap)
+            return replace(bot_effort.track_effort(event, settings, lap), curve=self._rider_curve)
         course_m = None
         if game_mode in ("grandprix", "race"):
             try:
                 course_m = self._grandprix_course(game_mode)[0]
             except GrandPrixError:
                 course_m = None
-        return bot_effort.Effort(objective or self._start_objective or self.cfg.bots.objective, course_m)
+        return bot_effort.Effort(objective or self._start_objective or self.cfg.bots.objective, course_m,
+                                 curve=self._rider_curve)
 
     def _new_race(self, classic: bool = True, tactics: str | None = None, game_mode: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
@@ -4051,22 +4334,8 @@ class CoreSession:
         self._spawn(asyncio.to_thread(save))
 
     def _fill_race_frame(self) -> None:
-        """Champs de la révision 1.4 de la série T dans la trame `state`."""
-        st = self.state
-        race = self.race
-        if race is None or st.session_state not in ("RUNNING", "PAUSED"):
-            st.segment = st.powerup = st.jerseys = None
-            st.bot_ahead = st.bot_behind = None
-            return
-        f = race.frame(self._t_session, self.physics.s, self.physics.v, self.bots)
-        st.segment, st.powerup, st.jerseys = f.get("segment"), f.get("powerup"), f.get("jerseys")
-        st.bot_ahead, st.bot_behind = f.get("bot_ahead"), f.get("bot_behind")
-        if self.physics.direction < 0:   # à rebours (lot N17) : ni segment à venir ni voisin dans la course
-            st.segment = None
-            st.bot_ahead = st.bot_behind = None
-        extra = f.get("bots_extra") or {}
-        if st.bots:
-            st.bots = [{**b, **extra.get(b["id"], {})} for b in st.bots]
+        """Partie `classic` de la trame, par son adaptateur (lot IM1) ; gardée pour les tests et les outils."""
+        game_modes.BY_ID["classic"].fill_frame(self._mode_ctx)
 
     def _write_ftp_test(self, rec: SessionRecorder) -> FtpResult | None:
         """Séance de test de FTP : résultat au journal (ligne `ftp_test`), rien dans `config.toml`."""
@@ -4364,9 +4633,9 @@ class CoreSession:
             if ratio != 1.0:
                 self.physics.p = replace(self.physics.p, cda_m2=self.physics.p.cda_m2 * ratio)
             if wcfg.feel == "ftms":
-                setter = getattr(self.driver, "set_wind", None)
-                if setter:
-                    setter(self._head_mps)
+                self._send_wind(self._head_mps)
+        if not (self.wind.active and wcfg.feel == "ftms"):
+            self._send_wind(0.0)   # vent coupé ou ressenti en pente : plus de vent périmé (revue S2-02)
         self._wind_offset = 0.0
         traffic = self._traffic_for(route)
         self._suction = 0.0
@@ -4427,7 +4696,11 @@ class CoreSession:
             felt = self.physics.p
             self.physics.p = replace(felt, wind_mps=felt.wind_mps + gp_wind)
         s_before = self.physics.s
+        ridden_before = (self.physics.distance, self.physics.v)
         self.physics.step(power_used, grade, alt, dt, alpha_draft=draft)
+        if race:   # temps gagné par le bonus, contre une ombre sans bonus (lot TT-BONUS)
+            race.track_gain(self._t_session, self.physics.p, power_used, grade, alt, dt, draft, ridden_before,
+                            (self.physics.distance, self.physics.v))
         if gp_wind:
             self.physics.p = felt
         if track is not None:   # rouler plus haut dans un virage allonge le tour (plan VD §4.2)
@@ -5248,8 +5521,11 @@ class CoreSession:
         # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
         # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
+        self._spawn(self._refresh_rider_curve())   # courbe du cycliste pour les bots (lot PP6)
         self._resumed_journal = resume
+        self.fit_in_background = True   # revue S1-02 : plus d'export FIT dans la boucle
         self._publish_interrupted()   # lot O34 : dans le premier hello_ack
+        profile_backups.start_weekly(self.profile_ctx, self.profiles_base)   # lot SV1 : copie de la semaine
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in self._services() if hasattr(p, "run")]  # trainer prioritaire
@@ -5310,18 +5586,20 @@ class CoreSession:
                                        if b.get("lane_m") is not None else b for b in self.state.bots]
             else:
                 self.state.bots = None
-            self._fill_race_frame()
+            self._fill_frame()
             self._fill_wind_frame()
             self._fill_vehicles_frame()
             self._fill_riders_frame()
-            self._fill_wtf_frame()
-            self._fill_survivor_frame()
-            self._fill_grandprix_frame()
-            self._fill_track_frame()
-            self._fill_rogue_frame()
             self._lighten_bots_frame()
         except Exception as exc:
             self._mode_failed(exc, "trame", now_mono)
+
+    def _fill_frame(self) -> None:
+        """Partie de la trame propre à chaque mode (lot IM1) : tous les modes de la table, dans l'ordre fixe, chacun
+        remplit son champ (ou le vide hors séance) et décore la liste `bots`."""
+        ctx = self._mode_ctx
+        for mode in game_modes.MODES:
+            mode.fill_frame(ctx)
 
     def _active_mode(self) -> str:
         """Nom du mode en cours, pour le journal : le plus particulier d'abord."""
@@ -5417,6 +5695,7 @@ class CoreSession:
             dt = min(now - last, MAX_STEP_S)
             last = now
             self._safe_step(dt, now)
+            self.fit_exports.poll()   # fins des exports FIT faits dans un fil à part (revue S1-02)
             step_s = mono() - t0
             self.stats.add(step_s, lag)
 
@@ -5470,12 +5749,24 @@ class CoreSession:
             # Une panne du journal ou du FIT ne doit pas empêcher de relâcher le trainer.
             log.exception("Fin de séance incomplète")
         finally:
-            await self._stop_drivers(tasks)
-            self.server.stop()
+            try:
+                await self._stop_drivers(tasks)   # le trainer se relâche pendant que le FIT s'écrit
+            finally:
+                # Revue S1-02 : l'arrêt attend le FIT en cours (écriture atomique : jamais de fichier tronqué).
+                if self.fit_exports.busy:
+                    await asyncio.get_running_loop().run_in_executor(
+                        None, functools.partial(self.fit_exports.wait, FIT_SHUTDOWN_WAIT_S, process=False))
+                    self.fit_exports.poll()   # fins traitées ici, dans le fil de la boucle
+                    if self.fit_exports.busy:
+                        log.error("Export FIT inachevé après %.0f s : le journal de la séance reste (openride-core "
+                                  "recover).", FIT_SHUTDOWN_WAIT_S)
+                self.fit_exports.close()
+                self.server.stop()
 
     async def _stop_drivers(self, tasks: list[asyncio.Task]) -> None:
         """Annule la consigne, arrête les pilotes et leur laisse le temps de rendre le trainer."""
         try:
+            self._send_wind(0.0)
             self.driver.set_sim_grade(0.0)
         except Exception:
             log.exception("Consigne 0 % impossible")

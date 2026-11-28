@@ -2644,6 +2644,54 @@
         "glow": "#ff6a20",
         "density": 1.5
       }
+    },
+    "ville_neon": {
+      "biomes": {
+        "coast": {
+          "ground": {
+            "layers": [
+              {
+                "name": "dallage sombre",
+                "role": "flat",
+                "color": "#2a2630",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "enrochement",
+                "role": "steep",
+                "color": "#4a4450",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 22,
+            "blend_sharpness": 4.0,
+            "high_line_m": null
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "palm",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 6,
+            "treeline_m": null
+          }
+        }
+      },
+      "neon": {
+        "pink": "#ff2a9e",
+        "cyan": "#1ad9ff",
+        "violet": "#8c40ff",
+        "orange": "#ff8c1f",
+        "sky_top": "#0b0833",
+        "sky_mid": "#80198a",
+        "sky_horizon": "#ff7a38",
+        "fog": "#f25a8c",
+        "density": 1.0
+      }
     }
   },
   "surfaces": {

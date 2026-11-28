@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance ou course interrompue par un arrêt brutal du jeu reprise depuis l'accueil, moins de 2 h après, en mots (mode, tour, place) ; contrat IPC (révision à la fusion) | Python, GDScript | RC1, O34 | Petite | En PR le 23 novembre 2026 (avec RC1) ; captures à valider |
+| Séance ou course interrompue par un arrêt brutal du jeu reprise depuis l'accueil, moins de 2 h après, en mots (mode, tour, place) ; contrat IPC (révision à la fusion) | Python, GDScript | RC1, O34 | Petite | **Livré le 25 novembre** (PR #1036) (avec RC1) |
 
 Suite de RC1 (`LOT_RC1_reprise_course.md`) : RC1 reprend une course quand le core plante et que le lanceur le relance ;
 RC3 couvre l'arrêt du jeu entier (PC éteint, coupure de courant, jeu fermé).

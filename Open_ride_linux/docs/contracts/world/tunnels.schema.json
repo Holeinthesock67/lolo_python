@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldTunnelsChunk",
+  "description": "Tronçon de 1 km (parcours compilé) ou carré de 1 km (monde vivant, coordonnées relatives au coin) de la couche tunnels (Format .world v1, §8 octies, depuis 1.11, lot EA5).",
+  "type": "object",
+  "required": [
+    "version",
+    "tunnels"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "point3d_xzy": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "tunnels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "half_width_m",
+          "points"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "tunnel"
+            ]
+          },
+          "length_m": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "half_width_m": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Demi-largeur de la chaussée (sans trottoirs)."
+          },
+          "s0_m": {
+            "type": "number",
+            "description": "Parcours compilé : entrée du tunnel sur la route."
+          },
+          "s1_m": {
+            "type": "number",
+            "description": "Parcours compilé : sortie du tunnel sur la route."
+          },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "$ref": "#/$defs/point3d_xzy"
+            },
+            "description": "Axe du tube [x, z, y], y = altitude de la chaussée (profil de la route) ; premier et dernier points : les portails."
+          }
+        }
+      }
+    }
+  }
+}

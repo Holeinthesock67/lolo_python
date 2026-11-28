@@ -105,6 +105,19 @@ func _model() -> void:
 	_check(sh["title"] == "Sprint · 400 m" and sh.has("profile") and sh["lines"] == ["pas encore de temps"],
 		"fiche d'un sprint sans temps : longueur et profil (%s)" % sh["title"])
 	_check(m.segment_names() == {"climb1": "Montée 1", "sprint1": "Sprint 1"}, "noms des segments pour le bilan")
+	# Lot EC9 (E12-01) : le fichier du profil en cours, là où le core écrit depuis les profils.
+	var home := OS.get_environment("HOME")
+	_check(Model.default_path("principal") == home.path_join("OpenRide/Profils/principal/records.json")
+		and Model.default_path("_essai") == home.path_join("OpenRide/Profils/_essai/records.json"),
+		"chemin du profil : ~/OpenRide/Profils/<id>/records.json (%s)" % Model.default_path("principal"))
+	_check(Model.default_path() == home.path_join("OpenRide/records.json") and Model.default_path("../x") == Model.default_path()
+		and Model.default_path("..") == Model.default_path(), "sans profil ou identifiant hors du dossier : ancien chemin")
+	_check(Model.short_path(home.path_join("OpenRide/Profils/principal/records.json")) == "~/OpenRide/Profils/principal/records.json",
+		"chemin affiché avec « ~ »")
+	m.load_file("user://absent_records_t10.json")
+	m.load_text("{pas du json")
+	_check(m.segment_items("demo")[0]["detail"] == Model.short_path("user://absent_records_t10.json"),
+		"fichier illisible : le détail nomme le fichier lu")
 	var none = Model.new()
 	_check(none.segment_items("demo")[0]["label"] == "Ce parcours n'a ni sprint ni montée", "parcours sans segment")
 
@@ -114,8 +127,15 @@ func _flow() -> void:
 	f.store_string(JSON.stringify(_doc()))
 	f.close()
 	var flow = MenuFlow.new()
+	# Lot EC9 : sans fichier imposé, l'écran lit les records du profil du hello (puis de la liste des profils).
+	_check(flow.records_file() == Model.default_path(), "core sans profils : ancien fichier")
+	flow.on_hello_profile({"id": "principal", "name": "Principal", "type": "joueur", "count": 2})
+	_check(flow.records_file() == Model.default_path("principal"), "profil du hello : son fichier (%s)" % flow.records_file())
+	flow.profiles.on_profiles({"active": "cycliste-b", "items": []})
+	_check(flow.records_file() == Model.default_path("cycliste-b"), "changement de profil : fichier du nouveau profil")
 	flow.connect_done = true
 	flow.records_path = TMP_PATH
+	_check(flow.records_file() == TMP_PATH, "fichier imposé (tests visuels) : gardé")
 	flow.records.set_segments(SEGMENTS)
 	flow.on_state({"session_state": "IDLE"})
 	flow.set_routes(ROUTES)

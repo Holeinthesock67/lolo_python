@@ -4,11 +4,18 @@
 l'expérience, le niveau, les défis et les pièces gagnées viennent de `progression.py` (V2) et
 `coins.py` (V3b). Aucune donnée personnelle : ni nom, ni masse, ni taille réelle.
 
-- Lecture tolérante : fichier absent → profil par défaut (rien n'est écrit) ; fichier abîmé →
-  copie `profile.json.bak`, sinon défauts, et le fichier abîmé est gardé sous
-  `profile.json.corrompu-AAAAMMJJ-HHMMSS`.
-- Écriture sûre : fichier temporaire du même dossier, `fsync`, ancien fichier copié en `.bak`,
-  puis `os.replace` (jamais de fichier à moitié écrit).
+- Lecture tolérante : fichier absent sans copie → profil par défaut (rien n'est écrit) ; fichier
+  abîmé → mis de côté sous `profile.json.corrompu-AAAAMMJJ-HHMMSS` (jamais effacé), puis la plus
+  récente copie lisible (`profile.json.bak`, `.bak.2`, `.bak.3`) est REMISE en place dans
+  `profile.json` (revue S5-01 : avant, la reprise ne vivait qu'en mémoire et le lancement suivant
+  repartait des défauts). Un `profile.json` absent à côté d'une copie (reprise interrompue) est
+  remis de la même façon. Une erreur de lecture passagère (`OSError`) ne met rien de côté : la
+  copie sert en mémoire seulement. `repair()` fait la même chose pour le lanceur et renvoie le
+  message à montrer au joueur.
+- Écriture sûre : fichier temporaire du même dossier, `fsync`, rotation des copies (l'ancien fichier
+  devient `.bak`, `.bak` devient `.bak.2`, `.bak.2` devient `.bak.3`), puis `os.replace` (jamais de
+  fichier à moitié écrit). La remise à zéro (lot RZ1) déplace le profil et ses copies ensemble : elle
+  n'est pas annulée par la reprise.
 - Migration : sans `version` → version 1 ; version plus récente que le code → lecture seule
   (`ProfileTooNew` à l'écriture), pour ne pas effacer les données d'une version future.
 
@@ -176,42 +183,131 @@ def _path(path: Path | None) -> Path:
     return profiles.current().profile_path
 
 
-def load_profile(path: Path | None = None, known_items: set[str] | None = None) -> Profile:
-    """Profil lu, réparé si besoin ; `known_items` (catalogue, V3) remet à zéro les pièces retirées."""
-    path = _path(path)
-    if not path.exists():
-        return Profile()
+BACKUP_COPIES = 3   # copies gardées à chaque écriture : `.bak` (la plus récente), `.bak.2`, `.bak.3`
+_BROKEN = (ValueError, UnicodeDecodeError)   # contenu abîmé (JSON tronqué, forme fausse, encodage)
+
+
+def backup_paths(path: Path) -> list[Path]:
+    """Copies du profil `path`, de la plus récente à la plus ancienne."""
+    return [path.with_name(path.name + ".bak")] + [path.with_name(f"{path.name}.bak.{i}")
+                                                   for i in range(2, BACKUP_COPIES + 1)]
+
+
+@dataclass
+class Recovery:
+    """Ce que la lecture a dû réparer : fichier abîmé mis de côté, copie remise en place."""
+
+    kept: Path | None = None        # fichier abîmé mis de côté (`.corrompu-…`)
+    restored: Path | None = None    # copie remise dans `profile.json`
+    defaults: bool = False          # aucune copie lisible : profil par défaut
+
+    def message(self, who: str = "") -> str | None:
+        """Texte pour le joueur (fenêtre du lanceur) ; None si rien n'a été réparé."""
+        if self.kept is None and self.restored is None and not self.defaults:
+            return None
+        whose = f"Le profil de « {who} »" if who else "Ton profil"
+        what = (f"{whose} (équipement, achats, vies, avatar) était abîmé"
+                if self.kept is not None else f"{whose} (équipement, achats, vies, avatar) manquait")
+        if self.restored is not None:
+            when = time.strftime("%d/%m/%Y à %H:%M", time.localtime(self.restored.stat().st_mtime))
+            done = f" : il a été repris de sa copie du {when}."
+        else:
+            done = " et aucune copie n'était lisible : il repart des valeurs par défaut."
+        aside = (f" Le fichier abîmé est gardé sous {self.kept.name}, rien n'a été effacé."
+                 if self.kept is not None else "")
+        return what + done + aside + " Expérience, niveau, pièces gagnées et séances ne sont pas touchés."
+
+
+def _set_aside(path: Path) -> Path | None:
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    kept = path.with_name(f"{path.name}.corrompu-{stamp}")
+    n = 2
+    while kept.exists():   # deux reprises dans la même seconde : rien n'est écrasé
+        kept = path.with_name(f"{path.name}.corrompu-{stamp}-{n}")
+        n += 1
     try:
-        return _read(path, known_items)
-    except (OSError, ValueError, UnicodeDecodeError) as exc:
-        stamp = time.strftime("%Y%m%d-%H%M%S")
-        kept = path.with_name(f"{path.name}.corrompu-{stamp}")
-        log.warning("Profil illisible (%s) : gardé sous %s.", exc, kept.name)
+        os.replace(path, kept)
+        return kept
+    except OSError as exc:
+        log.warning("Profil abîmé non mis de côté (%s) : laissé en place.", exc)
+        return None
+
+
+def _put_back(backup: Path, path: Path) -> bool:
+    """Remet la copie `backup` dans `path` (octets inchangés, fichier temporaire puis `os.replace`)."""
+    tmp = path.with_name(f".{path.name}.reprise.tmp")
+    try:
+        shutil.copy2(backup, tmp)
+        os.replace(tmp, path)
+        return True
+    except OSError as exc:
+        log.warning("Copie %s non remise en place (%s) : reprise en mémoire seulement.", backup.name, exc)
         try:
-            os.replace(path, kept)
+            os.unlink(tmp)
         except OSError:
             pass
-    backup = path.with_name(path.name + ".bak")
-    if backup.exists():
+        return False
+
+
+def _load(path: Path, known_items: set[str] | None, write: bool) -> tuple[Profile, Recovery]:
+    rec = Recovery()
+    backups = backup_paths(path)
+    if path.exists():
+        try:
+            return _read(path, known_items), rec
+        except _BROKEN as exc:
+            log.warning("Profil illisible (%s).", exc)
+            if write:
+                rec.kept = _set_aside(path)
+                if rec.kept is not None:
+                    log.warning("Profil abîmé gardé sous %s.", rec.kept.name)
+            write = write and rec.kept is not None
+        except OSError as exc:   # lecture refusée ou disque passager : rien n'est déplacé ni écrit
+            log.warning("Profil non lu (%s) : copie lue sans rien changer.", exc)
+            write = False
+    elif not any(b.exists() for b in backups):
+        return Profile(), rec   # premier lancement, profil neuf ou remis à zéro : défauts, rien n'est écrit
+    for backup in backups:
+        if not backup.exists():
+            continue
         try:
             prof = _read(backup, known_items)
-            log.warning("Profil repris de %s.", backup.name)
-            return prof
-        except (OSError, ValueError, UnicodeDecodeError) as exc:
-            log.warning("Copie %s illisible aussi (%s) : profil par défaut.", backup.name, exc)
-    return Profile()
+        except (OSError, *_BROKEN) as exc:
+            log.warning("Copie %s illisible aussi (%s).", backup.name, exc)
+            continue
+        log.warning("Profil repris de %s.", backup.name)
+        if write and _put_back(backup, path):
+            rec.restored = path
+            log.warning("Copie %s remise dans %s.", backup.name, path.name)
+        return prof, rec
+    log.warning("Aucune copie lisible : profil par défaut.")
+    rec.defaults = write
+    return Profile(), rec
+
+
+def load_profile(path: Path | None = None, known_items: set[str] | None = None) -> Profile:
+    """Profil lu, réparé si besoin (voir l'en-tête) ; `known_items` (catalogue, V3) remet à zéro les pièces
+    retirées."""
+    return _load(_path(path), known_items, write=True)[0]
+
+
+def repair(path: Path) -> Recovery:
+    """Répare `profile.json` comme `load_profile` (lanceur, avant le core) ; dit ce qui a été fait."""
+    return _load(path, None, write=True)[1]
 
 
 def peek_profile(path: Path | None = None, known_items: set[str] | None = None) -> Profile:
     """Lecture seule, sans réparation (outils comme `openride-core xp`) : défauts si illisible."""
-    path = _path(path)
-    for candidate in (path, path.with_name(path.name + ".bak")):
-        if candidate.exists():
-            try:
-                return _read(candidate, known_items)
-            except (OSError, ValueError, UnicodeDecodeError):
-                continue
-    return Profile()
+    return _load(_path(path), known_items, write=False)[0]
+
+
+def _rotate(path: Path) -> None:
+    """Rotation des copies avant d'écrire : la plus ancienne disparaît, l'actuel devient `.bak`."""
+    backups = backup_paths(path)
+    for older, newer in zip(reversed(backups[1:]), reversed(backups[:-1])):
+        if newer.exists():
+            os.replace(newer, older)
+    shutil.copy2(path, backups[0])
 
 
 def save_profile(profile: Profile, path: Path | None = None) -> None:
@@ -228,7 +324,7 @@ def save_profile(profile: Profile, path: Path | None = None) -> None:
             fh.flush()
             os.fsync(fh.fileno())
         if path.exists():
-            shutil.copy2(path, path.with_name(path.name + ".bak"))
+            _rotate(path)
         os.replace(tmp, path)
     except BaseException:
         try:

@@ -194,20 +194,22 @@ def test_aero_bonus_by_z_short_changes_speed_not_route_grade(env, wind):
     run(a, 10.0)
     run(b, 10.0)
     assert b.physics.v > a.physics.v + 0.1
-    assert b.physics.p.cda_m2 == pytest.approx(a.physics.p.cda_m2 * 0.75)
+    assert b.physics.p.cda_m2 == pytest.approx(a.physics.p.cda_m2 * 0.60)   # lot TT-BONUS
     if wind:
         assert 0.0 < b._wind_offset < a._wind_offset   # supplément de vent calculé avec le CdA courant
     else:
         assert b._grade_sent == pytest.approx(a._grade_sent)   # pente envoyée au trainer inchangée
-    run(b, 6.0)
+    run(b, 21.0)   # 30 s (lot TT-BONUS)
     assert b.race.powerups.active is None and b.physics.p.cda_m2 == pytest.approx(a.physics.p.cda_m2)
+    gain = frame(b)["powerup"]["gain"]   # temps gagné affiché à la fin (révision 1.41)
+    assert gain["kind"] == "aero" and gain["gain_s"] > 0.5
     while b.physics.s < 1510.0:   # fin de la montée (plus lente avec le vent de face)
         run(b, 10.0)
     climb = [m for m in results(sent_b) if m["segment_id"] == "climb1"]
     assert climb and climb[0]["with_powerup"] is True
     assert b.race.book.table("demo", "climb1", True) and not b.race.book.table("demo", "climb1", False)
     lines = [ln for ln in read_journal(b._rec.path) if ln.get("kind") == "powerup"]
-    assert [(ln["powerup"], ln["duration_s"]) for ln in lines] == [("aero", 15.0)]
+    assert [(ln["powerup"], ln["duration_s"]) for ln in lines] == [("aero", 30.0)]
 
 
 # --- critère 4 : ERG --------------------------------------------------------------------------

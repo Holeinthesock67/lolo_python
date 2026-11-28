@@ -17,6 +17,7 @@ de la 1.4 est devenu `feather`), la réserve s'appelle `held`, et le cycliste `"
 
 from __future__ import annotations
 
+import logging
 import math
 import time
 from collections.abc import Callable, Iterable
@@ -38,6 +39,8 @@ from .powerups import (
 )
 from .records import DATE_FORMAT, RecordBook
 from .segment_timing import SegmentPass, SegmentTimer
+
+log = logging.getLogger("core")
 
 SEGMENT_RESULT_REPEAT = 3        # message `segment_result` répété 3 fois, à une seconde d'intervalle
 SUMMARY_PASSES = 10              # passages gardés dans `summary.segments`
@@ -176,6 +179,15 @@ class ClassicRace:
     def power(self, measured_w: float) -> float:
         """Puissance prise en compte par la physique (jamais écrite au journal ni au FIT)."""
         return self.powerups.power(measured_w) if self.powerups_on else measured_w
+
+    def track_gain(self, t: float, p: PhysicsParams, power_used_w: float, grade_pct: float, alt_m: float,
+                   dt: float, alpha_draft: float, before: tuple[float, float], after: tuple[float, float]) -> None:
+        """Temps gagné par le bonus en cours (lot TT-BONUS, `PowerUps.track_gain`), après le pas du cycliste."""
+        if not self.powerups_on:
+            return
+        g = self.powerups.track_gain(t, p, power_used_w, grade_pct, alt_m, dt, alpha_draft, before, after)
+        if g is not None:
+            log.info("Bonus fini : %s, %+.1f s.", self.powerups.table.specs[g.kind].label, g.gain_s)
 
     def set_erg(self, on: bool) -> None:
         self.erg = bool(on)

@@ -79,7 +79,7 @@ def test_biome_tile_schema_refuses(change) -> None:
         jsonschema.validate(tile, schema("biome"))
 
 
-@pytest.mark.parametrize("landscape", [None, "canyon", "fjord", "ile_volcanique", "rizieres", "volcan_actif"])
+@pytest.mark.parametrize("landscape", [None, "canyon", "fjord", "ile_volcanique", "rizieres", "volcan_actif", "ville_neon"])
 def test_biome_tile_landscape_member_is_optional(landscape) -> None:
     """Lot U25 : membre `landscape` facultatif de la variante, toit `bois_peint`."""
     tile = load(BIOME_TILE)

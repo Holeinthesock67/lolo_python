@@ -146,6 +146,7 @@ var z_call_label: Label            # lot R23 : invite « Z : FRAPPE ! » tant qu
 var _z_call_t := 0.0
 var hit_flash_s := 0.0
 const HIT_FLASH_S := 0.25
+const HIT_FLASH_ALPHA := 0.15    # lot R28 : à 0,45, l'éclair voilait tout l'écran de gris (« Z : FRAPPE ! », retour du 23/11)
 var view_left_s := 0.0
 
 
@@ -551,7 +552,7 @@ func _side(g: Dictionary, choosing: bool) -> void:
 	if not fw.is_empty() and not choosing:
 		side_panel.visible = true
 		var c := _tone({"ok": "ok", "warn": "warn", "danger": "danger"}.get(str(fw.get("level", "ok")), "ok"))
-		side_title.text = "Firewall derrière toi"
+		side_title.text = str(fw.get("title", "Firewall derrière toi"))   # revue E10-06 : « Firewall arrêté »
 		side_big.text = str(fw.get("text", ""))
 		side_big.add_theme_color_override("font_color", c)
 		side_sub.text = str(fw.get("sub", ""))
@@ -665,7 +666,7 @@ func _tick(delta: float) -> void:
 	hurt_flash_s = maxf(hurt_flash_s - delta, 0.0)
 	(hurt_flash.material as ShaderMaterial).set_shader_parameter("strength", 0.85 * hurt_flash_s / HURT_FLASH_S)
 	(hurt_flash.material as ShaderMaterial).set_shader_parameter("edge", HURT_EDGE)
-	hit_flash.color.a = 0.45 * hit_flash_s / HIT_FLASH_S
+	hit_flash.color.a = HIT_FLASH_ALPHA * hit_flash_s / HIT_FLASH_S
 	if z_call_label.visible:
 		# battement 3 fois par seconde : l'invite grossit et s'éclaire, pour qu'on la voie du coin de l'œil
 		_z_call_t += delta

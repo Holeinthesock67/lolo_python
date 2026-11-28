@@ -35,7 +35,7 @@ extends RefCounted
 
 const COLUMNS := ["t_s", "unix_s", "fps", "frame_p50_ms", "frame_p99_ms", "frame_max_ms", "cpu_ms", "gpu_ms",
 	"draw_calls", "objects", "primitives", "vram_mb", "texture_mb", "buffer_mb", "static_mb", "nodes",
-	"near_tiles", "far_tiles", "osm_chunks", "trees", "culled_near", "capture", "capture_max_ms", "pipelines", "preset"]
+	"near_tiles", "far_tiles", "osm_chunks", "trees", "culled_near", "capture", "capture_max_ms", "pipelines", "wind_phase", "wind_strength", "wind_gust", "preset"]
 const PERIOD_US := 1_000_000
 const CAPTURE_FRAMES := 1   # image de la capture (son coût mesuré en est retiré)
 const SACCADE_MS := 33.0     # image lente : plus de 33 ms (moins de 30 images/s)
@@ -56,6 +56,10 @@ static var _tasks: Array = []    # [type, id, ms] des tâches de fond depuis la 
 
 var path := ""
 var preset := ""
+## Vent du décor de l'image (`living_world.last_wind`, posé par main.gd avant `frame`) : colonnes wind_phase,
+## wind_strength et wind_gust (lot EC10, revue E12-51 : vitesse de la phase vérifiée sur une longue séance,
+## `engine/tests/wind_phase_check.py`).
+var wind: Dictionary = {}
 var _file: FileAccess = null
 var _frames: Array[float] = []
 var _captured: Array[float] = []
@@ -296,6 +300,10 @@ func frame(delta: float, streamer = null) -> void:
 	row.merge(render_counters())
 	row.merge(world_counters(streamer))
 	row["pipelines"] = _pipelines_sec
+	if not wind.is_empty():
+		row["wind_phase"] = float(wind.get("phase", 0.0))
+		row["wind_strength"] = float(wind.get("strength", 0.0))
+		row["wind_gust"] = float(wind.get("gust", 0.0))
 	row["preset"] = preset
 	_flush_tasks(row["t_s"])
 	_file.store_line(csv_line(row))

@@ -582,10 +582,26 @@ class ProfileBot(ConstantPowerBot):
         elif self._lane_home is not None:
             self.lane.home, self._lane_home = self._lane_home, None
 
+    def move(self) -> str | None:
+        """Geste en cours, montré au cycliste par écrit et par un son (lot BA1, essai du 22 novembre : « rien
+        n'indique quand un bot utilise un boost ») : « attack » pendant une attaque (`bot_tactics`, lot Y10),
+        « respond » quand il suit un départ, « sprint » au pic de son sprint (lot T12) ; None sinon."""
+        tac = self.tactics
+        if tac.attack_until > self.t:
+            return "attack"
+        if tac.respond_to is not None and self.t < tac.respond_until:
+            return "respond"
+        if self.peak_w > 0 and self.power_w == self.peak_w:
+            return "sprint"
+        return None
+
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d.update({"profile": self.profile, "cp_w": round(self.cp_w, 1), "mass_kg": self.mass_kg,
                   "wbal_pct": round(self.wbal_pct, 1)})
+        move = self.move()
+        if move is not None:   # lot BA1 (révision 1.38) : absent sans geste en cours
+            d["move"] = move
         return d
 
 
@@ -1026,7 +1042,7 @@ FULL_FRAME_BOTS = 5   # bots les plus proches du cycliste qui gardent tous leurs
 # Champs facultatifs retirés des autres bots : constants (`cp_w`, `mass_kg`, gardés par l'engine depuis la
 # dernière trame qui les portait) ou recalculables (`gap_s` : écart en mètres sur la vitesse) ; `wbal_pct`
 # n'est montré que dans l'encart du HUD, qui n'affiche que les voisins du cycliste.
-LIGHT_DROPPED = ("cp_w", "mass_kg", "wbal_pct", "gap_s")
+LIGHT_DROPPED = ("cp_w", "mass_kg", "wbal_pct", "gap_s", "move")   # `move` (lot BA1) : montré pour les voisins seuls
 # Champs constants des autres bots envoyés à tour de rôle (un bot par trame) et gardés par l'engine entre deux
 # envois : avec les cyclistes du décor (lot AS7, `riders`), la pire trame 1.6 dépassait 4 096 octets. Lot GP2 :
 # objet en réserve et effets du Grand Prix (`item`, `fx`) de même, l'engine gardant le dernier reçu.
