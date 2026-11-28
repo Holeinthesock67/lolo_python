@@ -28,6 +28,7 @@ log = logging.getLogger("world_menu")
 
 PLACES_PATH = Path(__file__).parent / "data" / "places.json"
 MAX_PLACES = 50
+NAME_MAX = 80          # longueur maximale d'un nom, schéma `places` (revue vague 3, E3-03)
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_PERIOD_S = 1.0
 QUERY_TIMEOUT_S = 20.0
@@ -60,6 +61,13 @@ def _default_fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
     req = urllib.request.Request(url, headers=headers)   # noqa: S310 (adresse fixe, https)
     with urllib.request.urlopen(req, timeout=timeout) as r:   # noqa: S310
         return r.read()
+
+
+def _clip_name(name: str, limit: int = NAME_MAX) -> str:
+    """Nom complet de Nominatim borné à la longueur du schéma `places` (80 caractères, « … » compris) ;
+    revue vague 3, E3-03 : le core coupait à 120."""
+    name = name.strip()
+    return name if len(name) <= limit else name[: limit - 1].rstrip() + "…"
 
 
 class WorldMenu:
@@ -137,7 +145,7 @@ class WorldMenu:
     def _nominatim_fetch(self, url: str) -> list[dict[str, Any]]:
         try:
             rows = json.loads(self.fetch(url, {"User-Agent": USER_AGENT, "Accept-Language": "fr"}, 10.0))
-            return [{"name": str(r["display_name"])[:120], "kind": place_kind(r.get("type", "")), "lat": round(float(r["lat"]), 5),
+            return [{"name": _clip_name(str(r["display_name"])), "kind": place_kind(r.get("type", "")), "lat": round(float(r["lat"]), 5),
                      "lon": round(float(r["lon"]), 5), "cached": False, "source": "nominatim"} for r in rows]
         except (OSError, ValueError, KeyError, TypeError) as exc:
             log.warning("Nominatim indisponible : %s", exc)

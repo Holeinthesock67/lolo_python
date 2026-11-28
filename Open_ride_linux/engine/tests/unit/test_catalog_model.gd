@@ -100,5 +100,18 @@ func _init() -> void:
 	var nodes_after := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	_check(nodes_after == nodes_before, "aucun nœud créé par catalog_model.gd (Performance.OBJECT_NODE_COUNT constant)")
 
+	# Lot PP8b : courbe avant et depuis le début du plan
+	var act := {"name": "Plan", "week": 3, "weeks": 6, "finished": false, "done": 4, "total": 12, "done_pct": 33.3,
+		"curve": [{"s": 5, "before": 820, "after": 850}, {"s": 60, "before": 400, "after": 412},
+			{"s": 300, "before": null, "after": 300}]}
+	var lines: Array = CatalogModel.plan_curve_lines(act)
+	_check(lines == ["Ta courbe, avant → depuis le début du plan", "5 s : 820 → 850 W · 1 min : 400 → 412 W",
+		"5 min : 300 W (nouveau)"], "PP8b : courbe du plan en mots (%s)" % str(lines))
+	act["finished"] = true
+	_check(CatalogModel.plan_curve_lines(act)[0] == "Ta courbe, avant → après le plan", "PP8b : plan fini : après le plan")
+	_check(CatalogModel.active_plan_sheet(act)["lines"].size() == 4, "PP8b : fiche du plan : progrès puis courbe")
+	act.erase("curve")
+	_check(CatalogModel.plan_curve_lines(act).is_empty() and CatalogModel.active_plan_sheet(act)["lines"].size() == 1,
+		"PP8b : core plus ancien : rien de plus")
 	print("test_catalog_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -125,6 +125,9 @@ CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
 CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
 COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_advice",
                   "clear_watch_advice")   # séance conseillée (lot CO3), réponse `coach`
+# ligue.json : league_status (dans un fil) et league_new, un à la fois. Au niveau du module et non de la séance :
+# un verrou ne se copie pas, et la matrice des boutons copie la séance (copy.deepcopy).
+_LEAGUE_IO = threading.Lock()
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
                     "clear_trial_profile", "restore_profile",   # lots MJ7 et O33
                     "reset_profile_stats", "undo_profile_reset",   # lot RZ1 (révision 1.31)
@@ -1812,8 +1815,10 @@ class CoreSession:
         from .ipc_lists import build_plans_message
 
         try:
+            ctx = self.profile_ctx
             msg = await asyncio.to_thread(build_plans_message, cmd_id, self.cfg.rider.ftp_w, self.plans_dir,
-                                          self.workouts_dir, self.plan_state_path, self.activities_dir)
+                                          self.workouts_dir, self.plan_state_path, self.activities_dir, None,
+                                          self._curve_cache(ctx), ctx.counted_sources)
             if created:
                 msg["created"] = created
         except Exception:
@@ -2070,12 +2075,27 @@ class CoreSession:
             return
         self._spawn(self._workout_menu(name, args, cmd_id))
 
+    def _best_effort(self, seconds: int) -> tuple[float, float]:
+        """(meilleur effort de `seconds` s sur les 6 derniers mois en W, FTP en W) pour un entraînement calé sur la
+        courbe (lot PP8b) : toutes les séances comptées du profil, comme le coach (une remise à zéro des
+        statistiques ne change pas ce que tu tiens) ; sans effort de cette durée, la courbe type × la FTP."""
+        from .ipc_lists import best_effort_w
+
+        ctx = self.profile_ctx
+        ftp = float(self.cfg.rider.ftp_w)
+        best = best_effort_w(self.journal_dir.parent, self._curve_cache(ctx), ctx.counted_sources, seconds,
+                             time.time())
+        if best is None:
+            best = ftp * bot_effort.curve_pct(seconds) / 100.0
+        return float(best), ftp
+
     async def _workout_menu(self, name: str, args: dict, cmd_id: int) -> None:
         from . import workout_menu
 
         try:
             if name == "create_workout":
-                res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args)
+                res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args,
+                                              self._best_effort)
             else:
                 res = await asyncio.to_thread(workout_menu.create_qwk_workout, self.workouts_dir, args)
             log.info("Entraînement créé : %s (%s)", res["workout_id"], "nouveau" if res["created"] else "déjà présent")
@@ -3335,7 +3355,8 @@ class CoreSession:
     def _send_bots_preview(self, args: dict, cmd_id: int) -> None:
         """Réponse `bots_preview` (révision 1.22) : effort que viseront les bots de la course `mode` sur le parcours
         choisi, avec les réglages en cours (`objective` et `track` facultatifs), cote Elo comprise : objectif,
-        % de la FTP, watts, durée estimée ; `power_w` null sans parcours chargé."""
+        % de la FTP, watts, durée estimée ; `power_w` null sans parcours chargé. Lot PP6b : `hold_s` (durée tenable
+        à cette allure d'après la courbe du cycliste) et `my_time_s` (son temps à fond sur la course)."""
         from .bots import RefRider, RouteProfile, effort_target
 
         mode = args.get("mode", "ride")
@@ -3366,7 +3387,7 @@ class CoreSession:
             elo = {"rating": int(round(book.rating)), "races": book.races}
         msg: dict[str, Any] = {"type": "bots_preview", "v": 1, "request_cmd_id": cmd_id, "mode": mode,
                                "objective": effort.objective, "ftp_pct": None, "power_w": None,
-                               "duration_s": None, "elo": elo}
+                               "duration_s": None, "elo": elo, "hold_s": None, "my_time_s": None}
         route = self.route
         if route is not None and getattr(route, "length_m", None):
             if self._preview_prof is None or self._preview_prof[0] != id(route):
@@ -3375,6 +3396,13 @@ class CoreSession:
             pct, dur = effort_target(self._preview_prof[1], RefRider(ftp, self._base_params), level, effort)
             msg.update({"ftp_pct": round(pct, 1), "power_w": int(round(ftp * pct / 100.0)),
                         "duration_s": int(round(dur))})
+            # Lot PP6b : durée que tu tiens à l'allure des bots, et ton temps à fond sur cette course, lus sur ta
+            # courbe (`Effort.curve`, courbe type sans séance) ; une épreuve à durée fixe n'a pas de temps prévu.
+            msg["hold_s"] = int(round(bot_effort.hold_s(pct, effort.curve)))
+            if not effort.duration_s:
+                mine = replace(effort, objective="max")
+                msg["my_time_s"] = int(round(effort_target(self._preview_prof[1], RefRider(ftp, self._base_params),
+                                                           100.0, mine)[1]))
         self.server.send_raw(msg)
 
     # --- ligue d'hiver (série CH, lot CH3, révision 1.30) ---------------------------------------
@@ -3410,28 +3438,62 @@ class CoreSession:
         book = bot_elo.load(self._elo_path())
         return {r.key: book.bot_rating(r.key) for r in season.rivals}
 
+    def _league_status_message(self, cmd_id: int) -> dict[str, Any]:
+        """Réponse `league` à `league_status` : saison mise à jour au jour et palmarès (lecture des fichiers
+        du profil, simulation des semaines non courues). Un appel à la fois (`_LEAGUE_IO`), hors boucle."""
+        with _LEAGUE_IO:
+            season = self._league_load()
+            return league.status(season, self._league_today(), cmd_id,   # palmarès : lot CH6
+                                 past=league.history(self._league_path(), season))
+
+    def _send_league_status(self, cmd_id: int) -> None:
+        """`league_status` calculé dans un fil (bandeau « Core non joignable » du 28 novembre : ~0,3 s avec un
+        vrai profil, dans la boucle à 50 Hz, à chaque copie de la commande) ; sur place hors boucle (essais)."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            self.server.send_raw(self._league_status_message(cmd_id))
+            return
+
+        async def send() -> None:
+            try:
+                msg = await asyncio.to_thread(self._league_status_message, cmd_id)
+            except Exception:
+                log.exception("Erreur pendant league_status (cmd_id=%d)", cmd_id)
+                return
+            self.server.send_raw(msg)
+
+        self._spawn(send())
+
     def _on_league_command(self, name: str, cmd_id: int) -> None:
         """`league_status` : état de la saison ; `league_new` : nouvelle saison (refusée si une saison court)."""
+        if name == "league_status":
+            self._send_league_status(cmd_id)
+            return
+        with _LEAGUE_IO:
+            self._league_new(cmd_id)
+
+    def _league_new(self, cmd_id: int) -> None:
+        """`league_new` : nouvelle saison, refusée si une saison court ; réponse `league`."""
         season = self._league_load()
-        if name == "league_new":
-            if season is not None and not season.closed:
-                self.server.send_error("bad_args", "Ligue d'hiver : une saison est déjà en cours.")
-                return
-            roster = rivals.load(self._rivals_path())   # mêmes rivaux que les autres modes (lot R4)
-            previous = season
-            season = league.new_season(self._league_today(), previous=previous, roster=roster)
-            try:
-                if previous is not None:   # saison close gardée à part, classement et trophée compris (revue F1-07)
-                    league.save(league.archive_path(self._league_path(), previous.number), previous)
-                rivals.save(self._rivals_path(), roster)   # rivaux d'abord : jamais une saison sans ses rivaux
-                league.save(self._league_path(), season)
-            except OSError as exc:
-                self.server.send_error("bad_args", f"Ligue d'hiver : saison non enregistrée ({exc}).")
-                return
-            log.info("Ligue d'hiver : saison %d créée (du %s au %s).", season.number, season.start,
-                     season.end_day(self._league_today()))
-            if self._rec:
-                self._rec.game({"kind": "league_new", "ts": round(time.time(), 3), "number": season.number})
+        if season is not None and not season.closed:
+            self.server.send_error("bad_args", "Ligue d'hiver : une saison est déjà en cours.")
+            return
+        roster = rivals.load(self._rivals_path())   # mêmes rivaux que les autres modes (lot R4)
+        previous = season
+        season = league.new_season(self._league_today(), previous=previous, roster=roster)
+        try:
+            if previous is not None:   # saison close gardée à part, classement et trophée compris (revue F1-07)
+                league.save(league.archive_path(self._league_path(), previous.number), previous)
+            rivals.save(self._rivals_path(), roster)   # rivaux d'abord : jamais une saison sans ses rivaux
+            league.save(self._league_path(), season)
+        except OSError as exc:
+            self.server.send_error("bad_args", f"Ligue d'hiver : saison non enregistrée ({exc}).")
+            return
+        log.info("Ligue d'hiver : saison %d créée (du %s au %s).", season.number, season.start,
+                 season.end_day(self._league_today()))
+        if self._rec:
+            self._rec.game({"kind": "league_new", "ts": round(time.time(), 3), "number": season.number})
         self.server.send_raw(league.status(season, self._league_today(), cmd_id,   # palmarès : lot CH6
                                            past=league.history(self._league_path(), season)))
 
@@ -4634,7 +4696,11 @@ class CoreSession:
             felt = self.physics.p
             self.physics.p = replace(felt, wind_mps=felt.wind_mps + gp_wind)
         s_before = self.physics.s
+        ridden_before = (self.physics.distance, self.physics.v)
         self.physics.step(power_used, grade, alt, dt, alpha_draft=draft)
+        if race:   # temps gagné par le bonus, contre une ombre sans bonus (lot TT-BONUS)
+            race.track_gain(self._t_session, self.physics.p, power_used, grade, alt, dt, draft, ridden_before,
+                            (self.physics.distance, self.physics.v))
         if gp_wind:
             self.physics.p = felt
         if track is not None:   # rouler plus haut dans un virage allonge le tour (plan VD §4.2)
