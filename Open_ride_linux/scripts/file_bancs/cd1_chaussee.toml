@@ -1,0 +1,107 @@
+# Banc du lot CD1 (#1179, chaussée dessinée unique, version simple), demandé par le propriétaire le 28/11 pour le
+# créneau 19h-21h30 (sans attendre la fin du championnat ; le jeu installé, replié sur 527e4700, n'est pas touché).
+# Périmètre de non-régression validé le 28/11 (statut/ANALYSE_IMPACT_OW_2026-11-28.md §2) : 5 parcours de référence,
+# en medium, paire branche/main le même soir sur le même PC :
+#   - captures aux points tirés du parcours (tour_visuel.py --auto, mêmes points sur les deux têtes : départ,
+#     arrivée, plat, montées à 5 et 10 %, village, forêt, eau, frontières de biome), planches à valider ;
+#   - fluidité à chaud en roulant : sim_bench --scenario nominal, 7 min à 30 km/h, sonde (verdict en paire, pas
+#     contre un seuil fixe) ;
+#   - contrôle du sol et du décor (controle_sol_route.py, qui joue test_herbe_route.gd) sur les 5 mondes.
+# Le temps SIM à 250 W et la pente du HUD ne peuvent pas bouger : la PR ne touche que l'engine (ni core, ni IPC, ni
+# WORLDGEN). Mondes : copiés UNE FOIS par la fumée dans ~/mesures-2026-11-01-auto/mondes-cd1 (cd1_mondes.sh),
+# lus à l'identique par la branche et main ; aucun monde ouvert : ~/OpenRide/Cache/monde n'est jamais lu.
+# Budget PC : ~2 h 15 (fumée 5 min, 10 étapes de ~12 min, 2 contrôles du sol) ; au-delà de 3 h 20 (+50 %) : arrêt
+# et point avec le propriétaire. Au plus deux tours de correction ensuite.
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py verifier scripts/file_bancs/cd1_chaussee.toml
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/cd1_chaussee.toml
+# Sans `tete` fixée, la file prend la tête de la branche relue par git fetch ; le fil de fusion peut la fixer ici.
+# main n'a pas cd1_etape.sh : ses étapes le reprennent de la branche (git show), le même script des deux côtés.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rCD1"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rCD1-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "rCD1"
+pr = 1179
+branche = "claude/project-thread-vedmpw"
+cache = "separe"
+categorie = "rendu"
+risque = 1                               # jamais tourné
+# Fumée (~5 min) : import Godot, tests du lot, puis copie des 5 mondes dans le dossier fixe (nom du circuit affiché).
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_drawn_road bash engine/tests/run_engine_tests.sh && \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_drawn_road_usage bash engine/tests/run_engine_tests.sh && \
+bash scripts/file_bancs/cd1_mondes.sh"""
+fumee_delai_min = 15
+
+[[pr.etape]]
+id = "sol"                               # sol sous la chaussée, herbe, arbres et objets du bord hors de la chaussée
+commande = "python3 scripts/controle_sol_route.py --out {sortie} ~/mesures-2026-11-01-auto/mondes-cd1/*.world"
+delai_min = 20
+
+[[pr.etape]]
+id = "alpe"                              # R1 Alpe d'Huez : lacets et épingles
+commande = "bash scripts/file_bancs/cd1_etape.sh alpe-d-huez {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "annecy"                            # R2 Tour du lac d'Annecy (ENVIRONNEMENT tant que #943 n'est pas installée)
+commande = "bash scripts/file_bancs/cd1_etape.sh tour-du-lac-d-annecy {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "db1"                               # R3 démo DB1 « Tour des nouveaux paysages »
+commande = "bash scripts/file_bancs/cd1_etape.sh demo-biomes-paysages {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "circuit"                           # R4 circuit de la manche 1 (nom écrit par la fumée dans circuit.txt)
+commande = "bash scripts/file_bancs/cd1_etape.sh circuit {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "ballon"                            # R5 Ballon d'Alsace
+commande = "bash scripts/file_bancs/cd1_etape.sh ballon-d-alsace {sortie}"
+delai_min = 25
+
+# Référence main : mêmes étapes, même script (repris de la branche), mêmes mondes.
+[[pr.etape]]
+id = "main-sol"
+sur = "main"
+commande = "python3 scripts/controle_sol_route.py --out {sortie} ~/mesures-2026-11-01-auto/mondes-cd1/*.world"
+delai_min = 20
+
+[[pr.etape]]
+id = "main-alpe"
+sur = "main"
+commande = "mkdir -p {sortie} && git show origin/claude/project-thread-vedmpw:Open_ride_linux/scripts/file_bancs/cd1_etape.sh > {sortie}/cd1_etape.sh && bash {sortie}/cd1_etape.sh alpe-d-huez {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "main-annecy"
+sur = "main"
+commande = "mkdir -p {sortie} && git show origin/claude/project-thread-vedmpw:Open_ride_linux/scripts/file_bancs/cd1_etape.sh > {sortie}/cd1_etape.sh && bash {sortie}/cd1_etape.sh tour-du-lac-d-annecy {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "main-db1"
+sur = "main"
+commande = "mkdir -p {sortie} && git show origin/claude/project-thread-vedmpw:Open_ride_linux/scripts/file_bancs/cd1_etape.sh > {sortie}/cd1_etape.sh && bash {sortie}/cd1_etape.sh demo-biomes-paysages {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "main-circuit"
+sur = "main"
+commande = "mkdir -p {sortie} && git show origin/claude/project-thread-vedmpw:Open_ride_linux/scripts/file_bancs/cd1_etape.sh > {sortie}/cd1_etape.sh && bash {sortie}/cd1_etape.sh circuit {sortie}"
+delai_min = 25
+
+[[pr.etape]]
+id = "main-ballon"
+sur = "main"
+commande = "mkdir -p {sortie} && git show origin/claude/project-thread-vedmpw:Open_ride_linux/scripts/file_bancs/cd1_etape.sh > {sortie}/cd1_etape.sh && bash {sortie}/cd1_etape.sh ballon-d-alsace {sortie}"
+delai_min = 25
