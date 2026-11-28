@@ -130,7 +130,7 @@ MA PUISSANCE — profil « Cycliste 1 »                 6 derniers mois | 6 der
 | --- | --- | --- | --- | --- |
 | **PP1** | Core : courbe à 13 durées par profil, fenêtres 6 mois et 6 semaines, tri libre / ERG, pauses respectées, cache version 2 ; outil `python -m openride_core.tools.power_curve` (texte et `--json`)  ; l'ancien cache de R16 (W' de Cyber-Rogue, plus utilisé depuis R25) est remplacé, et le code de proposition de W' devenu mort est retiré si R25 est fusionné. Tests sur séances fabriquées. | Python | aucun | Moyenne |
 | **PP2** | Core : FTP estimée (3 sources, confiance, raison), évolution par mois, acceptation par le joueur via le chemin existant des réglages du profil. | Python | aucun | Petite |
-| **PP3** | Contrat **1.29** : `list_power_curve` et réponse `power_curve` (13 points, FTP estimée, évolution), en une trame de moins de 4 096 octets. Écran « Ma puissance » dans le profil, scénario du banc des menus, captures low, medium et high. | Python + GDScript | 1.29 | Moyenne |
+| **PP3** | Contrat **1.35** : `list_power_curve` et réponse `power_curve` (13 points, FTP estimée, évolution), en une trame de moins de 4 096 octets. Écran « Ma puissance » dans le profil, scénario du banc des menus, captures low, medium et high. | Python + GDScript | 1.35 | Moyenne |
 | **PP4** | Ligne « Nouveau record de durée » sur le bilan de fin de séance ; signal « FTP à revoir » au menu. | Python + GDScript | champ facultatif | Petite |
 | **PP5** (option) | Liens bots, coach, ligue d'hiver (§5). | à cadrer | à cadrer | à cadrer |
 
@@ -232,3 +232,16 @@ PP5 du §6 est remplacé par quatre lots, lancés dans cet ordre quand la file l
 
 Lien avec la ligue d'hiver (série CH) : PP6 fournit le réglage des bots selon la durée de la manche ; à raccorder au cahier CH quand CH1 partira.
 Les garde-fous du §8.5 restent : rien pendant la séance, aucune difficulté changée sans le dire, aucune comparaison avec d'autres personnes, rien n'est exporté hors du PC.
+
+## 11. Remise à zéro des statistiques (lot RZ1, 23/11)
+
+Quand le profil a une date de remise à zéro (`ProfileContext.stats_since`, lot RZ1), `power_curve.kept_sessions(found, sources, since)` écarte les séances commencées avant. Décision du propriétaire : « garder coach, FIT et mon Elo ». Le filtre vaut donc seulement pour ce qu'il voit comme ses statistiques :
+
+| Lit seulement les séances d'après la remise à zéro | Lit toutes les séances |
+| --- | --- |
+| Courbe de « Ma puissance » (PP1, PP3) | FTP estimée, proposition et évolution mensuelle (PP2) |
+| Records du bilan (PP4) | Signal « FTP à revoir » du bilan (PP4) |
+| Profil « Se connaître » (PP5) | Coach (PP8) |
+| Défi « bats ton record » (PP7) | Courbe des bots (PP6) et trophées de puissance (PP7b, triés par la progression) |
+
+Juste après la remise à zéro, la courbe est vide et la première séance n'annonce aucun record, comme la toute première séance d'un profil. Tests : `core/tests/test_power_since.py`.

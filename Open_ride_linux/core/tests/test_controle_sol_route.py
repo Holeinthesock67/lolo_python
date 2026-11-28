@@ -66,3 +66,28 @@ def test_nothing_to_check_or_no_godot(tmp_path, monkeypatch):
     g.parent.mkdir(parents=True)
     g.write_text("")
     assert cs.find_godot(tmp_path / "pas-de-godot") == g
+
+
+def test_balades_seules_skips_installed_routes(tmp_path, capsys):
+    """26/11 : rZONES contrôlait les 40 parcours installés après chaque zone ; `--balades-seules` ne garde que la balade."""
+    routes = tmp_path / "routes"
+    _world(routes / "demo.world")
+    out = tmp_path / "sortie"
+    args = ["--out", str(out), "--routes", str(routes), "--seances", str(tmp_path / "s"), "--godot", str(tmp_path / "g")]
+    assert cs.main(args) == 2 and "mondes trouvés : 1" in capsys.readouterr().out          # le parcours installé compte
+    assert cs.main([*args, "--balades-seules"]) == 2
+    assert "mondes trouvés : 0" in capsys.readouterr().out
+
+
+def test_banc_multi_zones_controle_la_balade_seule():
+    """Chaque étape du banc multi-zones contrôle sa balade seule, avec un délai du contrôle sous celui de l'étape."""
+    import re
+    import tomllib
+    texte = (ROOT / "scripts" / "file_bancs" / "ow_multi_zones.toml").read_text(encoding="utf-8")
+    etapes = tomllib.loads(texte)["pr"][0]["etape"]
+    assert etapes
+    for e in etapes:
+        appel = re.search(r"controle_sol_route\.py[^|]*", e["commande"]).group(0)
+        assert "--balades-seules" in appel, e["id"]
+        delai = int(re.search(r"--delai-s (\d+)", appel).group(1))
+        assert delai < e["delai_min"] * 60 / 2, e["id"]

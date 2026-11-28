@@ -102,9 +102,9 @@ func _test_catalog() -> void:
 func _test_environment() -> void:
 	var low: Dictionary = RogueEnvironment.settings("low")
 	var high: Dictionary = RogueEnvironment.settings("high")
-	_check(low["glow_levels"] == 3 and high["glow_levels"] == 5, "glow : 3 niveaux en low, 5 en high (lot R27)")
-	_check(RogueEnvironment.settings("medium")["glow_levels"] == 5, "glow : 5 niveaux en medium")
-	_check(absf(low["glow_bloom"] - 0.05) < 0.001 and absf(high["glow_bloom"] - 0.10) < 0.001, "bloom 0,05 / 0,10 (lot R27)")
+	_check(low["glow_levels"] == 3 and high["glow_levels"] == 4, "glow : 3 niveaux en low, 4 en high (lot R28)")
+	_check(RogueEnvironment.settings("medium")["glow_levels"] == 4, "glow : 4 niveaux en medium (lot R28)")
+	_check(absf(low["glow_bloom"] - 0.05) < 0.001 and absf(high["glow_bloom"]) < 0.001, "bloom 0,05 en low, aucun en high (lot R28)")
 	_check(low["fog_end_m"] == 400.0 and high["fog_end_m"] == 900.0, "brume 400 m / 900 m")
 	_check(high["chromatic"] and not low["chromatic"], "aberration chromatique seulement en high")
 	_check(low["particles_share"] < RogueEnvironment.settings("medium")["particles_share"], "particules 25 % < 60 %")

@@ -131,6 +131,12 @@ CAS: list[dict[str, Any]] = [
                            "elapsed_s": 42.0, "gap_to_pr_s": -1.6},
                "powerup": {"held": "aero", "active": None, "remaining_s": 0.0}},
      "shown": ["bots_panel", "segment_panel", "bonus_panel"]},
+    # Lot TT-BONUS (révision IPC à la fusion) : temps gagné par le bonus fini, 6 s, à la place de la ligne du bonus actif.
+    {"name": "bonus_actif_30s", "state": {"powerup": {"held": "power", "active": "aero", "remaining_s": 21.0}},
+     "shown": ["bonus_panel"]},
+    {"name": "bonus_temps_gagne", "state": {"powerup": {"held": "power", "active": None, "remaining_s": 0.0,
+                                                        "gain": {"kind": "aero", "gain_s": 4.2}}},
+     "shown": ["bonus_panel"]},
     # Lot NI1 : la cible ERG n'est plus qu'au bandeau ERG (case CIBLE ERG de la colonne gauche retirée).
     {"name": "erg_cible", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "texts_contains": {"erg_target": "230 W"},
      "shown": ["erg_target", "erg_hist"], "hidden": ["gear", "profile"]},

@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import subprocess
+import threading
 import time
 import unicodedata
 import urllib.parse
@@ -27,9 +28,11 @@ log = logging.getLogger("world_menu")
 
 PLACES_PATH = Path(__file__).parent / "data" / "places.json"
 MAX_PLACES = 50
+NAME_MAX = 80          # longueur maximale d'un nom, schéma `places` (revue vague 3, E3-03)
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_PERIOD_S = 1.0
 QUERY_TIMEOUT_S = 20.0
+MAP_TIMEOUT_S = 45.0     # carte : tuiles vectorielles absentes téléchargées d'abord (menu_query, 25 novembre)
 # Nom de client générique, sans lien vers le dépôt ni le compte (audit du 22/11, V4).
 USER_AGENT = f"OpenRide/{__version__}"
 MAX_RADIUS_M = 20_000.0
@@ -60,6 +63,13 @@ def _default_fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
         return r.read()
 
 
+def _clip_name(name: str, limit: int = NAME_MAX) -> str:
+    """Nom complet de Nominatim borné à la longueur du schéma `places` (80 caractères, « … » compris) ;
+    revue vague 3, E3-03 : le core coupait à 120."""
+    name = name.strip()
+    return name if len(name) <= limit else name[: limit - 1].rstrip() + "…"
+
+
 class WorldMenu:
     def __init__(self, network: bool = True, config_path: Path | None = None, places_path: Path = PLACES_PATH,
                  query_cmd: list[str] | None = None, fetch: Callable[[str, dict[str, str], float], bytes] = _default_fetch,
@@ -72,6 +82,12 @@ class WorldMenu:
         self.sleep = sleep
         self._last_nominatim = -1e9
         self.nominatim_requests = 0
+        # Recherches lancées chacune dans un fil (une par lettre tapée) : Nominatim est interrogé une requête à la
+        # fois (verrou), et seulement pour la dernière recherche demandée (`new_search`) ; les saisies déjà
+        # dépassées n'y vont pas (bancs du 25 novembre : réponses dans le désordre, politique de Nominatim qui
+        # exclut l'autocomplétion).
+        self._nominatim_lock = threading.Lock()
+        self._search_ticket = 0
         self._places: list[tuple[str, str, str, float, float]] = []   # (nom replié, nom, genre, lat, lon)
         try:
             doc = json.loads(Path(places_path).read_text(encoding="utf-8"))
@@ -91,12 +107,12 @@ class WorldMenu:
         return [{"name": n, "kind": k, "lat": lat, "lon": lon, "cached": False, "source": "embedded"}
                 for _f, n, k, lat, lon in hits[:limit]]
 
-    def query(self, *args: str) -> dict[str, Any]:
+    def query(self, *args: str, timeout: float = QUERY_TIMEOUT_S) -> dict[str, Any]:
         """Lance `menu_query` ; {} en cas d'échec (compilateur absent, délai dépassé, sortie illisible)."""
         cmd = [*(self.query_cmd or worldmenu_command()), *(["--config", str(self.config_path)] if self.config_path else []),
                *args]
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=QUERY_TIMEOUT_S, check=False)   # noqa: S603
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)   # noqa: S603
             out = json.loads(res.stdout.strip().splitlines()[-1]) if res.stdout.strip() else {}
         except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
             log.warning("Requête du menu (%s) impossible : %s", args[0] if args else "?", exc)
@@ -106,16 +122,30 @@ class WorldMenu:
             return {}
         return out
 
-    def nominatim(self, text: str) -> list[dict[str, Any]]:
-        wait = self._last_nominatim + NOMINATIM_PERIOD_S - self.clock()
-        if wait > 0:
-            self.sleep(wait)
-        self._last_nominatim = self.clock()
-        self.nominatim_requests += 1
-        url = NOMINATIM_URL + "?" + urllib.parse.urlencode({"q": text, "format": "jsonv2", "limit": 10})
+    def new_search(self) -> int:
+        """Numéro de la recherche demandée, à prendre dans l'ordre d'arrivée des commandes (boucle du core) et à
+        passer à `search` : une recherche dont le numéro n'est plus le dernier ne demande rien à Nominatim."""
+        self._search_ticket += 1
+        return self._search_ticket
+
+    def nominatim(self, text: str, ticket: int | None = None) -> list[dict[str, Any]]:
+        with self._nominatim_lock:
+            if ticket is not None and ticket != self._search_ticket:
+                return []   # saisie dépassée : la réponse serait ignorée par l'engine
+            wait = self._last_nominatim + NOMINATIM_PERIOD_S - self.clock()
+            if wait > 0:
+                self.sleep(wait)
+                if ticket is not None and ticket != self._search_ticket:
+                    return []
+            self._last_nominatim = self.clock()
+            self.nominatim_requests += 1
+            url = NOMINATIM_URL + "?" + urllib.parse.urlencode({"q": text, "format": "jsonv2", "limit": 10})
+            return self._nominatim_fetch(url)
+
+    def _nominatim_fetch(self, url: str) -> list[dict[str, Any]]:
         try:
             rows = json.loads(self.fetch(url, {"User-Agent": USER_AGENT, "Accept-Language": "fr"}, 10.0))
-            return [{"name": str(r["display_name"])[:120], "kind": place_kind(r.get("type", "")), "lat": round(float(r["lat"]), 5),
+            return [{"name": _clip_name(str(r["display_name"])), "kind": place_kind(r.get("type", "")), "lat": round(float(r["lat"]), 5),
                      "lon": round(float(r["lon"]), 5), "cached": False, "source": "nominatim"} for r in rows]
         except (OSError, ValueError, KeyError, TypeError) as exc:
             log.warning("Nominatim indisponible : %s", exc)
@@ -123,7 +153,7 @@ class WorldMenu:
 
     # --- commandes -----------------------------------------------------------------------------
 
-    def search(self, request_cmd_id: int, text: Any) -> list[dict[str, Any]]:
+    def search(self, request_cmd_id: int, text: Any, ticket: int | None = None) -> list[dict[str, Any]]:
         text = text.strip() if isinstance(text, str) else ""
         items: list[dict[str, Any]] = []
         if text:
@@ -131,7 +161,7 @@ class WorldMenu:
             items += [{**i, "kind": place_kind(i.get("kind"))}
                       for i in self.query("search", "--text", text, "--limit", str(MAX_PLACES)).get("items", [])]
             if self.network and len(items) < MAX_PLACES:
-                items += self.nominatim(text)
+                items += self.nominatim(text, ticket)
         seen: set[tuple[str, int, int]] = set()
         unique = []
         for it in items:
@@ -151,7 +181,8 @@ class WorldMenu:
             lat = lon = radius = 0.0
             roads: list[dict[str, Any]] = []
         else:
-            roads = self.query("map", "--lat", repr(lat), "--lon", repr(lon), "--radius", repr(radius)).get("roads", [])
+            roads = self.query("map", "--lat", repr(lat), "--lon", repr(lon), "--radius", repr(radius),
+                               timeout=MAP_TIMEOUT_S).get("roads", [])
         return build_world_messages("world_map", request_cmd_id, "roads", roads,
                                     extra={"lat": lat, "lon": lon, "radius_m": radius})
 

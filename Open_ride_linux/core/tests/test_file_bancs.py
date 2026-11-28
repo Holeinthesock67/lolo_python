@@ -27,6 +27,12 @@ mb = _load("menu_bench", ROOT / "engine" / "tests" / "menu_bench.py")
 PY = sys.executable
 
 
+@pytest.fixture(autouse=True)
+def durees_dans_tmp(tmp_path, monkeypatch):
+    """Durées des étapes (lot DM1) écrites dans le dossier du test, jamais dans le HOME."""
+    monkeypatch.setenv("OPENRIDE_DUREES_BANCS", str(tmp_path / "durees_bancs.json"))
+
+
 def _git(cwd, *args):
     subprocess.run(["git", "-C", str(cwd), *args], check=True, capture_output=True)
 
@@ -761,3 +767,48 @@ def test_o2_13_amorce_naffecte_pas_le_dossier_du_cache_reel(tmp_path, depot, mon
     con = sqlite3.connect(monde / "index.sqlite")
     assert con.execute("SELECT key FROM entries").fetchall() == [("osm:fr",)]
     con.close()
+
+
+def test_signature_commune_aux_files_et_delais_internes():
+    """Lot DM1 : même mesure d'une file à l'autre (sorties et têtes ignorées) ; délais internes relevés."""
+    a = "python engine/tests/menu_bench.py --native --scenario ow_zone_lyon --qualite medium --out /x/a/banc"
+    b = "python engine/tests/menu_bench.py --scenario ow_zone_lyon --qualite medium --out /y/b"
+    assert fb.signature(a) == fb.signature(b) == "menu_bench.py scenario=ow_zone_lyon qualite=medium"
+    assert fb.signature("echo 1").startswith("commande:")
+    c = "timeout 300 godot --import; python3 scripts/controle_sol_route.py --out x --delai-s 1800"
+    assert sorted(fb.delais_internes(c)) == [300, 1800]
+
+
+def test_delai_tire_des_durees_mesurees(tmp_path):
+    d = fb.Durees(tmp_path / "d.json")
+    e = fb.Etape("zone", "python engine/tests/menu_bench.py --scenario ow_zone_grenoble", delai_min=30)
+    assert d.delai_min(e) == (30, "")
+    d.noter(e, fb.OK, 25 * 60, 30 * 60)                       # 25 min sur 30 : trop juste
+    assert d.delai_min(e)[0] == pytest.approx(37.5) and "1.5" in d.delai_min(e)[1]
+    d.noter(e, fb.OK, 200 * 60, 37.5 * 60)                    # plafond : 4 × delai_min
+    assert d.delai_min(e)[0] == 120
+    assert fb.Durees(tmp_path / "d.json").delai_min(e)[0] == 120   # relu d'une file à l'autre
+    f = fb.Etape("endurance", "python3 engine/tests/essai_endurance.py", delai_min=240)
+    d.noter(f, fb.DELAI, 240 * 60, 240 * 60)                  # DÉLAI sans durée connue : délai doublé
+    assert d.delai_min(f)[0] == 480 and "arrêté à 240 min" in d.delai_min(f)[1]
+    for _ in range(fb.DUREES_GARDEES):
+        d.noter(f, fb.OK, 100 * 60, 480 * 60)                 # les vieilles durées sortent
+    assert d.delai_min(f) == (240, "")
+
+
+def test_file_note_la_duree_et_allonge_le_delai(tmp_path, depot):
+    _, clone = depot
+    f = _file(tmp_path, clone, f"""
+[[pr]]
+id = "p"
+branche = "br"
+[[pr.etape]]
+id = "court"
+commande = "{PY} -c 'import time; time.sleep(1.5)'"
+delai_min = 0.02
+""")
+    assert fb.main(["lancer", str(f), "--sans-reseau"]) == 1                  # 1,2 s de délai : DÉLAI
+    assert _etat(tmp_path)["prs"]["p"]["court"]["verdict"] == fb.DELAI
+    assert fb.main(["relancer", str(f), "--sans-reseau"]) == 0                # 2,4 s : passe
+    r = _etat(tmp_path)["prs"]["p"]["court"]
+    assert r["verdict"] == fb.OK and r["delai_s"] >= 2

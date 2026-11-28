@@ -79,6 +79,8 @@
         "restore_profile",
         "reset_profile_stats",
         "undo_profile_reset",
+        "list_profile_backups",
+        "restore_profile_backup",
         "recover_session",
         "scene_ready",
         "list_history",
@@ -90,13 +92,15 @@
         "clear_watch_advice",
         "list_collection",
         "collection_seen",
+        "list_power_curve",
         "list_mode_options",
         "set_mode_option",
         "set_bots",
         "u_turn",
         "bots_preview",
         "league_status",
-        "league_new"
+        "league_new",
+        "create_diagnostic"
       ]
     },
     "args": {

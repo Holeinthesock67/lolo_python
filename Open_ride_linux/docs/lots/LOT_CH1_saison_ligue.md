@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CH : module pur `league.py` (calendrier de 8 manches, 11 rivaux fixes, barème, 6 meilleurs, classique, pause, trophées), saison dans `ligue.json` du profil | Python | CH0 (livré, #968), BR4 (#986, rivaux) | Moyenne | En PR le 21 novembre 2026 ; core seul, sans contrat ni affichage |
+| Série CH : module pur `league.py` (calendrier de 8 manches, 11 rivaux fixes, barème, 6 meilleurs, classique, pause, trophées), saison dans `ligue.json` du profil | Python | CH0 (livré, #968), BR4 (#986, rivaux) | Moyenne | **Livré le 22 novembre** (PR #972) |
 
 Série CH (version 6.0, ligue d'hiver, demande du propriétaire du 21 novembre 2026). Plan : `docs/6.0/PLAN_SERIE_CH.md`.
 

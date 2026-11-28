@@ -21,6 +21,9 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
   les `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
   z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre, sauf la mer et
   la côte, découpées au carré (lot W23, `square_coast.py`) ;
+- `bridges.json` (lot EA4) et `tunnels.json` (lot EA5) : ponts et tunnels des arêtes, rangés dans le carré du
+  milieu de leur portion ; la colline reste au-dessus d'un tunnel (ni fondu ni entaille), l'engine ne dessine pas
+  le terrain dans le tube ;
 - `edges.json` : arêtes dont le premier nœud est dans le carré, avec leur profil, dans le repère
   de zone (pour la route engagée, W8) ;
 - `meta.json` : versions (générateur, schéma et date de la base, relief) et nombres d'objets.
@@ -62,10 +65,11 @@ from .store import WorldCache
 # 5 (20/11) : garde-fou de la chaussée (#936), ponts compris, sur la largeur du ruban de l'engine ; 8 (21/11) : règle
 # unique sol / route (road_ground.py : route de l'engine, talus appuyés). Un même numéro pour
 # deux contenus différents garderait un carré périmé en cache : à chaque fusion, garder un numéro plus grand que tous
-# ceux déjà dans main. Carrés recalculés. 6 réservé (EA5) ; 7 (20/11) : fond des lacs fondu avec la route (rive en
+# ceux déjà dans main. Carrés recalculés. 6 (EA5) jamais fusionné ; 7 (20/11) : fond des lacs fondu avec la route (rive en
 # pente douce au lieu d'une chute de 7 m sous la chaussée) ; 9 (21/11) : garde-fou d'altitude du profil des arêtes
-# (altitude_guard.py : trous et pics du relief, pente et changement de pente bornés, pente des nœuds).
-WORLDGEN_VERSION = 9
+# (altitude_guard.py : trous et pics du relief, pente et changement de pente bornés, pente des nœuds) ; 10 (22/11) :
+# tunnels dessinés (lot EA5, couche `tunnels` du carré).
+WORLDGEN_VERSION = 10
 # Règle sol / route du carré (road_ground.fit) en SQUARE_ROUNDS paires de passes ; chaque passe ne lit que le relief à
 # deux cases d'un sommet : relief proche calculé avec RING_CELLS cases de plus tout autour, bords communs identiques.
 # Marges du carré (21/11) : la balade, rééchantillonnée tous les 10 m sur ses arêtes, s'écarte de quelques cm de la
@@ -477,7 +481,8 @@ def square_relief(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProf
     up_all = [np.concatenate([u[c] for u in upper]) if upper else np.empty(0) for c in range(4)]
     lo_all = [np.concatenate([lo[c] for lo in lower]) if lower else np.empty(0) for c in range(4)]
     RG.fit_grid(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, up_all[:3],
-                RG.drop_covered_feet(up_all, lo_all, up_all[3], lo_all[3]), rounds=SQUARE_ROUNDS)
+                RG.drop_covered_feet(up_all, lo_all, up_all[3], lo_all[3], keep_compatible=False),
+                rounds=SQUARE_ROUNDS)
     return ground, y[s:-s, s:-s].astype("<f4")
 
 
@@ -662,6 +667,30 @@ def square_bridges(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgePro
     return {"version": BR.BRIDGES_VERSION, "bridges": out}
 
 
+def square_tunnels(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile]) -> dict[str, Any]:
+    """Tunnels du carré (lot EA5, `tunnels.py`) : portions « tunnel » des arêtes, rangées dans le carré qui contient
+    le milieu du tunnel ; axe au profil de l'arête (celui de la route engagée). Coordonnées horizontales relatives
+    au coin du carré, comme les ponts."""
+    from .. import tunnels as TU
+
+    x0, z0 = key.corner
+    out = []
+    for k in sorted(profiles):
+        e, p = graph.edges[k], profiles[k]
+        for n, (s0, s1, kind) in enumerate(e.spans):
+            if kind != "tunnel":
+                continue
+            sm = 0.5 * (float(s0) + float(s1))
+            if not key.contains(float(np.interp(sm, p.s, p.x)), float(np.interp(sm, p.s, p.z))):
+                continue
+            item = TU.tunnel_item(f"{e.id}_{n}", p.s, p.x, p.z, p.alt_m, s0, s1, C.ROAD_HALF_WIDTH_M)
+            if item is None:
+                continue
+            item["points"] = [[round(a - x0, 2), round(b - z0, 2), c] for a, b, c in item["points"]]
+            out.append(item)
+    return {"version": TU.TUNNELS_VERSION, "tunnels": out}
+
+
 def _round(a: np.ndarray, digits: int) -> list[float]:
     return [round(float(v), digits) for v in a]
 
@@ -719,10 +748,11 @@ def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cach
     ground, near = square_relief(key, graph, profiles, provider, frame, water)
     layers = square_layers(key, db, near, provider, frame, water, ground)
     layers["bridges"] = square_bridges(key, graph, profiles, provider, frame)
+    layers["tunnels"] = square_tunnels(key, graph, profiles)
     counts = {"edges": len(profiles), "buildings": len(layers["buildings"]["buildings"]),
               "vegetation": len(layers["vegetation"]["areas"]), "water_lines": len(layers["water"]["lines"]),
               "water_areas": len(layers["water"]["areas"]), "poi": len(layers["poi"]["points"]),
-              "bridges": len(layers["bridges"]["bridges"]),
+              "bridges": len(layers["bridges"]["bridges"]), "tunnels": len(layers["tunnels"]["tunnels"]),
               "sea": sum(1 for a in layers["water"]["areas"] if a["kind"] == "sea"),
               "coast_lines": len(layers["coast"]["lines"]), "beaches": len(layers["coast"]["beaches"])}
     meta = {"zone": key.zone, "ix": key.ix, "in": key.i_n, "corner": list(key.corner), "versions": versions,

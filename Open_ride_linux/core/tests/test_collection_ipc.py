@@ -2,7 +2,7 @@
 
 Vérifie :
 1. Schémas et messages valides selon Draft202012Validator.
-2. Taille du message sous 60 000 octets avec 42 cartes gagnées et 10 éditions de saison.
+2. Taille du message sous 60 000 octets avec 53 cartes gagnées et 10 éditions de saison.
 3. Séparation stricte entre profil d'essai et profil de joueur.
 4. Commande collection_seen : mise à jour de collection_vue.json et refus (bad_args) des clés inconnues.
 5. Objet facultatif summary.collection à la fin de séance (présent si nouvelle carte, absent sinon).
@@ -133,13 +133,13 @@ def test_state_schema_contains_optional_collection_summary():
 
 
 # ==============================================================================================
-# 2. Critère d'acceptation : taille maximale sous 60 000 octets (42 cartes + 10 saisons)
+# 2. Critère d'acceptation : taille maximale sous 60 000 octets (53 cartes + 10 saisons)
 # ==============================================================================================
 
 def test_worst_case_collection_message_size_and_schema():
-    """42 cartes gagnées + 10 éditions de saison (52 au total) tiennent largement sous 60 000 octets."""
+    """53 cartes gagnées + 10 éditions de saison (63 au total) tiennent largement sous 60 000 octets."""
     catalogue = load_catalogue()
-    assert len(catalogue) == 42
+    assert len(catalogue) == 53
 
     cards_list = [
         {
@@ -154,7 +154,7 @@ def test_worst_case_collection_message_size_and_schema():
     ]
 
     earned_list = []
-    # 42 cartes standard
+    # 53 cartes standard
     for i, c in enumerate(catalogue):
         earned_list.append({
             "id": c.id,
@@ -185,7 +185,7 @@ def test_worst_case_collection_message_size_and_schema():
             "date": f"{yr}-10-31",
         })
 
-    assert len(earned_list) == 52
+    assert len(earned_list) == 63
 
     msg = {
         "type": "collection",
@@ -203,7 +203,7 @@ def test_worst_case_collection_message_size_and_schema():
 
     payload = json.dumps(msg, ensure_ascii=False).encode("utf-8")
     assert len(payload) <= MAX_LIST_DATAGRAM_SIZE
-    assert len(payload) < 25000, f"Taille mesurée {len(payload)} octets (loin sous la limite)"
+    assert len(payload) < 32000, f"Taille mesurée {len(payload)} octets (loin sous la limite)"
 
 
 # ==============================================================================================
@@ -326,7 +326,7 @@ def test_session_collection_commands(tmp_path, monkeypatch):
     resp = mock_server.sent[0]
     assert resp["type"] == "collection"
     assert resp["request_cmd_id"] == 10
-    assert resp["cards_count"] == 42
+    assert resp["cards_count"] == 53
     assert resp["first_time"] is True
     assert {e["id"] for e in resp["earned"]} == {"premiere_seance"}
     assert resp["new"] == ["premiere_seance"]
@@ -453,9 +453,49 @@ def test_session_finish_attaches_summary_collection(tmp_path, monkeypatch):
                 avg_power = 180.0
             return None, S(), None
 
+        def close_session(self, save=True, ts=None, private_start_m=0.0):   # fin de séance sans FIT (revue S1-02)
+            return self.finish(save, ts, private_start_m)
+
     s._rec = DummyRecorder()
     s._finish(save=True)
     assert s.state.summary is not None
     assert "collection" in s.state.summary
     assert s.state.summary["collection"]["card"]["id"] == "premiere_seance"
     assert s.state.summary["collection"]["others"] == 0
+
+
+# ==============================================================================================
+# Trophées de puissance (série PP, lot PP7b) : courbe de la séance lue dans le cache commun (PP1)
+# ==============================================================================================
+
+def test_power_trophies_from_session_curve(tmp_path):
+    """Séance fictive de 25 min à 255 W (FTP fictive 250 W) : paliers 5 min 250 W et 20 min 250 W."""
+    ctx = profiles.ProfileContext.for_id("cycliste-watts", base=tmp_path / "Profils")
+    path = ctx.journal_dir / "watts.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    start = 1772880000.0
+    n = 25 * 60
+    with JournalWriter(path, route_id="demo", source="live", profile={"profile_id": ctx.id}) as w:
+        w.event("start", start)
+        for i in range(1, n + 1):
+            w.record(Record(ts=start + i, t=float(i), distance=8.0 * i, alt=100.0, power=255.0))
+        w.event("stop", start + n + 1)
+
+    msg = build_collection_message(5, ctx)
+    assert_valid(msg)
+    earned = {e["id"] for e in msg["earned"]}
+    assert {"watts_5min_250", "watts_20min_200", "watts_20min_250"} <= earned
+    assert "watts_5min_300" not in earned and "watts_5s_600" not in earned
+    remaining = {r["id"]: (r["value"], r["target"]) for r in msg["remaining"]}
+    assert remaining["watts_5min_300"] == (255.0, 300.0)
+    assert ctx.mmp_cache.is_file(), "cache commun de la courbe (lot PP1)"
+
+
+def test_power_trophies_unreadable_cache_keeps_collection(tmp_path):
+    ctx = profiles.ProfileContext.for_id("cycliste-cache", base=tmp_path / "Profils")
+    write_test_journal(ctx.journal_dir / "a.jsonl", 1772880000.0, minutes=30.0, km=20.0, profile_id=ctx.id)
+    ctx.mmp_cache.parent.mkdir(parents=True, exist_ok=True)
+    ctx.mmp_cache.mkdir()            # un dossier à la place du fichier : cache illisible et non inscriptible
+    msg = build_collection_message(6, ctx)
+    assert_valid(msg)
+    assert "premiere_seance" in {e["id"] for e in msg["earned"]}

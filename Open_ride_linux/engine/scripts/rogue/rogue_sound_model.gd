@@ -68,6 +68,12 @@ var _music := {"bass": 0.0, "pulse": 0.0, "arp": 0.0, "chip": 0.0}
 var _corridor_id: int = -1
 var _corridor_cards: String = ""
 var in_run := false
+## Boss battu à sa phase 3 (événement `room_won` dans la trame qui suit une trame BOSS de phase 3) : décide du son
+## du bilan quand la trame ne porte pas encore le résultat (revue de code E10-03 : `summary` est nul pendant RESULTS).
+var boss_won := false
+## Phases où le Firewall poursuit le joueur (comme `rogue_hud_model.gd`, revue E10-04) : ailleurs le core envoie un
+## écart nul, qui donnait le ronflement au maximum et l'alarme de contact pendant l'échauffement et les couloirs.
+const FIREWALL_PHASES := ["ROOM", "BOSS"]
 
 
 func reset() -> void:
@@ -82,6 +88,7 @@ func reset() -> void:
 	_corridor_id = -1
 	_corridor_cards = ""
 	in_run = false
+	boss_won = false
 
 
 ## Sons à jouer depuis le dernier appel : liste de noms (déjà filtrés par le budget).
@@ -119,8 +126,8 @@ func on_loot(msg: Dictionary, now_s: float) -> void:
 	_corridor_cards = key
 
 
-## Trame `state` : `rogue` (objet ou null), `gear`, `seq`, `now_s` (secondes). `result` : « victory » ou autre,
-## pour le son du bilan.
+## Trame `state` : `rogue` (objet ou null), `gear`, `seq`, `now_s` (secondes). `result` : résultat du bilan
+## (`summary.rogue.result`) s'il est connu ; vide : victoire si le boss a été battu à sa phase 3 pendant la run.
 func update(rogue: Variant, gear: int, seq: int, now_s: float, result: String = "") -> void:
 	var dt := 0.0 if not is_finite(_last_time_s) else clampf(now_s - _last_time_s, 0.0, 1.0)
 	_last_time_s = now_s
@@ -140,6 +147,8 @@ func update(rogue: Variant, gear: int, seq: int, now_s: float, result: String = 
 			# c'est la phase de la trame précédente qui dit si c'était le boss.
 			if e == "room_won" and String(_prev.get("phase", "")) == "BOSS":
 				_request("rogue_boss_won", now_s)
+				if _prev.get("boss_phase", null) != null and int(_prev["boss_phase"]) >= 3:
+					boss_won = true
 			elif EVENT_SOUNDS.has(e):
 				_request(EVENT_SOUNDS[e], now_s)
 		if _prev.has("gear") and gear != int(_prev["gear"]):
@@ -162,14 +171,16 @@ func update(rogue: Variant, gear: int, seq: int, now_s: float, result: String = 
 			if phase == "COOLDOWN" and before != "COOLDOWN":
 				_request("rogue_chest", now_s)
 			elif phase == "RESULTS" and before != "RESULTS":
-				_request("rogue_result" if result == "victory" else "rogue_result_lost", now_s)
+				var won := (result == "victory") if result != "" else boss_won
+				_request("rogue_result" if won else "rogue_result_lost", now_s)
 		_prev = {"gear": gear, "shield": float(rogue.get("shield", 0.0)), "hack": typeof(rogue.get("hack", null)) == TYPE_DICTIONARY,
 			"boss_phase": rogue.get("boss_phase", null), "gold": int(rogue.get("gold", 0)), "phase": phase}
 	var contact := false
 	for ev in rogue.get("events", []):
 		if String(ev) == "firewall_contact":
 			contact = true
-	_fade(dt, {"overheat": bool(rogue.get("overheat", false)), "gap": float(rogue.get("firewall_gap_m", 1000.0)),
+	var gap := float(rogue.get("firewall_gap_m", 1000.0)) if phase in FIREWALL_PHASES else 1000.0
+	_fade(dt, {"overheat": bool(rogue.get("overheat", false)), "gap": gap,
 		"contact": contact}, MUSIC_BY_PHASE.get(phase, MUSIC_BY_PHASE["WARMUP"]))
 
 
