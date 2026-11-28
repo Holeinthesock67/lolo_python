@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Défi « bats ton record » dans « Ma puissance », parcours proposé, fantôme du record sur l'écran Prêt ; trophées par palier en PP7b | Python + GDScript | PP3, PP5 | Moyenne | PR ouverte le 21 novembre (série PP, 6.0), captures à valider par le propriétaire ; PP7b (trophées) en PR à part |
+| Défi « bats ton record » dans « Ma puissance », parcours proposé, fantôme du record sur l'écran Prêt ; trophées par palier en PP7b | Python + GDScript | PP3, PP5 | Moyenne | **Livré le 26 novembre** (PR #978) ; trophées PP7b (PR #980, 26 novembre) |
 
 ## 1. Objectif
 

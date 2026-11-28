@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Jauge de réserve W′ des bots sur les listes du Dernier survivant, du Grand Prix, de la Course et du vélodrome | GDScript | T15, PL1, CR1 | Petite | En PR le 21 novembre 2026 |
+| Jauge de réserve W′ des bots sur les listes du Dernier survivant, du Grand Prix, de la Course et du vélodrome | GDScript | T15, PL1, CR1 | Petite | **Livré le 25 novembre** (PR #967) |
 
 ## 1. Objectif
 

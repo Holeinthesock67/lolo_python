@@ -29,6 +29,7 @@ GUIDE_COMMANDS: dict[str, str] = {
     "openride-core profil list": "facultatif : les profils sont listés à l'écran « Qui roule ? »",
     "openride-core profil sauvegarde": "facultatif : copie faite seule chaque semaine et avant les mises à jour ; « Gérer : <profil> › Restaurer une sauvegarde » restaure (lot SV1)",
     "openride-core profil remise-a-zero": "facultatif : « Gérer : <profil> › Remettre à zéro mes statistiques » fait la même chose (lot RZ1)",
+    "openride-core diagnostic": "facultatif : « Réglages › Diagnostic » crée le même fichier (lot DG1)",
     "openride-core release-trainer": "secours en terminal : l'icône « Libérer le trainer » fait la même chose",
 }
 # Éditions de fichier que le guide demande encore, avec le lot qui les remplace.

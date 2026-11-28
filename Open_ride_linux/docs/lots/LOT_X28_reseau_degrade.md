@@ -43,7 +43,7 @@ Livré le 28 octobre (branche `claude/project-thread-818r6t-x28`).
   - Une réponse tronquée (`http.client.IncompleteRead`) n'était pas rattrapée par `Net` ni par `Downloader`. Elle devient une erreur de téléchargement ordinaire. Une tuile illisible est supprimée et redemandée après son recul.
 - **Options de test** du générateur : `--tiles-url` (autre TileJSON) et `--dem-url` (autre serveur de relief). Elles ne touchent pas `config.toml`.
 - **Outil** `openride-worldgen-netcheck`. Il lance le vrai `openride-worldgen` en sous-processus, avec le cache temporaire plafonné à 20 Mo, dont 18 Mo de vieilles entrées.
-  - Trajet : 20 s en temps accéléré ×50 à 12 m/s simulés, soit 12 km (25 s à ×40 jusqu'au 25 novembre, voir `docs/changements/X28b.md`). C'est assez pour sortir des cellules chargées au départ : le générateur demande des tuiles vers t = 12 s, en plein trajet (à ×8, tout était chargé au départ et les pannes ne touchaient jamais le trajet). Puis une seconde séance de 2 s au même départ.
+  - Trajet : 20 s en temps accéléré ×50 à 12 m/s simulés, soit 12 km (25 s à ×40 jusqu'au 25 novembre, voir le lot X28b dans `CHANGELOG.md`). C'est assez pour sortir des cellules chargées au départ : le générateur demande des tuiles vers t = 12 s, en plein trajet (à ×8, tout était chargé au départ et les pannes ne touchaient jamais le trajet). Puis une seconde séance de 2 s au même départ.
   - Scénarios dans `compiler/src/openride_compiler/worldgen/reseau/`.
   - Seuil de pause : le cycliste s'arrête, comme le core, sous 200 m de route connue devant lui. W16 n'admet aucune pause.
 - **Mesuré au cloud** (critère 1) : les quatre scénarios passent, en 41 à 52 s chacun.

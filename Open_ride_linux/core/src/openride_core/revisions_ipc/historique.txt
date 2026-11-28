@@ -1,0 +1,38 @@
+# Révisions numérotées du contrat IPC (lot CF2) : « révision | lots | ce qui change », une par ligne, dans l'ordre
+# des numéros. Seul le fil de fusion écrit ici (scripts/numeroter_revisions.py, sur la branche du train) ; une PR
+# qui change le contrat ajoute un fichier dans a_numeroter/ et ne touche ni ce fichier ni CONTRACT_REV.
+# Numéros 1.24 à 1.27 et 1.29 jamais utilisés comme tels (règle du 22 novembre, ipc_v1.md §8).
+1.6 | PL1 | peloton de 11 bots et un fantôme
+1.7 | GP2, VD6 | Grand Prix des objets, épreuves de piste
+1.8 | BC2 | collection de cartes
+1.9 | N17, N18 | demi-tour depuis la pause, bots changés en pause (`set_bots`)
+1.10 | N20 | bilan en tuiles
+1.11 | — | Y maintenu : demi-tour en roulant
+1.12 | CO3 | séance conseillée
+1.13 | TT1 | bonus tactiques
+1.14 | R21 | fin du Cyber-Rogue
+1.15 | — | import d'entraînements retiré
+1.16 | R22 | lisibilité du Cyber-Rogue
+1.17 | R23 | retours du Cyber-Rogue (fusionnée après la 1.18)
+1.18 | AS10 | liste `riders` de 10 cyclistes
+1.19 | GP13, GP14 | parcours propres à un mode et boîtes prises
+1.20 | AS11 | usagers de la route tous envoyés par parties, `road_part`
+1.21 | GP-voiture-modele | voiture d'équipe `team_car` dans `vehicles`
+1.22 | GP-niv, BOT-elo | effort des bots en watts et cote Elo, `bots_preview`, `summary.elo`
+1.23 | CR1 | mode « race », Course classique contre les bots
+1.24 | GPL1 | `free_route_tag`, parcours de mode resté libre (fusionnée après la 1.31)
+1.28 | R26 | puissance jugée et plage du Cyber-Rogue, adrénaline à l'échauffement
+1.30 | CH3 | ligue d'hiver, `league_status`, `league_new`, `start.league`, `summary.league`
+1.31 | RZ1 | remise à zéro des statistiques du profil, `reset_profile_stats`, `undo_profile_reset`, `profiles.resets`
+1.32 | GPO1 | `gp_event`, boîtes de famille par voie, effets d'objets tous à durée
+1.33 | EL1 | échauffement avant une course, écarts aux voisins, fin des épreuves de piste
+1.34 | RT2 | fin de séance commune, `arrival` de `state` et du bilan
+1.35 | PP3 | « Ma puissance », `list_power_curve` et `power_curve` (fusionnée après la 1.36)
+1.36 | SV1 | copies automatiques du profil, `list_profile_backups`, `restore_profile_backup`, `profile_backups`
+1.37 | DG1 | fichier de diagnostic, `create_diagnostic` et `diagnostic`
+1.38 | BA1 | geste des bots `move`
+1.39 | R28 | `rogue.target_pct` = plage jugée, bas = la consigne qui gagne, `in_target` entre à cette consigne
+1.40 | CH6 | palmarès de la ligue d'hiver, `league.history`
+1.41 | TT-BONUS | temps gagné par un bonus fini, champ facultatif `powerup.gain` ({kind, gain_s}, 6 s) ; Plume, Casque aéro et Puissance à 30 s et × 0,8, × 0,6, × 1,20
+1.42 | PP6b | Ajouts compatibles (série PP, lot PP6b « Jeu à ta mesure ») : champs facultatifs `hold_s` et `my_time_s` du message `bots_preview` (durée tenable à l'allure des bots et temps à fond du cycliste, lus sur sa courbe de puissance). Un engine plus ancien les ignore.
+1.43 | PP8b | Ajouts compatibles (série PP, lot PP8b, conseils du coach) : argument facultatif `on_ref` de `create_workout` (effort en % de ton meilleur 1 min ou 5 min), champ facultatif `target_w` de `workout_saved`, tableau facultatif `active.curve` du message `plans` (courbe avant et depuis le début du plan, 5 s, 1 min, 5 min, 20 min). Un engine plus ancien ne les envoie ni ne les lit.

@@ -32,6 +32,7 @@ RANGES = {
     "lon": (-180.0, 180.0),
     "grade_pct": (-C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT),
 }
+BANK_MAX_DEG = 50.0   # colonne facultative `bank_deg` (format 1.7), même borne que `openride_core.route`
 
 
 def _load(path: Path, problems: list[str]) -> dict | None:
@@ -101,6 +102,15 @@ def _check_route(r: dict, mroute: dict, problems: list[str]) -> None:
             problems.append(f"route : « surface » doit avoir {n} valeurs")
         elif any(v not in C.SURFACES for v in surface):
             problems.append(f"route : « surface » hors de {', '.join(C.SURFACES)}")
+
+    bank = r.get("bank_deg")   # facultative, depuis 1.7 (lot VD1) ; mêmes contrôles que le core (K4-09)
+    if bank is not None:
+        if not isinstance(bank, list) or len(bank) != n:
+            problems.append(f"route : « bank_deg » doit avoir {n} valeurs")
+        elif any(not _is_number(v) for v in bank):
+            problems.append("route : « bank_deg » contient des valeurs non numériques")
+        elif any(not -BANK_MAX_DEG <= v <= BANK_MAX_DEG for v in bank):
+            problems.append(f"route : « bank_deg » hors de ± {BANK_MAX_DEG:.0f}°")
 
     cols: dict[str, list] = {}
     for key in C.ROUTE_FIELDS + ("alt_raw_m",):

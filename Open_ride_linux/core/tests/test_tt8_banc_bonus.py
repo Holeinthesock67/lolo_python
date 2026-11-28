@@ -16,13 +16,15 @@ def test_report_is_replayable_and_complete():
     assert sum(a["draws"].values()) == 4
 
 
-def test_tactical_bonuses_in_target_classics_kept_as_2_0():
-    """Valeurs du rapport TT8 : les durées tactiques ajustées mettent leur médiane dans la cible ; le Casque et
-    la Puissance gardent les 15 s de la 2.0 (jeu `classiques` identique) et restent un peu en dessous."""
+def test_all_bonuses_in_their_target():
+    """Valeurs du rapport TT8 pour les bonus tactiques (1,5 à 2,5 s) ; lot TT-BONUS pour la Plume, le Casque et
+    la Puissance (× 0,8, × 0,6 et × 1,20 pendant 30 s : 3,5 à 7 s, au-dessus du bruit du trainer)."""
     report = bb.bench(DEFAULT_TABLE, passes=12, seed=8)
-    assert bb.verdict(report) == ["aero", "power"]
-    for kind in ("feather", "anvil", "draft_plus", "breakaway", "roller"):
+    assert bb.verdict(report) == []
+    for kind in ("anvil", "draft_plus", "breakaway", "roller"):
         assert 1.5 <= report["gains"][kind]["median_s"] <= 2.5, kind
+    for kind in ("feather", "aero", "power"):
+        assert 3.5 <= report["gains"][kind]["median_s"] <= 7.0, kind
 
 
 def test_almost_nothing_outside_the_ideal_terrain():
@@ -41,7 +43,7 @@ def test_refusal_reasons_follow_the_table():
 
 def test_values_file_is_tried(tmp_path, capsys):
     f = tmp_path / "powerups.toml"
-    f.write_text("[aero]\nduration_s = 20\n[power]\nduration_s = 18\n", encoding="utf-8")
+    f.write_text("[aero]\nduration_s = 20\n[power]\nduration_s = 18\n", encoding="utf-8")   # valeurs du fichier
     bb.main(["--passages", "6", "--values", str(f), "--json"])
     gains = json.loads(capsys.readouterr().out)["gains"]
     assert (gains["aero"]["duration_s"], gains["power"]["duration_s"]) == (20.0, 18.0)
