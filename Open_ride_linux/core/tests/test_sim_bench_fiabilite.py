@@ -1,6 +1,7 @@
 """Fiabilité du banc simulé (lot X35) : captures comptées après le chargement, images des captures hors
 p99, couches du compilateur vérifiées avant de construire le monde, vitesse imposée au trainer simulé."""
 
+import math
 import importlib.util
 import sys
 from pathlib import Path
@@ -131,6 +132,34 @@ def test_speed_check_on_journal_records():
     assert sb.speed_check([], 35.0) == (False, "aucun échantillon de vitesse au journal")
 
 
+def test_speed_check_ignores_descents_draft_and_coasting():
+    """Banc rOWlh (24/11) : monde ouvert à ± 13 %, médiane 33,7 km/h pour 30 imposés. Le cycliste simulé ne
+    freine pas : descentes, abri et élan qui suit sont hors médiane ; le plat et les montées comptent."""
+    recs = []
+    for i in range(400):
+        phase = (i // 50) % 2            # 50 s de plat ou montée, puis 50 s de descente
+        if phase:
+            grade, kmh = -6.0, 48.0
+        else:
+            k = i % 50                   # élan qui retombe vers 30 km/h
+            grade, kmh = 2.0, 30.0 + 18.0 * math.exp(-k / 8.0)
+        recs.append({"ts": 1000.0 + i, "speed": kmh / 3.6, "grade": grade, "grade_sent": grade})
+    every = sorted(x["speed"] * 3.6 for x in recs[20:])
+    assert abs(every[len(every) // 2] - 30.0) > 3.0          # l'ancienne médiane échouait
+    ok, msg = sb.speed_check(recs, 30.0)
+    assert ok is True and "hors descentes, abri et élan" in msg
+    # à l'abri d'un cycliste du décor sur le plat : hors médiane aussi
+    drafted = [{"ts": 1000.0 + i, "speed": (36.0 if 100 <= i < 200 else 30.0) / 3.6, "grade_sent": 0.0,
+                "draft": 0.3 if 100 <= i < 200 else 0.0} for i in range(260)]
+    assert sb.speed_check(drafted, 30.0)[0] is True
+    # vraie vitesse trop haute sur le plat : toujours un échec
+    assert sb.speed_check([{"ts": 1000.0 + i, "speed": 36 / 3.6, "grade_sent": 1.0} for i in range(120)],
+                          30.0)[0] is False
+    # tout en descente : médiane de tout le parcours, avec la mention
+    ok, msg = sb.speed_check([{"ts": 1000.0 + i, "speed": 45 / 3.6, "grade_sent": -5.0} for i in range(120)], 30.0)
+    assert ok is False and "tout le parcours compté" in msg
+
+
 def _args(**kw):
     base = dict(world="demo", workout=None, difficulty=None, duration=40.0, every=None, probe=False, speed_kmh=None)
     base.update(kw)
@@ -205,3 +234,28 @@ def test_shader_caches_kept_between_runs_when_warm(tmp_path: Path):
     cold = tmp_path / "froid"
     cold.mkdir()
     assert sb.link_shader_caches(cold, "froid", root) == [] and not (cold / ".cache").exists()
+    # Lot BF1 : froid à moitié, pour savoir quelle étape coûte (traduction de Godot ou pilote)
+    half = tmp_path / "pilote"
+    half.mkdir()
+    names = {p.name for p in sb.link_shader_caches(half, "froid-pilote", root)}
+    assert names == {"shader_cache"} and not (half / ".cache").exists()
+    other = tmp_path / "godot"
+    other.mkdir()
+    names = {p.name for p in sb.link_shader_caches(other, "froid-godot", root)}
+    assert "shader_cache" not in names and "vulkan" in names and "nvidia" in names
+
+
+def test_warm_run_on_empty_caches_is_judged_cold(tmp_path: Path):
+    """Lot BF1 (banc PC du 26/11, #1094) : le passage « chaud » d'une PR, premier sur son cache séparé, compilait tout
+    (16 s au chargement, 9,9 s au départ) et était jugé à 150 ms ; un cache vide se voit avant le passage."""
+    root = tmp_path / "caches"
+    assert sb.caches_empty("chaud", root)
+    home = tmp_path / "home"
+    home.mkdir()
+    sb.link_shader_caches(home, "chaud", root)
+    assert sb.caches_empty("chaud", root)   # dossiers créés, toujours vides
+    (root / "godot_shader_cache" / "a.cache").write_text("x")
+    assert sb.caches_empty("froid-godot", root) and not sb.caches_empty("froid-pilote", root)
+    (root / "nvidia" / "GLCache").mkdir(parents=True, exist_ok=True)
+    (root / "nvidia" / "GLCache" / "b").write_text("x")
+    assert not sb.caches_empty("chaud", root) and not sb.caches_empty("froid-godot", root)

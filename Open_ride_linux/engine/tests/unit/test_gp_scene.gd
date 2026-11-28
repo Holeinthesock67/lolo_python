@@ -138,6 +138,22 @@ func _run() -> void:
 	_check(w.size() == 1 and w[0]["text"] == "ZIOUF ! −2 s" and w[0]["target"] == "me", "glissade : « ZIOUF ! −2 s » (temps perdu)")
 	_check(m.words(10.0 + Model.WORD_S + 0.1).is_empty(), "onomatopée effacée")
 	_check(m.on_hit(hit, 20.0), "même coup plus tard : nouveau")
+	# E11-04 : deux charges du même objet à 1 s d'écart (copies à t, t+1, t+1, t+2, t+2, t+3) : deux mots, pas trois
+	var em = Model.new()
+	var use := {"type": "gp_event", "kind": "use", "item": "musette_x3", "rider": "bot4"}
+	var news := 0
+	for t in [50.0, 51.0, 51.0, 52.0, 52.0, 53.0]:
+		if em.on_event(use, t):
+			news += 1
+	_check(news == 2, "deux usages rapprochés du même objet : deux mots (%d)" % news)
+	# pause de 10 s entre la 1re et la 2e copie : les copies restantes ne sont pas rejouées
+	var pm2 = Model.new()
+	var box := {"type": "gp_event", "kind": "box", "item": "gel", "rider": "bot2"}
+	_check(pm2.on_event(box, 60.0), "boîte prise : nouveau")
+	pm2.set_paused(true, 60.5)
+	pm2.set_paused(false, 70.5)
+	_check(not pm2.on_event(box, 71.0) and not pm2.on_event(box, 72.0), "après une pause : copies restantes ignorées")
+	_check(pm2.on_event(box, 80.0), "même boîte bien plus tard : nouvelle")
 	m.on_hit({"item": "storm", "by": "bot1", "target": "bot3", "loss_s": 2.0}, 20.1)
 	_check(m.words(20.2).back()["text"] == "SPLASH ! −2 s", "orage : « SPLASH ! »")
 
@@ -187,6 +203,13 @@ func _run() -> void:
 	_check(_count_nodes(sc) == before, "aucune création de nœud en course (%d nœuds)" % before)
 	sc.step(null, riders, 1.0, cam)
 	_check(not sc.visible, "hors du mode : scène cachée")
+	# E11-03 : fin de séance (main.gd n'appelle plus step derrière les menus) : reset cache tout, averses coupées
+	sc.set_quality("high")
+	sc.step(full_gp, riders, 2.0, cam)
+	_check(sc.visible and (sc._rigs[0]["rain"] as CPUParticles3D).emitting, "en course : scène et averse")
+	sc.reset()
+	_check(not sc.visible and not sc.test_info()["active"] and not (sc._rigs[0]["rain"] as CPUParticles3D).emitting
+		and not (sc._rigs[0]["sparks"] as CPUParticles3D).emitting, "fin de séance : scène cachée, particules arrêtées")
 	sc.queue_free()
 	cam.queue_free()
 

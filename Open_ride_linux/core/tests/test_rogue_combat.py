@@ -292,18 +292,18 @@ def test_z_outside_markers_and_other_buttons_do_nothing():
 
 
 def test_overheat_only_in_endurance():
-    # 215 W : au-dessus du plafond et des 5 W de marge de l'affichage (lot R23)
+    # 230 W : au-dessus du plafond et de la tolérance (lots R23 et R28 : plafond de la consigne qui gagne)
     room = generate_room("diesel", "", "endurance", 240.0, RIDER, 1)
     for objective, expected in (("endurance", True), ("threshold", False)):
         st = replace(combat_start(room, 1), adrenaline=50.0)
         for _ in range(round(12 / DT)):
-            st, _ = combat_step(st, CombatInputs(power_w=215, cadence_rpm=85, posture="FLUIDE", gear=6,
+            st, _ = combat_step(st, CombatInputs(power_w=230, cadence_rpm=85, posture="FLUIDE", gear=6,
                                                  ftp_w=250, s_m=10.0, v_mps=8, objective=objective), room, B, DT)
         assert st.overheat is expected
         assert (st.adrenaline < 50.0) is expected
     st = replace(combat_start(room, 1), adrenaline=50.0)
     for _ in range(round(4 / DT)):
-        st, _ = combat_step(st, CombatInputs(power_w=215, cadence_rpm=85, posture="FLUIDE", gear=6, ftp_w=250,
+        st, _ = combat_step(st, CombatInputs(power_w=230, cadence_rpm=85, posture="FLUIDE", gear=6, ftp_w=250,
                                              s_m=10.0, v_mps=8, objective="endurance"), room, B, DT)
     assert not st.overheat
 

@@ -288,6 +288,113 @@ func _test_next_climb() -> void:
 		"boucle : montée trouvée après l'arrivée, à %.0f m" % c4.get("start_m", -1.0))
 
 
+## Prochaine montée gardée d'une trame à l'autre (lot EC7, revue vague 3 E4-01) : même réponse que la
+## recherche complète, sans la refaire à chaque trame.
+func _same_climb(a: Dictionary, b: Dictionary) -> bool:
+	if a.is_empty() or b.is_empty():
+		return a.is_empty() == b.is_empty()
+	return a["in_progress"] == b["in_progress"] and absf(a["start_m"] - b["start_m"]) <= 20.0 \
+		and absf(a["length_m"] - b["length_m"]) <= 20.0 and absf(a["avg_grade_pct"] - b["avg_grade_pct"]) <= 0.3
+
+
+## Sorte de réponse (aucune, à venir, en cours) : sert à sauter les points proches d'un changement de sorte,
+## où la grille de 10 m de la recherche complète peut basculer d'un côté ou de l'autre.
+func _climb_kind(c: Dictionary) -> int:
+	return 0 if c.is_empty() else (2 if c["in_progress"] else 1)
+
+
+## Balaye `route` de `from_s` à `to_s` par pas de `step` (trames) : compare au calcul complet et compte
+## les recherches complètes. Renvoie [écarts, points comparés].
+func _sweep_climb(vm, route, from_s: float, to_s: float, step: float, dir := 1) -> Array:
+	var bad := 0
+	var compared := 0
+	var s := from_s
+	while (s <= to_s + 1e-6) if dir > 0 else (s >= to_s - 1e-6):
+		var got: Dictionary = vm.next_climb_cached(route, s, 300.0, 3.0, dir)
+		var want: Dictionary = vm.next_climb(route, s, 300.0, 3.0, dir)
+		var k := _climb_kind(want)
+		var stable: bool = _climb_kind(vm.next_climb(route, s - 30.0 * dir, 300.0, 3.0, dir)) == k \
+			and _climb_kind(vm.next_climb(route, s + 30.0 * dir, 300.0, 3.0, dir)) == k
+		if stable:
+			compared += 1
+			if not _same_climb(got, want):
+				bad += 1
+				if bad <= 3:
+					print("  écart à s = %.0f m : gardé %s, complet %s" % [s, got, want])
+		s += step * dir
+	return [bad, compared]
+
+
+func _test_next_climb_cached() -> void:
+	# Deux montées (800 m à 7 %, puis 500 m à 5 %) sur un parcours ouvert de 4 km.
+	var alts := _climb_alts(1000.0, 800.0, 7.0, 600.0)
+	var top: float = alts[alts.size() - 1]
+	for i in range(1, 51):
+		alts.append(top + i * 10.0 * 0.05)
+	for i in range(1, 111):
+		alts.append(top + 25.0)
+	var route = _make_route(alts, 10.0)
+	var vm = HudViewModel.new()
+	var r: Array = _sweep_climb(vm, route, 0.0, route.length_m, 0.37)   # ~40 km/h à 30 trames/s
+	_check(r[0] == 0 and r[1] > 5000, "montée gardée = recherche complète sur tout le parcours (%d écarts sur %d points)" % r)
+	_check(vm.climb_scans <= 8,
+		"montée gardée : %d recherches complètes pour %d trames (une par trame avant EC7)" % [vm.climb_scans,
+			int(route.length_m / 0.37)])
+	# Après la dernière montée : rien devant, plus aucune recherche tant qu'on avance.
+	vm.next_climb_cached(route, 3000.0)
+	var before: int = vm.climb_scans
+	for k in range(1, 301):
+		vm.next_climb_cached(route, 3000.0 + k * 0.37)
+	_check(vm.climb_scans == before and vm.next_climb_cached(route, 3200.0).is_empty(),
+		"plus de montée devant : aucune recherche par trame (%d de plus)" % (vm.climb_scans - before))
+	# Recul (retour au départ, nouvelle séance) : recherche refaite, montée de nouveau annoncée.
+	var back: Dictionary = vm.next_climb_cached(route, 0.0)
+	_check(vm.climb_scans == before + 1 and _same_climb(back, vm.next_climb(route, 0.0)),
+		"position revenue en arrière : recherche refaite (%s)" % back)
+	# Route changée sur place (révision du monde ouvert) : plate, plus de montée annoncée.
+	vm.next_climb_cached(route, 100.0)
+	var flat = _make_route(_climb_alts(1000.0, 0.0, 0.0, 3000.0), 10.0)
+	var flat_dict := {"version": "1.0", "ds_m": 10.0, "n": flat.n, "length_m": flat.length_m, "type": "open",
+		"lat": Array(flat.lat), "lon": Array(flat.lon), "alt_m": Array(flat.alt_m), "x": Array(flat.x),
+		"z": Array(flat.z), "grade_pct": Array(flat.grade_pct), "heading_deg": Array(flat.heading_deg)}
+	var rev0: int = route.revision
+	_check(route.load_route_dict(flat_dict) and route.revision == rev0 + 1, "route rechargée : révision suivante")
+	_check(vm.next_climb_cached(route, 110.0).is_empty(), "route changée sur place : la montée gardée est oubliée")
+	# À rebours : mêmes réponses que la recherche complète.
+	var vm2 = HudViewModel.new()
+	var r2: Array = _sweep_climb(vm2, _make_route(alts, 10.0), 4000.0, 0.0, 0.53, -1)
+	_check(r2[0] == 0 and r2[1] > 3000 and vm2.climb_scans <= 8,
+		"à rebours : %d écarts sur %d points, %d recherches complètes" % [r2[0], r2[1], vm2.climb_scans])
+	# Boucle : la montée après l'arrivée est annoncée en traversant l'arrivée, sans recherche à chaque trame.
+	var la := []
+	for i in range(201):
+		var x := i * 10.0
+		var a := 0.0
+		if x <= 400.0:
+			a = x * 0.06
+		elif x <= 1600.0:
+			a = 24.0 - (x - 400.0) * 0.02
+		la.append(100.0 + a)
+	var loop = _make_route(la, 10.0, true)
+	var vm3 = HudViewModel.new()
+	var r3: Array = _sweep_climb(vm3, loop, 1000.0, 3600.0, 0.41)   # deux passages de l'arrivée
+	_check(r3[0] == 0 and r3[1] > 4000 and vm3.climb_scans <= 8,
+		"boucle : %d écarts sur %d points, %d recherches complètes" % [r3[0], r3[1], vm3.climb_scans])
+	# Mesure (cas du constat E4-01) : 20 km sans montée devant, recherche complète contre trame gardée.
+	var long_flat = _make_route(_climb_alts(10000.0, 0.0, 0.0, 10000.0), 10.0)
+	var vm4 = HudViewModel.new()
+	var full_ms := PerfBudget.measure_ms(func():
+		for i in range(5):
+			vm4.next_climb(long_flat, 0.37 * i), 1, 0) / 5.0
+	vm4.next_climb_cached(long_flat, 0.0)
+	var frame_ms := PerfBudget.measure_ms(func():
+		for i in range(1, 301):
+			vm4.next_climb_cached(long_flat, 0.37 * i), 3, 1) / 300.0
+	print("Mesure : prochaine montée sur 20 km sans montée, recherche complète %.3f ms, trame gardée %.4f ms" % [
+		full_ms, frame_ms])
+	_check(PerfBudget.check("hud_next_climb_frame", frame_ms), "prochaine montée par trame dans le budget (%.4f ms)" % frame_ms)
+
+
 ## Lignes du HUD de séance (main.gd) : SIM, ERG, palier à 50 W (lot O19), fréquence cardiaque.
 func _test_session_lines() -> void:
 	var sim := {"power": 251.6, "power_3s": 245.3, "v": 10.0, "cadence": 88, "hr": 151, "gear": 9,
@@ -426,6 +533,7 @@ func _init() -> void:
 	_test_profile_open()
 	_test_profile_loop()
 	_test_next_climb()
+	_test_next_climb_cached()
 	_test_zones()
 	_test_difficulty()
 	print("test_hud_view_model : %d vérifications, %d échecs" % [_checked, _failures])

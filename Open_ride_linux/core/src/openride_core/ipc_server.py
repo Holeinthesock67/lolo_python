@@ -16,7 +16,7 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
-from . import __version__, latency_log
+from . import __version__, latency_log, revisions_ipc
 from .ipc_budget import encode, fit_state
 
 log = logging.getLogger("ipc_server")
@@ -26,7 +26,9 @@ CONTRACT_VERSION = 1
 # du 27 octobre ; 127.0.0.1, sans fragmentation). Une trame state plus grande est allégée, les autres jetées.
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.36"   # 1.36 : copies automatiques du profil, `list_profile_backups`, `restore_profile_backup`, `profile_backups` (lot SV1) ; 1.35 : « Ma puissance », `list_power_curve` et `power_curve` (lot PP3, fusionnée après la 1.36) ; 1.34 : fin de séance commune, `arrival` de `state` et du bilan (lot RT2) ; 1.33 : échauffement avant une course, écarts aux voisins et fin des épreuves de piste (lot EL1, essai du 21/11) ; 1.32 : `gp_event`, boîtes de famille par voie, effets d'objets tous à durée (lot GPO1) ; 1.31 : remise à zéro des statistiques du profil, `reset_profile_stats`, `undo_profile_reset`, `profiles.resets` (lot RZ1) ; 1.30 : ligue d'hiver, `league_status`, `league_new`, `start.league`, `summary.league` (lot CH3) ; 1.28 : puissance jugée et plage du Cyber-Rogue, adrénaline à l'échauffement (lot R26) ; 1.24 : `free_route_tag`, parcours de mode resté libre (lot GPL1, fusionnée après la 1.31)  ; 1.23 : mode « race », Course classique contre les bots (lot CR1) ; 1.22 : effort des bots en watts et cote Elo, `bots_preview`, `summary.elo` (lots GP-niv, BOT-elo) ; 1.21 : voiture d'équipe `team_car` dans `vehicles` (lot GP-voiture-modele) ; 1.20 : usagers de la route tous envoyés par parties, `road_part` (lot AS11) ; 1.19 : parcours propres à un mode et boîtes prises (lots GP13, GP14) ; 1.18 : liste `riders` de 10 cyclistes (lot AS10) ; 1.17 : retours du Cyber-Rogue (lot R23, fusionnée après la 1.18) ; 1.16 : lisibilité du Cyber-Rogue (lot R22) ; 1.15 : import d'entraînements retiré (12 novembre) ; 1.14 : fin du Cyber-Rogue (lot R21) ; 1.13 : bonus tactiques (lot TT1, 4.0) ; 1.12 : séance conseillée (CO3, sans changement de rev annoncée jusqu'ici) ; 1.11 : Y maintenu : demi-tour en roulant ; 1.10 : bilan en tuiles (lot N20, #788) ; 1.9 : demi-tour depuis la pause (lot N17) et bots changés en pause, `set_bots` (lot N18) ; 1.8 : collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) et épreuves de piste (lot VD6, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
+# Calculée (lot CF2) : dernière révision de revisions_ipc/historique.txt, plus une par fichier de
+# revisions_ipc/a_numeroter/. Une PR qui change le contrat ajoute son fichier, elle ne touche pas cette ligne.
+CONTRACT_REV = revisions_ipc.revision_courante()
 # Modes de jeu proposés au joueur (hello_ack.config.modes, révision 1.3) : l'accueil de l'engine n'affiche que
 # ceux-là. Monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2 ; track : révision 1.7,
 # lot VD6, proposé par l'écran Prêt du vélodrome (lot VD10, pas d'entrée à l'accueil) ; grandprix : révision 1.7,
@@ -44,6 +46,13 @@ MAX_LIST_DATAGRAM_SIZE = 60000
 LIST_MESSAGE_TYPES = ("routes", "workouts", "route_imports", "plans", "settings", "garage", "room", "contents",
                       "places", "world_map", "world_regions", "history", "history_session", "coach", "collection")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
+# Copies d'une requête (bandeau « Core non joignable » du 28 novembre) : l'engine renvoie une commande toutes les
+# 200 ms tant que `last_cmd_id` ne l'accuse pas. Quand la boucle du core prend du retard, les copies s'empilent et
+# chacune relançait le calcul (ligue, conseil, collection, profils) : le core montait à 99 % de CPU, ne publiait
+# plus de trame `state`, l'engine passait « non joignable » et renvoyait encore. Une copie reçue moins de
+# QUERY_COPY_WINDOW_S après la copie traitée n'est pas recalculée : la réponse déjà partie (ou en calcul) y répond.
+# Au-delà, une réponse perdue est recalculée comme avant.
+QUERY_COPY_WINDOW_S = 1.0
 
 
 # Décimales gardées dans la trame state : 1 cm, 1 mm/s, 0,01 %, 0,1 W, 0,1 tr/min, 6 décimales de degré (11 cm).
@@ -177,6 +186,9 @@ class IpcServer:
         self.engine_version: str | None = None
         self.engine_rev: str | None = None
         self.last_cmd_id: int = 0
+        # Requêtes traitées récemment : (cmd_id, nom) -> instant du traitement (QUERY_COPY_WINDOW_S).
+        self._recent_queries: dict[tuple[int, str], float] = {}
+        self.query_copies_skipped: int = 0
         self.seq: int = 0
         # Datagrammes illisibles ou non conformes, ignorés (contrat §6).
         self.invalid_datagrams: int = 0
@@ -390,6 +402,7 @@ class IpcServer:
             # Le compteur cmd_id est propre à une instance de l'engine : un engine relancé
             # renumérote à partir de 1 (contrat §4).
             self.last_cmd_id = 0
+            self._recent_queries.clear()
             was_connected = self.engine_connected
             self.engine_connected = True
             rev = msg.get("rev")
@@ -426,6 +439,11 @@ class IpcServer:
                                 "list_collection", "league_status",   # league_status : lecture seule (revue F1-14)
                                 "list_power_curve")
             if cmd_id > self.last_cmd_id or is_query:
+                if is_query and self._query_copy_too_soon(cmd_id, name):
+                    self.query_copies_skipped += 1
+                    log.debug("Copie de la requête %s (id=%d) ignorée : déjà traitée il y a moins de %.1f s",
+                              name, cmd_id, QUERY_COPY_WINDOW_S)
+                    return
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)
                 if self.on_command:
@@ -442,6 +460,19 @@ class IpcServer:
             self.last_heartbeat_time = None
             if self.on_engine_lost:
                 self.on_engine_lost()
+
+    def _query_copy_too_soon(self, cmd_id: int, name: str) -> bool:
+        """Vrai pour une copie d'une requête traitée il y a moins de QUERY_COPY_WINDOW_S ; sinon note l'instant
+        du traitement qui va suivre. Les entrées plus vieilles que la fenêtre sont oubliées."""
+        now = time.monotonic()
+        recent = self._recent_queries
+        for key in [k for k, at in recent.items() if now - at >= QUERY_COPY_WINDOW_S]:
+            del recent[key]
+        key = (cmd_id, name)
+        if key in recent:
+            return True
+        recent[key] = now
+        return False
 
     def check_liveness(self) -> None:
         """À appeler périodiquement : détecte si le heartbeat a cessé depuis plus de 2 s."""

@@ -74,6 +74,9 @@ if mode.startswith("selfkill:"):           # selfkill:CODE : ligne de fin puis S
     if len((marks / f"{role}_start").read_text().split()) > 1:
         sys.exit(0)                         # relancé : se ferme normalement
     os.kill(os.getpid(), signal.SIGKILL)
+if mode == "portbusy":                    # engine dont le port d'état est pris (ipc_client.gd), revue S3-04
+    print("Port UDP 5005 indisponible (code 20) : un autre engine tourne-t-il déjà ?", file=sys.stderr, flush=True)
+    sys.exit(1)
 if mode.startswith("exit0"):              # exit0:T : se ferme normalement au bout de T s
     time.sleep(float(mode.split(":")[1]))
     sys.exit(0)
@@ -219,6 +222,72 @@ def test_engine_crashing_four_times_gives_up(fake):
     assert count(fake.marks, "core_SIGINT") == 1
     assert any("abandon" in m for m in said)
     assert_no_orphans(sup)
+
+
+def test_engine_crashing_four_times_opens_a_window_with_the_log(fake):
+    # Revue S3-04 : lancé depuis le bureau (pas de terminal), l'abandon doit se voir dans une fenêtre.
+    alerts: list[str] = []
+    sup, said = fake(engine="crash:99:0.05", echo=lambda: False, alert=alerts.append)
+    assert sup.run() == 1
+    assert len(alerts) == 1
+    assert "planté 4 fois" in alerts[0] and "pilote graphique" in alerts[0]
+    assert f"Journal : {sup.log_path}" in alerts[0]
+
+
+def test_engine_port_taken_is_named_in_the_window(fake):
+    alerts: list[str] = []
+    sup, said = fake(engine="portbusy", echo=lambda: False, alert=alerts.append)
+    assert sup.run() == 1
+    assert len(alerts) == 1 and "port d'état d'OpenRide (5005)" in alerts[0]
+    assert "pilote graphique" not in alerts[0]
+    assert_no_orphans(sup)
+
+
+def test_relaunch_from_menu_passes_the_new_engine_arguments(fake):
+    # Revue S3-02 : « Décor vivant » ou « Relief exagéré » changé au menu, puis « Relancer OpenRide maintenant ».
+    read: list[int] = []
+
+    def reader():
+        read.append(1)
+        return [*sup.engine_cmd[:5], "--living=off", "--visual-grade=1.0"]
+
+    sup, said = fake(engine=f"relaunch:1:{launcher.EXIT_RELAUNCH}", engine_cmd_reader=reader)
+    sup.engine_cmd = [*sup.engine_cmd, "--living=on", "--visual-grade=2.5"]
+    assert sup.run() == 0
+    assert lines(fake.marks, "engine_argv") == ["--living=on --visual-grade=2.5", "--living=off --visual-grade=1.0"]
+    assert read == [1] and sup.relaunches == 1
+    assert any("repris à la relance" in m and "--living=off" in m for m in said)
+    assert_no_orphans(sup)
+
+
+def test_engine_restarted_after_crash_takes_the_new_arguments(fake):
+    sup, said = fake(engine="crash:1:0.1")
+    sup.engine_cmd_reader = lambda: [*sup.engine_cmd[:5], "--quality=high"]
+    timer = threading.Timer(1.0, lambda: os.kill(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        assert sup.run() == 0
+    finally:
+        timer.cancel()
+    assert lines(fake.marks, "engine_argv") == ["", "--quality=high"]
+    assert_no_orphans(sup)
+
+
+def test_unreadable_config_at_relaunch_keeps_the_launch_arguments(fake):
+    def reader():
+        raise launcher_config_error("render.quality invalide")
+
+    sup, said = fake(engine=f"relaunch:1:{launcher.EXIT_RELAUNCH}", engine_cmd_reader=reader)
+    assert sup.run() == 0
+    assert lines(fake.marks, "engine_argv") == ["", ""]
+    assert any("non relus" in m and "arguments du lancement gardés" in m for m in said)
+    assert_no_orphans(sup)
+
+
+def launcher_config_error(msg: str) -> Exception:
+    from openride_core.config import ConfigError
+
+    return ConfigError(msg)
 
 
 def test_old_engine_crashes_leave_the_window(fake):
@@ -543,6 +612,22 @@ def test_engine_gets_living_off(tmp_path: Path):
     godot.chmod(0o755)
     sup = launcher.build_supervisor(["--config", str(cfg)], {"GODOT": str(godot), "OPENRIDE_LOG": str(tmp_path / "x.log")})
     assert sup.engine_cmd[-3:] == ["--living=off", "--load-guard=off", "--display=fullscreen"]   # lot Y6
+
+
+def test_engine_arguments_are_read_again_from_the_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # Revue S3-02 : le superviseur réel relit config.toml (et le profil.toml du joueur) avant chaque engine.
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("[render]\nliving = true\n")
+    godot = tmp_path / "godot"
+    godot.write_text("#!/bin/sh\n")
+    godot.chmod(0o755)
+    sup = launcher.build_supervisor(["--config", str(cfg)], {"GODOT": str(godot), "OPENRIDE_LOG": str(tmp_path / "x.log")})
+    assert "--living=on" in sup.engine_cmd and "--visual-grade=2.5" in sup.engine_cmd
+    cfg.write_text("[render]\nliving = false\nvisual_grade_scale = 1.0\n")
+    fresh = sup.engine_cmd_reader()
+    assert "--living=off" in fresh and "--visual-grade=1.0" in fresh
+    assert fresh[:5] == sup.engine_cmd[:5]   # même Godot, même projet
+    assert len(fresh) == len(sup.engine_cmd)
 
 
 def test_engine_display_from_config_or_environment(tmp_path: Path):
