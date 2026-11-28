@@ -203,6 +203,12 @@ COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 # revenu dans les ClickPair.DEDUP_S (relais du boîtier « − », 5 à 40 ms plus tard) ; en dessous, deux
 # « + » enchaînés n'en font qu'un.
 CLICK_GAP_S = ClickPair.DEDUP_S + 0.1
+# Touche simulée (voie clavier) : un seul datagramme UDP vers le port des trames `state`. Pendant un blocage du fil
+# principal de l'engine (gels du monde ouvert, bancs rGL2 du 24/11 : « engine muet 14,5 s »), le tampon du noyau se
+# remplit de trames `state` et le datagramme de la touche peut être perdu. Un geste non reçu dit maintenant si
+# l'engine a accusé la touche (« [test] key done=<touche> ») : sans accusé, c'est le banc qui l'a perdue (lot GF8,
+# fil « Fiabiliser les outils de banc »). Pas de renvoi : au cloud (1 à 3 images/s), une touche tardive renvoyée
+# faisait un double appui (trains #1170 et #1172 du 27-28/11).
 
 # Un seul tableau bouton → geste : événement du Click -> (bouton du Click V2 simulé, durée en s),
 # (touche Godot, Maj, durée en ms), geste de souris (None : pas de geste, repli au clavier). « − » au Click : bouton
@@ -376,6 +382,22 @@ def write_archive(path: Path, members: dict[str, Any]) -> None:
                     zf.write(f, arc)
         for arc, content in texts.items():
             zf.writestr(arc, content if isinstance(content, str) else json.dumps(content, ensure_ascii=False))
+
+
+
+HELLO_ACK_S = 40.0   # attente du hello_ack de l'engine (7 s d'habitude en CI)
+
+
+def hello_diagnostic(engine: Any, core: Any, waited_s: float) -> str:
+    """Pourquoi l'engine n'a pas répondu : processus vivant ou code de sortie, hello vu par le core, nombre de lignes
+    et dernières lignes de son journal (planté, bloqué au chargement, ou hello perdu)."""
+    rc = engine.p.poll()
+    etat = "engine encore vivant" if rc is None else f"engine arrêté (code {rc})"
+    vu = core is not None and bool(core.matching(r"Reçu 'hello' de l'engine"))
+    lignes = [line for _, line in engine.lines if line.strip()]
+    fin = " | ".join(line.strip()[:120] for line in lignes[-3:]) or "journal vide"
+    return (f"{etat} après {waited_s:.0f} s ; hello {'reçu' if vu else 'jamais reçu'} par le core ; "
+            f"{len(lignes)} ligne(s) au journal de l'engine, dernières : {fin}")
 
 
 class ScenarioError(Exception):
@@ -617,7 +639,7 @@ class Run:
 
     # --- gestes ----------------------------------------------------------------------------
 
-    def _received(self, ev: str, t: float, hold_s: float, menu_shown: bool) -> bool:
+    def _received(self, ev: str, t: float, hold_s: float, menu_shown: bool, voie: str = "") -> bool:
         """Attend la ligne de l'engine qui prouve que le geste est arrivé (bip, appui ambigu, souris)."""
         assert self.engine is not None
         if not menu_shown and ev == "Y_SHORT":
@@ -626,7 +648,16 @@ class Run:
         since = self.silent_s
         got = self.wait_engine(pattern, hold_s + 10.0, t)
         return got is not None or self.check(False, f"{ev} reçu par l'engine ({self.voie})",
-                                             f"aucune ligne « {pattern} »" + self.silence(since))
+                                             f"aucune ligne « {pattern} »" + self.silence(since)
+                                             + (self.key_note(ev, t) if (voie or self.voie) == "clavier" else ""))
+
+    def key_note(self, ev: str, t: float) -> str:
+        """Voie clavier : la touche a-t-elle été accusée par l'engine ? Sans accusé, le datagramme de la touche a été
+        perdu par le banc (outil, souvent pendant un blocage de l'engine), pas par le jeu (lot GF8)."""
+        key = GESTES[ev]["clavier"][0]
+        done = [x for x, _ in self.engine.matching(r"\[test\] key done=" + re.escape(key) + r" ") if x >= t]
+        return " ; touche accusée par l'engine, perdue après" if done else \
+            " ; touche jamais accusée par l'engine : perdue par le banc (outil), pas par le jeu"
 
     def gesture(self, ev: str) -> bool:
         """Joue l'événement `ev` par la voie du passage (repli au clavier sans geste de souris)."""
@@ -663,7 +694,7 @@ class Run:
                 self.state()
                 return (got is not None and "clic sur" in got[1].group(0)) or self.check(
                     False, f"A_LONG à la souris : clic sur « {item} »", got[1].group(0) if got else "sans réponse")
-        ok = self._received(ev, t, hold, menu_shown)
+        ok = self._received(ev, t, hold, menu_shown, voie)
         self.state()
         return ok
 
@@ -1005,8 +1036,20 @@ class Run:
         for probe in probe_paths(cmd):
             perf_probe.write_shaders_mark(probe.parent, "froid" if cold else "chaud")
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
-        ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
-        self.report.check(ok, "engine relié au core", "hello_ack")
+        ok = self.engine.wait_for(r"hello_ack reçu", HELLO_ACK_S) is not None
+        measure = "hello_ack"
+        if not ok:
+            # 27 novembre (train #1151, passage collection) : 1 passage sur 18 sans hello_ack en 40 s, vert au rejeu, sans
+            # rien au journal pour trancher. Diagnostic écrit, puis une seule relance de l'engine, dite au rapport.
+            self.report.check(None, "engine sans hello_ack", hello_diagnostic(self.engine, self.core, HELLO_ACK_S))
+            self.stop_engine()
+            self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}_relance.log")
+            ok = self.engine.wait_for(r"hello_ack reçu", HELLO_ACK_S) is not None
+            measure = ("hello_ack après une relance de l'engine (premier lancement : voir l'INFO « engine sans "
+                       f"hello_ack », journal engine{suffix}.log)" if ok
+                       else "pas de hello_ack, même après une relance : "
+                       + hello_diagnostic(self.engine, self.core, HELLO_ACK_S))
+        self.report.check(ok, "engine relié au core", measure)
         if ok:
             self.check_quality("au départ")
         return ok and self.wait_engine_ready()
