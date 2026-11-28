@@ -3801,6 +3801,11 @@ class CoreSession:
         self._league_start_line()
         log.info("Épreuve de piste : %s, %s.", event, ", ".join(f"{k} = {v}" for k, v in settings.items()) or "réglages par défaut")
 
+    def _race_finish_s(self) -> float | None:
+        """Abscisse de l'arrivée de la course en cours (Course et Grand Prix), None sans arrivée (lot AG1)."""
+        gp = self.grandprix
+        return gp.origin_m + gp.length_m if gp is not None else None
+
     def _mode_tactics(self, game_mode: str | None) -> str | None:
         """Ligne de `bot_tactics.MODE_TACTICS` imposée par le mode de jeu : épreuve de piste (lot VD7), gestes de
         base du Grand Prix et du Dernier survivant (lot BR5) ; None : celle du mode classique (ou « none »)."""
@@ -4726,7 +4731,8 @@ class CoreSession:
         # à rebours (lot N17), le cycliste n'est dans aucun groupe : les bots courent entre eux
         bot_tactics.update_field(self._field, self._racing_bots(), (self.physics.s, self.physics.v) if d > 0 else None, dt,
                                  (lambda s: route.sample(s).grade_pct) if route else None,
-                                 route.length_m if route else None, bool(route and route.is_loop), unseen)
+                                 route.length_m if route else None, bool(route and route.is_loop), unseen,
+                                 self._race_finish_s())
         for bot in self.bots:
             if bot.id in self._survivor_out:
                 self._step_retired_bot(bot, dt)
