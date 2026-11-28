@@ -257,9 +257,17 @@ func _run() -> void:
 		and c["detail"].begins_with("Objectif : finir 1er en 3 tours"), "consigne : lancer l'objet (%s)" % str(c))
 	var none := GP.duplicate(true)
 	none["held"] = null
+	_check(m.consigne(_state(none)).is_empty(), "consigne : sans boîte en vue, pas de conseil permanent (28/11)")
+	none["boxes"] = [1600]
 	c = m.consigne(_state(none))
 	_check(c["action"] == "Passe dans une boîte « + BONUS » pour prendre un objet" and c["chips"] == ["A ← → voie"],
-		"consigne : prendre une boîte (%s)" % str(c))
+		"consigne : prendre une boîte en vue (%s)" % str(c))
+	var taken := none.duplicate(true)
+	taken["boxes_gone"] = [[0, 1]]
+	_check(m.consigne(_state(taken)).is_empty(), "consigne : boîte de ta voie déjà prise, rien")
+	var race := none.duplicate(true)
+	race["mode"] = "race"
+	_check(m.consigne(_state(race)).is_empty(), "consigne : Course (sans boîte), jamais de conseil de boîte (28/11)")
 	none["roll_s"] = 1.2
 	_check(m.consigne(_state(none))["action"] == "Tirage de ton objet…", "consigne : tirage en cours")
 	_check(m.consigne({"session_state": "RUNNING"}).is_empty() and m.goal(_state(GP)) == "finir 1er en 3 tours", "hors du mode ; objectif")

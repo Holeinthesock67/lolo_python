@@ -83,6 +83,8 @@ func _run() -> void:
 	m = Refusal.press("Z_SHORT", _st({"gp": {"held": null, "roll_s": 1.2}}))
 	_check(m.get("title") == "Z refusé : tirage en cours", "Grand Prix, Z pendant le tirage")
 	_check(Refusal.press("Z_SHORT", _st({"gp": {"held": "gel", "n": 1, "roll_s": 0.0}})).is_empty(), "Grand Prix, objet en réserve : Z utile")
+	_check(Refusal.press("Z_SHORT", _st({"gp": {"held": null, "roll_s": 0.0, "mode": "race"}})).is_empty(),
+		"Course (sans boîte) : pas de « Passe dans une boîte » (28/11)")
 	_check(Refusal.press("A_SHORT", gp_empty).is_empty(), "autre bouton : rien")
 	_check(Refusal.press("Z_SHORT", gp_empty, true).is_empty(), "Cyber-Rogue : ses propres refus")
 	_check(Refusal.press("Z_SHORT", gp_empty, false, true).is_empty(), "menu affiché : rien")
