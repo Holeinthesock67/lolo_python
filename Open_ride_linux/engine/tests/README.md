@@ -273,12 +273,13 @@ Avec `--test-mode`, l'engine écrit sur la sortie standard des lignes `[test] cl
 
 | Ligne | Moment |
 | --- | --- |
-| `hello_ack config={…}` | `hello_ack` reçu (configuration en JSON) |
+| `hello_ack config={…}` | `hello_ack` reçu (clés sûres de la configuration en JSON, `HELLO_LOG_KEYS` de `ipc_client.gd` : rien de personnel, revue E1-07) |
 | `state seq=N s=… session=…` | Trame `state` appliquée |
 | `state_late seq=N late=K` | Trame en retard ignorée (K : total) |
 | `cmd_sent name=… id=N` | Nouvelle commande |
 | `cmd_acked name=… id=N sends=K` | Commande acquittée après K envois |
-| `cmd_failed name=… id=N after_ms=… sends=K` | Commande abandonnée |
+| `cmd_failed name=… id=N after_ms=… sends=K cut=0\|1` | Commande abandonnée (`cut=1` : renvois coupés par un hello, pas de bandeau) |
+| `cmd_cut name=… id=N sends=K` | Un hello est parti depuis le premier envoi : plus de renvoi (le core remet `last_cmd_id` à 0 et rejouerait la copie, revue E1-02) |
 | `core_lost age_ms=…` / `core_returned` | Core injoignable depuis 1 s / trames reprises |
 | `shutdown` | Message `shutdown` reçu |
 | `banner text=…` | Texte du bandeau à chaque changement (lignes séparées par ` \| `, vide quand il disparaît) |

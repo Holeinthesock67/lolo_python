@@ -9,6 +9,10 @@ extends RefCounted
 const VISIBLE_FROM_M := 300.0    # le panneau apparaît à 300 m du carrefour et reste jusqu'à lui
 const ARROW_STEP_DEG := 15.0
 const ATTRIBUTION := "© OpenStreetMap, OpenMapTiles, Copernicus"
+## Attribution au départ seulement (demande du 27/11) : pleine pendant ATTRIBUTION_HOLD_S secondes de roulage,
+## puis fondu en ATTRIBUTION_FADE_S secondes. La liste complète reste à l'écran de préchargement du monde ouvert.
+const ATTRIBUTION_HOLD_S := 8.0
+const ATTRIBUTION_FADE_S := 2.0
 ## Classes du contrat (§4 « Monde ouvert ») : p grande route, s et t routes, m petite route, c piste cyclable, k chemin revêtu.
 const CLASS_LABELS := {"p": "grande route", "s": "route", "t": "route", "m": "petite route",
 	"c": "piste cyclable", "k": "chemin revêtu"}
@@ -28,6 +32,13 @@ func update(next: Variant) -> void:
 	if id != _pending_id or int(_next.get("chosen", -1)) == _pending:
 		_pending = -1
 		_pending_id = id
+
+
+## Opacité de l'attribution `elapsed_s` secondes après le départ (négatif : pas encore parti, pleine).
+static func attribution_alpha(elapsed_s: float) -> float:
+	if elapsed_s <= ATTRIBUTION_HOLD_S:
+		return 1.0
+	return clampf(1.0 - (elapsed_s - ATTRIBUTION_HOLD_S) / ATTRIBUTION_FADE_S, 0.0, 1.0)
 
 
 static func class_label(code: Variant) -> String:

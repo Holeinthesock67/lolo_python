@@ -1,0 +1,47 @@
+# File du lot EC7 (#1130, revue de code vague 3, constat E4-01) : la prochaine montée du HUD n'est plus cherchée
+# sur tout l'horizon à chaque trame. Mesure avant/après sur le PC, medium seul (logique du HUD, pas de rendu changé).
+# Lancement sur le PC, depuis ~/Games/lolo_python/Open_ride_linux :
+#   python3 scripts/file_bancs.py verifier scripts/file_bancs/hud_montee.toml
+#   python3 scripts/file_bancs.py lancer scripts/file_bancs/hud_montee.toml
+#
+# 1. Fumée : test unitaire test_hud_view_model sur le PC ; sa ligne « Mesure : prochaine montée sur 20 km sans
+#    montée, recherche complète X ms, trame gardée Y ms » donne le coût par trame avant (X) et après (Y) sur la
+#    vraie machine (cloud : 5,97 ms contre 0,02 ms).
+# 2. Banc medium : séance libre sur la Route du Sud (scénario hud_montee.json, à côté de ce fichier), balade
+#    jusqu'à 9 km avec la sonde, sur la branche puis sur main ; comparer dans les deux rapports de sonde la durée
+#    des images et les images de plus de 50 et 100 ms, surtout après le sommet (plus de montée devant).
+# Parcours classique, pas de monde ouvert : le cache du monde n'est pas lu. Pas de changement IPC ni WORLDGEN.
+# main n'a pas le scénario avant la fusion : l'étape main le reprend de la branche (git show).
+# Pas de `tete` fixée (facultative pour une [[pr]]) : la file prend la tête de la branche ; le fil de fusion
+# peut en fixer une.
+
+[file]
+depot = "~/Games/lolo_python"
+sortie = "~/mesures-2026-11-01-auto/file/rEC7"
+avant_etape = "bash ~/Games/lolo_python/Open_ride_linux/scripts/file_bancs/portail_pc.sh"
+apres_etape = "~/mesures-2026-11-01-auto/pousse_auto.sh rEC7-{pr}-{etape} {dossier}"
+attente_s = 60
+
+[[pr]]
+id = "r1130"
+pr = 1130
+branche = "claude/project-thread-q0tehc"
+categorie = "logique"
+risque = 1
+fumee = """(cd engine && timeout 300 ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --import >/dev/null 2>&1); \
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 UNIT=test_hud_view_model bash engine/tests/run_engine_tests.sh"""
+fumee_delai_min = 10
+
+[[pr.etape]]
+id = "medium"
+commande = """python engine/tests/menu_bench.py --native --scenario scripts/file_bancs/hud_montee.json --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; exit $rc"""
+delai_min = 50
+
+[[pr.etape]]
+id = "main-medium"
+sur = "main"
+commande = """mkdir -p {sortie} && git show origin/claude/project-thread-q0tehc:Open_ride_linux/scripts/file_bancs/hud_montee.json > {sortie}/hud_montee.json && \
+python engine/tests/menu_bench.py --native --scenario {sortie}/hud_montee.json --voies clavier --qualite medium --captures ecrans --out {sortie}/banc --engine-arg=-- --engine-arg=--perf-probe={sortie}/moteur.csv; rc=$?; \
+python engine/tests/perf_probe.py report {sortie}/moteur.csv --out {sortie}/sonde --quality medium --budgets; exit $rc"""
+delai_min = 50

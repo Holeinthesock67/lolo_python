@@ -481,7 +481,8 @@ def square_relief(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProf
     up_all = [np.concatenate([u[c] for u in upper]) if upper else np.empty(0) for c in range(4)]
     lo_all = [np.concatenate([lo[c] for lo in lower]) if lower else np.empty(0) for c in range(4)]
     RG.fit_grid(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, up_all[:3],
-                RG.drop_covered_feet(up_all, lo_all, up_all[3], lo_all[3]), rounds=SQUARE_ROUNDS)
+                RG.drop_covered_feet(up_all, lo_all, up_all[3], lo_all[3], keep_compatible=False),
+                rounds=SQUARE_ROUNDS)
     return ground, y[s:-s, s:-s].astype("<f4")
 
 

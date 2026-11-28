@@ -10,6 +10,7 @@ import jsonschema
 import pytest
 
 from openride_core import fit_export, profile
+from openride_core.game_modes import registry as game_modes
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
 from openride_core.journal import TIMER_EVENTS, read_journal
@@ -99,12 +100,12 @@ def test_mode_error_in_step_ends_session_with_summary(env):
     assert s.state.session_state == "RUNNING" and errors == [("mode_failed", MODE_FAILED_SAVED)]
 
 
-def test_mode_error_in_frame_ends_session(env):
+def test_mode_error_in_frame_ends_session(env, monkeypatch):
     make, run, _tmp, _ = env
     s, _sent, errors = make(7320)
     s._on_command("start", {"mode": "survivor"}, 2)
     run(s, 5)
-    s._fill_survivor_frame = _boom
+    monkeypatch.setattr(game_modes.BY_ID["survivor"], "fill_frame", _boom)   # adaptateur du mode (lot IM1)
     run(s, 1)
     assert s.state.session_state == "FINISHED" and s.state.summary["mode_error"]["mode"] == "survivor"
     assert errors == [("mode_failed", MODE_FAILED_SAVED)]

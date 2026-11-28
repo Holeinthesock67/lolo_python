@@ -1865,7 +1865,7 @@
     },
     "powerup": {
       "type": "object",
-      "description": "Facultatif, révision 1.4 (T6) : absent en ERG (T-Q2). Révision 1.13 (TT1) : valeurs des bonus tactiques, `light` gardé comme ancien nom de `feather` pendant une révision, champ facultatif `refused`.",
+      "description": "Facultatif, révision 1.4 (T6) : absent en ERG (T-Q2). Révision 1.13 (TT1) : valeurs des bonus tactiques, `light` gardé comme ancien nom de `feather` pendant une révision, champ facultatif `refused`. Révision à la fusion, lot TT-BONUS : champ facultatif `gain`.",
       "required": [
         "held",
         "active",
@@ -1932,6 +1932,26 @@
                 "no_gravel",
                 "erg"
               ]
+            }
+          }
+        },
+        "gain": {
+          "type": "object",
+          "description": "Facultatif, révision à la fusion, lot TT-BONUS : temps gagné (positif) ou perdu par le dernier bonus de masse, de CdA ou de puissance fini, mesuré contre le même cycliste sans bonus (élan des 60 s suivantes compris) ; présent 6 s après la fin du bonus.",
+          "required": [
+            "kind",
+            "gain_s"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "maxLength": 16,
+              "description": "Bonus fini (une valeur de `held`)."
+            },
+            "gain_s": {
+              "type": "number",
+              "minimum": -999.9,
+              "maximum": 999.9
             }
           }
         }
