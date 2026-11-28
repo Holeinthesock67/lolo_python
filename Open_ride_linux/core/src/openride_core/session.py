@@ -125,6 +125,9 @@ CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
 CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
 COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_advice",
                   "clear_watch_advice")   # séance conseillée (lot CO3), réponse `coach`
+# ligue.json : league_status (dans un fil) et league_new, un à la fois. Au niveau du module et non de la séance :
+# un verrou ne se copie pas, et la matrice des boutons copie la séance (copy.deepcopy).
+_LEAGUE_IO = threading.Lock()
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
                     "clear_trial_profile", "restore_profile",   # lots MJ7 et O33
                     "reset_profile_stats", "undo_profile_reset",   # lot RZ1 (révision 1.31)
@@ -376,7 +379,6 @@ class CoreSession:
         self.hr = build_hr(cfg, self.sim)
         self.journal_dir = journal_dir if journal_dir is not None else self.profile_ctx.journal_dir
         self._coach_lock: asyncio.Lock | None = None   # séance conseillée : un calcul à la fois (lot CO5)
-        self._league_io = threading.Lock()   # ligue.json : league_status (dans un fil) et league_new, un à la fois
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
@@ -3469,8 +3471,8 @@ class CoreSession:
 
     def _league_status_message(self, cmd_id: int) -> dict[str, Any]:
         """Réponse `league` à `league_status` : saison mise à jour au jour et palmarès (lecture des fichiers
-        du profil, simulation des semaines non courues). Un appel à la fois (`_league_io`), hors boucle."""
-        with self._league_io:
+        du profil, simulation des semaines non courues). Un appel à la fois (`_LEAGUE_IO`), hors boucle."""
+        with _LEAGUE_IO:
             season = self._league_load()
             return league.status(season, self._league_today(), cmd_id,   # palmarès : lot CH6
                                  past=league.history(self._league_path(), season))
@@ -3499,7 +3501,7 @@ class CoreSession:
         if name == "league_status":
             self._send_league_status(cmd_id)
             return
-        with self._league_io:
+        with _LEAGUE_IO:
             self._league_new(cmd_id)
 
     def _league_new(self, cmd_id: int) -> None:
