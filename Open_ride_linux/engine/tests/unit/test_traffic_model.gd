@@ -1,9 +1,17 @@
 extends SceneTree
 
 ## Tests sans écran de la circulation `traffic_model.gd` (Lot P13) : séance simulée de 30 km à 30 km/h,
+
+
 ## sécurité (écarts, dépassements), déterminisme, budget, coût par image ; affichage `traffic_renderer.gd`.
+
+
 ## Lot P25 : sept sortes et leurs vitesses, phares, affichage refait (caisse, roues, son par sorte).
+
+
 ## Véhicules et cyclistes du décor inclinés selon la pente affichée de la route (route_data.display_pitch).
+
+
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_traffic_model.gd
 
 const TrafficModel := preload("res://scripts/traffic_model.gd")
@@ -15,6 +23,7 @@ const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const Ride := preload("res://tests/traffic_test_ride.gd")
 
 const LENGTH_M := 32000.0
 const SNOW_FROM := 12000.0      # de 12 à 15 km : au-dessus de la limite de neige
@@ -34,33 +43,13 @@ func _check(cond: bool, msg: String) -> void:
 		_failures += 1
 		printerr("[ÉCHEC] ", msg)
 
-
-## Route droite vers l'est, avec un passage enneigé et une rampe raide.
+## Route droite vers l'est, avec un passage enneigé et une rampe raide (traffic_test_ride.gd).
 func _route():
-	var ds := 10.0
-	var n := int(LENGTH_M / ds) + 1
-	var cols := {"lat": [], "lon": [], "alt_m": [], "x": [], "z": [], "grade_pct": [], "heading_deg": []}
-	for i in range(n):
-		var s := i * ds
-		cols["lat"].append(48.9)
-		cols["lon"].append(7.1)
-		cols["alt_m"].append(2500.0 if s >= SNOW_FROM and s < SNOW_TO else 400.0)
-		cols["x"].append(s)
-		cols["z"].append(0.0)
-		cols["grade_pct"].append(10.0 if s >= STEEP_FROM and s < STEEP_TO else 2.0)
-		cols["heading_deg"].append(90.0)
-	var d := {"version": "1.0", "ds_m": ds, "n": n, "length_m": (n - 1) * ds, "type": "open"}
-	d.merge(cols)
-	var r = RouteDataScript.new()
-	r.load_route_dict(d)
-	return r
+	return Ride.route()
 
 
 func _villages() -> Array:
-	var out := []
-	for x in [3000.0, 9000.0, 17000.0, 26000.0]:
-		out.append({"id": "v%d" % int(x), "kind": "village", "x": x, "y": 400.0, "z": 300.0, "radius_m": 300, "name": null})
-	return out
+	return Ride.villages()
 
 
 ## Séance de 30 km à 30 km/h (pas de 1/30 s) ; rend le relevé des contrôles.
@@ -120,73 +109,15 @@ func _ride(route, budget: int, rng_seed: int) -> Dictionary:
 	return {"count": seen.size(), "overtakes": tm.overtakes_total, "log": log, "max_live": max_live, "overlap": overlap,
 		"too_close": too_close, "wrong_side": wrong_side, "bad_pass": bad_pass, "bad_spawn": bad_spawn, "avg_ms": usec / 1000.0 / frames}
 
-
-## Lot P32 : véhicules, cyclistes du décor et un bot ensemble, 30 km à 30 km/h ; collisions (carrosseries qui se
-## touchent, entre véhicules ou avec un cycliste ou le bot) et écarts de carrosserie aux cyclistes dépassés.
-func _ride_mixed(route, rng_seed: int) -> Dictionary:
-	var tm = TrafficModel.new()
-	tm.configure(route, {"terrain": {"snow_line_m": 2200.0}}, _villages(), 5, rng_seed)
-	var cy = RoadCyclistsModel.new()
-	cy.configure(route, [], _villages(), 12, rng_seed, RoadBuilder.ROAD_WIDTH_M, tm)
-	var v_mps := 30.0 / 3.6
-	var dt := 1.0 / 15.0     # 15 images/s : mêmes résultats qu’à 30 (vérifié), deux fois plus rapide
-	var s := 300.0
-	var bot := 150.0
-	var hits := 0
-	var hit_vehicles := 0
-	var hit_cyclists := 0
-	var close_pass := 0
-	var met := 0
-	var waited := 0
-	while s < 30500.0:
-		cy.update(s, v_mps, dt, false, [{"s": bot, "lateral": RoadBuilder.BOT_LATERAL_M}])
-		var others: Array = cy.riders()
-		others.append({"s": bot, "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
-		tm.update(s, v_mps, dt, false, others)
-		var vs: Array = tm.vehicles
-		for v in vs:
-			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
-			if int(v["dir"]) == 1 and not v.get("committed", false) and float(v["s"]) - s > -TrafficModel.FOLLOW_GAP_M - 2.0 \
-					and float(v["s"]) < s:
-				waited += 1
-			for o in others:
-				if absf(float(o["s"]) - float(v["s"])) < float(k["length"]) * 0.5 + TrafficModel.CYCLIST_HALF_LENGTH_M:
-					met += 1
-					var side := absf(float(o["lateral"]) - float(v["lateral"])) - float(k["half_width"]) - TrafficModel.RIDER_HALF_WIDTH_M
-					if side < 0.0:
-						hits += 1
-					elif int(o["dir"]) == int(v["dir"]) and side < TrafficModel.LATERAL_CLEARANCE_M - 1e-3:
-						close_pass += 1
-		for i in range(vs.size()):
-			for j in range(i + 1, vs.size()):
-				var a: Dictionary = vs[i]
-				var b: Dictionary = vs[j]
-				var ka: Dictionary = TrafficModel.KINDS[a["kind"]]
-				var kb: Dictionary = TrafficModel.KINDS[b["kind"]]
-				if absf(float(a["s"]) - float(b["s"])) < (float(ka["length"]) + float(kb["length"])) * 0.5 \
-						and absf(float(a["lateral"]) - float(b["lateral"])) < float(ka["half_width"]) + float(kb["half_width"]):
-					hit_vehicles += 1
-		# Cyclistes du décor entre eux (groupes différents), avec le cycliste et avec le bot
-		var everyone: Array = others.duplicate()
-		everyone.append({"s": s, "lateral": RoadBuilder.RIDER_LATERAL_M, "dir": 1})
-		for i in range(everyone.size()):
-			for j in range(i + 1, everyone.size()):
-				var p: Dictionary = everyone[i]
-				var q: Dictionary = everyone[j]
-				if p.has("group") and q.has("group") and p["group"] == q["group"]:
-					continue
-				if absf(float(p["s"]) - float(q["s"])) < 2.0 * TrafficModel.CYCLIST_HALF_LENGTH_M \
-						and absf(float(p["lateral"]) - float(q["lateral"])) < 2.0 * TrafficModel.RIDER_HALF_WIDTH_M:
-					hit_cyclists += 1
-		s += v_mps * dt
-		bot += 31.0 / 3.6 * dt
-	return {"hits": hits, "hit_vehicles": hit_vehicles, "hit_cyclists": hit_cyclists, "close_pass": close_pass, "met": met, "waited": waited,
-		"spawned": tm.spawned_total, "groups": cy.spawned_total}
-
-
 ## Peloton de cinq bots de front, 6 m devant le cycliste et à sa vitesse (départ, 4 km), ou cycliste arrêté ; en
+
+
 ## plus de la circulation tirée, une voiture posée en face puis une qui rattrape toutes les 300 images. Places de
+
+
 ## bots_view_model.gd avec les véhicules de la route (`vehicles`) : contacts, véhicules hors de la route, bots encore
+
+
 ## à gauche au croisement d'un véhicule d'en face, dépassements, retrait de la file au plus.
 func _ride_peloton(route, rng_seed: int, kmh: float = 30.0, fps: float = 15.0) -> Dictionary:
 	var tm = TrafficModel.new()
@@ -316,6 +247,8 @@ func _test_renderer(route) -> void:
 
 
 ## Lot AS6 : mêmes véhicules tirés (case, sorte, couleur, sens, vitesse) que traffic.py du core, sur le parcours
+
+
 ## d'essai de 20 km de tests/data/traffic_slots_vectors.json (python -m openride_core.tools.traffic_vectors).
 func _test_core_vectors() -> void:
 	var doc = JSON.parse_string(FileAccess.get_file_as_string("res://tests/data/traffic_slots_vectors.json"))
@@ -356,6 +289,8 @@ func _test_core_vectors() -> void:
 
 
 ## Lot AS6 : liste `vehicles` du core reprise une fois par trame ; véhicule du core extrapolé, hors budget ; ceux de
+
+
 ## l'engine à moins de NEAR_M absents de la liste retirés, ceux plus loin gardés ; sorti de la liste : décor.
 func _test_sync_core(route) -> void:
 	var tm = TrafficModel.new()
@@ -450,16 +385,7 @@ func _run() -> void:
 		safe = safe and rs["overlap"] == 0 and rs["too_close"] == 0 and rs["wrong_side"] == 0 and rs["bad_pass"] == 0 and rs["bad_spawn"] == 0 \
 			and rs["max_live"] <= 5 and rs["count"] >= 3 and rs["count"] <= 15
 	_check(safe, "12 autres graines, budget 5 : mêmes garanties, de 3 à 15 véhicules (%s)" % str(counts))
-	# Lot P32 : aucune collision avec les cyclistes du décor, le bot ni entre véhicules
-	var mixed := {"hits": 0, "hit_vehicles": 0, "hit_cyclists": 0, "close_pass": 0, "met": 0, "waited": 0, "spawned": 0, "groups": 0}
-	for sd in range(1, 17):
-		var rm: Dictionary = _ride_mixed(route, sd)
-		for key in mixed:
-			mixed[key] = int(mixed[key]) + int(rm[key])
-	print("véhicules et cyclistes ensemble, 16 graines : %s" % str(mixed))
-	_check(mixed["met"] > 0 and mixed["hits"] == 0, "jamais un véhicule sur un cycliste du décor ou le bot (%d croisements)" % mixed["met"])
-	_check(mixed["hit_vehicles"] == 0, "jamais deux véhicules l'un sur l'autre, cyclistes du décor présents")
-	_check(mixed["hit_cyclists"] == 0, "jamais deux cyclistes l'un sur l'autre (décor, cycliste, bot) (%d)" % mixed["hit_cyclists"])
+	# Lot P32 : véhicules et cyclistes du décor ensemble, 16 graines : test_traffic_mixed_a.gd et _b.gd (27 novembre)
 	# Peloton de front au départ face aux véhicules d'en face : les bots serrent à droite, en file au besoin
 	var pel := {"met": 0, "passes": 0, "hits": 0, "offroad": 0, "offroad_pass": 0, "left": 0, "bot_hits": 0, "max_back": 0.0}
 	for sd in range(1, 5):
@@ -479,7 +405,6 @@ func _run() -> void:
 	_check(pel["bot_hits"] == 0, "peloton de front : bots et cycliste jamais l'un sur l'autre en se rangeant (%d)" % pel["bot_hits"])
 	_check(float(pel["max_back"]) <= BotsViewModel.MAX_BACK_ROWS * BotsViewModel.SLOT_CLEAR_M + 1.0,
 		"peloton de front : file de %.1f m au plus" % float(pel["max_back"]))
-	_check(mixed["close_pass"] == 0, "cyclistes du décor et bot doublés à 1,5 m au moins (%d écarts)" % mixed["close_pass"])
 	# Lot P25 : les sept sortes, d'après leurs parts
 	var drawn := {}
 	var tm_k = TrafficModel.new()
