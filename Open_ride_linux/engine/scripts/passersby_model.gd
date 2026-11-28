@@ -27,6 +27,7 @@ extends RefCounted
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadsideGround := preload("res://scripts/roadside_ground.gd")
+const DrawnRoad := preload("res://scripts/drawn_road.gd")
 
 const CELL_M := 100.0
 const VILLAGE_M := 60.0
@@ -211,7 +212,7 @@ func _make_person(route, s: float, village: bool, half: float, water: Dictionary
 			var axis := Vector3(smp["x"], smp["y"], smp["z"])
 			var right := Vector3(cos(hd), 0.0, sin(hd))
 			var pt := RoadsideGround.on_ground(ground_at, axis + right * lateral, axis, right, half)
-			if CrowdModel._in_water(pt, water):
+			if CrowdModel._in_water(pt, water) or not DrawnRoad.off_road(route, pt, half):   # garde finale (lot CD1d)
 				dry = false
 				break
 			path.append(pt)

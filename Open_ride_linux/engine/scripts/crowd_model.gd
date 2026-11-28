@@ -20,6 +20,7 @@ extends RefCounted
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadsideGround := preload("res://scripts/roadside_ground.gd")
+const DrawnRoad := preload("res://scripts/drawn_road.gd")
 
 const ZONE_M := 1000.0
 const MIN_CLIMB_M := 3000.0
@@ -113,8 +114,8 @@ func configure(route, climbs: Array, water: Dictionary = {}, crowd_all_climbs: b
 					var lateral := float(side) * (half + edge)
 					var axis := Vector3(smp["x"], smp["y"], smp["z"])
 					var pos := RoadsideGround.on_ground(ground_at, axis + right * lateral, axis, right, half)
-					if _in_water(pos, water):
-						continue
+					if _in_water(pos, water) or not DrawnRoad.off_road(route, pos, half):
+						continue   # garde finale (lot CD1d) : pas de spectateur sur une autre portion de la chaussée
 					var to_road := -right * float(side)
 					spectators.append({
 						"s": s, "side": side, "pos": pos, "edge_m": edge,

@@ -25,6 +25,7 @@ extends RefCounted
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const DrawnRoad := preload("res://scripts/drawn_road.gd")
 
 const KIND_FACTOR := {"wood": 1.0, "scrub": 0.4, "orchard": 0.6}   # autres kind : ignorés (§7)
 const NOISE_MAX_FRACTION := 0.5
@@ -174,78 +175,23 @@ static func _theme_value(theme: Dictionary, section: String, key: String, fallba
 	return fallback
 
 
-## Segments de l'axe de la route proches du rectangle `rect`, rangés par case de ROAD_BUCKET_M.
-## Renvoie {cle Vector2i : PackedVector4Array (x0, z0, x1, z1)}.
+## Chaussée dessinée vue depuis le rectangle `rect` (lot CD1b) : {"road": DrawnRoad commune de la route} si un
+## segment de la chaussée (route en Catmull-Rom, amorces du départ et de l'arrivée) passe à moins de `corridor` du
+## rectangle, sinon vide (tuile loin de la route : aucun contrôle). Même couloir qu'avant, mais un seul axe pour
+## tous les poseurs (drawn_road.gd), au lieu de segments recalculés tuile par tuile.
 static func _road_buckets(route, rect: Rect2, corridor: float) -> Dictionary:
-	var buckets := {}
 	if route == null or route.n < 2:
-		return buckets
-	var grown := rect.grow(corridor + route.ds_m)
-	var prev := Vector2.ZERO
-	var have_prev := false
-	for i in range(route.n - 1):
-		var a := Vector2(route.x[i], route.z[i])
-		var b := Vector2(route.x[i + 1], route.z[i + 1])
-		var seg_rect := Rect2(a, Vector2.ZERO).expand(b)
-		if not grown.intersects(seg_rect, true):
-			have_prev = false
-			continue
-		var s0: float = route.s[i]
-		var s1: float = route.s[i + 1]
-		var steps := maxi(1, int(ceil((s1 - s0) / ROAD_SUBSTEP_M)))
-		if not have_prev:
-			var p0: Vector3 = route.sample_point(s0)
-			prev = Vector2(p0.x, p0.z)
-			have_prev = true
-		for k in range(1, steps + 1):
-			var p: Vector3 = route.sample_point(s0 + (s1 - s0) * k / float(steps))
-			var cur := Vector2(p.x, p.z)
-			var r := Rect2(prev, Vector2.ZERO).expand(cur).grow(corridor)
-			var bx0 := int(floor(r.position.x / ROAD_BUCKET_M))
-			var bz0 := int(floor(r.position.y / ROAD_BUCKET_M))
-			var bx1 := int(floor(r.end.x / ROAD_BUCKET_M))
-			var bz1 := int(floor(r.end.y / ROAD_BUCKET_M))
-			for bx in range(bx0, bx1 + 1):
-				for bz in range(bz0, bz1 + 1):
-					var key := Vector2i(bx, bz)
-					if not buckets.has(key):
-						buckets[key] = PackedVector4Array()
-					buckets[key].append(Vector4(prev.x, prev.y, cur.x, cur.y))
-			prev = cur
-	# Amorces de chaussée avant le départ et après l'arrivée (road_builder.gd) : pas d'arbre dessus non plus.
-	for seg in RoadBuilder.lead_segments(route):
-		var a: Vector2 = seg[0]
-		var b: Vector2 = seg[1]
-		var n_sub := maxi(1, ceili(a.distance_to(b) / ROAD_SUBSTEP_M))
-		for k in range(n_sub):
-			var p0 := a.lerp(b, float(k) / n_sub)
-			var p1 := a.lerp(b, float(k + 1) / n_sub)
-			var r := Rect2(p0, Vector2.ZERO).expand(p1).grow(corridor)
-			if not grown.intersects(r, true):
-				continue
-			for bx in range(int(floor(r.position.x / ROAD_BUCKET_M)), int(floor(r.end.x / ROAD_BUCKET_M)) + 1):
-				for bz in range(int(floor(r.position.y / ROAD_BUCKET_M)), int(floor(r.end.y / ROAD_BUCKET_M)) + 1):
-					var key := Vector2i(bx, bz)
-					if not buckets.has(key):
-						buckets[key] = PackedVector4Array()
-					buckets[key].append(Vector4(p0.x, p0.y, p1.x, p1.y))
-	return buckets
+		return {}
+	var road = DrawnRoad.shared(route)
+	if road == null or not road.touches(rect.grow(corridor)):
+		return {}
+	return {"road": road}
 
 
+## Vrai si le point est à moins de `corridor` de la chaussée dessinée (`buckets` rendu par `_road_buckets`).
 static func _near_road(buckets: Dictionary, px: float, pz: float, corridor: float) -> bool:
-	var key := Vector2i(int(floor(px / ROAD_BUCKET_M)), int(floor(pz / ROAD_BUCKET_M)))
-	if not buckets.has(key):
-		return false
-	var c2 := corridor * corridor
-	var p := Vector2(px, pz)
-	for seg in buckets[key]:
-		var a := Vector2(seg.x, seg.y)
-		var ab := Vector2(seg.z, seg.w) - a
-		var len2 := ab.length_squared()
-		var t := 0.0 if len2 <= 0.0 else clampf((p - a).dot(ab) / len2, 0.0, 1.0)
-		if (a + ab * t).distance_squared_to(p) < c2:
-			return true
-	return false
+	var road = buckets.get("road")
+	return road != null and not road.is_clear(px, pz, corridor)
 
 
 # --- placement ------------------------------------------------------------------------------

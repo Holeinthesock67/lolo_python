@@ -117,7 +117,7 @@ func _run(wd: String, k: float, theme: Dictionary) -> void:
 	var raw := OsmStreamer.terrain_height_fn(wd, route)
 	var height_at := func(x: float, z: float) -> float: return route.display_y(float(raw.call(x, z)))
 	var ground_at := _ground_fn(wd, route)
-	# Axe réel de la route (Catmull-Rom tous les 2 m), sur tout le parcours.
+	# Chaussée dessinée (Catmull-Rom tous les 2 m, amorces comprises), celle que voient les poseurs (lot CD1).
 	var bounds := _route_bounds(route)
 	var corridor := ROAD_HALF_M + maxf(TUFT_CLEAR_M, TREE_CLEAR_M) + 2.0
 	var road := VegetationPlacer._road_buckets(route, bounds, corridor)
@@ -137,14 +137,10 @@ static func _route_bounds(route) -> Rect2:
 	return r
 
 
-## Distance à l'axe réel (INF au-delà du couloir des cases).
+## Distance à la chaussée dessinée (drawn_road.gd, lot CD1b : la même que celle des poseurs), INF au-delà de 25 m.
 static func _axis_distance(road: Dictionary, x: float, z: float) -> float:
-	var key := Vector2i(int(floor(x / VegetationPlacer.ROAD_BUCKET_M)), int(floor(z / VegetationPlacer.ROAD_BUCKET_M)))
-	var best := INF
-	var p := Vector2(x, z)
-	for seg in road.get(key, PackedVector4Array()):
-		best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, Vector2(seg.x, seg.y), Vector2(seg.z, seg.w))))
-	return best
+	var drawn = road.get("road")
+	return INF if drawn == null else drawn.distance(x, z)
 
 
 ## Hauteur affichée du sol en (x, z), relief de la route compris, telle que world_streamer.gd la dessine :
