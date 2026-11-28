@@ -67,6 +67,7 @@ var _capture_left := 0
 var _capture_cost_ms := 0.0    # coût mesuré de la capture en attente, retiré de son image
 var _capture_removed_ms := 0.0 # coût des captures retiré depuis la dernière ligne (images/s)
 var _pending: Dictionary = {}  # saccade écrite à l'image suivante (process_ms lu deux fois)
+var _prev_capture := false     # l'image précédente contenait une capture du banc (étape « capture »)
 var _cpu_sum := 0.0
 var _gpu_sum := 0.0
 var _start_us := 0
@@ -172,8 +173,12 @@ func route_ready() -> void:
 ## `pipelines` : pipelines compilés pendant l'image ; sans étape qui explique l'image, cause « shaders » s'il y en a,
 ## sinon « scripts » si les `_process` de l'image (`process_ms`, Performance.TIME_PROCESS) en prennent le quart
 ## (travail des scripts pas encore noté par une étape), sinon « inconnue » (rendu, envoi au GPU, pilote…).
+## `after_capture` (lot AC1, fil « à-coups de main » du 21 novembre) : l'image suit une capture du banc. La capture
+## (lecture de l'image par le CPU) laisse au rendu une image lente juste après elle (50 à 110 ms au banc rNUIT20,
+## une après chaque capture) : sans étape à elle qui l'explique, cette image a la cause « capture », comme la
+## capture elle-même, et sort des comptes du banc par la même règle.
 static func saccade_cause(steps: Array, frame_ms: float, pipelines: int = 0,
-		process_ms: float = 0.0) -> Dictionary:
+		process_ms: float = 0.0, after_capture: bool = false) -> Dictionary:
 	var parts := PackedStringArray()
 	var worst: Array = []
 	for st in steps:
@@ -185,6 +190,8 @@ static func saccade_cause(steps: Array, frame_ms: float, pipelines: int = 0,
 		cause = str(worst[0])
 	elif pipelines > 0:
 		cause = "shaders"
+	elif after_capture:
+		cause = "capture"
 	elif process_ms >= frame_ms * CAUSE_SHARE:
 		cause = "scripts"
 	return {"cause": cause, "steps": " | ".join(parts)}
@@ -192,12 +199,15 @@ static func saccade_cause(steps: Array, frame_ms: float, pipelines: int = 0,
 
 ## Saccade en attente écrite avec le `process_ms` le plus grand des deux lectures : Godot publie TIME_PROCESS après
 ## l'image, et selon l'ordre des nœuds le temps de l'image lente se lit à cette image ou à la suivante.
+## Après une capture, la première lecture est encore celle de la capture (~290 ms au banc rNUIT20) : seule la
+## seconde compte, sinon l'image suivante hérite du temps de la capture et passe à tort en « scripts » (lot AC1).
 func _write_pending(process_now_ms: float) -> void:
 	if _pending.is_empty() or _saccades == null:
 		_pending = {}
 		return
-	var pr := maxf(float(_pending["process_ms"]), process_now_ms)
-	var c := saccade_cause(_pending["steps"], _pending["frame_ms"], _pending["pipelines"], pr)
+	var after_capture := bool(_pending.get("after_capture", false))
+	var pr := process_now_ms if after_capture else maxf(float(_pending["process_ms"]), process_now_ms)
+	var c := saccade_cause(_pending["steps"], _pending["frame_ms"], _pending["pipelines"], pr, after_capture)
 	_saccades.store_line(";".join(PackedStringArray([
 		"%.3f" % _pending["t_s"], "%.3f" % _pending["unix_s"], "%.1f" % _pending["frame_ms"],
 		"%.1f" % _pending["distance_m"], c["cause"], str(c["steps"]).replace(";", ","),
@@ -213,13 +223,16 @@ func _frame_x15(frame_ms: float, delta_ms: float = NAN, pipelines: int = 0, proc
 	_steps.clear()
 	_mutex.unlock()
 	_write_pending(process_ms)
+	var after_capture := _prev_capture
+	_prev_capture = has_capture_step(steps)
 	var now_ms := Time.get_ticks_msec()
 	if frame_ms > SACCADE_MS:
 		_good_run = 0
 		if _saccades != null:
 			_pending = {"t_s": float(Time.get_ticks_usec() - _start_us) / 1e6, "unix_s": Time.get_unix_time_from_system(),
 				"frame_ms": frame_ms, "distance_m": distance_m, "steps": steps, "pipelines": pipelines,
-				"delta_ms": frame_ms if is_nan(delta_ms) else delta_ms, "process_ms": process_ms}
+				"delta_ms": frame_ms if is_nan(delta_ms) else delta_ms, "process_ms": process_ms,
+				"after_capture": after_capture}
 	elif _route_ready and startup_ms < 0:
 		if _good_run == 0:
 			_good_run_start_ms = now_ms
@@ -231,6 +244,14 @@ func _frame_x15(frame_ms: float, delta_ms: float = NAN, pipelines: int = 0, proc
 			var f := FileAccess.open(path.get_base_dir().path_join("demarrage.txt"), FileAccess.WRITE)
 			if f != null:
 				f.store_line(line)
+
+
+## Vrai si les étapes d'une image ([[type, id, ms], …]) contiennent une capture du banc.
+static func has_capture_step(steps: Array) -> bool:
+	for st in steps:
+		if str(st[0]) == "capture":
+			return true
+	return false
 
 
 func _flush_tasks(t_s: float) -> void:
