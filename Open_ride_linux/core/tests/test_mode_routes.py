@@ -122,7 +122,8 @@ def test_circuit_is_a_grand_prix_route_and_old_demo_is_replaced(tmp_path):
 
     from openride_core.demo_world import biome_demo_outdated
 
-    tagged = {n: lib["tags"] for n, lib in demo_biomes.DEMO_LIBRARY.items() if "tags" in lib}
+    tagged = {n: lib["tags"] for n, lib in demo_biomes.DEMO_LIBRARY.items()
+              if "tags" in lib and lib["tags"] != ["biome"]}   # lot DPB1 : étiquette de filtre, d'aucun mode
     assert tagged == {**{n: ["grandprix"] for n in ("demo-circuit", "demo-corniche", "demo-vignes")},   # lots GP13, GP13b
                       **{n: ["grandprix", "libre"] for n in ("demo-recif", "demo-volcan", "demo-biomes-nord")}}   # GPL1
     demo_biomes.generate(tmp_path, "demo-circuit", (demo_biomes.CIRCUIT_BIOME,), loop="circuit",
