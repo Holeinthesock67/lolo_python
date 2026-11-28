@@ -22,6 +22,7 @@ const NightLights := preload("res://scripts/night_lights.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RoadsideGround := preload("res://scripts/roadside_ground.gd")
+const DrawnRoad := preload("res://scripts/drawn_road.gd")
 
 const CHUNK_M := 1000.0                 # osm_streamer.gd CHUNK_M
 const SPACING_M := 32.0
@@ -81,7 +82,9 @@ static func positions(route, k: int, buildings: Array, width_m: float = RoadBuil
 			var right := Vector3(cos(h), 0.0, sin(h))
 			var pos := RoadsideGround.on_ground(ground_at, c + right * float(side) * (width_m * 0.5 + SIDE_OFFSET_M),
 				c, right, width_m * 0.5)
-			out.append({"s": s, "side": side, "pos": pos, "heading": h})
+			# Garde finale (lot CD1d) : pas de candélabre sur une autre portion de la chaussée (épingle, amorce).
+			if DrawnRoad.off_road(route, pos, width_m * 0.5):
+				out.append({"s": s, "side": side, "pos": pos, "heading": h})
 		s += SPACING_M
 	return out
 
@@ -121,6 +124,8 @@ static func post_positions(route, k: int, buildings: Array, width_m: float = Roa
 			var right := Vector3(cos(h), 0.0, sin(h))
 			for side in [1, -1]:
 				var pos := c + right * float(side) * (width_m * 0.5 + POST_OFFSET_M)
+				if not DrawnRoad.off_road(route, pos, width_m * 0.5):
+					continue   # garde finale (lot CD1d) : balise sur une autre portion de la chaussée
 				out.append({"s": s, "side": side, "pos": RoadsideGround.on_ground(ground_at, pos, c, right, width_m * 0.5),
 					"heading": h})
 		s += POST_SPACING_M

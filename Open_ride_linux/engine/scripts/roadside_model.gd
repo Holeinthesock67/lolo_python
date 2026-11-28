@@ -34,6 +34,7 @@ extends RefCounted
 
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const DrawnRoad := preload("res://scripts/drawn_road.gd")
 
 const APPROACH_KM := [5, 3, 2, 1]
 const PAINT_KM := [5, 4, 3, 2, 1]
@@ -122,7 +123,10 @@ static func _dry_s(route, s: float, water: Dictionary, road_width_m: float, side
 		var cand := s + t * dir
 		if cand > route.length_m or cand < 0.0:
 			return NAN
-		if not _in_water(prop_position(route, cand, road_width_m, side), water):
+		var p := prop_position(route, cand, road_width_m, side)
+		# Garde finale (lot CD1d) : un panneau ou une borne ne tombe pas sur une autre portion de la chaussée
+		# (épingle, amorce) ; un portique (côté 0) est au-dessus de la route, par construction.
+		if not _in_water(p, water) and (side == 0 or DrawnRoad.off_road(route, p, road_width_m * 0.5)):
 			return cand
 		t += NUDGE_M
 	return NAN

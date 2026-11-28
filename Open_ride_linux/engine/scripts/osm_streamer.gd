@@ -28,6 +28,7 @@ extends Node3D
 ## Pas de class_name (charger par preload).
 
 const OsmLayers := preload("res://scripts/osm_layers.gd")
+const DrawnRoad := preload("res://scripts/drawn_road.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const BridgeMesh := preload("res://scripts/bridge_mesh.gd")
@@ -53,6 +54,11 @@ const CHUNK_M := 1000.0
 ## Demi-largeur dégagée autour de l'axe de la route pour les cours d'eau (chaussée de 6 m, bas-côtés).
 const ROAD_CLEAR_M := 4.0
 const WATER_COLOR := Color(0.12, 0.32, 0.38, 1.0)
+## Lot CD1c (reprise de #1056, Biarritz le 24/11) : un bâtiment que la chaussée dessinée (route en Catmull-Rom et
+## amorces, drawn_road.gd) traverse, ou approche à moins de BUILDING_AXIS_CLEAR_M de l'axe, n'est pas dessiné. Pas la
+## demi-largeur de la chaussée (3 m) : dans les rues étroites, le ruban de 6 m touche les façades, et les retirer
+## viderait les vieilles villes ; seule une maison sur la voie du cycliste disparaît.
+const BUILDING_AXIS_CLEAR_M := 1.5
 
 var route = null
 var world_dir := ""
@@ -323,6 +329,8 @@ func _build_chunk_job(job: Dictionary) -> void:
 		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k, job.get("route"))
 		if b_res.get("ok", false):
 			var items: Array = b_res.get("items", [])
+			if job.get("route") != null and not items.is_empty():
+				items = drop_buildings_on_road(items, DrawnRoad.shared(job["route"]))
 			b_items = items
 			for b in items:
 				shapes["buildings"].append(_shape(b.get("outer", [])))
@@ -371,7 +379,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 				wa["area"] = true
 				shapes["waters"].append(wa)
 			if job.get("route") != null:
-				lines = cut_lines_at_road(lines, road_polyline(job["route"], k))
+				lines = cut_lines_at_drawn_road(lines, DrawnRoad.shared(job["route"]))
 			if not lines.is_empty():
 				if v_scale != 1.0:
 					var scaled_lines: Array = []
@@ -710,6 +718,79 @@ static func _segment_near_road(a: Vector2, b: Vector2, road: PackedVector2Array,
 		var pts := Geometry2D.get_closest_points_between_segments(a, b, c, d)
 		if (pts[0] as Vector2).distance_to(pts[1]) < clear:
 			return true
+	return false
+
+
+## Cours d'eau coupés là où ils croisent la chaussée dessinée (lot CD1c) : même règle que `cut_lines_at_road`, mais
+## contre toute la chaussée (route en Catmull-Rom et amorces, autres portions d'une route qui repasse comprises), et
+## non plus contre les points bruts de la route du seul tronçon. Sans chaussée : rien n'est coupé.
+static func cut_lines_at_drawn_road(lines: Array, road) -> Array:
+	if road == null or road.is_empty():
+		return lines
+	var out := []
+	for line in lines:
+		if typeof(line) != TYPE_DICTIONARY:
+			continue
+		var pts: Array = line.get("points", [])
+		var clear := ROAD_CLEAR_M + float(line.get("width_m", 0.0)) * 0.5
+		var part := []
+		for i in range(pts.size()):
+			if i > 0:
+				var a := Vector2(float(pts[i - 1][0]), float(pts[i - 1][1]))
+				var b := Vector2(float(pts[i][0]), float(pts[i][1]))
+				if _segment_near_drawn(a, b, road, clear):
+					if part.size() >= 2:
+						var piece: Dictionary = line.duplicate()
+						piece["points"] = part
+						out.append(piece)
+					part = []
+			part.append(pts[i])
+		if part.size() >= 2:
+			var piece: Dictionary = line.duplicate()
+			piece["points"] = part
+			out.append(piece)
+	return out
+
+
+static func _segment_near_drawn(a: Vector2, b: Vector2, road, clear: float) -> bool:
+	for sg in road.segments_in(Rect2(a, Vector2.ZERO).expand(b).grow(clear)):
+		var c := Vector2(sg.x, sg.y)
+		var d := Vector2(sg.z, sg.w)
+		if Geometry2D.segment_intersects_segment(a, b, c, d) != null:
+			return true
+		var pts := Geometry2D.get_closest_points_between_segments(a, b, c, d)
+		if (pts[0] as Vector2).distance_to(pts[1]) < clear:
+			return true
+	return false
+
+
+## Bâtiments de `items` (couche buildings lue) que la chaussée dessinée ne traverse pas et n'approche pas à moins de
+## BUILDING_AXIS_CLEAR_M de l'axe (lot CD1c). Exécutable en thread secondaire.
+static func drop_buildings_on_road(items: Array, road) -> Array:
+	if road == null or road.is_empty():
+		return items
+	var out := []
+	for b in items:
+		var sh := _shape(b.get("outer", []) if typeof(b) == TYPE_DICTIONARY else [])
+		if not ring_on_road(sh["points"], sh["rect"], road):
+			out.append(b)
+	return out
+
+
+## Vrai si la chaussée dessinée entre dans le contour ou passe à moins de BUILDING_AXIS_CLEAR_M de ses murs.
+static func ring_on_road(ring: PackedVector2Array, rect: Rect2, road) -> bool:
+	if ring.size() < 3:
+		return false
+	var n := ring.size()
+	for sg in road.segments_in(rect.grow(BUILDING_AXIS_CLEAR_M)):
+		var a := Vector2(sg.x, sg.y)
+		var b := Vector2(sg.z, sg.w)
+		if Geometry2D.is_point_in_polygon(a, ring) or Geometry2D.is_point_in_polygon(b, ring):
+			return true
+		for i in range(n):
+			var pts := Geometry2D.get_closest_points_between_segments(a, b, ring[i], ring[(i + 1) % n])
+			if (pts[0] as Vector2).distance_to(pts[1]) < BUILDING_AXIS_CLEAR_M:
+				return true
 	return false
 
 

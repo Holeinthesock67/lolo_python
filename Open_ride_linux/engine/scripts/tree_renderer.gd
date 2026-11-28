@@ -19,6 +19,7 @@ extends Node3D
 ## lointain arbre par arbre dans le shader de balancement, ombre portée coupée au même endroit (`lod_ranges`).
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const ExclusionZones := preload("res://scripts/exclusion_zones.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
@@ -232,7 +233,7 @@ func get_active_tree_count() -> int:
 ## posés à la hauteur affichée de la route (`route.display_y`, relief exagéré des lots Q2 et Y15).
 ## Renvoie un dictionnaire avec la clé de tuile et les listes d'arbres par case [0..15].
 func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
-		density_factor: float, areas: Array = [], buildings: Array = []) -> Dictionary:
+		density_factor: float, areas: Array = [], buildings: Array = [], waters: Array = []) -> Dictionary:
 	var t_start := Time.get_ticks_usec()
 	# Seule la section `vegetation` change : copie superficielle du thème, copie de cette section.
 	var tile_theme := theme.duplicate()
@@ -336,6 +337,10 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 	var t_buildings := Time.get_ticks_usec()
 	if not buildings.is_empty():
 		trees = exclude_buildings(trees, buildings)
+	# 4. Aucun arbre dans l'eau (lacs, mer, grandes rivières ; lot CD1c, reprise de #1056 : arbres dans la mer à
+	#    Biarritz le 24/11, arbres dans les lacs des parcours compilés le 27/11).
+	if not waters.is_empty():
+		trees = exclude_water(trees, waters)
 	var tree_species := PackedByteArray()
 	if biomes_on:
 		var assigned := VegetationPlacer.assign_species(trees, biome_model, float(veg["max_density_per_ha"]) / maxf(clampf(density_factor, 0.0, 1.0), 1e-6), near_water)
@@ -494,6 +499,36 @@ static func exclude_buildings(trees: PackedVector4Array, buildings: Array) -> Pa
 				break
 		if not blocked:
 			out.append(tree)
+	return out
+
+
+## Arbres hors des plans d'eau `waters` (aires de la couche eau : `outer`, `holes` ; mer comprise) : un arbre dans un
+## contour extérieur et dans aucune de ses îles est retiré. Contours indexés (exclusion_zones.gd) : la côte d'une mer
+## a des milliers de sommets. Exécutable en thread secondaire. Reprise de #1056 (lot CD1c).
+static func exclude_water(trees: PackedVector4Array, waters: Array) -> PackedVector4Array:
+	var outers := []
+	var islands := []
+	for w in waters:
+		if typeof(w) != TYPE_DICTIONARY:
+			continue
+		var outer = w.get("outer", [])
+		if typeof(outer) != TYPE_ARRAY or outer.size() < 3:
+			continue
+		outers.append(VegetationPlacer._packed_ring(outer))
+		var holes = w.get("holes", [])
+		if typeof(holes) == TYPE_ARRAY:
+			for h in holes:
+				if typeof(h) == TYPE_ARRAY and h.size() >= 3:
+					islands.append(VegetationPlacer._packed_ring(h))
+	if outers.is_empty():
+		return trees
+	var wet := ExclusionZones.new(outers)
+	var dry := ExclusionZones.new(islands)
+	var out := PackedVector4Array()
+	for tree in trees:
+		if wet.contains(tree.x, tree.z) and not dry.contains(tree.x, tree.z):
+			continue
+		out.append(tree)
 	return out
 
 

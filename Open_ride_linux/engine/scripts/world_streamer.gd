@@ -384,7 +384,13 @@ func _get_buildings(t: Vector2i) -> Array:
 	return _get_osm_items(t, "buildings")
 
 
-func _get_osm_items(t: Vector2i, layer: String) -> Array:
+## Plans d'eau (aires de la couche water : lacs, mer, grandes rivières) des tronçons proches d'une tuile proche :
+## aucun arbre dedans (lot CD1c, reprise de #1056).
+func _get_water_areas(t: Vector2i) -> Array:
+	return _get_osm_items(t, "water", "areas")
+
+
+func _get_osm_items(t: Vector2i, layer: String, list_key: String = "items") -> Array:
 	if not _has_layer(layer) or world_dir == "":
 		return []
 	var areas := []
@@ -399,7 +405,7 @@ func _get_osm_items(t: Vector2i, layer: String) -> Array:
 		if r_bounds.intersects(tile_rect):
 			var res := OsmLayers.load_chunk(world_dir, layer, k, route)
 			if res.get("ok", false):
-				areas.append_array(res.get("items", []))
+				areas.append_array(res.get(list_key, []))
 	return areas
 
 
@@ -803,7 +809,7 @@ func _build_job(job: Dictionary) -> void:
 				var t_trees := Time.get_ticks_usec()
 				# Hauteurs réelles : pente et limite des arbres jugées sur le vrai relief, arbres posés à la hauteur affichée.
 				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
-					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t))
+					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t), _get_water_areas(t))
 				PerfProbe.task("arbres", "%d:%d" % [t.x, t.y], (Time.get_ticks_usec() - t_trees) / 1000.0)
 		"flat":
 			var t: Vector2i = spec["tile"]
