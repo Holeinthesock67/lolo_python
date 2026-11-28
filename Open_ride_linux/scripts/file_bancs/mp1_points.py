@@ -16,7 +16,16 @@ ap.add_argument("--max-km", type=float, default=6.0)
 a = ap.parse_args()
 route = json.loads((a.world / "route.json").read_text(encoding="utf-8"))
 rep = json.loads((a.world / "buildings" / "rapport_maisons.json").read_text(encoding="utf-8"))
-xs, zs, ss = route["x"], route["z"], route["s"]
+xs, zs = route["x"], route["z"]
+# Format .world §2 : pas de colonne s ; point i à i × ds_m (dernier à length_m). Repli : distance cumulée en x/z.
+if "ds_m" in route:
+    ss = [i * float(route["ds_m"]) for i in range(len(xs))]
+    if "length_m" in route:
+        ss[-1] = float(route["length_m"])
+else:
+    ss = [0.0]
+    for i in range(1, len(xs)):
+        ss.append(ss[-1] + math.hypot(xs[i] - xs[i - 1], zs[i] - zs[i - 1]))
 pts = []
 for v in sorted(rep["villages"], key=lambda v: (-v["retirees"], v["id"])):
     i = min(range(len(xs)), key=lambda i: (xs[i] - v["x"]) ** 2 + (zs[i] - v["z"]) ** 2)

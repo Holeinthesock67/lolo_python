@@ -50,6 +50,9 @@ captures() {
   for w in "$BASE"/routes-apres/*.world; do
     local name; name=$(basename "$w" .world)
     local at; at=$(python3 -I "$HERE/mp1_points.py" "$w" --max 3 --max-km "$MAX_KM" 2>>"$SORTIE/resume.txt")
+    if ! [[ "$at" =~ ^[0-9]+(,[0-9]+)*$ ]]; then   # jamais de captures aux temps par défaut (essai j28a)
+      echo "$name : points des villages illisibles, parcours sauté" | tee -a "$SORTIE/resume.txt"; rc=1; continue
+    fi
     local last=${at##*,}
     local dur; dur=$(python3 -c "print(round(90 + 1.3 * ($last + 200) / ($SPEED / 3.6)))")
     echo "$name : captures à $at m, $dur s par séance" | tee -a "$SORTIE/resume.txt"
